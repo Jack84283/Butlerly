@@ -28,6 +28,10 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  butlerly_finance_application:
+    path: ../../packages/butlerly_finance_application
+  butlerly_finance_domain:
+    path: ../../packages/butlerly_finance_domain
   butlerly_database:
     path: ../../packages/butlerly_database
   flutter:

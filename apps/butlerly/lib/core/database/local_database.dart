@@ -31,6 +31,14 @@ class LocalDatabase {
     return value.connection;
   }
 
+  persistence.ButlerlyDatabase get persistenceDatabase {
+    final value = _database;
+    if (value == null) {
+      throw StateError('The local database is not available.');
+    }
+    return value;
+  }
+
   Future<void> initialize() async {
     final factory = _factory ?? createDatabaseFactory();
     if (factory == null) {

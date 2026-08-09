@@ -23,35 +23,28 @@ Status: Active implementation audit
 | Finance domain and local persistence | Implemented | Domain invariants, SQLite schema, repositories, migrations, and tests exist. |
 | Application service boundary | Implemented | Commands, queries, DTOs, result mapping, and repository-only application services exist. |
 | Primary navigation and Home | Implemented in this slice | Product-authoritative Home, Transactions, Review, Search, and Settings destinations now have responsive shell support and truthful empty states. |
-| Transaction CRUD and detail UI | Not implemented | Application services exist; presentation flows are next. |
+| Transaction CRUD and detail UI | Implemented active slice | Local list, create, detail, edit, archive, and permanent-delete UI is wired through application services. |
 | Local list, detail, search, and filters UI | Not implemented | SQLite query support exists; presentation flows are next. |
 | Review queue and resolution UI | Not implemented | ReviewIssue persistence exists; list/resolution application services and presentation are next. |
 | Evidence capture, attachment storage, retrieval UI | Not implemented | Evidence metadata and links exist; local binary-file strategy and user flows are next. |
 | Original currency, language, provenance, and normalization UI | Not implemented | Domain/persistence protect these values; presentation is absent. |
 | Privacy, consent, export, and deletion UI | Not implemented | Required P0 product controls are absent. |
 | Localization settings and translated UI resources | Not implemented | English-only localization infrastructure exists; user preference and translation resources are absent. |
-| Privacy-safe logging | Partial | Logging is centralized, but it needs explicit redaction tests before finance content reaches UI workflows. |
+| Privacy-safe logging | Implemented | Common financial values and user-entered fields are redacted before logging; redaction is tested. |
 
-## Document conflicts requiring product review
+## Confirmed scope alignment
 
-### C-001 — Account and synchronization priority
+The documentation refresh resolves the previously recorded scope conflicts.
 
-- PRD-0003, PRD-0004, and PRD-0008 require core Version 1 operation without an account; PRD-0008 marks cross-device synchronization P2 and backup/restore P1.
-- UX-0005 and UX-0010 label authentication, trusted devices, Apple synchronization, and related recovery flows P0.
+- PRD-0003, PRD-0004, PRD-0008, UX-0005, and UX-0010 now agree that core Finance V1 is account-free and local-first. Cross-device synchronization, device trust, pairing, and related conflict workflows are future/P2 work and must not be required for P0.
+- PRD-0005 and UX-0010 now agree on the primary Finance V1 navigation: Home, Transactions, Review, Search, and Settings. Assistant remains optional and non-primary.
 
-Implementation impact: account, device trust, synchronization, and Apple-specific flows are not being implemented while this conflict remains unresolved. The current app preserves local, account-free operation.
-
-### C-002 — Primary navigation terminology and scope
-
-- PRD-0005 defines the top-level destinations as Home, Transactions, Review, Search, and Settings.
-- UX-0005 and UX-0010 define primary shells using Home, Inbox, Records, Assistant, and Settings.
-
-Implementation impact: the navigation shell follows PRD-0005 because product requirements take precedence over UX specifications. The lower-priority terminology remains unresolved for any future assistant or inbox presentation.
+Implementation impact: the current navigation shell already conforms. No account, synchronization, pairing, or Assistant-primary-navigation implementation is authorized for the active P0 scope.
 
 ## P0 order from this point
 
-1. Main navigation and Home — in progress; this slice establishes it.
-2. Transaction management UI — create, list, detail, edit, archive/delete.
+1. IMP-0005 — Main Navigation and Home — complete local slice.
+2. IMP-0006 — Transaction Management — active; the offline lifecycle is implemented, with organization and retrieval presentation still pending.
 3. Local search and filters UI.
 4. Evidence capture/attachment and retrieval.
 5. Review queue and explicit resolution workflows.

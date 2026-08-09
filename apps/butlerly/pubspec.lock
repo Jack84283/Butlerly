@@ -32,8 +32,15 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  butlerly_finance_application:
+    dependency: "direct main"
+    description:
+      path: "../../packages/butlerly_finance_application"
+      relative: true
+    source: path
+    version: "0.1.0"
   butlerly_finance_domain:
-    dependency: transitive
+    dependency: "direct main"
     description:
       path: "../../packages/butlerly_finance_domain"
       relative: true

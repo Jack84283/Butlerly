@@ -15,13 +15,13 @@ Future<void> bootstrap() async {
   _installErrorHandlers(logger);
 
   final database = LocalDatabase(logger: logger);
+  await database.initialize();
+
   configureDependencies(
     configuration: const AppConfiguration(),
     database: database,
     logger: logger,
   );
-
-  await database.initialize();
 
   runApp(const ProviderScope(child: ButlerlyApp()));
 }
