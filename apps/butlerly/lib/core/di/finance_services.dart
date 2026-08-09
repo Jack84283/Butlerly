@@ -2,8 +2,13 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
 final class FinanceServices {
-  FinanceServices(TransactionRepository transactions)
-    : listTransactions = ListTransactions(transactions),
+  FinanceServices(
+    TransactionRepository transactions,
+    MerchantRepository merchants,
+    CategoryRepository categories,
+    TagRepository tags,
+    EvidenceRepository evidence,
+  ) : listTransactions = ListTransactions(transactions),
       createTransaction = CreateTransaction(
         transactions,
         const SystemApplicationClock(),
@@ -21,7 +26,35 @@ final class FinanceServices {
         transactions,
         const SystemApplicationClock(),
       ),
-      deleteTransactionPermanently = DeleteTransactionPermanently(transactions);
+      deleteTransactionPermanently = DeleteTransactionPermanently(transactions),
+      listMerchants = ListMerchants(merchants),
+      listCategories = ListCategories(categories),
+      listTags = ListTags(tags),
+      saveMerchant = SaveMerchant(merchants),
+      saveCategory = SaveCategory(categories),
+      saveTag = SaveTag(tags),
+      assignMerchant = AssignMerchant(
+        transactions,
+        merchants,
+        const SystemApplicationClock(),
+      ),
+      assignCategory = AssignCategory(
+        transactions,
+        categories,
+        const SystemApplicationClock(),
+      ),
+      addTag = AddTag(transactions, tags, const SystemApplicationClock()),
+      removeTag = RemoveTag(transactions, const SystemApplicationClock()),
+      listReviewItems = ListReviewItems(transactions),
+      resolveReviewIssue = ResolveReviewIssue(
+        transactions,
+        const SystemApplicationClock(),
+      ),
+      dismissReviewIssue = DismissReviewIssue(
+        transactions,
+        const SystemApplicationClock(),
+      ),
+      listEvidenceForTransaction = ListEvidenceForTransaction(evidence);
 
   final ListTransactions listTransactions;
   final CreateTransaction createTransaction;
@@ -30,4 +63,18 @@ final class FinanceServices {
   final ArchiveTransaction archiveTransaction;
   final RestoreTransaction restoreTransaction;
   final DeleteTransactionPermanently deleteTransactionPermanently;
+  final ListMerchants listMerchants;
+  final ListCategories listCategories;
+  final ListTags listTags;
+  final SaveMerchant saveMerchant;
+  final SaveCategory saveCategory;
+  final SaveTag saveTag;
+  final AssignMerchant assignMerchant;
+  final AssignCategory assignCategory;
+  final AddTag addTag;
+  final RemoveTag removeTag;
+  final ListReviewItems listReviewItems;
+  final ResolveReviewIssue resolveReviewIssue;
+  final DismissReviewIssue dismissReviewIssue;
+  final ListEvidenceForTransaction listEvidenceForTransaction;
 }

@@ -400,7 +400,49 @@ class TransactionDetailPage extends StatelessWidget {
         _DetailRow(label: 'Direction', value: transaction.direction),
         _DetailRow(label: 'Date', value: _transactionDate(transaction)),
         _DetailRow(label: 'Status', value: transaction.status),
+        _DetailRow(
+          label: 'Review',
+          value: transaction.reviewState == 'needsReview'
+              ? 'Needs review'
+              : 'Clear',
+        ),
+        if (transaction.provenance.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(
+            'Record history',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          ...transaction.provenance.map(
+            (value) => _DetailRow(
+              label: _provenanceLabel(value.sourceType),
+              value: _shortDate(value.capturedAt),
+            ),
+          ),
+        ],
+        const SizedBox(height: 16),
+        _EvidenceSection(finance: finance, transactionId: transaction.id),
+        if (transaction.merchantId != null)
+          _DetailRow(label: 'Merchant', value: transaction.merchantId!),
+        if (transaction.categoryId != null)
+          _DetailRow(label: 'Category', value: transaction.categoryId!),
+        if (transaction.tagIds.isNotEmpty)
+          _DetailRow(label: 'Tags', value: transaction.tagIds.join(', ')),
         const SizedBox(height: 24),
+        OutlinedButton.icon(
+          onPressed: () async {
+            final changed = await _organizeTransaction(
+              context,
+              finance,
+              transaction,
+            );
+            if (changed == true && context.mounted) {
+              Navigator.of(context).pop(true);
+            }
+          },
+          icon: const Icon(Icons.sell_outlined),
+          label: const Text('Organize transaction'),
+        ),
+        const SizedBox(height: 12),
         OutlinedButton.icon(
           onPressed: transaction.status == TransactionStatus.archived.name
               ? () async {
@@ -429,6 +471,62 @@ class TransactionDetailPage extends StatelessWidget {
     ),
   );
 }
+
+class _EvidenceSection extends StatelessWidget {
+  const _EvidenceSection({required this.finance, required this.transactionId});
+
+  final FinanceServices finance;
+  final String transactionId;
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<List<EvidenceItem>>(
+    future: finance
+        .listEvidenceForTransaction(transactionId)
+        .then(
+          (result) => switch (result) {
+            ApplicationSuccess<List<EvidenceItem>>(:final value) => value,
+            ApplicationFailure<List<EvidenceItem>>() => const [],
+          },
+        ),
+    builder: (context, snapshot) {
+      final evidence = snapshot.data;
+      if (evidence == null) return const SizedBox.shrink();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Evidence', style: Theme.of(context).textTheme.titleMedium),
+          if (evidence.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text('No evidence metadata is attached locally.'),
+            )
+          else
+            ...evidence.map(
+              (value) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.attach_file_outlined),
+                title: Text(value.originalName),
+                subtitle: Text(value.mediaType),
+              ),
+            ),
+        ],
+      );
+    },
+  );
+}
+
+String _provenanceLabel(String sourceType) => switch (sourceType) {
+  'userEntry' => 'Entered locally',
+  'import' => 'Imported',
+  'scan' => 'Scanned',
+  'evidenceExtraction' => 'Evidence extraction',
+  'integration' => 'Integration',
+  'deterministicCalculation' => 'Calculation',
+  'localAi' => 'Local AI',
+  'externalAi' => 'External AI',
+  'migration' => 'Migration',
+  _ => 'Record origin',
+};
 
 class _DetailRow extends StatelessWidget {
   const _DetailRow({required this.label, required this.value});
@@ -503,6 +601,87 @@ Future<bool?> _confirm(
     ],
   ),
 );
+
+Future<bool?> _organizeTransaction(
+  BuildContext context,
+  FinanceServices finance,
+  TransactionDto transaction,
+) {
+  final merchant = TextEditingController();
+  final category = TextEditingController();
+  final tag = TextEditingController();
+  return showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Organize transaction'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: merchant,
+              decoration: const InputDecoration(
+                labelText: 'New merchant (optional)',
+              ),
+            ),
+            TextField(
+              controller: category,
+              decoration: const InputDecoration(
+                labelText: 'New category (optional)',
+              ),
+            ),
+            TextField(
+              controller: tag,
+              decoration: const InputDecoration(
+                labelText: 'New tag (optional)',
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () async {
+            final stamp = DateTime.now().microsecondsSinceEpoch;
+            if (merchant.text.trim().isNotEmpty) {
+              final id = 'merchant-$stamp';
+              await finance.saveMerchant(
+                Merchant(id: MerchantId(id), name: merchant.text),
+              );
+              await finance.assignMerchant(transaction.id, id);
+            }
+            if (category.text.trim().isNotEmpty) {
+              final id = 'category-$stamp';
+              await finance.saveCategory(
+                Category(
+                  id: CategoryId(id),
+                  name: category.text,
+                  origin: CategoryOrigin.user,
+                ),
+              );
+              await finance.assignCategory(transaction.id, id);
+            }
+            if (tag.text.trim().isNotEmpty) {
+              final id = 'tag-$stamp';
+              await finance.saveTag(Tag(id: TagId(id), name: tag.text));
+              await finance.addTag(transaction.id, id);
+            }
+            if (dialogContext.mounted) Navigator.pop(dialogContext, true);
+          },
+          child: const Text('Save organization'),
+        ),
+      ],
+    ),
+  ).whenComplete(() {
+    merchant.dispose();
+    category.dispose();
+    tag.dispose();
+  });
+}
 
 String _transactionDate(TransactionDto value) =>
     value.occurredAt == null ? 'Date pending' : _shortDate(value.occurredAt!);

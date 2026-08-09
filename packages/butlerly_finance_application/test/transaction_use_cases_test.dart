@@ -152,6 +152,43 @@ void main() {
       TransactionStatus.active,
     );
   });
+
+  test('lists and explicitly resolves active local review issues', () async {
+    final issue = ReviewIssue(
+      id: ReviewIssueId('issue-1'),
+      transactionId: TransactionId('transaction-1'),
+      reason: ReviewIssueReason.uncertain,
+      detail: 'Confirm the transaction amount.',
+      createdAt: now,
+    );
+    transactions.values['transaction-1'] = transaction(
+      now,
+    ).addReviewIssue(issue, now);
+
+    final listed = await ListReviewItems(transactions)();
+    expect(
+      listed,
+      isA<ApplicationSuccess<List<ReviewItemDto>>>().having(
+        (value) => value.value.single.issueId,
+        'issue id',
+        'issue-1',
+      ),
+    );
+
+    final resolved = await ResolveReviewIssue(transactions, clock)(
+      'transaction-1',
+      'issue-1',
+    );
+    expect(resolved, isA<ApplicationSuccess<TransactionDto>>());
+    expect(
+      transactions.values['transaction-1']!.reviewState,
+      TransactionReviewState.clear,
+    );
+    expect(
+      transactions.values['transaction-1']!.reviewIssues.single.status,
+      ReviewIssueStatus.resolved,
+    );
+  });
 }
 
 final class FixedClock implements ApplicationClock {

@@ -24,10 +24,10 @@ Status: Active implementation audit
 | Application service boundary | Implemented | Commands, queries, DTOs, result mapping, and repository-only application services exist. |
 | Primary navigation and Home | Implemented in this slice | Product-authoritative Home, Transactions, Review, Search, and Settings destinations now have responsive shell support and truthful empty states. |
 | Transaction CRUD and detail UI | Implemented active slice | Local list, create, detail, edit, archive, and permanent-delete UI is wired through application services. |
-| Local list, detail, search, and filters UI | Not implemented | SQLite query support exists; presentation flows are next. |
-| Review queue and resolution UI | Not implemented | ReviewIssue persistence exists; list/resolution application services and presentation are next. |
+| Local list, detail, search, and filters UI | Partially implemented | Transaction list/detail and local text, currency, direction, date-range, category, and review-state search filters are available. Payment-source filtering correctly awaits IMP-0007. |
+| Review queue and resolution UI | Implemented active slice | Local active-issue queue, transaction drill-in, and explicit resolve/dismiss actions are wired through application services. |
 | Evidence capture, attachment storage, retrieval UI | Not implemented | Evidence metadata and links exist; local binary-file strategy and user flows are next. |
-| Original currency, language, provenance, and normalization UI | Not implemented | Domain/persistence protect these values; presentation is absent. |
+| Original currency, language, provenance, and normalization UI | Partially implemented | Transaction detail shows local provenance history. Original currency, language, and normalization presentation remain. |
 | Privacy, consent, export, and deletion UI | Not implemented | Required P0 product controls are absent. |
 | Localization settings and translated UI resources | Not implemented | English-only localization infrastructure exists; user preference and translation resources are absent. |
 | Privacy-safe logging | Implemented | Common financial values and user-entered fields are redacted before logging; redaction is tested. |

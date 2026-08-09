@@ -1,6 +1,7 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
 import '../commands/transaction_commands.dart';
+import '../dto/review_item_dto.dart';
 import '../dto/transaction_dto.dart';
 import '../result/application_result.dart';
 
@@ -299,6 +300,54 @@ final class RemoveTag {
   });
 }
 
+final class ListReviewItems {
+  const ListReviewItems(this.repository);
+
+  final TransactionRepository repository;
+
+  Future<ApplicationResult<List<ReviewItemDto>>> call() =>
+      runApplication('list review items', () async {
+        final transactions = await repository.query(
+          const TransactionRepositoryQuery(needsReview: true),
+        );
+        return List.unmodifiable(
+          transactions.expand(
+            (transaction) => transaction.reviewIssues
+                .where((issue) => issue.status == ReviewIssueStatus.active)
+                .map((issue) => ReviewItemDto.fromDomain(transaction, issue)),
+          ),
+        );
+      });
+}
+
+final class ResolveReviewIssue {
+  const ResolveReviewIssue(this.repository, this.clock);
+
+  final TransactionRepository repository;
+  final ApplicationClock clock;
+
+  Future<ApplicationResult<TransactionDto>> call(
+    String transactionId,
+    String issueId,
+  ) => _mutate(repository, transactionId, 'resolve review issue', (value) {
+    return value.resolveReviewIssue(ReviewIssueId(issueId), clock.now());
+  });
+}
+
+final class DismissReviewIssue {
+  const DismissReviewIssue(this.repository, this.clock);
+
+  final TransactionRepository repository;
+  final ApplicationClock clock;
+
+  Future<ApplicationResult<TransactionDto>> call(
+    String transactionId,
+    String issueId,
+  ) => _mutate(repository, transactionId, 'dismiss review issue', (value) {
+    return value.dismissReviewIssue(ReviewIssueId(issueId), clock.now());
+  });
+}
+
 final class AttachEvidence {
   const AttachEvidence(this.transactions, this.evidence);
 
@@ -328,6 +377,19 @@ final class AttachEvidence {
       ),
     );
   }
+}
+
+final class ListEvidenceForTransaction {
+  const ListEvidenceForTransaction(this.evidence);
+
+  final EvidenceRepository evidence;
+
+  Future<ApplicationResult<List<EvidenceItem>>> call(String transactionId) =>
+      runApplication('list transaction evidence', () async {
+        return List.unmodifiable(
+          await evidence.listForTransaction(TransactionId(transactionId)),
+        );
+      });
 }
 
 Future<ApplicationResult<TransactionDto>> _mutate(

@@ -130,6 +130,33 @@ final class Transaction {
     return _copy(reviewIssues: [...reviewIssues, issue], updatedAt: at);
   }
 
+  Transaction resolveReviewIssue(ReviewIssueId id, DateTime at) =>
+      _closeReviewIssue(id, at, (issue) => issue.resolve(at));
+
+  Transaction dismissReviewIssue(ReviewIssueId id, DateTime at) =>
+      _closeReviewIssue(id, at, (issue) => issue.dismiss(at));
+
+  Transaction _closeReviewIssue(
+    ReviewIssueId id,
+    DateTime at,
+    ReviewIssue Function(ReviewIssue) close,
+  ) {
+    var found = false;
+    final updatedIssues = reviewIssues.map((issue) {
+      if (issue.id != id) return issue;
+      found = true;
+      return close(issue);
+    }).toList(growable: false);
+    if (!found) {
+      invalid(
+        code: DomainErrorCode.invalidState,
+        field: 'reviewIssueId',
+        message: 'The review issue does not belong to this transaction.',
+      );
+    }
+    return _copy(reviewIssues: updatedIssues, updatedAt: at);
+  }
+
   Transaction archive(DateTime at) =>
       _copy(status: TransactionStatus.archived, updatedAt: at);
 
