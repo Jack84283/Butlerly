@@ -1,0 +1,16 @@
+.DS_Store
+.idea/
+.vscode/
+.dart_tool/
+build/
+coverage/
+*.log
+*.db
+*.sqlite
+*.sqlite3
+local.properties
+*.jks
+*.keystore
+.env
+.env.*
+!.env.example

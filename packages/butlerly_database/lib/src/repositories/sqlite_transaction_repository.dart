@@ -1,0 +1,278 @@
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
+import 'package:sqflite_common/sqlite_api.dart' hide Transaction;
+
+import '../database/butlerly_database.dart';
+import '../mappers/sqlite_helpers.dart';
+
+final class SqliteTransactionRepository implements TransactionRepository {
+  const SqliteTransactionRepository(this.database);
+
+  final ButlerlyDatabase database;
+
+  @override
+  Future<void> save(Transaction value) async {
+    try {
+      await database.transaction((executor) async {
+        for (final provenance in value.provenance) {
+          await saveProvenance(executor, provenance);
+        }
+        await executor.insert(
+          'transactions',
+          _transactionToRow(value),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+        await _replaceChildren(executor, value);
+      });
+    } on DatabaseException catch (error) {
+      throw mapDatabaseException(error, 'save transaction');
+    }
+  }
+
+  @override
+  Future<Transaction?> findById(TransactionId id) async {
+    final rows = await database.connection.query(
+      'transactions',
+      where: 'id = ?',
+      whereArgs: [id.value],
+    );
+    if (rows.isEmpty) return null;
+    return _hydrate(rows.single);
+  }
+
+  @override
+  Future<List<Transaction>> listAll() async {
+    final rows = await database.connection.query(
+      'transactions',
+      orderBy: 'COALESCE(occurred_at, created_at) DESC, id',
+    );
+    return Future.wait(rows.map(_hydrate));
+  }
+
+  @override
+  Future<void> removePermanently(TransactionId id) async {
+    try {
+      await database.connection.delete(
+        'transactions',
+        where: 'id = ?',
+        whereArgs: [id.value],
+      );
+    } on DatabaseException catch (error) {
+      throw mapDatabaseException(error, 'remove transaction permanently');
+    }
+  }
+
+  Future<Transaction> _hydrate(Map<String, Object?> row) async {
+    final id = row['id']! as String;
+    final provenanceRows = await database.connection.rawQuery(
+      '''SELECT p.* FROM provenances p
+         INNER JOIN transaction_provenances tp ON tp.provenance_id = p.id
+         WHERE tp.transaction_id = ? ORDER BY p.captured_at''',
+      [id],
+    );
+    final tagRows = await database.connection.query(
+      'transaction_tags',
+      columns: ['tag_id'],
+      where: 'transaction_id = ?',
+      whereArgs: [id],
+    );
+    final issueRows = await database.connection.query(
+      'review_issues',
+      where: 'transaction_id = ?',
+      whereArgs: [id],
+      orderBy: 'created_at',
+    );
+    final normalizedRows = await database.connection.rawQuery(
+      '''SELECT n.amount_coefficient, n.amount_scale, n.currency,
+                r.id AS rate_id, r.from_currency, r.to_currency,
+                r.rate_coefficient, r.rate_scale, r.effective_at, r.source
+         FROM normalized_money n
+         INNER JOIN exchange_rates r ON r.id = n.exchange_rate_id
+         WHERE n.transaction_id = ? ORDER BY r.effective_at''',
+      [id],
+    );
+
+    final money = Money(
+      amount: decimalFromRow(row, 'amount_coefficient', 'amount_scale'),
+      currency: CurrencyCode(row['currency']! as String),
+    );
+    return Transaction(
+      id: TransactionId(id),
+      timing: _timingFromRow(row),
+      money: money,
+      direction: TransactionDirection.values.byName(
+        row['direction']! as String,
+      ),
+      sourceType: TransactionSourceType.values.byName(
+        row['source_type']! as String,
+      ),
+      status: TransactionStatus.values.byName(row['status']! as String),
+      description: row['description'] as String?,
+      rawCounterparty: row['raw_counterparty'] as String?,
+      sourceLanguage: row['source_language'] as String?,
+      notes: row['notes'] as String?,
+      paymentSourceId: _optionalId(
+        row['payment_source_id'],
+        PaymentSourceId.new,
+      ),
+      merchantId: _optionalId(row['merchant_id'], MerchantId.new),
+      categoryId: _optionalId(row['category_id'], CategoryId.new),
+      tagIds: tagRows
+          .map((value) => TagId(value['tag_id']! as String))
+          .toList(),
+      provenance: provenanceRows.map(provenanceFromRow).toList(),
+      reviewIssues: issueRows.map(_reviewIssueFromRow).toList(),
+      normalizedMoney: normalizedRows
+          .map((value) => _normalizedMoneyFromRow(money, value))
+          .toList(),
+      createdAt: DateTime.parse(row['created_at']! as String),
+      updatedAt: DateTime.parse(row['updated_at']! as String),
+    );
+  }
+
+  Future<void> _replaceChildren(
+    DatabaseExecutor executor,
+    Transaction value,
+  ) async {
+    for (final table in [
+      'transaction_provenances',
+      'transaction_tags',
+      'review_issues',
+      'normalized_money',
+    ]) {
+      await executor.delete(
+        table,
+        where: 'transaction_id = ?',
+        whereArgs: [value.id.value],
+      );
+    }
+    for (final provenance in value.provenance) {
+      await executor.insert('transaction_provenances', {
+        'transaction_id': value.id.value,
+        'provenance_id': provenance.id.value,
+      });
+    }
+    for (final tagId in value.tagIds) {
+      await executor.insert('transaction_tags', {
+        'transaction_id': value.id.value,
+        'tag_id': tagId.value,
+      });
+    }
+    for (final issue in value.reviewIssues) {
+      await executor.insert('review_issues', _reviewIssueToRow(issue));
+    }
+    for (final normalized in value.normalizedMoney) {
+      await _saveNormalizedMoney(executor, value.id, normalized);
+    }
+  }
+
+  static Map<String, Object?> _transactionToRow(Transaction value) => {
+    'id': value.id.value,
+    'occurred_at': value.timing is KnownTransactionTime
+        ? (value.timing as KnownTransactionTime).occurredAt.toIso8601String()
+        : null,
+    'unknown_time_reason': value.timing is UnknownTransactionTime
+        ? (value.timing as UnknownTransactionTime).reason.name
+        : null,
+    ...decimalToColumns(
+      value.money.amount,
+      'amount_coefficient',
+      'amount_scale',
+    ),
+    'currency': value.money.currency.value,
+    'direction': value.direction.name,
+    'source_type': value.sourceType.name,
+    'status': value.status.name,
+    'description': value.description,
+    'raw_counterparty': value.rawCounterparty,
+    'source_language': value.sourceLanguage,
+    'notes': value.notes,
+    'payment_source_id': value.paymentSourceId?.value,
+    'merchant_id': value.merchantId?.value,
+    'category_id': value.categoryId?.value,
+    'created_at': value.createdAt.toIso8601String(),
+    'updated_at': value.updatedAt.toIso8601String(),
+  };
+
+  static TransactionTiming _timingFromRow(Map<String, Object?> row) {
+    final occurredAt = row['occurred_at'] as String?;
+    if (occurredAt != null) {
+      return KnownTransactionTime(DateTime.parse(occurredAt));
+    }
+    return UnknownTransactionTime(
+      UnknownTransactionTimeReason.values.byName(
+        row['unknown_time_reason']! as String,
+      ),
+    );
+  }
+
+  static T? _optionalId<T>(Object? value, T Function(String) create) =>
+      value == null ? null : create(value as String);
+
+  static Map<String, Object?> _reviewIssueToRow(ReviewIssue value) => {
+    'id': value.id.value,
+    'transaction_id': value.transactionId.value,
+    'reason': value.reason.name,
+    'status': value.status.name,
+    'detail': value.detail,
+    'created_at': value.createdAt.toIso8601String(),
+    'closed_at': value.closedAt?.toIso8601String(),
+  };
+
+  static ReviewIssue _reviewIssueFromRow(Map<String, Object?> row) =>
+      ReviewIssue(
+        id: ReviewIssueId(row['id']! as String),
+        transactionId: TransactionId(row['transaction_id']! as String),
+        reason: ReviewIssueReason.values.byName(row['reason']! as String),
+        status: ReviewIssueStatus.values.byName(row['status']! as String),
+        detail: row['detail'] as String?,
+        createdAt: DateTime.parse(row['created_at']! as String),
+        closedAt: row['closed_at'] == null
+            ? null
+            : DateTime.parse(row['closed_at']! as String),
+      );
+
+  static Future<void> _saveNormalizedMoney(
+    DatabaseExecutor executor,
+    TransactionId transactionId,
+    NormalizedMoney value,
+  ) async {
+    final rate = value.exchangeRate;
+    await executor.insert('exchange_rates', {
+      'id': rate.id.value,
+      'from_currency': rate.fromCurrency.value,
+      'to_currency': rate.toCurrency.value,
+      ...decimalToColumns(rate.rate, 'rate_coefficient', 'rate_scale'),
+      'effective_at': rate.effectiveAt.toIso8601String(),
+      'source': rate.source,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await executor.insert('normalized_money', {
+      'transaction_id': transactionId.value,
+      'exchange_rate_id': rate.id.value,
+      ...decimalToColumns(
+        value.converted.amount,
+        'amount_coefficient',
+        'amount_scale',
+      ),
+      'currency': value.converted.currency.value,
+    });
+  }
+
+  static NormalizedMoney _normalizedMoneyFromRow(
+    Money original,
+    Map<String, Object?> row,
+  ) => NormalizedMoney(
+    original: original,
+    converted: Money(
+      amount: decimalFromRow(row, 'amount_coefficient', 'amount_scale'),
+      currency: CurrencyCode(row['currency']! as String),
+    ),
+    exchangeRate: ExchangeRate(
+      id: ExchangeRateId(row['rate_id']! as String),
+      fromCurrency: CurrencyCode(row['from_currency']! as String),
+      toCurrency: CurrencyCode(row['to_currency']! as String),
+      rate: decimalFromRow(row, 'rate_coefficient', 'rate_scale'),
+      effectiveAt: DateTime.parse(row['effective_at']! as String),
+      source: row['source']! as String,
+    ),
+  );
+}

@@ -1,0 +1,7 @@
+include: package:lints/recommended.yaml
+
+linter:
+  rules:
+    directives_ordering: true
+    prefer_final_locals: true
+    sort_constructors_first: true
