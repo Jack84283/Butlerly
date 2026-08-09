@@ -1,7 +1,9 @@
 import 'package:butlerly/app/shell/adaptive_shell.dart';
-import 'package:butlerly/features/foundation/presentation/activity_page.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
+import 'package:butlerly/features/foundation/presentation/review_page.dart';
+import 'package:butlerly/features/foundation/presentation/search_page.dart';
 import 'package:butlerly/features/foundation/presentation/settings_page.dart';
+import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -24,9 +26,27 @@ final appRouter = GoRouter(
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/activity',
+              path: '/transactions',
               pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: ActivityPage()),
+                  const NoTransitionPage(child: TransactionsPage()),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/review',
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: ReviewPage()),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/search',
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: SearchPage()),
             ),
           ],
         ),

@@ -13,8 +13,13 @@ class AdaptiveShell extends StatelessWidget {
     NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
     NavigationDestination(
       icon: Icon(Icons.receipt_long_outlined),
-      label: 'Activity',
+      label: 'Transactions',
     ),
+    NavigationDestination(
+      icon: Icon(Icons.fact_check_outlined),
+      label: 'Review',
+    ),
+    NavigationDestination(icon: Icon(Icons.search_outlined), label: 'Search'),
     NavigationDestination(
       icon: Icon(Icons.settings_outlined),
       label: 'Settings',

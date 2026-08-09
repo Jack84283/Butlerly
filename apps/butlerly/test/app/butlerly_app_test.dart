@@ -4,13 +4,36 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('shows the Butlerly foundation home', (tester) async {
+  testWidgets('shows the local-first Butlerly home and P0 navigation', (
+    tester,
+  ) async {
     setPhoneViewport(tester);
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     await tester.pumpAndSettle();
 
-    expect(find.text('Welcome to Butlerly'), findsOneWidget);
+    expect(find.text('Home'), findsAtLeastNWidgets(1));
+    expect(find.text('Start with a record'), findsOneWidget);
+    expect(find.text('Transactions'), findsOneWidget);
+    expect(find.text('Review'), findsOneWidget);
+    expect(find.text('Search'), findsOneWidget);
     expect(find.byType(NavigationBar), findsOneWidget);
+  });
+
+  testWidgets('opens the Review and Search destinations', (tester) async {
+    setPhoneViewport(tester);
+    await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.fact_check_outlined));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('Nothing needs review right now.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byIcon(Icons.search_outlined));
+    await tester.pumpAndSettle();
+    expect(find.byType(SearchBar), findsOneWidget);
   });
 
   testWidgets('uses adaptive navigation at tablet widths', (tester) async {
