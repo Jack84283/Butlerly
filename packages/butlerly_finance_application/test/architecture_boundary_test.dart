@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:test/test.dart';
 
 void main() {
-  test('domain source has no Flutter, SQLite, network, or platform imports', () {
+  test('application source has no Flutter or infrastructure imports', () {
     final forbidden = RegExp(
-      r'''import ['"](?:package:flutter|package:sqflite|dart:io|dart:ffi|dart:html)''',
+      r'''import ['"](?:package:flutter|package:sqflite|package:butlerly_database|dart:io|dart:ffi|dart:html)''',
     );
     final files = Directory('lib')
         .listSync(recursive: true)
@@ -16,7 +16,7 @@ void main() {
       expect(
         file.readAsStringSync(),
         isNot(matches(forbidden)),
-        reason: '${file.path} must remain a pure Dart domain source.',
+        reason: '${file.path} must remain infrastructure-independent.',
       );
     }
   });

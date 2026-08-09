@@ -13,7 +13,32 @@ abstract interface class TransactionRepository {
   Future<void> save(Transaction transaction);
   Future<Transaction?> findById(TransactionId id);
   Future<List<Transaction>> listAll();
+  Future<List<Transaction>> query(TransactionRepositoryQuery query);
   Future<void> removePermanently(TransactionId id);
+}
+
+final class TransactionRepositoryQuery {
+  const TransactionRepositoryQuery({
+    this.text,
+    this.from,
+    this.to,
+    this.categoryId,
+    this.paymentSourceId,
+    this.currency,
+    this.direction,
+    this.status,
+    this.needsReview,
+  });
+
+  final String? text;
+  final DateTime? from;
+  final DateTime? to;
+  final CategoryId? categoryId;
+  final PaymentSourceId? paymentSourceId;
+  final String? currency;
+  final TransactionDirection? direction;
+  final TransactionStatus? status;
+  final bool? needsReview;
 }
 
 abstract interface class PaymentSourceRepository {

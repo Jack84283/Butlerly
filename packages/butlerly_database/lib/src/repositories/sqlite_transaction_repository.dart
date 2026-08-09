@@ -49,6 +49,81 @@ final class SqliteTransactionRepository implements TransactionRepository {
   }
 
   @override
+  Future<List<Transaction>> query(TransactionRepositoryQuery query) async {
+    final conditions = <String>[];
+    final arguments = <Object?>[];
+    final text = query.text?.trim().toLowerCase();
+    if (text != null && text.isNotEmpty) {
+      conditions.add('''(
+        LOWER(COALESCE(t.description, '')) LIKE ? OR
+        LOWER(COALESCE(t.raw_counterparty, '')) LIKE ? OR
+        LOWER(COALESCE(t.notes, '')) LIKE ? OR
+        LOWER(COALESCE(m.name, '')) LIKE ? OR
+        LOWER(COALESCE(c.name, '')) LIKE ? OR
+        EXISTS (
+          SELECT 1 FROM attachment_links al
+          JOIN evidence_items e ON e.id = al.evidence_id
+          LEFT JOIN extractions x ON x.evidence_id = e.id
+          WHERE al.transaction_id = t.id AND (
+            LOWER(e.original_name) LIKE ? OR
+            LOWER(COALESCE(x.values_json, '')) LIKE ?
+          )
+        )
+      )''');
+      arguments.addAll(List<Object?>.filled(7, '%$text%'));
+    }
+    if (query.from != null) {
+      conditions.add('t.occurred_at >= ?');
+      arguments.add(query.from!.toUtc().toIso8601String());
+    }
+    if (query.to != null) {
+      conditions.add('t.occurred_at <= ?');
+      arguments.add(query.to!.toUtc().toIso8601String());
+    }
+    if (query.categoryId != null) {
+      conditions.add('t.category_id = ?');
+      arguments.add(query.categoryId!.value);
+    }
+    if (query.paymentSourceId != null) {
+      conditions.add('t.payment_source_id = ?');
+      arguments.add(query.paymentSourceId!.value);
+    }
+    if (query.currency != null) {
+      conditions.add('t.currency = ?');
+      arguments.add(query.currency!.trim().toUpperCase());
+    }
+    if (query.direction != null) {
+      conditions.add('t.direction = ?');
+      arguments.add(query.direction!.name);
+    }
+    if (query.status != null) {
+      conditions.add('t.status = ?');
+      arguments.add(query.status!.name);
+    }
+    if (query.needsReview != null) {
+      final qualifier = query.needsReview! ? 'EXISTS' : 'NOT EXISTS';
+      conditions.add('''$qualifier (
+        SELECT 1 FROM review_issues ri
+        WHERE ri.transaction_id = t.id AND ri.status = 'active'
+      )''');
+    }
+
+    try {
+      final rows = await database.connection.rawQuery(
+        '''SELECT DISTINCT t.* FROM transactions t
+           LEFT JOIN merchants m ON m.id = t.merchant_id
+           LEFT JOIN categories c ON c.id = t.category_id
+           ${conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}'}
+           ORDER BY COALESCE(t.occurred_at, t.created_at) DESC, t.id''',
+        arguments,
+      );
+      return Future.wait(rows.map(_hydrate));
+    } on DatabaseException catch (error) {
+      throw mapDatabaseException(error, 'query transactions');
+    }
+  }
+
+  @override
   Future<void> removePermanently(TransactionId id) async {
     try {
       await database.connection.delete(

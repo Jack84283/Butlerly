@@ -142,6 +142,49 @@ void main() {
     },
   );
 
+  test('searches and filters transactions locally', () async {
+    final value = Transaction(
+      id: TransactionId('searchable-transaction'),
+      timing: KnownTransactionTime(now),
+      money: Money(
+        amount: DecimalValue.parse('42.25'),
+        currency: CurrencyCode('EUR'),
+      ),
+      direction: TransactionDirection.expense,
+      sourceType: TransactionSourceType.manual,
+      description: 'Déjeuner à Paris',
+      notes: 'Client meeting',
+      provenance: [
+        Provenance(
+          id: ProvenanceId('search-provenance'),
+          sourceType: ProvenanceSourceType.userEntry,
+          capturedAt: now,
+        ),
+      ],
+      createdAt: now,
+      updatedAt: now,
+    );
+    await transactions.save(value);
+
+    final matching = await transactions.query(
+      TransactionRepositoryQuery(
+        text: 'client',
+        from: now.subtract(const Duration(days: 1)),
+        to: now.add(const Duration(days: 1)),
+        currency: 'eur',
+        direction: TransactionDirection.expense,
+        status: TransactionStatus.active,
+        needsReview: false,
+      ),
+    );
+    final excluded = await transactions.query(
+      const TransactionRepositoryQuery(text: 'missing'),
+    );
+
+    expect(matching.single.id, value.id);
+    expect(excluded, isEmpty);
+  });
+
   test('stores evidence links and suggestions separately', () async {
     final transaction = minimalTransaction(now);
     await transactions.save(transaction);

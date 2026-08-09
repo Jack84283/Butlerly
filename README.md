@@ -6,6 +6,7 @@ Butlerly is a local-first, privacy-first personal operations assistant. Version 
 
 - `apps/butlerly` — cross-platform Flutter application
 - `packages/butlerly_finance_domain` — framework-independent Finance V1 domain model
+- `packages/butlerly_finance_application` — framework-independent commands, queries, DTOs, and use cases
 - `packages/butlerly_database` — SQLite schema, migrations, mappings, and repositories
 - `docs` — implementation and architecture notes maintained with the code
 - `.github/workflows` — continuous integration
@@ -44,6 +45,16 @@ Validate local persistence:
 
 ```sh
 cd packages/butlerly_database
+dart pub get
+dart format --output=none --set-exit-if-changed .
+dart analyze --fatal-infos
+dart test
+```
+
+Validate application services:
+
+```sh
+cd packages/butlerly_finance_application
 dart pub get
 dart format --output=none --set-exit-if-changed .
 dart analyze --fatal-infos
