@@ -74,6 +74,25 @@ final class ButlerlyDatabase {
         for (final statement in Schema.migration2) {
           await database.execute(statement);
         }
+        // Approved pre-release policy: preserve each legacy instant as UTC and
+        // derive its business date from that UTC calendar date only.
+        final legacyRows = await database.query(
+          'transactions',
+          columns: ['id', 'occurred_at'],
+          where: 'occurred_at IS NOT NULL',
+        );
+        for (final row in legacyRows) {
+          final utc = DateTime.parse(row['occurred_at']! as String).toUtc();
+          await database.update(
+            'transactions',
+            {
+              'occurred_at_utc': utc.toIso8601String(),
+              'transaction_date': utc.toIso8601String().substring(0, 10),
+            },
+            where: 'id = ?',
+            whereArgs: [row['id']],
+          );
+        }
       }
     } on DatabaseException {
       throw const RepositoryException(

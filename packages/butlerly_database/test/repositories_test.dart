@@ -59,6 +59,7 @@ void main() {
       provenance: [importProvenance(now)],
       createdAt: now,
       updatedAt: now,
+      transactionDate: '2026-08-09',
     );
     value = value.addReviewIssue(
       ReviewIssue(
@@ -163,6 +164,7 @@ void main() {
       ],
       createdAt: now,
       updatedAt: now,
+      transactionDate: '2026-08-09',
     );
     await transactions.save(value);
 

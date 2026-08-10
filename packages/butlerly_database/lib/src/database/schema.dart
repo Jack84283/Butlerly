@@ -135,8 +135,6 @@ abstract final class Schema {
     'ALTER TABLE transactions ADD COLUMN transaction_date TEXT',
     'ALTER TABLE transactions ADD COLUMN occurred_at_utc TEXT',
     'ALTER TABLE transactions ADD COLUMN time_zone_id TEXT',
-    "UPDATE transactions SET occurred_at_utc = occurred_at WHERE occurred_at IS NOT NULL",
-    "UPDATE transactions SET transaction_date = substr(occurred_at, 1, 10) WHERE occurred_at IS NOT NULL",
     'CREATE INDEX idx_transactions_transaction_date ON transactions(transaction_date)',
   ];
 }
