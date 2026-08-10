@@ -43,7 +43,7 @@ Flutter presentation → application services → finance domain ← SQLite infr
 | Transaction create/list/detail/edit/archive/delete UI | Implemented in the active IMP-0006 vertical slice. |
 | Local search/filter UI | Not started; application and SQLite query support are ready. |
 | Review queue and resolution UI | Not started; review-issue persistence exists. |
-| Evidence capture, local binary storage, attachment retrieval | Not started; evidence metadata and linking exist. |
+| Evidence capture, local binary storage, attachment retrieval | Binary evidence selection, persistence, file lifecycle, and local storage are deferred to IMP-0009; local evidence metadata retrieval exists. |
 | Currency/provenance/source-language UI | Not started; domain and persistence support it. |
 | Consent, privacy/data controls, export, deletion | Not started. |
 | Localized UI and preferences | Not started beyond English localization infrastructure. |

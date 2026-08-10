@@ -17,6 +17,7 @@ class _SearchPageState extends State<SearchPage> {
   String? _currency;
   TransactionDirection? _direction;
   String? _categoryId;
+  String? _paymentSourceId;
   bool? _needsReview;
   DateTime? _from;
   DateTime? _to;
@@ -48,6 +49,7 @@ class _SearchPageState extends State<SearchPage> {
         currency: _currency,
         direction: _direction,
         categoryId: _categoryId,
+        paymentSourceId: _paymentSourceId,
         needsReview: _needsReview,
         from: _from,
         to: _to,
@@ -184,6 +186,38 @@ class _SearchPageState extends State<SearchPage> {
                 onChanged: unavailable
                     ? null
                     : (value) => setState(() => _categoryId = value),
+              ),
+            ),
+            FutureBuilder<List<PaymentSource>>(
+              future: _finance?.listPaymentSources().then(
+                (result) => switch (result) {
+                  ApplicationSuccess<List<PaymentSource>>(:final value) =>
+                    value,
+                  ApplicationFailure<List<PaymentSource>>() => const [],
+                },
+              ),
+              builder: (context, snapshot) => DropdownButton<String?>(
+                value: _paymentSourceId,
+                hint: const Text('Any payment source'),
+                items: [
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('Any payment source'),
+                  ),
+                  ...?snapshot.data
+                      ?.where(
+                        (value) => value.status == PaymentSourceStatus.active,
+                      )
+                      .map(
+                        (value) => DropdownMenuItem(
+                          value: value.id.value,
+                          child: Text(value.name),
+                        ),
+                      ),
+                ],
+                onChanged: unavailable
+                    ? null
+                    : (value) => setState(() => _paymentSourceId = value),
               ),
             ),
             DropdownButton<bool?>(

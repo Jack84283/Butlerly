@@ -26,8 +26,8 @@ Status: Active implementation audit
 | Transaction CRUD and detail UI | Implemented active slice | Local list, create, detail, edit, archive, and permanent-delete UI is wired through application services. |
 | Local list, detail, search, and filters UI | Partially implemented | Transaction list/detail and local text, currency, direction, date-range, category, and review-state search filters are available. Payment-source filtering correctly awaits IMP-0007. |
 | Review queue and resolution UI | Implemented active slice | Local active-issue queue, transaction drill-in, and explicit resolve/dismiss actions are wired through application services. |
-| Evidence capture, attachment storage, retrieval UI | Not implemented | Evidence metadata and links exist; local binary-file strategy and user flows are next. |
-| Original currency, language, provenance, and normalization UI | Partially implemented | Transaction detail shows local provenance history. Original currency, language, and normalization presentation remain. |
+| Evidence capture, attachment storage, retrieval UI | Deferred to IMP-0009 | Evidence metadata retrieval is available. Binary evidence selection, persistence, file lifecycle, and local storage are intentionally owned by IMP-0009. |
+| Original currency, language, provenance, and normalization UI | Partially implemented | Transaction detail shows local provenance history and read-only reference conversions; original money remains canonical. Original-language presentation remains. |
 | Privacy, consent, export, and deletion UI | Not implemented | Required P0 product controls are absent. |
 | Localization settings and translated UI resources | Not implemented | English-only localization infrastructure exists; user preference and translation resources are absent. |
 | Privacy-safe logging | Implemented | Common financial values and user-entered fields are redacted before logging; redaction is tested. |

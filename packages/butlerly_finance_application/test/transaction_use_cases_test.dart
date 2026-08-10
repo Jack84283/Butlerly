@@ -64,6 +64,7 @@ void main() {
         const ListTransactionsQuery(
           text: 'lunch',
           currency: 'usd',
+          paymentSourceId: 'wallet-1',
           needsReview: false,
         ),
       );
@@ -71,6 +72,10 @@ void main() {
       expect(result, isA<ApplicationSuccess<List<TransactionDto>>>());
       expect(transactions.lastQuery!.text, 'lunch');
       expect(transactions.lastQuery!.currency, 'usd');
+      expect(
+        transactions.lastQuery!.paymentSourceId,
+        PaymentSourceId('wallet-1'),
+      );
       expect(transactions.lastQuery!.needsReview, isFalse);
     },
   );
@@ -153,6 +158,40 @@ void main() {
     );
   });
 
+  test('manages and assigns a local payment source', () async {
+    final sources = MemoryPaymentSources();
+    final source = PaymentSource(
+      id: PaymentSourceId('wallet-1'),
+      name: 'Cash wallet',
+      type: PaymentSourceType.wallet,
+    );
+
+    final saved = await SavePaymentSource(sources)(source);
+    expect(saved, isA<ApplicationSuccess<PaymentSource>>());
+    expect(
+      await ListPaymentSources(sources)(),
+      isA<ApplicationSuccess<List<PaymentSource>>>(),
+    );
+
+    transactions.values['transaction-1'] = transaction(now);
+    final assigned = await AssignPaymentSource(transactions, sources, clock)(
+      'transaction-1',
+      'wallet-1',
+    );
+    expect(assigned, isA<ApplicationSuccess<TransactionDto>>());
+    expect(
+      transactions.values['transaction-1']!.paymentSourceId,
+      PaymentSourceId('wallet-1'),
+    );
+
+    final archived = await ArchivePaymentSource(sources)('wallet-1');
+    expect(archived, isA<ApplicationSuccess<PaymentSource>>());
+    expect(
+      (await sources.findById(PaymentSourceId('wallet-1')))!.status,
+      PaymentSourceStatus.archived,
+    );
+  });
+
   test('lists and explicitly resolves active local review issues', () async {
     final issue = ReviewIssue(
       id: ReviewIssueId('issue-1'),
@@ -189,6 +228,24 @@ void main() {
       ReviewIssueStatus.resolved,
     );
   });
+
+  test(
+    'maps evidence retrieval failures without exposing stored content',
+    () async {
+      final result = await ListEvidenceForTransaction(FailingEvidence())(
+        'transaction-1',
+      );
+
+      expect(
+        result,
+        isA<ApplicationFailure<List<EvidenceItem>>>().having(
+          (value) => value.failure.code,
+          'code',
+          ApplicationFailureCode.unavailable,
+        ),
+      );
+    },
+  );
 }
 
 final class FixedClock implements ApplicationClock {
@@ -241,6 +298,43 @@ final class MemoryCategories implements CategoryRepository {
   Future<void> save(Category category) async {
     values[category.id.value] = category;
   }
+}
+
+final class MemoryPaymentSources implements PaymentSourceRepository {
+  final values = <String, PaymentSource>{};
+
+  @override
+  Future<PaymentSource?> findById(PaymentSourceId id) async => values[id.value];
+
+  @override
+  Future<List<PaymentSource>> listAll() async => values.values.toList();
+
+  @override
+  Future<void> save(PaymentSource paymentSource) async {
+    values[paymentSource.id.value] = paymentSource;
+  }
+}
+
+final class FailingEvidence implements EvidenceRepository {
+  @override
+  Future<EvidenceItem?> findById(EvidenceId id) async => null;
+
+  @override
+  Future<void> link(AttachmentLink link) async {}
+
+  @override
+  Future<List<EvidenceItem>> listForTransaction(TransactionId id) async {
+    throw const RepositoryException(
+      RepositoryFailureCode.unavailable,
+      'list transaction evidence',
+    );
+  }
+
+  @override
+  Future<void> save(EvidenceItem evidence) async {}
+
+  @override
+  Future<void> saveExtraction(Extraction extraction) async {}
 }
 
 Money money(String amount) =>

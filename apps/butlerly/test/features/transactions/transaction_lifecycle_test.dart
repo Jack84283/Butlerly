@@ -1,5 +1,6 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/features/foundation/presentation/payment_sources_page.dart';
 import 'package:butlerly/features/foundation/presentation/review_page.dart';
 import 'package:butlerly/features/foundation/presentation/search_page.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
@@ -17,6 +18,7 @@ void main() {
     services.registerSingleton<FinanceServices>(
       FinanceServices(
         repository,
+        MemoryPaymentSources(),
         MemoryMerchants(),
         MemoryCategories(),
         MemoryTags(),
@@ -54,6 +56,11 @@ void main() {
 
     await tester.tap(find.text('Corrected lunch'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Archive transaction'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
     await tester.tap(find.text('Archive transaction'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Archive'));
@@ -169,6 +176,22 @@ void main() {
 
     expect(find.text('Nothing needs review right now.'), findsOneWidget);
   });
+
+  testWidgets('creates and archives a local payment source', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: PaymentSourcesPage()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Add source'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, 'Travel card');
+    await tester.tap(find.text('Save locally'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Travel card'), findsOneWidget);
+    await tester.tap(find.byTooltip('Archive payment source'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('archived'), findsOneWidget);
+  });
 }
 
 final class MemoryTransactionRepository implements TransactionRepository {
@@ -213,6 +236,21 @@ final class MemoryMerchants implements MerchantRepository {
   Future<List<Merchant>> listAll() async => const [];
   @override
   Future<void> save(Merchant merchant) async {}
+}
+
+final class MemoryPaymentSources implements PaymentSourceRepository {
+  final values = <String, PaymentSource>{};
+
+  @override
+  Future<PaymentSource?> findById(PaymentSourceId id) async => values[id.value];
+
+  @override
+  Future<List<PaymentSource>> listAll() async => values.values.toList();
+
+  @override
+  Future<void> save(PaymentSource paymentSource) async {
+    values[paymentSource.id.value] = paymentSource;
+  }
 }
 
 final class MemoryCategories implements CategoryRepository {

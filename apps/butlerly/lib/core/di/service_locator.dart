@@ -21,6 +21,7 @@ void configureDependencies({
     services.registerSingleton<FinanceServices>(
       FinanceServices(
         SqliteTransactionRepository(database.persistenceDatabase),
+        SqlitePaymentSourceRepository(database.persistenceDatabase),
         SqliteMerchantRepository(database.persistenceDatabase),
         SqliteCategoryRepository(database.persistenceDatabase),
         SqliteTagRepository(database.persistenceDatabase),

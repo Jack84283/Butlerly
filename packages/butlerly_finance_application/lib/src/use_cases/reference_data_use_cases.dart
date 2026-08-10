@@ -23,6 +23,25 @@ final class ListPaymentSources {
       });
 }
 
+final class ArchivePaymentSource {
+  const ArchivePaymentSource(this.repository);
+  final PaymentSourceRepository repository;
+
+  Future<ApplicationResult<PaymentSource>> call(String id) =>
+      runApplication('archive payment source', () async {
+        final existing = await repository.findById(PaymentSourceId(id));
+        if (existing == null) {
+          throw const RepositoryException(
+            RepositoryFailureCode.notFound,
+            'archive payment source',
+          );
+        }
+        final archived = existing.archive();
+        await repository.save(archived);
+        return archived;
+      });
+}
+
 final class SaveMerchant {
   const SaveMerchant(this.repository);
   final MerchantRepository repository;

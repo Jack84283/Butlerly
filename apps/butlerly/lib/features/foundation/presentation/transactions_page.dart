@@ -396,6 +396,19 @@ class TransactionDetailPage extends StatelessWidget {
           '${transaction.amount} ${transaction.currency}',
           style: Theme.of(context).textTheme.titleLarge,
         ),
+        if (transaction.normalizedMoney.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Reference amounts (original amount remains canonical)',
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+          ...transaction.normalizedMoney.map(
+            (value) => _DetailRow(
+              label: 'Reference ${value.currency}',
+              value: '${value.amount} ${value.currency}',
+            ),
+          ),
+        ],
         const SizedBox(height: 24),
         _DetailRow(label: 'Direction', value: transaction.direction),
         _DetailRow(label: 'Date', value: _transactionDate(transaction)),
@@ -425,6 +438,11 @@ class TransactionDetailPage extends StatelessWidget {
           _DetailRow(label: 'Merchant', value: transaction.merchantId!),
         if (transaction.categoryId != null)
           _DetailRow(label: 'Category', value: transaction.categoryId!),
+        if (transaction.paymentSourceId != null)
+          _PaymentSourceRow(
+            finance: finance,
+            paymentSourceId: transaction.paymentSourceId!,
+          ),
         if (transaction.tagIds.isNotEmpty)
           _DetailRow(label: 'Tags', value: transaction.tagIds.join(', ')),
         const SizedBox(height: 24),
@@ -441,6 +459,12 @@ class TransactionDetailPage extends StatelessWidget {
           },
           icon: const Icon(Icons.sell_outlined),
           label: const Text('Organize transaction'),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: () => _assignPaymentSource(context, finance, transaction),
+          icon: const Icon(Icons.account_balance_wallet_outlined),
+          label: const Text('Assign payment source'),
         ),
         const SizedBox(height: 12),
         OutlinedButton.icon(
@@ -485,10 +509,17 @@ class _EvidenceSection extends StatelessWidget {
         .then(
           (result) => switch (result) {
             ApplicationSuccess<List<EvidenceItem>>(:final value) => value,
-            ApplicationFailure<List<EvidenceItem>>() => const [],
+            ApplicationFailure<List<EvidenceItem>>() => throw StateError(
+              'Evidence metadata could not be loaded.',
+            ),
           },
         ),
     builder: (context, snapshot) {
+      if (snapshot.hasError) {
+        return const Text(
+          'Evidence metadata could not be loaded. Your local records were not changed.',
+        );
+      }
       final evidence = snapshot.data;
       if (evidence == null) return const SizedBox.shrink();
       return Column(
@@ -510,6 +541,35 @@ class _EvidenceSection extends StatelessWidget {
               ),
             ),
         ],
+      );
+    },
+  );
+}
+
+class _PaymentSourceRow extends StatelessWidget {
+  const _PaymentSourceRow({
+    required this.finance,
+    required this.paymentSourceId,
+  });
+
+  final FinanceServices finance;
+  final String paymentSourceId;
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<List<PaymentSource>>(
+    future: finance.listPaymentSources().then(
+      (result) => switch (result) {
+        ApplicationSuccess<List<PaymentSource>>(:final value) => value,
+        ApplicationFailure<List<PaymentSource>>() => const [],
+      },
+    ),
+    builder: (context, snapshot) {
+      final source = snapshot.data
+          ?.where((value) => value.id.value == paymentSourceId)
+          .firstOrNull;
+      return _DetailRow(
+        label: 'Payment source',
+        value: source?.name ?? 'Unavailable payment source',
       );
     },
   );
@@ -681,6 +741,52 @@ Future<bool?> _organizeTransaction(
     category.dispose();
     tag.dispose();
   });
+}
+
+Future<void> _assignPaymentSource(
+  BuildContext context,
+  FinanceServices finance,
+  TransactionDto transaction,
+) async {
+  final result = await finance.listPaymentSources();
+  if (!context.mounted) return;
+  if (result is! ApplicationSuccess<List<PaymentSource>>) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Payment sources could not be loaded.')),
+    );
+    return;
+  }
+  final sources = result.value
+      .where((value) => value.status == PaymentSourceStatus.active)
+      .toList(growable: false);
+  final sourceId = await showDialog<String?>(
+    context: context,
+    builder: (dialogContext) => SimpleDialog(
+      title: const Text('Assign payment source'),
+      children: [
+        SimpleDialogOption(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: const Text('No payment source'),
+        ),
+        ...sources.map(
+          (value) => SimpleDialogOption(
+            onPressed: () => Navigator.pop(dialogContext, value.id.value),
+            child: Text(value.name),
+          ),
+        ),
+      ],
+    ),
+  );
+  if (!context.mounted) return;
+  final assigned = await finance.assignPaymentSource(transaction.id, sourceId);
+  if (!context.mounted) return;
+  if (assigned is ApplicationSuccess<TransactionDto>) {
+    Navigator.of(context).pop(true);
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Payment source could not be assigned.')),
+    );
+  }
 }
 
 String _transactionDate(TransactionDto value) =>

@@ -4,6 +4,7 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 final class FinanceServices {
   FinanceServices(
     TransactionRepository transactions,
+    PaymentSourceRepository paymentSources,
     MerchantRepository merchants,
     CategoryRepository categories,
     TagRepository tags,
@@ -27,6 +28,14 @@ final class FinanceServices {
         const SystemApplicationClock(),
       ),
       deleteTransactionPermanently = DeleteTransactionPermanently(transactions),
+      listPaymentSources = ListPaymentSources(paymentSources),
+      savePaymentSource = SavePaymentSource(paymentSources),
+      archivePaymentSource = ArchivePaymentSource(paymentSources),
+      assignPaymentSource = AssignPaymentSource(
+        transactions,
+        paymentSources,
+        const SystemApplicationClock(),
+      ),
       listMerchants = ListMerchants(merchants),
       listCategories = ListCategories(categories),
       listTags = ListTags(tags),
@@ -63,6 +72,10 @@ final class FinanceServices {
   final ArchiveTransaction archiveTransaction;
   final RestoreTransaction restoreTransaction;
   final DeleteTransactionPermanently deleteTransactionPermanently;
+  final ListPaymentSources listPaymentSources;
+  final SavePaymentSource savePaymentSource;
+  final ArchivePaymentSource archivePaymentSource;
+  final AssignPaymentSource assignPaymentSource;
   final ListMerchants listMerchants;
   final ListCategories listCategories;
   final ListTags listTags;

@@ -1,6 +1,7 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
 import 'provenance_dto.dart';
+import 'normalized_money_dto.dart';
 
 final class TransactionDto {
   const TransactionDto({
@@ -22,6 +23,7 @@ final class TransactionDto {
     this.categoryId,
     this.tagIds = const [],
     this.provenance = const [],
+    this.normalizedMoney = const [],
   });
 
   final String id;
@@ -42,6 +44,7 @@ final class TransactionDto {
   final String? categoryId;
   final List<String> tagIds;
   final List<ProvenanceDto> provenance;
+  final List<NormalizedMoneyDto> normalizedMoney;
 
   factory TransactionDto.fromDomain(Transaction value) => TransactionDto(
     id: value.id.value,
@@ -65,6 +68,9 @@ final class TransactionDto {
     tagIds: List.unmodifiable(value.tagIds.map((id) => id.value)),
     provenance: List.unmodifiable(
       value.provenance.map(ProvenanceDto.fromDomain),
+    ),
+    normalizedMoney: List.unmodifiable(
+      value.normalizedMoney.map(NormalizedMoneyDto.fromDomain),
     ),
   );
 }
