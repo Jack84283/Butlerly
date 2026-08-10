@@ -20,14 +20,15 @@ Status: Active implementation audit
 | P0 capability | Status | Evidence / gap |
 | --- | --- | --- |
 | Local workspace without account, network, or AI | Partially implemented | Local SQLite startup and no account requirement are implemented. Preferences and a user-facing first-use flow are not. |
-| Finance domain and local persistence | Implemented | Domain invariants, SQLite schema, repositories, migrations, and tests exist. |
+| Finance domain and local persistence | Partially implemented | Domain invariants, SQLite schema, repositories, and migration tests exist. Schema v2 begins the business-date/exact-instant split; locale/timezone preference persistence remains absent. |
 | Application service boundary | Implemented | Commands, queries, DTOs, result mapping, and repository-only application services exist. |
 | Primary navigation and Home | Implemented in this slice | Product-authoritative Home, Transactions, Review, Search, and Settings destinations now have responsive shell support and truthful empty states. |
 | Transaction CRUD and detail UI | Implemented active slice | Local list, create, detail, edit, archive, and permanent-delete UI is wired through application services. |
-| Local list, detail, search, and filters UI | Partially implemented | Transaction list/detail and local text, currency, direction, date-range, category, and review-state search filters are available. Payment-source filtering correctly awaits IMP-0007. |
+| Local list, detail, search, and filters UI | Implemented active slice | Local text, currency, direction, business-date range, category, payment-source, and review-state filters are available. |
 | Review queue and resolution UI | Implemented active slice | Local active-issue queue, transaction drill-in, and explicit resolve/dismiss actions are wired through application services. |
 | Evidence capture, attachment storage, retrieval UI | Deferred to IMP-0009 | Evidence metadata retrieval is available. Binary evidence selection, persistence, file lifecycle, and local storage are intentionally owned by IMP-0009. |
-| Original currency, language, provenance, and normalization UI | Partially implemented | Transaction detail shows local provenance history and read-only reference conversions; original money remains canonical. Original-language presentation remains. |
+| Original currency, language, provenance, and normalization UI | Partially implemented | Transaction detail shows local provenance history and read-only reference conversions; original money remains canonical. Source-language values are preserved but not yet presented. |
+| Business date, exact instant, and timezone model | Partially implemented | Schema v2 stores `transaction_date`, `occurred_at_utc`, and nullable `time_zone_id`; v1 legacy instants migrate to normalized UTC plus their approved UTC calendar date. Date-only imports and timezone preferences remain. |
 | Privacy, consent, export, and deletion UI | Not implemented | Required P0 product controls are absent. |
 | Localization settings and translated UI resources | Not implemented | English-only localization infrastructure exists; user preference and translation resources are absent. |
 | Privacy-safe logging | Implemented | Common financial values and user-entered fields are redacted before logging; redaction is tested. |
@@ -44,10 +45,9 @@ Implementation impact: the current navigation shell already conforms. No account
 ## P0 order from this point
 
 1. IMP-0005 — Main Navigation and Home — complete local slice.
-2. IMP-0006 — Transaction Management — active; the offline lifecycle is implemented, with organization and retrieval presentation still pending.
-3. Local search and filters UI.
-4. Evidence capture/attachment and retrieval.
-5. Review queue and explicit resolution workflows.
-6. Privacy, consent, export/delete, localization, and P0 hardening.
+2. IMP-0006 — Transaction Management — completed local slice, including organization, retrieval, review, and migration hardening.
+3. IMP-0007 — Account Management — active local payment-source slice.
+4. Privacy, consent, export/delete, localization/preferences, date-only import support, and P0 hardening.
+5. IMP-0009 — binary evidence selection, local file lifecycle, and storage.
 
 No P1, P2, or Deferred capability is included unless it becomes technically necessary for one of these P0 slices.

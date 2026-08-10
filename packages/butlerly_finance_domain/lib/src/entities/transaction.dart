@@ -98,8 +98,10 @@ final class Transaction {
   final List<NormalizedMoney> normalizedMoney;
   final DateTime createdAt;
   final DateTime updatedAt;
+
   /// ISO-8601 financial calendar date, independent of device timezone.
   final String? transactionDate;
+
   /// IANA zone attached to a known exact event time, when supplied by source.
   final String? timeZoneId;
 
@@ -148,11 +150,13 @@ final class Transaction {
     ReviewIssue Function(ReviewIssue) close,
   ) {
     var found = false;
-    final updatedIssues = reviewIssues.map((issue) {
-      if (issue.id != id) return issue;
-      found = true;
-      return close(issue);
-    }).toList(growable: false);
+    final updatedIssues = reviewIssues
+        .map((issue) {
+          if (issue.id != id) return issue;
+          found = true;
+          return close(issue);
+        })
+        .toList(growable: false);
     if (!found) {
       invalid(
         code: DomainErrorCode.invalidState,
