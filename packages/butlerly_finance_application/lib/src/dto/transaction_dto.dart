@@ -14,6 +14,8 @@ final class TransactionDto {
     required this.createdAt,
     required this.updatedAt,
     this.occurredAt,
+    this.transactionDate,
+    this.timeZoneId,
     this.description,
     this.rawCounterparty,
     this.sourceLanguage,
@@ -33,6 +35,8 @@ final class TransactionDto {
   final String status;
   final String reviewState;
   final DateTime? occurredAt;
+  final String? transactionDate;
+  final String? timeZoneId;
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? description;
@@ -56,6 +60,8 @@ final class TransactionDto {
     occurredAt: value.timing is KnownTransactionTime
         ? (value.timing as KnownTransactionTime).occurredAt
         : null,
+    transactionDate: value.transactionDate,
+    timeZoneId: value.timeZoneId,
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
     description: value.description,

@@ -73,12 +73,12 @@ final class SqliteTransactionRepository implements TransactionRepository {
       arguments.addAll(List<Object?>.filled(7, '%$text%'));
     }
     if (query.from != null) {
-      conditions.add('t.occurred_at >= ?');
-      arguments.add(query.from!.toUtc().toIso8601String());
+      conditions.add('t.transaction_date >= ?');
+      arguments.add(_dateOnly(query.from!));
     }
     if (query.to != null) {
-      conditions.add('t.occurred_at <= ?');
-      arguments.add(query.to!.toUtc().toIso8601String());
+      conditions.add('t.transaction_date <= ?');
+      arguments.add(_dateOnly(query.to!));
     }
     if (query.categoryId != null) {
       conditions.add('t.category_id = ?');
@@ -114,7 +114,7 @@ final class SqliteTransactionRepository implements TransactionRepository {
            LEFT JOIN merchants m ON m.id = t.merchant_id
            LEFT JOIN categories c ON c.id = t.category_id
            ${conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}'}
-           ORDER BY COALESCE(t.occurred_at, t.created_at) DESC, t.id''',
+           ORDER BY t.transaction_date DESC, t.id''',
         arguments,
       );
       return Future.wait(rows.map(_hydrate));
@@ -201,6 +201,8 @@ final class SqliteTransactionRepository implements TransactionRepository {
           .toList(),
       createdAt: DateTime.parse(row['created_at']! as String),
       updatedAt: DateTime.parse(row['updated_at']! as String),
+      transactionDate: row['transaction_date'] as String?,
+      timeZoneId: row['time_zone_id'] as String?,
     );
   }
 
@@ -245,6 +247,11 @@ final class SqliteTransactionRepository implements TransactionRepository {
     'occurred_at': value.timing is KnownTransactionTime
         ? (value.timing as KnownTransactionTime).occurredAt.toIso8601String()
         : null,
+    'occurred_at_utc': value.timing is KnownTransactionTime
+        ? (value.timing as KnownTransactionTime).occurredAt.toIso8601String()
+        : null,
+    'transaction_date': value.transactionDate,
+    'time_zone_id': value.timeZoneId,
     'unknown_time_reason': value.timing is UnknownTransactionTime
         ? (value.timing as UnknownTransactionTime).reason.name
         : null,
@@ -282,6 +289,9 @@ final class SqliteTransactionRepository implements TransactionRepository {
 
   static T? _optionalId<T>(Object? value, T Function(String) create) =>
       value == null ? null : create(value as String);
+
+  static String _dateOnly(DateTime value) =>
+      '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 
   static Map<String, Object?> _reviewIssueToRow(ReviewIssue value) => {
     'id': value.id.value,

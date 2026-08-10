@@ -7,6 +7,8 @@ final class CreateTransactionCommand {
     required this.timing,
     required this.money,
     required this.direction,
+    this.transactionDate,
+    this.timeZoneId,
     this.description,
     this.rawCounterparty,
     this.sourceLanguage,
@@ -22,6 +24,8 @@ final class CreateTransactionCommand {
   final TransactionTiming timing;
   final Money money;
   final TransactionDirection direction;
+  final String? transactionDate;
+  final String? timeZoneId;
   final String? description;
   final String? rawCounterparty;
   final String? sourceLanguage;
@@ -38,6 +42,8 @@ final class UpdateTransactionCommand {
     required this.timing,
     required this.money,
     required this.direction,
+    this.transactionDate,
+    this.timeZoneId,
     this.description,
     this.rawCounterparty,
     this.sourceLanguage,
@@ -48,6 +54,8 @@ final class UpdateTransactionCommand {
   final TransactionTiming timing;
   final Money money;
   final TransactionDirection direction;
+  final String? transactionDate;
+  final String? timeZoneId;
   final String? description;
   final String? rawCounterparty;
   final String? sourceLanguage;

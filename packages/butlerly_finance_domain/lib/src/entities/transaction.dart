@@ -26,6 +26,8 @@ final class Transaction {
     required List<Provenance> provenance,
     required DateTime createdAt,
     required DateTime updatedAt,
+    this.transactionDate,
+    this.timeZoneId,
     this.status = TransactionStatus.active,
     this.description,
     this.rawCounterparty,
@@ -96,6 +98,10 @@ final class Transaction {
   final List<NormalizedMoney> normalizedMoney;
   final DateTime createdAt;
   final DateTime updatedAt;
+  /// ISO-8601 financial calendar date, independent of device timezone.
+  final String? transactionDate;
+  /// IANA zone attached to a known exact event time, when supplied by source.
+  final String? timeZoneId;
 
   TransactionReviewState get reviewState =>
       reviewIssues.any((issue) => issue.status == ReviewIssueStatus.active)
@@ -185,6 +191,8 @@ final class Transaction {
     List<TagId>? tagIds,
     List<ReviewIssue>? reviewIssues,
     List<NormalizedMoney>? normalizedMoney,
+    String? transactionDate,
+    String? timeZoneId,
     required DateTime updatedAt,
   }) => Transaction(
     id: id,
@@ -208,5 +216,7 @@ final class Transaction {
     normalizedMoney: normalizedMoney ?? this.normalizedMoney,
     createdAt: createdAt,
     updatedAt: updatedAt,
+    transactionDate: transactionDate ?? this.transactionDate,
+    timeZoneId: timeZoneId ?? this.timeZoneId,
   );
 }

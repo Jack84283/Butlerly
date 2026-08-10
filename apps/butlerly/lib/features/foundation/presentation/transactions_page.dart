@@ -208,6 +208,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
               timing: KnownTransactionTime(_date),
               money: money,
               direction: _direction,
+              transactionDate: _shortDate(_date),
               description: _description.text.trim().isEmpty
                   ? null
                   : _description.text.trim(),
@@ -219,6 +220,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
               timing: KnownTransactionTime(_date),
               money: money,
               direction: _direction,
+              transactionDate: _shortDate(_date),
               description: _description.text.trim().isEmpty
                   ? null
                   : _description.text.trim(),

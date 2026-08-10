@@ -1,5 +1,5 @@
 abstract final class Schema {
-  static const version = 1;
+  static const version = 2;
 
   static const migration1 = <String>[
     '''CREATE TABLE payment_sources (
@@ -129,5 +129,14 @@ abstract final class Schema {
     'CREATE INDEX idx_transactions_category ON transactions(category_id)',
     'CREATE INDEX idx_review_issues_active ON review_issues(transaction_id, status)',
     'CREATE INDEX idx_attachment_links_transaction ON attachment_links(transaction_id)',
+  ];
+
+  static const migration2 = <String>[
+    'ALTER TABLE transactions ADD COLUMN transaction_date TEXT',
+    'ALTER TABLE transactions ADD COLUMN occurred_at_utc TEXT',
+    'ALTER TABLE transactions ADD COLUMN time_zone_id TEXT',
+    "UPDATE transactions SET occurred_at_utc = occurred_at WHERE occurred_at IS NOT NULL",
+    "UPDATE transactions SET transaction_date = substr(occurred_at, 1, 10) WHERE occurred_at IS NOT NULL",
+    'CREATE INDEX idx_transactions_transaction_date ON transactions(transaction_date)',
   ];
 }

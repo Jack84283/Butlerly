@@ -49,6 +49,8 @@ final class CreateTransaction {
       ],
       createdAt: now,
       updatedAt: now,
+      transactionDate: command.transactionDate,
+      timeZoneId: command.timeZoneId,
     );
     await repository.save(transaction);
     return TransactionDto.fromDomain(transaction);
@@ -93,6 +95,8 @@ final class UpdateTransaction {
             : const [],
         createdAt: current.createdAt,
         updatedAt: clock.now(),
+        transactionDate: command.transactionDate ?? current.transactionDate,
+        timeZoneId: command.timeZoneId ?? current.timeZoneId,
       );
       await repository.save(updated);
       return TransactionDto.fromDomain(updated);
