@@ -1,12 +1,12 @@
 # Butlerly Implementation Status Report
 
-Date: 2026-08-09
+Date: 2026-08-10
 
 ## Executive summary
 
 Butlerly has a sound local-first Finance V1 foundation: a pure domain model, SQLite persistence, application-service layer, responsive product-authoritative navigation, and an offline transaction-management vertical slice.
 
-The product is not yet MVP-complete. Most remaining P0 work is user-facing: transaction organization/search/filter UI, review workflows, evidence capture and files, privacy/export/delete controls, and localization preferences.
+The product is not yet MVP-complete. Remaining P0 work centers on privacy/export/delete controls, persisted localization/timezone preferences, date-only import support, and IMP-0009 binary evidence files.
 
 ## Delivery status
 
@@ -17,7 +17,8 @@ The product is not yet MVP-complete. Most remaining P0 work is user-facing: tran
 | IMP-0003 — Local Persistence | Complete | SQLite versioned schema, migrations, repository adapters, mappings, integrity checks, and persistence tests. |
 | IMP-0004 — Application Services | Complete | Framework-independent commands, queries, DTOs, result/failure mapping, transaction workflows, relationship assignments, and local query support. |
 | IMP-0005 — Main Navigation and Home | Complete local slice | Responsive Home, Transactions, Review, Search, and Settings destinations with local-first, truthful empty states. |
-| IMP-0006 — Transaction Management | Active P0 vertical slice | Offline transaction list, create, detail, edit, archive, permanent delete, persistence wiring, and UI lifecycle test. Merchant/category/tag assignment and search/filter UI remain pending. |
+| IMP-0006 — Transaction Management | Complete local slice | Offline lifecycle, organization, search/filter, review, provenance/evidence metadata, normalized references, and schema-v2 business-date migration hardening. |
+| IMP-0007 — Account Management | Active local slice | Local payment-source lifecycle, transaction assignment, display-name resolution, and filtering; no user-account or sync scope. |
 
 ## Architecture review
 
@@ -41,10 +42,11 @@ Flutter presentation → application services → finance domain ← SQLite infr
 | Domain, persistence, and application boundaries | Complete. |
 | Primary navigation and Home | Complete local slice. |
 | Transaction create/list/detail/edit/archive/delete UI | Implemented in the active IMP-0006 vertical slice. |
-| Local search/filter UI | Not started; application and SQLite query support are ready. |
-| Review queue and resolution UI | Not started; review-issue persistence exists. |
+| Local search/filter UI | Implemented: text, currency, direction, date range, category, payment source, and review state. |
+| Review queue and resolution UI | Implemented: local queue, drill-in, explicit resolve/dismiss. |
 | Evidence capture, local binary storage, attachment retrieval | Binary evidence selection, persistence, file lifecycle, and local storage are deferred to IMP-0009; local evidence metadata retrieval exists. |
-| Currency/provenance/source-language UI | Not started; domain and persistence support it. |
+| Currency/provenance/source-language UI | Partially implemented: provenance and reference conversions display; stored source-language values remain unmodified but are not yet presented. |
+| Business date/exact instant/timezone | Partially implemented: schema v2 has `transaction_date`, `occurred_at_utc`, and `time_zone_id`; v1 migration normalizes legacy instants to UTC and uses the approved UTC calendar-date backfill. |
 | Consent, privacy/data controls, export, deletion | Not started. |
 | Localized UI and preferences | Not started beyond English localization infrastructure. |
 | Privacy-safe logging validation | Implemented: application messages redact common financial values and user-entered fields; redaction is tested. |
@@ -60,31 +62,30 @@ The current implementation already follows these decisions, so no account, synch
 
 ## Verification
 
-Fresh validation completed on 2026-08-09:
+Latest recorded validation completed on 2026-08-10:
 
 | Area | Result |
 | --- | --- |
 | Finance domain | Format clean, analysis clean, 17 tests passed. |
-| SQLite database | Format clean, analysis clean, 8 tests passed. |
-| Finance application services | Format clean, analysis clean, 8 tests passed. |
-| Flutter app | Format clean, analysis clean, 7 tests passed. |
+| SQLite database | Format clean, analysis clean, 9 tests passed, including v1→v2 migration coverage. |
+| Finance application services | Format clean, analysis clean, 11 tests passed. |
+| Flutter app | Format clean, analysis clean, 10 tests passed. |
 | Flutter web | Build succeeded. |
 
-Total automated tests: 40 passed.
+Total automated tests: 47 passed.
 
 ## Repository status
 
 - Branch: `main`
-- Current commit: `c04c7dc Implement P0 navigation and home shell`
+- Current commit: `2512bb1 Harden transaction date migration`
 - Working tree: clean at the time of review
 
 ## Recommended next step
 
-Continue IMP-0006 — Transaction Management with the remaining scoped P0 behavior:
+Continue P0 hardening with the remaining scoped behavior:
 
-1. Merchant/category/tag assignment and display.
-2. Transaction list search/filter UI and clear review indicators.
-3. Detail presentation for provenance, original currency, and existing evidence links.
-4. Additional failure/recovery coverage for persistence errors.
+1. Privacy, consent, local export/delete controls, and persisted preferences.
+2. Locale-aware presentation, UI language resources, timezone preference, and date-only imports.
+3. IMP-0009 binary evidence selection, local storage, and file lifecycle.
 
 Do not introduce P1, P2, or Deferred functionality while completing this slice.
