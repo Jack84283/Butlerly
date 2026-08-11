@@ -1,12 +1,16 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/features/foundation/presentation/payment_sources_page.dart';
 import 'package:butlerly/features/foundation/presentation/review_page.dart';
 import 'package:butlerly/features/foundation/presentation/search_page.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
+import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -68,8 +72,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Transactions'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('Corrected lunch'));
     await tester.tap(find.text('Corrected lunch'));
     await tester.pumpAndSettle();
+    expect(find.text('Transaction detail'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Archive transaction'),
       200,
@@ -80,19 +86,31 @@ void main() {
     await tester.tap(find.text('Archive'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Corrected lunch'));
-    await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('Permanently delete'),
-      200,
-      scrollable: find.byType(Scrollable).last,
+    final archivedAfterResult = await services<FinanceServices>()
+        .getTransaction(repository.values.values.single.id.value);
+    final archivedAfter =
+        (archivedAfterResult as ApplicationSuccess<TransactionDto>).value;
+    await tester.pumpWidget(
+      MaterialApp(
+        key: const ValueKey('archived-transaction-detail'),
+        home: TransactionDetailPage(
+          finance: services<FinanceServices>(),
+          transaction: archivedAfter,
+        ),
+      ),
     );
-    await tester.tap(find.text('Permanently delete'));
     await tester.pumpAndSettle();
+    expect(find.text('Transaction detail'), findsOneWidget);
+    for (var index = 0; index < 3; index++) {
+      await tester.drag(find.byType(ListView), const Offset(0, -200));
+      await tester.pumpAndSettle();
+    }
     await tester.tap(find.text('Delete permanently'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete permanently').last);
+    await tester.pumpAndSettle();
 
-    expect(find.text('No transactions yet'), findsOneWidget);
+    expect(repository.values, isEmpty);
   });
 
   testWidgets('searches local transactions by assigned category', (
@@ -154,6 +172,71 @@ void main() {
 
     expect(find.text('Lunch'), findsAtLeastNWidgets(1));
     expect(find.text('Bus'), findsNothing);
+  });
+
+  testWidgets('Home refreshes when a transaction changes outside its route', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: HomePage()));
+    await tester.pumpAndSettle();
+    expect(find.text('New global transaction'), findsNothing);
+
+    await services<FinanceServices>().createTransaction(
+      CreateTransactionCommand(
+        id: 'global-add',
+        provenanceId: 'manual-global-add',
+        timing: KnownTransactionTime(DateTime.utc(2026, 8, 11)),
+        money: Money(
+          amount: DecimalValue.parse('18.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        description: 'New global transaction',
+      ),
+    );
+    notifyTransactionChanged();
+    await tester.pumpAndSettle();
+
+    expect(find.text('New global transaction'), findsOneWidget);
+  });
+
+  testWidgets('transaction rows show merchant category and tags', (
+    tester,
+  ) async {
+    final finance = services<FinanceServices>();
+    await finance.saveMerchant(
+      Merchant(id: MerchantId('merchant-row'), name: 'Corner Market'),
+    );
+    await finance.saveCategory(
+      Category(
+        id: CategoryId('category-row'),
+        name: 'Groceries',
+        origin: CategoryOrigin.user,
+      ),
+    );
+    await finance.saveTag(Tag(id: TagId('tag-row'), name: 'Weekly'));
+    await finance.createTransaction(
+      CreateTransactionCommand(
+        id: 'organized-row',
+        provenanceId: 'manual-organized-row',
+        timing: KnownTransactionTime(DateTime.utc(2026, 8, 11)),
+        money: Money(
+          amount: DecimalValue.parse('31.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        description: 'Organized row',
+      ),
+    );
+    await finance.assignMerchant('organized-row', 'merchant-row');
+    await finance.assignCategory('organized-row', 'category-row');
+    await finance.addTag('organized-row', 'tag-row');
+
+    await tester.pumpWidget(const MaterialApp(home: TransactionsPage()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Organized row'), findsOneWidget);
+    expect(find.text('Corner Market • Groceries • Weekly'), findsOneWidget);
   });
 
   testWidgets('resolves an active local review issue', (tester) async {
@@ -444,6 +527,61 @@ void main() {
 
     expect(find.text('2026-08-10'), findsOneWidget);
     expect(find.text('2026-08-11'), findsNothing);
+  });
+
+  testWidgets('detail and organization dialog use Simplified Chinese', (
+    tester,
+  ) async {
+    final finance = services<FinanceServices>();
+    await finance.createTransaction(
+      CreateTransactionCommand(
+        id: 'localized-detail',
+        provenanceId: 'localized-detail-provenance',
+        timing: KnownTransactionTime(DateTime.utc(2026, 8, 10)),
+        money: Money(
+          amount: DecimalValue.parse('8.50'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        description: 'Source name',
+      ),
+    );
+    final result = await finance.getTransaction('localized-detail');
+    final transaction = (result as ApplicationSuccess<TransactionDto>).value;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: TransactionDetailPage(finance: finance, transaction: transaction),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('交易详情'), findsOneWidget);
+    expect(find.text('方向'), findsOneWidget);
+    expect(find.text('支出'), findsOneWidget);
+    expect(find.text('Transaction detail'), findsNothing);
+    await tester.scrollUntilVisible(
+      find.text('整理交易'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.text('整理交易'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('整理交易'), findsNWidgets(2));
+    expect(find.text('商户'), findsOneWidget);
+    expect(find.text('分类'), findsOneWidget);
+    expect(find.text('添加标签'), findsOneWidget);
+    expect(find.text('保存整理结果'), findsOneWidget);
+    expect(find.text('Organize transaction'), findsNothing);
   });
 }
 

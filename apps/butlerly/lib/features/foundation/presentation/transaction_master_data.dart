@@ -23,6 +23,15 @@ final class TransactionMasterData {
 
   String? tagName(String id) => tagNames[id];
 
+  String? summary(TransactionDto transaction) {
+    final labels = <String>[
+      ?merchantName(transaction.merchantId),
+      ?categoryName(transaction.categoryId),
+      ...transaction.tagIds.map(tagName).whereType<String>(),
+    ];
+    return labels.isEmpty ? null : labels.join(' • ');
+  }
+
   static Future<TransactionMasterData> load(FinanceServices finance) async {
     final merchantsResult = await finance.listMerchants();
     final categoriesResult = await finance.listCategories();

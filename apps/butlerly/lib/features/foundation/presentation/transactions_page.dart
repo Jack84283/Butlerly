@@ -2,6 +2,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -29,6 +30,17 @@ class _TransactionsPageState extends State<TransactionsPage> {
   void initState() {
     super.initState();
     _transactions = _load();
+    transactionChanges.addListener(_handleTransactionChange);
+  }
+
+  @override
+  void dispose() {
+    transactionChanges.removeListener(_handleTransactionChange);
+    super.dispose();
+  }
+
+  void _handleTransactionChange() {
+    if (mounted) _refresh();
   }
 
   Future<_TransactionsData> _load() async {
@@ -183,9 +195,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                           title: value.description?.trim().isNotEmpty == true
                               ? value.description!
                               : context.l10n.text('untitledTransaction'),
-                          subtitle: data.masterData.categoryName(
-                            value.categoryId,
-                          ),
+                          subtitle: data.masterData.summary(value),
                           meta: _transactionDate(value, context),
                           amount: value.amount,
                           currency: value.currency,
@@ -317,6 +327,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
       );
       return;
     }
+    notifyTransactionChanged();
     Navigator.of(context).pop(true);
   }
 
@@ -458,8 +469,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   Future<void> _archive(BuildContext context) async {
     final confirmed = await _confirm(
       context,
-      'Archive transaction?',
-      'You can restore it later.',
+      context.l10n.text('archiveTitle'),
+      context.l10n.text('archiveBody'),
     );
     if (confirmed != true || !context.mounted) return;
     await finance.archiveTransaction(transaction.id);
@@ -469,8 +480,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   Future<void> _delete(BuildContext context) async {
     final confirmed = await _confirm(
       context,
-      'Permanently delete transaction?',
-      'This removes the transaction from this device and cannot be undone.',
+      context.l10n.text('deleteTitle'),
+      context.l10n.text('deleteBody'),
       destructive: true,
     );
     if (confirmed != true || !context.mounted) return;
@@ -481,10 +492,10 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      title: const Text('Transaction detail'),
+      title: Text(context.l10n.text('transactionDetail')),
       actions: [
         IconButton(
-          tooltip: 'Edit transaction',
+          tooltip: context.l10n.text('editTransaction'),
           onPressed: () async {
             final changed = await Navigator.of(context).push<bool>(
               MaterialPageRoute(
@@ -506,7 +517,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       padding: const EdgeInsets.all(24),
       children: [
         Text(
-          transaction.description ?? 'Untitled transaction',
+          transaction.description ?? context.l10n.text('untitledTransaction'),
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 8),
@@ -517,39 +528,47 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
         if (transaction.normalizedMoney.isNotEmpty) ...[
           const SizedBox(height: 8),
           Text(
-            'Reference amounts (original amount remains canonical)',
+            context.l10n.text('referenceAmounts'),
             style: Theme.of(context).textTheme.labelLarge,
           ),
           ...transaction.normalizedMoney.map(
             (value) => _DetailRow(
-              label: 'Reference ${value.currency}',
+              label: context.l10n.text('referenceCurrency', {
+                'currency': value.currency,
+              }),
               value: '${value.amount} ${value.currency}',
             ),
           ),
         ],
         const SizedBox(height: 24),
-        _DetailRow(label: 'Direction', value: transaction.direction),
         _DetailRow(
-          label: 'Date',
+          label: context.l10n.text('direction'),
+          value: context.l10n.text(transaction.direction),
+        ),
+        _DetailRow(
+          label: context.l10n.text('date'),
           value: _transactionDate(transaction, context),
         ),
-        _DetailRow(label: 'Status', value: transaction.status),
         _DetailRow(
-          label: 'Review',
+          label: context.l10n.text('status'),
+          value: context.l10n.text(transaction.status),
+        ),
+        _DetailRow(
+          label: context.l10n.text('reviewState'),
           value: transaction.reviewState == 'needsReview'
-              ? 'Needs review'
-              : 'Clear',
+              ? context.l10n.text('needsReview')
+              : context.l10n.text('clear'),
         ),
         if (transaction.provenance.isNotEmpty) ...[
           const SizedBox(height: 16),
           Text(
-            'Record history',
+            context.l10n.text('recordHistory'),
             style: Theme.of(context).textTheme.titleMedium,
           ),
           ...transaction.provenance.map(
             (value) => _DetailRow(
-              label: 'Origin',
-              value: _provenanceLabel(value.sourceType),
+              label: context.l10n.text('origin'),
+              value: _provenanceLabel(context, value.sourceType),
             ),
           ),
         ],
@@ -586,13 +605,13 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             }
           },
           icon: const Icon(Icons.sell_outlined),
-          label: const Text('Organize transaction'),
+          label: Text(context.l10n.text('organizeTransaction')),
         ),
         const SizedBox(height: 12),
         OutlinedButton.icon(
           onPressed: () => _assignPaymentSource(context, finance, transaction),
           icon: const Icon(Icons.account_balance_wallet_outlined),
-          label: const Text('Assign payment source'),
+          label: Text(context.l10n.text('assignPaymentSource')),
         ),
         const SizedBox(height: 12),
         OutlinedButton.icon(
@@ -609,15 +628,15 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
           ),
           label: Text(
             transaction.status == TransactionStatus.archived.name
-                ? 'Restore transaction'
-                : 'Archive transaction',
+                ? context.l10n.text('restoreTransaction')
+                : context.l10n.text('archiveTransaction'),
           ),
         ),
         const SizedBox(height: 12),
         TextButton.icon(
           onPressed: () => _delete(context),
           icon: const Icon(Icons.delete_forever_outlined),
-          label: const Text('Permanently delete'),
+          label: Text(context.l10n.text('deletePermanently')),
         ),
       ],
     ),
@@ -644,20 +663,21 @@ class _EvidenceSection extends StatelessWidget {
         ),
     builder: (context, snapshot) {
       if (snapshot.hasError) {
-        return const Text(
-          'Evidence metadata could not be loaded. Your local records were not changed.',
-        );
+        return Text(context.l10n.text('evidenceLoadError'));
       }
       final evidence = snapshot.data;
       if (evidence == null) return const SizedBox.shrink();
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Evidence', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            context.l10n.text('evidence'),
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           if (evidence.isEmpty)
-            const Padding(
-              padding: EdgeInsets.only(top: 8),
-              child: Text('No evidence metadata is attached locally.'),
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(context.l10n.text('noEvidence')),
             )
           else
             ...evidence.map(
@@ -715,23 +735,26 @@ class _TransactionMasterDataRowsState
         children: [
           if (transaction.merchantId != null)
             _DetailRow(
-              label: 'Merchant',
+              label: context.l10n.text('merchant'),
               value:
                   data.merchantName(transaction.merchantId) ??
-                  'Unavailable merchant',
+                  context.l10n.text('unavailableMerchant'),
             ),
           if (transaction.categoryId != null)
             _DetailRow(
-              label: 'Category',
+              label: context.l10n.text('category'),
               value:
                   data.categoryName(transaction.categoryId) ??
-                  'Unavailable category',
+                  context.l10n.text('unavailableCategory'),
             ),
           if (transaction.tagIds.isNotEmpty)
             _DetailRow(
-              label: 'Tags',
+              label: context.l10n.text('tags'),
               value: transaction.tagIds
-                  .map((id) => data.tagName(id) ?? 'Unavailable tag')
+                  .map(
+                    (id) =>
+                        data.tagName(id) ?? context.l10n.text('unavailableTag'),
+                  )
                   .join(', '),
             ),
         ],
@@ -762,25 +785,26 @@ class _PaymentSourceRow extends StatelessWidget {
           ?.where((value) => value.id.value == paymentSourceId)
           .firstOrNull;
       return _DetailRow(
-        label: 'Payment source',
-        value: source?.name ?? 'Unavailable payment source',
+        label: context.l10n.text('paymentSource'),
+        value: source?.name ?? context.l10n.text('unavailablePaymentSource'),
       );
     },
   );
 }
 
-String _provenanceLabel(String sourceType) => switch (sourceType) {
-  'userEntry' => 'Entered locally',
-  'import' => 'Imported',
-  'scan' => 'Scanned',
-  'evidenceExtraction' => 'Evidence extraction',
-  'integration' => 'Integration',
-  'deterministicCalculation' => 'Calculation',
-  'localAi' => 'Local AI',
-  'externalAi' => 'External AI',
-  'migration' => 'Migration',
-  _ => 'Record origin',
-};
+String _provenanceLabel(BuildContext context, String sourceType) =>
+    switch (sourceType) {
+      'userEntry' => context.l10n.text('enteredLocally'),
+      'import' => context.l10n.text('imported'),
+      'scan' => context.l10n.text('scanned'),
+      'evidenceExtraction' => context.l10n.text('evidenceExtraction'),
+      'integration' => context.l10n.text('integration'),
+      'deterministicCalculation' => context.l10n.text('calculation'),
+      'localAi' => context.l10n.text('localAi'),
+      'externalAi' => context.l10n.text('externalAi'),
+      'migration' => context.l10n.text('migration'),
+      _ => context.l10n.text('recordOrigin'),
+    };
 
 class _DetailRow extends StatelessWidget {
   const _DetailRow({required this.label, required this.value});
@@ -811,11 +835,13 @@ Future<bool?> _confirm(
     actions: [
       TextButton(
         onPressed: () => Navigator.pop(context, false),
-        child: const Text('Cancel'),
+        child: Text(context.l10n.text('cancel')),
       ),
       FilledButton(
         onPressed: () => Navigator.pop(context, true),
-        child: Text(destructive ? 'Delete permanently' : 'Archive'),
+        child: Text(
+          context.l10n.text(destructive ? 'deletePermanently' : 'archive'),
+        ),
       ),
     ],
   ),
@@ -861,7 +887,7 @@ Future<bool?> _organizeTransaction(
     context: context,
     builder: (dialogContext) => StatefulBuilder(
       builder: (dialogContext, setDialogState) => AlertDialog(
-        title: const Text('Organize transaction'),
+        title: Text(dialogContext.l10n.text('organizeTransaction')),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -869,10 +895,15 @@ Future<bool?> _organizeTransaction(
               DropdownButtonFormField<String>(
                 initialValue: merchantId,
                 isExpanded: true,
-                hint: const Text('Unassigned'),
-                decoration: const InputDecoration(labelText: 'Merchant'),
+                hint: Text(dialogContext.l10n.text('unassigned')),
+                decoration: InputDecoration(
+                  labelText: dialogContext.l10n.text('merchant'),
+                ),
                 items: [
-                  const DropdownMenuItem(value: '', child: Text('Unassigned')),
+                  DropdownMenuItem(
+                    value: '',
+                    child: Text(dialogContext.l10n.text('unassigned')),
+                  ),
                   ...merchantOptions.map(
                     (option) => DropdownMenuItem(
                       value: option.id,
@@ -887,10 +918,15 @@ Future<bool?> _organizeTransaction(
               DropdownButtonFormField<String>(
                 initialValue: categoryId,
                 isExpanded: true,
-                hint: const Text('Unassigned'),
-                decoration: const InputDecoration(labelText: 'Category'),
+                hint: Text(dialogContext.l10n.text('unassigned')),
+                decoration: InputDecoration(
+                  labelText: dialogContext.l10n.text('category'),
+                ),
                 items: [
-                  const DropdownMenuItem(value: '', child: Text('Unassigned')),
+                  DropdownMenuItem(
+                    value: '',
+                    child: Text(dialogContext.l10n.text('unassigned')),
+                  ),
                   ...categoryOptions.map(
                     (option) => DropdownMenuItem(
                       value: option.id,
@@ -906,7 +942,7 @@ Future<bool?> _organizeTransaction(
                 Align(
                   alignment: AlignmentDirectional.centerStart,
                   child: Text(
-                    'Assigned tags',
+                    dialogContext.l10n.text('assignedTags'),
                     style: Theme.of(dialogContext).textTheme.labelLarge,
                   ),
                 ),
@@ -920,9 +956,10 @@ Future<bool?> _organizeTransaction(
                         .map(
                           (id) => InputChip(
                             label: Text(
-                              _optionName(tagOptions, id) ?? 'Unavailable tag',
+                              _optionName(tagOptions, id) ??
+                                  dialogContext.l10n.text('unavailableTag'),
                             ),
-                            tooltip: 'Remove tag',
+                            tooltip: dialogContext.l10n.text('removeTag'),
                             onDeleted: () =>
                                 setDialogState(() => selectedTagIds.remove(id)),
                           ),
@@ -935,7 +972,9 @@ Future<bool?> _organizeTransaction(
               DropdownButtonFormField<String>(
                 key: ValueKey(selectedTagIds.length),
                 isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Add tag'),
+                decoration: InputDecoration(
+                  labelText: dialogContext.l10n.text('addTag'),
+                ),
                 items: tagOptions
                     .where((option) => !selectedTagIds.contains(option.id))
                     .map(
@@ -956,7 +995,7 @@ Future<bool?> _organizeTransaction(
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
+            child: Text(dialogContext.l10n.text('cancel')),
           ),
           FilledButton(
             onPressed: () async {
@@ -972,9 +1011,10 @@ Future<bool?> _organizeTransaction(
                   await finance.addTag(transaction.id, id);
                 }
               }
+              notifyTransactionChanged();
               if (dialogContext.mounted) Navigator.pop(dialogContext, true);
             },
-            child: const Text('Save organization'),
+            child: Text(dialogContext.l10n.text('saveOrganization')),
           ),
         ],
       ),
@@ -1005,7 +1045,7 @@ Future<void> _assignPaymentSource(
   if (!context.mounted) return;
   if (result is! ApplicationSuccess<List<PaymentSource>>) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Payment sources could not be loaded.')),
+      SnackBar(content: Text(context.l10n.text('paymentSourcesLoadError'))),
     );
     return;
   }
@@ -1015,11 +1055,11 @@ Future<void> _assignPaymentSource(
   final sourceId = await showDialog<String?>(
     context: context,
     builder: (dialogContext) => SimpleDialog(
-      title: const Text('Assign payment source'),
+      title: Text(dialogContext.l10n.text('assignPaymentSource')),
       children: [
         SimpleDialogOption(
           onPressed: () => Navigator.pop(dialogContext),
-          child: const Text('No payment source'),
+          child: Text(dialogContext.l10n.text('noPaymentSource')),
         ),
         ...sources.map(
           (value) => SimpleDialogOption(
@@ -1037,7 +1077,7 @@ Future<void> _assignPaymentSource(
     Navigator.of(context).pop(true);
   } else {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Payment source could not be assigned.')),
+      SnackBar(content: Text(context.l10n.text('paymentSourceAssignError'))),
     );
   }
 }
