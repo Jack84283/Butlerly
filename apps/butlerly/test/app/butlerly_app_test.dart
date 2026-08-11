@@ -12,26 +12,67 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Home'), findsAtLeastNWidgets(1));
-    expect(find.text('Start with a record'), findsOneWidget);
+    expect(find.text('No transactions yet'), findsOneWidget);
     expect(find.text('Transactions'), findsOneWidget);
     expect(find.text('Review'), findsOneWidget);
     expect(find.text('Search'), findsOneWidget);
     expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.text('Local records'), findsOneWidget);
+    expect(find.text('Add transaction'), findsOneWidget);
+    expect(find.text('Scan receipt'), findsOneWidget);
+    expect(find.text('Import data'), findsOneWidget);
+    expect(find.text('Search records'), findsOneWidget);
   });
+
+  testWidgets('matches the approved dark Home composition', (tester) async {
+    setPhoneViewport(tester);
+    tester.view.platformDispatcher.platformBrightnessTestValue =
+        Brightness.dark;
+    addTearDown(
+      tester.view.platformDispatcher.clearPlatformBrightnessTestValue,
+    );
+
+    await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/home_dark_390x844.png'),
+    );
+  });
+
+  for (final size in const [Size(320, 568), Size(390, 844), Size(430, 932)]) {
+    testWidgets('Home has no layout overflow at ${size.width}x${size.height}', (
+      tester,
+    ) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+      await tester.pumpAndSettle();
+
+      final exception = tester.takeException();
+      if (exception is FlutterError) {
+        fail(exception.toStringDeep());
+      }
+      expect(exception, isNull);
+      expect(find.text('Good morning'), findsOneWidget);
+      expect(find.text('Recent transactions'), findsOneWidget);
+    });
+  }
 
   testWidgets('opens the Review and Search destinations', (tester) async {
     setPhoneViewport(tester);
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.fact_check_outlined));
+    await tester.tap(find.text('Review'));
     await tester.pumpAndSettle();
-    expect(
-      find.textContaining('Nothing needs review right now.'),
-      findsOneWidget,
-    );
+    expect(find.text('You’re all caught up'), findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.search_outlined));
+    await tester.tap(find.text('Search'));
     await tester.pumpAndSettle();
     expect(find.byType(SearchBar), findsOneWidget);
   });
@@ -54,7 +95,7 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.settings_outlined));
+    await tester.tap(find.text('Settings').last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('System'));
     await tester.pumpAndSettle();
@@ -63,6 +104,26 @@ void main() {
 
     final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
     expect(app.themeMode, ThemeMode.dark);
+  });
+
+  testWidgets('allows the user to switch the interface to Simplified Chinese', (
+    tester,
+  ) async {
+    setPhoneViewport(tester);
+    await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Settings').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('English'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Chinese (Simplified)').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('设置'), findsAtLeastNWidgets(1));
+    expect(find.text('首页'), findsOneWidget);
+    expect(find.text('交易'), findsAtLeastNWidgets(1));
+    expect(find.text('简体中文'), findsOneWidget);
   });
 }
 

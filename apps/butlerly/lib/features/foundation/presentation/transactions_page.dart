@@ -1,8 +1,14 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
+import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class TransactionsPage extends StatefulWidget {
   const TransactionsPage({super.key});
@@ -12,7 +18,8 @@ class TransactionsPage extends StatefulWidget {
 }
 
 class _TransactionsPageState extends State<TransactionsPage> {
-  late Future<List<TransactionDto>> _transactions;
+  late Future<_TransactionsData> _transactions;
+  _TransactionFilter _filter = _TransactionFilter.all;
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
@@ -24,18 +31,19 @@ class _TransactionsPageState extends State<TransactionsPage> {
     _transactions = _load();
   }
 
-  Future<List<TransactionDto>> _load() async {
+  Future<_TransactionsData> _load() async {
     final finance = _finance;
-    if (finance == null) return const [];
+    if (finance == null) return const _TransactionsData([]);
     final result = await finance.listTransactions(
       const ListTransactionsQuery(),
     );
-    return switch (result) {
+    final values = switch (result) {
       ApplicationSuccess<List<TransactionDto>>(:final value) => value,
       ApplicationFailure<List<TransactionDto>>() => throw StateError(
         'Transactions could not be loaded.',
       ),
     };
+    return _TransactionsData(values, await TransactionMasterData.load(finance));
   }
 
   void _refresh() {
@@ -72,80 +80,148 @@ class _TransactionsPageState extends State<TransactionsPage> {
   @override
   Widget build(BuildContext context) {
     if (_finance == null) {
-      return const _TransactionsMessage(
+      return ButlerlyEmptyState(
         icon: Icons.storage_outlined,
-        title: 'Transaction storage is unavailable',
-        message:
-            'This platform does not currently provide local transaction storage.',
+        title: context.l10n.text('loadTransactionsError'),
+        message: context.l10n.text('dataPreserved'),
       );
     }
-    return FutureBuilder<List<TransactionDto>>(
+    return FutureBuilder<_TransactionsData>(
       future: _transactions,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
-          return _TransactionsMessage(
-            icon: Icons.error_outline,
-            title: 'Transactions could not be loaded',
-            message: 'Your existing local data was not changed. Try again.',
-            actionLabel: 'Try again',
+          return ButlerlyErrorState(
+            title: context.l10n.text('loadTransactionsError'),
+            message: context.l10n.text('tryAgain'),
+            preserved: context.l10n.text('dataPreserved'),
+            actionLabel: context.l10n.text('tryAgain'),
             onAction: _refresh,
           );
         }
-        final values = snapshot.requireData;
-        return Scaffold(
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: _openEditor,
-            icon: const Icon(Icons.add),
-            label: const Text('Add transaction'),
-          ),
-          body: values.isEmpty
-              ? _TransactionsMessage(
-                  icon: Icons.receipt_long_outlined,
-                  title: 'No transactions yet',
-                  message:
-                      'Add a transaction to create a private, searchable local record.',
-                  actionLabel: 'Add transaction',
-                  onAction: _openEditor,
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 96),
-                  itemCount: values.length + 1,
-                  separatorBuilder: (_, index) => index == 0
-                      ? const SizedBox(height: 12)
-                      : const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    if (index == 0) {
-                      return Text(
-                        'Transactions',
-                        style: Theme.of(context).textTheme.headlineMedium,
-                      );
-                    }
-                    final value = values[index - 1];
-                    return ListTile(
-                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                      leading: Icon(
-                        value.direction == TransactionDirection.income.name
-                            ? Icons.south_west_outlined
-                            : Icons.north_east_outlined,
-                      ),
-                      title: Text(
-                        value.description?.trim().isNotEmpty == true
-                            ? value.description!
-                            : 'Untitled transaction',
-                      ),
-                      subtitle: Text(_transactionDate(value)),
-                      trailing: Text('${value.amount} ${value.currency}'),
-                      onTap: () => _openDetail(value),
-                    );
-                  },
+        final data = snapshot.requireData;
+        final values = data.transactions;
+        final visible = values
+            .where(
+              (value) => switch (_filter) {
+                _TransactionFilter.all => true,
+                _TransactionFilter.income =>
+                  value.direction == TransactionDirection.income.name,
+                _TransactionFilter.expense =>
+                  value.direction == TransactionDirection.expense.name,
+                _TransactionFilter.archived =>
+                  value.status == TransactionStatus.archived.name,
+              },
+            )
+            .toList(growable: false);
+        return ButlerlyPage(
+          title: context.l10n.text('transactions'),
+          actions: [
+            IconButton(
+              tooltip: context.l10n.text('search'),
+              onPressed: () => GoRouter.of(context).go('/search'),
+              icon: const Icon(Icons.search_rounded),
+            ),
+          ],
+          children: [
+            SizedBox(
+              height: ButlerlySize.preferredTarget,
+              child: SegmentedButton<_TransactionFilter>(
+                showSelectedIcon: false,
+                segments: [
+                  ButtonSegment(
+                    value: _TransactionFilter.all,
+                    label: Text(context.l10n.text('all')),
+                  ),
+                  ButtonSegment(
+                    value: _TransactionFilter.income,
+                    label: Text(context.l10n.text('income')),
+                  ),
+                  ButtonSegment(
+                    value: _TransactionFilter.expense,
+                    label: Text(context.l10n.text('expense')),
+                  ),
+                  ButtonSegment(
+                    value: _TransactionFilter.archived,
+                    label: Text(context.l10n.text('archived')),
+                  ),
+                ],
+                selected: {_filter},
+                onSelectionChanged: (selection) =>
+                    setState(() => _filter = selection.single),
+              ),
+            ),
+            const SizedBox(height: ButlerlySpacing.section),
+            if (values.isEmpty)
+              ButlerlyEmptyState(
+                icon: Icons.receipt_long_outlined,
+                title: context.l10n.text('noTransactions'),
+                message: context.l10n.text('noTransactionsBody'),
+                actionLabel: context.l10n.text('addTransaction'),
+                onAction: _openEditor,
+              )
+            else if (visible.isEmpty)
+              ButlerlyEmptyState(
+                icon: Icons.filter_alt_off_outlined,
+                title: context.l10n.text('noResults'),
+                message: context.l10n.text('noResultsBody'),
+                actionLabel: context.l10n.text('clearFilters'),
+                onAction: () =>
+                    setState(() => _filter = _TransactionFilter.all),
+              )
+            else
+              ButlerlyCard(
+                padding: const EdgeInsets.symmetric(
+                  vertical: ButlerlySpacing.compact,
                 ),
+                child: Column(
+                  children: visible
+                      .map(
+                        (value) => ButlerlyRecordRow(
+                          title: value.description?.trim().isNotEmpty == true
+                              ? value.description!
+                              : context.l10n.text('untitledTransaction'),
+                          subtitle: data.masterData.categoryName(
+                            value.categoryId,
+                          ),
+                          meta: _transactionDate(value, context),
+                          amount: value.amount,
+                          currency: value.currency,
+                          icon:
+                              value.direction ==
+                                  TransactionDirection.income.name
+                              ? Icons.work_outline_rounded
+                              : Icons.shopping_bag_outlined,
+                          isIncome:
+                              value.direction ==
+                              TransactionDirection.income.name,
+                          needsReview: value.reviewState == 'needsReview',
+                          onTap: () => _openDetail(value),
+                        ),
+                      )
+                      .toList(growable: false),
+                ),
+              ),
+            const SizedBox(height: ButlerlySpacing.structural),
+          ],
         );
       },
     );
   }
+}
+
+enum _TransactionFilter { all, income, expense, archived }
+
+final class _TransactionsData {
+  const _TransactionsData(
+    this.transactions, [
+    this.masterData = const TransactionMasterData(),
+  ]);
+
+  final List<TransactionDto> transactions;
+  final TransactionMasterData masterData;
 }
 
 class TransactionEditorPage extends StatefulWidget {
@@ -169,6 +245,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   late final TextEditingController _description;
   late DateTime _date;
   late TransactionDirection _direction;
+  bool _dateChanged = false;
   bool _saving = false;
 
   @override
@@ -178,7 +255,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
     _amount = TextEditingController(text: existing?.amount ?? '');
     _currency = TextEditingController(text: existing?.currency ?? 'USD');
     _description = TextEditingController(text: existing?.description ?? '');
-    _date = existing?.occurredAt ?? DateTime.now();
+    _date = existing == null
+        ? DateTime.now()
+        : transactionCalendarDate(existing, fallback: DateTime.now());
     _direction = TransactionDirection.values.byName(
       existing?.direction ?? TransactionDirection.expense.name,
     );
@@ -200,12 +279,16 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
       currency: CurrencyCode(_currency.text.trim()),
     );
     final existing = widget.existing;
+    final timing =
+        existing != null && !_dateChanged && existing.occurredAt != null
+        ? KnownTransactionTime(existing.occurredAt!)
+        : KnownTransactionTime(_date);
     final result = existing == null
         ? await widget.finance.createTransaction(
             CreateTransactionCommand(
               id: 'transaction-${DateTime.now().microsecondsSinceEpoch}',
               provenanceId: 'manual-${DateTime.now().microsecondsSinceEpoch}',
-              timing: KnownTransactionTime(_date),
+              timing: timing,
               money: money,
               direction: _direction,
               transactionDate: _shortDate(_date),
@@ -217,7 +300,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
         : await widget.finance.updateTransaction(
             UpdateTransactionCommand(
               id: existing.id,
-              timing: KnownTransactionTime(_date),
+              timing: timing,
               money: money,
               direction: _direction,
               transactionDate: _shortDate(_date),
@@ -230,11 +313,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
     setState(() => _saving = false);
     if (result is ApplicationFailure<TransactionDto>) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'The transaction could not be saved. No data was changed.',
-          ),
-        ),
+        SnackBar(content: Text(context.l10n.text('dataPreserved'))),
       );
       return;
     }
@@ -245,7 +324,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
       title: Text(
-        widget.existing == null ? 'Add transaction' : 'Edit transaction',
+        widget.existing == null
+            ? context.l10n.text('addTransaction')
+            : context.l10n.text('editTransaction'),
       ),
     ),
     body: Form(
@@ -253,16 +334,38 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
       child: ListView(
         padding: const EdgeInsets.all(24),
         children: [
+          SegmentedButton<TransactionDirection>(
+            showSelectedIcon: false,
+            segments: [
+              ButtonSegment(
+                value: TransactionDirection.expense,
+                icon: const Icon(Icons.arrow_upward_rounded),
+                label: Text(context.l10n.text('expense')),
+              ),
+              ButtonSegment(
+                value: TransactionDirection.income,
+                icon: const Icon(Icons.arrow_downward_rounded),
+                label: Text(context.l10n.text('income')),
+              ),
+            ],
+            selected: {_direction},
+            onSelectionChanged: (selection) =>
+                setState(() => _direction = selection.single),
+          ),
+          const SizedBox(height: ButlerlySpacing.section),
           TextFormField(
             controller: _amount,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(labelText: 'Amount'),
+            decoration: InputDecoration(
+              labelText: context.l10n.text('amount'),
+              prefixIcon: const Icon(Icons.payments_outlined),
+            ),
             validator: (value) {
               try {
                 DecimalValue.parse(value?.trim() ?? '');
                 return null;
               } on DomainValidationException {
-                return 'Enter a valid amount.';
+                return context.l10n.text('invalidAmount');
               }
             },
           ),
@@ -270,32 +373,22 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
           TextFormField(
             controller: _currency,
             textCapitalization: TextCapitalization.characters,
-            decoration: const InputDecoration(labelText: 'Currency'),
+            decoration: InputDecoration(
+              labelText: context.l10n.text('currency'),
+            ),
             validator: (value) {
               try {
                 CurrencyCode(value?.trim() ?? '');
                 return null;
               } on DomainValidationException {
-                return 'Use a three-letter currency code.';
+                return context.l10n.text('invalidCurrency');
               }
             },
           ),
           const SizedBox(height: 16),
-          DropdownButtonFormField<TransactionDirection>(
-            initialValue: _direction,
-            decoration: const InputDecoration(labelText: 'Direction'),
-            items: TransactionDirection.values
-                .map(
-                  (value) =>
-                      DropdownMenuItem(value: value, child: Text(value.name)),
-                )
-                .toList(growable: false),
-            onChanged: (value) => setState(() => _direction = value!),
-          ),
-          const SizedBox(height: 16),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Date'),
+            title: Text(context.l10n.text('date')),
             subtitle: Text(_shortDate(_date)),
             trailing: const Icon(Icons.calendar_today_outlined),
             onTap: () async {
@@ -306,22 +399,30 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                 initialDate: _date,
               );
               if (selected != null) {
-                setState(() => _date = selected);
+                setState(() {
+                  _date = selected;
+                  _dateChanged = true;
+                });
               }
             },
           ),
           const SizedBox(height: 16),
           TextFormField(
             controller: _description,
-            decoration: const InputDecoration(
-              labelText: 'Description (optional)',
+            decoration: InputDecoration(
+              labelText: context.l10n.text('descriptionOptional'),
+              prefixIcon: const Icon(Icons.notes_rounded),
             ),
             maxLines: 2,
           ),
           const SizedBox(height: 28),
           FilledButton(
             onPressed: _saving ? null : _save,
-            child: Text(_saving ? 'Saving…' : 'Save locally'),
+            child: Text(
+              _saving
+                  ? context.l10n.text('saving')
+                  : context.l10n.text('saveLocally'),
+            ),
           ),
         ],
       ),
@@ -329,7 +430,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   );
 }
 
-class TransactionDetailPage extends StatelessWidget {
+class TransactionDetailPage extends StatefulWidget {
   const TransactionDetailPage({
     required this.finance,
     required this.transaction,
@@ -338,6 +439,21 @@ class TransactionDetailPage extends StatelessWidget {
 
   final FinanceServices finance;
   final TransactionDto transaction;
+
+  @override
+  State<TransactionDetailPage> createState() => _TransactionDetailPageState();
+}
+
+class _TransactionDetailPageState extends State<TransactionDetailPage> {
+  late TransactionDto transaction;
+
+  FinanceServices get finance => widget.finance;
+
+  @override
+  void initState() {
+    super.initState();
+    transaction = widget.transaction;
+  }
 
   Future<void> _archive(BuildContext context) async {
     final confirmed = await _confirm(
@@ -413,7 +529,10 @@ class TransactionDetailPage extends StatelessWidget {
         ],
         const SizedBox(height: 24),
         _DetailRow(label: 'Direction', value: transaction.direction),
-        _DetailRow(label: 'Date', value: _transactionDate(transaction)),
+        _DetailRow(
+          label: 'Date',
+          value: _transactionDate(transaction, context),
+        ),
         _DetailRow(label: 'Status', value: transaction.status),
         _DetailRow(
           label: 'Review',
@@ -429,24 +548,25 @@ class TransactionDetailPage extends StatelessWidget {
           ),
           ...transaction.provenance.map(
             (value) => _DetailRow(
-              label: _provenanceLabel(value.sourceType),
-              value: _shortDate(value.capturedAt),
+              label: 'Origin',
+              value: _provenanceLabel(value.sourceType),
             ),
           ),
         ],
         const SizedBox(height: 16),
         _EvidenceSection(finance: finance, transactionId: transaction.id),
-        if (transaction.merchantId != null)
-          _DetailRow(label: 'Merchant', value: transaction.merchantId!),
-        if (transaction.categoryId != null)
-          _DetailRow(label: 'Category', value: transaction.categoryId!),
+        _TransactionMasterDataRows(
+          key: ValueKey(
+            '${transaction.updatedAt.microsecondsSinceEpoch}-${transaction.tagIds.join(',')}',
+          ),
+          finance: finance,
+          transaction: transaction,
+        ),
         if (transaction.paymentSourceId != null)
           _PaymentSourceRow(
             finance: finance,
             paymentSourceId: transaction.paymentSourceId!,
           ),
-        if (transaction.tagIds.isNotEmpty)
-          _DetailRow(label: 'Tags', value: transaction.tagIds.join(', ')),
         const SizedBox(height: 24),
         OutlinedButton.icon(
           onPressed: () async {
@@ -456,7 +576,13 @@ class TransactionDetailPage extends StatelessWidget {
               transaction,
             );
             if (changed == true && context.mounted) {
-              Navigator.of(context).pop(true);
+              final refreshed = await finance.getTransaction(transaction.id);
+              if (!context.mounted) return;
+              if (refreshed case ApplicationSuccess<TransactionDto>(
+                :final value,
+              )) {
+                setState(() => transaction = value);
+              }
             }
           },
           icon: const Icon(Icons.sell_outlined),
@@ -548,6 +674,72 @@ class _EvidenceSection extends StatelessWidget {
   );
 }
 
+class _TransactionMasterDataRows extends StatefulWidget {
+  const _TransactionMasterDataRows({
+    required this.finance,
+    required this.transaction,
+    super.key,
+  });
+
+  final FinanceServices finance;
+  final TransactionDto transaction;
+
+  @override
+  State<_TransactionMasterDataRows> createState() =>
+      _TransactionMasterDataRowsState();
+}
+
+class _TransactionMasterDataRowsState
+    extends State<_TransactionMasterDataRows> {
+  late final Future<TransactionMasterData> _masterData;
+
+  @override
+  void initState() {
+    super.initState();
+    _masterData = TransactionMasterData.load(widget.finance);
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<TransactionMasterData>(
+    future: _masterData,
+    builder: (context, snapshot) {
+      final transaction = widget.transaction;
+      if (snapshot.connectionState != ConnectionState.done) {
+        return const Padding(
+          padding: EdgeInsets.symmetric(vertical: ButlerlySpacing.compact),
+          child: LinearProgressIndicator(),
+        );
+      }
+      final data = snapshot.data ?? const TransactionMasterData();
+      return Column(
+        children: [
+          if (transaction.merchantId != null)
+            _DetailRow(
+              label: 'Merchant',
+              value:
+                  data.merchantName(transaction.merchantId) ??
+                  'Unavailable merchant',
+            ),
+          if (transaction.categoryId != null)
+            _DetailRow(
+              label: 'Category',
+              value:
+                  data.categoryName(transaction.categoryId) ??
+                  'Unavailable category',
+            ),
+          if (transaction.tagIds.isNotEmpty)
+            _DetailRow(
+              label: 'Tags',
+              value: transaction.tagIds
+                  .map((id) => data.tagName(id) ?? 'Unavailable tag')
+                  .join(', '),
+            ),
+        ],
+      );
+    },
+  );
+}
+
 class _PaymentSourceRow extends StatelessWidget {
   const _PaymentSourceRow({
     required this.finance,
@@ -606,41 +798,6 @@ class _DetailRow extends StatelessWidget {
   );
 }
 
-class _TransactionsMessage extends StatelessWidget {
-  const _TransactionsMessage({
-    required this.icon,
-    required this.title,
-    required this.message,
-    this.actionLabel,
-    this.onAction,
-  });
-  final IconData icon;
-  final String title;
-  final String message;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 48),
-          const SizedBox(height: 16),
-          Text(title, style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 8),
-          Text(message, textAlign: TextAlign.center),
-          if (actionLabel != null) ...[
-            const SizedBox(height: 20),
-            FilledButton(onPressed: onAction, child: Text(actionLabel!)),
-          ],
-        ],
-      ),
-    ),
-  );
-}
-
 Future<bool?> _confirm(
   BuildContext context,
   String title,
@@ -668,81 +825,175 @@ Future<bool?> _organizeTransaction(
   BuildContext context,
   FinanceServices finance,
   TransactionDto transaction,
-) {
-  final merchant = TextEditingController();
-  final category = TextEditingController();
-  final tag = TextEditingController();
+) async {
+  final masterDataResults = await Future.wait([
+    finance.listMerchants(),
+    finance.listCategories(),
+    finance.listTags(),
+  ]);
+  if (!context.mounted) return false;
+  final merchants = switch (masterDataResults[0]) {
+    ApplicationSuccess<List<Merchant>>(:final value) => value,
+    _ => const <Merchant>[],
+  };
+  final categories = switch (masterDataResults[1]) {
+    ApplicationSuccess<List<Category>>(:final value) => value,
+    _ => const <Category>[],
+  };
+  final tags = switch (masterDataResults[2]) {
+    ApplicationSuccess<List<Tag>>(:final value) => value,
+    _ => const <Tag>[],
+  };
+  final merchantOptions = merchants
+      .map((value) => _MasterDataOption(value.id.value, value.name))
+      .toList(growable: false);
+  final categoryOptions = categories
+      .map((value) => _MasterDataOption(value.id.value, value.name))
+      .toList(growable: false);
+  final tagOptions = tags
+      .map((value) => _MasterDataOption(value.id.value, value.name))
+      .toList(growable: false);
+
+  String? merchantId = transaction.merchantId;
+  String? categoryId = transaction.categoryId;
+  final selectedTagIds = transaction.tagIds.toSet();
   return showDialog<bool>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: const Text('Organize transaction'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: merchant,
-              decoration: const InputDecoration(
-                labelText: 'New merchant (optional)',
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (dialogContext, setDialogState) => AlertDialog(
+        title: const Text('Organize transaction'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                initialValue: merchantId,
+                isExpanded: true,
+                hint: const Text('Unassigned'),
+                decoration: const InputDecoration(labelText: 'Merchant'),
+                items: [
+                  const DropdownMenuItem(value: '', child: Text('Unassigned')),
+                  ...merchantOptions.map(
+                    (option) => DropdownMenuItem(
+                      value: option.id,
+                      child: Text(option.name),
+                    ),
+                  ),
+                ],
+                onChanged: (value) =>
+                    merchantId = value?.isEmpty == true ? null : value,
               ),
-            ),
-            TextField(
-              controller: category,
-              decoration: const InputDecoration(
-                labelText: 'New category (optional)',
+              const SizedBox(height: ButlerlySpacing.small),
+              DropdownButtonFormField<String>(
+                initialValue: categoryId,
+                isExpanded: true,
+                hint: const Text('Unassigned'),
+                decoration: const InputDecoration(labelText: 'Category'),
+                items: [
+                  const DropdownMenuItem(value: '', child: Text('Unassigned')),
+                  ...categoryOptions.map(
+                    (option) => DropdownMenuItem(
+                      value: option.id,
+                      child: Text(option.name),
+                    ),
+                  ),
+                ],
+                onChanged: (value) =>
+                    categoryId = value?.isEmpty == true ? null : value,
               ),
-            ),
-            TextField(
-              controller: tag,
-              decoration: const InputDecoration(
-                labelText: 'New tag (optional)',
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(dialogContext, false),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () async {
-            final stamp = DateTime.now().microsecondsSinceEpoch;
-            if (merchant.text.trim().isNotEmpty) {
-              final id = 'merchant-$stamp';
-              await finance.saveMerchant(
-                Merchant(id: MerchantId(id), name: merchant.text),
-              );
-              await finance.assignMerchant(transaction.id, id);
-            }
-            if (category.text.trim().isNotEmpty) {
-              final id = 'category-$stamp';
-              await finance.saveCategory(
-                Category(
-                  id: CategoryId(id),
-                  name: category.text,
-                  origin: CategoryOrigin.user,
+              const SizedBox(height: ButlerlySpacing.small),
+              if (selectedTagIds.isNotEmpty) ...[
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    'Assigned tags',
+                    style: Theme.of(dialogContext).textTheme.labelLarge,
+                  ),
                 ),
-              );
-              await finance.assignCategory(transaction.id, id);
-            }
-            if (tag.text.trim().isNotEmpty) {
-              final id = 'tag-$stamp';
-              await finance.saveTag(Tag(id: TagId(id), name: tag.text));
-              await finance.addTag(transaction.id, id);
-            }
-            if (dialogContext.mounted) Navigator.pop(dialogContext, true);
-          },
-          child: const Text('Save organization'),
+                const SizedBox(height: ButlerlySpacing.compact),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Wrap(
+                    spacing: ButlerlySpacing.compact,
+                    runSpacing: ButlerlySpacing.compact,
+                    children: selectedTagIds
+                        .map(
+                          (id) => InputChip(
+                            label: Text(
+                              _optionName(tagOptions, id) ?? 'Unavailable tag',
+                            ),
+                            tooltip: 'Remove tag',
+                            onDeleted: () =>
+                                setDialogState(() => selectedTagIds.remove(id)),
+                          ),
+                        )
+                        .toList(growable: false),
+                  ),
+                ),
+                const SizedBox(height: ButlerlySpacing.small),
+              ],
+              DropdownButtonFormField<String>(
+                key: ValueKey(selectedTagIds.length),
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Add tag'),
+                items: tagOptions
+                    .where((option) => !selectedTagIds.contains(option.id))
+                    .map(
+                      (option) => DropdownMenuItem(
+                        value: option.id,
+                        child: Text(option.name),
+                      ),
+                    )
+                    .toList(growable: false),
+                onChanged: (value) {
+                  if (value == null) return;
+                  setDialogState(() => selectedTagIds.add(value));
+                },
+              ),
+            ],
+          ),
         ),
-      ],
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              await finance.assignMerchant(transaction.id, merchantId);
+              await finance.assignCategory(transaction.id, categoryId);
+              for (final id in transaction.tagIds) {
+                if (!selectedTagIds.contains(id)) {
+                  await finance.removeTag(transaction.id, id);
+                }
+              }
+              for (final id in selectedTagIds) {
+                if (!transaction.tagIds.contains(id)) {
+                  await finance.addTag(transaction.id, id);
+                }
+              }
+              if (dialogContext.mounted) Navigator.pop(dialogContext, true);
+            },
+            child: const Text('Save organization'),
+          ),
+        ],
+      ),
     ),
-  ).whenComplete(() {
-    merchant.dispose();
-    category.dispose();
-    tag.dispose();
-  });
+  );
+}
+
+final class _MasterDataOption {
+  const _MasterDataOption(this.id, this.name);
+
+  final String id;
+  final String name;
+}
+
+String? _optionName(List<_MasterDataOption> options, String? id) {
+  for (final option in options) {
+    if (option.id == id) return option.name;
+  }
+  return null;
 }
 
 Future<void> _assignPaymentSource(
@@ -791,7 +1042,7 @@ Future<void> _assignPaymentSource(
   }
 }
 
-String _transactionDate(TransactionDto value) =>
-    value.occurredAt == null ? 'Date pending' : _shortDate(value.occurredAt!);
-String _shortDate(DateTime value) =>
-    '${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+String _transactionDate(TransactionDto value, BuildContext context) =>
+    transactionDateLabel(value, pendingLabel: context.l10n.text('datePending'));
+
+String _shortDate(DateTime value) => shortDateLabel(value);

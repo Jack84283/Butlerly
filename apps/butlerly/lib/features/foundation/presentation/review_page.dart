@@ -1,6 +1,9 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
+import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:flutter/material.dart';
 
@@ -13,6 +16,7 @@ class ReviewPage extends StatefulWidget {
 
 class _ReviewPageState extends State<ReviewPage> {
   late Future<List<ReviewItemDto>> _items;
+  _ReviewView _view = _ReviewView.needsReview;
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
@@ -36,12 +40,9 @@ class _ReviewPageState extends State<ReviewPage> {
     };
   }
 
-  void _refresh() {
-    final reloaded = _load();
-    setState(() {
-      _items = reloaded;
-    });
-  }
+  void _refresh() => setState(() {
+    _items = _load();
+  });
 
   Future<void> _close(ReviewItemDto item, {required bool dismiss}) async {
     final finance = _finance;
@@ -52,9 +53,7 @@ class _ReviewPageState extends State<ReviewPage> {
     if (!mounted) return;
     if (result is ApplicationFailure<TransactionDto>) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('The review issue could not be updated. Try again.'),
-        ),
+        SnackBar(content: Text(context.l10n.text('dataPreserved'))),
       );
       return;
     }
@@ -74,134 +73,115 @@ class _ReviewPageState extends State<ReviewPage> {
         ),
       );
       if (changed == true) _refresh();
-      return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('The transaction could not be opened.')),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     if (_finance == null) {
-      return const _ReviewMessage(
+      return ButlerlyEmptyState(
         icon: Icons.fact_check_outlined,
-        title: 'Nothing needs review right now.',
-        message:
-            'Review becomes available when local transaction storage is available.',
+        title: context.l10n.text('reviewEmpty'),
+        message: context.l10n.text('reviewEmptyBody'),
       );
     }
-    return FutureBuilder<List<ReviewItemDto>>(
-      future: _items,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return _ReviewMessage(
-            icon: Icons.error_outline,
-            title: 'Review items could not be loaded',
-            message: 'Your local records were not changed. Try again.',
-            actionLabel: 'Try again',
-            onAction: _refresh,
-          );
-        }
-        final items = snapshot.requireData;
-        if (items.isEmpty) {
-          return const _ReviewMessage(
-            icon: Icons.fact_check_outlined,
-            title: 'Nothing needs review right now.',
-            message:
-                'Butlerly will show incomplete, uncertain, or conflicting records here without changing them automatically.',
-          );
-        }
-        return ListView.separated(
-          padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
-          itemCount: items.length + 1,
-          separatorBuilder: (_, index) => index == 0
-              ? const SizedBox(height: 12)
-              : const Divider(height: 1),
-          itemBuilder: (context, index) {
-            if (index == 0) {
-              return Text(
-                'Review',
-                style: Theme.of(context).textTheme.headlineMedium,
+    return ButlerlyPage(
+      title: context.l10n.text('review'),
+      subtitle: context.l10n.text('reviewSubtitle'),
+      children: [
+        SegmentedButton<_ReviewView>(
+          showSelectedIcon: false,
+          segments: [
+            ButtonSegment(
+              value: _ReviewView.needsReview,
+              label: Text(context.l10n.text('needsReview')),
+            ),
+            ButtonSegment(
+              value: _ReviewView.uncategorized,
+              label: Text(context.l10n.text('uncategorized')),
+            ),
+            ButtonSegment(
+              value: _ReviewView.duplicates,
+              label: Text(context.l10n.text('possibleDuplicates')),
+            ),
+          ],
+          selected: {_view},
+          onSelectionChanged: (value) => setState(() => _view = value.single),
+        ),
+        const SizedBox(height: ButlerlySpacing.section),
+        if (_view != _ReviewView.needsReview)
+          ButlerlyEmptyState(
+            icon: _view == _ReviewView.uncategorized
+                ? Icons.sell_outlined
+                : Icons.copy_all_outlined,
+            title: context.l10n.text('reviewEmpty'),
+            message: context.l10n.text('reviewEmptyBody'),
+          )
+        else
+          FutureBuilder<List<ReviewItemDto>>(
+            future: _items,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const Padding(
+                  padding: EdgeInsets.all(ButlerlySpacing.large),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              if (snapshot.hasError) {
+                return ButlerlyErrorState(
+                  title: context.l10n.text('reviewLoadError'),
+                  message: context.l10n.text('tryAgain'),
+                  preserved: context.l10n.text('dataPreserved'),
+                  actionLabel: context.l10n.text('tryAgain'),
+                  onAction: _refresh,
+                );
+              }
+              final items = snapshot.requireData;
+              if (items.isEmpty) {
+                return ButlerlyEmptyState(
+                  icon: Icons.check_circle_outline_rounded,
+                  title: context.l10n.text('reviewEmpty'),
+                  message: context.l10n.text('reviewEmptyBody'),
+                );
+              }
+              return Column(
+                children: items
+                    .map(
+                      (item) => Padding(
+                        padding: const EdgeInsets.only(
+                          bottom: ButlerlySpacing.small,
+                        ),
+                        child: ButlerlyReviewCard(
+                          title:
+                              item.description ??
+                              context.l10n.text('untitledTransaction'),
+                          reason: item.detail ?? _reason(item.reason, context),
+                          recommendation: context.l10n.text(
+                            'reviewRecommendation',
+                          ),
+                          primaryLabel: context.l10n.text('resolve'),
+                          onPrimary: () => _close(item, dismiss: false),
+                          editLabel: context.l10n.text('edit'),
+                          dismissLabel: context.l10n.text('dismiss'),
+                          onEdit: () => _openTransaction(item),
+                          onDismiss: () => _close(item, dismiss: true),
+                        ),
+                      ),
+                    )
+                    .toList(growable: false),
               );
-            }
-            final item = items[index - 1];
-            return ListTile(
-              leading: const Icon(Icons.flag_outlined),
-              title: Text(item.description ?? 'Untitled transaction'),
-              subtitle: Text(item.detail ?? _reasonLabel(item.reason)),
-              trailing: PopupMenuButton<_ReviewAction>(
-                onSelected: (action) =>
-                    _close(item, dismiss: action == _ReviewAction.dismiss),
-                itemBuilder: (_) => const [
-                  PopupMenuItem(
-                    value: _ReviewAction.resolve,
-                    child: Text('Resolve review issue'),
-                  ),
-                  PopupMenuItem(
-                    value: _ReviewAction.dismiss,
-                    child: Text('Dismiss review issue'),
-                  ),
-                ],
-              ),
-              onTap: () => _openTransaction(item),
-            );
-          },
-        );
-      },
+            },
+          ),
+        const SizedBox(height: ButlerlySpacing.structural),
+      ],
     );
   }
 }
 
-enum _ReviewAction { resolve, dismiss }
+enum _ReviewView { needsReview, uncategorized, duplicates }
 
-String _reasonLabel(String value) => switch (value) {
-  'incomplete' => 'Incomplete transaction',
-  'uncertain' => 'Uncertain transaction',
-  'conflict' => 'Conflicting transaction details',
-  'duplicateCandidate' => 'Possible duplicate',
-  _ => 'Review needed',
+String _reason(String value, BuildContext context) => switch (value) {
+  'incomplete' => context.l10n.text('uncategorized'),
+  'duplicateCandidate' => context.l10n.text('possibleDuplicates'),
+  _ => context.l10n.text('needsReview'),
 };
-
-class _ReviewMessage extends StatelessWidget {
-  const _ReviewMessage({
-    required this.icon,
-    required this.title,
-    required this.message,
-    this.actionLabel,
-    this.onAction,
-  });
-
-  final IconData icon;
-  final String title;
-  final String message;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 520),
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 48),
-            const SizedBox(height: 20),
-            Text(title, style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center),
-            if (actionLabel != null) ...[
-              const SizedBox(height: 20),
-              FilledButton(onPressed: onAction, child: Text(actionLabel!)),
-            ],
-          ],
-        ),
-      ),
-    ),
-  );
-}

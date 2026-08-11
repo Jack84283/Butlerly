@@ -2,6 +2,45 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
 import '../result/application_result.dart';
 
+final class InitialMasterData {
+  const InitialMasterData({
+    this.merchants = const [],
+    this.categories = const [],
+    this.tags = const [],
+  });
+
+  final List<Merchant> merchants;
+  final List<Category> categories;
+  final List<Tag> tags;
+}
+
+final class SeedInitialMasterData {
+  const SeedInitialMasterData(this.merchants, this.categories, this.tags);
+
+  final MerchantRepository merchants;
+  final CategoryRepository categories;
+  final TagRepository tags;
+
+  Future<ApplicationResult<void>> call(InitialMasterData data) =>
+      runApplication('seed initial master data', () async {
+        for (final merchant in data.merchants) {
+          if (await merchants.findById(merchant.id) == null) {
+            await merchants.save(merchant);
+          }
+        }
+        for (final category in data.categories) {
+          if (await categories.findById(category.id) == null) {
+            await categories.save(category);
+          }
+        }
+        for (final tag in data.tags) {
+          if (await tags.findById(tag.id) == null) {
+            await tags.save(tag);
+          }
+        }
+      });
+}
+
 final class SavePaymentSource {
   const SavePaymentSource(this.repository);
   final PaymentSourceRepository repository;

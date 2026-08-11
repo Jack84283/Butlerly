@@ -10,6 +10,11 @@ final class FinanceServices {
     TagRepository tags,
     EvidenceRepository evidence,
   ) : listTransactions = ListTransactions(transactions),
+      seedInitialMasterData = SeedInitialMasterData(
+        merchants,
+        categories,
+        tags,
+      ),
       createTransaction = CreateTransaction(
         transactions,
         const SystemApplicationClock(),
@@ -66,6 +71,7 @@ final class FinanceServices {
       listEvidenceForTransaction = ListEvidenceForTransaction(evidence);
 
   final ListTransactions listTransactions;
+  final SeedInitialMasterData seedInitialMasterData;
   final CreateTransaction createTransaction;
   final GetTransaction getTransaction;
   final UpdateTransaction updateTransaction;

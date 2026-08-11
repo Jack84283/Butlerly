@@ -1,0 +1,54 @@
+import 'package:butlerly/core/di/finance_services.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
+
+/// Presentation-only lookup data for transaction master-data references.
+///
+/// Transaction DTOs intentionally carry stable foreign keys. Screens use this
+/// model to resolve those keys without bypassing the application layer.
+final class TransactionMasterData {
+  const TransactionMasterData({
+    this.merchantNames = const {},
+    this.categoryNames = const {},
+    this.tagNames = const {},
+  });
+
+  final Map<String, String> merchantNames;
+  final Map<String, String> categoryNames;
+  final Map<String, String> tagNames;
+
+  String? merchantName(String? id) => id == null ? null : merchantNames[id];
+
+  String? categoryName(String? id) => id == null ? null : categoryNames[id];
+
+  String? tagName(String id) => tagNames[id];
+
+  static Future<TransactionMasterData> load(FinanceServices finance) async {
+    final merchantsResult = await finance.listMerchants();
+    final categoriesResult = await finance.listCategories();
+    final tagsResult = await finance.listTags();
+
+    final merchants = switch (merchantsResult) {
+      ApplicationSuccess<List<Merchant>>(:final value) => value,
+      _ => const <Merchant>[],
+    };
+    final categories = switch (categoriesResult) {
+      ApplicationSuccess<List<Category>>(:final value) => value,
+      _ => const <Category>[],
+    };
+    final tags = switch (tagsResult) {
+      ApplicationSuccess<List<Tag>>(:final value) => value,
+      _ => const <Tag>[],
+    };
+
+    return TransactionMasterData(
+      merchantNames: {
+        for (final value in merchants) value.id.value: value.name,
+      },
+      categoryNames: {
+        for (final value in categories) value.id.value: value.name,
+      },
+      tagNames: {for (final value in tags) value.id.value: value.name},
+    );
+  }
+}

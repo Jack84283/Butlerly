@@ -1,6 +1,8 @@
+import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/app/router/app_router.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/app/theme/theme_mode_provider.dart';
+import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +13,7 @@ class ButlerlyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
+    final locale = ref.watch(localeProvider);
 
     return MaterialApp.router(
       title: 'Butlerly',
@@ -18,9 +21,11 @@ class ButlerlyApp extends ConsumerWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeMode,
+      locale: locale,
       routerConfig: appRouter,
-      supportedLocales: const [Locale('en')],
+      supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: const [
+        AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
