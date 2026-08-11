@@ -125,7 +125,7 @@ abstract final class AppTheme {
       cardTheme: CardThemeData(
         elevation: ButlerlyElevation.raised,
         margin: EdgeInsets.zero,
-        color: colors.surface,
+        color: colors.elevatedSurface,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(ButlerlyRadius.standard),

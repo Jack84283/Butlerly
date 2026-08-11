@@ -1,8 +1,8 @@
 # Butlerly Home design QA
 
-- Source visual truth: `design/04 Design/Screens/UI-0101 — Home — Smartphone Dark.png`
-- Implementation screenshot: `design-evidence/home-ios-17pro-dark.png`
-- Combined comparison: `design-evidence/home-comparison.png`
+- Source visual truth: `docs/04 Design/Screens/UI-0101 — Home — Smartphone Dark.png`
+- Implementation screenshot: `docs/design-evidence/home-ios-17pro-dark.png`
+- Combined comparison: `docs/design-evidence/home-comparison.png`
 - Viewport: 390 × 844 logical pixels, density 1×
 - Source pixels: 1024 × 1536 annotated design board containing a framed phone
 - Implementation pixels: 1206 × 2622 (iPhone 17 Pro Simulator at 3× density)
@@ -35,7 +35,7 @@ The summary/header, quick actions, attention state, and bottom navigation were r
 ## Comparison history
 
 1. P2: the local-summary heading overflowed by 9.9 px at 320 × 568. Fixed with `Expanded`, single-line truncation, and retested at all three phone widths.
-2. Post-fix evidence: `design-evidence/home-comparison.png`; no further layout overflow appears in the tested implementation.
+2. Post-fix evidence: `docs/design-evidence/home-comparison.png`; no further layout overflow appears in the tested implementation.
 
 ## Primary interactions tested
 
