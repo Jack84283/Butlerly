@@ -1,4 +1,7 @@
 import 'package:butlerly/app/shell/adaptive_shell.dart';
+import 'package:butlerly/core/di/finance_services.dart';
+import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/features/foundation/presentation/review_page.dart';
 import 'package:butlerly/features/foundation/presentation/search_page.dart';
@@ -10,6 +13,8 @@ import 'package:go_router/go_router.dart';
 final appRouter = GoRouter(
   initialLocation: '/',
   routes: [
+    GoRoute(path: '/launch', builder: (_, _) => const LaunchPage()),
+    GoRoute(path: '/welcome', builder: (_, _) => const WelcomePage()),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>
           AdaptiveShell(navigationShell: navigationShell),
@@ -60,6 +65,27 @@ final appRouter = GoRouter(
           ],
         ),
       ],
+    ),
+    GoRoute(
+      path: '/transactions/add',
+      builder: (context, state) => services.isRegistered<FinanceServices>()
+          ? TransactionEditorPage(finance: services<FinanceServices>())
+          : const Scaffold(
+              body: Center(child: Text('Local storage is unavailable.')),
+            ),
+    ),
+    GoRoute(
+      path: '/import-export',
+      builder: (_, _) => const ImportExportPage(),
+    ),
+    GoRoute(
+      path: '/notifications',
+      builder: (_, _) => const NotificationsPage(),
+    ),
+    GoRoute(path: '/insights', builder: (_, _) => const InsightsPage()),
+    GoRoute(
+      path: '/assistant',
+      builder: (_, _) => const AssistantUnavailablePage(),
     ),
   ],
   errorBuilder: (context, state) => Scaffold(

@@ -42,10 +42,24 @@ void main() {
     await tester.tap(find.text('Save locally'));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(ListTile, 'Lunch'), findsOneWidget);
+    expect(find.text('Lunch'), findsOneWidget);
     await tester.tap(find.text('Lunch'));
     await tester.pumpAndSettle();
     expect(find.text('Transaction detail'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('Organize transaction'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.text('Organize transaction'));
+    await tester.pumpAndSettle();
+    expect(find.byType(TextFormField), findsNothing);
+    expect(find.byType(DropdownButtonFormField<String>), findsNWidgets(3));
+    expect(find.textContaining('add a new'), findsNothing);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
 
     await tester.tap(find.byIcon(Icons.edit_outlined));
     await tester.pumpAndSettle();
@@ -125,15 +139,21 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Any category'));
+    await tester.tap(find.text('Filters'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Any category').last);
+    await tester.tap(find.text('Any category').last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Dining').last);
+    await tester.ensureVisible(find.text('Apply filters'));
+    await tester.tap(find.text('Apply filters'));
+    await tester.pumpAndSettle();
     await tester.enterText(find.byType(EditableText), 'Lunch');
     await tester.testTextInput.receiveAction(TextInputAction.search);
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(ListTile, 'Lunch'), findsOneWidget);
-    expect(find.widgetWithText(ListTile, 'Bus'), findsNothing);
+    expect(find.text('Lunch'), findsAtLeastNWidgets(1));
+    expect(find.text('Bus'), findsNothing);
   });
 
   testWidgets('resolves an active local review issue', (tester) async {
@@ -169,12 +189,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Lunch'), findsOneWidget);
-    await tester.tap(find.byIcon(Icons.more_vert));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Resolve review issue'));
+    await tester.tap(find.text('Resolve'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Nothing needs review right now.'), findsOneWidget);
+    expect(find.text('You’re all caught up'), findsOneWidget);
   });
 
   testWidgets('creates and archives a local payment source', (tester) async {
@@ -191,6 +209,241 @@ void main() {
     await tester.tap(find.byTooltip('Archive payment source'));
     await tester.pumpAndSettle();
     expect(find.textContaining('archived'), findsOneWidget);
+  });
+
+  testWidgets('detail presents only the canonical transaction calendar date', (
+    tester,
+  ) async {
+    final transaction = TransactionDto(
+      id: 'timezone-boundary',
+      amount: '100',
+      currency: 'USD',
+      direction: TransactionDirection.expense.name,
+      status: TransactionStatus.active.name,
+      reviewState: TransactionReviewState.clear.name,
+      occurredAt: DateTime.utc(2026, 8, 11, 4),
+      transactionDate: '2026-08-10',
+      createdAt: DateTime.utc(2026, 8, 11, 4),
+      updatedAt: DateTime.utc(2026, 8, 11, 4),
+      provenance: [
+        ProvenanceDto(
+          sourceType: ProvenanceSourceType.userEntry.name,
+          capturedAt: DateTime.utc(2026, 8, 11, 4),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TransactionDetailPage(
+          finance: services<FinanceServices>(),
+          transaction: transaction,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('2026-08-10'), findsOneWidget);
+    expect(find.text('2026-08-11'), findsNothing);
+    expect(find.text('Entered locally'), findsOneWidget);
+  });
+
+  testWidgets('detail resolves master-data IDs to user-visible names', (
+    tester,
+  ) async {
+    final finance = services<FinanceServices>();
+    await finance.saveMerchant(
+      Merchant(id: MerchantId('merchant-123456'), name: 'Corner Market'),
+    );
+    await finance.saveCategory(
+      Category(
+        id: CategoryId('category-123456'),
+        name: 'Groceries',
+        origin: CategoryOrigin.user,
+      ),
+    );
+    await finance.saveTag(Tag(id: TagId('tag-123456'), name: 'Weekly'));
+
+    final transaction = TransactionDto(
+      id: 'organized',
+      amount: '24.50',
+      currency: 'USD',
+      direction: TransactionDirection.expense.name,
+      status: TransactionStatus.active.name,
+      reviewState: TransactionReviewState.clear.name,
+      merchantId: 'merchant-123456',
+      categoryId: 'category-123456',
+      tagIds: const ['tag-123456'],
+      transactionDate: '2026-08-10',
+      createdAt: DateTime.utc(2026, 8, 10),
+      updatedAt: DateTime.utc(2026, 8, 10),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TransactionDetailPage(finance: finance, transaction: transaction),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Corner Market'), findsOneWidget);
+    expect(find.text('Groceries'), findsOneWidget);
+    expect(find.text('Weekly'), findsOneWidget);
+    expect(find.text('merchant-123456'), findsNothing);
+    expect(find.text('category-123456'), findsNothing);
+    expect(find.text('tag-123456'), findsNothing);
+  });
+
+  testWidgets('organizer assigns predefined merchant category and tag', (
+    tester,
+  ) async {
+    final finance = services<FinanceServices>();
+    await finance.saveMerchant(
+      Merchant(id: MerchantId('merchant-market'), name: 'Corner Market'),
+    );
+    await finance.saveCategory(
+      Category(
+        id: CategoryId('category-groceries'),
+        name: 'Groceries',
+        origin: CategoryOrigin.system,
+      ),
+    );
+    await finance.saveTag(Tag(id: TagId('tag-weekly'), name: 'Weekly'));
+    await finance.createTransaction(
+      CreateTransactionCommand(
+        id: 'select-master-data',
+        provenanceId: 'manual-select-master-data',
+        timing: KnownTransactionTime(DateTime.utc(2026, 8, 10)),
+        money: Money(
+          amount: DecimalValue.parse('24.50'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        description: 'Market purchase',
+      ),
+    );
+    final transactionResult = await finance.getTransaction(
+      'select-master-data',
+    );
+    final transaction =
+        (transactionResult as ApplicationSuccess<TransactionDto>).value;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TransactionDetailPage(finance: finance, transaction: transaction),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Organize transaction'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.text('Organize transaction'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(DropdownButtonFormField<String>).at(0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Corner Market').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(DropdownButtonFormField<String>).at(1));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Groceries').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(DropdownButtonFormField<String>).at(2));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Weekly').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save organization'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Transaction detail'), findsOneWidget);
+    expect(find.text('Corner Market'), findsOneWidget);
+    expect(find.text('Groceries'), findsOneWidget);
+    expect(find.text('Weekly'), findsOneWidget);
+    final stored = repository.values['select-master-data']!;
+    expect(stored.merchantId, MerchantId('merchant-market'));
+    expect(stored.categoryId, CategoryId('category-groceries'));
+    expect(stored.tagIds, contains(TagId('tag-weekly')));
+  });
+
+  testWidgets('organizer removes an assigned tag and returns to detail', (
+    tester,
+  ) async {
+    final finance = services<FinanceServices>();
+    await finance.saveTag(Tag(id: TagId('tag-remove'), name: 'Remove me'));
+    await finance.createTransaction(
+      CreateTransactionCommand(
+        id: 'remove-tag',
+        provenanceId: 'manual-remove-tag',
+        timing: KnownTransactionTime(DateTime.utc(2026, 8, 10)),
+        money: Money(
+          amount: DecimalValue.parse('9.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        description: 'Tagged purchase',
+      ),
+    );
+    await finance.addTag('remove-tag', 'tag-remove');
+    final result = await finance.getTransaction('remove-tag');
+    final transaction = (result as ApplicationSuccess<TransactionDto>).value;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TransactionDetailPage(finance: finance, transaction: transaction),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Organize transaction'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.text('Organize transaction'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Remove me'), findsNWidgets(2));
+    final chipBounds = tester.getRect(find.byType(InputChip));
+    await tester.tapAt(Offset(chipBounds.right - 16, chipBounds.center.dy));
+    await tester.pumpAndSettle();
+    expect(find.text('Remove me'), findsOneWidget);
+    await tester.tap(find.text('Save organization'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Transaction detail'), findsOneWidget);
+    expect(find.text('Remove me'), findsNothing);
+    expect(repository.values['remove-tag']!.tagIds, isEmpty);
+  });
+
+  testWidgets('editor presents the canonical transaction calendar date', (
+    tester,
+  ) async {
+    final transaction = TransactionDto(
+      id: 'timezone-boundary-editor',
+      amount: '100',
+      currency: 'USD',
+      direction: TransactionDirection.expense.name,
+      status: TransactionStatus.active.name,
+      reviewState: TransactionReviewState.clear.name,
+      occurredAt: DateTime.utc(2026, 8, 11, 4),
+      transactionDate: '2026-08-10',
+      createdAt: DateTime.utc(2026, 8, 11, 4),
+      updatedAt: DateTime.utc(2026, 8, 11, 4),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TransactionEditorPage(
+          finance: services<FinanceServices>(),
+          existing: transaction,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('2026-08-10'), findsOneWidget);
+    expect(find.text('2026-08-11'), findsNothing);
   });
 }
 
@@ -230,12 +483,16 @@ final class MemoryTransactionRepository implements TransactionRepository {
 }
 
 final class MemoryMerchants implements MerchantRepository {
+  final values = <String, Merchant>{};
+
   @override
-  Future<Merchant?> findById(MerchantId id) async => null;
+  Future<Merchant?> findById(MerchantId id) async => values[id.value];
   @override
-  Future<List<Merchant>> listAll() async => const [];
+  Future<List<Merchant>> listAll() async => values.values.toList();
   @override
-  Future<void> save(Merchant merchant) async {}
+  Future<void> save(Merchant merchant) async {
+    values[merchant.id.value] = merchant;
+  }
 }
 
 final class MemoryPaymentSources implements PaymentSourceRepository {
@@ -267,12 +524,16 @@ final class MemoryCategories implements CategoryRepository {
 }
 
 final class MemoryTags implements TagRepository {
+  final values = <String, Tag>{};
+
   @override
-  Future<Tag?> findById(TagId id) async => null;
+  Future<Tag?> findById(TagId id) async => values[id.value];
   @override
-  Future<List<Tag>> listAll() async => const [];
+  Future<List<Tag>> listAll() async => values.values.toList();
   @override
-  Future<void> save(Tag tag) async {}
+  Future<void> save(Tag tag) async {
+    values[tag.id.value] = tag;
+  }
 }
 
 final class MemoryEvidence implements EvidenceRepository {

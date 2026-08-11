@@ -1,0 +1,520 @@
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:flutter/material.dart';
+
+class ButlerlyPage extends StatelessWidget {
+  const ButlerlyPage({
+    required this.children,
+    this.title,
+    this.subtitle,
+    this.actions = const [],
+    this.padding,
+    this.controller,
+    super.key,
+  });
+
+  final String? title;
+  final String? subtitle;
+  final List<Widget> actions;
+  final List<Widget> children;
+  final EdgeInsets? padding;
+  final ScrollController? controller;
+
+  @override
+  Widget build(BuildContext context) => CustomScrollView(
+    controller: controller,
+    physics: const AlwaysScrollableScrollPhysics(),
+    slivers: [
+      if (title != null)
+        SliverAppBar(
+          pinned: true,
+          title: Text(title!),
+          actions: actions,
+          backgroundColor: context.colors.background.withValues(alpha: 0.96),
+        ),
+      SliverPadding(
+        padding:
+            padding ??
+            const EdgeInsets.fromLTRB(
+              ButlerlySize.phoneGutter,
+              ButlerlySpacing.standard,
+              ButlerlySize.phoneGutter,
+              ButlerlySpacing.large,
+            ),
+        sliver: SliverList.list(
+          children: [
+            if (subtitle != null) ...[
+              Text(subtitle!, style: Theme.of(context).textTheme.bodyMedium),
+              const SizedBox(height: ButlerlySpacing.section),
+            ],
+            ...children,
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
+class ButlerlyCard extends StatelessWidget {
+  const ButlerlyCard({
+    required this.child,
+    this.padding = const EdgeInsets.all(ButlerlySpacing.standard),
+    this.onTap,
+    this.semanticLabel,
+    this.color,
+    super.key,
+  });
+
+  final Widget child;
+  final EdgeInsets padding;
+  final VoidCallback? onTap;
+  final String? semanticLabel;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    container: true,
+    button: onTap != null,
+    label: semanticLabel,
+    child: Card(
+      color: color,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+        onTap: onTap,
+        child: Padding(padding: padding, child: child),
+      ),
+    ),
+  );
+}
+
+class ButlerlySectionHeader extends StatelessWidget {
+  const ButlerlySectionHeader({required this.title, this.action, super.key});
+
+  final String title;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(
+      top: ButlerlySpacing.section,
+      bottom: ButlerlySpacing.small,
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+        ),
+        ?action,
+      ],
+    ),
+  );
+}
+
+enum ButlerlyStatus { success, warning, error, info, neutral, review }
+
+class ButlerlyStatusChip extends StatelessWidget {
+  const ButlerlyStatusChip({
+    required this.label,
+    required this.status,
+    this.icon,
+    super.key,
+  });
+
+  final String label;
+  final ButlerlyStatus status;
+  final IconData? icon;
+
+  Color _color(BuildContext context) => switch (status) {
+    ButlerlyStatus.success => context.colors.success,
+    ButlerlyStatus.warning => context.colors.warning,
+    ButlerlyStatus.error => context.colors.error,
+    ButlerlyStatus.info => context.colors.info,
+    ButlerlyStatus.review => context.colors.brandStrong,
+    ButlerlyStatus.neutral => context.colors.secondaryText,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _color(context);
+    return Semantics(
+      label: label,
+      child: Container(
+        constraints: const BoxConstraints(
+          minHeight: ButlerlySize.minimumTarget,
+        ),
+        padding: const EdgeInsets.symmetric(
+          horizontal: ButlerlySpacing.small,
+          vertical: ButlerlySpacing.compact,
+        ),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(ButlerlyRadius.full),
+          border: Border.all(color: color.withValues(alpha: 0.65)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: ButlerlySpacing.micro),
+            ],
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ButlerlyRecordRow extends StatelessWidget {
+  const ButlerlyRecordRow({
+    required this.title,
+    required this.amount,
+    required this.currency,
+    required this.icon,
+    this.subtitle,
+    this.meta,
+    this.isIncome = false,
+    this.needsReview = false,
+    this.onTap,
+    super.key,
+  });
+
+  final String title;
+  final String? subtitle;
+  final String? meta;
+  final String amount;
+  final String currency;
+  final IconData icon;
+  final bool isIncome;
+  final bool needsReview;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: onTap != null,
+    label: '$title, $amount $currency${needsReview ? ', needs review' : ''}',
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 72),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: ButlerlySpacing.small,
+            vertical: ButlerlySpacing.compact,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: ButlerlySize.preferredTarget,
+                height: ButlerlySize.preferredTarget,
+                decoration: BoxDecoration(
+                  color: needsReview
+                      ? context.colors.warning.withValues(alpha: 0.15)
+                      : context.colors.brand.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(ButlerlyRadius.full),
+                ),
+                child: Icon(
+                  icon,
+                  color: needsReview
+                      ? context.colors.warning
+                      : context.colors.brandStrong,
+                ),
+              ),
+              const SizedBox(width: ButlerlySpacing.small),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                    if (subtitle != null)
+                      Text(
+                        subtitle!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: ButlerlySpacing.compact),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isIncome
+                            ? Icons.arrow_downward_rounded
+                            : Icons.arrow_upward_rounded,
+                        size: 14,
+                        color: isIncome
+                            ? context.colors.success
+                            : context.colors.primaryText,
+                      ),
+                      Text(
+                        '$amount $currency',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                          color: isIncome
+                              ? context.colors.success
+                              : context.colors.primaryText,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (meta != null)
+                    Text(meta!, style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+class ButlerlyEmptyState extends StatelessWidget {
+  const ButlerlyEmptyState({
+    required this.icon,
+    required this.title,
+    required this.message,
+    this.actionLabel,
+    this.onAction,
+    this.secondaryActionLabel,
+    this.onSecondaryAction,
+    super.key,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+  final String? secondaryActionLabel;
+  final VoidCallback? onSecondaryAction;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    container: true,
+    label: '$title. $message',
+    child: Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: Padding(
+          padding: const EdgeInsets.all(ButlerlySpacing.large),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 48, color: context.colors.secondaryText),
+              const SizedBox(height: ButlerlySpacing.standard),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              const SizedBox(height: ButlerlySpacing.compact),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              if (actionLabel != null) ...[
+                const SizedBox(height: ButlerlySpacing.section),
+                FilledButton(onPressed: onAction, child: Text(actionLabel!)),
+              ],
+              if (secondaryActionLabel != null)
+                TextButton(
+                  onPressed: onSecondaryAction,
+                  child: Text(secondaryActionLabel!),
+                ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+class ButlerlyErrorState extends StatelessWidget {
+  const ButlerlyErrorState({
+    required this.title,
+    required this.message,
+    required this.preserved,
+    required this.actionLabel,
+    required this.onAction,
+    super.key,
+  });
+
+  final String title;
+  final String message;
+  final String preserved;
+  final String actionLabel;
+  final VoidCallback onAction;
+
+  @override
+  Widget build(BuildContext context) => ButlerlyEmptyState(
+    icon: Icons.error_outline_rounded,
+    title: title,
+    message: '$message\n$preserved',
+    actionLabel: actionLabel,
+    onAction: onAction,
+  );
+}
+
+class ButlerlyReviewCard extends StatelessWidget {
+  const ButlerlyReviewCard({
+    required this.title,
+    required this.reason,
+    required this.recommendation,
+    required this.primaryLabel,
+    required this.onPrimary,
+    this.editLabel,
+    this.dismissLabel,
+    this.onEdit,
+    this.onDismiss,
+    super.key,
+  });
+
+  final String title;
+  final String reason;
+  final String recommendation;
+  final String primaryLabel;
+  final VoidCallback onPrimary;
+  final String? editLabel;
+  final String? dismissLabel;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDismiss;
+
+  @override
+  Widget build(BuildContext context) => ButlerlyCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.flag_outlined, color: context.colors.warning),
+            const SizedBox(width: ButlerlySpacing.compact),
+            Expanded(
+              child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+            ),
+          ],
+        ),
+        const SizedBox(height: ButlerlySpacing.small),
+        Text(reason, style: Theme.of(context).textTheme.bodyMedium),
+        const SizedBox(height: ButlerlySpacing.small),
+        Text(recommendation, style: Theme.of(context).textTheme.bodyLarge),
+        const SizedBox(height: ButlerlySpacing.standard),
+        Wrap(
+          spacing: ButlerlySpacing.compact,
+          runSpacing: ButlerlySpacing.compact,
+          children: [
+            FilledButton(onPressed: onPrimary, child: Text(primaryLabel)),
+            if (onEdit != null)
+              OutlinedButton(
+                onPressed: onEdit,
+                child: Text(editLabel ?? 'Edit'),
+              ),
+            if (onDismiss != null)
+              TextButton(
+                onPressed: onDismiss,
+                child: Text(dismissLabel ?? 'Dismiss'),
+              ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+class ButlerlySourcePreview extends StatelessWidget {
+  const ButlerlySourcePreview({
+    required this.title,
+    required this.subtitle,
+    this.onOpen,
+    super.key,
+  });
+
+  final String title;
+  final String subtitle;
+  final VoidCallback? onOpen;
+
+  @override
+  Widget build(BuildContext context) => ButlerlyCard(
+    onTap: onOpen,
+    semanticLabel: '$title, $subtitle',
+    child: Row(
+      children: [
+        Container(
+          width: 64,
+          height: 80,
+          decoration: BoxDecoration(
+            color: context.colors.subtleSurface,
+            borderRadius: BorderRadius.circular(ButlerlyRadius.small),
+            border: Border.all(color: context.colors.border),
+          ),
+          child: Icon(
+            Icons.receipt_long_outlined,
+            color: context.colors.secondaryText,
+          ),
+        ),
+        const SizedBox(width: ButlerlySpacing.standard),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: Theme.of(context).textTheme.bodyLarge),
+              const SizedBox(height: ButlerlySpacing.micro),
+              Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ),
+        ),
+        const Icon(Icons.chevron_right_rounded),
+      ],
+    ),
+  );
+}
+
+class ButlerlyOfflineBanner extends StatelessWidget {
+  const ButlerlyOfflineBanner({required this.message, super.key});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    liveRegion: true,
+    label: message,
+    child: Container(
+      padding: const EdgeInsets.all(ButlerlySpacing.small),
+      decoration: BoxDecoration(
+        color: context.colors.info.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+        border: Border.all(color: context.colors.info.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.cloud_off_outlined, color: context.colors.info),
+          const SizedBox(width: ButlerlySpacing.compact),
+          Expanded(child: Text(message)),
+        ],
+      ),
+    ),
+  );
+}

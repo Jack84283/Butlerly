@@ -1,6 +1,10 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
+import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
@@ -12,7 +16,8 @@ class SearchPage extends StatefulWidget {
   State<SearchPage> createState() => _SearchPageState();
 }
 
-class _SearchPageState extends State<SearchPage> {
+class _SearchPageState extends State<SearchPage>
+    with AutomaticKeepAliveClientMixin {
   final _text = TextEditingController();
   String? _currency;
   TransactionDirection? _direction;
@@ -23,15 +28,21 @@ class _SearchPageState extends State<SearchPage> {
   DateTime? _to;
   Future<List<TransactionDto>>? _results;
   late Future<List<Category>> _categories;
+  late Future<List<PaymentSource>> _paymentSources;
+  Map<String, String> _categoryNames = const {};
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
       : null;
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   void initState() {
     super.initState();
     _categories = _loadCategories();
+    _paymentSources = _loadPaymentSources();
   }
 
   @override
@@ -64,31 +75,241 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Future<List<Category>> _loadCategories() async {
-    final finance = _finance;
-    if (finance == null) return const [];
-    final result = await finance.listCategories();
-    return switch (result) {
+    final result = await _finance?.listCategories();
+    final categories = switch (result) {
       ApplicationSuccess<List<Category>>(:final value) => value,
-      ApplicationFailure<List<Category>>() => const [],
+      _ => const <Category>[],
+    };
+    _categoryNames = {
+      for (final category in categories) category.id.value: category.name,
+    };
+    if (mounted) setState(() {});
+    return categories;
+  }
+
+  Future<List<PaymentSource>> _loadPaymentSources() async {
+    final result = await _finance?.listPaymentSources();
+    return switch (result) {
+      ApplicationSuccess<List<PaymentSource>>(:final value) => value,
+      _ => const [],
     };
   }
 
-  Future<void> _selectDate({required bool isStart}) async {
-    final initialDate = isStart ? _from ?? _to : _to ?? _from;
-    final selected = await showDatePicker(
-      context: context,
-      initialDate: initialDate ?? DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-    if (selected == null) return;
+  void _submit() => setState(() {
+    _results = _search();
+  });
+
+  void _clear() {
     setState(() {
-      if (isStart) {
-        _from = selected;
-      } else {
-        _to = selected;
-      }
+      _currency = null;
+      _direction = null;
+      _categoryId = null;
+      _paymentSourceId = null;
+      _needsReview = null;
+      _from = null;
+      _to = null;
+      _results = null;
     });
+  }
+
+  int get _activeFilterCount => [
+    _currency,
+    _direction,
+    _categoryId,
+    _paymentSourceId,
+    _needsReview,
+    _from,
+    _to,
+  ].where((value) => value != null).length;
+
+  Future<void> _openFilters() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              ButlerlySpacing.standard,
+              0,
+              ButlerlySpacing.standard,
+              MediaQuery.viewInsetsOf(context).bottom +
+                  ButlerlySpacing.standard,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    context.l10n.text('filters'),
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                  const SizedBox(height: ButlerlySpacing.section),
+                  DropdownButtonFormField<String?>(
+                    initialValue: _currency,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.text('currency'),
+                    ),
+                    items: [
+                      DropdownMenuItem(
+                        child: Text(context.l10n.text('anyCurrency')),
+                      ),
+                      for (final code in const ['USD', 'EUR', 'GBP', 'CAD'])
+                        DropdownMenuItem(value: code, child: Text(code)),
+                    ],
+                    onChanged: (value) =>
+                        setSheetState(() => _currency = value),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  DropdownButtonFormField<TransactionDirection?>(
+                    initialValue: _direction,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.text('direction'),
+                    ),
+                    items: [
+                      DropdownMenuItem(
+                        child: Text(context.l10n.text('anyDirection')),
+                      ),
+                      DropdownMenuItem(
+                        value: TransactionDirection.income,
+                        child: Text(context.l10n.text('income')),
+                      ),
+                      DropdownMenuItem(
+                        value: TransactionDirection.expense,
+                        child: Text(context.l10n.text('expense')),
+                      ),
+                    ],
+                    onChanged: (value) =>
+                        setSheetState(() => _direction = value),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () async {
+                            final value = await showDatePicker(
+                              context: context,
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime.now(),
+                              initialDate: _from ?? DateTime.now(),
+                            );
+                            if (value != null) {
+                              setSheetState(() => _from = value);
+                            }
+                          },
+                          icon: const Icon(Icons.calendar_today_outlined),
+                          label: Text(
+                            _from == null
+                                ? context.l10n.text('fromDate')
+                                : _searchDate(_from!),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: ButlerlySpacing.compact),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () async {
+                            final value = await showDatePicker(
+                              context: context,
+                              firstDate: _from ?? DateTime(2000),
+                              lastDate: DateTime.now(),
+                              initialDate: _to ?? DateTime.now(),
+                            );
+                            if (value != null) {
+                              setSheetState(() => _to = value);
+                            }
+                          },
+                          icon: const Icon(Icons.event_outlined),
+                          label: Text(
+                            _to == null
+                                ? context.l10n.text('toDate')
+                                : _searchDate(_to!),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  FutureBuilder<List<Category>>(
+                    future: _categories,
+                    builder: (context, snapshot) =>
+                        DropdownButtonFormField<String?>(
+                          initialValue: _categoryId,
+                          decoration: InputDecoration(
+                            labelText: context.l10n.text('anyCategory'),
+                          ),
+                          items: [
+                            DropdownMenuItem(
+                              child: Text(context.l10n.text('anyCategory')),
+                            ),
+                            ...?snapshot.data?.map(
+                              (value) => DropdownMenuItem(
+                                value: value.id.value,
+                                child: Text(value.name),
+                              ),
+                            ),
+                          ],
+                          onChanged: (value) =>
+                              setSheetState(() => _categoryId = value),
+                        ),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  FutureBuilder<List<PaymentSource>>(
+                    future: _paymentSources,
+                    builder: (context, snapshot) =>
+                        DropdownButtonFormField<String?>(
+                          initialValue: _paymentSourceId,
+                          decoration: InputDecoration(
+                            labelText: context.l10n.text('anyPaymentSource'),
+                          ),
+                          items: [
+                            DropdownMenuItem(
+                              child: Text(
+                                context.l10n.text('anyPaymentSource'),
+                              ),
+                            ),
+                            ...?snapshot.data?.map(
+                              (value) => DropdownMenuItem(
+                                value: value.id.value,
+                                child: Text(value.name),
+                              ),
+                            ),
+                          ],
+                          onChanged: (value) =>
+                              setSheetState(() => _paymentSourceId = value),
+                        ),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  SwitchListTile.adaptive(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(context.l10n.text('needsReview')),
+                    value: _needsReview == true,
+                    onChanged: (value) =>
+                        setSheetState(() => _needsReview = value ? true : null),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.section),
+                  FilledButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _submit();
+                    },
+                    child: Text(context.l10n.text('applyFilters')),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      _clear();
+                      Navigator.pop(context);
+                    },
+                    child: Text(context.l10n.text('clearFilters')),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _openDetail(TransactionDto transaction) async {
@@ -103,208 +324,127 @@ class _SearchPageState extends State<SearchPage> {
     if (changed == true) _submit();
   }
 
-  void _submit() {
-    final future = _search();
-    setState(() {
-      _results = future;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    final unavailable = _finance == null;
-    return ListView(
-      padding: const EdgeInsets.all(24),
+    super.build(context);
+    return ButlerlyPage(
+      title: context.l10n.text('search'),
+      subtitle: context.l10n.text('searchIntro'),
       children: [
-        Text('Search', style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: 16),
         SearchBar(
           controller: _text,
-          leading: const Icon(Icons.search),
-          hintText: 'Search transactions and evidence',
-          onSubmitted: (_) => _submit(),
+          hintText: context.l10n.text('searchHint'),
+          leading: const Icon(Icons.search_rounded),
           trailing: [
-            IconButton(
-              tooltip: 'Search',
-              icon: const Icon(Icons.arrow_forward),
-              onPressed: unavailable ? null : _submit,
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 12,
-          runSpacing: 8,
-          children: [
-            DropdownButton<String?>(
-              value: _currency,
-              hint: const Text('Any currency'),
-              items: const [null, 'USD', 'EUR', 'GBP', 'JPY']
-                  .map(
-                    (value) => DropdownMenuItem(
-                      value: value,
-                      child: Text(value ?? 'Any currency'),
-                    ),
-                  )
-                  .toList(),
-              onChanged: unavailable
-                  ? null
-                  : (value) => setState(() => _currency = value),
-            ),
-            DropdownButton<TransactionDirection?>(
-              value: _direction,
-              hint: const Text('Any direction'),
-              items: [null, ...TransactionDirection.values]
-                  .map(
-                    (value) => DropdownMenuItem(
-                      value: value,
-                      child: Text(value?.name ?? 'Any direction'),
-                    ),
-                  )
-                  .toList(),
-              onChanged: unavailable
-                  ? null
-                  : (value) => setState(() => _direction = value),
-            ),
-            FutureBuilder<List<Category>>(
-              future: _categories,
-              builder: (context, snapshot) => DropdownButton<String?>(
-                value: _categoryId,
-                hint: const Text('Any category'),
-                items: [
-                  const DropdownMenuItem<String?>(
-                    value: null,
-                    child: Text('Any category'),
-                  ),
-                  ...?snapshot.data?.map(
-                    (category) => DropdownMenuItem(
-                      value: category.id.value,
-                      child: Text(category.name),
-                    ),
-                  ),
-                ],
-                onChanged: unavailable
-                    ? null
-                    : (value) => setState(() => _categoryId = value),
-              ),
-            ),
-            FutureBuilder<List<PaymentSource>>(
-              future: _finance?.listPaymentSources().then(
-                (result) => switch (result) {
-                  ApplicationSuccess<List<PaymentSource>>(:final value) =>
-                    value,
-                  ApplicationFailure<List<PaymentSource>>() => const [],
+            if (_text.text.isNotEmpty)
+              IconButton(
+                tooltip: context.l10n.text('clear'),
+                onPressed: () {
+                  _text.clear();
+                  _submit();
                 },
+                icon: const Icon(Icons.close_rounded),
               ),
-              builder: (context, snapshot) => DropdownButton<String?>(
-                value: _paymentSourceId,
-                hint: const Text('Any payment source'),
-                items: [
-                  const DropdownMenuItem<String?>(
-                    value: null,
-                    child: Text('Any payment source'),
-                  ),
-                  ...?snapshot.data
-                      ?.where(
-                        (value) => value.status == PaymentSourceStatus.active,
-                      )
-                      .map(
-                        (value) => DropdownMenuItem(
-                          value: value.id.value,
-                          child: Text(value.name),
-                        ),
-                      ),
-                ],
-                onChanged: unavailable
-                    ? null
-                    : (value) => setState(() => _paymentSourceId = value),
-              ),
-            ),
-            DropdownButton<bool?>(
-              value: _needsReview,
-              hint: const Text('Any review state'),
-              items: const [
-                DropdownMenuItem<bool?>(
-                  value: null,
-                  child: Text('Any review state'),
-                ),
-                DropdownMenuItem<bool?>(
-                  value: true,
-                  child: Text('Needs review'),
-                ),
-                DropdownMenuItem<bool?>(
-                  value: false,
-                  child: Text('Clear review state'),
-                ),
-              ],
-              onChanged: unavailable
-                  ? null
-                  : (value) => setState(() => _needsReview = value),
-            ),
-            OutlinedButton.icon(
-              onPressed: unavailable ? null : () => _selectDate(isStart: true),
-              icon: const Icon(Icons.date_range_outlined),
+          ],
+          onChanged: (_) => setState(() {}),
+          onSubmitted: (_) => _submit(),
+        ),
+        const SizedBox(height: ButlerlySpacing.small),
+        Row(
+          children: [
+            FilterChip(
+              selected: _activeFilterCount > 0,
+              avatar: const Icon(Icons.tune_rounded, size: 18),
               label: Text(
-                _from == null
-                    ? 'From date'
-                    : 'From ${MaterialLocalizations.of(context).formatShortDate(_from!)}',
+                _activeFilterCount > 0
+                    ? '${context.l10n.text('filters')} ($_activeFilterCount)'
+                    : context.l10n.text('filters'),
               ),
+              onSelected: (_) => _openFilters(),
             ),
-            OutlinedButton.icon(
-              onPressed: unavailable ? null : () => _selectDate(isStart: false),
-              icon: const Icon(Icons.event_outlined),
-              label: Text(
-                _to == null
-                    ? 'To date'
-                    : 'To ${MaterialLocalizations.of(context).formatShortDate(_to!)}',
+            if (_activeFilterCount > 0) ...[
+              const SizedBox(width: ButlerlySpacing.compact),
+              TextButton(
+                onPressed: _clear,
+                child: Text(context.l10n.text('clearFilters')),
               ),
-            ),
+            ],
           ],
         ),
-        const SizedBox(height: 24),
-        if (unavailable)
-          const Text(
-            'Search becomes available when local transaction storage is available.',
-          )
-        else if (_results == null)
-          const Text(
-            'Search stays on this device and opens the original transaction record.',
+        const SizedBox(height: ButlerlySpacing.section),
+        if (_results == null)
+          ButlerlyEmptyState(
+            icon: Icons.search_rounded,
+            title: context.l10n.text('noSearchYet'),
+            message: context.l10n.text('noSearchYetBody'),
           )
         else
           FutureBuilder<List<TransactionDto>>(
             future: _results,
             builder: (context, snapshot) {
               if (snapshot.connectionState != ConnectionState.done) {
-                return const Center(child: CircularProgressIndicator());
+                return const Padding(
+                  padding: EdgeInsets.all(ButlerlySpacing.large),
+                  child: Center(child: CircularProgressIndicator()),
+                );
               }
               if (snapshot.hasError) {
-                return const Text(
-                  'Search could not be completed. Your local records were not changed.',
+                return ButlerlyErrorState(
+                  title: context.l10n.text('noResults'),
+                  message: context.l10n.text('tryAgain'),
+                  preserved: context.l10n.text('dataPreserved'),
+                  actionLabel: context.l10n.text('tryAgain'),
+                  onAction: _submit,
                 );
               }
               final values = snapshot.requireData;
               if (values.isEmpty) {
-                return const Text('No local records match these filters.');
+                return ButlerlyEmptyState(
+                  icon: Icons.search_off_rounded,
+                  title: context.l10n.text('noResults'),
+                  message: context.l10n.text('noResultsBody'),
+                  actionLabel: context.l10n.text('clearFilters'),
+                  onAction: _clear,
+                );
               }
-              return Column(
-                children: values
-                    .map(
-                      (value) => ListTile(
-                        title: Text(
-                          value.description ?? 'Untitled transaction',
+              return ButlerlyCard(
+                padding: const EdgeInsets.symmetric(
+                  vertical: ButlerlySpacing.compact,
+                ),
+                child: Column(
+                  children: values
+                      .map(
+                        (value) => ButlerlyRecordRow(
+                          title:
+                              value.description ??
+                              context.l10n.text('untitledTransaction'),
+                          subtitle: value.categoryId == null
+                              ? null
+                              : _categoryNames[value.categoryId],
+                          meta: transactionDateLabel(
+                            value,
+                            pendingLabel: context.l10n.text('datePending'),
+                          ),
+                          amount: value.amount,
+                          currency: value.currency,
+                          icon: Icons.receipt_long_outlined,
+                          isIncome:
+                              value.direction ==
+                              TransactionDirection.income.name,
+                          needsReview: value.reviewState == 'needsReview',
+                          onTap: () => _openDetail(value),
                         ),
-                        subtitle: Text('${value.amount} ${value.currency}'),
-                        trailing: value.reviewState == 'needsReview'
-                            ? const Icon(Icons.flag_outlined)
-                            : null,
-                        onTap: () => _openDetail(value),
-                      ),
-                    )
-                    .toList(growable: false),
+                      )
+                      .toList(growable: false),
+                ),
               );
             },
           ),
+        const SizedBox(height: ButlerlySpacing.structural),
       ],
     );
   }
 }
+
+String _searchDate(DateTime value) =>
+    '${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
