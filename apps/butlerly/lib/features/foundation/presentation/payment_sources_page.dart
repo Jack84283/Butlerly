@@ -1,5 +1,6 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
@@ -60,6 +61,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                 controller: name,
                 decoration: const InputDecoration(labelText: 'Name'),
               ),
+              const SizedBox(height: ButlerlySpacing.small),
               DropdownButtonFormField<PaymentSourceType>(
                 initialValue: type,
                 decoration: const InputDecoration(labelText: 'Type'),
