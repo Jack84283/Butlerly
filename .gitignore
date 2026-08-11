@@ -14,4 +14,4 @@ local.properties
 .env
 .env.*
 !.env.example
-tmp/
+/tmp/

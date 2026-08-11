@@ -3,6 +3,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
@@ -30,6 +31,17 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _data = _load();
+    transactionChanges.addListener(_handleTransactionChange);
+  }
+
+  @override
+  void dispose() {
+    transactionChanges.removeListener(_handleTransactionChange);
+    super.dispose();
+  }
+
+  void _handleTransactionChange() {
+    if (mounted) _refresh();
   }
 
   Future<_HomeData> _load() async {
@@ -58,7 +70,9 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _refresh() async {
     final refreshed = _load();
-    setState(() => _data = refreshed);
+    setState(() {
+      _data = refreshed;
+    });
     await refreshed;
   }
 
@@ -142,9 +156,7 @@ class _HomePageState extends State<HomePage> {
                               title:
                                   value.description ??
                                   context.l10n.text('untitledTransaction'),
-                              subtitle: data.masterData.categoryName(
-                                value.categoryId,
-                              ),
+                              subtitle: data.masterData.summary(value),
                               meta: _date(value, context),
                               amount: value.amount,
                               currency: value.currency,
