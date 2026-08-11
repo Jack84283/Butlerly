@@ -41,6 +41,12 @@ The summary/header, quick actions, attention state, and bottom navigation were r
 
 Home rendering, canonical navigation to Review and Search, quick-action route presence, dark appearance, adaptive tablet navigation, and the existing local transaction lifecycle suite.
 
+## Dialog consistency
+
+- The Add Payment Source dialog now uses `ButlerlySpacing.small` between its name and type inputs, matching the field rhythm used by the Organize Transaction dialog.
+- The change uses the centralized BDS spacing token rather than a feature-specific raw dimension.
+- Verification: `flutter analyze` completed with no issues, and all 12 transaction/payment-source widget tests passed.
+
 ## Console errors checked
 
 Widget tests report no Home layout exceptions after the fix. Native iOS runtime logs could not be checked without Xcode and an iOS Simulator.
