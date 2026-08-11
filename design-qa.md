@@ -1,6 +1,14 @@
 # Butlerly smartphone UI design QA
 
 Last updated: 2026-08-11
+- Source visual truth: `docs/04 Design/Screens/UI-0101 — Home — Smartphone Dark.png`
+- Implementation screenshot: `docs/design-evidence/home-ios-17pro-dark.png`
+- Combined comparison: `docs/design-evidence/home-comparison.png`
+- Viewport: 390 × 844 logical pixels, density 1×
+- Source pixels: 1024 × 1536 annotated design board containing a framed phone
+- Implementation pixels: 1206 × 2622 (iPhone 17 Pro Simulator at 3× density)
+- Normalization: the source board was scaled to 390 px wide and top-aligned beside the 390 × 844 implementation capture; the embedded source phone cannot be normalized independently without extracting it from the board
+- State: dark-theme Home with an empty local SQLite store
 
 ## Scope and authority
 
@@ -30,9 +38,8 @@ The implemented Home preserves the approved hierarchy and visual language: near-
 
 Intentional authority-driven differences remain:
 
-- The reference net-worth chart is replaced by truthful local transaction and review counts because the current domain does not provide an authoritative aggregate-balance capability.
-- Transfer and Reports are replaced by Finance V1 actions and destinations such as Import and Search.
-- Cloud synchronization, account state, and misleading remote status are omitted.
+1. P2: the local-summary heading overflowed by 9.9 px at 320 × 568. Fixed with `Expanded`, single-line truncation, and retested at all three phone widths.
+2. Post-fix evidence: `docs/design-evidence/home-comparison.png`; no further layout overflow appears in the tested implementation.
 
 ## Design-system alignment
 
@@ -44,7 +51,13 @@ Intentional authority-driven differences remain:
 - Semantic green is reserved for meaningful success state; financial meaning is not communicated through color alone.
 - The launch delay is 3000 ms, as currently approved.
 
-## Current functional UI coverage
+## Dialog consistency
+
+- The Add Payment Source dialog now uses `ButlerlySpacing.small` between its name and type inputs, matching the field rhythm used by the Organize Transaction dialog.
+- The change uses the centralized BDS spacing token rather than a feature-specific raw dimension.
+- Verification: `flutter analyze` completed with no issues, and all 12 transaction/payment-source widget tests passed.
+
+## Console errors checked
 
 - New and edited transactions notify dependent screens, so Home and Transactions refresh without restarting the app.
 - Transaction dates use the canonical transaction calendar date consistently across Home, lists, detail, and editor views.
