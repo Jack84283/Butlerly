@@ -1,6 +1,6 @@
 # Butlerly smartphone UI design QA
 
-Last updated: 2026-08-11
+Last updated: 2026-08-12
 - Source visual truth: `docs/04 Design/Screens/UI-0101 — Home — Smartphone Dark.png`
 - Implementation screenshot: `docs/design-evidence/home-ios-17pro-dark.png`
 - Combined comparison: `docs/design-evidence/home-comparison.png`
@@ -57,6 +57,14 @@ Intentional authority-driven differences remain:
 - The change uses the centralized BDS spacing token rather than a feature-specific raw dimension.
 - Verification: `flutter analyze` completed with no issues, and all 12 transaction/payment-source widget tests passed.
 
+## Legal & Licenses
+
+- Settings now provides one consolidated Legal & Licenses destination; the separate About card has been removed.
+- The destination follows the existing elevated-card pattern and uses the Butlerly red interactive token for its information, document, and navigation icons.
+- Legal documents open in an in-app, selectable offline reader. LEG-0001 through LEG-0004 are bundled as application assets; no card launches Google Drive or another external browser.
+- Card titles intentionally omit internal document identifiers. The source documents themselves retain their authoritative contents and identifiers.
+- Runtime smoke check: the corrected debug build launched successfully on the active iPhone 17 simulator and initialized its local database.
+
 ## Console errors checked
 
 - New and edited transactions notify dependent screens, so Home and Transactions refresh without restarting the app.
@@ -84,6 +92,7 @@ Coverage includes:
 - review resolution;
 - payment-source creation and archive behavior;
 - Chinese Transaction Detail and Organize Transaction rendering.
+- Legal & Licenses navigation and bundled Terms of Use reader rendering.
 
 Latest checks:
 
@@ -91,6 +100,7 @@ Latest checks:
 - `flutter analyze`: passed with no issues.
 - Full Flutter suite: 26 tests passed.
 - Focused transaction/payment-source suite after the latest dialog-spacing change: 12 tests passed.
+- Legal & Licenses reader widget test: passed.
 - The search-filter test currently emits two non-fatal missed-tap warnings; the suite still passes. These warnings should be cleaned up so they cannot conceal a future hit-target regression.
 
 ## Native runtime observations
@@ -107,6 +117,7 @@ Latest checks:
 - Perform and record screen-by-screen comparison for the remaining approved smartphone references; current evidence is strongest for Home.
 - Add targeted small-screen dialog tests where localized labels can expand vertically.
 - Replace the two non-fatal search-filter missed-tap warnings with deterministic interaction helpers.
+- Capture a checked-in native screenshot of the Legal & Licenses list and an in-app document-reader state.
 
 ## Result
 

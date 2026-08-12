@@ -1,0 +1,484 @@
++﻿LEG-0002 — Privacy Policy
+
+
+Document Status: Working Draft for V1 Product Implementation
+Product: Butlerly
+Document Owner: Butlerly Legal
+
+
+IMPORTANT DRAFTING NOTE
+This is a product/legal working draft defining privacy requirements for Butlerly and a basis for review before public release. The final policy must be verified against the actual released application, data flows, third-party providers, distribution regions, legal entity, and applicable privacy laws. No privacy statement may claim stronger protection than the implementation actually provides.
+
+
+1. Privacy Philosophy
+
+
+Butlerly is designed as a local-first, privacy-first personal operations assistant. Privacy is an architectural requirement rather than only a policy statement.
+
+
+The default principle is:
+
+
+User data should remain under the user's control and should remain on the user's device unless a feature requires external processing and the user intentionally enables or invokes that feature.
+
+
+Core Butlerly functionality is designed not to require a mandatory Butlerly account or remote identity.
+
+
+2. Scope
+
+
+This Privacy Policy describes how Butlerly may collect, access, store, process, transmit, share, retain, export, and delete information when a user uses the Butlerly application and optional connected features.
+
+
+It covers Butlerly-controlled processing. Third-party services may have their own privacy policies and terms.
+
+
+3. Categories of Information
+
+
+Depending on enabled features, Butlerly may process information including:
+
+
+• transaction records;
+• merchant information;
+• categories, tags, notes, and descriptions;
+• amounts and currencies;
+• transaction dates and related timestamps;
+• receipts, images, scanned documents, and extracted information;
+• imported files and exported data;
+• application preferences and configuration;
+• backup and restore data;
+• search and review information;
+• AI prompts, contextual data, and AI-generated output when AI features are used;
+• device or application information necessary for operation; and
+• diagnostic information if diagnostic or telemetry capabilities are later introduced.
+
+
+The existence of a category in this policy does not authorize implementation to collect it. Product and Architecture requirements determine which data the application actually processes.
+
+
+4. Local-First Storage
+
+
+Butlerly's core personal information is designed to be stored locally on the user's device by default.
+
+
+For core local operation, Butlerly should not require personal records to be uploaded to Butlerly-operated servers merely to use the application.
+
+
+Local-first does not mean that every optional feature is necessarily local. Backup, synchronization, AI providers, operating-system services, or third-party integrations may involve external processing when enabled.
+
+
+The application must accurately distinguish local processing from external processing.
+
+
+5. No Mandatory Account for Core Operation
+
+
+Butlerly's core functionality is designed not to require creation of a Butlerly account.
+
+
+The absence of a mandatory account reduces the need to maintain a centralized identity associated with a user's personal records. Optional services may require an account with Butlerly or a third party in the future, but such requirements must be scoped to the applicable optional feature unless Product requirements explicitly change the core model.
+
+
+6. User-Provided and Imported Information
+
+
+Information entered, imported, scanned, or otherwise provided by a user is processed to provide the functionality requested by that user.
+
+
+Butlerly should preserve the original language of real user data. Changing the application's interface language must not automatically translate or rewrite user-entered, imported, or scanned content.
+
+
+Automated extraction or categorization may create derived information, but source information should be retained according to applicable Product and Architecture requirements.
+
+
+7. Receipts, Images, and Scanned Documents
+
+
+Butlerly may allow users to capture or import receipts, images, or documents. These materials may contain personal or sensitive information.
+
+
+When extraction is performed locally, the data should remain on-device except for actions intentionally initiated by the user or functions clearly requiring external processing.
+
+
+If a future OCR, document-analysis, or AI feature sends an image or extracted content to an external service, the application must disclose that processing before or at the point where the relevant feature is enabled or used.
+
+
+8. AI Processing
+
+
+AI functionality is optional and provider-abstracted. Depending on configuration, an AI feature may run locally or may send selected information to an external AI provider.
+
+
+Before information is transmitted to an external AI provider, the application should provide enough information for the user to understand that external processing will occur and what type of information may be sent.
+
+
+Only information reasonably necessary for the requested AI operation should be included in the AI request.
+
+
+AI providers must not be described as local or private merely because Butlerly itself follows a local-first architecture.
+
+
+Provider-specific data handling, retention, model-training practices, location, and contractual terms may differ and must be reviewed before a provider is enabled in a production release.
+
+
+9. Backup and Restore
+
+
+Butlerly may provide local backup and restore capabilities and may later support optional platform or cloud backup mechanisms.
+
+
+Local backup files remain under the user's control. Users are responsible for protecting backup files they copy or store outside Butlerly.
+
+
+If Butlerly integrates with cloud storage or platform backup, the implementation and policy must identify the responsible service and must not imply that cloud-stored copies remain solely on the user's device.
+
+
+Backup deletion does not necessarily delete other independently created copies or platform-managed backups.
+
+
+10. Synchronization and Device Transfer
+
+
+Cross-device synchronization is not assumed to be required for core operation. If synchronization or device-transfer functionality is enabled, its privacy behavior must be documented before release.
+
+
+The implementation should define:
+
+
+• what data is synchronized;
+• where synchronization data is stored or transmitted;
+• whether it is encrypted;
+• which service operates the synchronization layer;
+• how devices are identified or trusted;
+• conflict-resolution behavior;
+• deletion behavior; and
+• whether users can disable synchronization while retaining local use.
+
+
+11. Currency Conversion and External Data Sources
+
+
+Butlerly may calculate converted or standardized monetary values. If exchange-rate information is obtained from an external source, requests should be designed to avoid transmitting unrelated personal transaction information where it is not required.
+
+
+For example, retrieving a currency exchange rate generally should not require sending a merchant name, receipt, personal note, or complete transaction record.
+
+
+12. Third-Party Services
+
+
+Optional Butlerly functionality may depend on services provided by operating-system vendors, app stores, AI providers, cloud providers, exchange-rate providers, or other third parties.
+
+
+When a user chooses to use such a feature, information may be processed by the applicable provider according to its own privacy policy and terms.
+
+
+Butlerly should minimize information transmitted to third parties and should not activate unnecessary third-party data flows merely because a dependency is available.
+
+
+13. Analytics and Telemetry
+
+
+V1 should not be assumed to collect analytics, advertising identifiers, behavioral tracking, or telemetry unless explicitly authorized by Product and Architecture requirements.
+
+
+If analytics, crash reporting, performance monitoring, or telemetry is introduced, this policy must be updated before release of that functionality. The implementation must document:
+
+
+• provider;
+• data fields collected;
+• purpose;
+• retention;
+• user/device identifiers;
+• opt-in or opt-out behavior;
+• whether personal financial data can be included; and
+• whether data is used for advertising or cross-service tracking.
+
+
+14. Advertising
+
+
+Butlerly's current product direction does not depend on advertising. The application should not introduce advertising trackers or sell personal information for targeted advertising without an explicit Product and Legal decision and corresponding policy changes.
+
+
+15. How Information Is Used
+
+
+Information processed by Butlerly may be used as necessary to:
+
+
+• provide requested application functionality;
+• store and organize personal records;
+• perform search, review, categorization, calculation, import, export, backup, and restore operations;
+• provide optional AI functionality;
+• maintain application preferences;
+• protect application integrity and security;
+• troubleshoot user-requested issues where diagnostic information is voluntarily provided; and
+• comply with applicable legal obligations where Butlerly actually possesses relevant information.
+
+
+Local data that Butlerly does not receive cannot ordinarily be inspected or produced by Butlerly merely because the Butlerly application created or stored it on the user's device.
+
+
+16. Data Sharing
+
+
+Butlerly does not treat personal data as a product to be sold.
+
+
+Information may be transmitted or disclosed only in circumstances applicable to the released product, such as:
+
+
+• when the user intentionally exports or shares information;
+• when an enabled optional service requires external processing;
+• to service providers necessary to provide an enabled service;
+• when required by applicable law and Butlerly possesses the relevant information; or
+• in connection with a corporate transaction, subject to applicable law and appropriate safeguards.
+
+
+The final public policy must describe actual sharing practices rather than hypothetical capabilities.
+
+
+17. Data Sale and Targeted Advertising
+
+
+Butlerly's intended V1 model does not sell personal financial records or other user content and does not use such information for targeted advertising.
+
+
+If future business practices change in a way that could constitute a “sale,” “sharing,” or targeted advertising under applicable privacy law, Product and Legal review is required before implementation or release.
+
+
+18. Data Retention
+
+
+Locally stored data remains on the user's device until the user deletes it, the application removes it according to an explicitly defined lifecycle rule, or the device/platform removes application storage.
+
+
+Butlerly cannot guarantee retention of local information after application deletion, storage clearing, device failure, loss, operating-system actions, or destructive user actions.
+
+
+Retention periods for any Butlerly-operated external service must be defined before that service is released.
+
+
+Third-party providers may maintain information according to their own retention policies.
+
+
+19. Data Deletion
+
+
+Butlerly should provide clear mechanisms for deleting records and, where applicable, application data consistent with Product requirements.
+
+
+Deletion behavior must distinguish among:
+
+
+• deletion from the active local database;
+• deletion of locally stored attachments;
+• deletion from backups;
+• deletion from synchronized copies;
+• deletion from external providers; and
+• deletion of derived or cached information.
+
+
+The UI must not claim “delete everywhere” unless the implementation can actually perform and verify that operation across all relevant locations.
+
+
+20. Data Export and Portability
+
+
+Butlerly should support user-controlled export consistent with Product requirements. Export formats should be documented and should preserve useful user information without intentionally locking the user into Butlerly.
+
+
+Exported files are outside Butlerly's application security boundary after export. Users are responsible for protecting exported copies.
+
+
+21. Security
+
+
+Butlerly should apply reasonable technical safeguards appropriate to the sensitivity of personal information processed by the application.
+
+
+Security architecture may include local database protection, platform security capabilities, encryption, secure secret storage, access controls, backup protection, and other controls as specified by Architecture and Engineering documents.
+
+
+No system is completely secure. Butlerly should not promise absolute security or state that data “can never be accessed” or “cannot be breached.”
+
+
+22. Device Security
+
+
+Because Butlerly is local-first, device security materially affects the security of Butlerly data. Users should protect devices using available operating-system security features and should protect backup/export files appropriately.
+
+
+Butlerly's security responsibilities and the user's device-security responsibilities should remain distinguishable.
+
+
+23. Sensitive Information
+
+
+Personal-finance records can be sensitive. Butlerly should minimize unnecessary collection, duplication, logging, transmission, and retention of such information.
+
+
+Application logs must not casually include full receipt contents, financial records, secrets, authentication credentials, or other sensitive user data.
+
+
+Future features involving health, precise location, government identifiers, biometric information, children's information, or other specially regulated data categories require specific Product, Architecture, Security, and Legal review before release.
+
+
+24. Internationalization and Locale
+
+
+Butlerly may localize labels, instructions, notices, and legal UI into supported languages.
+
+
+Localization must not alter the underlying meaning of privacy choices. User-created/imported data should retain its original language unless the user explicitly requests a translation or transformation.
+
+
+Locale may affect formatting of dates, numbers, currencies, and text presentation, but formatting choices must not silently change the semantic value of stored financial data.
+
+
+25. Financial Dates and Time Zones
+
+
+Financial dates should be treated according to Butlerly's authoritative data model rather than inferred from display time zones where doing so could change financial meaning.
+
+
+If timestamps, device time zones, locale, or synchronization metadata are collected, they should be limited to what is necessary for the applicable functionality. Privacy documentation must remain consistent with the final transaction-date/time-zone architecture.
+
+
+26. User Privacy Rights
+
+
+Depending on the user's jurisdiction and Butlerly's role in processing information, users may have legal rights regarding access, correction, deletion, portability, restriction, objection, or information about data practices.
+
+
+For data stored exclusively on the user's device and never received by Butlerly, many such actions can be performed directly by the user through the application rather than by submitting a server-side request to Butlerly.
+
+
+The final public policy must provide an appropriate process for privacy requests concerning information actually controlled by Butlerly.
+
+
+27. California Privacy
+
+
+Before public distribution in California, the released data practices should be reviewed against applicable California privacy requirements, including whether Butlerly meets statutory applicability thresholds and whether any specific notices or rights procedures are required.
+
+
+The policy should not claim that a statute applies or does not apply solely from assumptions made during product development.
+
+
+28. Children
+
+
+Butlerly V1 should not intentionally be designed as a service directed to children unless Product and Legal explicitly approve that use case.
+
+
+The final policy must define any applicable age restrictions and parental-consent requirements consistently with LEG-0001 — Terms of Use and actual distribution practices.
+
+
+29. Changes to This Privacy Policy
+
+
+Material changes to this policy should be versioned. Where appropriate, users should be informed of significant changes before new data practices take effect.
+
+
+A policy update must not be used as the sole mechanism to enable a materially new optional external data flow where explicit user action or consent is otherwise required.
+
+
+30. Contact Information
+
+
+TBD BEFORE PUBLIC RELEASE.
+
+
+The final policy must identify the legal entity responsible for applicable Butlerly-controlled data processing and provide an appropriate privacy contact method.
+
+
+31. Implementation Requirements for Codex
+
+
+The implementation must:
+
+
+• expose Privacy Policy from Settings/About → Legal & Licenses;
+• support offline reading of the applicable policy where appropriate for local-first operation;
+• identify the policy by document ID, version, locale, and effective date;
+• avoid independent duplicated policy text across multiple screens;
+• preserve original user-entered/imported/scanned language;
+• clearly distinguish local processing from external processing;
+• disclose external AI processing at an appropriate point before transmission;
+• avoid sending unnecessary transaction context to exchange-rate or other narrow-purpose services;
+• avoid sensitive information in logs by default;
+• implement deletion language that matches actual deletion scope;
+• provide export consistent with Product requirements;
+• avoid mandatory account creation solely for core privacy controls;
+• make privacy choices accessible and understandable;
+• document every third-party SDK or service that receives user/device information; and
+• ensure new telemetry, analytics, crash-reporting, advertising, synchronization, or cloud functionality triggers privacy review.
+
+
+32. Required Privacy Data-Flow Inventory
+
+
+Engineering should maintain an implementation-level inventory for every external data flow containing at least:
+
+
+• feature name;
+• destination/provider;
+• trigger;
+• data transmitted;
+• purpose;
+• whether optional or required;
+• user disclosure/consent point;
+• retention assumptions;
+• credentials/secrets involved;
+• encryption in transit;
+• deletion capability; and
+• governing provider policy/terms.
+
+
+This inventory should be reviewable during release preparation and should be used to verify that this Privacy Policy remains truthful.
+
+
+33. Open Decisions Before Release
+
+
+The following require resolution or verification before publication:
+
+
+• Butlerly legal entity and privacy contact;
+• initial distribution countries/regions;
+• minimum age;
+• exact V1 data categories;
+• final backup architecture;
+• synchronization scope, if any;
+• external AI providers enabled by default or optionally;
+• exchange-rate provider and transmitted fields;
+• analytics/crash-reporting/telemetry decision;
+• app-store/platform data disclosures;
+• external-service retention periods;
+• encryption implementation and claims;
+• privacy-rights request process;
+• jurisdiction-specific notices; and
+• counsel review and effective date.
+
+
+34. Relationship to Other Butlerly Documents
+
+
+This policy must remain aligned with Product, Architecture, Security, Engineering, and UX specifications. It must also remain consistent with:
+
+
+• LEG-0000 — Legal & Compliance Index;
+• LEG-0001 — Terms of Use;
+• LEG-0003 — Software License & Third-Party Notices; and
+• LEG-0004 — AI & Professional-Advice Disclosures.
+
+
+Where implementation and this draft differ, the difference must be resolved before release. The policy must describe reality; it must not be used to conceal or retroactively authorize undocumented data collection.
+
+
+End of LEG-0002

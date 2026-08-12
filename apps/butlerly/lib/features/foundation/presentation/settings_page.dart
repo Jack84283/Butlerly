@@ -3,6 +3,7 @@ import 'package:butlerly/app/theme/theme_mode_provider.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/legal_licenses_page.dart';
 import 'package:butlerly/features/foundation/presentation/payment_sources_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -157,14 +158,12 @@ class SettingsPage extends ConsumerWidget {
         ),
         ButlerlySectionHeader(title: context.l10n.text('about')),
         _SettingsRow(
-          icon: Icons.info_outline_rounded,
-          title: context.l10n.text('about'),
-          subtitle: 'Version 1.0.0',
-          onTap: () => showAboutDialog(
-            context: context,
-            applicationName: context.l10n.text('appName'),
-            applicationVersion: '1.0.0',
-          ),
+          icon: Icons.gavel_outlined,
+          title: context.l10n.text('legalLicenses'),
+          subtitle: context.l10n.text('legalLicensesBody'),
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const LegalLicensesPage())),
         ),
         const SizedBox(height: ButlerlySpacing.structural),
       ],

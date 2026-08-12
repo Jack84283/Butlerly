@@ -94,6 +94,11 @@ final class ButlerlyDatabase {
           );
         }
       }
+      if (from < 3 && to >= 3) {
+        for (final statement in Schema.migration3) {
+          await database.execute(statement);
+        }
+      }
     } on DatabaseException {
       throw const RepositoryException(
         RepositoryFailureCode.migration,

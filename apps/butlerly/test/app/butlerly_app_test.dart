@@ -134,6 +134,31 @@ void main() {
     expect(find.text('交易'), findsAtLeastNWidgets(1));
     expect(find.text('简体中文'), findsOneWidget);
   });
+
+  testWidgets('opens the offline Legal & licenses surface', (tester) async {
+    setPhoneViewport(tester);
+    await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Settings').last);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Legal & licenses'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Legal & licenses'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Terms of Use'), findsOneWidget);
+    expect(find.text('Privacy Policy'), findsOneWidget);
+    expect(find.text('Software License & Third-Party Notices'), findsOneWidget);
+    expect(find.text('AI & Professional-Advice Disclosures'), findsOneWidget);
+
+    await tester.tap(find.text('Terms of Use'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Acceptance of Terms'), findsOneWidget);
+  });
 }
 
 void setPhoneViewport(WidgetTester tester) {
