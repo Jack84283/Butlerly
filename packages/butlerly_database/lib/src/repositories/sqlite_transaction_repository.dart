@@ -117,7 +117,7 @@ final class SqliteTransactionRepository implements TransactionRepository {
            ORDER BY t.transaction_date DESC, t.id''',
         arguments,
       );
-      return Future.wait(rows.map(_hydrate));
+      return await Future.wait(rows.map(_hydrate));
     } on DatabaseException catch (error) {
       throw mapDatabaseException(error, 'query transactions');
     }

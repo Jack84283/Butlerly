@@ -1,0 +1,479 @@
++﻿LEG-0003 — Software License & Third-Party Notices
+
+
+Document Status: Working Draft for V1 Product Implementation
+Product: Butlerly
+Document Owner: Butlerly Legal
+
+
+IMPORTANT DRAFTING NOTE
+This document defines Butlerly's software-licensing and third-party notice requirements. The actual third-party notice inventory must be generated and verified against the dependencies, assets, models, datasets, fonts, SDKs, and other materials included in each released build. This document must not be treated as a complete inventory of third-party licenses until that release-specific verification has occurred.
+
+
+1. Purpose
+
+
+Butlerly combines proprietary Butlerly software with third-party and open-source components. This document establishes:
+
+
+• the licensing position for Butlerly's proprietary software;
+• the rules for incorporating third-party materials;
+• the requirements for preserving open-source license obligations;
+• the in-application Open Source Licenses / Third-Party Notices experience; and
+• implementation and release requirements for Engineering and Codex.
+
+
+2. Butlerly Proprietary Software
+
+
+Unless a component is expressly identified as third-party or open-source software, Butlerly's original application source code, product design, branding, documentation, graphics, and other original materials are proprietary to Butlerly or the applicable Butlerly legal entity.
+
+
+Copyright © 2026 Butlerly. All rights reserved.
+
+
+Subject to LEG-0001 — Terms of Use and applicable distribution terms, users receive a limited license to use the Butlerly application. Users do not receive ownership of Butlerly's proprietary intellectual property merely by downloading, purchasing, installing, or using the application.
+
+
+3. User License
+
+
+Subject to applicable Terms of Use, purchase terms, application-store terms, and mandatory law, Butlerly grants an authorized user a limited, personal, non-exclusive, non-transferable, non-sublicensable, revocable license to install and use Butlerly for lawful personal purposes on supported devices owned or controlled by that user.
+
+
+The final license must remain consistent with the selected commercial model, including whether Butlerly is sold through an application store, directly licensed, offered under a one-time purchase, or uses another model.
+
+
+4. Reservation of Rights
+
+
+All rights not expressly granted are reserved by Butlerly and its licensors.
+
+
+Nothing in Butlerly's proprietary license overrides rights that a user receives directly under an applicable third-party or open-source license.
+
+
+5. Open-Source Software
+
+
+Butlerly may incorporate open-source software. Open-source components are governed by their respective licenses rather than by Butlerly's proprietary license to the extent those licenses apply.
+
+
+Engineering must preserve all required copyright notices, license texts, attribution, source-offer obligations, modification notices, and other conditions applicable to distributed components.
+
+
+The fact that a dependency is available through a public package repository does not mean that it can be used without license review.
+
+
+6. Third-Party Components
+
+
+Third-party materials can include, without limitation:
+
+
+• Flutter and Dart ecosystem packages;
+• native iOS, Android, macOS, Windows, or other platform libraries;
+• database libraries;
+• encryption and security libraries;
+• image, OCR, document, or media-processing libraries;
+• fonts and icon sets;
+• AI runtimes and inference libraries;
+• AI models and model weights;
+• datasets;
+• exchange-rate or financial-data SDKs;
+• cloud or synchronization SDKs;
+• analytics or crash-reporting SDKs;
+• application-store frameworks;
+• images, illustrations, sounds, or other media assets; and
+• copied or adapted source code.
+
+
+Each category must be reviewed according to its actual license and distribution conditions.
+
+
+7. License Categories and Review
+
+
+Engineering should classify dependencies by license and obligation rather than treating all open-source licenses as equivalent.
+
+
+Permissive licenses may include licenses such as MIT, BSD, or Apache-style licenses, but each dependency's actual license text and notices must be preserved as required.
+
+
+Weak-copyleft, strong-copyleft, source-available, non-commercial, research-only, model-specific, data-specific, or custom licenses require explicit review before incorporation into a distributed Butlerly build.
+
+
+A package, model, dataset, or asset must not be approved merely because its license contains the words “open” or “free.”
+
+
+8. Copyleft and Reciprocal Licensing
+
+
+Dependencies that may impose source-code disclosure, reciprocal licensing, relinking, distribution, network-use, or other material obligations must receive explicit Legal/Architecture review before adoption.
+
+
+Engineering should not introduce a dependency that could require proprietary Butlerly application code to be licensed or distributed under incompatible terms without an explicit decision.
+
+
+This requirement does not prohibit copyleft software. It requires intentional evaluation of the obligations and architecture before adoption.
+
+
+9. AI Models and Model Weights
+
+
+AI models and weights require separate license review from the software used to run them.
+
+
+Before bundling, downloading, recommending, or automatically installing an AI model, Butlerly must identify:
+
+
+• model name and version;
+• model owner/publisher;
+• model license;
+• permitted use;
+• commercial-use restrictions, if any;
+• redistribution rights;
+• attribution requirements;
+• acceptable-use restrictions;
+• derivative-model requirements where applicable; and
+• whether the license can be accepted or satisfied by Butlerly's intended distribution model.
+
+
+An “open model” must not automatically be treated as open-source software.
+
+
+10. Datasets
+
+
+Datasets used to develop, evaluate, fine-tune, or bundle functionality may carry separate copyright, database, privacy, attribution, or use restrictions.
+
+
+Dataset approval should identify provenance, license, permitted commercial use, redistribution rights, attribution, and any restrictions relevant to personal-finance or other Butlerly use cases.
+
+
+11. Fonts, Icons, Images, and Media
+
+
+Visual and media assets must have documented usage rights.
+
+
+Design assets should be traceable to one of the following:
+
+
+• original Butlerly-created work;
+• appropriately licensed third-party work;
+• public-domain material; or
+• another documented legal basis for use.
+
+
+“Found online,” “generated from a search,” or “available in a design tool” is not sufficient licensing evidence.
+
+
+Font licenses must be checked for application embedding and redistribution rights.
+
+
+12. AI-Generated Assets and Code
+
+
+AI-assisted creation does not eliminate the need to review the resulting asset or code for licensing, provenance, trademark, privacy, or other legal risks when appropriate.
+
+
+Developers should avoid intentionally requesting or copying protected third-party code or distinctive proprietary assets where Butlerly does not have the right to use them.
+
+
+13. Third-Party Services
+
+
+Services accessed through APIs are generally governed by service terms in addition to any SDK or client-library license.
+
+
+For each external service, Butlerly should separately track:
+
+
+• SDK/library license;
+• API/service terms;
+• privacy/data-processing terms;
+• attribution requirements;
+• usage restrictions;
+• pricing or quota requirements; and
+• termination/deprecation dependencies.
+
+
+A permissively licensed SDK does not imply unrestricted rights to the underlying online service.
+
+
+14. Trademarks
+
+
+Third-party product names, company names, logos, and trademarks remain the property of their respective owners.
+
+
+Use of a third-party component does not imply sponsorship, endorsement, partnership, or affiliation unless such a relationship actually exists.
+
+
+Product UI and marketing should use third-party trademarks only as necessary and in accordance with applicable trademark guidelines.
+
+
+15. Third-Party Notice Inventory
+
+
+Butlerly must maintain a release-specific third-party inventory. At minimum, each entry should contain:
+
+
+• component name;
+• version;
+• source/package location;
+• copyright holder where identified;
+• license name;
+• complete required license text or reference mechanism;
+• required notices/attribution;
+• modifications, if disclosure is required;
+• distribution form (source, binary, bundled asset, downloaded resource, service-only, etc.);
+• approval status; and
+• notes about special obligations.
+
+
+The inventory should be reproducible from the source repository and dependency lockfiles wherever practical.
+
+
+16. Dependency Locking and Traceability
+
+
+Release builds should use dependency-locking mechanisms appropriate to the technology stack. The third-party inventory should correspond to the versions actually shipped rather than only to top-level package declarations.
+
+
+Transitive dependencies must be considered because their licenses can also create distribution obligations.
+
+
+17. In-App Legal & Licenses Experience
+
+
+Butlerly should expose a Legal & Licenses area from Settings/About.
+
+
+The screen should contain or provide navigation to:
+
+
+• Butlerly copyright notice;
+• Terms of Use;
+• Privacy Policy;
+• Open Source Licenses / Third-Party Notices;
+• AI & Professional-Advice Disclosures where applicable; and
+• application version/build information.
+
+
+The user should not be required to accept each open-source license. The purpose of this screen is primarily notice, attribution, and license availability unless a specific dependency requires a different mechanism.
+
+
+18. Recommended User-Facing License Notice
+
+
+The Legal & Licenses screen may display the following concise statement:
+
+
+“Copyright © 2026 Butlerly. All rights reserved.
+
+
+Butlerly is proprietary software provided for personal use subject to the Butlerly Terms of Use.
+
+
+Butlerly includes or may use third-party and open-source software components. Those components remain subject to their respective licenses and copyright notices. Applicable notices are available under Open Source Licenses.”
+
+
+This short notice does not replace required third-party license texts.
+
+
+19. Offline Availability
+
+
+Required third-party notices for components distributed with the application should remain reasonably accessible with the installed application where required by the applicable licenses.
+
+
+The application should not depend solely on a remote webpage for a license text that must accompany a distributed component unless the applicable license permits that approach.
+
+
+20. License Text Integrity
+
+
+Required third-party copyright and license notices must not be paraphrased where the applicable license requires preservation of the original notice or license text.
+
+
+Engineering may organize or format notices for readability but must preserve legally required content.
+
+
+21. Localization
+
+
+Butlerly may localize explanatory UI surrounding third-party licenses. However, original license texts should not be replaced by unofficial translations when the authoritative license must be reproduced.
+
+
+A translated explanation may be shown alongside the original text where useful.
+
+
+22. Source-Code Offers and Distribution Obligations
+
+
+If a shipped component requires source availability, a written source offer, relinking capability, notices of modification, or another distribution action, Butlerly must implement that requirement before release.
+
+
+Such obligations cannot be satisfied merely by listing the component name in the application.
+
+
+23. App Store and Platform Terms
+
+
+Distribution through Apple, Google, Microsoft, or other application platforms may introduce additional license or attribution requirements.
+
+
+The final release process must review the selected distribution channel's current terms and determine whether platform-standard end-user license terms apply or whether Butlerly supplies its own license.
+
+
+24. Repository Requirements
+
+
+The source repository should maintain machine-readable dependency manifests and lockfiles and, where practical, a generated third-party notice artifact.
+
+
+Engineering documentation should identify the command or build process used to regenerate the notice inventory.
+
+
+Generated notice files should not be manually edited as the primary source of truth if they can be reproducibly generated from dependency metadata.
+
+
+25. CI/CD License Checks
+
+
+Where tooling is practical, CI should detect:
+
+
+• newly introduced dependencies;
+• dependencies with missing/unidentified licenses;
+• license changes after version upgrades;
+• dependencies using prohibited or review-required license categories; and
+• divergence between the dependency set and generated notices.
+
+
+A license scan is an aid to review, not a substitute for interpreting license obligations.
+
+
+26. Dependency Approval Policy
+
+
+Before introducing a new production dependency, Engineering should consider:
+
+
+1. Is the dependency necessary?
+2. Is the source trustworthy and maintained?
+3. What is its license?
+4. Does the license permit Butlerly's intended commercial/distribution model?
+5. Are attribution or notice obligations required?
+6. Does it introduce reciprocal/source-disclosure obligations?
+7. Does it collect or transmit data?
+8. Is there a less risky existing dependency already in the project?
+
+
+Dependencies requiring special legal review should not be merged into a release branch until the issue is resolved.
+
+
+27. Implementation Requirements for Codex
+
+
+Codex should implement the legal/license surface so that:
+
+
+• Settings/About contains a Legal & Licenses entry;
+• the legal landing screen shows Butlerly copyright and application version/build;
+• Terms of Use and Privacy Policy are independently accessible;
+• Open Source Licenses is independently accessible;
+• bundled third-party license text is available offline where required;
+• the license list can be generated from the actual dependency set where tooling supports it;
+• package/component names, versions, copyright notices, and license texts are preserved accurately;
+• explanatory UI can be localized without modifying authoritative third-party license text;
+• no mandatory Butlerly account is introduced for viewing legal/license information;
+• no acceptance checkbox is added for open-source notices unless a specific legal requirement calls for one;
+• the UI remains usable with large license inventories through search, expandable entries, or equivalent navigation if needed;
+• accessibility requirements apply to the license viewer; and
+• the release process fails or raises a review item when a production dependency has an unknown or prohibited license classification.
+
+
+28. Recommended Technical Structure
+
+
+A reasonable implementation may separate:
+
+
+LegalDocument
+• id
+• title localization key
+• version
+• effective date
+• locale
+• document type
+• bundled content/resource reference
+
+
+ThirdPartyNotice
+• component name
+• component version
+• license identifier
+• copyright notice
+• license text
+• source/reference metadata
+
+
+This is a conceptual requirement rather than a mandatory class/schema name. Engineering may implement an equivalent structure consistent with Butlerly architecture.
+
+
+29. Release Checklist
+
+
+Before each public release:
+
+
+• generate the complete dependency inventory;
+• include transitive dependencies;
+• compare it with the previous release;
+• review newly introduced licenses;
+• verify required attribution and notices;
+• review fonts, icons, images, models, datasets, and non-package assets;
+• verify model licenses for bundled/recommended AI models;
+• verify required license text is accessible in the application or distribution package;
+• confirm proprietary Butlerly notices do not override third-party rights;
+• archive the release-specific inventory; and
+• resolve any unknown-license items before release.
+
+
+30. Open Decisions Before Release
+
+
+The following remain to be finalized:
+
+
+• Butlerly's formal legal entity/copyright owner name;
+• final commercial licensing model;
+• distribution channels;
+• application-store license strategy;
+• approved/review-required/prohibited license categories;
+• automated license-scanning tooling;
+• source-offer publication mechanism if ever required;
+• treatment of downloadable local AI models;
+• model and dataset approval process; and
+• counsel review of the final license terms.
+
+
+31. Relationship to Other Documents
+
+
+This document must remain consistent with:
+
+
+• LEG-0000 — Legal & Compliance Index;
+• LEG-0001 — Terms of Use;
+• LEG-0002 — Privacy Policy; and
+• LEG-0004 — AI & Professional-Advice Disclosures.
+
+
+Architecture and Engineering dependency decisions must trigger review of this document when they introduce new licensing obligations.
+
+
+End of LEG-0003

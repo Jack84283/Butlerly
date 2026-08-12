@@ -4,12 +4,27 @@ import '../value_objects/domain_id.dart';
 enum CategoryOrigin { system, user }
 
 final class Category {
-  Category({required this.id, required String name, required this.origin})
-    : name = _validate(name);
+  Category({
+    required this.id,
+    required String name,
+    required this.origin,
+    this.parentId,
+  }) : name = _validate(name) {
+    if (parentId == id) {
+      invalid(
+        code: DomainErrorCode.relationshipMismatch,
+        field: 'parentId',
+        message: 'A category cannot be its own parent.',
+      );
+    }
+  }
 
   final CategoryId id;
   final String name;
   final CategoryOrigin origin;
+
+  /// The optional parent in Butlerly's maximum two-level V1 taxonomy.
+  final CategoryId? parentId;
 
   static String _validate(String value) {
     final normalized = value.trim();

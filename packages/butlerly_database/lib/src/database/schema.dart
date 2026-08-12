@@ -1,5 +1,5 @@
 abstract final class Schema {
-  static const version = 2;
+  static const version = 3;
 
   static const migration1 = <String>[
     '''CREATE TABLE payment_sources (
@@ -136,5 +136,10 @@ abstract final class Schema {
     'ALTER TABLE transactions ADD COLUMN occurred_at_utc TEXT',
     'ALTER TABLE transactions ADD COLUMN time_zone_id TEXT',
     'CREATE INDEX idx_transactions_transaction_date ON transactions(transaction_date)',
+  ];
+
+  static const migration3 = <String>[
+    'ALTER TABLE categories ADD COLUMN parent_id TEXT REFERENCES categories(id)',
+    'CREATE INDEX idx_categories_parent ON categories(parent_id)',
   ];
 }

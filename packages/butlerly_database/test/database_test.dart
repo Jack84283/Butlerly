@@ -27,7 +27,7 @@ void main() {
       "SELECT name FROM sqlite_master WHERE type = 'table'",
     );
 
-    expect(version, 2);
+    expect(version, 3);
     expect(foreignKeys.single.values.single, 1);
     expect(
       tables.map((row) => row['name']),

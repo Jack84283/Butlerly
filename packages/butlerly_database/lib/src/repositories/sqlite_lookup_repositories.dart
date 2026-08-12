@@ -70,11 +70,13 @@ final class SqliteCategoryRepository implements CategoryRepository {
   final ButlerlyDatabase database;
 
   @override
-  Future<void> save(Category value) => _write(
-    database.connection,
-    'categories',
-    {'id': value.id.value, 'name': value.name, 'origin': value.origin.name},
-  );
+  Future<void> save(Category value) =>
+      _write(database.connection, 'categories', {
+        'id': value.id.value,
+        'name': value.name,
+        'origin': value.origin.name,
+        'parent_id': value.parentId?.value,
+      });
 
   @override
   Future<Category?> findById(CategoryId id) async {
@@ -92,6 +94,9 @@ final class SqliteCategoryRepository implements CategoryRepository {
     id: CategoryId(row['id']! as String),
     name: row['name']! as String,
     origin: CategoryOrigin.values.byName(row['origin']! as String),
+    parentId: row['parent_id'] == null
+        ? null
+        : CategoryId(row['parent_id']! as String),
   );
 }
 

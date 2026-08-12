@@ -1,0 +1,304 @@
++﻿LEG-0001 — Terms of Use
+
+
+Document Status: Working Draft for V1 Product Implementation
+Product: Butlerly
+Document Owner: Butlerly Legal
+
+
+IMPORTANT DRAFTING NOTE
+This document is a product/legal working draft intended to define Butlerly requirements and provide a basis for counsel review before public release. Company legal name, address, contact information, governing law, distribution channels, payment model, and other jurisdiction-specific provisions must be finalized before publication.
+
+
+1. Acceptance of Terms
+
+
+These Terms of Use (“Terms”) govern access to and use of Butlerly, including the Butlerly application, associated software, features, documentation, and services made available by Butlerly (“Butlerly” or the “Service”).
+
+
+By downloading, installing, accessing, or using Butlerly, the user agrees to these Terms to the extent permitted by applicable law. If a feature requires separate consent or separate third-party terms, those requirements must be presented separately and must not be implied merely by acceptance of these Terms.
+
+
+2. Product Purpose
+
+
+Butlerly is a local-first, privacy-first personal operations assistant. Version 1 focuses on helping users organize, record, search, review, import, export, back up, and understand personal information, initially including personal-finance information.
+
+
+Core operation is designed not to require a mandatory Butlerly account or remote identity. Optional capabilities may use external services, including AI providers, backup, synchronization, platform services, or other third-party integrations. Availability of such capabilities may vary by platform, configuration, region, and product version.
+
+
+3. License to Use Butlerly
+
+
+Subject to these Terms and applicable purchase or distribution terms, Butlerly grants the user a limited, personal, non-exclusive, non-transferable, non-sublicensable, revocable license to install and use the application for lawful personal purposes on supported devices owned or controlled by the user.
+
+
+No ownership interest in Butlerly software, branding, designs, documentation, or other Butlerly intellectual property is transferred to the user.
+
+
+Separate open-source components remain governed by their applicable licenses. Third-party notices are addressed in LEG-0003 — Software License & Third-Party Notices.
+
+
+4. Permitted Use
+
+
+Users may use Butlerly for lawful personal organization and information-management purposes consistent with the functionality provided by the application.
+
+
+Users are responsible for the information they enter, import, scan, store, process, export, synchronize, or transmit using Butlerly and for ensuring they have the necessary rights to use that information.
+
+
+5. Prohibited Use
+
+
+Users may not, except where applicable law expressly permits otherwise:
+
+
+• use Butlerly for unlawful, fraudulent, abusive, or harmful activity;
+• attempt to defeat security, access controls, licensing mechanisms, or technical restrictions;
+• interfere with or disrupt Butlerly or connected services;
+• use Butlerly to violate another person's privacy, intellectual-property rights, or other legal rights;
+• redistribute, sell, sublicense, rent, or commercially exploit Butlerly except as expressly authorized;
+• remove proprietary notices or misrepresent Butlerly as another party's product; or
+• use optional external services in violation of their applicable terms.
+
+
+Nothing in these Terms restricts rights that cannot lawfully be restricted, including rights granted by applicable open-source licenses or mandatory law.
+
+
+6. Local Data and User Responsibility
+
+
+Butlerly is designed so that core personal data is stored locally on the user's device by default. This architecture gives the user substantial control over personal data but also means the user may be responsible for device security, backups, exports, recovery information, and protection against device loss or damage.
+
+
+Butlerly should not state or imply that locally stored information can always be recovered. Users should maintain appropriate backups when information is important.
+
+
+Where optional backup, synchronization, platform storage, or other external processing is enabled, the applicable Privacy Policy and third-party terms govern that processing.
+
+
+7. Optional AI Features
+
+
+Butlerly may provide optional AI-assisted features. AI functionality may be local or may use a configured external provider depending on product configuration.
+
+
+AI-generated output can be incomplete, inaccurate, outdated, misleading, or inappropriate for a particular situation. Users remain responsible for reviewing AI-generated output before relying on it or taking action based on it.
+
+
+Butlerly's AI is not authoritative over user records. Where AI output conflicts with source data or deterministic application records, the application should preserve the source data and provide appropriate review mechanisms.
+
+
+Additional requirements are defined in LEG-0004 — AI & Professional-Advice Disclosures.
+
+
+8. No Professional Advice
+
+
+Butlerly is an information-management and personal-assistance tool. Unless an expressly identified feature states otherwise and is legally authorized to do so, Butlerly does not provide professional financial, investment, accounting, tax, legal, medical, insurance, credit, or other regulated professional advice.
+
+
+Calculations, classifications, summaries, forecasts, insights, suggestions, and AI-generated content are provided for informational and organizational purposes. Users should obtain appropriate professional advice for decisions requiring professional judgment.
+
+
+9. Accuracy and User Review
+
+
+Butlerly may process information entered manually, imported from files, extracted from receipts or documents, scanned using device capabilities, categorized by rules, or interpreted using AI.
+
+
+Automated extraction, categorization, conversion, matching, and analysis can contain errors. Users should review important information, particularly amounts, dates, currencies, merchants, categories, tax-related information, and other data used to make consequential decisions.
+
+
+Original user-entered or scanned data should be preserved according to Butlerly's product and architecture requirements. Localization of application UI does not imply translation of original user data.
+
+
+10. Currency and Calculations
+
+
+Butlerly may display amounts in original currencies and may optionally calculate standardized or converted amounts, including a default reference currency such as U.S. dollars. Currency conversion may depend on exchange-rate sources, rate dates, configuration, rounding, and availability.
+
+
+Converted values are estimates unless expressly identified otherwise. Users should not rely on Butlerly currency conversions as official settlement, tax, accounting, banking, or investment values.
+
+
+11. Third-Party Services
+
+
+Optional Butlerly features may interact with operating-system services, application stores, AI providers, cloud-storage providers, synchronization services, financial-data sources, or other third parties.
+
+
+Third-party services are governed by their own terms, privacy practices, availability, and technical limitations. Butlerly does not control third-party services and cannot guarantee their continued availability, accuracy, security, or compatibility.
+
+
+Enabling a third-party feature should not silently change the local-first behavior of unrelated core features.
+
+
+12. Privacy
+
+
+Butlerly's handling of personal information is described in LEG-0002 — Privacy Policy. Product behavior and the Privacy Policy must remain consistent.
+
+
+The application must not describe information as remaining exclusively on-device when an enabled feature actually sends that information to an external provider. Material external processing should be disclosed at an appropriate point in the user experience.
+
+
+13. Intellectual Property
+
+
+Butlerly and its original software, product design, branding, documentation, and other proprietary materials are owned by Butlerly or its licensors and are protected by applicable intellectual-property laws.
+
+
+Third-party software, fonts, libraries, models, datasets, media, trademarks, and other materials remain the property of their respective owners and are governed by their applicable licenses and terms.
+
+
+14. Updates and Changes
+
+
+Butlerly may update the application to add, modify, improve, deprecate, or remove features; address security or compatibility issues; or comply with legal requirements.
+
+
+Material changes to these Terms should be versioned and communicated in a manner appropriate to their significance. If renewed acceptance is legally or contractually required, the application should identify the relevant Terms version and should not represent passive application use as explicit acceptance where explicit consent is required.
+
+
+15. Availability
+
+
+Butlerly may not be available on all devices, operating systems, regions, or configurations. Optional third-party features may become unavailable independently of the core application.
+
+
+Local-first functionality should be designed to remain usable without continuous network connectivity where the applicable product requirements specify offline operation.
+
+
+16. Disclaimer of Warranties
+
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, BUTLERLY IS PROVIDED “AS IS” AND “AS AVAILABLE,” WITHOUT WARRANTIES OF ANY KIND, WHETHER EXPRESS, IMPLIED, OR STATUTORY, INCLUDING IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT.
+
+
+BUTLERLY DOES NOT WARRANT THAT THE APPLICATION WILL BE ERROR-FREE, THAT DATA WILL NEVER BE LOST, THAT AUTOMATED OR AI-GENERATED OUTPUT WILL BE ACCURATE, OR THAT THIRD-PARTY SERVICES WILL REMAIN AVAILABLE.
+
+
+Some jurisdictions do not allow certain warranty exclusions, so some exclusions may not apply to a particular user.
+
+
+17. Limitation of Liability
+
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, BUTLERLY AND ITS OWNERS, AFFILIATES, LICENSORS, SERVICE PROVIDERS, AND CONTRIBUTORS WILL NOT BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, OR FOR LOSS OF DATA, PROFITS, REVENUE, BUSINESS, OPPORTUNITY, OR GOODWILL ARISING FROM OR RELATED TO USE OF BUTLERLY.
+
+
+Any monetary liability cap, exclusions, consumer-law carve-outs, and jurisdiction-specific requirements must be finalized with counsel before publication. Nothing in these Terms excludes liability that cannot lawfully be excluded.
+
+
+18. Indemnification
+
+
+To the extent permitted by applicable law and appropriate for Butlerly's final distribution model, users may be responsible for claims arising from unlawful misuse of Butlerly, violation of these Terms, or infringement of third-party rights. The final indemnification language must be reviewed before release and should not override non-waivable consumer rights.
+
+
+19. Termination
+
+
+A user may stop using Butlerly at any time. Butlerly may suspend access to optional online services where reasonably necessary for security, abuse prevention, legal compliance, or violation of applicable service terms.
+
+
+Termination of optional services should not intentionally make lawful locally stored user data inaccessible where the core product architecture permits continued local access, subject to technical, licensing, platform, and legal constraints.
+
+
+20. Export and Deletion
+
+
+Where supported, Butlerly should provide mechanisms consistent with Product and Architecture requirements for exporting and deleting user data.
+
+
+Because core information may be stored locally, uninstalling the application, deleting application storage, deleting backups, or losing a device can permanently remove information. The application should communicate destructive actions clearly.
+
+
+21. Children and Eligibility
+
+
+The final public Terms must define the minimum permitted age and any parental-consent requirements based on Butlerly's intended markets, distribution channels, data practices, and applicable law. Until that decision is made, Butlerly should not intentionally design V1 as a service directed to children.
+
+
+22. Consumer Rights
+
+
+These Terms do not limit rights granted to users under mandatory consumer-protection laws. If a provision conflicts with a non-waivable legal right, the mandatory legal right controls to the extent of the conflict.
+
+
+23. Governing Law and Dispute Resolution
+
+
+TBD BEFORE PUBLIC RELEASE.
+
+
+The final Terms must specify the contracting legal entity, governing law, venue, dispute-resolution mechanism, and any required consumer or regional exceptions. Arbitration, class-action waivers, jury-trial waivers, or similar provisions must not be inserted without an explicit business/legal decision and appropriate review.
+
+
+24. Contact Information
+
+
+TBD BEFORE PUBLIC RELEASE.
+
+
+The final document must provide the appropriate Butlerly legal entity name and contact method for legal notices and user questions.
+
+
+25. Relationship to Other Documents
+
+
+These Terms should be read together with:
+
+
+• LEG-0002 — Privacy Policy;
+• LEG-0003 — Software License & Third-Party Notices; and
+• LEG-0004 — AI & Professional-Advice Disclosures.
+
+
+If an application-store license or mandatory platform term applies, the final release package must identify how that term interacts with these Terms.
+
+
+26. Implementation Requirements for Codex
+
+
+The application implementation should:
+
+
+• expose Terms of Use from Settings/About → Legal & Licenses;
+• make the Terms readable offline when required for core local operation;
+• store a document identifier, version, locale, and effective date in the legal-content model;
+• avoid duplicating independent hard-coded versions of the Terms across screens;
+• provide accessible typography, scrolling, and navigation;
+• distinguish informational viewing from explicit acceptance;
+• record acceptance only if product/legal requirements explicitly require it;
+• never require a Butlerly account solely to record acceptance for otherwise account-free core functionality;
+• surface material external-service terms when a user enables the relevant optional service; and
+• provide a route to third-party/open-source licenses.
+
+
+27. Open Decisions Before Release
+
+
+The following must be resolved before these Terms become a public legal agreement:
+
+
+• legal company/entity name;
+• business/contact address and legal contact channel;
+• countries/regions of initial distribution;
+• minimum user age;
+• pricing, purchase, refund, subscription, or one-time-license model as applicable;
+• application-store distribution terms;
+• governing law and venue;
+• dispute-resolution policy;
+• final limitation-of-liability structure;
+• indemnification decision;
+• online services included in V1;
+• telemetry/analytics behavior, if any;
+• optional AI-provider behavior; and
+• counsel approval and effective date.
+
+
+End of LEG-0001

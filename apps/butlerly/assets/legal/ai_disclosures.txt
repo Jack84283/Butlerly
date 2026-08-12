@@ -1,0 +1,580 @@
++﻿LEG-0004 — AI & Professional-Advice Disclosures
+
+
+Document Status: Working Draft for V1 Product Implementation
+Product: Butlerly
+Document Owner: Butlerly Legal
+
+
+IMPORTANT DRAFTING NOTE
+This document defines product, disclosure, and implementation requirements for Butlerly features that use artificial intelligence or could be interpreted as professional advice. It is not a substitute for jurisdiction-specific legal review. Any future feature that materially expands Butlerly into regulated financial, investment, tax, legal, medical, insurance, credit, or similar decision-making requires separate Product, Architecture, Security, and Legal review.
+
+
+1. Purpose
+
+
+Butlerly may use artificial intelligence to help users organize, interpret, summarize, classify, search, or understand their personal information. AI is intended to assist users, not replace authoritative source data, deterministic application logic, or qualified professional judgment.
+
+
+This document establishes:
+
+
+• principles governing AI-assisted functionality;
+• required user disclosures;
+• boundaries between informational assistance and professional advice;
+• rules for local and external AI providers;
+• requirements for explainability, uncertainty, and user review;
+• requirements for handling user data sent to AI systems; and
+• implementation requirements for Engineering and Codex.
+
+
+2. Core AI Principle
+
+
+AI in Butlerly is optional, assistive, explainable where practical, and never authoritative over the user's underlying records.
+
+
+AI should help the user understand information. It should not silently rewrite factual source data or convert probabilistic output into authoritative financial records.
+
+
+3. Optional AI
+
+
+Core Butlerly operation should not depend on AI unless a specific Product requirement explicitly defines otherwise.
+
+
+A user who does not enable or use AI should retain access to the core local-first functions defined for the applicable product version.
+
+
+AI-related account creation, provider credentials, network connectivity, or consent should not become an indirect mandatory requirement for unrelated core functionality.
+
+
+4. Local and External AI
+
+
+Butlerly may support multiple AI providers through an abstraction layer. Providers may include local models running on the user's device and external services processing requests remotely.
+
+
+The UI and documentation must not present these modes as equivalent from a privacy perspective.
+
+
+When a model runs locally, relevant processing may remain on-device subject to the model/runtime implementation.
+
+
+When an external AI provider is used, selected information may leave the device and be processed according to that provider's terms, privacy policy, retention practices, and technical architecture.
+
+
+5. External AI Disclosure
+
+
+Before transmitting user content to an external AI provider, Butlerly should provide a clear disclosure appropriate to the feature and context.
+
+
+The disclosure should communicate, as applicable:
+
+
+• that information will be sent outside the device;
+• the provider or provider category;
+• the purpose of the transmission;
+• the types of information that may be included;
+• that the provider may process data under its own terms/privacy policy; and
+• that the user may cancel or choose a local/non-AI alternative where supported.
+
+
+A generic statement buried only in the Privacy Policy should not be relied upon as the sole disclosure for a material external AI data flow.
+
+
+6. Data Minimization for AI
+
+
+Butlerly should send only the information reasonably necessary for the requested AI task.
+
+
+For example, a request to categorize a merchant should not automatically transmit the user's entire transaction history, all receipts, unrelated notes, or backup data.
+
+
+Prompts and context assembly should be purpose-limited.
+
+
+7. Sensitive Information
+
+
+Personal-finance records may reveal sensitive information about a user's behavior, relationships, health, location, beliefs, or other activities even when those categories are not explicitly stored.
+
+
+AI context should therefore be treated as potentially sensitive. Engineering should minimize unnecessary inclusion of identifiers, full account information, receipts, notes, or unrelated transaction history.
+
+
+Credentials, authentication tokens, encryption keys, passwords, and other secrets must not be intentionally inserted into AI prompts.
+
+
+8. AI Output Is Not Source Data
+
+
+AI-generated output should be distinguishable from source records and deterministic application data.
+
+
+Where AI suggests a merchant, category, tag, explanation, correction, or other modification, Butlerly should preserve the original source information and require an appropriate user or deterministic workflow before changing authoritative records where the change is consequential.
+
+
+AI output should not silently overwrite original receipt text, imported transaction information, user-entered notes, or other source material.
+
+
+9. Explainability
+
+
+Where practical, Butlerly should help users understand why an AI-assisted result was produced.
+
+
+Depending on the feature, useful explanations may include:
+
+
+• source records considered;
+• rules or signals used;
+• whether the result came from deterministic logic or AI;
+• confidence or uncertainty indicators;
+• assumptions;
+• relevant time period; and
+• actions the user can take to review or correct the result.
+
+
+Explainability should be proportional to the consequence of the feature.
+
+
+10. Confidence and Uncertainty
+
+
+AI output should not be presented with unjustified certainty.
+
+
+When confidence is low or source information is incomplete, the product should communicate uncertainty rather than fabricate missing facts.
+
+
+The application should prefer “unknown,” “needs review,” or equivalent states over invented values when a reliable conclusion cannot be made.
+
+
+11. Hallucinations and Errors
+
+
+Generative AI can produce inaccurate, fabricated, incomplete, outdated, inconsistent, or misleading information.
+
+
+Butlerly must not promise that AI output is correct. Users should be encouraged to review consequential output against original records and authoritative sources.
+
+
+Product flows should make correction practical rather than treating AI output as final.
+
+
+12. Deterministic Logic vs. AI
+
+
+Where a task can be reliably completed using deterministic business logic, stored records, calculations, or rules, Butlerly should not use generative AI merely to make the result appear intelligent.
+
+
+AI may explain deterministic results but should not replace deterministic calculations when accuracy and reproducibility are required.
+
+
+Examples include arithmetic totals, stored transaction values, date comparisons, known currency values already stored in the record, and other exact operations.
+
+
+13. Personal-Finance Information
+
+
+Butlerly may organize and summarize personal-finance information. It may identify patterns, categorize transactions, calculate totals, highlight unusual activity, or generate informational observations.
+
+
+These capabilities do not by themselves make Butlerly a financial adviser, investment adviser, accountant, tax preparer, bank, lender, broker, insurer, or fiduciary.
+
+
+The product should avoid language that implies such a professional relationship unless Butlerly intentionally enters that regulated activity and completes the necessary legal review.
+
+
+14. Financial Advice Disclosure
+
+
+Unless expressly introduced under a separately reviewed feature, Butlerly does not provide personalized financial or investment advice.
+
+
+Statements about spending, budgeting, savings, cash flow, financial trends, investments, or similar matters should be framed as informational analysis rather than instructions that the user must follow.
+
+
+Users remain responsible for financial decisions and should consult an appropriately qualified professional where professional advice is needed.
+
+
+15. Investment Information
+
+
+If Butlerly later displays investment-related information, AI must not be presented as guaranteeing returns, predicting market outcomes with certainty, or recommending a security as suitable for a specific user without separate regulatory analysis.
+
+
+Features involving securities recommendations, portfolio optimization, automated trading, or individualized investment advice require explicit Legal review before implementation.
+
+
+16. Tax Information
+
+
+Butlerly may organize records that users later use for tax preparation. It may calculate totals or summarize categories based on user data.
+
+
+Unless separately approved, Butlerly is not a tax adviser or tax-preparation service. AI-generated tax interpretations should not be presented as authoritative determinations of deductibility, filing status, tax liability, or compliance obligations.
+
+
+17. Legal Information
+
+
+Butlerly may organize records that have legal relevance, but it does not provide legal representation or establish an attorney-client relationship.
+
+
+AI should not be described as a lawyer, legal adviser, or substitute for qualified legal counsel.
+
+
+18. Medical and Health Information
+
+
+Butlerly V1 is not intended as a medical diagnosis or treatment system.
+
+
+If future Butlerly functionality processes health information or produces health-related recommendations, it requires dedicated Product, Privacy, Security, Safety, and Legal review before release.
+
+
+The generic disclaimer in this document is not sufficient authorization to introduce medical decision-support functionality.
+
+
+19. Credit, Lending, Insurance, and Eligibility Decisions
+
+
+AI must not be introduced into credit, lending, insurance, employment, housing, or other consequential eligibility decisions merely under the general Butlerly AI framework.
+
+
+Such functionality requires dedicated legal, fairness, safety, data-governance, and product review.
+
+
+20. Professional-Advice User-Facing Notice
+
+
+A concise general notice may state:
+
+
+“Butlerly helps you organize and understand your personal information. Information, calculations, suggestions, insights, and AI-generated content are provided for informational purposes only and may contain errors. They are not professional financial, investment, tax, legal, medical, or other regulated advice. Review important information and consult an appropriately qualified professional when needed.”
+
+
+This notice should be available from Legal & Licenses and may be surfaced contextually where a feature creates a meaningful risk that users could mistake the output for professional advice.
+
+
+21. AI-Specific User-Facing Notice
+
+
+For AI-assisted experiences, a concise disclosure may state:
+
+
+“AI-generated results may be inaccurate or incomplete. Review important results against your original records before relying on them.”
+
+
+When external AI is used, an additional contextual notice should explain that selected information will be sent to an external provider before transmission.
+
+
+22. Avoid Disclaimer Fatigue
+
+
+Butlerly should not place a large legal warning on every AI-generated sentence.
+
+
+Disclosure should be layered:
+
+
+• persistent general disclosure in Legal & Licenses;
+• clear first-use or enablement disclosure for external AI;
+• concise indicators that content is AI-generated;
+• contextual warnings for consequential features; and
+• detailed provider/privacy information where the user can inspect it.
+
+
+The goal is informed use, not repetitive warnings that users learn to ignore.
+
+
+23. AI Identification
+
+
+Where a reasonable user could otherwise believe that generated content is deterministic or directly sourced from their records, the UI should identify the result as AI-assisted or AI-generated.
+
+
+This can be accomplished through labels, icons with accessible text, metadata, or equivalent design mechanisms.
+
+
+24. Human/User Control
+
+
+Users should be able to review and correct AI-assisted changes to personal records.
+
+
+For consequential modifications, the preferred model is:
+
+
+AI proposes → user reviews → deterministic application commits.
+
+
+Automatic application of low-risk suggestions may be considered where Product explicitly defines it and an easy correction/undo mechanism exists.
+
+
+25. AI Provider Abstraction
+
+
+Legal and privacy requirements apply regardless of which provider implements the AI capability.
+
+
+The provider abstraction should not hide material differences from users or release review. Provider metadata should identify whether processing is local or remote and should support provider-specific disclosures where necessary.
+
+
+26. Provider Review
+
+
+Before enabling an external AI provider in a production release, Butlerly should review:
+
+
+• provider identity;
+• service terms;
+• privacy policy;
+• data-retention behavior;
+• whether submitted data may be used for model training;
+• geographic processing considerations where relevant;
+• security capabilities;
+• deletion/control mechanisms;
+• commercial-use rights;
+• output/use restrictions; and
+• availability and pricing dependencies.
+
+
+Provider behavior must not be inferred solely from the model name. The API/service configuration and applicable commercial terms matter.
+
+
+27. Local Model Review
+
+
+Local AI models also require review. Butlerly should track:
+
+
+• model name/version;
+• model license;
+• runtime requirements;
+• source/download location;
+• model integrity/version verification where appropriate;
+• resource requirements;
+• known use restrictions; and
+• whether model files are bundled or separately downloaded.
+
+
+Local processing improves control over transmission but does not guarantee correctness, safety, or unrestricted licensing.
+
+
+28. Prompt and Context Handling
+
+
+Prompts assembled by Butlerly should be treated as application data flows.
+
+
+Engineering should avoid logging full prompts containing personal data unless specifically required for a user-controlled diagnostic workflow.
+
+
+Prompt templates, system instructions, and provider adapters should be versioned where needed to make important AI behavior reproducible and debuggable.
+
+
+29. AI Memory and Retention
+
+
+Butlerly should not create hidden long-term AI memory from user records without an explicit Product requirement and corresponding privacy design.
+
+
+If a future AI agent maintains memory, the product must define:
+
+
+• what is remembered;
+• where it is stored;
+• whether it is local or remote;
+• how the user can inspect it;
+• how the user can correct/delete it;
+• retention period; and
+• whether memory is shared across devices/providers.
+
+
+30. Agents and Automated Actions
+
+
+Future AI agents that can take actions require stronger controls than read-only AI explanations.
+
+
+Before an agent can modify records, send information, make purchases, initiate financial actions, communicate externally, or invoke consequential integrations, Product and Architecture must define authorization, confirmation, audit, rollback, and error-handling requirements.
+
+
+A general AI disclaimer is not sufficient protection for autonomous consequential actions.
+
+
+31. AI Logging and Auditability
+
+
+For consequential AI-assisted changes, Butlerly should retain enough local metadata to explain that AI was involved and, where appropriate, what was proposed and what the user approved.
+
+
+Auditability should be designed without unnecessarily retaining sensitive prompt content.
+
+
+32. Bias and Fairness
+
+
+AI can reflect biases in training data, prompts, provider behavior, or product design.
+
+
+Features that classify or evaluate people, infer sensitive characteristics, or make consequential decisions about individuals require separate fairness and legal review.
+
+
+Butlerly should avoid inferring sensitive personal characteristics from transaction patterns unless a clearly justified, user-requested, legally reviewed feature requires it.
+
+
+33. Generated Content and Intellectual Property
+
+
+AI output may raise intellectual-property, attribution, or provenance questions. Butlerly should not promise that all generated content is unique, non-infringing, or owned exclusively by the user.
+
+
+Use of AI models, outputs, and generated assets remains subject to applicable provider terms and law.
+
+
+34. Localization
+
+
+AI-related UI disclosures should be localized with the rest of Butlerly's supported interface.
+
+
+Localization must preserve the substantive meaning of privacy, uncertainty, and professional-advice warnings.
+
+
+The original language of user-entered/imported/scanned data should not be automatically translated merely because the application UI or AI disclosure is displayed in another language.
+
+
+35. Implementation Requirements for Codex
+
+
+Codex should implement AI-related product behavior so that:
+
+
+• AI remains optional for core V1 functionality unless Product explicitly says otherwise;
+• AI-generated or AI-assisted results are identifiable where appropriate;
+• original/source records are preserved;
+• consequential AI changes require review/confirmation unless explicitly designed otherwise;
+• external AI transmission is disclosed before data leaves the device;
+• prompt context is minimized to what the feature needs;
+• credentials and secrets are excluded from AI context;
+• AI output is never treated as authoritative merely because it is generated confidently;
+• uncertainty/needs-review states are supported;
+• deterministic calculations remain deterministic;
+• full sensitive prompts are not logged by default;
+• provider configuration distinguishes local from external processing;
+• provider-specific legal/privacy metadata can be surfaced where required;
+• general AI/professional-advice disclosures are accessible under Legal & Licenses;
+• contextual disclosures can be invoked by individual features;
+• AI settings can be disabled without disabling unrelated core functionality; and
+• accessibility applies to AI labels, notices, confirmation dialogs, and warnings.
+
+
+36. Suggested AI Result Metadata
+
+
+Where useful, the application/domain model may represent metadata such as:
+
+
+• generation type: deterministic / AI-assisted / AI-generated;
+• provider identifier;
+• model identifier/version;
+• local vs. external processing;
+• generated timestamp;
+• confidence/uncertainty where meaningful;
+• source references considered;
+• review status;
+• accepted/rejected/corrected status; and
+• prompt/template version where needed for reproducibility.
+
+
+These are conceptual requirements, not mandatory class or database-field names. Architecture should determine the final model.
+
+
+37. Release Review Triggers
+
+
+Legal/Product review is required when Butlerly introduces or materially changes:
+
+
+• a new external AI provider;
+• a new bundled/recommended local model;
+• transmission of a new category of personal data to AI;
+• AI memory;
+• AI agents or automated actions;
+• personalized investment recommendations;
+• tax determinations;
+• health recommendations;
+• legal recommendations;
+• credit/lending/insurance/eligibility decisions;
+• automated financial transactions;
+• user profiling based on sensitive characteristics; or
+• claims that AI output is certified, guaranteed, professional, or authoritative.
+
+
+38. Release Checklist
+
+
+Before releasing an AI feature, verify:
+
+
+• the feature has a documented purpose;
+• AI is actually necessary for the task;
+• source data remains preserved;
+• local/external processing is correctly identified;
+• external data transmission is documented in the privacy data-flow inventory;
+• provider terms/privacy have been reviewed;
+• model/software licenses have been reviewed under LEG-0003;
+• user-facing disclosures are present;
+• consequential output has appropriate review controls;
+• deterministic calculations are not unnecessarily delegated to generative AI;
+• logging does not expose sensitive prompt content;
+• failure and offline behavior are defined;
+• disabling AI leaves unrelated core functions available; and
+• tests cover incorrect, missing, uncertain, and malformed AI output.
+
+
+39. Open Decisions Before Release
+
+
+The following require confirmation as Butlerly's AI implementation matures:
+
+
+• which AI capabilities ship in V1;
+• whether V1 includes any external AI provider;
+• supported local models/runtimes;
+• provider-selection UI;
+• provider credential management;
+• exact first-use consent/disclosure experience;
+• AI confidence model;
+• AI audit metadata retained locally;
+• whether AI features require network access indicators;
+• any provider-specific retention/training controls; and
+• jurisdiction-specific AI disclosure requirements.
+
+
+40. Relationship to Other Documents
+
+
+This document must remain consistent with:
+
+
+• LEG-0000 — Legal & Compliance Index;
+• LEG-0001 — Terms of Use;
+• LEG-0002 — Privacy Policy;
+• LEG-0003 — Software License & Third-Party Notices;
+• Butlerly Product requirements;
+• AI Architecture and provider-abstraction specifications;
+• Security and Privacy Architecture; and
+• UX requirements for review, confirmation, and disclosure.
+
+
+Where a proposed AI capability exceeds these boundaries, the correct response is to review the feature and update the governing specifications—not merely add another disclaimer.
+
+
+End of LEG-0004
