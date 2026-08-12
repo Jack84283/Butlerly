@@ -1,4 +1,4 @@
-+﻿LEG-0004 — AI & Professional-Advice Disclosures
+﻿LEG-0004 — AI & Professional-Advice Disclosures
 
 
 Document Status: Working Draft for V1 Product Implementation
@@ -578,3 +578,9 @@ Where a proposed AI capability exceeds these boundaries, the correct response is
 
 
 End of LEG-0004
+
+
+Document Changes and Updates
+
+
+Butlerly may revise, update, or replace this document from time to time as AI capabilities, providers, product behavior, professional-advice boundaries, regulatory requirements, or industry practices evolve. Unless otherwise stated or required by applicable law, the latest approved version becomes effective when published or otherwise made available by Butlerly, supersedes prior versions, and may apply without separate or prior notice to individual users. Where a particular AI or data-processing change legally requires notice or consent, that requirement must be satisfied separately.

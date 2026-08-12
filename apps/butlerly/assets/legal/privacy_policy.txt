@@ -1,4 +1,4 @@
-+﻿LEG-0002 — Privacy Policy
+﻿LEG-0002 — Privacy Policy
 
 
 Document Status: Working Draft for V1 Product Implementation
@@ -482,3 +482,9 @@ Where implementation and this draft differ, the difference must be resolved befo
 
 
 End of LEG-0002
+
+
+Changes and Updates
+
+
+Butlerly may revise, update, or replace this Privacy Policy from time to time. Unless otherwise required by applicable law or expressly stated by Butlerly, a revised policy becomes effective when published or otherwise made available through Butlerly and may apply without separate or prior notice to individual users. Where applicable law requires advance notice, consent, renewed consent, or another procedure because of a particular change in data practices, Butlerly will follow that requirement.
