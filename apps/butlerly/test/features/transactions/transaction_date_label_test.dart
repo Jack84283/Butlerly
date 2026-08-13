@@ -17,12 +17,21 @@ void main() {
     );
   });
 
-  test('falls back to the exact instant date when no business date exists', () {
+  test('falls back to the UTC instant date when no business date exists', () {
     final transaction = _transaction(occurredAt: DateTime.utc(2026, 8, 10, 1));
 
     expect(
       transactionDateLabel(transaction, pendingLabel: 'Date pending'),
-      'Aug 9, 2026',
+      'Aug 10, 2026',
+    );
+  });
+
+  test('editor fallback uses the UTC instant calendar date', () {
+    final transaction = _transaction(occurredAt: DateTime.utc(2026, 8, 10, 1));
+
+    expect(
+      transactionCalendarDate(transaction, fallback: DateTime(2026, 8, 12)),
+      DateTime(2026, 8, 10),
     );
   });
 

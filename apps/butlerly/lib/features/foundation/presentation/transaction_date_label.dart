@@ -15,7 +15,9 @@ String transactionDateLabel(
 
   final occurredAt = transaction.occurredAt;
   if (occurredAt == null) return pendingLabel;
-  return DateFormat.yMMMd(locale).format(occurredAt.toLocal());
+  // Legacy rows without a canonical business date must not change calendar
+  // date based on the host device or CI runner timezone.
+  return DateFormat.yMMMd(locale).format(occurredAt.toUtc());
 }
 
 DateTime transactionCalendarDate(
@@ -30,8 +32,8 @@ DateTime transactionCalendarDate(
 
   final occurredAt = transaction.occurredAt;
   if (occurredAt != null) {
-    final local = occurredAt.toLocal();
-    return DateTime(local.year, local.month, local.day);
+    final utc = occurredAt.toUtc();
+    return DateTime(utc.year, utc.month, utc.day);
   }
   return DateTime(fallback.year, fallback.month, fallback.day);
 }
