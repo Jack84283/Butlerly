@@ -1,23 +1,17 @@
 +﻿LEG-0004 — AI & Professional-Advice Disclosures
 
-
 Document Status: Working Draft for V1 Product Implementation
 Product: Butlerly
 Document Owner: Butlerly Legal
 
-
 IMPORTANT DRAFTING NOTE
 This document defines product, disclosure, and implementation requirements for Butlerly features that use artificial intelligence or could be interpreted as professional advice. It is not a substitute for jurisdiction-specific legal review. Any future feature that materially expands Butlerly into regulated financial, investment, tax, legal, medical, insurance, credit, or similar decision-making requires separate Product, Architecture, Security, and Legal review.
 
-
 1. Purpose
-
 
 Butlerly may use artificial intelligence to help users organize, interpret, summarize, classify, search, or understand their personal information. AI is intended to assist users, not replace authoritative source data, deterministic application logic, or qualified professional judgment.
 
-
 This document establishes:
-
 
 • principles governing AI-assisted functionality;
 • required user disclosures;
@@ -27,24 +21,17 @@ This document establishes:
 • requirements for handling user data sent to AI systems; and
 • implementation requirements for Engineering and Codex.
 
-
 2. Core AI Principle
-
 
 AI in Butlerly is optional, assistive, explainable where practical, and never authoritative over the user's underlying records.
 
-
 AI should help the user understand information. It should not silently rewrite factual source data or convert probabilistic output into authoritative financial records.
-
 
 3. Optional AI
 
-
 Core Butlerly operation should not depend on AI unless a specific Product requirement explicitly defines otherwise.
 
-
 A user who does not enable or use AI should retain access to the core local-first functions defined for the applicable product version.
-
 
 AI-related account creation, provider credentials, network connectivity, or consent should not become an indirect mandatory requirement for unrelated core functionality.
 
@@ -578,3 +565,9 @@ Where a proposed AI capability exceeds these boundaries, the correct response is
 
 
 End of LEG-0004
+
+
+Document Changes and Updates
+
+
+Butlerly may revise, update, or replace this document from time to time as AI capabilities, providers, product behavior, professional-advice boundaries, regulatory requirements, or industry practices evolve. Unless otherwise stated or required by applicable law, the latest approved version becomes effective when published or otherwise made available by Butlerly, supersedes prior versions, and may apply without separate or prior notice to individual users. Where a particular AI or data-processing change legally requires notice or consent, that requirement must be satisfied separately.

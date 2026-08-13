@@ -1,4 +1,4 @@
-+﻿LEG-0001 — Terms of Use
+﻿LEG-0001 — Terms of Use
 
 
 Document Status: Working Draft for V1 Product Implementation
@@ -302,3 +302,9 @@ The following must be resolved before these Terms become a public legal agreemen
 
 
 End of LEG-0001
+
+
+Changes and Updates
+
+
+Butlerly may revise, update, or replace these Terms from time to time. Unless otherwise required by applicable law or expressly stated by Butlerly, revised Terms become effective when published or otherwise made available through Butlerly and may apply without separate or prior notice to individual users. Continued use of Butlerly after the effective date is subject to the then-current Terms. Where applicable law requires notice, consent, renewed acceptance, or another procedure for a particular change, Butlerly will follow that requirement.

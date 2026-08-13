@@ -1,4 +1,4 @@
-+﻿LEG-0003 — Software License & Third-Party Notices
+﻿LEG-0003 — Software License & Third-Party Notices
 
 
 Document Status: Working Draft for V1 Product Implementation
@@ -477,3 +477,9 @@ Architecture and Engineering dependency decisions must trigger review of this do
 
 
 End of LEG-0003
+
+
+Document Changes and Updates
+
+
+Butlerly may revise, update, or replace this document from time to time, including to reflect changes in the application, dependencies, distribution model, third-party licenses, or legal requirements. Unless otherwise stated or required by applicable law or an applicable third-party license, the latest approved version becomes effective when published or otherwise made available by Butlerly, supersedes prior versions, and may apply without separate or prior notice to individual users.
