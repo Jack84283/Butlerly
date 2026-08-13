@@ -7,6 +7,7 @@ import '../entities/merchant.dart';
 import '../entities/suggestion.dart';
 import '../entities/tag.dart';
 import '../entities/transaction.dart';
+import '../entities/user_preference.dart';
 import '../value_objects/domain_id.dart';
 
 abstract interface class TransactionRepository {
@@ -77,4 +78,9 @@ abstract interface class SuggestionRepository {
   Future<void> save(Suggestion suggestion);
   Future<Suggestion?> findById(SuggestionId id);
   Future<List<Suggestion>> listForTransaction(TransactionId id);
+}
+
+abstract interface class UserPreferenceRepository {
+  Future<UserPreference?> load();
+  Future<void> save(UserPreference preference);
 }

@@ -1,5 +1,6 @@
 import 'package:butlerly_database/butlerly_database.dart';
 import 'package:butlerly_database/src/database/schema.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:test/test.dart';
 
@@ -27,7 +28,7 @@ void main() {
       "SELECT name FROM sqlite_master WHERE type = 'table'",
     );
 
-    expect(version, 3);
+    expect(version, 4);
     expect(foreignKeys.single.values.single, 1);
     expect(
       tables.map((row) => row['name']),
@@ -37,9 +38,30 @@ void main() {
         'evidence_items',
         'suggestions',
         'review_issues',
+        'user_preferences',
       ]),
     );
     expect(await database.passesIntegrityCheck(), isTrue);
+  });
+
+  test('persists the single local user preference record', () async {
+    final repository = SqliteUserPreferenceRepository(database);
+    expect(await repository.load(), isNull);
+
+    await repository.save(
+      UserPreference(
+        locale: 'zh',
+        baseCurrency: CurrencyCode('CNY'),
+        timeZoneId: 'Asia/Shanghai',
+        externalAiEnabled: true,
+      ),
+    );
+
+    final value = await repository.load();
+    expect(value?.locale, 'zh');
+    expect(value?.baseCurrency.value, 'CNY');
+    expect(value?.timeZoneId, 'Asia/Shanghai');
+    expect(value?.externalAiEnabled, isTrue);
   });
 
   test('migrates a v1 UTC instant to v2 business-date fields', () async {

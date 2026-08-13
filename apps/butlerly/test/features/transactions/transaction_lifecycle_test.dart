@@ -27,6 +27,7 @@ void main() {
         MemoryCategories(),
         MemoryTags(),
         MemoryEvidence(),
+        MemoryUserPreferences(),
       ),
     );
   });
@@ -583,6 +584,18 @@ void main() {
     expect(find.text('保存整理结果'), findsOneWidget);
     expect(find.text('Organize transaction'), findsNothing);
   });
+}
+
+final class MemoryUserPreferences implements UserPreferenceRepository {
+  UserPreference? value;
+
+  @override
+  Future<UserPreference?> load() async => value;
+
+  @override
+  Future<void> save(UserPreference preference) async {
+    value = preference;
+  }
 }
 
 final class MemoryTransactionRepository implements TransactionRepository {

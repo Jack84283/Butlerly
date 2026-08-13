@@ -1,11 +1,20 @@
 import 'dart:io';
 
 import 'package:butlerly/app/butlerly_app.dart';
+import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('dark card surfaces use the approved RGB value', () {
+    expect(AppTheme.dark.cardTheme.color, const Color.fromRGBO(28, 28, 28, 1));
+    expect(
+      AppTheme.dark.colorScheme.surfaceContainerHighest,
+      const Color.fromRGBO(28, 28, 28, 1),
+    );
+  });
+
   testWidgets('shows the local-first Butlerly home and P0 navigation', (
     tester,
   ) async {

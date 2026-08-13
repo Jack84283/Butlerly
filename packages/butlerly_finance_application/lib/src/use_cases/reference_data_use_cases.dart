@@ -143,3 +143,22 @@ final class ListTags {
         return List.unmodifiable(await repository.listAll());
       });
 }
+
+final class LoadUserPreference {
+  const LoadUserPreference(this.repository);
+  final UserPreferenceRepository repository;
+
+  Future<ApplicationResult<UserPreference?>> call() =>
+      runApplication('load user preferences', repository.load);
+}
+
+final class SaveUserPreference {
+  const SaveUserPreference(this.repository);
+  final UserPreferenceRepository repository;
+
+  Future<ApplicationResult<UserPreference>> call(UserPreference value) =>
+      runApplication('save user preferences', () async {
+        await repository.save(value);
+        return value;
+      });
+}

@@ -47,8 +47,8 @@ Flutter presentation → application services → finance domain ← SQLite infr
 | Evidence capture, local binary storage, attachment retrieval | Binary evidence selection, persistence, file lifecycle, and local storage are deferred to IMP-0009; local evidence metadata retrieval exists. |
 | Currency/provenance/source-language UI | Partially implemented: provenance and reference conversions display; stored source-language values remain unmodified but are not yet presented. |
 | Business date/exact instant/timezone | Partially implemented: schema v2 has `transaction_date`, `occurred_at_utc`, and `time_zone_id`; v1 migration normalizes legacy instants to UTC and uses the approved UTC calendar-date backfill. |
-| Consent, privacy/data controls, export, deletion | Not started. |
-| Localized UI and preferences | Not started beyond English localization infrastructure. |
+| Consent, privacy/data controls, export, deletion | Partially complete: explicit external-AI consent is off by default and persisted locally; export and erase-all remain. |
+| Localized UI and preferences | Partially complete: English, Simplified Chinese, and Spanish resources exist; locale, base currency, timezone, and AI consent persist in SQLite. |
 | Privacy-safe logging validation | Implemented: application messages redact common financial values and user-entered fields; redaction is tested. |
 
 ## Governing-document alignment

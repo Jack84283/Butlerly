@@ -19,8 +19,8 @@ Status: Active implementation audit
 
 | P0 capability | Status | Evidence / gap |
 | --- | --- | --- |
-| Local workspace without account, network, or AI | Partially implemented | Local SQLite startup and no account requirement are implemented. Preferences and a user-facing first-use flow are not. |
-| Finance domain and local persistence | Partially implemented | Domain invariants, SQLite schema, repositories, and migration tests exist. Schema v2 begins the business-date/exact-instant split; locale/timezone preference persistence remains absent. |
+| Local workspace without account, network, or AI | Partially implemented | Local SQLite startup, no account requirement, and persisted user preferences are implemented. A user-facing first-use flow is not. |
+| Finance domain and local persistence | Partially implemented | Domain invariants, SQLite schema, repositories, migrations, and persisted locale/base-currency/timezone/AI-consent preferences exist. |
 | Application service boundary | Implemented | Commands, queries, DTOs, result mapping, and repository-only application services exist. |
 | Primary navigation and Home | Implemented in this slice | Product-authoritative Home, Transactions, Review, Search, and Settings destinations now have responsive shell support and truthful empty states. |
 | Transaction CRUD and detail UI | Implemented active slice | Local list, create, detail, edit, archive, and permanent-delete UI is wired through application services. |
@@ -29,8 +29,8 @@ Status: Active implementation audit
 | Evidence capture, attachment storage, retrieval UI | Deferred to IMP-0009 | Evidence metadata retrieval is available. Binary evidence selection, persistence, file lifecycle, and local storage are intentionally owned by IMP-0009. |
 | Original currency, language, provenance, and normalization UI | Partially implemented | Transaction detail shows local provenance history and read-only reference conversions; original money remains canonical. Source-language values are preserved but not yet presented. |
 | Business date, exact instant, and timezone model | Partially implemented | Schema v2 stores `transaction_date`, `occurred_at_utc`, and nullable `time_zone_id`; v1 legacy instants migrate to normalized UTC plus their approved UTC calendar date. Date-only imports and timezone preferences remain. |
-| Privacy, consent, export, and deletion UI | Not implemented | Required P0 product controls are absent. |
-| Localization settings and translated UI resources | Not implemented | English-only localization infrastructure exists; user preference and translation resources are absent. |
+| Privacy, consent, export, and deletion UI | Partially implemented | External-AI consent is explicit, off by default, and persisted locally. Export and erase-all remain absent. |
+| Localization settings and translated UI resources | Partially implemented | English, Simplified Chinese, and Spanish resources and persisted locale selection exist. Translation coverage and locale-aware formatting still require hardening. |
 | Privacy-safe logging | Implemented | Common financial values and user-entered fields are redacted before logging; redaction is tested. |
 
 ## Confirmed scope alignment
