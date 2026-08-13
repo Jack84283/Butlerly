@@ -6,10 +6,12 @@ final class UserPreference {
     required this.baseCurrency,
     required this.timeZoneId,
     this.externalAiEnabled = false,
+    this.firstUseCompleted = false,
   });
 
   final String locale;
   final CurrencyCode baseCurrency;
   final String timeZoneId;
   final bool externalAiEnabled;
+  final bool firstUseCompleted;
 }

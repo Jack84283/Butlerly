@@ -147,6 +147,10 @@ class SettingsPage extends ConsumerWidget {
                 subtitle: Text(
                   preference?.timeZoneId ?? DateTime.now().timeZoneName,
                 ),
+                trailing: const Icon(Icons.edit_outlined),
+                onTap: preference == null
+                    ? null
+                    : () => _editTimeZone(context, ref, preference.timeZoneId),
               ),
             ],
           ),
@@ -171,7 +175,7 @@ class SettingsPage extends ConsumerWidget {
           icon: Icons.privacy_tip_outlined,
           title: context.l10n.text('privacyAndData'),
           subtitle: context.l10n.text('privacyAndDataBody'),
-          onTap: () => _showPrivacy(context),
+          onTap: () => context.push('/privacy-data'),
         ),
         ButlerlySectionHeader(title: context.l10n.text('optionalFeatures')),
         ButlerlyCard(
@@ -220,49 +224,52 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
-  void _showPrivacy(BuildContext context) {
-    showModalBottomSheet<void>(
+  Future<void> _editTimeZone(
+    BuildContext context,
+    WidgetRef ref,
+    String current,
+  ) async {
+    final controller = TextEditingController(text: current);
+    final value = await showDialog<String>(
       context: context,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(
-          ButlerlySpacing.section,
-          0,
-          ButlerlySpacing.section,
-          ButlerlySpacing.large,
+      builder: (context) => AlertDialog(
+        title: Text(context.l10n.text('timeZone')),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(
+            labelText: context.l10n.text('ianaTimeZone'),
+            helperText: context.l10n.text('ianaTimeZoneHelp'),
+          ),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.l10n.text('privacyAndData'),
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: ButlerlySpacing.small),
-            Text(context.l10n.text('localOnlyBody')),
-            const SizedBox(height: ButlerlySpacing.section),
-            OutlinedButton.icon(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.download_outlined),
-              label: Text(context.l10n.text('exportToFile')),
-            ),
-            TextButton.icon(
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(context.l10n.text('eraseNotAvailable')),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.delete_forever_outlined),
-              label: Text(context.l10n.text('resetAllData')),
-            ),
-          ],
-        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(context.l10n.text('cancel')),
+          ),
+          FilledButton(
+            onPressed: () {
+              final normalized = controller.text.trim();
+              if (_validTimeZone(normalized)) {
+                Navigator.pop(context, normalized);
+              }
+            },
+            child: Text(context.l10n.text('save')),
+          ),
+        ],
       ),
     );
+    controller.dispose();
+    if (value != null) {
+      await ref
+          .read(userPreferenceProvider.notifier)
+          .saveChanges(timeZoneId: value);
+    }
   }
+
+  bool _validTimeZone(String value) =>
+      value == 'UTC' ||
+      RegExp(r'^[A-Za-z_+-]+/[A-Za-z0-9_+\-/]+$').hasMatch(value);
 }
 
 class _SettingsRow extends StatelessWidget {

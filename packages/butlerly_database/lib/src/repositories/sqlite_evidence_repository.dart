@@ -23,6 +23,7 @@ final class SqliteEvidenceRepository implements EvidenceRepository {
           'provenance_id': value.provenance.id.value,
           'created_at': value.createdAt.toIso8601String(),
           'source_language': value.sourceLanguage,
+          'local_file_name': value.localFileName,
         }, conflictAlgorithm: ConflictAlgorithm.replace);
       });
     } on DatabaseException catch (error) {
@@ -91,6 +92,39 @@ final class SqliteEvidenceRepository implements EvidenceRepository {
     return rows.map(_fromRow).toList(growable: false);
   }
 
+  @override
+  Future<void> remove(EvidenceId id) async {
+    try {
+      await database.transaction((executor) async {
+        final rows = await executor.query(
+          'evidence_items',
+          columns: ['provenance_id'],
+          where: 'id = ?',
+          whereArgs: [id.value],
+        );
+        await executor.delete(
+          'attachment_links',
+          where: 'evidence_id = ?',
+          whereArgs: [id.value],
+        );
+        await executor.delete(
+          'evidence_items',
+          where: 'id = ?',
+          whereArgs: [id.value],
+        );
+        if (rows.isNotEmpty) {
+          await executor.delete(
+            'provenances',
+            where: 'id = ?',
+            whereArgs: [rows.single['provenance_id']],
+          );
+        }
+      });
+    } on DatabaseException catch (error) {
+      throw mapDatabaseException(error, 'remove evidence');
+    }
+  }
+
   static EvidenceItem _fromRow(Map<String, Object?> row) => EvidenceItem(
     id: EvidenceId(row['id']! as String),
     type: EvidenceType.values.byName(row['type']! as String),
@@ -108,6 +142,7 @@ final class SqliteEvidenceRepository implements EvidenceRepository {
     ),
     createdAt: DateTime.parse(row['created_at']! as String),
     sourceLanguage: row['source_language'] as String?,
+    localFileName: row['local_file_name'] as String?,
   );
 }
 

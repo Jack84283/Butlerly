@@ -13,6 +13,7 @@ final class EvidenceItem {
     required this.provenance,
     required DateTime createdAt,
     this.sourceLanguage,
+    this.localFileName,
   }) : originalName = _required(originalName, 'originalName'),
        mediaType = _required(mediaType, 'mediaType'),
        createdAt = createdAt.toUtc();
@@ -24,6 +25,7 @@ final class EvidenceItem {
   final Provenance provenance;
   final DateTime createdAt;
   final String? sourceLanguage;
+  final String? localFileName;
 
   static String _required(String value, String field) {
     final normalized = value.trim();

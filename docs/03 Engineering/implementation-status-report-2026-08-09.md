@@ -6,7 +6,7 @@ Date: 2026-08-10
 
 Butlerly has a sound local-first Finance V1 foundation: a pure domain model, SQLite persistence, application-service layer, responsive product-authoritative navigation, and an offline transaction-management vertical slice.
 
-The product is not yet MVP-complete. Remaining P0 work centers on privacy/export/delete controls, persisted localization/timezone preferences, date-only import support, and IMP-0009 binary evidence files.
+The scoped Finance V1 P0 implementation is feature-complete in the local slice. Remaining release work is manual smartphone visual/accessibility review on an unlocked host and any defects found by that review.
 
 ## Delivery status
 
@@ -44,11 +44,11 @@ Flutter presentation → application services → finance domain ← SQLite infr
 | Transaction create/list/detail/edit/archive/delete UI | Implemented in the active IMP-0006 vertical slice. |
 | Local search/filter UI | Implemented: text, currency, direction, date range, category, payment source, and review state. |
 | Review queue and resolution UI | Implemented: local queue, drill-in, explicit resolve/dismiss. |
-| Evidence capture, local binary storage, attachment retrieval | Binary evidence selection, persistence, file lifecycle, and local storage are deferred to IMP-0009; local evidence metadata retrieval exists. |
+| Evidence capture, local binary storage, attachment retrieval | Implemented: receipt/photo/PDF selection, private local bytes, metadata links, retrieval, deletion, export, and erase-all cleanup. |
 | Currency/provenance/source-language UI | Partially implemented: provenance and reference conversions display; stored source-language values remain unmodified but are not yet presented. |
 | Business date/exact instant/timezone | Partially implemented: schema v2 has `transaction_date`, `occurred_at_utc`, and `time_zone_id`; v1 migration normalizes legacy instants to UTC and uses the approved UTC calendar-date backfill. |
-| Consent, privacy/data controls, export, deletion | Partially complete: explicit external-AI consent is off by default and persisted locally; export and erase-all remain. |
-| Localized UI and preferences | Partially complete: English, Simplified Chinese, and Spanish resources exist; locale, base currency, timezone, and AI consent persist in SQLite. |
+| Consent, privacy/data controls, export, deletion | Implemented local slice: reviewable export/erase scopes, explicit destructive confirmation, SQLite/evidence cleanup, and external-AI consent off by default. |
+| Localized UI and preferences | Implemented P0 slice: complete English, Simplified Chinese, and Spanish key coverage; localized UI dates/decimals; persisted locale, base currency, canonical IANA timezone, AI consent, and first-use completion. |
 | Privacy-safe logging validation | Implemented: application messages redact common financial values and user-entered fields; redaction is tested. |
 
 ## Governing-document alignment

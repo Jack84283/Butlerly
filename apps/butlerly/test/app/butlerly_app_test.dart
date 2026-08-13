@@ -2,11 +2,17 @@ import 'dart:io';
 
 import 'package:butlerly/app/butlerly_app.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
+import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('supported translations cover every English UI key', () {
+    expect(AppLocalizations.missingKeysFor('es'), isEmpty);
+    expect(AppLocalizations.missingKeysFor('zh'), isEmpty);
+  });
+
   test('dark card surfaces use the approved RGB value', () {
     expect(AppTheme.dark.cardTheme.color, const Color.fromRGBO(28, 28, 28, 1));
     expect(

@@ -28,7 +28,7 @@ void main() {
       "SELECT name FROM sqlite_master WHERE type = 'table'",
     );
 
-    expect(version, 4);
+    expect(version, 6);
     expect(foreignKeys.single.values.single, 1);
     expect(
       tables.map((row) => row['name']),
@@ -54,6 +54,7 @@ void main() {
         baseCurrency: CurrencyCode('CNY'),
         timeZoneId: 'Asia/Shanghai',
         externalAiEnabled: true,
+        firstUseCompleted: true,
       ),
     );
 
@@ -62,6 +63,7 @@ void main() {
     expect(value?.baseCurrency.value, 'CNY');
     expect(value?.timeZoneId, 'Asia/Shanghai');
     expect(value?.externalAiEnabled, isTrue);
+    expect(value?.firstUseCompleted, isTrue);
   });
 
   test('migrates a v1 UTC instant to v2 business-date fields', () async {

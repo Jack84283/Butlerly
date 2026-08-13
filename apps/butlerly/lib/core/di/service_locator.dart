@@ -1,6 +1,8 @@
 import 'package:butlerly/core/config/app_configuration.dart';
+import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
+import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly_database/butlerly_database.dart';
 import 'package:get_it/get_it.dart';
@@ -17,17 +19,22 @@ void configureDependencies({
     ..registerSingleton<AppLogger>(logger)
     ..registerSingleton<LocalDatabase>(database);
 
+  services.registerSingleton<LocalDataManager>(LocalDataManager(database));
+
   if (database.status == DatabaseStatus.ready) {
-    services.registerSingleton<FinanceServices>(
-      FinanceServices(
-        SqliteTransactionRepository(database.persistenceDatabase),
-        SqlitePaymentSourceRepository(database.persistenceDatabase),
-        SqliteMerchantRepository(database.persistenceDatabase),
-        SqliteCategoryRepository(database.persistenceDatabase),
-        SqliteTagRepository(database.persistenceDatabase),
-        SqliteEvidenceRepository(database.persistenceDatabase),
-        SqliteUserPreferenceRepository(database.persistenceDatabase),
-      ),
+    final finance = FinanceServices(
+      SqliteTransactionRepository(database.persistenceDatabase),
+      SqlitePaymentSourceRepository(database.persistenceDatabase),
+      SqliteMerchantRepository(database.persistenceDatabase),
+      SqliteCategoryRepository(database.persistenceDatabase),
+      SqliteTagRepository(database.persistenceDatabase),
+      SqliteEvidenceRepository(database.persistenceDatabase),
+      SqliteUserPreferenceRepository(database.persistenceDatabase),
     );
+    services
+      ..registerSingleton<FinanceServices>(finance)
+      ..registerSingleton<LocalEvidenceStore>(
+        LocalEvidenceStore(services<LocalDataManager>(), finance),
+      );
   }
 }

@@ -62,6 +62,38 @@ final class UpdateTransactionCommand {
   final String? notes;
 }
 
+final class ImportTransactionCommand {
+  const ImportTransactionCommand({
+    required this.id,
+    required this.provenanceId,
+    required this.sourceId,
+    required this.originalRepresentation,
+    required this.money,
+    required this.direction,
+    required this.transactionDate,
+    this.occurredAtUtc,
+    this.timeZoneId,
+    this.description,
+    this.rawCounterparty,
+    this.sourceLanguage,
+    this.notes,
+  });
+
+  final String id;
+  final String provenanceId;
+  final String sourceId;
+  final String originalRepresentation;
+  final Money money;
+  final TransactionDirection direction;
+  final String transactionDate;
+  final DateTime? occurredAtUtc;
+  final String? timeZoneId;
+  final String? description;
+  final String? rawCounterparty;
+  final String? sourceLanguage;
+  final String? notes;
+}
+
 final class ListTransactionsQuery {
   const ListTransactionsQuery({
     this.text,

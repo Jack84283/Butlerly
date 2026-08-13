@@ -205,6 +205,7 @@ void main() {
       ),
       createdAt: now,
       sourceLanguage: 'ja',
+      localFileName: 'evidence-1.jpg',
     );
     await evidenceRepository.save(evidence);
     await evidenceRepository.link(
@@ -234,12 +235,28 @@ void main() {
     await suggestions.save(suggestion);
 
     expect(
-      (await evidenceRepository.listForTransaction(transaction.id)).single.id,
-      evidence.id,
+      (await evidenceRepository.listForTransaction(
+        transaction.id,
+      )).single.localFileName,
+      'evidence-1.jpg',
     );
     expect(
       (await suggestions.listForTransaction(transaction.id)).single.status,
       SuggestionStatus.proposed,
+    );
+    await evidenceRepository.remove(evidence.id);
+    expect(await evidenceRepository.findById(evidence.id), isNull);
+    expect(
+      await evidenceRepository.listForTransaction(transaction.id),
+      isEmpty,
+    );
+    expect(
+      await database.connection.query(
+        'provenances',
+        where: 'id = ?',
+        whereArgs: ['evidence-provenance'],
+      ),
+      isEmpty,
     );
   });
 }

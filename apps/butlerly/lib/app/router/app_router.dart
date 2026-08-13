@@ -3,6 +3,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
+import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart';
 import 'package:butlerly/features/foundation/presentation/review_page.dart';
 import 'package:butlerly/features/foundation/presentation/search_page.dart';
 import 'package:butlerly/features/foundation/presentation/settings_page.dart';
@@ -78,6 +79,7 @@ final appRouter = GoRouter(
       path: '/import-export',
       builder: (_, _) => const ImportExportPage(),
     ),
+    GoRoute(path: '/privacy-data', builder: (_, _) => const PrivacyDataPage()),
     GoRoute(
       path: '/notifications',
       builder: (_, _) => const NotificationsPage(),

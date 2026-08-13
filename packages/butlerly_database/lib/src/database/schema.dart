@@ -1,5 +1,5 @@
 abstract final class Schema {
-  static const version = 4;
+  static const version = 6;
 
   static const migration1 = <String>[
     '''CREATE TABLE payment_sources (
@@ -151,5 +151,13 @@ abstract final class Schema {
       time_zone_id TEXT NOT NULL,
       external_ai_enabled INTEGER NOT NULL CHECK(external_ai_enabled IN (0, 1))
     )''',
+  ];
+
+  static const migration5 = <String>[
+    'ALTER TABLE user_preferences ADD COLUMN first_use_completed INTEGER NOT NULL DEFAULT 0 CHECK(first_use_completed IN (0, 1))',
+  ];
+
+  static const migration6 = <String>[
+    'ALTER TABLE evidence_items ADD COLUMN local_file_name TEXT',
   ];
 }

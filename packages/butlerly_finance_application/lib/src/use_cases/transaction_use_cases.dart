@@ -104,6 +104,64 @@ final class UpdateTransaction {
   }
 }
 
+final class ImportTransaction {
+  const ImportTransaction(this.repository, this.clock);
+
+  final TransactionRepository repository;
+  final ApplicationClock clock;
+
+  Future<ApplicationResult<TransactionDto>> call(
+    ImportTransactionCommand command,
+  ) => runApplication('import transaction', () async {
+    if (await repository.findById(TransactionId(command.id)) != null) {
+      throw const RepositoryException(
+        RepositoryFailureCode.constraint,
+        'import duplicate transaction',
+      );
+    }
+    final date = DateTime.tryParse(command.transactionDate);
+    if (date == null ||
+        command.transactionDate.length != 10 ||
+        date.toIso8601String().substring(0, 10) != command.transactionDate) {
+      throw const DomainValidationException(
+        code: DomainErrorCode.invalidTimestamp,
+        field: 'transactionDate',
+        message: 'Imported business dates must use YYYY-MM-DD.',
+      );
+    }
+    final now = clock.now();
+    final transaction = Transaction(
+      id: TransactionId(command.id),
+      timing: command.occurredAtUtc == null
+          ? const UnknownTransactionTime(UnknownTransactionTimeReason.unknown)
+          : KnownTransactionTime(command.occurredAtUtc!),
+      money: command.money,
+      direction: command.direction,
+      sourceType: TransactionSourceType.import,
+      description: command.description,
+      rawCounterparty: command.rawCounterparty,
+      sourceLanguage: command.sourceLanguage,
+      notes: command.notes,
+      provenance: [
+        Provenance(
+          id: ProvenanceId(command.provenanceId),
+          sourceType: ProvenanceSourceType.import,
+          capturedAt: now,
+          sourceId: command.sourceId,
+          originalRepresentation: command.originalRepresentation,
+          sourceLanguage: command.sourceLanguage,
+        ),
+      ],
+      createdAt: now,
+      updatedAt: now,
+      transactionDate: command.transactionDate,
+      timeZoneId: command.timeZoneId,
+    );
+    await repository.save(transaction);
+    return TransactionDto.fromDomain(transaction);
+  });
+}
+
 final class GetTransaction {
   const GetTransaction(this.repository);
 

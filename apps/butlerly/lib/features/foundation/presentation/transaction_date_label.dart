@@ -1,15 +1,21 @@
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
+import 'package:intl/intl.dart';
 
 String transactionDateLabel(
   TransactionDto transaction, {
   required String pendingLabel,
+  String locale = 'en',
 }) {
   final businessDate = transaction.transactionDate?.trim();
-  if (businessDate != null && businessDate.isNotEmpty) return businessDate;
+  if (businessDate != null && businessDate.isNotEmpty) {
+    final parsed = DateTime.tryParse(businessDate);
+    if (parsed != null) return DateFormat.yMMMd(locale).format(parsed);
+    return businessDate;
+  }
 
   final occurredAt = transaction.occurredAt;
   if (occurredAt == null) return pendingLabel;
-  return shortDateLabel(occurredAt);
+  return DateFormat.yMMMd(locale).format(occurredAt.toLocal());
 }
 
 DateTime transactionCalendarDate(

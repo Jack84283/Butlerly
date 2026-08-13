@@ -23,6 +23,7 @@ final class SqliteUserPreferenceRepository implements UserPreferenceRepository {
         baseCurrency: CurrencyCode(row['base_currency']! as String),
         timeZoneId: row['time_zone_id']! as String,
         externalAiEnabled: row['external_ai_enabled'] == 1,
+        firstUseCompleted: row['first_use_completed'] == 1,
       );
     } on Exception catch (error) {
       if (error is RepositoryException) rethrow;
@@ -42,6 +43,7 @@ final class SqliteUserPreferenceRepository implements UserPreferenceRepository {
         'base_currency': preference.baseCurrency.value,
         'time_zone_id': preference.timeZoneId,
         'external_ai_enabled': preference.externalAiEnabled ? 1 : 0,
+        'first_use_completed': preference.firstUseCompleted ? 1 : 0,
       }, conflictAlgorithm: ConflictAlgorithm.replace);
     } on Exception catch (error) {
       if (error is RepositoryException) rethrow;

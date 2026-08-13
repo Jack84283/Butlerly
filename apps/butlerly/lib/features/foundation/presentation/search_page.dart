@@ -5,6 +5,7 @@ import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
@@ -235,6 +236,7 @@ class _SearchPageState extends State<SearchPage>
                     future: _categories,
                     builder: (context, snapshot) =>
                         DropdownButtonFormField<String?>(
+                          key: const ValueKey('search-category-filter'),
                           initialValue: _categoryId,
                           decoration: InputDecoration(
                             labelText: context.l10n.text('anyCategory'),
@@ -290,6 +292,7 @@ class _SearchPageState extends State<SearchPage>
                   ),
                   const SizedBox(height: ButlerlySpacing.section),
                   FilledButton(
+                    key: const ValueKey('apply-search-filters'),
                     onPressed: () {
                       Navigator.pop(context);
                       _submit();
@@ -424,8 +427,11 @@ class _SearchPageState extends State<SearchPage>
                           meta: transactionDateLabel(
                             value,
                             pendingLabel: context.l10n.text('datePending'),
+                            locale: Localizations.localeOf(
+                              context,
+                            ).toLanguageTag(),
                           ),
-                          amount: value.amount,
+                          amount: localizedDecimal(context, value.amount),
                           currency: value.currency,
                           icon: Icons.receipt_long_outlined,
                           isIncome:

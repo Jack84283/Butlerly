@@ -1,7 +1,12 @@
+import 'package:butlerly/core/di/finance_services.dart';
+import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/core/import/local_csv_importer.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -169,8 +174,48 @@ class _WelcomeValue extends StatelessWidget {
   );
 }
 
-class ImportExportPage extends StatelessWidget {
+class ImportExportPage extends StatefulWidget {
   const ImportExportPage({super.key});
+
+  @override
+  State<ImportExportPage> createState() => _ImportExportPageState();
+}
+
+class _ImportExportPageState extends State<ImportExportPage> {
+  bool _importing = false;
+
+  Future<void> _importCsv() async {
+    final sourceLanguage = Localizations.localeOf(context).languageCode;
+    const group = XTypeGroup(label: 'CSV', extensions: ['csv']);
+    final file = await openFile(acceptedTypeGroups: const [group]);
+    if (file == null || !mounted) return;
+    setState(() => _importing = true);
+    final summary = await LocalCsvImporter(
+      services<FinanceServices>(),
+    ).import(file, sourceLanguage: sourceLanguage);
+    if (!mounted) return;
+    setState(() => _importing = false);
+    if (summary.imported > 0) notifyTransactionChanged();
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(context.l10n.text('importSummary')),
+        content: Text(
+          context.l10n.text('importSummaryBody', {
+            'imported': '${summary.imported}',
+            'duplicates': '${summary.duplicates}',
+            'failed': '${summary.failed}',
+          }),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(context.l10n.text('done')),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _unavailable(BuildContext context) {
     showModalBottomSheet<void>(
@@ -200,15 +245,15 @@ class ImportExportPage extends StatelessWidget {
       padding: const EdgeInsets.all(ButlerlySpacing.standard),
       children: [
         const ButlerlyOfflineBanner(
-          message:
-              'Import and export will remain local. Unsupported actions are disabled.',
+          message: 'CSV import and export stay on this device.',
         ),
+        if (_importing) const LinearProgressIndicator(),
         ButlerlySectionHeader(title: context.l10n.text('importData')),
         _ActionRow(
           icon: Icons.file_open_outlined,
           title: context.l10n.text('importFromFile'),
           subtitle: context.l10n.text('importFromFileBody'),
-          onTap: () => _unavailable(context),
+          onTap: _importing ? () {} : _importCsv,
         ),
         _ActionRow(
           icon: Icons.image_outlined,
@@ -221,7 +266,7 @@ class ImportExportPage extends StatelessWidget {
           icon: Icons.file_download_outlined,
           title: context.l10n.text('exportToFile'),
           subtitle: context.l10n.text('exportToFileBody'),
-          onTap: () => _unavailable(context),
+          onTap: () => context.push('/privacy-data'),
         ),
         _ActionRow(
           icon: Icons.inventory_2_outlined,

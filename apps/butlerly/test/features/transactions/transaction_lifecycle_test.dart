@@ -12,8 +12,10 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() {
+  setUpAll(() => initializeDateFormatting('en'));
   late MemoryTransactionRepository repository;
 
   setUp(() async {
@@ -160,12 +162,22 @@ void main() {
 
     await tester.tap(find.text('Filters'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Any category').last);
-    await tester.tap(find.text('Any category').last);
+    final categoryFilter = find.byKey(const ValueKey('search-category-filter'));
+    await tester.scrollUntilVisible(
+      categoryFilter,
+      160,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(categoryFilter);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Dining').last);
-    await tester.ensureVisible(find.text('Apply filters'));
-    await tester.tap(find.text('Apply filters'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('apply-search-filters')),
+      160,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.byKey(const ValueKey('apply-search-filters')));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(EditableText), 'Lunch');
     await tester.testTextInput.receiveAction(TextInputAction.search);
@@ -327,8 +339,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('2026-08-10'), findsOneWidget);
-    expect(find.text('2026-08-11'), findsNothing);
+    expect(find.text('Aug 10, 2026'), findsOneWidget);
+    expect(find.text('Aug 11, 2026'), findsNothing);
     expect(find.text('Entered locally'), findsOneWidget);
   });
 
@@ -695,6 +707,8 @@ final class MemoryEvidence implements EvidenceRepository {
   @override
   Future<List<EvidenceItem>> listForTransaction(TransactionId id) async =>
       const [];
+  @override
+  Future<void> remove(EvidenceId id) async {}
   @override
   Future<void> save(EvidenceItem evidence) async {}
   @override

@@ -1,8 +1,10 @@
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() {
+  setUpAll(() => initializeDateFormatting('en'));
   test('prefers the canonical business date over the exact UTC instant', () {
     final transaction = _transaction(
       occurredAt: DateTime.utc(2026, 8, 10, 1),
@@ -11,7 +13,7 @@ void main() {
 
     expect(
       transactionDateLabel(transaction, pendingLabel: 'Date pending'),
-      '2026-08-09',
+      'Aug 9, 2026',
     );
   });
 
@@ -20,7 +22,7 @@ void main() {
 
     expect(
       transactionDateLabel(transaction, pendingLabel: 'Date pending'),
-      '2026-08-10',
+      'Aug 9, 2026',
     );
   });
 

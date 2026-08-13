@@ -1,13 +1,16 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -197,7 +200,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                               : context.l10n.text('untitledTransaction'),
                           subtitle: data.masterData.summary(value),
                           meta: _transactionDate(value, context),
-                          amount: value.amount,
+                          amount: localizedDecimal(context, value.amount),
                           currency: value.currency,
                           icon:
                               value.direction ==
@@ -485,8 +488,27 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       destructive: true,
     );
     if (confirmed != true || !context.mounted) return;
+    final evidenceResult = await finance.listEvidenceForTransaction(
+      transaction.id,
+    );
+    if (evidenceResult is! ApplicationSuccess<List<EvidenceItem>>) {
+      if (context.mounted) _showEvidenceCleanupFailure(context);
+      return;
+    }
+    for (final evidence in evidenceResult.value) {
+      if (!await services<LocalEvidenceStore>().remove(evidence)) {
+        if (context.mounted) _showEvidenceCleanupFailure(context);
+        return;
+      }
+    }
     await finance.deleteTransactionPermanently(transaction.id);
     if (context.mounted) Navigator.of(context).pop(true);
+  }
+
+  void _showEvidenceCleanupFailure(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l10n.text('evidenceCleanupFailed'))),
+    );
   }
 
   @override
@@ -643,24 +665,124 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   );
 }
 
-class _EvidenceSection extends StatelessWidget {
+class _EvidenceSection extends StatefulWidget {
   const _EvidenceSection({required this.finance, required this.transactionId});
 
   final FinanceServices finance;
   final String transactionId;
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<List<EvidenceItem>>(
-    future: finance
-        .listEvidenceForTransaction(transactionId)
-        .then(
-          (result) => switch (result) {
-            ApplicationSuccess<List<EvidenceItem>>(:final value) => value,
-            ApplicationFailure<List<EvidenceItem>>() => throw StateError(
-              'Evidence metadata could not be loaded.',
-            ),
-          },
+  State<_EvidenceSection> createState() => _EvidenceSectionState();
+}
+
+class _EvidenceSectionState extends State<_EvidenceSection> {
+  late Future<List<EvidenceItem>> _evidence = _load();
+
+  Future<List<EvidenceItem>> _load() => widget.finance
+      .listEvidenceForTransaction(widget.transactionId)
+      .then(
+        (result) => switch (result) {
+          ApplicationSuccess<List<EvidenceItem>>(:final value) => value,
+          ApplicationFailure<List<EvidenceItem>>() => throw StateError(
+            'Evidence metadata could not be loaded.',
+          ),
+        },
+      );
+
+  Future<void> _attach() async {
+    const types = XTypeGroup(
+      label: 'Receipts and documents',
+      extensions: ['jpg', 'jpeg', 'png', 'heic', 'webp', 'pdf'],
+    );
+    final source = await openFile(acceptedTypeGroups: const [types]);
+    if (source == null || !mounted) return;
+    final stored = await services<LocalEvidenceStore>().attach(
+      transactionId: widget.transactionId,
+      source: source,
+    );
+    if (!mounted) return;
+    if (stored) setState(() => _evidence = _load());
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          context.l10n.text(
+            stored ? 'evidenceAttached' : 'evidenceAttachFailed',
+          ),
         ),
+      ),
+    );
+  }
+
+  Future<void> _remove(EvidenceItem evidence) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(context.l10n.text('removeEvidenceTitle')),
+        content: Text(context.l10n.text('removeEvidenceBody')),
+        actions: [
+          TextButton(
+            autofocus: true,
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(context.l10n.text('cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(context.l10n.text('remove')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final removed = await services<LocalEvidenceStore>().remove(evidence);
+    if (mounted && removed) setState(() => _evidence = _load());
+  }
+
+  Future<void> _preview(EvidenceItem evidence) async {
+    final file = await services<LocalEvidenceStore>().fileFor(evidence);
+    final exists = file != null && await file.exists();
+    if (!mounted) return;
+    if (!exists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.text('evidenceFileMissing'))),
+      );
+      return;
+    }
+    final availableFile = file;
+    final isImage = evidence.mediaType.startsWith('image/');
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(evidence.originalName),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520, maxHeight: 560),
+          child: isImage
+              ? InteractiveViewer(
+                  minScale: 0.5,
+                  maxScale: 4,
+                  child: Image.file(
+                    availableFile,
+                    semanticLabel: context.l10n.text('evidencePreview'),
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) =>
+                        _EvidenceFileSummary(evidence: evidence),
+                  ),
+                )
+              : _EvidenceFileSummary(evidence: evidence),
+        ),
+        actions: [
+          TextButton(
+            autofocus: true,
+            onPressed: () => Navigator.pop(context),
+            child: Text(context.l10n.text('done')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<List<EvidenceItem>>(
+    future: _evidence,
     builder: (context, snapshot) {
       if (snapshot.hasError) {
         return Text(context.l10n.text('evidenceLoadError'));
@@ -674,6 +796,14 @@ class _EvidenceSection extends StatelessWidget {
             context.l10n.text('evidence'),
             style: Theme.of(context).textTheme.titleMedium,
           ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _attach,
+              icon: const Icon(Icons.add_photo_alternate_outlined),
+              label: Text(context.l10n.text('attachEvidence')),
+            ),
+          ),
           if (evidence.isEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -686,11 +816,42 @@ class _EvidenceSection extends StatelessWidget {
                 leading: const Icon(Icons.attach_file_outlined),
                 title: Text(value.originalName),
                 subtitle: Text(value.mediaType),
+                onTap: () => _preview(value),
+                trailing: IconButton(
+                  tooltip: context.l10n.text('remove'),
+                  onPressed: () => _remove(value),
+                  icon: const Icon(Icons.delete_outline_rounded),
+                ),
               ),
             ),
         ],
       );
     },
+  );
+}
+
+class _EvidenceFileSummary extends StatelessWidget {
+  const _EvidenceFileSummary({required this.evidence});
+
+  final EvidenceItem evidence;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: context.l10n.text('evidencePreview'),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.description_outlined, size: 64),
+        const SizedBox(height: ButlerlySpacing.small),
+        Text(evidence.originalName, textAlign: TextAlign.center),
+        Text(evidence.mediaType, style: Theme.of(context).textTheme.bodySmall),
+        const SizedBox(height: ButlerlySpacing.small),
+        Text(
+          context.l10n.text('evidenceStoredLocally'),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    ),
   );
 }
 
@@ -1083,6 +1244,10 @@ Future<void> _assignPaymentSource(
 }
 
 String _transactionDate(TransactionDto value, BuildContext context) =>
-    transactionDateLabel(value, pendingLabel: context.l10n.text('datePending'));
+    transactionDateLabel(
+      value,
+      pendingLabel: context.l10n.text('datePending'),
+      locale: Localizations.localeOf(context).toLanguageTag(),
+    );
 
 String _shortDate(DateTime value) => shortDateLabel(value);

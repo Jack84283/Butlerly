@@ -38,6 +38,64 @@ void main() {
     },
   );
 
+  test(
+    'imports a date-only transaction without inventing an instant',
+    () async {
+      final result = await ImportTransaction(transactions, clock)(
+        ImportTransactionCommand(
+          id: 'import-1',
+          provenanceId: 'import-provenance-1',
+          sourceId: 'transactions.csv',
+          originalRepresentation: '"2026-08-01","12.50","USD"',
+          money: money('12.50'),
+          direction: TransactionDirection.expense,
+          transactionDate: '2026-08-01',
+          rawCounterparty: 'Café Original',
+          sourceLanguage: 'es',
+        ),
+      );
+
+      expect(result, isA<ApplicationSuccess<TransactionDto>>());
+      final stored = await transactions.findById(TransactionId('import-1'));
+      expect(stored!.sourceType, TransactionSourceType.import);
+      expect(stored.timing, isA<UnknownTransactionTime>());
+      expect(stored.transactionDate, '2026-08-01');
+      expect(stored.timeZoneId, isNull);
+      expect(stored.rawCounterparty, 'Café Original');
+      expect(stored.sourceLanguage, 'es');
+      expect(stored.money, money('12.50'));
+      expect(stored.provenance.single.sourceType, ProvenanceSourceType.import);
+      expect(
+        stored.provenance.single.originalRepresentation,
+        '"2026-08-01","12.50","USD"',
+      );
+    },
+  );
+
+  test('rejects invalid imported business dates', () async {
+    final result = await ImportTransaction(transactions, clock)(
+      ImportTransactionCommand(
+        id: 'import-1',
+        provenanceId: 'import-provenance-1',
+        sourceId: 'transactions.csv',
+        originalRepresentation: 'invalid row',
+        money: money('12.50'),
+        direction: TransactionDirection.expense,
+        transactionDate: '08/01/2026',
+      ),
+    );
+
+    expect(
+      result,
+      isA<ApplicationFailure<TransactionDto>>().having(
+        (value) => value.failure.code,
+        'code',
+        ApplicationFailureCode.validation,
+      ),
+    );
+    expect(transactions.values, isEmpty);
+  });
+
   test('updates canonical data while retaining provenance', () async {
     transactions.values['transaction-1'] = transaction(now);
     final result = await UpdateTransaction(transactions, clock)(
@@ -316,6 +374,9 @@ final class MemoryPaymentSources implements PaymentSourceRepository {
 }
 
 final class FailingEvidence implements EvidenceRepository {
+  @override
+  Future<void> remove(EvidenceId id) async {}
+
   @override
   Future<EvidenceItem?> findById(EvidenceId id) async => null;
 

@@ -72,6 +72,7 @@ abstract interface class EvidenceRepository {
   Future<void> link(AttachmentLink link);
   Future<EvidenceItem?> findById(EvidenceId id);
   Future<List<EvidenceItem>> listForTransaction(TransactionId id);
+  Future<void> remove(EvidenceId id);
 }
 
 abstract interface class SuggestionRepository {

@@ -162,3 +162,34 @@ final class SaveUserPreference {
         return value;
       });
 }
+
+final class StoreAndAttachEvidence {
+  const StoreAndAttachEvidence(this.repository);
+  final EvidenceRepository repository;
+
+  Future<ApplicationResult<EvidenceItem>> call(
+    EvidenceItem evidence,
+    AttachmentLink link,
+  ) => runApplication('attach evidence', () async {
+    if (link.evidenceId != evidence.id) {
+      throw const DomainValidationException(
+        code: DomainErrorCode.relationshipMismatch,
+        field: 'evidenceId',
+        message: 'The attachment must reference the selected evidence.',
+      );
+    }
+    await repository.save(evidence);
+    await repository.link(link);
+    return evidence;
+  });
+}
+
+final class RemoveEvidence {
+  const RemoveEvidence(this.repository);
+  final EvidenceRepository repository;
+
+  Future<ApplicationResult<void>> call(String id) => runApplication(
+    'remove evidence',
+    () => repository.remove(EvidenceId(id)),
+  );
+}

@@ -9,9 +9,15 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 Future<void> bootstrap() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Future.wait([
+    initializeDateFormatting('en'),
+    initializeDateFormatting('es'),
+    initializeDateFormatting('zh'),
+  ]);
 
   final logger = AppLogger();
   logger.initialize();

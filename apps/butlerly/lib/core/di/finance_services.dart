@@ -20,6 +20,10 @@ final class FinanceServices {
         transactions,
         const SystemApplicationClock(),
       ),
+      importTransaction = ImportTransaction(
+        transactions,
+        const SystemApplicationClock(),
+      ),
       getTransaction = GetTransaction(transactions),
       updateTransaction = UpdateTransaction(
         transactions,
@@ -71,11 +75,14 @@ final class FinanceServices {
       ),
       listEvidenceForTransaction = ListEvidenceForTransaction(evidence),
       loadUserPreference = LoadUserPreference(preferences),
-      saveUserPreference = SaveUserPreference(preferences);
+      saveUserPreference = SaveUserPreference(preferences),
+      storeAndAttachEvidence = StoreAndAttachEvidence(evidence),
+      removeEvidence = RemoveEvidence(evidence);
 
   final ListTransactions listTransactions;
   final SeedInitialMasterData seedInitialMasterData;
   final CreateTransaction createTransaction;
+  final ImportTransaction importTransaction;
   final GetTransaction getTransaction;
   final UpdateTransaction updateTransaction;
   final ArchiveTransaction archiveTransaction;
@@ -101,4 +108,6 @@ final class FinanceServices {
   final ListEvidenceForTransaction listEvidenceForTransaction;
   final LoadUserPreference loadUserPreference;
   final SaveUserPreference saveUserPreference;
+  final StoreAndAttachEvidence storeAndAttachEvidence;
+  final RemoveEvidence removeEvidence;
 }

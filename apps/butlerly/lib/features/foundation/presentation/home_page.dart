@@ -8,6 +8,7 @@ import 'package:butlerly/features/foundation/presentation/transaction_date_label
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
@@ -158,7 +159,7 @@ class _HomePageState extends State<HomePage> {
                                   context.l10n.text('untitledTransaction'),
                               subtitle: data.masterData.summary(value),
                               meta: _date(value, context),
-                              amount: value.amount,
+                              amount: localizedDecimal(context, value.amount),
                               currency: value.currency,
                               icon:
                                   value.direction ==
@@ -459,4 +460,8 @@ class _HomeData {
 }
 
 String _date(TransactionDto value, BuildContext context) =>
-    transactionDateLabel(value, pendingLabel: context.l10n.text('datePending'));
+    transactionDateLabel(
+      value,
+      pendingLabel: context.l10n.text('datePending'),
+      locale: Localizations.localeOf(context).toLanguageTag(),
+    );

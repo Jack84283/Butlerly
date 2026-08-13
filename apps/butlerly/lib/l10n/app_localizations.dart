@@ -30,6 +30,10 @@ class AppLocalizations {
     return value;
   }
 
+  static Set<String> missingKeysFor(String languageCode) => _strings['en']!.keys
+      .toSet()
+      .difference((_strings[languageCode] ?? const {}).keys.toSet());
+
   static const _strings = <String, Map<String, String>>{
     'en': {
       'appName': 'Butlerly',
@@ -47,6 +51,11 @@ class AppLocalizations {
       'optionalAssistance': 'Assistance is optional',
       'optionalAssistanceBody': 'Manual workflows always remain available.',
       'getStarted': 'Get started',
+      'firstUseTitle': 'Set up your local workspace',
+      'firstUseBody':
+          'No account is needed. These defaults stay on this device and can be changed later in Settings.',
+      'preferences': 'Preferences',
+      'continueLocally': 'Continue locally',
       'skip': 'Skip',
       'greeting': 'Good morning',
       'homeSubtitle': 'Your private financial record, stored on this device.',
@@ -98,6 +107,19 @@ class AppLocalizations {
       'recordHistory': 'Record history',
       'evidence': 'Evidence',
       'noEvidence': 'No evidence is attached locally.',
+      'attachEvidence': 'Attach receipt or file',
+      'evidenceAttached': 'Evidence stored locally.',
+      'evidenceAttachFailed': 'Evidence could not be stored.',
+      'evidenceCleanupFailed':
+          'The transaction was not deleted because linked evidence could not be removed safely.',
+      'evidencePreview': 'Evidence preview',
+      'evidenceFileMissing': 'The local evidence file could not be found.',
+      'evidenceStoredLocally':
+          'This file is stored privately on this device. Its local path is not displayed.',
+      'removeEvidenceTitle': 'Remove this evidence?',
+      'removeEvidenceBody':
+          'This permanently removes the local file and its transaction link.',
+      'remove': 'Remove',
       'evidenceLoadError':
           'Evidence metadata could not be loaded. Your local records were not changed.',
       'referenceAmounts':
@@ -184,6 +206,8 @@ class AppLocalizations {
       'language': 'Language',
       'baseCurrency': 'Base currency',
       'timeZone': 'Time zone',
+      'ianaTimeZone': 'IANA time zone',
+      'ianaTimeZoneHelp': 'For example, America/Los_Angeles or UTC',
       'externalAiConsent': 'Allow external AI',
       'externalAiConsentBody':
           'Off by default. Turning this on records consent only; data is never sent without a separate, explicit action.',
@@ -208,6 +232,9 @@ class AppLocalizations {
       'noNotificationsBody': 'Important local activity will appear here.',
       'importFromFile': 'Import from file',
       'importFromFileBody': 'Choose a supported transaction file.',
+      'importSummary': 'Import summary',
+      'importSummaryBody':
+          'Imported: {imported}\nDuplicates skipped: {duplicates}\nFailed: {failed}',
       'importReceipts': 'Import receipts',
       'importReceiptsBody': 'Attach receipt images or PDFs.',
       'exportToFile': 'Export to file',
@@ -227,6 +254,24 @@ class AppLocalizations {
       'notEnoughInsightDataBody':
           'Add more confirmed transactions to see a useful local summary.',
       'resetAllData': 'Erase all local data',
+      'localDataControls': 'Local data controls',
+      'privacyScopeBody':
+          'Your finance records and evidence stay on this device. Review the scope before exporting or erasing them.',
+      'exportScopeBody':
+          'Exports finance records, preferences, provenance, and locally stored evidence to the Butlerly Documents folder.',
+      'eraseScopeBody':
+          'Permanently removes finance records, preferences, and every locally stored evidence file.',
+      'eraseAllTitle': 'Erase all local Butlerly data?',
+      'eraseAllBody':
+          'This permanently removes all finance records, preferences, and evidence files from this device. This cannot be undone.',
+      'eraseAllConfirm': 'Erase everything',
+      'eraseComplete': 'All local Butlerly data was erased.',
+      'eraseFailed':
+          'Local data could not be erased. Nothing else was changed.',
+      'exportComplete': 'Export complete',
+      'exportCompleteBody': '{count} local records were exported to:\n{path}',
+      'exportFailed': 'The local export could not be created.',
+      'done': 'Done',
       'eraseNotAvailable': 'Erase-all is not available in this UI yet.',
       'about': 'About Butlerly',
       'legalLicenses': 'Legal & licenses',
@@ -253,6 +298,10 @@ class AppLocalizations {
       'optionalAssistance': '辅助功能可选',
       'optionalAssistanceBody': '您始终可以使用手动操作流程。',
       'getStarted': '开始使用',
+      'firstUseTitle': '设置您的本地工作区',
+      'firstUseBody': '无需账户。这些默认设置保留在此设备上，稍后可在“设置”中更改。',
+      'preferences': '偏好设置',
+      'continueLocally': '继续本地使用',
       'skip': '跳过',
       'greeting': '早上好',
       'homeSubtitle': '您的私密财务记录存储在此设备上。',
@@ -302,6 +351,16 @@ class AppLocalizations {
       'recordHistory': '记录历史',
       'evidence': '凭证',
       'noEvidence': '本地未附加任何凭证。',
+      'attachEvidence': '附加收据或文件',
+      'evidenceAttached': '凭证已存储在本地。',
+      'evidenceAttachFailed': '无法存储凭证。',
+      'evidenceCleanupFailed': '无法安全删除关联凭证，因此未删除该交易。',
+      'evidencePreview': '凭证预览',
+      'evidenceFileMissing': '找不到本地凭证文件。',
+      'evidenceStoredLocally': '此文件仅私密存储在本设备上，不显示本地路径。',
+      'removeEvidenceTitle': '移除此凭证？',
+      'removeEvidenceBody': '此操作会永久删除本地文件及其交易关联。',
+      'remove': '移除',
       'evidenceLoadError': '无法加载凭证元数据。您的本地记录未被更改。',
       'referenceAmounts': '参考金额（原始金额仍为标准金额）',
       'referenceCurrency': '参考币种 {currency}',
@@ -382,6 +441,8 @@ class AppLocalizations {
       'language': '语言',
       'baseCurrency': '基础币种',
       'timeZone': '时区',
+      'ianaTimeZone': 'IANA 时区',
+      'ianaTimeZoneHelp': '例如 America/Los_Angeles 或 UTC',
       'externalAiConsent': '允许外部 AI',
       'externalAiConsentBody': '默认关闭。开启仅记录您的同意；未经单独明确操作，不会发送任何数据。',
       'english': '英语',
@@ -403,6 +464,8 @@ class AppLocalizations {
       'noNotificationsBody': '重要的本地活动会显示在这里。',
       'importFromFile': '从文件导入',
       'importFromFileBody': '选择受支持的交易文件。',
+      'importSummary': '导入摘要',
+      'importSummaryBody': '已导入：{imported}\n已跳过重复项：{duplicates}\n失败：{failed}',
       'importReceipts': '导入收据',
       'importReceiptsBody': '附加收据图片或 PDF。',
       'exportToFile': '导出到文件',
@@ -421,8 +484,24 @@ class AppLocalizations {
       'notEnoughInsightData': '数据不足，无法生成洞察',
       'notEnoughInsightDataBody': '添加更多已确认交易以查看有用的本地摘要。',
       'resetAllData': '清除所有本地数据',
+      'localDataControls': '本地数据控制',
+      'privacyScopeBody': '您的财务记录和凭证保留在此设备上。导出或清除前请检查范围。',
+      'exportScopeBody': '将财务记录、偏好、来源记录和本地凭证导出到 Butlerly 文档文件夹。',
+      'eraseScopeBody': '永久删除财务记录、偏好和所有本地存储的凭证文件。',
+      'eraseAllTitle': '清除所有 Butlerly 本地数据？',
+      'eraseAllBody': '此操作会永久删除此设备上的所有财务记录、偏好和凭证文件，且无法撤销。',
+      'eraseAllConfirm': '全部清除',
+      'eraseComplete': '所有 Butlerly 本地数据已清除。',
+      'eraseFailed': '无法清除本地数据。其他内容未被更改。',
+      'exportComplete': '导出完成',
+      'exportCompleteBody': '已将 {count} 条本地记录导出到：\n{path}',
+      'exportFailed': '无法创建本地导出。',
+      'done': '完成',
       'eraseNotAvailable': '此界面暂不支持清除全部数据。',
       'about': '关于 Butlerly',
+      'legalLicenses': '法律与许可',
+      'legalLicensesBody': '条款、隐私、声明和应用信息。',
+      'legalDocumentLoadError': '无法加载此法律文档。',
       'addSource': '添加来源',
       'name': '名称',
       'type': '类型',
@@ -446,6 +525,11 @@ class AppLocalizations {
       'optionalAssistanceBody':
           'Los procesos manuales siempre están disponibles.',
       'getStarted': 'Comenzar',
+      'firstUseTitle': 'Configura tu espacio local',
+      'firstUseBody':
+          'No necesitas una cuenta. Estos valores permanecen en este dispositivo y puedes cambiarlos después en Ajustes.',
+      'preferences': 'Preferencias',
+      'continueLocally': 'Continuar localmente',
       'skip': 'Omitir',
       'greeting': 'Buenos días',
       'homeSubtitle':
@@ -498,6 +582,20 @@ class AppLocalizations {
       'recordHistory': 'Historial del registro',
       'evidence': 'Evidencia',
       'noEvidence': 'No hay evidencia adjunta localmente.',
+      'attachEvidence': 'Adjuntar recibo o archivo',
+      'evidenceAttached': 'La evidencia se guardó localmente.',
+      'evidenceAttachFailed': 'No se pudo guardar la evidencia.',
+      'evidenceCleanupFailed':
+          'La transacción no se eliminó porque la evidencia vinculada no pudo borrarse de forma segura.',
+      'evidencePreview': 'Vista previa de evidencia',
+      'evidenceFileMissing':
+          'No se pudo encontrar el archivo local de evidencia.',
+      'evidenceStoredLocally':
+          'Este archivo se guarda de forma privada en este dispositivo. No se muestra su ruta local.',
+      'removeEvidenceTitle': '¿Eliminar esta evidencia?',
+      'removeEvidenceBody':
+          'Esto elimina permanentemente el archivo local y su vínculo con la transacción.',
+      'remove': 'Eliminar',
       'evidenceLoadError':
           'No se pudieron cargar los metadatos de evidencia. Tus registros locales no cambiaron.',
       'referenceAmounts':
@@ -583,6 +681,8 @@ class AppLocalizations {
       'language': 'Idioma',
       'baseCurrency': 'Moneda base',
       'timeZone': 'Zona horaria',
+      'ianaTimeZone': 'Zona horaria IANA',
+      'ianaTimeZoneHelp': 'Por ejemplo, America/Los_Angeles o UTC',
       'externalAiConsent': 'Permitir IA externa',
       'externalAiConsentBody':
           'Desactivado de forma predeterminada. Activarlo solo registra el consentimiento; nunca se envían datos sin una acción explícita adicional.',
@@ -607,6 +707,9 @@ class AppLocalizations {
       'noNotificationsBody': 'La actividad local importante aparecerá aquí.',
       'importFromFile': 'Importar desde archivo',
       'importFromFileBody': 'Elige un archivo de transacciones compatible.',
+      'importSummary': 'Resumen de importación',
+      'importSummaryBody':
+          'Importados: {imported}\nDuplicados omitidos: {duplicates}\nFallidos: {failed}',
       'importReceipts': 'Importar recibos',
       'importReceiptsBody': 'Adjunta imágenes o PDF de recibos.',
       'exportToFile': 'Exportar a archivo',
@@ -627,8 +730,31 @@ class AppLocalizations {
       'notEnoughInsightDataBody':
           'Añade más transacciones confirmadas para ver un resumen.',
       'resetAllData': 'Borrar todos los datos locales',
+      'localDataControls': 'Controles de datos locales',
+      'privacyScopeBody':
+          'Tus registros financieros y comprobantes permanecen en este dispositivo. Revisa el alcance antes de exportarlos o borrarlos.',
+      'exportScopeBody':
+          'Exporta registros, preferencias, procedencia y comprobantes locales a la carpeta Documentos de Butlerly.',
+      'eraseScopeBody':
+          'Elimina permanentemente los registros, preferencias y todos los comprobantes almacenados localmente.',
+      'eraseAllTitle': '¿Borrar todos los datos locales de Butlerly?',
+      'eraseAllBody':
+          'Esto elimina permanentemente todos los registros, preferencias y comprobantes de este dispositivo. No se puede deshacer.',
+      'eraseAllConfirm': 'Borrar todo',
+      'eraseComplete': 'Se borraron todos los datos locales de Butlerly.',
+      'eraseFailed':
+          'No se pudieron borrar los datos locales. No se cambió nada más.',
+      'exportComplete': 'Exportación completa',
+      'exportCompleteBody':
+          'Se exportaron {count} registros locales a:\n{path}',
+      'exportFailed': 'No se pudo crear la exportación local.',
+      'done': 'Listo',
       'eraseNotAvailable': 'La eliminación total aún no está disponible aquí.',
       'about': 'Acerca de Butlerly',
+      'legalLicenses': 'Avisos legales y licencias',
+      'legalLicensesBody':
+          'Términos, privacidad, avisos e información de la aplicación.',
+      'legalDocumentLoadError': 'No se pudo cargar este documento legal.',
       'addSource': 'Añadir fuente',
       'name': 'Nombre',
       'type': 'Tipo',
