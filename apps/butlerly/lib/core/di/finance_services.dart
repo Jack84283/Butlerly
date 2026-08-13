@@ -9,6 +9,7 @@ final class FinanceServices {
     CategoryRepository categories,
     TagRepository tags,
     EvidenceRepository evidence,
+    UserPreferenceRepository preferences,
   ) : listTransactions = ListTransactions(transactions),
       seedInitialMasterData = SeedInitialMasterData(
         merchants,
@@ -68,7 +69,9 @@ final class FinanceServices {
         transactions,
         const SystemApplicationClock(),
       ),
-      listEvidenceForTransaction = ListEvidenceForTransaction(evidence);
+      listEvidenceForTransaction = ListEvidenceForTransaction(evidence),
+      loadUserPreference = LoadUserPreference(preferences),
+      saveUserPreference = SaveUserPreference(preferences);
 
   final ListTransactions listTransactions;
   final SeedInitialMasterData seedInitialMasterData;
@@ -96,4 +99,6 @@ final class FinanceServices {
   final ResolveReviewIssue resolveReviewIssue;
   final DismissReviewIssue dismissReviewIssue;
   final ListEvidenceForTransaction listEvidenceForTransaction;
+  final LoadUserPreference loadUserPreference;
+  final SaveUserPreference saveUserPreference;
 }

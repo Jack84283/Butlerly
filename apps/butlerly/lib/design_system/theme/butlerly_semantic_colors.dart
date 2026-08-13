@@ -43,7 +43,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
   static const dark = ButlerlySemanticColors(
     background: Color(0xFF0B0B0D),
     surface: Color(0xFF141418),
-    elevatedSurface: Color(0xFF28282E),
+    elevatedSurface: Color.fromRGBO(28, 28, 28, 1),
     subtleSurface: Color(0xFF111114),
     primaryText: Color(0xFFFFFFFF),
     secondaryText: Color(0xFFA1A1A6),

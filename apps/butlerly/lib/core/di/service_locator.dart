@@ -26,6 +26,7 @@ void configureDependencies({
         SqliteCategoryRepository(database.persistenceDatabase),
         SqliteTagRepository(database.persistenceDatabase),
         SqliteEvidenceRepository(database.persistenceDatabase),
+        SqliteUserPreferenceRepository(database.persistenceDatabase),
       ),
     );
   }

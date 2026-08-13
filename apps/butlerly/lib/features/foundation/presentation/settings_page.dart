@@ -16,7 +16,10 @@ class SettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
-    final locale = ref.watch(localeProvider) ?? Localizations.localeOf(context);
+    final preference = ref.watch(userPreferenceProvider).value;
+    final locale = preference == null
+        ? Localizations.localeOf(context)
+        : Locale(preference.locale);
     return ButlerlyPage(
       title: context.l10n.text('settings'),
       children: [
@@ -108,9 +111,42 @@ class SettingsPage extends ConsumerWidget {
                 ],
                 onChanged: (value) {
                   if (value != null) {
-                    ref.read(localeProvider.notifier).state = Locale(value);
+                    ref
+                        .read(userPreferenceProvider.notifier)
+                        .saveChanges(locale: value);
                   }
                 },
+              ),
+              const SizedBox(height: ButlerlySpacing.standard),
+              DropdownButtonFormField<String>(
+                initialValue: preference?.baseCurrency.value ?? 'USD',
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: context.l10n.text('baseCurrency'),
+                  prefixIcon: const Icon(Icons.currency_exchange_rounded),
+                ),
+                items: const ['USD', 'EUR', 'GBP', 'CNY', 'JPY']
+                    .map(
+                      (code) =>
+                          DropdownMenuItem(value: code, child: Text(code)),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    ref
+                        .read(userPreferenceProvider.notifier)
+                        .saveChanges(baseCurrency: value);
+                  }
+                },
+              ),
+              const SizedBox(height: ButlerlySpacing.standard),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.schedule_rounded),
+                title: Text(context.l10n.text('timeZone')),
+                subtitle: Text(
+                  preference?.timeZoneId ?? DateTime.now().timeZoneName,
+                ),
               ),
             ],
           ),
@@ -138,6 +174,20 @@ class SettingsPage extends ConsumerWidget {
           onTap: () => _showPrivacy(context),
         ),
         ButlerlySectionHeader(title: context.l10n.text('optionalFeatures')),
+        ButlerlyCard(
+          child: SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            secondary: const Icon(Icons.cloud_off_outlined),
+            title: Text(context.l10n.text('externalAiConsent')),
+            subtitle: Text(context.l10n.text('externalAiConsentBody')),
+            value: preference?.externalAiEnabled ?? false,
+            onChanged: preference == null
+                ? null
+                : (value) => ref
+                      .read(userPreferenceProvider.notifier)
+                      .saveChanges(externalAiEnabled: value),
+          ),
+        ),
         _SettingsRow(
           icon: Icons.insights_outlined,
           title: context.l10n.text('insights'),
