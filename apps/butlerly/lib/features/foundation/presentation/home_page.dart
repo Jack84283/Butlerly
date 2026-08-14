@@ -105,7 +105,9 @@ class _HomePageState extends State<HomePage> {
       ],
       children: [
         Text(
-          context.l10n.text('greeting'),
+          context.l10n.text(
+            homeGreetingKey(HomePage.debugCurrentDate ?? DateTime.now()),
+          ),
           style: Theme.of(context).textTheme.headlineLarge,
         ),
         const SizedBox(height: ButlerlySpacing.micro),
@@ -188,6 +190,12 @@ class _HomePageState extends State<HomePage> {
       ],
     ),
   );
+}
+
+String homeGreetingKey(DateTime localTime) {
+  if (localTime.hour < 12) return 'greetingMorning';
+  if (localTime.hour < 18) return 'greetingAfternoon';
+  return 'greetingEvening';
 }
 
 class _LocalSummary extends StatelessWidget {

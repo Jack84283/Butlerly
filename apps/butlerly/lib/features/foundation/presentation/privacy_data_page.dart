@@ -4,6 +4,7 @@ import 'package:butlerly/core/database/initial_master_data.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -102,7 +103,10 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           enabled: !_busy,
           leading: const Icon(Icons.download_outlined),
           title: Text(context.l10n.text('exportToFile')),
-          subtitle: Text(context.l10n.text('exportScopeBody')),
+          subtitle: Text(
+            context.l10n.text('exportScopeBody'),
+            style: _subtitleStyle(context),
+          ),
           onTap: _export,
         ),
         const Divider(),
@@ -110,7 +114,10 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           enabled: !_busy,
           leading: const Icon(Icons.delete_forever_outlined),
           title: Text(context.l10n.text('resetAllData')),
-          subtitle: Text(context.l10n.text('eraseScopeBody')),
+          subtitle: Text(
+            context.l10n.text('eraseScopeBody'),
+            style: _subtitleStyle(context),
+          ),
           textColor: Theme.of(context).colorScheme.error,
           iconColor: Theme.of(context).colorScheme.error,
           onTap: _confirmErase,
@@ -120,3 +127,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     ),
   );
 }
+
+TextStyle? _subtitleStyle(BuildContext context) => Theme.of(
+  context,
+).textTheme.bodySmall?.copyWith(color: context.colors.secondaryText);

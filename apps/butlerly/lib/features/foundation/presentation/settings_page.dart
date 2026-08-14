@@ -175,7 +175,10 @@ class SettingsPage extends ConsumerWidget {
             SwitchListTile(
               secondary: const Icon(Icons.cloud_off_outlined),
               title: Text(context.l10n.text('externalAiConsent')),
-              subtitle: Text(context.l10n.text('externalAiConsentBody')),
+              subtitle: Text(
+                context.l10n.text('externalAiConsentBody'),
+                style: _settingsSubtitleStyle(context),
+              ),
               value: preference?.externalAiEnabled ?? false,
               onChanged: preference == null
                   ? null
@@ -286,11 +289,15 @@ class _SettingsRow extends StatelessWidget {
   Widget build(BuildContext context) => ListTile(
     leading: Icon(icon, color: context.colors.interactive),
     title: Text(title),
-    subtitle: Text(subtitle),
+    subtitle: Text(subtitle, style: _settingsSubtitleStyle(context)),
     trailing: const Icon(Icons.chevron_right_rounded),
     onTap: onTap,
   );
 }
+
+TextStyle? _settingsSubtitleStyle(BuildContext context) => Theme.of(
+  context,
+).textTheme.bodySmall?.copyWith(color: context.colors.secondaryText);
 
 class _SettingsSectionCard extends StatelessWidget {
   const _SettingsSectionCard({required this.children});

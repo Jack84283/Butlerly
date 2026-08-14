@@ -4,10 +4,22 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 /// Versioned, idempotent Finance V1 system data. IDs are semantic and are
 /// deliberately independent of the English fallback display names.
 InitialMasterData buildInitialMasterData() => InitialMasterData(
-  merchants: const [],
+  merchants: _merchants,
   categories: _categories,
   tags: _tags,
 );
+
+Merchant _merchant(String id, String name) =>
+    Merchant(id: MerchantId('system-merchant-$id'), name: name);
+
+final _merchants = <Merchant>[
+  _merchant('grocery', 'Grocery Store'),
+  _merchant('coffee', 'Coffee Shop'),
+  _merchant('restaurant', 'Restaurant'),
+  _merchant('pharmacy', 'Pharmacy'),
+  _merchant('fuel', 'Gas Station'),
+  _merchant('online', 'Online Store'),
+];
 
 Category _category(String id, String name, {String? parent}) => Category(
   id: CategoryId('system-category-$id'),

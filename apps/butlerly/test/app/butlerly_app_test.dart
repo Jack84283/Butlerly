@@ -22,6 +22,12 @@ void main() {
     );
   });
 
+  test('selects a local-time greeting', () {
+    expect(homeGreetingKey(DateTime(2026, 8, 14, 9)), 'greetingMorning');
+    expect(homeGreetingKey(DateTime(2026, 8, 14, 14)), 'greetingAfternoon');
+    expect(homeGreetingKey(DateTime(2026, 8, 14, 20)), 'greetingEvening');
+  });
+
   testWidgets('shows the local-first Butlerly home and P0 navigation', (
     tester,
   ) async {

@@ -2,6 +2,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
@@ -1078,50 +1079,28 @@ Future<bool?> _organizeTransaction(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              DropdownButtonFormField<String>(
-                initialValue: merchantId,
-                isExpanded: true,
-                hint: Text(dialogContext.l10n.text('unassigned')),
-                decoration: InputDecoration(
-                  labelText: dialogContext.l10n.text('merchant'),
+              _OrganizerMenuField(
+                label: dialogContext.l10n.text('merchant'),
+                icon: Icons.storefront_outlined,
+                value: merchantId,
+                placeholder: dialogContext.l10n.text('unassigned'),
+                options: merchantOptions,
+                includeUnassigned: true,
+                onSelected: (value) => setDialogState(
+                  () => merchantId = value.isEmpty ? null : value,
                 ),
-                items: [
-                  DropdownMenuItem(
-                    value: '',
-                    child: Text(dialogContext.l10n.text('unassigned')),
-                  ),
-                  ...merchantOptions.map(
-                    (option) => DropdownMenuItem(
-                      value: option.id,
-                      child: Text(option.name),
-                    ),
-                  ),
-                ],
-                onChanged: (value) =>
-                    merchantId = value?.isEmpty == true ? null : value,
               ),
               const SizedBox(height: ButlerlySpacing.small),
-              DropdownButtonFormField<String>(
-                initialValue: categoryId,
-                isExpanded: true,
-                hint: Text(dialogContext.l10n.text('unassigned')),
-                decoration: InputDecoration(
-                  labelText: dialogContext.l10n.text('category'),
+              _OrganizerMenuField(
+                label: dialogContext.l10n.text('category'),
+                icon: Icons.category_outlined,
+                value: categoryId,
+                placeholder: dialogContext.l10n.text('unassigned'),
+                options: categoryOptions,
+                includeUnassigned: true,
+                onSelected: (value) => setDialogState(
+                  () => categoryId = value.isEmpty ? null : value,
                 ),
-                items: [
-                  DropdownMenuItem(
-                    value: '',
-                    child: Text(dialogContext.l10n.text('unassigned')),
-                  ),
-                  ...categoryOptions.map(
-                    (option) => DropdownMenuItem(
-                      value: option.id,
-                      child: Text(option.name),
-                    ),
-                  ),
-                ],
-                onChanged: (value) =>
-                    categoryId = value?.isEmpty == true ? null : value,
               ),
               const SizedBox(height: ButlerlySpacing.small),
               if (selectedTagIds.isNotEmpty) ...[
@@ -1155,23 +1134,15 @@ Future<bool?> _organizeTransaction(
                 ),
                 const SizedBox(height: ButlerlySpacing.small),
               ],
-              DropdownButtonFormField<String>(
+              _OrganizerMenuField(
                 key: ValueKey(selectedTagIds.length),
-                isExpanded: true,
-                decoration: InputDecoration(
-                  labelText: dialogContext.l10n.text('addTag'),
-                ),
-                items: tagOptions
+                label: dialogContext.l10n.text('addTag'),
+                icon: Icons.sell_outlined,
+                placeholder: dialogContext.l10n.text('addTag'),
+                options: tagOptions
                     .where((option) => !selectedTagIds.contains(option.id))
-                    .map(
-                      (option) => DropdownMenuItem(
-                        value: option.id,
-                        child: Text(option.name),
-                      ),
-                    )
                     .toList(growable: false),
-                onChanged: (value) {
-                  if (value == null) return;
+                onSelected: (value) {
                   setDialogState(() => selectedTagIds.add(value));
                 },
               ),
@@ -1214,6 +1185,61 @@ final class _MasterDataOption {
   final String id;
   final String name;
 }
+
+class _OrganizerMenuField extends StatelessWidget {
+  const _OrganizerMenuField({
+    required this.label,
+    required this.icon,
+    required this.placeholder,
+    required this.options,
+    required this.onSelected,
+    this.value,
+    this.includeUnassigned = false,
+    super.key,
+  });
+
+  final String label;
+  final IconData icon;
+  final String? value;
+  final String placeholder;
+  final List<_MasterDataOption> options;
+  final bool includeUnassigned;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: _organizerMenuWidth,
+    child: PopupMenuButton<String>(
+      constraints: const BoxConstraints.tightFor(width: _organizerMenuWidth),
+      onSelected: onSelected,
+      itemBuilder: (context) => [
+        if (includeUnassigned)
+          PopupMenuItem(
+            value: '',
+            child: Text(context.l10n.text('unassigned')),
+          ),
+        for (final option in options)
+          PopupMenuItem(value: option.id, child: Text(option.name)),
+      ],
+      child: ListTile(
+        leading: Icon(icon, color: context.colors.interactive),
+        title: Text(label, style: Theme.of(context).textTheme.bodySmall),
+        subtitle: Text(
+          _optionName(options, value) ?? placeholder,
+          style: Theme.of(context).textTheme.bodyLarge,
+        ),
+        trailing: const Icon(Icons.arrow_drop_down_rounded),
+        dense: true,
+        minVerticalPadding: ButlerlySpacing.compact,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: ButlerlySpacing.standard,
+        ),
+      ),
+    ),
+  );
+}
+
+const _organizerMenuWidth = 280.0;
 
 String? _optionName(List<_MasterDataOption> options, String? id) {
   for (final option in options) {
