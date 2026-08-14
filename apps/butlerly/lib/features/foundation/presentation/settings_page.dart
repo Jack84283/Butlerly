@@ -320,25 +320,34 @@ class _SettingsDropdownRow<T> extends StatelessWidget {
   final ValueChanged<T?> onChanged;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(right: ButlerlySpacing.standard),
-    child: DropdownButtonFormField<T>(
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => PopupMenuButton<T>(
       initialValue: value,
-      isExpanded: true,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, color: context.colors.interactive),
-        filled: false,
-        border: InputBorder.none,
-        enabledBorder: InputBorder.none,
-        focusedBorder: InputBorder.none,
+      constraints: BoxConstraints.tightFor(width: constraints.maxWidth),
+      onSelected: onChanged,
+      itemBuilder: (context) => [
+        for (final item in items)
+          PopupMenuItem<T>(value: item.value, child: item.child),
+      ],
+      child: ListTile(
+        leading: Icon(icon, color: context.colors.interactive),
+        title: Text(label, style: Theme.of(context).textTheme.bodySmall),
+        subtitle: _selectedItem(context),
+        trailing: const Icon(Icons.arrow_drop_down_rounded),
+        dense: true,
+        minVerticalPadding: ButlerlySpacing.compact,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: ButlerlySpacing.standard,
-          vertical: ButlerlySpacing.small,
         ),
       ),
-      items: items,
-      onChanged: onChanged,
     ),
   );
+
+  Widget _selectedItem(BuildContext context) {
+    final selected = items.where((item) => item.value == value).first;
+    return DefaultTextStyle.merge(
+      style: Theme.of(context).textTheme.bodyLarge,
+      child: selected.child,
+    );
+  }
 }
