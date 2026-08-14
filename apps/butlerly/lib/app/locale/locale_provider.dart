@@ -30,9 +30,29 @@ final class UserPreferenceController extends AsyncNotifier<UserPreference> {
     }
     final result = await financeServices.loadUserPreference();
     if (result case ApplicationSuccess<UserPreference?>(:final value)) {
-      if (value != null) return value;
+      if (value != null) {
+        final canonical = canonicalTimeZoneId(
+          value.timeZoneId,
+          countryCode: PlatformDispatcher.instance.locale.countryCode,
+        );
+        if (canonical == value.timeZoneId) return value;
+        final migrated = UserPreference(
+          locale: value.locale,
+          baseCurrency: value.baseCurrency,
+          timeZoneId: canonical,
+          externalAiEnabled: value.externalAiEnabled,
+          firstUseCompleted: value.firstUseCompleted,
+        );
+        await financeServices.saveUserPreference(migrated);
+        return migrated;
+      }
       final timezone = await FlutterTimezone.getLocalTimezone();
-      return _defaults(timeZoneId: timezone.identifier);
+      return _defaults(
+        timeZoneId: canonicalTimeZoneId(
+          timezone.identifier,
+          countryCode: PlatformDispatcher.instance.locale.countryCode,
+        ),
+      );
     }
     throw StateError('User preferences could not be loaded.');
   }
@@ -93,4 +113,22 @@ final class UserPreferenceController extends AsyncNotifier<UserPreference> {
       firstUseCompleted: firstUseCompleted,
     );
   }
+}
+
+String canonicalTimeZoneId(String candidate, {String? countryCode}) {
+  final value = candidate.trim();
+  if (value == 'UTC' || value == 'Etc/UTC' || value.contains('/')) {
+    return value;
+  }
+  return switch ((countryCode, value.toUpperCase())) {
+    ('US', 'PST') || ('US', 'PDT') => 'America/Los_Angeles',
+    ('US', 'MST') || ('US', 'MDT') => 'America/Denver',
+    ('US', 'CST') || ('US', 'CDT') => 'America/Chicago',
+    ('US', 'EST') || ('US', 'EDT') => 'America/New_York',
+    ('CN', 'CST') => 'Asia/Shanghai',
+    ('JP', 'JST') => 'Asia/Tokyo',
+    ('GB', 'GMT') || ('GB', 'BST') => 'Europe/London',
+    (_, 'GMT') || (_, 'UTC') => 'UTC',
+    _ => 'UTC',
+  };
 }

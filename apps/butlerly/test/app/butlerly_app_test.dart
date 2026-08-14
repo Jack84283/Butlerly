@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:butlerly/app/butlerly_app.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
+import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -50,6 +51,8 @@ void main() {
       addTearDown(
         tester.view.platformDispatcher.clearPlatformBrightnessTestValue,
       );
+      HomePage.debugCurrentDate = DateTime(2026, 8, 13);
+      addTearDown(() => HomePage.debugCurrentDate = null);
 
       await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
       await tester.pumpAndSettle();
@@ -169,6 +172,8 @@ void main() {
     expect(find.text('Privacy Policy'), findsOneWidget);
     expect(find.text('Software License & Third-Party Notices'), findsOneWidget);
     expect(find.text('AI & Professional-Advice Disclosures'), findsOneWidget);
+    expect(find.byType(Card), findsNWidgets(2));
+    expect(find.byType(Divider), findsNWidgets(3));
 
     await tester.tap(find.text('Terms of Use'));
     await tester.pumpAndSettle();

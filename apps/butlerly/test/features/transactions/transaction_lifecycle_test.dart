@@ -46,13 +46,21 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).at(0), '12.50');
     await tester.enterText(find.byType(TextFormField).at(2), 'Lunch');
+    await tester.enterText(find.byType(TextFormField).at(3), 'Team meal');
+    await tester.scrollUntilVisible(
+      find.text('Save locally'),
+      160,
+      scrollable: find.byType(Scrollable).last,
+    );
     await tester.tap(find.text('Save locally'));
     await tester.pumpAndSettle();
 
     expect(find.text('Lunch'), findsOneWidget);
+    expect(repository.values.values.single.notes, 'Team meal');
     await tester.tap(find.text('Lunch'));
     await tester.pumpAndSettle();
     expect(find.text('Transaction detail'), findsOneWidget);
+    expect(find.text('Team meal'), findsOneWidget);
 
     await tester.scrollUntilVisible(
       find.text('Organize transaction'),
@@ -71,6 +79,11 @@ void main() {
     await tester.tap(find.byIcon(Icons.edit_outlined));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).at(2), 'Corrected lunch');
+    await tester.scrollUntilVisible(
+      find.text('Save locally'),
+      160,
+      scrollable: find.byType(Scrollable).last,
+    );
     await tester.tap(find.text('Save locally'));
     await tester.pumpAndSettle();
     expect(find.text('Transactions'), findsOneWidget);

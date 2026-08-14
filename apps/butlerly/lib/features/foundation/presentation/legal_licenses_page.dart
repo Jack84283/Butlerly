@@ -24,36 +24,30 @@ class LegalLicensesPage extends StatelessWidget {
         ),
       ),
       const SizedBox(height: ButlerlySpacing.section),
-      for (final document in _documents)
-        Padding(
-          padding: const EdgeInsets.only(bottom: ButlerlySpacing.small),
-          child: ButlerlyCard(
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => LegalDocumentPage(document: document),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
+      ButlerlyCard(
+        padding: EdgeInsets.zero,
+        child: ButlerlySeparatedList(
+          children: [
+            for (final document in _documents)
+              ListTile(
+                leading: Icon(
                   Icons.description_outlined,
                   color: context.colors.interactive,
                 ),
-                const SizedBox(width: ButlerlySpacing.standard),
-                Expanded(
-                  child: Text(
-                    document.title,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                ),
-                Icon(
+                title: Text(document.title),
+                trailing: Icon(
                   Icons.chevron_right_rounded,
                   color: context.colors.interactive,
                 ),
-              ],
-            ),
-          ),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => LegalDocumentPage(document: document),
+                  ),
+                ),
+              ),
+          ],
         ),
+      ),
     ],
   );
 }

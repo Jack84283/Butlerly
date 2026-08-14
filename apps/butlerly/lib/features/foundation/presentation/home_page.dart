@@ -17,6 +17,8 @@ import 'package:go_router/go_router.dart';
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
+  static DateTime? debugCurrentDate;
+
   @override
   State<HomePage> createState() => _HomePageState();
 }
@@ -108,7 +110,9 @@ class _HomePageState extends State<HomePage> {
         ),
         const SizedBox(height: ButlerlySpacing.micro),
         Text(
-          MaterialLocalizations.of(context).formatFullDate(DateTime.now()),
+          MaterialLocalizations.of(
+            context,
+          ).formatFullDate(HomePage.debugCurrentDate ?? DateTime.now()),
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: ButlerlySpacing.standard),
@@ -150,7 +154,7 @@ class _HomePageState extends State<HomePage> {
                     padding: const EdgeInsets.symmetric(
                       vertical: ButlerlySpacing.compact,
                     ),
-                    child: Column(
+                    child: ButlerlySeparatedList(
                       children: data.transactions
                           .map(
                             (value) => ButlerlyRecordRow(

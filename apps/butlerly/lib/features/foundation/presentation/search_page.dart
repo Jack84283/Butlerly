@@ -155,7 +155,14 @@ class _SearchPageState extends State<SearchPage>
                       DropdownMenuItem(
                         child: Text(context.l10n.text('anyCurrency')),
                       ),
-                      for (final code in const ['USD', 'EUR', 'GBP', 'CAD'])
+                      for (final code in const [
+                        'USD',
+                        'EUR',
+                        'GBP',
+                        'CAD',
+                        'CNY',
+                        'JPY',
+                      ])
                         DropdownMenuItem(value: code, child: Text(code)),
                     ],
                     onChanged: (value) =>
@@ -414,7 +421,7 @@ class _SearchPageState extends State<SearchPage>
                 padding: const EdgeInsets.symmetric(
                   vertical: ButlerlySpacing.compact,
                 ),
-                child: Column(
+                child: ButlerlySeparatedList(
                   children: values
                       .map(
                         (value) => ButlerlyRecordRow(

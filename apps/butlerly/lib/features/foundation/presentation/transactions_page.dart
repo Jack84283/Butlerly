@@ -135,6 +135,11 @@ class _TransactionsPageState extends State<TransactionsPage> {
           title: context.l10n.text('transactions'),
           actions: [
             IconButton(
+              tooltip: context.l10n.text('addTransaction'),
+              onPressed: _openEditor,
+              icon: const Icon(Icons.add_rounded),
+            ),
+            IconButton(
               tooltip: context.l10n.text('search'),
               onPressed: () => GoRouter.of(context).go('/search'),
               icon: const Icon(Icons.search_rounded),
@@ -191,7 +196,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                 padding: const EdgeInsets.symmetric(
                   vertical: ButlerlySpacing.compact,
                 ),
-                child: Column(
+                child: ButlerlySeparatedList(
                   children: visible
                       .map(
                         (value) => ButlerlyRecordRow(
@@ -256,6 +261,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   late final TextEditingController _amount;
   late final TextEditingController _currency;
   late final TextEditingController _description;
+  late final TextEditingController _notes;
   late DateTime _date;
   late TransactionDirection _direction;
   bool _dateChanged = false;
@@ -268,6 +274,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
     _amount = TextEditingController(text: existing?.amount ?? '');
     _currency = TextEditingController(text: existing?.currency ?? 'USD');
     _description = TextEditingController(text: existing?.description ?? '');
+    _notes = TextEditingController(text: existing?.notes ?? '');
     _date = existing == null
         ? DateTime.now()
         : transactionCalendarDate(existing, fallback: DateTime.now());
@@ -281,6 +288,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
     _amount.dispose();
     _currency.dispose();
     _description.dispose();
+    _notes.dispose();
     super.dispose();
   }
 
@@ -308,6 +316,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
               description: _description.text.trim().isEmpty
                   ? null
                   : _description.text.trim(),
+              notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
             ),
           )
         : await widget.finance.updateTransaction(
@@ -320,6 +329,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
               description: _description.text.trim().isEmpty
                   ? null
                   : _description.text.trim(),
+              notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
             ),
           );
     if (!mounted) return;
@@ -429,7 +439,16 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
             ),
             maxLines: 2,
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: ButlerlySpacing.standard),
+          TextFormField(
+            controller: _notes,
+            decoration: InputDecoration(
+              labelText: context.l10n.text('notesOptional'),
+              prefixIcon: const Icon(Icons.sticky_note_2_outlined),
+            ),
+            maxLines: 3,
+          ),
+          const SizedBox(height: ButlerlySpacing.section),
           FilledButton(
             onPressed: _saving ? null : _save,
             child: Text(
@@ -544,7 +563,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
         ),
         const SizedBox(height: 8),
         Text(
-          '${transaction.amount} ${transaction.currency}',
+          '${localizedDecimal(context, transaction.amount)} ${transaction.currency}',
           style: Theme.of(context).textTheme.titleLarge,
         ),
         if (transaction.normalizedMoney.isNotEmpty) ...[
@@ -558,7 +577,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               label: context.l10n.text('referenceCurrency', {
                 'currency': value.currency,
               }),
-              value: '${value.amount} ${value.currency}',
+              value:
+                  '${localizedDecimal(context, value.amount)} ${value.currency}',
             ),
           ),
         ],
@@ -581,6 +601,11 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               ? context.l10n.text('needsReview')
               : context.l10n.text('clear'),
         ),
+        if (transaction.notes?.trim().isNotEmpty == true)
+          _DetailRow(
+            label: context.l10n.text('notes'),
+            value: transaction.notes!,
+          ),
         if (transaction.provenance.isNotEmpty) ...[
           const SizedBox(height: 16),
           Text(

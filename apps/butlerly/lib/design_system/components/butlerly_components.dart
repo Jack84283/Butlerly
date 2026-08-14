@@ -110,6 +110,27 @@ class ButlerlySectionHeader extends StatelessWidget {
   );
 }
 
+class ButlerlySeparatedList extends StatelessWidget {
+  const ButlerlySeparatedList({required this.children, super.key});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      for (var index = 0; index < children.length; index++) ...[
+        children[index],
+        if (index < children.length - 1)
+          Divider(
+            height: 1,
+            indent: ButlerlySpacing.standard,
+            endIndent: ButlerlySpacing.standard,
+          ),
+      ],
+    ],
+  );
+}
+
 enum ButlerlyStatus { success, warning, error, info, neutral, review }
 
 class ButlerlyStatusChip extends StatelessWidget {

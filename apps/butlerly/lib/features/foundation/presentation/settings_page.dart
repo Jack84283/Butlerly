@@ -57,167 +57,164 @@ class SettingsPage extends ConsumerWidget {
           ),
         ),
         ButlerlySectionHeader(title: context.l10n.text('appearance')),
-        ButlerlyCard(
-          child: Column(
-            children: [
-              DropdownButtonFormField<ThemeMode>(
-                initialValue: themeMode,
-                isExpanded: true,
-                decoration: InputDecoration(
-                  labelText: context.l10n.text('appearance'),
-                  prefixIcon: const Icon(Icons.palette_outlined),
+        _SettingsSectionCard(
+          children: [
+            _SettingsDropdownRow<ThemeMode>(
+              value: themeMode,
+              label: context.l10n.text('appearance'),
+              icon: Icons.palette_outlined,
+              items: [
+                DropdownMenuItem(
+                  value: ThemeMode.system,
+                  child: Text(context.l10n.text('system')),
                 ),
-                items: [
-                  DropdownMenuItem(
-                    value: ThemeMode.system,
-                    child: Text(context.l10n.text('system')),
-                  ),
-                  DropdownMenuItem(
-                    value: ThemeMode.light,
-                    child: Text(context.l10n.text('light')),
-                  ),
-                  DropdownMenuItem(
-                    value: ThemeMode.dark,
-                    child: Text(context.l10n.text('dark')),
-                  ),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    ref.read(themeModeProvider.notifier).state = value;
-                  }
-                },
-              ),
-              const SizedBox(height: ButlerlySpacing.standard),
-              DropdownButtonFormField<String>(
-                initialValue: locale.languageCode,
-                isExpanded: true,
-                decoration: InputDecoration(
-                  labelText: context.l10n.text('language'),
-                  prefixIcon: const Icon(Icons.language_rounded),
+                DropdownMenuItem(
+                  value: ThemeMode.light,
+                  child: Text(context.l10n.text('light')),
                 ),
-                items: [
-                  DropdownMenuItem(
-                    value: 'en',
-                    child: Text(context.l10n.text('english')),
-                  ),
-                  DropdownMenuItem(
-                    value: 'es',
-                    child: Text(context.l10n.text('spanish')),
-                  ),
-                  DropdownMenuItem(
-                    value: 'zh',
-                    child: Text(context.l10n.text('chinese')),
-                  ),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    ref
-                        .read(userPreferenceProvider.notifier)
-                        .saveChanges(locale: value);
-                  }
-                },
-              ),
-              const SizedBox(height: ButlerlySpacing.standard),
-              DropdownButtonFormField<String>(
-                initialValue: preference?.baseCurrency.value ?? 'USD',
-                isExpanded: true,
-                decoration: InputDecoration(
-                  labelText: context.l10n.text('baseCurrency'),
-                  prefixIcon: const Icon(Icons.currency_exchange_rounded),
+                DropdownMenuItem(
+                  value: ThemeMode.dark,
+                  child: Text(context.l10n.text('dark')),
                 ),
-                items: const ['USD', 'EUR', 'GBP', 'CNY', 'JPY']
-                    .map(
-                      (code) =>
-                          DropdownMenuItem(value: code, child: Text(code)),
-                    )
-                    .toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    ref
-                        .read(userPreferenceProvider.notifier)
-                        .saveChanges(baseCurrency: value);
-                  }
-                },
-              ),
-              const SizedBox(height: ButlerlySpacing.standard),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.schedule_rounded),
-                title: Text(context.l10n.text('timeZone')),
-                subtitle: Text(
-                  preference?.timeZoneId ?? DateTime.now().timeZoneName,
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  ref.read(themeModeProvider.notifier).state = value;
+                }
+              },
+            ),
+            _SettingsDropdownRow<String>(
+              value: locale.languageCode,
+              label: context.l10n.text('language'),
+              icon: Icons.language_rounded,
+              items: [
+                DropdownMenuItem(
+                  value: 'en',
+                  child: Text(context.l10n.text('english')),
                 ),
-                trailing: const Icon(Icons.edit_outlined),
-                onTap: preference == null
-                    ? null
-                    : () => _editTimeZone(context, ref, preference.timeZoneId),
+                DropdownMenuItem(
+                  value: 'es',
+                  child: Text(context.l10n.text('spanish')),
+                ),
+                DropdownMenuItem(
+                  value: 'zh',
+                  child: Text(context.l10n.text('chinese')),
+                ),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  ref
+                      .read(userPreferenceProvider.notifier)
+                      .saveChanges(locale: value);
+                }
+              },
+            ),
+            _SettingsDropdownRow<String>(
+              value: preference?.baseCurrency.value ?? 'USD',
+              label: context.l10n.text('baseCurrency'),
+              icon: Icons.currency_exchange_rounded,
+              items: const ['USD', 'EUR', 'GBP', 'CNY', 'JPY']
+                  .map(
+                    (code) => DropdownMenuItem(value: code, child: Text(code)),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  ref
+                      .read(userPreferenceProvider.notifier)
+                      .saveChanges(baseCurrency: value);
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.schedule_rounded),
+              title: Text(context.l10n.text('timeZone')),
+              subtitle: Text(
+                preference?.timeZoneId ?? DateTime.now().timeZoneName,
               ),
-            ],
-          ),
+              trailing: const Icon(Icons.edit_outlined),
+              onTap: preference == null
+                  ? null
+                  : () => _editTimeZone(context, ref, preference.timeZoneId),
+            ),
+          ],
         ),
         ButlerlySectionHeader(title: context.l10n.text('transactions')),
-        _SettingsRow(
-          icon: Icons.account_balance_wallet_outlined,
-          title: context.l10n.text('paymentSources'),
-          subtitle: context.l10n.text('paymentSourcesBody'),
-          onTap: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const PaymentSourcesPage())),
+        _SettingsSectionCard(
+          children: [
+            _SettingsRow(
+              icon: Icons.account_balance_wallet_outlined,
+              title: context.l10n.text('paymentSources'),
+              subtitle: context.l10n.text('paymentSourcesBody'),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const PaymentSourcesPage()),
+              ),
+            ),
+          ],
         ),
         ButlerlySectionHeader(title: context.l10n.text('privacyAndData')),
-        _SettingsRow(
-          icon: Icons.import_export_rounded,
-          title: context.l10n.text('importExport'),
-          subtitle: context.l10n.text('importExportBody'),
-          onTap: () => context.push('/import-export'),
-        ),
-        _SettingsRow(
-          icon: Icons.privacy_tip_outlined,
-          title: context.l10n.text('privacyAndData'),
-          subtitle: context.l10n.text('privacyAndDataBody'),
-          onTap: () => context.push('/privacy-data'),
+        _SettingsSectionCard(
+          children: [
+            _SettingsRow(
+              icon: Icons.import_export_rounded,
+              title: context.l10n.text('importExport'),
+              subtitle: context.l10n.text('importExportBody'),
+              onTap: () => context.push('/import-export'),
+            ),
+            _SettingsRow(
+              icon: Icons.privacy_tip_outlined,
+              title: context.l10n.text('privacyAndData'),
+              subtitle: context.l10n.text('privacyAndDataBody'),
+              onTap: () => context.push('/privacy-data'),
+            ),
+          ],
         ),
         ButlerlySectionHeader(title: context.l10n.text('optionalFeatures')),
-        ButlerlyCard(
-          child: SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            secondary: const Icon(Icons.cloud_off_outlined),
-            title: Text(context.l10n.text('externalAiConsent')),
-            subtitle: Text(context.l10n.text('externalAiConsentBody')),
-            value: preference?.externalAiEnabled ?? false,
-            onChanged: preference == null
-                ? null
-                : (value) => ref
-                      .read(userPreferenceProvider.notifier)
-                      .saveChanges(externalAiEnabled: value),
-          ),
-        ),
-        _SettingsRow(
-          icon: Icons.insights_outlined,
-          title: context.l10n.text('insights'),
-          subtitle: context.l10n.text('insightsBody'),
-          onTap: () => context.push('/insights'),
-        ),
-        _SettingsRow(
-          icon: Icons.auto_awesome_outlined,
-          title: context.l10n.text('assistant'),
-          subtitle: context.l10n.text('assistantUnavailableBody'),
-          onTap: () => context.push('/assistant'),
-        ),
-        _SettingsRow(
-          icon: Icons.notifications_none_rounded,
-          title: context.l10n.text('notifications'),
-          subtitle: context.l10n.text('notificationsBody'),
-          onTap: () => context.push('/notifications'),
+        _SettingsSectionCard(
+          children: [
+            SwitchListTile(
+              secondary: const Icon(Icons.cloud_off_outlined),
+              title: Text(context.l10n.text('externalAiConsent')),
+              subtitle: Text(context.l10n.text('externalAiConsentBody')),
+              value: preference?.externalAiEnabled ?? false,
+              onChanged: preference == null
+                  ? null
+                  : (value) => ref
+                        .read(userPreferenceProvider.notifier)
+                        .saveChanges(externalAiEnabled: value),
+            ),
+            _SettingsRow(
+              icon: Icons.insights_outlined,
+              title: context.l10n.text('insights'),
+              subtitle: context.l10n.text('insightsBody'),
+              onTap: () => context.push('/insights'),
+            ),
+            _SettingsRow(
+              icon: Icons.auto_awesome_outlined,
+              title: context.l10n.text('assistant'),
+              subtitle: context.l10n.text('assistantUnavailableBody'),
+              onTap: () => context.push('/assistant'),
+            ),
+            _SettingsRow(
+              icon: Icons.notifications_none_rounded,
+              title: context.l10n.text('notifications'),
+              subtitle: context.l10n.text('notificationsBody'),
+              onTap: () => context.push('/notifications'),
+            ),
+          ],
         ),
         ButlerlySectionHeader(title: context.l10n.text('about')),
-        _SettingsRow(
-          icon: Icons.gavel_outlined,
-          title: context.l10n.text('legalLicenses'),
-          subtitle: context.l10n.text('legalLicensesBody'),
-          onTap: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const LegalLicensesPage())),
+        _SettingsSectionCard(
+          children: [
+            _SettingsRow(
+              icon: Icons.gavel_outlined,
+              title: context.l10n.text('legalLicenses'),
+              subtitle: context.l10n.text('legalLicensesBody'),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const LegalLicensesPage()),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: ButlerlySpacing.structural),
       ],
@@ -259,7 +256,7 @@ class SettingsPage extends ConsumerWidget {
         ],
       ),
     );
-    controller.dispose();
+    WidgetsBinding.instance.addPostFrameCallback((_) => controller.dispose());
     if (value != null) {
       await ref
           .read(userPreferenceProvider.notifier)
@@ -286,26 +283,62 @@ class _SettingsRow extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  Widget build(BuildContext context) => ListTile(
+    leading: Icon(icon, color: context.colors.interactive),
+    title: Text(title),
+    subtitle: Text(subtitle),
+    trailing: const Icon(Icons.chevron_right_rounded),
+    onTap: onTap,
+  );
+}
+
+class _SettingsSectionCard extends StatelessWidget {
+  const _SettingsSectionCard({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => ButlerlyCard(
+    padding: EdgeInsets.zero,
+    child: ButlerlySeparatedList(children: children),
+  );
+}
+
+class _SettingsDropdownRow<T> extends StatelessWidget {
+  const _SettingsDropdownRow({
+    required this.value,
+    required this.label,
+    required this.icon,
+    required this.items,
+    required this.onChanged,
+  });
+
+  final T value;
+  final String label;
+  final IconData icon;
+  final List<DropdownMenuItem<T>> items;
+  final ValueChanged<T?> onChanged;
+
+  @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: ButlerlySpacing.small),
-    child: ButlerlyCard(
-      onTap: onTap,
-      child: Row(
-        children: [
-          Icon(icon, color: context.colors.interactive),
-          const SizedBox(width: ButlerlySpacing.standard),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: Theme.of(context).textTheme.bodyLarge),
-                Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
-              ],
-            ),
-          ),
-          const Icon(Icons.chevron_right_rounded),
-        ],
+    padding: const EdgeInsets.only(right: ButlerlySpacing.standard),
+    child: DropdownButtonFormField<T>(
+      initialValue: value,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: context.colors.interactive),
+        filled: false,
+        border: InputBorder.none,
+        enabledBorder: InputBorder.none,
+        focusedBorder: InputBorder.none,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: ButlerlySpacing.standard,
+          vertical: ButlerlySpacing.small,
+        ),
       ),
+      items: items,
+      onChanged: onChanged,
     ),
   );
 }

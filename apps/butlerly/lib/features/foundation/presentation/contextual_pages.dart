@@ -217,7 +217,7 @@ class _ImportExportPageState extends State<ImportExportPage> {
     );
   }
 
-  void _unavailable(BuildContext context) {
+  void _openReceiptFlow(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
       builder: (context) => Padding(
@@ -228,11 +228,14 @@ class _ImportExportPageState extends State<ImportExportPage> {
           ButlerlySpacing.large,
         ),
         child: ButlerlyEmptyState(
-          icon: Icons.construction_outlined,
-          title: context.l10n.text('notImplemented'),
-          message: context.l10n.text('notImplementedBody'),
-          actionLabel: context.l10n.text('cancel'),
-          onAction: () => Navigator.pop(context),
+          icon: Icons.receipt_long_outlined,
+          title: context.l10n.text('importReceipts'),
+          message: context.l10n.text('receiptAttachGuide'),
+          actionLabel: context.l10n.text('viewTransactions'),
+          onAction: () {
+            Navigator.pop(context);
+            this.context.go('/transactions');
+          },
         ),
       ),
     );
@@ -244,8 +247,8 @@ class _ImportExportPageState extends State<ImportExportPage> {
     body: ListView(
       padding: const EdgeInsets.all(ButlerlySpacing.standard),
       children: [
-        const ButlerlyOfflineBanner(
-          message: 'CSV import and export stay on this device.',
+        ButlerlyOfflineBanner(
+          message: context.l10n.text('importOfflineBanner'),
         ),
         if (_importing) const LinearProgressIndicator(),
         ButlerlySectionHeader(title: context.l10n.text('importData')),
@@ -259,7 +262,7 @@ class _ImportExportPageState extends State<ImportExportPage> {
           icon: Icons.image_outlined,
           title: context.l10n.text('importReceipts'),
           subtitle: context.l10n.text('importReceiptsBody'),
-          onTap: () => _unavailable(context),
+          onTap: () => _openReceiptFlow(context),
         ),
         ButlerlySectionHeader(title: context.l10n.text('importExport')),
         _ActionRow(
@@ -267,12 +270,6 @@ class _ImportExportPageState extends State<ImportExportPage> {
           title: context.l10n.text('exportToFile'),
           subtitle: context.l10n.text('exportToFileBody'),
           onTap: () => context.push('/privacy-data'),
-        ),
-        _ActionRow(
-          icon: Icons.inventory_2_outlined,
-          title: context.l10n.text('createBackup'),
-          subtitle: context.l10n.text('createBackupBody'),
-          onTap: () => _unavailable(context),
         ),
       ],
     ),
