@@ -120,8 +120,9 @@ final class LocalEvidenceStore {
   }
 
   Future<File?> fileForPreserved(PreservedEvidenceSource source) async {
-    if (path.basename(source.localFileName) != source.localFileName)
+    if (path.basename(source.localFileName) != source.localFileName) {
       return null;
+    }
     return File(
       path.join((await data.evidenceDirectory()).path, source.localFileName),
     );
