@@ -5,7 +5,7 @@ import '../result/application_result.dart';
 final class GetExtractionForEvidence {
   const GetExtractionForEvidence(this.repository);
 
-  final EvidenceRepository repository;
+  final ExtractionLookupRepository repository;
 
   Future<ApplicationResult<Extraction?>> call(String evidenceId) =>
       runApplication('get evidence extraction', () {
