@@ -68,10 +68,14 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     ]);
     if (!mounted) return;
     setState(() {
-      if (values[0] case ApplicationSuccess<List<Merchant>>(value: final value)) {
+      if (values[0] case ApplicationSuccess<List<Merchant>>(
+        value: final value,
+      )) {
         _merchants = value;
       }
-      if (values[1] case ApplicationSuccess<List<Category>>(value: final value)) {
+      if (values[1] case ApplicationSuccess<List<Category>>(
+        value: final value,
+      )) {
         _categories = value;
       }
       if (values[2] case ApplicationSuccess<List<Tag>>(value: final value)) {
@@ -358,8 +362,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                             child: Text(merchant.name),
                           ),
                       ],
-                      onChanged: (value) =>
-                          setState(() => _merchantId = value),
+                      onChanged: (value) => setState(() => _merchantId = value),
                     ),
                     TextFormField(
                       controller: _amount,
@@ -412,8 +415,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                             child: Text(category.name),
                           ),
                       ],
-                      onChanged: (value) =>
-                          setState(() => _categoryId = value),
+                      onChanged: (value) => setState(() => _categoryId = value),
                     ),
                     DropdownButtonFormField<String>(
                       value: _paymentSourceId,

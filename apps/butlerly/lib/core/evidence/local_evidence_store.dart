@@ -17,7 +17,8 @@ final class LocalEvidenceStore {
     required String transactionId,
     required XFile source,
   }) async =>
-      await attachAndReturn(transactionId: transactionId, source: source) != null;
+      await attachAndReturn(transactionId: transactionId, source: source) !=
+      null;
 
   Future<EvidenceItem?> attachAndReturn({
     required String transactionId,

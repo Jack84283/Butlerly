@@ -101,9 +101,8 @@ abstract final class ReceiptTextParser {
     final values = lines.expand(_money).toList(growable: false);
     if (values.isEmpty) return null;
     values.sort(
-      (left, right) => (double.tryParse(right) ?? 0).compareTo(
-        double.tryParse(left) ?? 0,
-      ),
+      (left, right) =>
+          (double.tryParse(right) ?? 0).compareTo(double.tryParse(left) ?? 0),
     );
     return values.first;
   }
@@ -119,8 +118,7 @@ abstract final class ReceiptTextParser {
       var amount = match.group(1)!.replaceAll(' ', '');
       if (amount.contains(',') && amount.contains('.')) {
         amount = amount.replaceAll(',', '');
-      } else if (amount.contains(',') &&
-          RegExp(r',\d{2}$').hasMatch(amount)) {
+      } else if (amount.contains(',') && RegExp(r',\d{2}$').hasMatch(amount)) {
         amount = amount.replaceAll(',', '.');
       } else {
         amount = amount.replaceAll(',', '');
@@ -151,15 +149,9 @@ abstract final class ReceiptTextParser {
     for (var index = 0; index < patterns.length; index++) {
       final match = patterns[index].firstMatch(text);
       if (match == null) continue;
-      final year = int.parse(
-        index == 0 ? match.group(1)! : match.group(3)!,
-      );
-      final month = int.parse(
-        index == 0 ? match.group(2)! : match.group(1)!,
-      );
-      final day = int.parse(
-        index == 0 ? match.group(3)! : match.group(2)!,
-      );
+      final year = int.parse(index == 0 ? match.group(1)! : match.group(3)!);
+      final month = int.parse(index == 0 ? match.group(2)! : match.group(1)!);
+      final day = int.parse(index == 0 ? match.group(3)! : match.group(2)!);
       final value = DateTime(year, month, day);
       if (value.year == year && value.month == month && value.day == day) {
         return value;
