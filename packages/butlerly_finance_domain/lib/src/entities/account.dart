@@ -11,18 +11,24 @@ final class PaymentSource {
     required String name,
     required this.type,
     this.status = PaymentSourceStatus.active,
+    this.displayIdentity,
+    this.lastFour,
   }) : name = _requiredName(name);
 
   final PaymentSourceId id;
   final String name;
   final PaymentSourceType type;
   final PaymentSourceStatus status;
+  final String? displayIdentity;
+  final String? lastFour;
 
   PaymentSource archive() => PaymentSource(
     id: id,
     name: name,
     type: type,
     status: PaymentSourceStatus.archived,
+    displayIdentity: displayIdentity,
+    lastFour: lastFour,
   );
 
   static String _requiredName(String value) {

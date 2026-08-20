@@ -14,6 +14,8 @@ final class SqlitePaymentSourceRepository implements PaymentSourceRepository {
         'name': value.name,
         'type': value.type.name,
         'status': value.status.name,
+        'display_identity': value.displayIdentity,
+        'last_four': value.lastFour,
       });
 
   @override
@@ -33,6 +35,8 @@ final class SqlitePaymentSourceRepository implements PaymentSourceRepository {
     name: row['name']! as String,
     type: PaymentSourceType.values.byName(row['type']! as String),
     status: PaymentSourceStatus.values.byName(row['status']! as String),
+    displayIdentity: row['display_identity'] as String?,
+    lastFour: row['last_four'] as String?,
   );
 }
 
@@ -41,11 +45,13 @@ final class SqliteMerchantRepository implements MerchantRepository {
   final ButlerlyDatabase database;
 
   @override
-  Future<void> save(Merchant value) => _write(
-    database.connection,
-    'merchants',
-    {'id': value.id.value, 'name': value.name},
-  );
+  Future<void> save(Merchant value) =>
+      _write(database.connection, 'merchants', {
+        'id': value.id.value,
+        'name': value.name,
+        'status': value.status.name,
+        'raw_name': value.rawName,
+      });
 
   @override
   Future<Merchant?> findById(MerchantId id) async {
@@ -62,6 +68,8 @@ final class SqliteMerchantRepository implements MerchantRepository {
   static Merchant _fromRow(Map<String, Object?> row) => Merchant(
     id: MerchantId(row['id']! as String),
     name: row['name']! as String,
+    status: MerchantStatus.values.byName(row['status'] as String? ?? 'active'),
+    rawName: row['raw_name'] as String?,
   );
 }
 
@@ -76,6 +84,7 @@ final class SqliteCategoryRepository implements CategoryRepository {
         'name': value.name,
         'origin': value.origin.name,
         'parent_id': value.parentId?.value,
+        'status': value.status.name,
       });
 
   @override
@@ -97,6 +106,7 @@ final class SqliteCategoryRepository implements CategoryRepository {
     parentId: row['parent_id'] == null
         ? null
         : CategoryId(row['parent_id']! as String),
+    status: CategoryStatus.values.byName(row['status'] as String? ?? 'active'),
   );
 }
 
@@ -108,6 +118,7 @@ final class SqliteTagRepository implements TagRepository {
   Future<void> save(Tag value) => _write(database.connection, 'tags', {
     'id': value.id.value,
     'name': value.name,
+    'status': value.status.name,
   });
 
   @override
@@ -122,8 +133,11 @@ final class SqliteTagRepository implements TagRepository {
     'tags',
   )).map(_fromRow).toList(growable: false);
 
-  static Tag _fromRow(Map<String, Object?> row) =>
-      Tag(id: TagId(row['id']! as String), name: row['name']! as String);
+  static Tag _fromRow(Map<String, Object?> row) => Tag(
+    id: TagId(row['id']! as String),
+    name: row['name']! as String,
+    status: TagStatus.values.byName(row['status'] as String? ?? 'active'),
+  );
 }
 
 Future<void> _write(
