@@ -93,6 +93,7 @@ final class ImportTransactionCommand {
     this.rawCounterparty,
     this.sourceLanguage,
     this.notes,
+    this.paymentSourceId,
   });
 
   final String id;
@@ -108,6 +109,7 @@ final class ImportTransactionCommand {
   final String? rawCounterparty;
   final String? sourceLanguage;
   final String? notes;
+  final String? paymentSourceId;
 }
 
 final class ListTransactionsQuery {

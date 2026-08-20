@@ -6,6 +6,8 @@ import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -190,9 +192,34 @@ class _ImportExportPageState extends State<ImportExportPage> {
     final file = await openFile(acceptedTypeGroups: const [group]);
     if (file == null || !mounted) return;
     setState(() => _importing = true);
-    final summary = await LocalCsvImporter(
-      services<FinanceServices>(),
-    ).import(file, sourceLanguage: sourceLanguage);
+    final importer = LocalCsvImporter(services<FinanceServices>());
+    final preview = await importer.preview(file);
+    if (!mounted) return;
+    setState(() => _importing = false);
+    if (preview.rows.isEmpty || preview.validCount == 0) {
+      await _showImportMessage('Import validation', preview.errors.join('\n'));
+      return;
+    }
+    final sources = await services<FinanceServices>().listPaymentSources();
+    if (!mounted) return;
+    final activeSources = sources is ApplicationSuccess<List<PaymentSource>>
+        ? sources.value
+              .where((value) => value.status == PaymentSourceStatus.active)
+              .toList()
+        : const <PaymentSource>[];
+    final paymentSourceId = await showDialog<String>(
+      context: context,
+      builder: (context) =>
+          _StatementPreviewDialog(preview: preview, sources: activeSources),
+    );
+    if (!mounted || paymentSourceId == null) return;
+    setState(() => _importing = true);
+    final summary = await importer.commitPreview(
+      preview,
+      sourceId: file.name,
+      sourceLanguage: sourceLanguage,
+      paymentSourceId: paymentSourceId.isEmpty ? null : paymentSourceId,
+    );
     if (!mounted) return;
     setState(() => _importing = false);
     if (summary.imported > 0) notifyTransactionChanged();
@@ -214,6 +241,52 @@ class _ImportExportPageState extends State<ImportExportPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _showImportMessage(String title, String message) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message.isEmpty ? 'No valid rows were found.' : message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _addNotificationTransaction() async {
+    final sources = await services<FinanceServices>().listPaymentSources();
+    if (!mounted) return;
+    final activeSources = sources is ApplicationSuccess<List<PaymentSource>>
+        ? sources.value
+              .where((value) => value.status == PaymentSourceStatus.active)
+              .toList()
+        : const <PaymentSource>[];
+    final command = await showDialog<PaymentTransactionCommand>(
+      context: context,
+      builder: (context) => _SinglePaymentDialog(sources: activeSources),
+    );
+    if (command == null || !mounted) return;
+    setState(() => _importing = true);
+    final result = await services<FinanceServices>().createPaymentTransaction(
+      command,
+    );
+    if (!mounted) return;
+    setState(() => _importing = false);
+    if (result is ApplicationSuccess<TransactionDto>) {
+      notifyTransactionChanged();
+    }
+    await _showImportMessage(
+      result is ApplicationSuccess<TransactionDto> ? 'Saved' : 'Could not save',
+      result is ApplicationSuccess<TransactionDto>
+          ? 'The payment transaction was saved locally.'
+          : 'Please check the fields and try again.',
     );
   }
 
@@ -244,6 +317,19 @@ class _ImportExportPageState extends State<ImportExportPage> {
           subtitle: context.l10n.text('importReceiptsBody'),
           onTap: () => _openReceiptFlow(context),
         ),
+        _ActionRow(
+          icon: Icons.credit_card_outlined,
+          title: 'Add payment transaction',
+          subtitle:
+              'Enter one card transaction when no statement is available.',
+          onTap: () => context.push('/transactions/add'),
+        ),
+        _ActionRow(
+          icon: Icons.notifications_none_outlined,
+          title: 'Add payment notification',
+          subtitle: 'Record one card notification with integration provenance.',
+          onTap: _importing ? () {} : _addNotificationTransaction,
+        ),
         ButlerlySectionHeader(title: context.l10n.text('importExport')),
         _ActionRow(
           icon: Icons.file_download_outlined,
@@ -253,6 +339,211 @@ class _ImportExportPageState extends State<ImportExportPage> {
         ),
       ],
     ),
+  );
+}
+
+class _SinglePaymentDialog extends StatefulWidget {
+  const _SinglePaymentDialog({required this.sources});
+
+  final List<PaymentSource> sources;
+
+  @override
+  State<_SinglePaymentDialog> createState() => _SinglePaymentDialogState();
+}
+
+class _SinglePaymentDialogState extends State<_SinglePaymentDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _amount = TextEditingController();
+  final _description = TextEditingController();
+  final _currency = TextEditingController(text: 'USD');
+  String _direction = 'expense';
+  String? _sourceId;
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    _description.dispose();
+    _currency.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Add payment notification'),
+    content: Form(
+      key: _formKey,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _amount,
+              decoration: const InputDecoration(labelText: 'Amount'),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              validator: (value) => double.tryParse(value ?? '') == null
+                  ? 'Enter a valid amount.'
+                  : null,
+            ),
+            TextFormField(
+              controller: _currency,
+              decoration: const InputDecoration(labelText: 'Currency'),
+              validator: (value) => value == null || value.trim().length != 3
+                  ? 'Use a 3-letter currency code.'
+                  : null,
+            ),
+            TextFormField(
+              controller: _description,
+              decoration: const InputDecoration(
+                labelText: 'Merchant / description',
+              ),
+              validator: (value) => value == null || value.trim().isEmpty
+                  ? 'Enter a description.'
+                  : null,
+            ),
+            DropdownButtonFormField<String>(
+              initialValue: _direction,
+              decoration: const InputDecoration(labelText: 'Direction'),
+              items: const [
+                DropdownMenuItem(
+                  value: 'expense',
+                  child: Text('Debit / expense'),
+                ),
+                DropdownMenuItem(
+                  value: 'income',
+                  child: Text('Credit / refund'),
+                ),
+              ],
+              onChanged: (value) =>
+                  setState(() => _direction = value ?? 'expense'),
+            ),
+            DropdownButtonFormField<String>(
+              initialValue: _sourceId,
+              decoration: const InputDecoration(labelText: 'Payment source'),
+              items: [
+                const DropdownMenuItem(value: '', child: Text('Unassigned')),
+                for (final source in widget.sources)
+                  DropdownMenuItem(
+                    value: source.id.value,
+                    child: Text(source.displayIdentity ?? source.name),
+                  ),
+              ],
+              onChanged: (value) => setState(() => _sourceId = value),
+            ),
+          ],
+        ),
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(
+        onPressed: () {
+          if (!_formKey.currentState!.validate()) return;
+          final token = DateTime.now().microsecondsSinceEpoch;
+          Navigator.pop(
+            context,
+            PaymentTransactionCommand(
+              id: 'notification-$token',
+              provenanceId: 'notification-provenance-$token',
+              sourceId: 'user-notification',
+              originalRepresentation: _description.text.trim(),
+              money: Money(
+                amount: DecimalValue.parse(_amount.text.trim()),
+                currency: CurrencyCode(_currency.text.trim().toUpperCase()),
+              ),
+              direction: _direction == 'income'
+                  ? TransactionDirection.income
+                  : TransactionDirection.expense,
+              transactionDate: _isoDate(DateTime.now()),
+              description: _description.text.trim(),
+              paymentSourceId: _sourceId?.isEmpty == true ? null : _sourceId,
+              sourceType: TransactionSourceType.integration,
+              provenanceSourceType: ProvenanceSourceType.integration,
+            ),
+          );
+        },
+        child: const Text('Save'),
+      ),
+    ],
+  );
+}
+
+String _isoDate(DateTime value) =>
+    '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+
+class _StatementPreviewDialog extends StatefulWidget {
+  const _StatementPreviewDialog({required this.preview, required this.sources});
+
+  final CsvStatementPreview preview;
+  final List<PaymentSource> sources;
+
+  @override
+  State<_StatementPreviewDialog> createState() =>
+      _StatementPreviewDialogState();
+}
+
+class _StatementPreviewDialogState extends State<_StatementPreviewDialog> {
+  String? _sourceId;
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Review statement import'),
+    content: SizedBox(
+      width: 520,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${widget.preview.validCount} valid row(s) ready to import.'),
+            if (widget.preview.errors.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text('${widget.preview.errors.length} row(s) need correction.'),
+            ],
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: _sourceId,
+              decoration: const InputDecoration(labelText: 'Payment source'),
+              items: [
+                const DropdownMenuItem(value: '', child: Text('Unassigned')),
+                for (final source in widget.sources)
+                  DropdownMenuItem(
+                    value: source.id.value,
+                    child: Text(source.displayIdentity ?? source.name),
+                  ),
+              ],
+              onChanged: (value) => setState(() => _sourceId = value),
+            ),
+            const SizedBox(height: 12),
+            for (final row in widget.preview.rows.take(8))
+              ListTile(
+                dense: true,
+                title: Text(row.description),
+                subtitle: Text('${row.date} · ${row.currency} ${row.amount}'),
+                trailing: row.isValid
+                    ? const Icon(
+                        Icons.check_circle_outline,
+                        color: Colors.green,
+                      )
+                    : const Icon(Icons.error_outline, color: Colors.orange),
+              ),
+          ],
+        ),
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(
+        onPressed: () => Navigator.pop(context, _sourceId ?? ''),
+        child: const Text('Import valid rows'),
+      ),
+    ],
   );
 }
 

@@ -24,6 +24,10 @@ final class FinanceServices {
         transactions,
         const SystemApplicationClock(),
       ),
+      createPaymentTransaction = CreatePaymentTransaction(
+        transactions,
+        const SystemApplicationClock(),
+      ),
       importTransaction = ImportTransaction(
         transactions,
         const SystemApplicationClock(),
@@ -93,6 +97,7 @@ final class FinanceServices {
   final SeedInitialMasterData seedInitialMasterData;
   final CreateTransaction createTransaction;
   final CreateReceiptTransaction createReceiptTransaction;
+  final CreatePaymentTransaction createPaymentTransaction;
   final ImportTransaction importTransaction;
   final GetTransaction getTransaction;
   final UpdateTransaction updateTransaction;

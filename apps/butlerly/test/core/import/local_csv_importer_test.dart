@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:butlerly/core/import/local_csv_importer.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -74,6 +75,27 @@ void main() {
     expect(summary.duplicates, 1);
     expect(summary.failed, 1);
     expect(summary.errors, hasLength(1));
+  });
+
+  test('previews bank aliases and validates rows before commit', () async {
+    final root = await Directory.systemTemp.createTemp('butlerly-csv-test-');
+    addTearDown(() => root.delete(recursive: true));
+    final file = File('${root.path}/statement.csv');
+    await file.writeAsString(
+      'Posting Date,Merchant,Amount,Currency,Debit/Credit,Card\n'
+      '2026-08-09,Market,-12.50,USD,Debit,1234\n'
+      'bad,Missing,-x,USD,Debit,1234\n',
+    );
+    final importer = LocalCsvImporter.withHandler(
+      (command) async => ApplicationSuccess<TransactionDto>(_dto(command)),
+    );
+
+    final preview = await importer.preview(XFile(file.path));
+
+    expect(preview.validCount, 1);
+    expect(preview.errors, hasLength(1));
+    expect(preview.rows.first.direction, TransactionDirection.expense);
+    expect(preview.rows.first.cardReference, '1234');
   });
 }
 
