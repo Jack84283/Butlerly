@@ -42,40 +42,44 @@ final class CreateReceiptTransaction {
 
   Future<ApplicationResult<TransactionDto>> call(
     ReceiptTransactionCommand command,
-  ) => runApplication('create receipt transaction', () async {
-    final now = clock.now();
-    final transaction = Transaction(
-      id: TransactionId(command.id),
-      timing: const UnknownTransactionTime(UnknownTransactionTimeReason.unknown),
-      money: command.money,
-      direction: TransactionDirection.expense,
-      sourceType: TransactionSourceType.evidenceCapture,
-      transactionDate: command.transactionDate,
-      rawCounterparty: command.rawCounterparty,
-      description: command.description,
-      notes: command.notes,
-      merchantId: command.merchantId == null
-          ? null
-          : MerchantId(command.merchantId!),
-      categoryId: command.categoryId == null
-          ? null
-          : CategoryId(command.categoryId!),
-      paymentSourceId: command.paymentSourceId == null
-          ? null
-          : PaymentSourceId(command.paymentSourceId!),
-      tagIds: command.tagIds.map(TagId.new).toList(growable: false),
-      provenance: [
-        Provenance(
-          id: ProvenanceId(command.provenanceId),
-          sourceType: ProvenanceSourceType.scan,
-          capturedAt: now,
-          originalRepresentation: command.originalRepresentation,
+  ) {
+    return runApplication('create receipt transaction', () async {
+      final now = clock.now();
+      final transaction = Transaction(
+        id: TransactionId(command.id),
+        timing: const UnknownTransactionTime(
+          UnknownTransactionTimeReason.unknown,
         ),
-      ],
-      createdAt: now,
-      updatedAt: now,
-    );
-    await repository.save(transaction);
-    return TransactionDto.fromDomain(transaction);
-  });
+        money: command.money,
+        direction: TransactionDirection.expense,
+        sourceType: TransactionSourceType.evidenceCapture,
+        transactionDate: command.transactionDate,
+        rawCounterparty: command.rawCounterparty,
+        description: command.description,
+        notes: command.notes,
+        merchantId: command.merchantId == null
+            ? null
+            : MerchantId(command.merchantId!),
+        categoryId: command.categoryId == null
+            ? null
+            : CategoryId(command.categoryId!),
+        paymentSourceId: command.paymentSourceId == null
+            ? null
+            : PaymentSourceId(command.paymentSourceId!),
+        tagIds: command.tagIds.map(TagId.new).toList(growable: false),
+        provenance: [
+          Provenance(
+            id: ProvenanceId(command.provenanceId),
+            sourceType: ProvenanceSourceType.scan,
+            capturedAt: now,
+            originalRepresentation: command.originalRepresentation,
+          ),
+        ],
+        createdAt: now,
+        updatedAt: now,
+      );
+      await repository.save(transaction);
+      return TransactionDto.fromDomain(transaction);
+    });
+  }
 }
