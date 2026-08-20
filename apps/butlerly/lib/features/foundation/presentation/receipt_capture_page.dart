@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:butlerly/core/di/finance_services.dart';
@@ -28,10 +29,12 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   final _notes = TextEditingController();
 
   XFile? _source;
+  PreservedEvidenceSource? _preserved;
   ReceiptOcrResult? _ocrResult;
   DateTime _date = DateTime.now();
   bool _processing = false;
   bool _saving = false;
+  bool _committed = false;
   String? _merchantId;
   String? _categoryId;
   String? _paymentSourceId;
@@ -42,6 +45,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   List<PaymentSource> _sources = const [];
 
   FinanceServices get finance => services<FinanceServices>();
+  LocalEvidenceStore get evidenceStore => services<LocalEvidenceStore>();
 
   @override
   void initState() {
@@ -51,6 +55,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
 
   @override
   void dispose() {
+    if (!_committed && _preserved != null) {
+      unawaited(evidenceStore.discardPreserved(_preserved!));
+    }
     _amount.dispose();
     _currency.dispose();
     _merchantRaw.dispose();
@@ -146,14 +153,45 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     );
     if (confirmed != true || !mounted) return;
 
+    PreservedEvidenceSource preserved;
+    File? stableFile;
+    try {
+      preserved = await evidenceStore.preserve(source);
+      stableFile = await evidenceStore.fileForPreserved(preserved);
+      if (stableFile == null || !await stableFile.exists()) {
+        throw const FileSystemException('Preserved receipt is unavailable.');
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Receipt could not be stored locally. Please retry.'),
+        ),
+      );
+      return;
+    }
+
+    final previous = _preserved;
+    if (previous != null) await evidenceStore.discardPreserved(previous);
+    if (!mounted) {
+      await evidenceStore.discardPreserved(preserved);
+      return;
+    }
+
+    final stableSource = XFile(
+      stableFile.path,
+      name: preserved.originalName,
+      mimeType: preserved.mediaType,
+    );
     setState(() {
-      _source = source;
+      _preserved = preserved;
+      _source = stableSource;
       _processing = true;
       _ocrResult = null;
     });
 
     try {
-      final result = await _ocr.recognize(source.path);
+      final result = await _ocr.recognize(stableSource.path);
       if (!mounted) return;
       setState(() {
         _ocrResult = result;
@@ -170,7 +208,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Receipt text could not be read. You can retry or enter the fields manually.',
+            'Receipt was saved locally, but its text could not be read. You can retry or enter the fields manually.',
           ),
         ),
       );
@@ -209,7 +247,12 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
 
   Future<void> _save() async {
     final source = _source;
-    if (source == null || !_formKey.currentState!.validate()) return;
+    final preserved = _preserved;
+    if (source == null ||
+        preserved == null ||
+        !_formKey.currentState!.validate()) {
+      return;
+    }
 
     setState(() => _saving = true);
     final token = DateTime.now().microsecondsSinceEpoch;
@@ -242,9 +285,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       return;
     }
 
-    final evidence = await services<LocalEvidenceStore>().attachAndReturn(
+    final evidence = await evidenceStore.attachPreservedAndReturn(
       transactionId: result.value.id,
-      source: source,
+      source: preserved,
     );
     if (evidence == null) {
       await finance.deleteTransactionPermanently(result.value.id);
@@ -275,6 +318,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       );
     }
 
+    _committed = true;
     notifyTransactionChanged();
     if (!mounted) return;
     setState(() => _saving = false);
