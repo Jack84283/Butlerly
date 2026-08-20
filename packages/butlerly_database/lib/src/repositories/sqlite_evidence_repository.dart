@@ -6,7 +6,8 @@ import 'package:sqflite_common/sqlite_api.dart';
 import '../database/butlerly_database.dart';
 import '../mappers/sqlite_helpers.dart';
 
-final class SqliteEvidenceRepository implements EvidenceRepository {
+final class SqliteEvidenceRepository
+    implements EvidenceRepository, ExtractionLookupRepository {
   const SqliteEvidenceRepository(this.database);
   final ButlerlyDatabase database;
 
