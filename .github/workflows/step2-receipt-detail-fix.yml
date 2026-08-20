@@ -1,15 +1,15 @@
 name: Step 2 Receipt Detail Fix
 
 on:
-  push:
-    branches: [feature/step2-receipt-ocr]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
   patch:
-    if: github.event.head_commit.message != 'Show saved OCR in receipt detail'
+    if: github.head_ref == 'feature/step2-receipt-ocr' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,7 +21,7 @@ jobs:
           cache: true
       - run: flutter pub get
         working-directory: apps/butlerly
-      - name: Patch receipt preview
+      - name: Patch receipt preview and format Step 2
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -152,9 +152,10 @@ jobs:
     );
   }
 '''
-          if old not in text:
+          if old in text:
+              path.write_text(text.replace(old, new))
+          elif 'getExtractionForEvidence' not in text:
               raise SystemExit('Target receipt preview block not found')
-          path.write_text(text.replace(old, new))
           PY
           dart format apps/butlerly/lib/features/foundation/presentation/transactions_page.dart \
             apps/butlerly/lib/features/foundation/presentation/receipt_capture_page.dart \
