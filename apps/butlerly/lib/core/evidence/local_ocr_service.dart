@@ -21,16 +21,17 @@ final class ReceiptOcrResult {
   final String? tip;
   final String? cardLast4;
 
-  Map<String, String> toExtractionValues() => {
-    'rawText': rawText,
-    if (merchant != null) 'merchant': merchant!,
-    if (amount != null) 'amount': amount!,
-    if (currency != null) 'currency': currency!,
-    if (date != null) 'date': _iso(date!),
-    if (tax != null) 'tax': tax!,
-    if (tip != null) 'tip': tip!,
-    if (cardLast4 != null) 'cardLast4': cardLast4!,
-  };
+  Map<String, String> toExtractionValues() {
+    final values = <String, String>{'rawText': rawText};
+    if (merchant case final value?) values['merchant'] = value;
+    if (amount case final value?) values['amount'] = value;
+    if (currency case final value?) values['currency'] = value;
+    if (date case final value?) values['date'] = _iso(value);
+    if (tax case final value?) values['tax'] = value;
+    if (tip case final value?) values['tip'] = value;
+    if (cardLast4 case final value?) values['cardLast4'] = value;
+    return values;
+  }
 
   static String _iso(DateTime value) =>
       '${value.year.toString().padLeft(4, '0')}-'
