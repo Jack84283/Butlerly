@@ -78,6 +78,7 @@ final class FinanceServices {
         const SystemApplicationClock(),
       ),
       listEvidenceForTransaction = ListEvidenceForTransaction(evidence),
+      getExtractionForEvidence = GetExtractionForEvidence(evidence),
       loadUserPreference = LoadUserPreference(preferences),
       saveUserPreference = SaveUserPreference(preferences),
       storeAndAttachEvidence = StoreAndAttachEvidence(evidence),
@@ -112,6 +113,7 @@ final class FinanceServices {
   final ResolveReviewIssue resolveReviewIssue;
   final DismissReviewIssue dismissReviewIssue;
   final ListEvidenceForTransaction listEvidenceForTransaction;
+  final GetExtractionForEvidence getExtractionForEvidence;
   final LoadUserPreference loadUserPreference;
   final SaveUserPreference saveUserPreference;
   final StoreAndAttachEvidence storeAndAttachEvidence;
