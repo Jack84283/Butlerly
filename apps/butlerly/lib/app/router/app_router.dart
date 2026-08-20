@@ -4,6 +4,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart';
+import 'package:butlerly/features/foundation/presentation/receipt_capture_page.dart';
 import 'package:butlerly/features/foundation/presentation/review_page.dart';
 import 'package:butlerly/features/foundation/presentation/search_page.dart';
 import 'package:butlerly/features/foundation/presentation/settings_page.dart';
@@ -78,6 +79,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/import-export',
       builder: (_, _) => const ImportExportPage(),
+    ),
+    GoRoute(
+      path: '/receipts/capture',
+      builder: (_, _) => const ReceiptCapturePage(),
     ),
     GoRoute(path: '/privacy-data', builder: (_, _) => const PrivacyDataPage()),
     GoRoute(

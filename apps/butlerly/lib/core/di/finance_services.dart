@@ -20,6 +20,10 @@ final class FinanceServices {
         transactions,
         const SystemApplicationClock(),
       ),
+      createReceiptTransaction = CreateReceiptTransaction(
+        transactions,
+        const SystemApplicationClock(),
+      ),
       importTransaction = ImportTransaction(
         transactions,
         const SystemApplicationClock(),
@@ -74,14 +78,21 @@ final class FinanceServices {
         const SystemApplicationClock(),
       ),
       listEvidenceForTransaction = ListEvidenceForTransaction(evidence),
+      getExtractionForEvidence = GetExtractionForEvidence(
+        evidence is ExtractionLookupRepository
+            ? evidence as ExtractionLookupRepository
+            : const _NoExtractionLookupRepository(),
+      ),
       loadUserPreference = LoadUserPreference(preferences),
       saveUserPreference = SaveUserPreference(preferences),
       storeAndAttachEvidence = StoreAndAttachEvidence(evidence),
-      removeEvidence = RemoveEvidence(evidence);
+      removeEvidence = RemoveEvidence(evidence),
+      saveExtraction = SaveExtraction(evidence);
 
   final ListTransactions listTransactions;
   final SeedInitialMasterData seedInitialMasterData;
   final CreateTransaction createTransaction;
+  final CreateReceiptTransaction createReceiptTransaction;
   final ImportTransaction importTransaction;
   final GetTransaction getTransaction;
   final UpdateTransaction updateTransaction;
@@ -106,8 +117,18 @@ final class FinanceServices {
   final ResolveReviewIssue resolveReviewIssue;
   final DismissReviewIssue dismissReviewIssue;
   final ListEvidenceForTransaction listEvidenceForTransaction;
+  final GetExtractionForEvidence getExtractionForEvidence;
   final LoadUserPreference loadUserPreference;
   final SaveUserPreference saveUserPreference;
   final StoreAndAttachEvidence storeAndAttachEvidence;
   final RemoveEvidence removeEvidence;
+  final SaveExtraction saveExtraction;
+}
+
+final class _NoExtractionLookupRepository
+    implements ExtractionLookupRepository {
+  const _NoExtractionLookupRepository();
+
+  @override
+  Future<Extraction?> findExtractionForEvidence(EvidenceId id) async => null;
 }

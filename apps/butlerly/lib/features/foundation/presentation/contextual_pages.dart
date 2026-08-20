@@ -218,27 +218,7 @@ class _ImportExportPageState extends State<ImportExportPage> {
   }
 
   void _openReceiptFlow(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(
-          ButlerlySpacing.section,
-          0,
-          ButlerlySpacing.section,
-          ButlerlySpacing.large,
-        ),
-        child: ButlerlyEmptyState(
-          icon: Icons.receipt_long_outlined,
-          title: context.l10n.text('importReceipts'),
-          message: context.l10n.text('receiptAttachGuide'),
-          actionLabel: context.l10n.text('viewTransactions'),
-          onAction: () {
-            Navigator.pop(context);
-            this.context.go('/transactions');
-          },
-        ),
-      ),
-    );
+    context.push('/receipts/capture');
   }
 
   @override

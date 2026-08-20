@@ -193,3 +193,14 @@ final class RemoveEvidence {
     () => repository.remove(EvidenceId(id)),
   );
 }
+
+final class SaveExtraction {
+  const SaveExtraction(this.repository);
+  final EvidenceRepository repository;
+
+  Future<ApplicationResult<Extraction>> call(Extraction value) =>
+      runApplication('save extraction', () async {
+        await repository.saveExtraction(value);
+        return value;
+      });
+}

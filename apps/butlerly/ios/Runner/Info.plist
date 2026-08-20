@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Butlerly uses the camera only when you choose to capture a receipt.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Butlerly accesses your photo library only when you choose an existing receipt image.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

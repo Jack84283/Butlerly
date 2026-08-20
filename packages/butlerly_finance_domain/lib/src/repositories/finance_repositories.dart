@@ -75,6 +75,10 @@ abstract interface class EvidenceRepository {
   Future<void> remove(EvidenceId id);
 }
 
+abstract interface class ExtractionLookupRepository {
+  Future<Extraction?> findExtractionForEvidence(EvidenceId id);
+}
+
 abstract interface class SuggestionRepository {
   Future<void> save(Suggestion suggestion);
   Future<Suggestion?> findById(SuggestionId id);
