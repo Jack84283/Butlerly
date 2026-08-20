@@ -64,7 +64,8 @@ final class SqliteEvidenceRepository implements EvidenceRepository {
     );
     if (rows.isEmpty) return null;
     final row = rows.single;
-    final decoded = jsonDecode(row['values_json']! as String) as Map<String, dynamic>;
+    final decoded =
+        jsonDecode(row['values_json']! as String) as Map<String, dynamic>;
     return Extraction(
       id: ExtractionId(row['id']! as String),
       evidenceId: EvidenceId(row['evidence_id']! as String),
