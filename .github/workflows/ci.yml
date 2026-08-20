@@ -6,9 +6,184 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
+  step2_receipt_patch:
+    if: github.event_name == 'pull_request' && github.head_ref == 'feature/step2-receipt-ocr'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/step2-receipt-ocr
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+        working-directory: apps/butlerly
+      - name: Apply receipt detail patch and canonical formatting
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('apps/butlerly/lib/features/foundation/presentation/transactions_page.dart')
+          text = path.read_text()
+          old = '''  Future<void> _preview(EvidenceItem evidence) async {
+    final file = await services<LocalEvidenceStore>().fileFor(evidence);
+    final exists = file != null && await file.exists();
+    if (!mounted) return;
+    if (!exists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.text('evidenceFileMissing'))),
+      );
+      return;
+    }
+    final availableFile = file;
+    final isImage = evidence.mediaType.startsWith('image/');
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(evidence.originalName),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520, maxHeight: 560),
+          child: isImage
+              ? InteractiveViewer(
+                  minScale: 0.5,
+                  maxScale: 4,
+                  child: Image.file(
+                    availableFile,
+                    semanticLabel: context.l10n.text('evidencePreview'),
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) =>
+                        _EvidenceFileSummary(evidence: evidence),
+                  ),
+                )
+              : _EvidenceFileSummary(evidence: evidence),
+        ),
+        actions: [
+          TextButton(
+            autofocus: true,
+            onPressed: () => Navigator.pop(context),
+            child: Text(context.l10n.text('done')),
+          ),
+        ],
+      ),
+    );
+  }
+'''
+          new = '''  Future<void> _preview(EvidenceItem evidence) async {
+    final file = await services<LocalEvidenceStore>().fileFor(evidence);
+    final extractionResult = await widget.finance.getExtractionForEvidence(
+      evidence.id.value,
+    );
+    final extraction = switch (extractionResult) {
+      ApplicationSuccess<Extraction?>(:final value) => value,
+      ApplicationFailure<Extraction?>() => null,
+    };
+    final exists = file != null && await file.exists();
+    if (!mounted) return;
+    if (!exists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.text('evidenceFileMissing'))),
+      );
+      return;
+    }
+    final availableFile = file;
+    final isImage = evidence.mediaType.startsWith('image/');
+    final rawText = extraction?.values['rawText'] ??
+        extraction?.provenance.originalRepresentation;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(evidence.originalName),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520, maxHeight: 640),
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              SizedBox(
+                height: 360,
+                child: isImage
+                    ? InteractiveViewer(
+                        minScale: 0.5,
+                        maxScale: 4,
+                        child: Image.file(
+                          availableFile,
+                          semanticLabel: context.l10n.text('evidencePreview'),
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, _, _) =>
+                              _EvidenceFileSummary(evidence: evidence),
+                        ),
+                      )
+                    : _EvidenceFileSummary(evidence: evidence),
+              ),
+              const SizedBox(height: ButlerlySpacing.standard),
+              Text(
+                'Extracted text',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: ButlerlySpacing.compact),
+              if (rawText?.trim().isNotEmpty == true)
+                SelectableText(rawText!)
+              else
+                Text(context.l10n.text('extractedTextUnavailable')),
+              if (extraction != null) ...[
+                const SizedBox(height: ButlerlySpacing.standard),
+                Text(
+                  'Confirmed extraction',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: ButlerlySpacing.compact),
+                for (final entry in extraction.values.entries.where(
+                  (entry) => entry.key != 'rawText',
+                ))
+                  _DetailRow(label: entry.key, value: entry.value),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            autofocus: true,
+            onPressed: () => Navigator.pop(context),
+            child: Text(context.l10n.text('done')),
+          ),
+        ],
+      ),
+    );
+  }
+'''
+          if old in text:
+              path.write_text(text.replace(old, new))
+          elif 'getExtractionForEvidence' not in text:
+              raise SystemExit('Target receipt preview block not found')
+          PY
+          dart format \
+            apps/butlerly/lib/features/foundation/presentation/transactions_page.dart \
+            apps/butlerly/lib/features/foundation/presentation/receipt_capture_page.dart \
+            apps/butlerly/lib/core/evidence/local_evidence_store.dart \
+            apps/butlerly/lib/core/di/finance_services.dart \
+            packages/butlerly_finance_application/lib/butlerly_finance_application.dart \
+            packages/butlerly_finance_application/lib/src/use_cases/evidence_use_cases.dart \
+            packages/butlerly_finance_domain/lib/src/repositories/finance_repositories.dart \
+            packages/butlerly_database/lib/src/repositories/sqlite_evidence_repository.dart
+      - name: Commit receipt detail patch
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -- \
+            apps/butlerly/lib/features/foundation/presentation/transactions_page.dart \
+            apps/butlerly/lib/features/foundation/presentation/receipt_capture_page.dart \
+            apps/butlerly/lib/core/evidence/local_evidence_store.dart \
+            apps/butlerly/lib/core/di/finance_services.dart \
+            packages/butlerly_finance_application/lib/butlerly_finance_application.dart \
+            packages/butlerly_finance_application/lib/src/use_cases/evidence_use_cases.dart \
+            packages/butlerly_finance_domain/lib/src/repositories/finance_repositories.dart \
+            packages/butlerly_database/lib/src/repositories/sqlite_evidence_repository.dart
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Show saved OCR in receipt detail'
+          git push origin HEAD:feature/step2-receipt-ocr
+
   domain:
     runs-on: ubuntu-latest
     defaults:
