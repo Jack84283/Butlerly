@@ -5,7 +5,21 @@ import '../result/application_result.dart';
 import 'transaction_use_cases.dart';
 
 final class ReceiptTransactionCommand {
-  const ReceiptTransactionCommand({required this.id, required this.provenanceId, required this.money, required this.transactionDate, required this.originalRepresentation, this.rawCounterparty, this.description, this.notes, this.merchantId, this.categoryId, this.paymentSourceId, this.tagIds = const []});
+  const ReceiptTransactionCommand({
+    required this.id,
+    required this.provenanceId,
+    required this.money,
+    required this.transactionDate,
+    required this.originalRepresentation,
+    this.rawCounterparty,
+    this.description,
+    this.notes,
+    this.merchantId,
+    this.categoryId,
+    this.paymentSourceId,
+    this.tagIds = const [],
+  });
+
   final String id;
   final String provenanceId;
   final Money money;
@@ -22,10 +36,13 @@ final class ReceiptTransactionCommand {
 
 final class CreateReceiptTransaction {
   const CreateReceiptTransaction(this.repository, this.clock);
+
   final TransactionRepository repository;
   final ApplicationClock clock;
 
-  Future<ApplicationResult<TransactionDto>> call(ReceiptTransactionCommand command) => runApplication('create receipt transaction', () async {
+  Future<ApplicationResult<TransactionDto>> call(
+    ReceiptTransactionCommand command,
+  ) => runApplication('create receipt transaction', () async {
     final now = clock.now();
     final transaction = Transaction(
       id: TransactionId(command.id),
@@ -37,11 +54,24 @@ final class CreateReceiptTransaction {
       rawCounterparty: command.rawCounterparty,
       description: command.description,
       notes: command.notes,
-      merchantId: command.merchantId == null ? null : MerchantId(command.merchantId!),
-      categoryId: command.categoryId == null ? null : CategoryId(command.categoryId!),
-      paymentSourceId: command.paymentSourceId == null ? null : PaymentSourceId(command.paymentSourceId!),
+      merchantId: command.merchantId == null
+          ? null
+          : MerchantId(command.merchantId!),
+      categoryId: command.categoryId == null
+          ? null
+          : CategoryId(command.categoryId!),
+      paymentSourceId: command.paymentSourceId == null
+          ? null
+          : PaymentSourceId(command.paymentSourceId!),
       tagIds: command.tagIds.map(TagId.new).toList(growable: false),
-      provenance: [Provenance(id: ProvenanceId(command.provenanceId), sourceType: ProvenanceSourceType.scan, capturedAt: now, originalRepresentation: command.originalRepresentation)],
+      provenance: [
+        Provenance(
+          id: ProvenanceId(command.provenanceId),
+          sourceType: ProvenanceSourceType.scan,
+          capturedAt: now,
+          originalRepresentation: command.originalRepresentation,
+        ),
+      ],
       createdAt: now,
       updatedAt: now,
     );
