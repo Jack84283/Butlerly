@@ -326,214 +326,259 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Capture receipt')),
-    body: SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        children: [
-          if (_source == null) ...[
-            const Text(
-              'Add a receipt',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: _camera,
-              icon: const Icon(Icons.camera_alt_outlined),
-              label: const Text('Take photo'),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: _photo,
-              icon: const Icon(Icons.photo_library_outlined),
-              label: const Text('Choose from Photos'),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: _file,
-              icon: const Icon(Icons.folder_open_outlined),
-              label: const Text('Choose image from Files'),
-            ),
-          ] else ...[
-            SizedBox(
-              height: 220,
-              child: Image.file(File(_source!.path), fit: BoxFit.contain),
-            ),
-            if (_processing) ...[
-              const SizedBox(height: 12),
-              const LinearProgressIndicator(),
-              const SizedBox(height: 8),
-              const Text('Reading receipt on this device…'),
-            ],
-            if (!_processing) ...[
-              Row(
-                children: [
-                  TextButton.icon(
-                    onPressed: _camera,
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Retake'),
-                  ),
-                  TextButton.icon(
-                    onPressed: _photo,
-                    icon: const Icon(Icons.swap_horiz),
-                    label: const Text('Replace'),
-                  ),
-                ],
+  Widget build(BuildContext context) {
+    final activeCategories = _categories
+        .where((value) => value.status == CategoryStatus.active)
+        .toList(growable: false);
+    final selectedCategory = _categoryId == null
+        ? null
+        : activeCategories
+              .where((value) => value.id.value == _categoryId)
+              .firstOrNull;
+    final selectedParentId =
+        selectedCategory?.parentId?.value ??
+        (selectedCategory?.parentId == null && selectedCategory != null
+            ? selectedCategory.id.value
+            : null);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Capture receipt')),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          children: [
+            if (_source == null) ...[
+              const Text(
+                'Add a receipt',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
               ),
-              Form(
-                key: _formKey,
-                child: Column(
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: _camera,
+                icon: const Icon(Icons.camera_alt_outlined),
+                label: const Text('Take photo'),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: _photo,
+                icon: const Icon(Icons.photo_library_outlined),
+                label: const Text('Choose from Photos'),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: _file,
+                icon: const Icon(Icons.folder_open_outlined),
+                label: const Text('Choose image from Files'),
+              ),
+            ] else ...[
+              SizedBox(
+                height: 220,
+                child: Image.file(File(_source!.path), fit: BoxFit.contain),
+              ),
+              if (_processing) ...[
+                const SizedBox(height: 12),
+                const LinearProgressIndicator(),
+                const SizedBox(height: 8),
+                const Text('Reading receipt on this device…'),
+              ],
+              if (!_processing) ...[
+                Row(
                   children: [
-                    TextFormField(
-                      controller: _merchantRaw,
-                      decoration: const InputDecoration(
-                        labelText: 'Merchant / source text',
-                      ),
+                    TextButton.icon(
+                      onPressed: _camera,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Retake'),
                     ),
-                    DropdownButtonFormField<String>(
-                      initialValue: _merchantId,
-                      decoration: const InputDecoration(
-                        labelText: 'Normalized merchant',
-                      ),
-                      items: [
-                        for (final merchant in _merchants.where(
-                          (value) => value.status == MerchantStatus.active,
-                        ))
-                          DropdownMenuItem(
-                            value: merchant.id.value,
-                            child: Text(merchant.name),
-                          ),
-                      ],
-                      onChanged: (value) => setState(() => _merchantId = value),
-                    ),
-                    TextFormField(
-                      controller: _amount,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'Total amount',
-                      ),
-                      validator: (value) {
-                        try {
-                          DecimalValue.parse(value?.trim() ?? '');
-                          return null;
-                        } on DomainValidationException {
-                          return 'Enter a valid amount.';
-                        }
-                      },
-                    ),
-                    TextFormField(
-                      controller: _currency,
-                      textCapitalization: TextCapitalization.characters,
-                      decoration: const InputDecoration(labelText: 'Currency'),
-                      validator: (value) {
-                        try {
-                          CurrencyCode(value?.trim() ?? '');
-                          return null;
-                        } on DomainValidationException {
-                          return 'Enter a valid currency code.';
-                        }
-                      },
-                    ),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Purchase date'),
-                      subtitle: Text(_iso(_date)),
-                      trailing: const Icon(Icons.calendar_today_outlined),
-                      onTap: _pickDate,
-                    ),
-                    DropdownButtonFormField<String>(
-                      initialValue: _categoryId,
-                      decoration: const InputDecoration(
-                        labelText: 'Category / subcategory',
-                      ),
-                      items: [
-                        for (final category in _categories.where(
-                          (value) => value.status == CategoryStatus.active,
-                        ))
-                          DropdownMenuItem(
-                            value: category.id.value,
-                            child: Text(category.name),
-                          ),
-                      ],
-                      onChanged: (value) => setState(() => _categoryId = value),
-                    ),
-                    DropdownButtonFormField<String>(
-                      initialValue: _paymentSourceId,
-                      decoration: const InputDecoration(
-                        labelText: 'Payment source',
-                      ),
-                      items: [
-                        for (final source in _sources.where(
-                          (value) => value.status == PaymentSourceStatus.active,
-                        ))
-                          DropdownMenuItem(
-                            value: source.id.value,
-                            child: Text(source.displayIdentity ?? source.name),
-                          ),
-                      ],
-                      onChanged: (value) =>
-                          setState(() => _paymentSourceId = value),
-                    ),
-                    const SizedBox(height: 12),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
-                        children: [
-                          for (final tag in _tags.where(
-                            (value) => value.status == TagStatus.active,
-                          ))
-                            FilterChip(
-                              label: Text(tag.name),
-                              selected: _tagIds.contains(tag.id.value),
-                              onSelected: (selected) => setState(() {
-                                if (selected) {
-                                  _tagIds.add(tag.id.value);
-                                } else {
-                                  _tagIds.remove(tag.id.value);
-                                }
-                              }),
-                            ),
-                        ],
-                      ),
-                    ),
-                    TextFormField(
-                      controller: _notes,
-                      maxLines: 2,
-                      decoration: const InputDecoration(labelText: 'Notes'),
-                    ),
-                    if (_ocrResult != null)
-                      ExpansionTile(
-                        title: const Text('Extracted source text'),
-                        subtitle: const Text(
-                          'Original OCR text is preserved without translation.',
-                        ),
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: SelectableText(_ocrResult!.rawText),
-                          ),
-                        ],
-                      ),
-                    const SizedBox(height: 20),
-                    FilledButton(
-                      onPressed: _saving ? null : _save,
-                      child: Text(
-                        _saving ? 'Saving…' : 'Save receipt transaction',
-                      ),
+                    TextButton.icon(
+                      onPressed: _photo,
+                      icon: const Icon(Icons.swap_horiz),
+                      label: const Text('Replace'),
                     ),
                   ],
                 ),
-              ),
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        controller: _merchantRaw,
+                        decoration: const InputDecoration(
+                          labelText: 'Merchant / source text',
+                        ),
+                      ),
+                      DropdownButtonFormField<String>(
+                        initialValue: _merchantId,
+                        decoration: const InputDecoration(
+                          labelText: 'Normalized merchant',
+                        ),
+                        items: [
+                          for (final merchant in _merchants.where(
+                            (value) => value.status == MerchantStatus.active,
+                          ))
+                            DropdownMenuItem(
+                              value: merchant.id.value,
+                              child: Text(merchant.name),
+                            ),
+                        ],
+                        onChanged: (value) =>
+                            setState(() => _merchantId = value),
+                      ),
+                      TextFormField(
+                        controller: _amount,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'Total amount',
+                        ),
+                        validator: (value) {
+                          try {
+                            DecimalValue.parse(value?.trim() ?? '');
+                            return null;
+                          } on DomainValidationException {
+                            return 'Enter a valid amount.';
+                          }
+                        },
+                      ),
+                      TextFormField(
+                        controller: _currency,
+                        textCapitalization: TextCapitalization.characters,
+                        decoration: const InputDecoration(
+                          labelText: 'Currency',
+                        ),
+                        validator: (value) {
+                          try {
+                            CurrencyCode(value?.trim() ?? '');
+                            return null;
+                          } on DomainValidationException {
+                            return 'Enter a valid currency code.';
+                          }
+                        },
+                      ),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Purchase date'),
+                        subtitle: Text(_iso(_date)),
+                        trailing: const Icon(Icons.calendar_today_outlined),
+                        onTap: _pickDate,
+                      ),
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedParentId,
+                        decoration: const InputDecoration(
+                          labelText: 'Category',
+                        ),
+                        items: [
+                          for (final category in activeCategories.where(
+                            (value) => value.parentId == null,
+                          ))
+                            DropdownMenuItem(
+                              value: category.id.value,
+                              child: Text(category.name),
+                            ),
+                        ],
+                        onChanged: (value) => setState(() {
+                          _categoryId = value;
+                        }),
+                      ),
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedCategory?.parentId == null
+                            ? null
+                            : _categoryId,
+                        decoration: const InputDecoration(
+                          labelText: 'Subcategory',
+                        ),
+                        items: [
+                          for (final category in activeCategories.where(
+                            (value) =>
+                                value.parentId?.value == selectedParentId,
+                          ))
+                            DropdownMenuItem(
+                              value: category.id.value,
+                              child: Text(category.name),
+                            ),
+                        ],
+                        onChanged: (value) => setState(() {
+                          _categoryId = value ?? selectedParentId;
+                        }),
+                      ),
+                      DropdownButtonFormField<String>(
+                        initialValue: _paymentSourceId,
+                        decoration: const InputDecoration(
+                          labelText: 'Payment source',
+                        ),
+                        items: [
+                          for (final source in _sources.where(
+                            (value) =>
+                                value.status == PaymentSourceStatus.active,
+                          ))
+                            DropdownMenuItem(
+                              value: source.id.value,
+                              child: Text(
+                                source.displayIdentity ?? source.name,
+                              ),
+                            ),
+                        ],
+                        onChanged: (value) =>
+                            setState(() => _paymentSourceId = value),
+                      ),
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: [
+                            for (final tag in _tags.where(
+                              (value) => value.status == TagStatus.active,
+                            ))
+                              FilterChip(
+                                label: Text(tag.name),
+                                selected: _tagIds.contains(tag.id.value),
+                                onSelected: (selected) => setState(() {
+                                  if (selected) {
+                                    _tagIds.add(tag.id.value);
+                                  } else {
+                                    _tagIds.remove(tag.id.value);
+                                  }
+                                }),
+                              ),
+                          ],
+                        ),
+                      ),
+                      TextFormField(
+                        controller: _notes,
+                        maxLines: 2,
+                        decoration: const InputDecoration(labelText: 'Notes'),
+                      ),
+                      if (_ocrResult != null)
+                        ExpansionTile(
+                          title: const Text('Extracted source text'),
+                          subtitle: const Text(
+                            'Original OCR text is preserved without translation.',
+                          ),
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: SelectableText(_ocrResult!.rawText),
+                            ),
+                          ],
+                        ),
+                      const SizedBox(height: 20),
+                      FilledButton(
+                        onPressed: _saving ? null : _save,
+                        child: Text(
+                          _saving ? 'Saving…' : 'Save receipt transaction',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ],
-        ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
