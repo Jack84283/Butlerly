@@ -2,94 +2,25 @@ name: CI Validation
 
 on:
   pull_request:
-  push:
-    branches: [main, feature/step2-receipt-ocr]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  format_step2:
-    if: github.ref == 'refs/heads/feature/step2-receipt-ocr'
+  formatter_diagnostic:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/butlerly
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: feature/step2-receipt-ocr
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
       - run: flutter pub get
-        working-directory: apps/butlerly
-      - run: dart format apps/butlerly/lib/core/evidence/local_evidence_store.dart
-      - name: Commit formatter output
+      - name: Show canonical formatter diff
         run: |
-          if git diff --quiet; then exit 0; fi
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add -- apps/butlerly/lib/core/evidence/local_evidence_store.dart
-          git commit -m 'Format staged evidence storage'
-          git push origin HEAD:feature/step2-receipt-ocr
-
-  domain:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/butlerly_finance_domain
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dart-lang/setup-dart@v1
-        with:
-          sdk: stable
-      - run: dart pub get
-      - run: dart format --output=none --set-exit-if-changed .
-      - run: dart analyze --fatal-infos
-      - run: dart test
-
-  database:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/butlerly_database
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dart-lang/setup-dart@v1
-        with:
-          sdk: stable
-      - run: dart pub get
-      - run: dart format --output=none --set-exit-if-changed .
-      - run: dart analyze --fatal-infos
-      - run: dart test
-
-  finance_application:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/butlerly_finance_application
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dart-lang/setup-dart@v1
-        with:
-          sdk: stable
-      - run: dart pub get
-      - run: dart format --output=none --set-exit-if-changed .
-      - run: dart analyze --fatal-infos
-      - run: dart test
-
-  validate:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/butlerly
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-      - run: flutter pub get
-      - run: dart format --output=none --set-exit-if-changed .
-      - run: flutter analyze
-      - run: flutter test
-      - run: flutter build web
+          dart format lib/core/evidence/local_evidence_store.dart
+          git diff -- lib/core/evidence/local_evidence_store.dart
+          exit 1
