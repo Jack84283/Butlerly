@@ -3,14 +3,14 @@ name: CI Validation
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, feature/step2-receipt-ocr]
 
 permissions:
   contents: write
 
 jobs:
   step2_receipt_patch:
-    if: github.event_name == 'pull_request' && github.head_ref == 'feature/step2-receipt-ocr'
+    if: github.head_ref == 'feature/step2-receipt-ocr' || github.ref == 'refs/heads/feature/step2-receipt-ocr'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
