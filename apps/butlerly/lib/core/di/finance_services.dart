@@ -80,7 +80,7 @@ final class FinanceServices {
       listEvidenceForTransaction = ListEvidenceForTransaction(evidence),
       getExtractionForEvidence = GetExtractionForEvidence(
         evidence is ExtractionLookupRepository
-            ? evidence
+            ? evidence as ExtractionLookupRepository
             : const _NoExtractionLookupRepository(),
       ),
       loadUserPreference = LoadUserPreference(preferences),
