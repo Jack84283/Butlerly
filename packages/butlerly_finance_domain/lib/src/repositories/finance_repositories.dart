@@ -69,6 +69,7 @@ abstract interface class TagRepository {
 abstract interface class EvidenceRepository {
   Future<void> save(EvidenceItem evidence);
   Future<void> saveExtraction(Extraction extraction);
+  Future<Extraction?> findExtractionForEvidence(EvidenceId id);
   Future<void> link(AttachmentLink link);
   Future<EvidenceItem?> findById(EvidenceId id);
   Future<List<EvidenceItem>> listForTransaction(TransactionId id);
