@@ -79,7 +79,9 @@ final class FinanceServices {
       ),
       listEvidenceForTransaction = ListEvidenceForTransaction(evidence),
       getExtractionForEvidence = GetExtractionForEvidence(
-        evidence as ExtractionLookupRepository,
+        evidence is ExtractionLookupRepository
+            ? evidence
+            : const _NoExtractionLookupRepository(),
       ),
       loadUserPreference = LoadUserPreference(preferences),
       saveUserPreference = SaveUserPreference(preferences),
@@ -121,4 +123,12 @@ final class FinanceServices {
   final StoreAndAttachEvidence storeAndAttachEvidence;
   final RemoveEvidence removeEvidence;
   final SaveExtraction saveExtraction;
+}
+
+final class _NoExtractionLookupRepository
+    implements ExtractionLookupRepository {
+  const _NoExtractionLookupRepository();
+
+  @override
+  Future<Extraction?> findExtractionForEvidence(EvidenceId id) async => null;
 }
