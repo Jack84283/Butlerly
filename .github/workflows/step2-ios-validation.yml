@@ -1,0 +1,24 @@
+name: Step 2 iOS Validation
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ios-build:
+    if: github.head_ref == 'feature/step2-receipt-ocr'
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: apps/butlerly
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build ios --no-codesign
