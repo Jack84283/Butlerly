@@ -50,6 +50,40 @@ final class SqliteEvidenceRepository implements EvidenceRepository {
   }
 
   @override
+  Future<Extraction?> findExtractionForEvidence(EvidenceId id) async {
+    final rows = await database.connection.rawQuery(
+      '''SELECT x.*, p.id AS p_id, p.source_type, p.captured_at,
+                p.source_id, p.original_representation,
+                p.source_language AS p_source_language
+         FROM extractions x
+         INNER JOIN provenances p ON p.id = x.provenance_id
+         WHERE x.evidence_id = ?
+         ORDER BY x.created_at DESC
+         LIMIT 1''',
+      [id.value],
+    );
+    if (rows.isEmpty) return null;
+    final row = rows.single;
+    final decoded = jsonDecode(row['values_json']! as String) as Map<String, dynamic>;
+    return Extraction(
+      id: ExtractionId(row['id']! as String),
+      evidenceId: EvidenceId(row['evidence_id']! as String),
+      values: decoded.map((key, value) => MapEntry(key, value.toString())),
+      provenance: Provenance(
+        id: ProvenanceId(row['p_id']! as String),
+        sourceType: ProvenanceSourceType.values.byName(
+          row['source_type']! as String,
+        ),
+        capturedAt: DateTime.parse(row['captured_at']! as String),
+        sourceId: row['source_id'] as String?,
+        originalRepresentation: row['original_representation'] as String?,
+        sourceLanguage: row['p_source_language'] as String?,
+      ),
+      createdAt: DateTime.parse(row['created_at']! as String),
+    );
+  }
+
+  @override
   Future<void> link(AttachmentLink value) async {
     try {
       await database.connection.insert('attachment_links', {
