@@ -48,6 +48,14 @@ final class UpdateTransactionCommand {
     this.rawCounterparty,
     this.sourceLanguage,
     this.notes,
+    this.paymentSourceId,
+    this.merchantId,
+    this.categoryId,
+    this.tagIds,
+    this.replacePaymentSource = false,
+    this.replaceMerchant = false,
+    this.replaceCategory = false,
+    this.replaceTags = false,
   });
 
   final String id;
@@ -60,6 +68,14 @@ final class UpdateTransactionCommand {
   final String? rawCounterparty;
   final String? sourceLanguage;
   final String? notes;
+  final String? paymentSourceId;
+  final String? merchantId;
+  final String? categoryId;
+  final List<String>? tagIds;
+  final bool replacePaymentSource;
+  final bool replaceMerchant;
+  final bool replaceCategory;
+  final bool replaceTags;
 }
 
 final class ImportTransactionCommand {

@@ -265,6 +265,11 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   late final TextEditingController _notes;
   late DateTime _date;
   late TransactionDirection _direction;
+  late String? _merchantId;
+  late String? _categoryId;
+  late String? _paymentSourceId;
+  late Set<String> _tagIds;
+  late Future<_EditorMasterData> _masterData;
   bool _dateChanged = false;
   bool _saving = false;
 
@@ -281,6 +286,34 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
         : transactionCalendarDate(existing, fallback: DateTime.now());
     _direction = TransactionDirection.values.byName(
       existing?.direction ?? TransactionDirection.expense.name,
+    );
+    _merchantId = existing?.merchantId;
+    _categoryId = existing?.categoryId;
+    _paymentSourceId = existing?.paymentSourceId;
+    _tagIds = {...?existing?.tagIds};
+    _masterData = _loadMasterData();
+  }
+
+  Future<_EditorMasterData> _loadMasterData() async {
+    final results = await Future.wait([
+      widget.finance.listMerchants(),
+      widget.finance.listCategories(),
+      widget.finance.listTags(),
+      widget.finance.listPaymentSources(),
+    ]);
+    return _EditorMasterData(
+      merchants: results[0] is ApplicationSuccess<List<Merchant>>
+          ? (results[0] as ApplicationSuccess<List<Merchant>>).value
+          : const [],
+      categories: results[1] is ApplicationSuccess<List<Category>>
+          ? (results[1] as ApplicationSuccess<List<Category>>).value
+          : const [],
+      tags: results[2] is ApplicationSuccess<List<Tag>>
+          ? (results[2] as ApplicationSuccess<List<Tag>>).value
+          : const [],
+      paymentSources: results[3] is ApplicationSuccess<List<PaymentSource>>
+          ? (results[3] as ApplicationSuccess<List<PaymentSource>>).value
+          : const [],
     );
   }
 
@@ -318,6 +351,10 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   ? null
                   : _description.text.trim(),
               notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+              merchantId: _merchantId,
+              categoryId: _categoryId,
+              paymentSourceId: _paymentSourceId,
+              tagIds: _tagIds.toList(growable: false),
             ),
           )
         : await widget.finance.updateTransaction(
@@ -331,6 +368,14 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   ? null
                   : _description.text.trim(),
               notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+              merchantId: _merchantId,
+              categoryId: _categoryId,
+              paymentSourceId: _paymentSourceId,
+              tagIds: _tagIds.toList(growable: false),
+              replaceMerchant: true,
+              replaceCategory: true,
+              replacePaymentSource: true,
+              replaceTags: true,
             ),
           );
     if (!mounted) return;
@@ -354,114 +399,378 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
             : context.l10n.text('editTransaction'),
       ),
     ),
-    body: Form(
-      key: _formKey,
-      child: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          SegmentedButton<TransactionDirection>(
-            showSelectedIcon: false,
-            segments: [
-              ButtonSegment(
-                value: TransactionDirection.expense,
-                icon: const Icon(Icons.arrow_upward_rounded),
-                label: Text(context.l10n.text('expense')),
+    body: FutureBuilder<_EditorMasterData>(
+      future: _masterData,
+      initialData: const _EditorMasterData(
+        merchants: [],
+        categories: [],
+        tags: [],
+        paymentSources: [],
+      ),
+      builder: (context, snapshot) {
+        final data = snapshot.requireData;
+        final selectedCategory = data.categories
+            .where((value) => value.id.value == _categoryId)
+            .firstOrNull;
+        final selectedParentId =
+            selectedCategory?.parentId?.value ??
+            (selectedCategory != null && selectedCategory.parentId == null
+                ? selectedCategory.id.value
+                : null);
+        final activeCategories = data.categories
+            .where((value) => value.status == CategoryStatus.active)
+            .toList(growable: false);
+        return Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              SegmentedButton<TransactionDirection>(
+                showSelectedIcon: false,
+                segments: [
+                  ButtonSegment(
+                    value: TransactionDirection.expense,
+                    icon: const Icon(Icons.arrow_upward_rounded),
+                    label: Text(context.l10n.text('expense')),
+                  ),
+                  ButtonSegment(
+                    value: TransactionDirection.income,
+                    icon: const Icon(Icons.arrow_downward_rounded),
+                    label: Text(context.l10n.text('income')),
+                  ),
+                ],
+                selected: {_direction},
+                onSelectionChanged: (selection) =>
+                    setState(() => _direction = selection.single),
               ),
-              ButtonSegment(
-                value: TransactionDirection.income,
-                icon: const Icon(Icons.arrow_downward_rounded),
-                label: Text(context.l10n.text('income')),
+              const SizedBox(height: ButlerlySpacing.section),
+              TextFormField(
+                controller: _amount,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText: context.l10n.text('amount'),
+                  prefixIcon: const Icon(Icons.payments_outlined),
+                ),
+                validator: (value) {
+                  try {
+                    DecimalValue.parse(value?.trim() ?? '');
+                    return null;
+                  } on DomainValidationException {
+                    return context.l10n.text('invalidAmount');
+                  }
+                },
+              ),
+              TextFormField(
+                controller: _currency,
+                textCapitalization: TextCapitalization.characters,
+                decoration: InputDecoration(
+                  labelText: context.l10n.text('currency'),
+                ),
+                validator: (value) {
+                  try {
+                    CurrencyCode(value?.trim() ?? '');
+                    return null;
+                  } on DomainValidationException {
+                    return context.l10n.text('invalidCurrency');
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(context.l10n.text('date')),
+                subtitle: Text(_shortDate(_date)),
+                trailing: const Icon(Icons.calendar_today_outlined),
+                onTap: () async {
+                  final selected = await showDatePicker(
+                    context: context,
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime(2100),
+                    initialDate: _date,
+                  );
+                  if (selected != null) {
+                    setState(() {
+                      _date = selected;
+                      _dateChanged = true;
+                    });
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _description,
+                decoration: InputDecoration(
+                  labelText: context.l10n.text('descriptionOptional'),
+                  prefixIcon: const Icon(Icons.notes_rounded),
+                ),
+                maxLines: 2,
+              ),
+              const SizedBox(height: ButlerlySpacing.standard),
+              TextFormField(
+                controller: _notes,
+                decoration: InputDecoration(
+                  labelText: context.l10n.text('notesOptional'),
+                  prefixIcon: const Icon(Icons.sticky_note_2_outlined),
+                ),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 16),
+              _LookupDropdown<String>(
+                label: 'Merchant',
+                value: _merchantId,
+                items: [
+                  for (final value in data.merchants.where(
+                    (v) => v.status == MerchantStatus.active,
+                  ))
+                    DropdownMenuItem(
+                      value: value.id.value,
+                      child: Text(value.name),
+                    ),
+                ],
+                onChanged: (value) => setState(() => _merchantId = value),
+                onCreate: () => _createMerchant(data),
+              ),
+              const SizedBox(height: 16),
+              _LookupDropdown<String>(
+                label: 'Category',
+                value: selectedParentId,
+                items: [
+                  for (final value in activeCategories.where(
+                    (v) => v.parentId == null,
+                  ))
+                    DropdownMenuItem(
+                      value: value.id.value,
+                      child: Text(value.name),
+                    ),
+                ],
+                onChanged: (value) => setState(() => _categoryId = value),
+              ),
+              const SizedBox(height: 16),
+              _LookupDropdown<String>(
+                label: 'Subcategory',
+                value: selectedCategory?.parentId == null ? null : _categoryId,
+                items: [
+                  for (final value in activeCategories.where(
+                    (v) => v.parentId?.value == selectedParentId,
+                  ))
+                    DropdownMenuItem(
+                      value: value.id.value,
+                      child: Text(value.name),
+                    ),
+                ],
+                onChanged: (value) =>
+                    setState(() => _categoryId = value ?? selectedParentId),
+              ),
+              const SizedBox(height: 16),
+              _LookupDropdown<String>(
+                label: 'Payment source',
+                value: _paymentSourceId,
+                items: [
+                  for (final value in data.paymentSources.where(
+                    (v) => v.status == PaymentSourceStatus.active,
+                  ))
+                    DropdownMenuItem(
+                      value: value.id.value,
+                      child: Text(value.displayIdentity ?? value.name),
+                    ),
+                ],
+                onChanged: (value) => setState(() => _paymentSourceId = value),
+              ),
+              const SizedBox(height: 16),
+              _TagSelector(
+                tags: data.tags
+                    .where((v) => v.status == TagStatus.active)
+                    .toList(),
+                selected: _tagIds,
+                onChanged: (value) => setState(() => _tagIds = value),
+                onCreate: () => _createTag(data),
+              ),
+              const SizedBox(height: ButlerlySpacing.section),
+              FilledButton(
+                onPressed: _saving ? null : _save,
+                child: Text(
+                  _saving
+                      ? context.l10n.text('saving')
+                      : context.l10n.text('saveLocally'),
+                ),
               ),
             ],
-            selected: {_direction},
-            onSelectionChanged: (selection) =>
-                setState(() => _direction = selection.single),
           ),
-          const SizedBox(height: ButlerlySpacing.section),
-          TextFormField(
-            controller: _amount,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: InputDecoration(
-              labelText: context.l10n.text('amount'),
-              prefixIcon: const Icon(Icons.payments_outlined),
+        );
+      },
+    ),
+  );
+
+  Future<void> _createMerchant(_EditorMasterData data) async {
+    final name = await _prompt(context, 'New merchant');
+    if (name == null || !mounted) return;
+    final value = Merchant(
+      id: MerchantId('merchant-${DateTime.now().microsecondsSinceEpoch}'),
+      name: name,
+      rawName: name,
+    );
+    try {
+      final result = await widget.finance.saveMerchant(value);
+      if (!mounted) return;
+      if (result is ApplicationSuccess<Merchant>) {
+        setState(() {
+          _merchantId = value.id.value;
+          _masterData = _loadMasterData();
+        });
+      } else {
+        _showMasterDataError();
+      }
+    } catch (_) {
+      if (mounted) _showMasterDataError();
+    }
+  }
+
+  Future<void> _createTag(_EditorMasterData data) async {
+    final name = await _prompt(context, 'New tag');
+    if (name == null || !mounted) return;
+    final value = Tag(
+      id: TagId('tag-${DateTime.now().microsecondsSinceEpoch}'),
+      name: name,
+    );
+    try {
+      final result = await widget.finance.saveTag(value);
+      if (!mounted) return;
+      if (result is ApplicationSuccess<Tag>) {
+        setState(() {
+          _tagIds.add(value.id.value);
+          _masterData = _loadMasterData();
+        });
+      } else {
+        _showMasterDataError();
+      }
+    } catch (_) {
+      if (mounted) _showMasterDataError();
+    }
+  }
+
+  void _showMasterDataError() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Could not save tag. Your transaction is unchanged.'),
+      ),
+    );
+  }
+}
+
+final class _EditorMasterData {
+  const _EditorMasterData({
+    required this.merchants,
+    required this.categories,
+    required this.tags,
+    required this.paymentSources,
+  });
+  final List<Merchant> merchants;
+  final List<Category> categories;
+  final List<Tag> tags;
+  final List<PaymentSource> paymentSources;
+}
+
+class _LookupDropdown<T> extends StatelessWidget {
+  const _LookupDropdown({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+    this.onCreate,
+  });
+  final String label;
+  final T? value;
+  final List<DropdownMenuItem<T>> items;
+  final ValueChanged<T?> onChanged;
+  final VoidCallback? onCreate;
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Expanded(
+        child: DropdownButtonFormField<T>(
+          initialValue: value,
+          isExpanded: true,
+          decoration: InputDecoration(labelText: label),
+          items: [
+            DropdownMenuItem<T>(value: null, child: const Text('Unassigned')),
+            ...items,
+          ],
+          onChanged: onChanged,
+        ),
+      ),
+      if (onCreate != null)
+        IconButton(
+          onPressed: onCreate,
+          icon: const Icon(Icons.add_circle_outline),
+          tooltip: 'Create',
+        ),
+    ],
+  );
+}
+
+class _TagSelector extends StatelessWidget {
+  const _TagSelector({
+    required this.tags,
+    required this.selected,
+    required this.onChanged,
+    required this.onCreate,
+  });
+  final List<Tag> tags;
+  final Set<String> selected;
+  final ValueChanged<Set<String>> onChanged;
+  final VoidCallback onCreate;
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text('Tags', style: Theme.of(context).textTheme.bodySmall),
+      Wrap(
+        spacing: 6,
+        children: [
+          for (final tag in tags)
+            FilterChip(
+              label: Text(tag.name),
+              selected: selected.contains(tag.id.value),
+              onSelected: (checked) {
+                final next = {...selected};
+                checked ? next.add(tag.id.value) : next.remove(tag.id.value);
+                onChanged(next);
+              },
             ),
-            validator: (value) {
-              try {
-                DecimalValue.parse(value?.trim() ?? '');
-                return null;
-              } on DomainValidationException {
-                return context.l10n.text('invalidAmount');
-              }
-            },
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _currency,
-            textCapitalization: TextCapitalization.characters,
-            decoration: InputDecoration(
-              labelText: context.l10n.text('currency'),
-            ),
-            validator: (value) {
-              try {
-                CurrencyCode(value?.trim() ?? '');
-                return null;
-              } on DomainValidationException {
-                return context.l10n.text('invalidCurrency');
-              }
-            },
-          ),
-          const SizedBox(height: 16),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(context.l10n.text('date')),
-            subtitle: Text(_shortDate(_date)),
-            trailing: const Icon(Icons.calendar_today_outlined),
-            onTap: () async {
-              final selected = await showDatePicker(
-                context: context,
-                firstDate: DateTime(2000),
-                lastDate: DateTime(2100),
-                initialDate: _date,
-              );
-              if (selected != null) {
-                setState(() {
-                  _date = selected;
-                  _dateChanged = true;
-                });
-              }
-            },
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _description,
-            decoration: InputDecoration(
-              labelText: context.l10n.text('descriptionOptional'),
-              prefixIcon: const Icon(Icons.notes_rounded),
-            ),
-            maxLines: 2,
-          ),
-          const SizedBox(height: ButlerlySpacing.standard),
-          TextFormField(
-            controller: _notes,
-            decoration: InputDecoration(
-              labelText: context.l10n.text('notesOptional'),
-              prefixIcon: const Icon(Icons.sticky_note_2_outlined),
-            ),
-            maxLines: 3,
-          ),
-          const SizedBox(height: ButlerlySpacing.section),
-          FilledButton(
-            onPressed: _saving ? null : _save,
-            child: Text(
-              _saving
-                  ? context.l10n.text('saving')
-                  : context.l10n.text('saveLocally'),
-            ),
+          ActionChip(
+            label: const Text('Create tag'),
+            avatar: const Icon(Icons.add, size: 18),
+            onPressed: onCreate,
           ),
         ],
       ),
+    ],
+  );
+}
+
+Future<String?> _prompt(BuildContext context, String title) async {
+  final controller = TextEditingController();
+  final value = await showDialog<String>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(title),
+      content: TextField(controller: controller, autofocus: true),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, controller.text),
+          child: const Text('Save'),
+        ),
+      ],
     ),
   );
+  controller.dispose();
+  return value?.trim().isEmpty == true ? null : value?.trim();
 }
 
 class TransactionDetailPage extends StatefulWidget {

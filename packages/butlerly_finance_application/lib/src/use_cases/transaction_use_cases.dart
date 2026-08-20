@@ -84,10 +84,18 @@ final class UpdateTransaction {
         rawCounterparty: command.rawCounterparty,
         sourceLanguage: command.sourceLanguage,
         notes: command.notes,
-        paymentSourceId: current.paymentSourceId,
-        merchantId: current.merchantId,
-        categoryId: current.categoryId,
-        tagIds: current.tagIds,
+        paymentSourceId: !command.replacePaymentSource
+            ? current.paymentSourceId
+            : _optional(command.paymentSourceId, PaymentSourceId.new),
+        merchantId: !command.replaceMerchant
+            ? current.merchantId
+            : _optional(command.merchantId, MerchantId.new),
+        categoryId: !command.replaceCategory
+            ? current.categoryId
+            : _optional(command.categoryId, CategoryId.new),
+        tagIds: command.replaceTags
+            ? command.tagIds?.map(TagId.new).toList(growable: false) ?? const []
+            : current.tagIds,
         provenance: current.provenance,
         reviewIssues: current.reviewIssues,
         normalizedMoney: command.money == current.money

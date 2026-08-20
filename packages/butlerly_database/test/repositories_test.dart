@@ -21,6 +21,76 @@ void main() {
 
   tearDown(() => database.close());
 
+  test(
+    'persists master-data lifecycle fields without changing stable IDs',
+    () async {
+      final merchants = SqliteMerchantRepository(database);
+      final categories = SqliteCategoryRepository(database);
+      final tags = SqliteTagRepository(database);
+      final sources = SqlitePaymentSourceRepository(database);
+
+      await merchants.save(
+        Merchant(
+          id: MerchantId('merchant-stable'),
+          name: 'Old Name',
+          rawName: 'OLD NAME #123',
+        ),
+      );
+      await categories.save(
+        Category(
+          id: CategoryId('category-parent'),
+          name: 'Food',
+          origin: CategoryOrigin.system,
+        ),
+      );
+      await categories.save(
+        Category(
+          id: CategoryId('category-child'),
+          name: 'Dining',
+          origin: CategoryOrigin.user,
+          parentId: CategoryId('category-parent'),
+        ),
+      );
+      await tags.save(Tag(id: TagId('tag-stable'), name: 'Travel'));
+      await sources.save(
+        PaymentSource(
+          id: PaymentSourceId('source-card'),
+          name: 'Visa',
+          type: PaymentSourceType.card,
+          displayIdentity: 'Personal Visa',
+          lastFour: '1234',
+        ),
+      );
+
+      final storedMerchant = await merchants.findById(
+        MerchantId('merchant-stable'),
+      );
+      final storedTag = await tags.findById(TagId('tag-stable'));
+      final storedSource = await sources.findById(
+        PaymentSourceId('source-card'),
+      );
+      await merchants.save(storedMerchant!.archive());
+      await tags.save(storedTag!.archive());
+      await sources.save(storedSource!.archive());
+
+      final archivedMerchant = await merchants.findById(
+        MerchantId('merchant-stable'),
+      );
+      final storedChild = await categories.findById(
+        CategoryId('category-child'),
+      );
+      final archivedTag = await tags.findById(TagId('tag-stable'));
+      final archivedSource = await sources.findById(
+        PaymentSourceId('source-card'),
+      );
+      expect(archivedMerchant!.id.value, 'merchant-stable');
+      expect(archivedMerchant.status, MerchantStatus.archived);
+      expect(storedChild!.parentId!.value, 'category-parent');
+      expect(archivedTag!.status, TagStatus.archived);
+      expect(archivedSource!.lastFour, '1234');
+    },
+  );
+
   test('round-trips a complete transaction aggregate', () async {
     final paymentSource = PaymentSource(
       id: PaymentSourceId('source-1'),
