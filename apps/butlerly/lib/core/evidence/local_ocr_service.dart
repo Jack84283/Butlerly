@@ -112,7 +112,7 @@ abstract final class ReceiptTextParser {
     final output = <String>[];
     final regex = RegExp(
       r'(?<!\d)(?:USD|US\$|\$|EUR|€|GBP|£|CNY|RMB|¥)?\s*'
-      r'(\d{1,6}(?:[,\s]\d{3})*(?:[.,]\d{2}))(?!\d)',
+      r'(\d{1,6}(?:[,\s]\d{3})*(?:[.,]\d{2})?)(?!\d)',
       caseSensitive: false,
     );
     for (final match in regex.allMatches(value)) {

@@ -150,6 +150,7 @@ final class ImportTransaction {
       rawCounterparty: command.rawCounterparty,
       sourceLanguage: command.sourceLanguage,
       notes: command.notes,
+      paymentSourceId: _optional(command.paymentSourceId, PaymentSourceId.new),
       provenance: [
         Provenance(
           id: ProvenanceId(command.provenanceId),

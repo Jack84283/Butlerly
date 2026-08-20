@@ -35,4 +35,13 @@ TOTAL 42.18
 
     expect(ReceiptTextParser.parse(text).amount, '42.18');
   });
+
+  test('parses whole-number receipt amounts', () {
+    const text = '''
+STORE
+TOTAL \$25
+''';
+
+    expect(ReceiptTextParser.parse(text).amount, '25');
+  });
 }
