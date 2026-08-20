@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
@@ -10,15 +11,483 @@ import 'package:file_selector/file_selector.dart' as files;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
-class ReceiptCapturePage extends StatefulWidget { const ReceiptCapturePage({super.key}); @override State<ReceiptCapturePage> createState()=>_ReceiptCapturePageState(); }
-class _ReceiptCapturePageState extends State<ReceiptCapturePage>{
- final _picker=ImagePicker(); final _ocr=const LocalOcrService(); final _formKey=GlobalKey<FormState>(); final _amount=TextEditingController(); final _currency=TextEditingController(text:'USD'); final _merchantRaw=TextEditingController(); final _notes=TextEditingController(); XFile? _source; ReceiptOcrResult? _ocrResult; DateTime _date=DateTime.now(); bool _processing=false; bool _saving=false; String? _merchantId; String? _categoryId; String? _paymentSourceId; final Set<String> _tagIds={}; List<Merchant> _merchants=const[]; List<Category> _categories=const[]; List<Tag> _tags=const[]; List<PaymentSource> _sources=const[]; FinanceServices get finance=>services<FinanceServices>();
- @override void initState(){super.initState();_load();} @override void dispose(){_amount.dispose();_currency.dispose();_merchantRaw.dispose();_notes.dispose();super.dispose();}
- Future<void> _load()async{final v=await Future.wait([finance.listMerchants(),finance.listCategories(),finance.listTags(),finance.listPaymentSources(),finance.loadUserPreference()]);if(!mounted)return;setState((){if(v[0] case ApplicationSuccess<List<Merchant>>(value:final x))_merchants=x;if(v[1] case ApplicationSuccess<List<Category>>(value:final x))_categories=x;if(v[2] case ApplicationSuccess<List<Tag>>(value:final x))_tags=x;if(v[3] case ApplicationSuccess<List<PaymentSource>>(value:final x))_sources=x;if(v[4] case ApplicationSuccess<UserPreference?>(value:final x?))_currency.text=x.baseCurrency.value;});}
- Future<void> _camera()async{final x=await _picker.pickImage(source:ImageSource.camera,imageQuality:95,requestFullMetadata:false);if(x!=null)await _process(x);} Future<void> _photo()async{final x=await _picker.pickImage(source:ImageSource.gallery,imageQuality:100,requestFullMetadata:false);if(x!=null)await _process(x);} Future<void> _file()async{const g=files.XTypeGroup(label:'Receipt images',extensions:['jpg','jpeg','png','heic','webp']);final x=await files.openFile(acceptedTypeGroups:const[g]);if(x!=null)await _process(XFile(x.path,name:x.name));}
- Future<void> _process(XFile x)async{final ok=await showDialog<bool>(context:context,builder:(c)=>AlertDialog(title:const Text('Use this receipt?'),content:ConstrainedBox(constraints:const BoxConstraints(maxHeight:520,maxWidth:520),child:Image.file(File(x.path),fit:BoxFit.contain)),actions:[TextButton(onPressed:()=>Navigator.pop(c,false),child:const Text('Retake / Replace')),FilledButton(onPressed:()=>Navigator.pop(c,true),child:const Text('Use receipt'))]));if(ok!=true||!mounted)return;setState((){_source=x;_processing=true;_ocrResult=null;});try{final r=await _ocr.recognize(x.path);if(!mounted)return;setState((){_ocrResult=r;_merchantRaw.text=r.merchant??'';_amount.text=r.amount??'';if(r.currency!=null)_currency.text=r.currency!;if(r.date!=null)_date=r.date!;_merchantId=_match(r.merchant);_processing=false;});}catch(_){if(!mounted)return;setState(()=>_processing=false);ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Receipt text could not be read. You can retry or enter the fields manually.')));}}
- String? _match(String? raw){if(raw==null)return null;for(final m in _merchants){if(m.status==MerchantStatus.active&&(m.name.toLowerCase()==raw.trim().toLowerCase()||m.rawName?.toLowerCase()==raw.trim().toLowerCase()))return m.id.value;}return null;}
- String _iso(DateTime v)=>'${v.year.toString().padLeft(4,'0')}-${v.month.toString().padLeft(2,'0')}-${v.day.toString().padLeft(2,'0')}';
- Future<void> _save()async{final src=_source;if(src==null||!_formKey.currentState!.validate())return;setState(()=>_saving=true);final token=DateTime.now().microsecondsSinceEpoch;final result=await finance.createReceiptTransaction(ReceiptTransactionCommand(id:'transaction-$token',provenanceId:'receipt-transaction-$token',money:Money(amount:DecimalValue.parse(_amount.text.trim()),currency:CurrencyCode(_currency.text.trim())),transactionDate:_iso(_date),originalRepresentation:src.name,rawCounterparty:_merchantRaw.text.trim().isEmpty?null:_merchantRaw.text.trim(),description:_merchantRaw.text.trim().isEmpty?'Receipt purchase':_merchantRaw.text.trim(),notes:_notes.text.trim().isEmpty?null:_notes.text.trim(),merchantId:_merchantId,categoryId:_categoryId,paymentSourceId:_paymentSourceId,tagIds:_tagIds.toList()));if(result is! ApplicationSuccess<TransactionDto>){if(mounted)setState(()=>_saving=false);return;}final evidence=await services<LocalEvidenceStore>().attachAndReturn(transactionId:result.value.id,source:src);if(evidence==null){await finance.deleteTransactionPermanently(result.value.id);if(mounted)setState(()=>_saving=false);return;}final ocr=_ocrResult;if(ocr!=null)await finance.saveExtraction(Extraction(id:ExtractionId('extraction-$token'),evidenceId:evidence.id,values:{...ocr.toExtractionValues(),'confirmedAmount':_amount.text.trim(),'confirmedCurrency':_currency.text.trim(),'confirmedDate':_iso(_date)},provenance:Provenance(id:ProvenanceId('extraction-provenance-$token'),sourceType:ProvenanceSourceType.evidenceExtraction,capturedAt:DateTime.now().toUtc(),originalRepresentation:ocr.rawText),createdAt:DateTime.now().toUtc()));notifyTransactionChanged();if(mounted)Navigator.pop(context,true);}
- @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('Capture receipt')),body:SafeArea(child:ListView(padding:const EdgeInsets.all(16),children:[if(_source==null)...[const Text('Add a receipt',style:TextStyle(fontSize:22,fontWeight:FontWeight.w600)),const SizedBox(height:12),FilledButton.icon(onPressed:_camera,icon:const Icon(Icons.camera_alt_outlined),label:const Text('Take photo')),OutlinedButton.icon(onPressed:_photo,icon:const Icon(Icons.photo_library_outlined),label:const Text('Choose from Photos')),OutlinedButton.icon(onPressed:_file,icon:const Icon(Icons.folder_open_outlined),label:const Text('Choose image from Files'))]else...[SizedBox(height:220,child:Image.file(File(_source!.path),fit:BoxFit.contain)),if(_processing)const LinearProgressIndicator(),if(!_processing)Form(key:_formKey,child:Column(children:[TextFormField(controller:_merchantRaw,decoration:const InputDecoration(labelText:'Merchant / source text')),DropdownButtonFormField<String>(value:_merchantId,decoration:const InputDecoration(labelText:'Normalized merchant'),items:[for(final m in _merchants.where((x)=>x.status==MerchantStatus.active))DropdownMenuItem(value:m.id.value,child:Text(m.name))],onChanged:(v)=>setState(()=>_merchantId=v)),TextFormField(controller:_amount,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:const InputDecoration(labelText:'Total amount'),validator:(v){try{DecimalValue.parse(v?.trim()??'');return null;}on DomainValidationException{return'Enter a valid amount.';}}),TextFormField(controller:_currency,decoration:const InputDecoration(labelText:'Currency'),validator:(v){try{CurrencyCode(v?.trim()??'');return null;}on DomainValidationException{return'Enter a valid currency code.';}}),ListTile(title:const Text('Purchase date'),subtitle:Text(_iso(_date)),onTap:()async{final v=await showDatePicker(context:context,initialDate:_date,firstDate:DateTime(2000),lastDate:DateTime(2100));if(v!=null&&mounted)setState(()=>_date=v);}),DropdownButtonFormField<String>(value:_categoryId,decoration:const InputDecoration(labelText:'Category / subcategory'),items:[for(final c in _categories.where((x)=>x.status==CategoryStatus.active))DropdownMenuItem(value:c.id.value,child:Text(c.name))],onChanged:(v)=>setState(()=>_categoryId=v)),DropdownButtonFormField<String>(value:_paymentSourceId,decoration:const InputDecoration(labelText:'Payment source'),items:[for(final s in _sources.where((x)=>x.status==PaymentSourceStatus.active))DropdownMenuItem(value:s.id.value,child:Text(s.displayIdentity??s.name))],onChanged:(v)=>setState(()=>_paymentSourceId=v)),Wrap(spacing:6,children:[for(final t in _tags.where((x)=>x.status==TagStatus.active))FilterChip(label:Text(t.name),selected:_tagIds.contains(t.id.value),onSelected:(v)=>setState((){v?_tagIds.add(t.id.value):_tagIds.remove(t.id.value);}))]),TextFormField(controller:_notes,maxLines:2,decoration:const InputDecoration(labelText:'Notes')),if(_ocrResult!=null)ExpansionTile(title:const Text('Extracted source text'),subtitle:const Text('Original OCR text is preserved without translation.'),children:[Padding(padding:const EdgeInsets.all(12),child:SelectableText(_ocrResult!.rawText))]),FilledButton(onPressed:_saving?null:_save,child:Text(_saving?'Saving…':'Save receipt transaction'))]))]]])));
+class ReceiptCapturePage extends StatefulWidget {
+  const ReceiptCapturePage({super.key});
+
+  @override
+  State<ReceiptCapturePage> createState() => _ReceiptCapturePageState();
+}
+
+class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
+  final _picker = ImagePicker();
+  final _ocr = const LocalOcrService();
+  final _formKey = GlobalKey<FormState>();
+  final _amount = TextEditingController();
+  final _currency = TextEditingController(text: 'USD');
+  final _merchantRaw = TextEditingController();
+  final _notes = TextEditingController();
+
+  XFile? _source;
+  ReceiptOcrResult? _ocrResult;
+  DateTime _date = DateTime.now();
+  bool _processing = false;
+  bool _saving = false;
+  String? _merchantId;
+  String? _categoryId;
+  String? _paymentSourceId;
+  final Set<String> _tagIds = {};
+  List<Merchant> _merchants = const [];
+  List<Category> _categories = const [];
+  List<Tag> _tags = const [];
+  List<PaymentSource> _sources = const [];
+
+  FinanceServices get finance => services<FinanceServices>();
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    _currency.dispose();
+    _merchantRaw.dispose();
+    _notes.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    final values = await Future.wait([
+      finance.listMerchants(),
+      finance.listCategories(),
+      finance.listTags(),
+      finance.listPaymentSources(),
+      finance.loadUserPreference(),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      if (values[0] case ApplicationSuccess<List<Merchant>>(value: final value)) {
+        _merchants = value;
+      }
+      if (values[1] case ApplicationSuccess<List<Category>>(value: final value)) {
+        _categories = value;
+      }
+      if (values[2] case ApplicationSuccess<List<Tag>>(value: final value)) {
+        _tags = value;
+      }
+      if (values[3] case ApplicationSuccess<List<PaymentSource>>(
+        value: final value,
+      )) {
+        _sources = value;
+      }
+      if (values[4] case ApplicationSuccess<UserPreference?>(
+        value: final value?,
+      )) {
+        _currency.text = value.baseCurrency.value;
+      }
+    });
+  }
+
+  Future<void> _camera() async {
+    final source = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 95,
+      requestFullMetadata: false,
+    );
+    if (source != null) await _process(source);
+  }
+
+  Future<void> _photo() async {
+    final source = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 100,
+      requestFullMetadata: false,
+    );
+    if (source != null) await _process(source);
+  }
+
+  Future<void> _file() async {
+    const group = files.XTypeGroup(
+      label: 'Receipt images',
+      extensions: ['jpg', 'jpeg', 'png', 'heic', 'webp'],
+    );
+    final source = await files.openFile(acceptedTypeGroups: const [group]);
+    if (source != null) {
+      await _process(XFile(source.path, name: source.name));
+    }
+  }
+
+  Future<void> _process(XFile source) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Use this receipt?'),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 520, maxWidth: 520),
+          child: Image.file(File(source.path), fit: BoxFit.contain),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Retake / Replace'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Use receipt'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() {
+      _source = source;
+      _processing = true;
+      _ocrResult = null;
+    });
+
+    try {
+      final result = await _ocr.recognize(source.path);
+      if (!mounted) return;
+      setState(() {
+        _ocrResult = result;
+        _merchantRaw.text = result.merchant ?? '';
+        _amount.text = result.amount ?? '';
+        if (result.currency != null) _currency.text = result.currency!;
+        if (result.date != null) _date = result.date!;
+        _merchantId = _match(result.merchant);
+        _processing = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _processing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Receipt text could not be read. You can retry or enter the fields manually.',
+          ),
+        ),
+      );
+    }
+  }
+
+  String? _match(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    final normalized = raw.trim().toLowerCase();
+    for (final merchant in _merchants) {
+      if (merchant.status != MerchantStatus.active) continue;
+      if (merchant.name.toLowerCase() == normalized ||
+          merchant.rawName?.toLowerCase() == normalized) {
+        return merchant.id.value;
+      }
+    }
+    return null;
+  }
+
+  String _iso(DateTime value) =>
+      '${value.year.toString().padLeft(4, '0')}-'
+      '${value.month.toString().padLeft(2, '0')}-'
+      '${value.day.toString().padLeft(2, '0')}';
+
+  Future<void> _pickDate() async {
+    final value = await showDatePicker(
+      context: context,
+      initialDate: _date,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (value != null && mounted) {
+      setState(() => _date = value);
+    }
+  }
+
+  Future<void> _save() async {
+    final source = _source;
+    if (source == null || !_formKey.currentState!.validate()) return;
+
+    setState(() => _saving = true);
+    final token = DateTime.now().microsecondsSinceEpoch;
+    final result = await finance.createReceiptTransaction(
+      ReceiptTransactionCommand(
+        id: 'transaction-$token',
+        provenanceId: 'receipt-transaction-$token',
+        money: Money(
+          amount: DecimalValue.parse(_amount.text.trim()),
+          currency: CurrencyCode(_currency.text.trim()),
+        ),
+        transactionDate: _iso(_date),
+        originalRepresentation: source.name,
+        rawCounterparty: _merchantRaw.text.trim().isEmpty
+            ? null
+            : _merchantRaw.text.trim(),
+        description: _merchantRaw.text.trim().isEmpty
+            ? 'Receipt purchase'
+            : _merchantRaw.text.trim(),
+        notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+        merchantId: _merchantId,
+        categoryId: _categoryId,
+        paymentSourceId: _paymentSourceId,
+        tagIds: _tagIds.toList(growable: false),
+      ),
+    );
+
+    if (result is! ApplicationSuccess<TransactionDto>) {
+      if (mounted) setState(() => _saving = false);
+      return;
+    }
+
+    final evidence = await services<LocalEvidenceStore>().attachAndReturn(
+      transactionId: result.value.id,
+      source: source,
+    );
+    if (evidence == null) {
+      await finance.deleteTransactionPermanently(result.value.id);
+      if (mounted) setState(() => _saving = false);
+      return;
+    }
+
+    final ocr = _ocrResult;
+    if (ocr != null) {
+      await finance.saveExtraction(
+        Extraction(
+          id: ExtractionId('extraction-$token'),
+          evidenceId: evidence.id,
+          values: {
+            ...ocr.toExtractionValues(),
+            'confirmedAmount': _amount.text.trim(),
+            'confirmedCurrency': _currency.text.trim(),
+            'confirmedDate': _iso(_date),
+          },
+          provenance: Provenance(
+            id: ProvenanceId('extraction-provenance-$token'),
+            sourceType: ProvenanceSourceType.evidenceExtraction,
+            capturedAt: DateTime.now().toUtc(),
+            originalRepresentation: ocr.rawText,
+          ),
+          createdAt: DateTime.now().toUtc(),
+        ),
+      );
+    }
+
+    notifyTransactionChanged();
+    if (!mounted) return;
+    setState(() => _saving = false);
+    Navigator.pop(context, true);
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Capture receipt')),
+    body: SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        children: [
+          if (_source == null) ...[
+            const Text(
+              'Add a receipt',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: _camera,
+              icon: const Icon(Icons.camera_alt_outlined),
+              label: const Text('Take photo'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _photo,
+              icon: const Icon(Icons.photo_library_outlined),
+              label: const Text('Choose from Photos'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _file,
+              icon: const Icon(Icons.folder_open_outlined),
+              label: const Text('Choose image from Files'),
+            ),
+          ] else ...[
+            SizedBox(
+              height: 220,
+              child: Image.file(File(_source!.path), fit: BoxFit.contain),
+            ),
+            if (_processing) ...[
+              const SizedBox(height: 12),
+              const LinearProgressIndicator(),
+              const SizedBox(height: 8),
+              const Text('Reading receipt on this device…'),
+            ],
+            if (!_processing) ...[
+              Row(
+                children: [
+                  TextButton.icon(
+                    onPressed: _camera,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Retake'),
+                  ),
+                  TextButton.icon(
+                    onPressed: _photo,
+                    icon: const Icon(Icons.swap_horiz),
+                    label: const Text('Replace'),
+                  ),
+                ],
+              ),
+              Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    TextFormField(
+                      controller: _merchantRaw,
+                      decoration: const InputDecoration(
+                        labelText: 'Merchant / source text',
+                      ),
+                    ),
+                    DropdownButtonFormField<String>(
+                      value: _merchantId,
+                      decoration: const InputDecoration(
+                        labelText: 'Normalized merchant',
+                      ),
+                      items: [
+                        for (final merchant in _merchants.where(
+                          (value) => value.status == MerchantStatus.active,
+                        ))
+                          DropdownMenuItem(
+                            value: merchant.id.value,
+                            child: Text(merchant.name),
+                          ),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => _merchantId = value),
+                    ),
+                    TextFormField(
+                      controller: _amount,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Total amount',
+                      ),
+                      validator: (value) {
+                        try {
+                          DecimalValue.parse(value?.trim() ?? '');
+                          return null;
+                        } on DomainValidationException {
+                          return 'Enter a valid amount.';
+                        }
+                      },
+                    ),
+                    TextFormField(
+                      controller: _currency,
+                      textCapitalization: TextCapitalization.characters,
+                      decoration: const InputDecoration(labelText: 'Currency'),
+                      validator: (value) {
+                        try {
+                          CurrencyCode(value?.trim() ?? '');
+                          return null;
+                        } on DomainValidationException {
+                          return 'Enter a valid currency code.';
+                        }
+                      },
+                    ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Purchase date'),
+                      subtitle: Text(_iso(_date)),
+                      trailing: const Icon(Icons.calendar_today_outlined),
+                      onTap: _pickDate,
+                    ),
+                    DropdownButtonFormField<String>(
+                      value: _categoryId,
+                      decoration: const InputDecoration(
+                        labelText: 'Category / subcategory',
+                      ),
+                      items: [
+                        for (final category in _categories.where(
+                          (value) => value.status == CategoryStatus.active,
+                        ))
+                          DropdownMenuItem(
+                            value: category.id.value,
+                            child: Text(category.name),
+                          ),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => _categoryId = value),
+                    ),
+                    DropdownButtonFormField<String>(
+                      value: _paymentSourceId,
+                      decoration: const InputDecoration(
+                        labelText: 'Payment source',
+                      ),
+                      items: [
+                        for (final source in _sources.where(
+                          (value) => value.status == PaymentSourceStatus.active,
+                        ))
+                          DropdownMenuItem(
+                            value: source.id.value,
+                            child: Text(source.displayIdentity ?? source.name),
+                          ),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => _paymentSourceId = value),
+                    ),
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          for (final tag in _tags.where(
+                            (value) => value.status == TagStatus.active,
+                          ))
+                            FilterChip(
+                              label: Text(tag.name),
+                              selected: _tagIds.contains(tag.id.value),
+                              onSelected: (selected) => setState(() {
+                                if (selected) {
+                                  _tagIds.add(tag.id.value);
+                                } else {
+                                  _tagIds.remove(tag.id.value);
+                                }
+                              }),
+                            ),
+                        ],
+                      ),
+                    ),
+                    TextFormField(
+                      controller: _notes,
+                      maxLines: 2,
+                      decoration: const InputDecoration(labelText: 'Notes'),
+                    ),
+                    if (_ocrResult != null)
+                      ExpansionTile(
+                        title: const Text('Extracted source text'),
+                        subtitle: const Text(
+                          'Original OCR text is preserved without translation.',
+                        ),
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: SelectableText(_ocrResult!.rawText),
+                          ),
+                        ],
+                      ),
+                    const SizedBox(height: 20),
+                    FilledButton(
+                      onPressed: _saving ? null : _save,
+                      child: Text(
+                        _saving ? 'Saving…' : 'Save receipt transaction',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ],
+      ),
+    ),
+  );
 }
