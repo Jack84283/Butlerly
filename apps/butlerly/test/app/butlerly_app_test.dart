@@ -78,6 +78,8 @@ void main() {
     testWidgets('Home has no layout overflow at ${size.width}x${size.height}', (
       tester,
     ) async {
+      HomePage.debugCurrentDate = DateTime(2026, 8, 13, 9);
+      addTearDown(() => HomePage.debugCurrentDate = null);
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
