@@ -2,12 +2,59 @@ name: CI Validation
 
 on:
   pull_request:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
 
 jobs:
-  formatter_diagnostic:
+  domain:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/butlerly_finance_domain
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+      - run: dart pub get
+      - run: dart format --output=none --set-exit-if-changed .
+      - run: dart analyze --fatal-infos
+      - run: dart test
+
+  database:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/butlerly_database
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+      - run: dart pub get
+      - run: dart format --output=none --set-exit-if-changed .
+      - run: dart analyze --fatal-infos
+      - run: dart test
+
+  finance_application:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/butlerly_finance_application
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+      - run: dart pub get
+      - run: dart format --output=none --set-exit-if-changed .
+      - run: dart analyze --fatal-infos
+      - run: dart test
+
+  validate:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -19,8 +66,7 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - name: Show canonical formatter diff
-        run: |
-          dart format lib/core/evidence/local_evidence_store.dart
-          git diff -- lib/core/evidence/local_evidence_store.dart
-          exit 1
+      - run: dart format --output=none --set-exit-if-changed .
+      - run: flutter analyze
+      - run: flutter test
+      - run: flutter build web
