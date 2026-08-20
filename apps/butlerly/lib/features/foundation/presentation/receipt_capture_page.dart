@@ -349,7 +349,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                       ),
                     ),
                     DropdownButtonFormField<String>(
-                      value: _merchantId,
+                      initialValue: _merchantId,
                       decoration: const InputDecoration(
                         labelText: 'Normalized merchant',
                       ),
@@ -402,7 +402,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                       onTap: _pickDate,
                     ),
                     DropdownButtonFormField<String>(
-                      value: _categoryId,
+                      initialValue: _categoryId,
                       decoration: const InputDecoration(
                         labelText: 'Category / subcategory',
                       ),
@@ -418,7 +418,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                       onChanged: (value) => setState(() => _categoryId = value),
                     ),
                     DropdownButtonFormField<String>(
-                      value: _paymentSourceId,
+                      initialValue: _paymentSourceId,
                       decoration: const InputDecoration(
                         labelText: 'Payment source',
                       ),
