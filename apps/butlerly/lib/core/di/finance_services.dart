@@ -78,7 +78,9 @@ final class FinanceServices {
         const SystemApplicationClock(),
       ),
       listEvidenceForTransaction = ListEvidenceForTransaction(evidence),
-      getExtractionForEvidence = GetExtractionForEvidence(evidence),
+      getExtractionForEvidence = GetExtractionForEvidence(
+        evidence as ExtractionLookupRepository,
+      ),
       loadUserPreference = LoadUserPreference(preferences),
       saveUserPreference = SaveUserPreference(preferences),
       storeAndAttachEvidence = StoreAndAttachEvidence(evidence),
