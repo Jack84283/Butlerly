@@ -1074,6 +1074,13 @@ class _EvidenceSectionState extends State<_EvidenceSection> {
 
   Future<void> _preview(EvidenceItem evidence) async {
     final file = await services<LocalEvidenceStore>().fileFor(evidence);
+    final extractionResult = await widget.finance.getExtractionForEvidence(
+      evidence.id.value,
+    );
+    final extraction = switch (extractionResult) {
+      ApplicationSuccess<Extraction?>(:final value) => value,
+      ApplicationFailure<Extraction?>() => null,
+    };
     final exists = file != null && await file.exists();
     if (!mounted) return;
     if (!exists) {
@@ -1084,25 +1091,58 @@ class _EvidenceSectionState extends State<_EvidenceSection> {
     }
     final availableFile = file;
     final isImage = evidence.mediaType.startsWith('image/');
+    final rawText =
+        extraction?.values['rawText'] ??
+        extraction?.provenance.originalRepresentation;
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(evidence.originalName),
         content: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520, maxHeight: 560),
-          child: isImage
-              ? InteractiveViewer(
-                  minScale: 0.5,
-                  maxScale: 4,
-                  child: Image.file(
-                    availableFile,
-                    semanticLabel: context.l10n.text('evidencePreview'),
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, _, _) =>
-                        _EvidenceFileSummary(evidence: evidence),
-                  ),
-                )
-              : _EvidenceFileSummary(evidence: evidence),
+          constraints: const BoxConstraints(maxWidth: 520, maxHeight: 640),
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              SizedBox(
+                height: 360,
+                child: isImage
+                    ? InteractiveViewer(
+                        minScale: 0.5,
+                        maxScale: 4,
+                        child: Image.file(
+                          availableFile,
+                          semanticLabel: context.l10n.text('evidencePreview'),
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, _, _) =>
+                              _EvidenceFileSummary(evidence: evidence),
+                        ),
+                      )
+                    : _EvidenceFileSummary(evidence: evidence),
+              ),
+              const SizedBox(height: ButlerlySpacing.standard),
+              Text(
+                'Extracted text',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: ButlerlySpacing.compact),
+              if (rawText?.trim().isNotEmpty == true)
+                SelectableText(rawText!)
+              else
+                Text(context.l10n.text('extractedTextUnavailable')),
+              if (extraction != null) ...[
+                const SizedBox(height: ButlerlySpacing.standard),
+                Text(
+                  'Confirmed extraction',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: ButlerlySpacing.compact),
+                for (final entry in extraction.values.entries.where(
+                  (entry) => entry.key != 'rawText',
+                ))
+                  _DetailRow(label: entry.key, value: entry.value),
+              ],
+            ],
+          ),
         ),
         actions: [
           TextButton(
