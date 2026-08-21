@@ -4,6 +4,7 @@
 .dart_tool/
 build/
 coverage/
+apps/butlerly/test/app/failures/
 *.log
 *.db
 *.sqlite
