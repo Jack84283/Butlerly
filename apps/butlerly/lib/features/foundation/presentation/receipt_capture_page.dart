@@ -20,6 +20,10 @@ class ReceiptCapturePage extends StatefulWidget {
   State<ReceiptCapturePage> createState() => _ReceiptCapturePageState();
 }
 
+String _paymentSourceLabel(PaymentSource source) => source.lastFour == null
+    ? (source.displayIdentity ?? source.name)
+    : '${source.displayIdentity ?? source.name} ••••${source.lastFour}';
+
 class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   final _picker = ImagePicker();
   final _ocr = const LocalOcrService();
@@ -192,6 +196,8 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     try {
       final result = await _ocr.recognize(stableSource.path);
       if (!mounted) return;
+      final paymentSourceId = await _resolvePaymentSource(result.cardLast4);
+      if (!mounted) return;
       setState(() {
         _ocrResult = result;
         _merchantRaw.text = result.merchant ?? '';
@@ -199,6 +205,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         if (result.currency != null) _currency.text = result.currency!;
         if (result.date != null) _date = result.date!;
         _merchantId = _match(result.merchant);
+        _paymentSourceId = paymentSourceId;
         _processing = false;
       });
     } catch (_) {
@@ -212,6 +219,35 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         ),
       );
     }
+  }
+
+  Future<String?> _resolvePaymentSource(String? lastFour) async {
+    if (lastFour == null) return null;
+    final matches = _sources
+        .where(
+          (source) =>
+              source.status == PaymentSourceStatus.active &&
+              source.lastFour == lastFour,
+        )
+        .toList(growable: false);
+    if (matches.length <= 1) {
+      return matches.isEmpty ? null : matches.single.id.value;
+    }
+    if (!mounted) return null;
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(dialogContext.l10n.text('multiplePaymentSourcesMatch')),
+        content: Text(dialogContext.l10n.text('selectPaymentSource')),
+        actions: [
+          for (final source in matches)
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, source.id.value),
+              child: Text(_paymentSourceLabel(source)),
+            ),
+        ],
+      ),
+    );
   }
 
   String? _match(String? raw) {
