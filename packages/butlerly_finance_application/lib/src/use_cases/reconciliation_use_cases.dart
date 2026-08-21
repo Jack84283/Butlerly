@@ -19,30 +19,17 @@ final class ReconciliationCandidateGenerator {
     final candidates = <ReconciliationCandidate>[];
     for (final receipt in receipts) {
       for (final payment in payments) {
-        final score = _score(receipt, payment);
+        final assessment = ReconciliationMatcher.assess(receipt, payment);
+        if (assessment.incompatible) continue;
+        final score = assessment.score;
         if (score < 0.45) continue;
-        final reasons = <String>[];
-        if (receipt.money == payment.money) {
-          reasons.add('amount and currency match');
-        }
-        if (receipt.transactionDate != null &&
-            receipt.transactionDate == payment.transactionDate) {
-          reasons.add('transaction date matches');
-        }
-        if (_merchantText(receipt) == _merchantText(payment)) {
-          reasons.add('merchant text matches');
-        }
-        if (receipt.paymentSourceId != null &&
-            receipt.paymentSourceId == payment.paymentSourceId) {
-          reasons.add('payment source matches');
-        }
         candidates.add(
           ReconciliationCandidate(
             id: 'candidate-${receipt.id.value}-${payment.id.value}',
             receiptTransactionId: receipt.id,
             paymentTransactionId: payment.id,
             score: score,
-            reasons: reasons,
+            reasons: assessment.reasons,
           ),
         );
       }
@@ -50,29 +37,140 @@ final class ReconciliationCandidateGenerator {
     candidates.sort((a, b) => b.score.compareTo(a.score));
     return candidates;
   }
+}
 
-  double _score(Transaction receipt, Transaction payment) {
+final class ReconciliationAssessment {
+  const ReconciliationAssessment({
+    required this.score,
+    required this.reasons,
+    this.incompatible = false,
+  });
+
+  final double score;
+  final List<String> reasons;
+  final bool incompatible;
+}
+
+/// Shared matching rules for Review and the scan-to-match shortcut.
+///
+/// The score is deliberately explainable. A near match is allowed to become
+/// a candidate, but callers must still resolve ties instead of auto-merging.
+final class ReconciliationMatcher {
+  const ReconciliationMatcher._();
+
+  static ReconciliationAssessment assess(
+    Transaction receipt,
+    Transaction payment,
+  ) {
+    if (!_directionsCanMatch(receipt.direction, payment.direction)) {
+      return const ReconciliationAssessment(
+        score: 0,
+        reasons: ['transaction direction conflicts'],
+        incompatible: true,
+      );
+    }
+
     var score = 0.0;
+    final reasons = <String>[];
+    final amountRatio = _amountDifferenceRatio(receipt, payment);
     if (receipt.money == payment.money) {
       score += 0.55;
+      reasons.add('amount and currency match');
+    } else if (receipt.money.currency == payment.money.currency &&
+        amountRatio != null &&
+        amountRatio <= 0.10) {
+      // A receipt total can differ from the posted amount because of a tip or
+      // a small bank adjustment. Keep this below an exact match so it cannot
+      // silently outrank an exact same-day transaction.
+      score += 0.35;
+      reasons.add('amount is within 10% (possible tip or adjustment)');
     }
-    if (receipt.transactionDate != null &&
-        receipt.transactionDate == payment.transactionDate) {
+
+    final dateDistance = _dateDistance(
+      receipt.transactionDate,
+      payment.transactionDate,
+    );
+    if (dateDistance == 0) {
       score += 0.25;
-    }
-    if (_merchantText(receipt) == _merchantText(payment) &&
-        _merchantText(receipt).isNotEmpty) {
+      reasons.add('transaction date matches');
+    } else if (dateDistance != null && dateDistance <= 1) {
       score += 0.15;
+      reasons.add('transaction date is within one day');
     }
+
+    final merchantScore = _merchantSimilarity(receipt, payment);
+    if (merchantScore >= 0.99) {
+      score += 0.15;
+      reasons.add('merchant text matches');
+    } else if (merchantScore >= 0.50) {
+      score += 0.10;
+      reasons.add('merchant text is similar');
+    }
+
     if (receipt.paymentSourceId != null &&
         receipt.paymentSourceId == payment.paymentSourceId) {
       score += 0.05;
+      reasons.add('payment source matches');
     }
-    return score;
+    return ReconciliationAssessment(
+      score: score,
+      reasons: List.unmodifiable(reasons),
+    );
   }
 
-  String _merchantText(Transaction value) =>
-      (value.rawCounterparty ?? value.description ?? '').trim().toLowerCase();
+  static bool _directionsCanMatch(
+    TransactionDirection receipt,
+    TransactionDirection payment,
+  ) =>
+      (receipt == TransactionDirection.refund &&
+          payment == TransactionDirection.refund) ||
+      (receipt == TransactionDirection.expense &&
+          payment == TransactionDirection.expense);
+
+  static double? _amountDifferenceRatio(Transaction left, Transaction right) {
+    if (left.money.currency != right.money.currency) return null;
+    final a = double.tryParse(left.money.amount.toString());
+    final b = double.tryParse(right.money.amount.toString());
+    if (a == null || b == null || a == 0) return null;
+    return (a - b).abs() / a.abs();
+  }
+
+  static int? _dateDistance(String? left, String? right) {
+    if (left == null || right == null) return null;
+    final a = DateTime.tryParse(left);
+    final b = DateTime.tryParse(right);
+    if (a == null || b == null) return null;
+    return a.difference(b).inDays.abs();
+  }
+
+  static double _merchantSimilarity(Transaction left, Transaction right) {
+    final a = _merchantTokens(left);
+    final b = _merchantTokens(right);
+    if (a.isEmpty || b.isEmpty) return 0;
+    final intersection = a.intersection(b).length;
+    final union = a.union(b).length;
+    return union == 0 ? 0 : intersection / union;
+  }
+
+  static Set<String> _merchantTokens(Transaction value) =>
+      (value.rawCounterparty ?? value.description ?? '')
+          .toLowerCase()
+          .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+          .split(' ')
+          .where((token) => token.length > 1 && !_merchantNoise.contains(token))
+          .toSet();
+
+  static const _merchantNoise = {
+    'inc',
+    'llc',
+    'ltd',
+    'co',
+    'company',
+    'store',
+    'shop',
+    'pos',
+    'online',
+  };
 }
 
 final class ListReconciliationCandidates {
