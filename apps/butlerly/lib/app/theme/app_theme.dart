@@ -129,7 +129,10 @@ abstract final class AppTheme {
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-          side: BorderSide(color: colors.border),
+          side: BorderSide(
+            color: colors.border,
+            width: brightness == Brightness.light ? 0 : 1,
+          ),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(

@@ -15,10 +15,22 @@ void main() {
   });
 
   test('dark card surfaces use the approved RGB value', () {
-    expect(AppTheme.dark.cardTheme.color, const Color.fromRGBO(28, 28, 28, 1));
+    expect(AppTheme.dark.cardTheme.color, const Color.fromRGBO(58, 58, 58, 1));
     expect(
       AppTheme.dark.colorScheme.surfaceContainerHighest,
-      const Color.fromRGBO(28, 28, 28, 1),
+      const Color.fromRGBO(58, 58, 58, 1),
+    );
+    expect(
+      AppTheme.dark.textTheme.bodyMedium?.color,
+      const Color.fromRGBO(228, 228, 228, 1),
+    );
+    expect(
+      AppTheme.light.textTheme.bodyMedium?.color,
+      const Color.fromRGBO(68, 68, 68, 1),
+    );
+    expect(
+      AppTheme.light.textTheme.bodySmall?.color,
+      const Color.fromRGBO(68, 68, 68, 1),
     );
   });
 
