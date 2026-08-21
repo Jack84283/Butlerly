@@ -308,7 +308,7 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: PaymentSourcesPage()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Add source'));
+    await tester.tap(find.byTooltip('Add payment source'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).first, 'Travel card');
     await tester.tap(find.text('Save'));

@@ -521,7 +521,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                             DropdownMenuItem(
                               value: source.id.value,
                               child: Text(
-                                source.displayIdentity ?? source.name,
+                                source.lastFour == null
+                                    ? (source.displayIdentity ?? source.name)
+                                    : '${source.displayIdentity ?? source.name} ••••${source.lastFour}',
                               ),
                             ),
                         ],

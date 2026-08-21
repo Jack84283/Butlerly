@@ -44,4 +44,21 @@ TOTAL \$25
 
     expect(ReceiptTextParser.parse(text).amount, '25');
   });
+
+  test(
+    'extracts safe card recognition fields without retaining card number',
+    () {
+      const text = '''
+VISA
+JOHN DOE
+**** **** **** 4321
+''';
+
+      final result = CardTextParser.parse(text);
+
+      expect(result.issuer, 'Visa');
+      expect(result.lastFour, '4321');
+      expect(result.lastFour, isNot(contains('4111')));
+    },
+  );
 }

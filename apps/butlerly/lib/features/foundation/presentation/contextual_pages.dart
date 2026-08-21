@@ -440,7 +440,7 @@ class _SinglePaymentDialogState extends State<_SinglePaymentDialog> {
                 for (final source in widget.sources)
                   DropdownMenuItem(
                     value: source.id.value,
-                    child: Text(source.displayIdentity ?? source.name),
+                    child: Text(_paymentSourceLabel(source)),
                   ),
               ],
               onChanged: (value) => setState(() => _sourceId = value),
@@ -488,6 +488,10 @@ class _SinglePaymentDialogState extends State<_SinglePaymentDialog> {
 
 String _isoDate(DateTime value) =>
     '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+
+String _paymentSourceLabel(PaymentSource source) => source.lastFour == null
+    ? (source.displayIdentity ?? source.name)
+    : '${source.displayIdentity ?? source.name} ••••${source.lastFour}';
 
 class _StatementPreviewDialog extends StatefulWidget {
   const _StatementPreviewDialog({required this.preview, required this.sources});
@@ -539,7 +543,7 @@ class _StatementPreviewDialogState extends State<_StatementPreviewDialog> {
                 for (final source in widget.sources)
                   DropdownMenuItem(
                     value: source.id.value,
-                    child: Text(source.displayIdentity ?? source.name),
+                    child: Text(_paymentSourceLabel(source)),
                   ),
               ],
               onChanged: (value) => setState(() => _sourceId = value),
