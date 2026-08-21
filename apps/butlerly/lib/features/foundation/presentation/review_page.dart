@@ -65,6 +65,17 @@ class _ReviewPageState extends State<ReviewPage> {
   ) async {
     final updated = confirm ? candidate.confirm() : candidate.reject();
     await _finance?.saveReconciliationCandidate(updated);
+    if (confirm) {
+      await _finance?.saveReconciliationLink(
+        ReconciliationLink(
+          id: 'link-${candidate.id}',
+          candidateId: candidate.id,
+          receiptTransactionId: candidate.receiptTransactionId,
+          paymentTransactionId: candidate.paymentTransactionId,
+          createdAt: DateTime.now().toUtc(),
+        ),
+      );
+    }
     if (mounted) _refresh();
   }
 
@@ -151,31 +162,11 @@ class _ReviewPageState extends State<ReviewPage> {
                     (value) =>
                         value.status == ReconciliationCandidateStatus.proposed,
                   ))
-                    Card(
-                      child: ListTile(
-                        title: Text(
-                          '${candidate.receiptTransactionId.value} ↔ ${candidate.paymentTransactionId.value}',
-                        ),
-                        subtitle: Text(
-                          '${(candidate.score * 100).round()}% · ${candidate.reasons.join(' · ')}',
-                        ),
-                        trailing: Wrap(
-                          children: [
-                            IconButton(
-                              tooltip: context.l10n.text('resolve'),
-                              onPressed: () =>
-                                  _decideCandidate(candidate, true),
-                              icon: const Icon(Icons.check),
-                            ),
-                            IconButton(
-                              tooltip: context.l10n.text('dismiss'),
-                              onPressed: () =>
-                                  _decideCandidate(candidate, false),
-                              icon: const Icon(Icons.close),
-                            ),
-                          ],
-                        ),
-                      ),
+                    _ReconciliationCandidateCard(
+                      candidate: candidate,
+                      finance: _finance!,
+                      onConfirm: () => _decideCandidate(candidate, true),
+                      onReject: () => _decideCandidate(candidate, false),
                     ),
                 ],
               );
@@ -251,6 +242,109 @@ class _ReviewPageState extends State<ReviewPage> {
 }
 
 enum _ReviewView { needsReview, uncategorized, duplicates }
+
+class _ReconciliationCandidateCard extends StatelessWidget {
+  const _ReconciliationCandidateCard({
+    required this.candidate,
+    required this.finance,
+    required this.onConfirm,
+    required this.onReject,
+  });
+
+  final ReconciliationCandidate candidate;
+  final FinanceServices finance;
+  final VoidCallback onConfirm;
+  final VoidCallback onReject;
+
+  Future<List<TransactionDto?>> _loadTransactions() => Future.wait([
+    finance
+        .getTransaction(candidate.receiptTransactionId.value)
+        .then(
+          (result) => result is ApplicationSuccess<TransactionDto>
+              ? result.value
+              : null,
+        ),
+    finance
+        .getTransaction(candidate.paymentTransactionId.value)
+        .then(
+          (result) => result is ApplicationSuccess<TransactionDto>
+              ? result.value
+              : null,
+        ),
+  ]);
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<List<TransactionDto?>>(
+    future: _loadTransactions(),
+    builder: (context, snapshot) {
+      final receipt = snapshot.data?[0];
+      final payment = snapshot.data?[1];
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(ButlerlySpacing.standard),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${(candidate.score * 100).round()}% ${context.l10n.text('matchConfidence')}',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: ButlerlySpacing.small),
+              _CandidateTransactionSummary(
+                label: context.l10n.text('receipt'),
+                transaction: receipt,
+              ),
+              const SizedBox(height: ButlerlySpacing.small),
+              _CandidateTransactionSummary(
+                label: context.l10n.text('payment'),
+                transaction: payment,
+              ),
+              const SizedBox(height: ButlerlySpacing.small),
+              Text(candidate.reasons.join(' · ')),
+              const SizedBox(height: ButlerlySpacing.small),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: onReject,
+                    child: Text(context.l10n.text('dismiss')),
+                  ),
+                  FilledButton(
+                    onPressed: onConfirm,
+                    child: Text(context.l10n.text('resolve')),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+class _CandidateTransactionSummary extends StatelessWidget {
+  const _CandidateTransactionSummary({required this.label, this.transaction});
+
+  final String label;
+  final TransactionDto? transaction;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = transaction;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: Theme.of(context).textTheme.labelLarge),
+        Text(
+          value == null
+              ? context.l10n.text('unavailableTransaction')
+              : '${value.rawCounterparty ?? value.description ?? context.l10n.text('untitledTransaction')} · ${value.currency} ${value.amount} · ${value.transactionDate ?? '—'}',
+        ),
+      ],
+    );
+  }
+}
 
 String _reason(String value, BuildContext context) => switch (value) {
   'incomplete' => context.l10n.text('uncategorized'),

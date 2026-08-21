@@ -5,6 +5,7 @@ import '../entities/evidence_item.dart';
 import '../entities/extraction.dart';
 import '../entities/merchant.dart';
 import '../entities/reconciliation_candidate.dart';
+import '../entities/reconciliation_link.dart';
 import '../entities/suggestion.dart';
 import '../entities/tag.dart';
 import '../entities/transaction.dart';
@@ -90,6 +91,11 @@ abstract interface class ReconciliationCandidateRepository {
   Future<void> save(ReconciliationCandidate candidate);
   Future<ReconciliationCandidate?> findById(String id);
   Future<List<ReconciliationCandidate>> listAll();
+}
+
+abstract interface class ReconciliationLinkRepository {
+  Future<void> save(ReconciliationLink link);
+  Future<List<ReconciliationLink>> listAll();
 }
 
 abstract interface class UserPreferenceRepository {

@@ -145,3 +145,42 @@ final class RefreshReconciliationCandidates {
     }
   }
 }
+
+final class SaveReconciliationLink {
+  const SaveReconciliationLink(this.repository);
+
+  final ReconciliationLinkRepository repository;
+
+  Future<ApplicationResult<void>> call(ReconciliationLink link) async {
+    try {
+      await repository.save(link);
+      return const ApplicationSuccess(null);
+    } on Object {
+      return const ApplicationFailure(
+        ApplicationFailureDetail(
+          code: ApplicationFailureCode.storage,
+          operation: 'save reconciliation link',
+        ),
+      );
+    }
+  }
+}
+
+final class ListReconciliationLinks {
+  const ListReconciliationLinks(this.repository);
+
+  final ReconciliationLinkRepository repository;
+
+  Future<ApplicationResult<List<ReconciliationLink>>> call() async {
+    try {
+      return ApplicationSuccess(await repository.listAll());
+    } on Object {
+      return const ApplicationFailure(
+        ApplicationFailureDetail(
+          code: ApplicationFailureCode.storage,
+          operation: 'list reconciliation links',
+        ),
+      );
+    }
+  }
+}

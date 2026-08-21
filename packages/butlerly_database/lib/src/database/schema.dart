@@ -1,5 +1,5 @@
 abstract final class Schema {
-  static const version = 10;
+  static const version = 11;
 
   static const migration1 = <String>[
     '''CREATE TABLE payment_sources (
@@ -194,5 +194,18 @@ abstract final class Schema {
     'ALTER TABLE payment_sources ADD COLUMN issuer TEXT',
     'ALTER TABLE payment_sources ADD COLUMN currency TEXT',
     'ALTER TABLE payment_sources ADD COLUMN note TEXT',
+  ];
+
+  static const migration11 = <String>[
+    '''CREATE TABLE reconciliation_links (
+      id TEXT PRIMARY KEY NOT NULL,
+      candidate_id TEXT NOT NULL UNIQUE REFERENCES reconciliation_candidates(id),
+      receipt_transaction_id TEXT NOT NULL REFERENCES transactions(id),
+      payment_transaction_id TEXT NOT NULL REFERENCES transactions(id),
+      created_at TEXT NOT NULL,
+      UNIQUE(receipt_transaction_id, payment_transaction_id)
+    )''',
+    'CREATE INDEX idx_reconciliation_links_receipt ON reconciliation_links(receipt_transaction_id)',
+    'CREATE INDEX idx_reconciliation_links_payment ON reconciliation_links(payment_transaction_id)',
   ];
 }
