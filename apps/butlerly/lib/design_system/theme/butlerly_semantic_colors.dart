@@ -10,6 +10,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
     required this.primaryText,
     required this.secondaryText,
     required this.tertiaryText,
+    required this.cardDivider,
     required this.border,
     required this.brand,
     required this.brandStrong,
@@ -29,6 +30,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
   final Color primaryText;
   final Color secondaryText;
   final Color tertiaryText;
+  final Color cardDivider;
   final Color border;
   final Color brand;
   final Color brandStrong;
@@ -48,6 +50,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
     primaryText: Color(0xFFFFFFFF),
     secondaryText: Color.fromRGBO(228, 228, 228, 1),
     tertiaryText: Color.fromRGBO(228, 228, 228, 1),
+    cardDivider: Color.fromRGBO(78, 78, 78, 1),
     border: Color(0xFF2A2A31),
     brand: Color(0xFFB42333),
     brandStrong: Color(0xFF7A1825),
@@ -63,11 +66,12 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
   static const light = ButlerlySemanticColors(
     background: Color(0xFFF7F7F8),
     surface: Color(0xFFFFFFFF),
-    elevatedSurface: Color(0xFFECECEF),
+    elevatedSurface: Color.fromRGBO(218, 218, 218, 1),
     subtleSurface: Color(0xFFF2F2F4),
     primaryText: Color(0xFF171719),
     secondaryText: Color.fromRGBO(68, 68, 68, 1),
     tertiaryText: Color.fromRGBO(68, 68, 68, 1),
+    cardDivider: Color.fromRGBO(198, 198, 198, 1),
     border: Color(0xFFDDDDE2),
     brand: Color(0xFFA51F2E),
     brandStrong: Color(0xFF741722),
@@ -89,6 +93,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
     Color? primaryText,
     Color? secondaryText,
     Color? tertiaryText,
+    Color? cardDivider,
     Color? border,
     Color? brand,
     Color? brandStrong,
@@ -107,6 +112,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
     primaryText: primaryText ?? this.primaryText,
     secondaryText: secondaryText ?? this.secondaryText,
     tertiaryText: tertiaryText ?? this.tertiaryText,
+    cardDivider: cardDivider ?? this.cardDivider,
     border: border ?? this.border,
     brand: brand ?? this.brand,
     brandStrong: brandStrong ?? this.brandStrong,
@@ -133,6 +139,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
       primaryText: Color.lerp(primaryText, other.primaryText, t)!,
       secondaryText: Color.lerp(secondaryText, other.secondaryText, t)!,
       tertiaryText: Color.lerp(tertiaryText, other.tertiaryText, t)!,
+      cardDivider: Color.lerp(cardDivider, other.cardDivider, t)!,
       border: Color.lerp(border, other.border, t)!,
       brand: Color.lerp(brand, other.brand, t)!,
       brandStrong: Color.lerp(brandStrong, other.brandStrong, t)!,
