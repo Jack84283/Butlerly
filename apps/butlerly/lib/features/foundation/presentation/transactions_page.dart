@@ -462,6 +462,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   }
                 },
               ),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _currency,
                 textCapitalization: TextCapitalization.characters,
