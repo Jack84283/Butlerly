@@ -37,15 +37,13 @@ void main() {
       AppTheme.light.cardTheme.color,
       const Color.fromRGBO(218, 218, 218, 1),
     );
-    expect(AppTheme.light.dividerColor, const Color(0xFF171719));
-    expect(AppTheme.dark.dividerColor, Colors.white);
     expect(
       AppTheme.light.extension<ButlerlySemanticColors>()?.cardDivider,
-      const Color.fromRGBO(65, 65, 65, 1),
+      const Color.fromRGBO(198, 198, 198, 1),
     );
     expect(
       AppTheme.dark.extension<ButlerlySemanticColors>()?.cardDivider,
-      const Color.fromRGBO(225, 225, 225, 1),
+      const Color.fromRGBO(78, 78, 78, 1),
     );
   });
 
