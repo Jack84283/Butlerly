@@ -33,6 +33,7 @@ final class Transaction {
     this.rawCounterparty,
     this.sourceLanguage,
     this.notes,
+    this.externalReference,
     this.paymentSourceId,
     this.merchantId,
     this.categoryId,
@@ -89,6 +90,10 @@ final class Transaction {
   final String? rawCounterparty;
   final String? sourceLanguage;
   final String? notes;
+
+  /// Source-provided statement/notification identity, such as a bank
+  /// transaction ID or a masked card/account reference.
+  final String? externalReference;
   final PaymentSourceId? paymentSourceId;
   final MerchantId? merchantId;
   final CategoryId? categoryId;
@@ -197,6 +202,7 @@ final class Transaction {
     List<NormalizedMoney>? normalizedMoney,
     String? transactionDate,
     String? timeZoneId,
+    String? externalReference,
     required DateTime updatedAt,
   }) => Transaction(
     id: id,
@@ -209,6 +215,7 @@ final class Transaction {
     rawCounterparty: rawCounterparty,
     sourceLanguage: sourceLanguage,
     notes: notes,
+    externalReference: externalReference ?? this.externalReference,
     paymentSourceId: replacePaymentSource
         ? paymentSourceId
         : this.paymentSourceId,

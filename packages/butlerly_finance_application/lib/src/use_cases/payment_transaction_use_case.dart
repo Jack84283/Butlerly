@@ -15,6 +15,7 @@ final class PaymentTransactionCommand {
     required this.sourceId,
     this.description,
     this.paymentSourceId,
+    this.externalReference,
     this.sourceType = TransactionSourceType.manual,
     this.provenanceSourceType = ProvenanceSourceType.userEntry,
   });
@@ -28,6 +29,7 @@ final class PaymentTransactionCommand {
   final String sourceId;
   final String? description;
   final String? paymentSourceId;
+  final String? externalReference;
   final TransactionSourceType sourceType;
   final ProvenanceSourceType provenanceSourceType;
 }
@@ -56,6 +58,7 @@ final class CreatePaymentTransaction {
       paymentSourceId: command.paymentSourceId == null
           ? null
           : PaymentSourceId(command.paymentSourceId!),
+      externalReference: command.externalReference,
       provenance: [
         Provenance(
           id: ProvenanceId(command.provenanceId),

@@ -13,6 +13,7 @@ final class CreateTransactionCommand {
     this.rawCounterparty,
     this.sourceLanguage,
     this.notes,
+    this.externalReference,
     this.paymentSourceId,
     this.merchantId,
     this.categoryId,
@@ -30,6 +31,7 @@ final class CreateTransactionCommand {
   final String? rawCounterparty;
   final String? sourceLanguage;
   final String? notes;
+  final String? externalReference;
   final String? paymentSourceId;
   final String? merchantId;
   final String? categoryId;
@@ -48,6 +50,7 @@ final class UpdateTransactionCommand {
     this.rawCounterparty,
     this.sourceLanguage,
     this.notes,
+    this.externalReference,
     this.paymentSourceId,
     this.merchantId,
     this.categoryId,
@@ -68,6 +71,7 @@ final class UpdateTransactionCommand {
   final String? rawCounterparty;
   final String? sourceLanguage;
   final String? notes;
+  final String? externalReference;
   final String? paymentSourceId;
   final String? merchantId;
   final String? categoryId;
@@ -94,6 +98,7 @@ final class ImportTransactionCommand {
     this.sourceLanguage,
     this.notes,
     this.paymentSourceId,
+    this.externalReference,
   });
 
   final String id;
@@ -110,6 +115,7 @@ final class ImportTransactionCommand {
   final String? sourceLanguage;
   final String? notes;
   final String? paymentSourceId;
+  final String? externalReference;
 }
 
 final class ListTransactionsQuery {

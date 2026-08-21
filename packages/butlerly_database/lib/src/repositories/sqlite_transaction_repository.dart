@@ -183,6 +183,7 @@ final class SqliteTransactionRepository implements TransactionRepository {
       status: TransactionStatus.values.byName(row['status']! as String),
       description: row['description'] as String?,
       rawCounterparty: row['raw_counterparty'] as String?,
+      externalReference: row['external_reference'] as String?,
       sourceLanguage: row['source_language'] as String?,
       notes: row['notes'] as String?,
       paymentSourceId: _optionalId(
@@ -266,6 +267,7 @@ final class SqliteTransactionRepository implements TransactionRepository {
     'status': value.status.name,
     'description': value.description,
     'raw_counterparty': value.rawCounterparty,
+    'external_reference': value.externalReference,
     'source_language': value.sourceLanguage,
     'notes': value.notes,
     'payment_source_id': value.paymentSourceId?.value,

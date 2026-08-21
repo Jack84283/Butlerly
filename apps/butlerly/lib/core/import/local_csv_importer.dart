@@ -28,6 +28,7 @@ final class CsvStatementRow {
     required this.currency,
     required this.direction,
     required this.cardReference,
+    required this.externalReference,
     required this.original,
     this.error,
   });
@@ -39,6 +40,7 @@ final class CsvStatementRow {
   final String currency;
   final TransactionDirection? direction;
   final String? cardReference;
+  final String? externalReference;
   final String original;
   final String? error;
 
@@ -133,6 +135,7 @@ final class LocalCsvImporter {
         currency: rawCurrency,
         direction: direction,
         cardReference: _optional(valueAt('card_reference')),
+        externalReference: _optional(valueAt('transaction_id')),
         original: _encodeCsvRow(values),
         error: error,
       );
@@ -161,6 +164,8 @@ final class LocalCsvImporter {
             row.currency,
             row.direction!.name,
             row.description,
+            row.cardReference ?? '',
+            row.externalReference ?? '',
           ].join('|'),
         );
         final result = await _importTransaction(
@@ -179,6 +184,7 @@ final class LocalCsvImporter {
             rawCounterparty: row.description,
             sourceLanguage: sourceLanguage,
             paymentSourceId: paymentSourceId,
+            externalReference: row.externalReference ?? row.cardReference,
           ),
         );
         if (result is ApplicationSuccess<TransactionDto>) {
@@ -257,6 +263,8 @@ final class LocalCsvImporter {
             row['direction']!,
             row['description'] ?? '',
             row['counterparty'] ?? '',
+            row['card_reference'] ?? row['account_reference'] ?? '',
+            row['transaction_id'] ?? row['reference'] ?? '',
           ].join('|'),
         );
         final result = await _importTransaction(
@@ -277,6 +285,10 @@ final class LocalCsvImporter {
             rawCounterparty: _optional(row['counterparty']),
             sourceLanguage: _optional(row['source_language']) ?? sourceLanguage,
             notes: _optional(row['notes']),
+            externalReference:
+                _optional(row['transaction_id']) ??
+                _optional(row['reference']) ??
+                _optional(row['card_reference']),
           ),
         );
         if (result is ApplicationSuccess<TransactionDto>) {
@@ -328,6 +340,12 @@ final class LocalCsvImporter {
         'card_reference',
         'account',
         'account_reference',
+      ],
+      'transaction_id': [
+        'transaction_id',
+        'transaction_reference',
+        'reference',
+        'id',
       ],
     };
     final result = <String, int>{};

@@ -8,6 +8,7 @@ export 'src/entities/exchange_rate.dart';
 export 'src/entities/extraction.dart';
 export 'src/entities/merchant.dart';
 export 'src/entities/provenance.dart';
+export 'src/entities/reconciliation_candidate.dart';
 export 'src/entities/review_issue.dart';
 export 'src/entities/suggestion.dart';
 export 'src/entities/tag.dart';

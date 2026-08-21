@@ -36,6 +36,7 @@ final class CreateTransaction {
       rawCounterparty: command.rawCounterparty,
       sourceLanguage: command.sourceLanguage,
       notes: command.notes,
+      externalReference: command.externalReference,
       paymentSourceId: _optional(command.paymentSourceId, PaymentSourceId.new),
       merchantId: _optional(command.merchantId, MerchantId.new),
       categoryId: _optional(command.categoryId, CategoryId.new),
@@ -84,6 +85,8 @@ final class UpdateTransaction {
         rawCounterparty: command.rawCounterparty,
         sourceLanguage: command.sourceLanguage,
         notes: command.notes,
+        externalReference:
+            command.externalReference ?? current.externalReference,
         paymentSourceId: !command.replacePaymentSource
             ? current.paymentSourceId
             : _optional(command.paymentSourceId, PaymentSourceId.new),
@@ -150,6 +153,7 @@ final class ImportTransaction {
       rawCounterparty: command.rawCounterparty,
       sourceLanguage: command.sourceLanguage,
       notes: command.notes,
+      externalReference: command.externalReference,
       paymentSourceId: _optional(command.paymentSourceId, PaymentSourceId.new),
       provenance: [
         Provenance(

@@ -20,6 +20,7 @@ final class TransactionDto {
     this.rawCounterparty,
     this.sourceLanguage,
     this.notes,
+    this.externalReference,
     this.paymentSourceId,
     this.merchantId,
     this.categoryId,
@@ -43,6 +44,7 @@ final class TransactionDto {
   final String? rawCounterparty;
   final String? sourceLanguage;
   final String? notes;
+  final String? externalReference;
   final String? paymentSourceId;
   final String? merchantId;
   final String? categoryId;
@@ -68,6 +70,7 @@ final class TransactionDto {
     rawCounterparty: value.rawCounterparty,
     sourceLanguage: value.sourceLanguage,
     notes: value.notes,
+    externalReference: value.externalReference,
     paymentSourceId: value.paymentSourceId?.value,
     merchantId: value.merchantId?.value,
     categoryId: value.categoryId?.value,
