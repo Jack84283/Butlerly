@@ -1,5 +1,7 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
+import '../result/application_result.dart';
+
 final class ReconciliationCandidateGenerator {
   const ReconciliationCandidateGenerator();
 
@@ -71,4 +73,69 @@ final class ReconciliationCandidateGenerator {
 
   String _merchantText(Transaction value) =>
       (value.rawCounterparty ?? value.description ?? '').trim().toLowerCase();
+}
+
+final class ListReconciliationCandidates {
+  const ListReconciliationCandidates(this.repository);
+  final ReconciliationCandidateRepository repository;
+
+  Future<ApplicationResult<List<ReconciliationCandidate>>> call() async {
+    try {
+      return ApplicationSuccess(await repository.listAll());
+    } on Object {
+      return const ApplicationFailure(
+        ApplicationFailureDetail(
+          code: ApplicationFailureCode.storage,
+          operation: 'list reconciliation candidates',
+        ),
+      );
+    }
+  }
+}
+
+final class SaveReconciliationCandidate {
+  const SaveReconciliationCandidate(this.repository);
+  final ReconciliationCandidateRepository repository;
+
+  Future<ApplicationResult<void>> call(
+    ReconciliationCandidate candidate,
+  ) async {
+    try {
+      await repository.save(candidate);
+      return const ApplicationSuccess(null);
+    } on Object {
+      return const ApplicationFailure(
+        ApplicationFailureDetail(
+          code: ApplicationFailureCode.storage,
+          operation: 'save reconciliation candidate',
+        ),
+      );
+    }
+  }
+}
+
+final class RefreshReconciliationCandidates {
+  const RefreshReconciliationCandidates(this.transactions, this.candidates);
+
+  final TransactionRepository transactions;
+  final ReconciliationCandidateRepository candidates;
+
+  Future<ApplicationResult<List<ReconciliationCandidate>>> call() async {
+    try {
+      final generated = const ReconciliationCandidateGenerator().generate(
+        await transactions.listAll(),
+      );
+      for (final candidate in generated) {
+        await candidates.save(candidate);
+      }
+      return ApplicationSuccess(generated);
+    } on Object {
+      return const ApplicationFailure(
+        ApplicationFailureDetail(
+          code: ApplicationFailureCode.storage,
+          operation: 'refresh reconciliation candidates',
+        ),
+      );
+    }
+  }
 }

@@ -1,3 +1,4 @@
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/services.dart';
 
 final class ReceiptOcrResult {
@@ -54,6 +55,50 @@ final class LocalOcrService {
       throw const FormatException('No readable receipt text was found.');
     }
     return ReceiptTextParser.parse(text);
+  }
+
+  Future<CardScanResult> recognizeCard(String path) async {
+    final raw = await _channel.invokeMapMethod<String, Object?>(
+      'recognizeText',
+      {'path': path},
+    );
+    final text = raw?['text'] as String? ?? '';
+    if (text.trim().isEmpty) {
+      throw const FormatException('No readable card details were found.');
+    }
+    return CardTextParser.parse(text);
+  }
+}
+
+final class CardScanResult {
+  const CardScanResult({this.issuer, this.lastFour, this.type});
+
+  final String? issuer;
+  final String? lastFour;
+  final PaymentSourceType? type;
+}
+
+abstract final class CardTextParser {
+  static CardScanResult parse(String text) {
+    final upper = text.toUpperCase();
+    final issuer = switch (true) {
+      _ when upper.contains('AMERICAN EXPRESS') || upper.contains('AMEX') =>
+        'American Express',
+      _ when upper.contains('MASTERCARD') => 'Mastercard',
+      _ when upper.contains('VISA') => 'Visa',
+      _ when upper.contains('DISCOVER') => 'Discover',
+      _ => null,
+    };
+    final lastFour = RegExp(
+      r'(?:ending|last\s*4|card|visa|mastercard|amex|discover|x{2,}|\*{2,})'
+      r'[^\d]{0,12}(\d{4})(?!\d)',
+      caseSensitive: false,
+    ).firstMatch(text)?.group(1);
+    return CardScanResult(
+      issuer: issuer,
+      lastFour: lastFour,
+      type: PaymentSourceType.card,
+    );
   }
 }
 

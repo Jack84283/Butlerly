@@ -124,6 +124,16 @@ final class ButlerlyDatabase {
           await database.execute(statement);
         }
       }
+      if (from < 9 && to >= 9) {
+        for (final statement in Schema.migration9) {
+          await database.execute(statement);
+        }
+      }
+      if (from < 10 && to >= 10) {
+        for (final statement in Schema.migration10) {
+          await database.execute(statement);
+        }
+      }
     } on DatabaseException {
       throw const RepositoryException(
         RepositoryFailureCode.migration,

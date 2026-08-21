@@ -5,6 +5,7 @@ import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 
 class ReviewPage extends StatefulWidget {
@@ -16,6 +17,7 @@ class ReviewPage extends StatefulWidget {
 
 class _ReviewPageState extends State<ReviewPage> {
   late Future<List<ReviewItemDto>> _items;
+  late Future<List<ReconciliationCandidate>> _candidates;
   _ReviewView _view = _ReviewView.needsReview;
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
@@ -26,6 +28,7 @@ class _ReviewPageState extends State<ReviewPage> {
   void initState() {
     super.initState();
     _items = _load();
+    _candidates = _loadCandidates();
   }
 
   Future<List<ReviewItemDto>> _load() async {
@@ -42,7 +45,28 @@ class _ReviewPageState extends State<ReviewPage> {
 
   void _refresh() => setState(() {
     _items = _load();
+    _candidates = _loadCandidates();
   });
+
+  Future<List<ReconciliationCandidate>> _loadCandidates() async {
+    final finance = _finance;
+    if (finance == null) return const [];
+    await finance.refreshReconciliationCandidates();
+    final result = await finance.listReconciliationCandidates();
+    return switch (result) {
+      ApplicationSuccess<List<ReconciliationCandidate>>(:final value) => value,
+      ApplicationFailure<List<ReconciliationCandidate>>() => const [],
+    };
+  }
+
+  Future<void> _decideCandidate(
+    ReconciliationCandidate candidate,
+    bool confirm,
+  ) async {
+    final updated = confirm ? candidate.confirm() : candidate.reject();
+    await _finance?.saveReconciliationCandidate(updated);
+    if (mounted) _refresh();
+  }
 
   Future<void> _close(ReviewItemDto item, {required bool dismiss}) async {
     final finance = _finance;
@@ -109,7 +133,55 @@ class _ReviewPageState extends State<ReviewPage> {
           onSelectionChanged: (value) => setState(() => _view = value.single),
         ),
         const SizedBox(height: ButlerlySpacing.section),
-        if (_view != _ReviewView.needsReview)
+        if (_view == _ReviewView.duplicates)
+          FutureBuilder<List<ReconciliationCandidate>>(
+            future: _candidates,
+            builder: (context, snapshot) {
+              final candidates = snapshot.data ?? const [];
+              if (candidates.isEmpty) {
+                return ButlerlyEmptyState(
+                  icon: Icons.copy_all_outlined,
+                  title: context.l10n.text('reviewEmpty'),
+                  message: context.l10n.text('reviewEmptyBody'),
+                );
+              }
+              return Column(
+                children: [
+                  for (final candidate in candidates.where(
+                    (value) =>
+                        value.status == ReconciliationCandidateStatus.proposed,
+                  ))
+                    Card(
+                      child: ListTile(
+                        title: Text(
+                          '${candidate.receiptTransactionId.value} ↔ ${candidate.paymentTransactionId.value}',
+                        ),
+                        subtitle: Text(
+                          '${(candidate.score * 100).round()}% · ${candidate.reasons.join(' · ')}',
+                        ),
+                        trailing: Wrap(
+                          children: [
+                            IconButton(
+                              tooltip: context.l10n.text('resolve'),
+                              onPressed: () =>
+                                  _decideCandidate(candidate, true),
+                              icon: const Icon(Icons.check),
+                            ),
+                            IconButton(
+                              tooltip: context.l10n.text('dismiss'),
+                              onPressed: () =>
+                                  _decideCandidate(candidate, false),
+                              icon: const Icon(Icons.close),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          )
+        else if (_view != _ReviewView.needsReview)
           ButlerlyEmptyState(
             icon: _view == _ReviewView.uncategorized
                 ? Icons.sell_outlined
