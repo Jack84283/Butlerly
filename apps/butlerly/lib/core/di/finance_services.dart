@@ -11,6 +11,7 @@ final class FinanceServices {
     EvidenceRepository evidence,
     UserPreferenceRepository preferences, {
     ReconciliationCandidateRepository? reconciliationCandidates,
+    ReconciliationLinkRepository? reconciliationLinks,
   }) : listTransactions = ListTransactions(transactions),
        seedInitialMasterData = SeedInitialMasterData(
          merchants,
@@ -107,6 +108,12 @@ final class FinanceServices {
          transactions,
          reconciliationCandidates ??
              const _NoReconciliationCandidateRepository(),
+       ),
+       saveReconciliationLink = SaveReconciliationLink(
+         reconciliationLinks ?? const _NoReconciliationLinkRepository(),
+       ),
+       listReconciliationLinks = ListReconciliationLinks(
+         reconciliationLinks ?? const _NoReconciliationLinkRepository(),
        );
 
   final ListTransactions listTransactions;
@@ -147,6 +154,8 @@ final class FinanceServices {
   final ListReconciliationCandidates listReconciliationCandidates;
   final SaveReconciliationCandidate saveReconciliationCandidate;
   final RefreshReconciliationCandidates refreshReconciliationCandidates;
+  final SaveReconciliationLink saveReconciliationLink;
+  final ListReconciliationLinks listReconciliationLinks;
 }
 
 final class _NoExtractionLookupRepository
@@ -169,4 +178,15 @@ final class _NoReconciliationCandidateRepository
 
   @override
   Future<List<ReconciliationCandidate>> listAll() async => const [];
+}
+
+final class _NoReconciliationLinkRepository
+    implements ReconciliationLinkRepository {
+  const _NoReconciliationLinkRepository();
+
+  @override
+  Future<void> save(ReconciliationLink link) async {}
+
+  @override
+  Future<List<ReconciliationLink>> listAll() async => const [];
 }
