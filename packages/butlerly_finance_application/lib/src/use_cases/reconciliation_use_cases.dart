@@ -126,7 +126,13 @@ final class RefreshReconciliationCandidates {
         await transactions.listAll(),
       );
       for (final candidate in generated) {
-        await candidates.save(candidate);
+        // A refresh must not resurrect a pair the user already confirmed or
+        // rejected. Those decisions are durable review state.
+        final existing = await candidates.findById(candidate.id);
+        if (existing == null ||
+            existing.status == ReconciliationCandidateStatus.proposed) {
+          await candidates.save(candidate);
+        }
       }
       return ApplicationSuccess(generated);
     } on Object {
