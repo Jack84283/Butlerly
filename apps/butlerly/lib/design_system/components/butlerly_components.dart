@@ -125,6 +125,7 @@ class ButlerlySeparatedList extends StatelessWidget {
             height: 1,
             indent: ButlerlySpacing.standard,
             endIndent: ButlerlySpacing.standard,
+            color: context.colors.cardDivider,
           ),
       ],
     ],

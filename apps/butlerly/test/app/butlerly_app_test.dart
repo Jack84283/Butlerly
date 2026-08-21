@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:butlerly/app/butlerly_app.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -31,6 +32,20 @@ void main() {
     expect(
       AppTheme.light.textTheme.bodySmall?.color,
       const Color.fromRGBO(68, 68, 68, 1),
+    );
+    expect(
+      AppTheme.light.cardTheme.color,
+      const Color.fromRGBO(218, 218, 218, 1),
+    );
+    expect(AppTheme.light.dividerColor, const Color(0xFF171719));
+    expect(AppTheme.dark.dividerColor, Colors.white);
+    expect(
+      AppTheme.light.extension<ButlerlySemanticColors>()?.cardDivider,
+      const Color.fromRGBO(65, 65, 65, 1),
+    );
+    expect(
+      AppTheme.dark.extension<ButlerlySemanticColors>()?.cardDivider,
+      const Color.fromRGBO(225, 225, 225, 1),
     );
   });
 
