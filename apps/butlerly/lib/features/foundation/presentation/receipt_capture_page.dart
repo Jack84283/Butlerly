@@ -6,6 +6,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/evidence/local_ocr_service.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
+import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:file_selector/file_selector.dart' as files;
@@ -134,7 +135,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Use this receipt?'),
+        title: Text(context.l10n.text('receiptUseTitle')),
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxHeight: 520, maxWidth: 520),
           child: Image.file(File(source.path), fit: BoxFit.contain),
@@ -142,11 +143,11 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Retake / Replace'),
+            child: Text(context.l10n.text('receiptRetakeReplace')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Use receipt'),
+            child: Text(context.l10n.text('receiptUse')),
           ),
         ],
       ),
@@ -164,9 +165,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Receipt could not be stored locally. Please retry.'),
-        ),
+        SnackBar(content: Text(context.l10n.text('receiptStoreFailed'))),
       );
       return;
     }
@@ -342,34 +341,34 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
             : null);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Capture receipt')),
+      appBar: AppBar(title: Text(context.l10n.text('captureReceipt'))),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           children: [
             if (_source == null) ...[
-              const Text(
-                'Add a receipt',
+              Text(
+                context.l10n.text('addReceipt'),
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 12),
               FilledButton.icon(
                 onPressed: _camera,
                 icon: const Icon(Icons.camera_alt_outlined),
-                label: const Text('Take photo'),
+                label: Text(context.l10n.text('takePhoto')),
               ),
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: _photo,
                 icon: const Icon(Icons.photo_library_outlined),
-                label: const Text('Choose from Photos'),
+                label: Text(context.l10n.text('choosePhotos')),
               ),
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: _file,
                 icon: const Icon(Icons.folder_open_outlined),
-                label: const Text('Choose image from Files'),
+                label: Text(context.l10n.text('chooseFiles')),
               ),
             ] else ...[
               SizedBox(
@@ -380,7 +379,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                 const SizedBox(height: 12),
                 const LinearProgressIndicator(),
                 const SizedBox(height: 8),
-                const Text('Reading receipt on this device…'),
+                Text(context.l10n.text('readingReceipt')),
               ],
               if (!_processing) ...[
                 Row(
@@ -388,12 +387,12 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                     TextButton.icon(
                       onPressed: _camera,
                       icon: const Icon(Icons.refresh),
-                      label: const Text('Retake'),
+                      label: Text(context.l10n.text('retake')),
                     ),
                     TextButton.icon(
                       onPressed: _photo,
                       icon: const Icon(Icons.swap_horiz),
-                      label: const Text('Replace'),
+                      label: Text(context.l10n.text('replace')),
                     ),
                   ],
                 ),
@@ -403,14 +402,15 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                     children: [
                       TextFormField(
                         controller: _merchantRaw,
-                        decoration: const InputDecoration(
-                          labelText: 'Merchant / source text',
+                        decoration: InputDecoration(
+                          labelText: context.l10n.text('merchant'),
                         ),
                       ),
+                      const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
                         initialValue: _merchantId,
-                        decoration: const InputDecoration(
-                          labelText: 'Normalized merchant',
+                        decoration: InputDecoration(
+                          labelText: context.l10n.text('merchant'),
                         ),
                         items: [
                           for (final merchant in _merchants.where(
@@ -424,49 +424,53 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                         onChanged: (value) =>
                             setState(() => _merchantId = value),
                       ),
+                      const SizedBox(height: 16),
                       TextFormField(
                         controller: _amount,
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
-                        decoration: const InputDecoration(
-                          labelText: 'Total amount',
+                        decoration: InputDecoration(
+                          labelText: context.l10n.text('amount'),
                         ),
                         validator: (value) {
                           try {
                             DecimalValue.parse(value?.trim() ?? '');
                             return null;
                           } on DomainValidationException {
-                            return 'Enter a valid amount.';
+                            return context.l10n.text('invalidAmount');
                           }
                         },
                       ),
+                      const SizedBox(height: 16),
                       TextFormField(
                         controller: _currency,
                         textCapitalization: TextCapitalization.characters,
-                        decoration: const InputDecoration(
-                          labelText: 'Currency',
+                        decoration: InputDecoration(
+                          labelText: context.l10n.text('currency'),
                         ),
                         validator: (value) {
                           try {
                             CurrencyCode(value?.trim() ?? '');
                             return null;
                           } on DomainValidationException {
-                            return 'Enter a valid currency code.';
+                            return context.l10n.text('invalidCurrency');
                           }
                         },
                       ),
+                      const SizedBox(height: 16),
                       ListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: const Text('Purchase date'),
+                        title: Text(context.l10n.text('purchaseDate')),
                         subtitle: Text(_iso(_date)),
                         trailing: const Icon(Icons.calendar_today_outlined),
                         onTap: _pickDate,
                       ),
+                      const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
                         initialValue: selectedParentId,
-                        decoration: const InputDecoration(
-                          labelText: 'Category',
+                        decoration: InputDecoration(
+                          labelText: context.l10n.text('category'),
                         ),
                         items: [
                           for (final category in activeCategories.where(
@@ -481,12 +485,13 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                           _categoryId = value;
                         }),
                       ),
+                      const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
                         initialValue: selectedCategory?.parentId == null
                             ? null
                             : _categoryId,
-                        decoration: const InputDecoration(
-                          labelText: 'Subcategory',
+                        decoration: InputDecoration(
+                          labelText: context.l10n.text('subcategory'),
                         ),
                         items: [
                           for (final category in activeCategories.where(
@@ -502,10 +507,11 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                           _categoryId = value ?? selectedParentId;
                         }),
                       ),
+                      const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
                         initialValue: _paymentSourceId,
-                        decoration: const InputDecoration(
-                          labelText: 'Payment source',
+                        decoration: InputDecoration(
+                          labelText: context.l10n.text('paymentSource'),
                         ),
                         items: [
                           for (final source in _sources.where(
@@ -522,7 +528,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                         onChanged: (value) =>
                             setState(() => _paymentSourceId = value),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 16),
                       Align(
                         alignment: Alignment.centerLeft,
                         child: Wrap(
@@ -546,16 +552,19 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                           ],
                         ),
                       ),
+                      const SizedBox(height: 16),
                       TextFormField(
                         controller: _notes,
                         maxLines: 2,
-                        decoration: const InputDecoration(labelText: 'Notes'),
+                        decoration: InputDecoration(
+                          labelText: context.l10n.text('notes'),
+                        ),
                       ),
                       if (_ocrResult != null)
                         ExpansionTile(
-                          title: const Text('Extracted source text'),
-                          subtitle: const Text(
-                            'Original OCR text is preserved without translation.',
+                          title: Text(context.l10n.text('extractedSourceText')),
+                          subtitle: Text(
+                            context.l10n.text('originalOcrPreserved'),
                           ),
                           children: [
                             Padding(

@@ -249,11 +249,13 @@ class _ImportExportPageState extends State<ImportExportPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(title),
-        content: Text(message.isEmpty ? 'No valid rows were found.' : message),
+        content: Text(
+          message.isEmpty ? context.l10n.text('noResults') : message,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Done'),
+            child: Text(context.l10n.text('done')),
           ),
         ],
       ),
@@ -283,10 +285,12 @@ class _ImportExportPageState extends State<ImportExportPage> {
       notifyTransactionChanged();
     }
     await _showImportMessage(
-      result is ApplicationSuccess<TransactionDto> ? 'Saved' : 'Could not save',
       result is ApplicationSuccess<TransactionDto>
-          ? 'The payment transaction was saved locally.'
-          : 'Please check the fields and try again.',
+          ? context.l10n.text('save')
+          : context.l10n.text('paymentSourceSaveFailed'),
+      result is ApplicationSuccess<TransactionDto>
+          ? context.l10n.text('notificationSaved')
+          : context.l10n.text('notificationSaveFailed'),
     );
   }
 
@@ -319,15 +323,14 @@ class _ImportExportPageState extends State<ImportExportPage> {
         ),
         _ActionRow(
           icon: Icons.credit_card_outlined,
-          title: 'Add payment transaction',
-          subtitle:
-              'Enter one card transaction when no statement is available.',
+          title: context.l10n.text('addPaymentTransaction'),
+          subtitle: context.l10n.text('addPaymentTransactionBody'),
           onTap: () => context.push('/transactions/add'),
         ),
         _ActionRow(
           icon: Icons.notifications_none_outlined,
-          title: 'Add payment notification',
-          subtitle: 'Record one card notification with integration provenance.',
+          title: context.l10n.text('addPaymentNotification'),
+          subtitle: context.l10n.text('addPaymentNotificationBody'),
           onTap: _importing ? () {} : _addNotificationTransaction,
         ),
         ButlerlySectionHeader(title: context.l10n.text('importExport')),
@@ -369,7 +372,7 @@ class _SinglePaymentDialogState extends State<_SinglePaymentDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Add payment notification'),
+    title: Text(context.l10n.text('addPaymentNotification')),
     content: Form(
       key: _formKey,
       child: SingleChildScrollView(
@@ -378,25 +381,29 @@ class _SinglePaymentDialogState extends State<_SinglePaymentDialog> {
           children: [
             TextFormField(
               controller: _amount,
-              decoration: const InputDecoration(labelText: 'Amount'),
+              decoration: InputDecoration(
+                labelText: context.l10n.text('amount'),
+              ),
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
               validator: (value) => double.tryParse(value ?? '') == null
-                  ? 'Enter a valid amount.'
+                  ? context.l10n.text('invalidAmount')
                   : null,
             ),
             TextFormField(
               controller: _currency,
-              decoration: const InputDecoration(labelText: 'Currency'),
+              decoration: InputDecoration(
+                labelText: context.l10n.text('currency'),
+              ),
               validator: (value) => value == null || value.trim().length != 3
-                  ? 'Use a 3-letter currency code.'
+                  ? context.l10n.text('currencyThreeLetters')
                   : null,
             ),
             TextFormField(
               controller: _description,
-              decoration: const InputDecoration(
-                labelText: 'Merchant / description',
+              decoration: InputDecoration(
+                labelText: context.l10n.text('merchantDescription'),
               ),
               validator: (value) => value == null || value.trim().isEmpty
                   ? 'Enter a description.'
@@ -404,15 +411,17 @@ class _SinglePaymentDialogState extends State<_SinglePaymentDialog> {
             ),
             DropdownButtonFormField<String>(
               initialValue: _direction,
-              decoration: const InputDecoration(labelText: 'Direction'),
-              items: const [
+              decoration: InputDecoration(
+                labelText: context.l10n.text('direction'),
+              ),
+              items: [
                 DropdownMenuItem(
                   value: 'expense',
-                  child: Text('Debit / expense'),
+                  child: Text(context.l10n.text('debitExpense')),
                 ),
                 DropdownMenuItem(
                   value: 'income',
-                  child: Text('Credit / refund'),
+                  child: Text(context.l10n.text('creditRefund')),
                 ),
               ],
               onChanged: (value) =>
@@ -420,9 +429,14 @@ class _SinglePaymentDialogState extends State<_SinglePaymentDialog> {
             ),
             DropdownButtonFormField<String>(
               initialValue: _sourceId,
-              decoration: const InputDecoration(labelText: 'Payment source'),
+              decoration: InputDecoration(
+                labelText: context.l10n.text('paymentSource'),
+              ),
               items: [
-                const DropdownMenuItem(value: '', child: Text('Unassigned')),
+                DropdownMenuItem(
+                  value: '',
+                  child: Text(context.l10n.text('unassigned')),
+                ),
                 for (final source in widget.sources)
                   DropdownMenuItem(
                     value: source.id.value,
@@ -438,7 +452,7 @@ class _SinglePaymentDialogState extends State<_SinglePaymentDialog> {
     actions: [
       TextButton(
         onPressed: () => Navigator.pop(context),
-        child: const Text('Cancel'),
+        child: Text(context.l10n.text('cancel')),
       ),
       FilledButton(
         onPressed: () {
@@ -466,7 +480,7 @@ class _SinglePaymentDialogState extends State<_SinglePaymentDialog> {
             ),
           );
         },
-        child: const Text('Save'),
+        child: Text(context.l10n.text('save')),
       ),
     ],
   );
@@ -491,24 +505,37 @@ class _StatementPreviewDialogState extends State<_StatementPreviewDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Review statement import'),
+    title: Text(context.l10n.text('reviewStatementImport')),
     content: SizedBox(
       width: 520,
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${widget.preview.validCount} valid row(s) ready to import.'),
+            Text(
+              context.l10n.text('validRowsReady', {
+                'count': '${widget.preview.validCount}',
+              }),
+            ),
             if (widget.preview.errors.isNotEmpty) ...[
               const SizedBox(height: 8),
-              Text('${widget.preview.errors.length} row(s) need correction.'),
+              Text(
+                context.l10n.text('rowsNeedCorrection', {
+                  'count': '${widget.preview.errors.length}',
+                }),
+              ),
             ],
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _sourceId,
-              decoration: const InputDecoration(labelText: 'Payment source'),
+              decoration: InputDecoration(
+                labelText: context.l10n.text('paymentSource'),
+              ),
               items: [
-                const DropdownMenuItem(value: '', child: Text('Unassigned')),
+                DropdownMenuItem(
+                  value: '',
+                  child: Text(context.l10n.text('unassigned')),
+                ),
                 for (final source in widget.sources)
                   DropdownMenuItem(
                     value: source.id.value,
@@ -537,11 +564,11 @@ class _StatementPreviewDialogState extends State<_StatementPreviewDialog> {
     actions: [
       TextButton(
         onPressed: () => Navigator.pop(context),
-        child: const Text('Cancel'),
+        child: Text(context.l10n.text('cancel')),
       ),
       FilledButton(
         onPressed: () => Navigator.pop(context, _sourceId ?? ''),
-        child: const Text('Import valid rows'),
+        child: Text(context.l10n.text('importValidRows')),
       ),
     ],
   );
@@ -651,7 +678,7 @@ class ReceiptDetailPage extends StatelessWidget {
           title: name,
           subtitle: context.l10n.text('receiptPreview'),
         ),
-        const ButlerlySectionHeader(title: 'Extracted text'),
+        ButlerlySectionHeader(title: context.l10n.text('extractedSourceText')),
         ButlerlyCard(
           child: Text(context.l10n.text('extractedTextUnavailable')),
         ),
