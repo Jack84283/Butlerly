@@ -208,6 +208,13 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         _paymentSourceId = paymentSourceId;
         _processing = false;
       });
+      final match = await _findExistingPaymentMatch();
+      if (match != null && mounted) {
+        final attach = await _confirmExistingMatch(match);
+        if (attach == true) {
+          await _attachReceiptToExisting(match);
+        }
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() => _processing = false);
@@ -248,6 +255,108 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         ],
       ),
     );
+  }
+
+  Future<TransactionDto?> _findExistingPaymentMatch() async {
+    final amount = _amount.text.trim();
+    final merchant = _merchantRaw.text.trim().toLowerCase();
+    if (amount.isEmpty || merchant.isEmpty) return null;
+    final result = await finance.listTransactions(
+      const ListTransactionsQuery(),
+    );
+    if (result is! ApplicationSuccess<List<TransactionDto>>) return null;
+    final matches = result.value
+        .where((transaction) {
+          final isPayment = transaction.provenance.any(
+            (value) =>
+                value.sourceType == ProvenanceSourceType.import.name ||
+                value.sourceType == ProvenanceSourceType.integration.name ||
+                value.sourceType == ProvenanceSourceType.userEntry.name,
+          );
+          final merchantText =
+              (transaction.rawCounterparty ?? transaction.description ?? '')
+                  .trim()
+                  .toLowerCase();
+          return isPayment &&
+              transaction.status == TransactionStatus.active.name &&
+              transaction.amount == amount &&
+              transaction.currency == _currency.text.trim() &&
+              transaction.transactionDate == _iso(_date) &&
+              merchantText == merchant &&
+              (_paymentSourceId == null ||
+                  transaction.paymentSourceId == _paymentSourceId);
+        })
+        .toList(growable: false);
+    return matches.length == 1 ? matches.single : null;
+  }
+
+  Future<bool?> _confirmExistingMatch(TransactionDto transaction) {
+    final source = _sources
+        .where((value) => value.id.value == transaction.paymentSourceId)
+        .firstOrNull;
+    final sourceLabel = source == null ? null : _paymentSourceLabel(source);
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(dialogContext.l10n.text('existingTransactionFound')),
+        content: Text(
+          [
+            transaction.rawCounterparty ?? transaction.description ?? '',
+            '${transaction.currency} ${transaction.amount} · ${transaction.transactionDate}',
+            ?sourceLabel,
+          ].join('\n'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(dialogContext.l10n.text('notThisTransaction')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(dialogContext.l10n.text('attachReceipt')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _attachReceiptToExisting(TransactionDto transaction) async {
+    final preserved = _preserved;
+    final ocr = _ocrResult;
+    if (preserved == null) return;
+    setState(() => _saving = true);
+    final evidence = await evidenceStore.attachPreservedAndReturn(
+      transactionId: transaction.id,
+      source: preserved,
+    );
+    if (evidence == null) {
+      if (mounted) setState(() => _saving = false);
+      return;
+    }
+    if (ocr != null) {
+      await finance.saveExtraction(
+        Extraction(
+          id: ExtractionId('extraction-${evidence.id.value}'),
+          evidenceId: evidence.id,
+          values: {
+            ...ocr.toExtractionValues(),
+            'confirmedAmount': _amount.text.trim(),
+            'confirmedCurrency': _currency.text.trim(),
+            'confirmedDate': _iso(_date),
+          },
+          provenance: Provenance(
+            id: ProvenanceId('extraction-provenance-${evidence.id.value}'),
+            sourceType: ProvenanceSourceType.evidenceExtraction,
+            capturedAt: DateTime.now().toUtc(),
+            originalRepresentation: ocr.rawText,
+          ),
+          createdAt: DateTime.now().toUtc(),
+        ),
+      );
+    }
+    _committed = true;
+    notifyTransactionChanged();
+    if (mounted) Navigator.pop(context, true);
   }
 
   String? _match(String? raw) {

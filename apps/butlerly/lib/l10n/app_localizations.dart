@@ -206,6 +206,8 @@ class AppLocalizations {
       'multiplePaymentSourcesMatch': 'Multiple payment sources match',
       'selectPaymentSource':
           'Select the payment source ending in these last four digits.',
+      'existingTransactionFound': 'Existing transaction found',
+      'notThisTransaction': 'Not this transaction',
       'duplicatePaymentSource': 'Payment source already exists',
       'duplicatePaymentSourceBody':
           'An active source with the same card type, issuer, and last four digits already exists.',
@@ -511,6 +513,8 @@ class AppLocalizations {
       'cardScanFailed': '卡片扫描失败。你可以手动输入信息。',
       'multiplePaymentSourcesMatch': '多个付款来源匹配',
       'selectPaymentSource': '请选择末四位匹配的付款来源。',
+      'existingTransactionFound': '找到现有交易',
+      'notThisTransaction': '不是这笔交易',
       'duplicatePaymentSource': '付款来源已存在',
       'duplicatePaymentSourceBody': '已存在相同卡片类型、发卡方和末四位的有效付款来源。',
       'useExisting': '使用现有来源',
@@ -815,6 +819,8 @@ class AppLocalizations {
       'multiplePaymentSourcesMatch': 'Coinciden varias fuentes de pago',
       'selectPaymentSource':
           'Selecciona la fuente de pago que termina en estos cuatro dígitos.',
+      'existingTransactionFound': 'Se encontró una transacción existente',
+      'notThisTransaction': 'No es esta transacción',
       'duplicatePaymentSource': 'La fuente de pago ya existe',
       'duplicatePaymentSourceBody':
           'Ya existe una fuente activa con el mismo tipo de tarjeta, emisor y últimos cuatro dígitos.',
