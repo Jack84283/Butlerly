@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+enum ButlerlyColorTheme { butlerRed, skyBlue, green }
+
 @immutable
 class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
   const ButlerlySemanticColors({
@@ -83,6 +85,50 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
     info: Color(0xFF3278A8),
     selection: Color(0xFFF5E1E4),
   );
+
+  static ButlerlySemanticColors palette(
+    Brightness brightness,
+    ButlerlyColorTheme theme,
+  ) {
+    final base = brightness == Brightness.dark ? dark : light;
+    return switch (theme) {
+      ButlerlyColorTheme.butlerRed => base,
+      ButlerlyColorTheme.skyBlue => base.copyWith(
+        brand: brightness == Brightness.dark
+            ? const Color(0xFF4D9DE0)
+            : const Color(0xFF2878B5),
+        brandStrong: brightness == Brightness.dark
+            ? const Color(0xFF2D6FA3)
+            : const Color(0xFF1D5C8C),
+        interactive: brightness == Brightness.dark
+            ? const Color(0xFF69B4F0)
+            : const Color(0xFF2878B5),
+        interactiveStrong: brightness == Brightness.dark
+            ? const Color(0xFF4D9DE0)
+            : const Color(0xFF1D5C8C),
+        selection: brightness == Brightness.dark
+            ? const Color(0xFF142B3D)
+            : const Color(0xFFE0F0FA),
+      ),
+      ButlerlyColorTheme.green => base.copyWith(
+        brand: brightness == Brightness.dark
+            ? const Color(0xFF4CAF7A)
+            : const Color(0xFF287A52),
+        brandStrong: brightness == Brightness.dark
+            ? const Color(0xFF2F815A)
+            : const Color(0xFF1D5F3E),
+        interactive: brightness == Brightness.dark
+            ? const Color(0xFF65C58D)
+            : const Color(0xFF287A52),
+        interactiveStrong: brightness == Brightness.dark
+            ? const Color(0xFF4CAF7A)
+            : const Color(0xFF1D5F3E),
+        selection: brightness == Brightness.dark
+            ? const Color(0xFF153326)
+            : const Color(0xFFE1F2E8),
+      ),
+    };
+  }
 
   @override
   ButlerlySemanticColors copyWith({

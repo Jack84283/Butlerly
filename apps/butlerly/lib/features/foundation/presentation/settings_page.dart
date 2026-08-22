@@ -80,7 +80,35 @@ class SettingsPage extends ConsumerWidget {
               ],
               onChanged: (value) {
                 if (value != null) {
-                  ref.read(themeModeProvider.notifier).state = value;
+                  ref
+                      .read(userPreferenceProvider.notifier)
+                      .saveChanges(appearance: value.name);
+                }
+              },
+            ),
+            _SettingsDropdownRow<String>(
+              value: preference?.colorTheme ?? 'butlerRed',
+              label: context.l10n.text('colorTheme'),
+              icon: Icons.color_lens_outlined,
+              items: [
+                DropdownMenuItem(
+                  value: 'butlerRed',
+                  child: Text(context.l10n.text('butlerRed')),
+                ),
+                DropdownMenuItem(
+                  value: 'skyBlue',
+                  child: Text(context.l10n.text('skyBlue')),
+                ),
+                DropdownMenuItem(
+                  value: 'green',
+                  child: Text(context.l10n.text('green')),
+                ),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  ref
+                      .read(userPreferenceProvider.notifier)
+                      .saveChanges(colorTheme: value);
                 }
               },
             ),

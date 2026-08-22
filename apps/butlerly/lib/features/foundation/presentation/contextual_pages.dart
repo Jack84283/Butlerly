@@ -556,11 +556,11 @@ class _StatementPreviewDialogState extends State<_StatementPreviewDialog> {
                 title: Text(row.description),
                 subtitle: Text('${row.date} · ${row.currency} ${row.amount}'),
                 trailing: row.isValid
-                    ? const Icon(
+                    ? Icon(
                         Icons.check_circle_outline,
-                        color: Colors.green,
+                        color: context.colors.success,
                       )
-                    : const Icon(Icons.error_outline, color: Colors.orange),
+                    : Icon(Icons.error_outline, color: context.colors.warning),
               ),
           ],
         ),

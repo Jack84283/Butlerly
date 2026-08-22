@@ -525,10 +525,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   for (final value in data.merchants.where(
                     (v) => v.status == MerchantStatus.active,
                   ))
-                    DropdownMenuEntry(
-                      value: value.id.value,
-                      label: value.name,
-                    ),
+                    DropdownMenuEntry(value: value.id.value, label: value.name),
                 ],
                 onChanged: (value) => setState(() => _merchantId = value),
                 onCreate: () => _createMerchant(data),
@@ -541,10 +538,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   for (final value in activeCategories.where(
                     (v) => v.parentId == null,
                   ))
-                    DropdownMenuEntry(
-                      value: value.id.value,
-                      label: value.name,
-                    ),
+                    DropdownMenuEntry(value: value.id.value, label: value.name),
                 ],
                 onChanged: (value) => setState(() => _categoryId = value),
               ),
@@ -556,10 +550,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   for (final value in activeCategories.where(
                     (v) => v.parentId?.value == selectedParentId,
                   ))
-                    DropdownMenuEntry(
-                      value: value.id.value,
-                      label: value.name,
-                    ),
+                    DropdownMenuEntry(value: value.id.value, label: value.name),
                 ],
                 onChanged: (value) =>
                     setState(() => _categoryId = value ?? selectedParentId),
@@ -703,9 +694,7 @@ class _LookupDropdown<T> extends StatelessWidget {
       dropdownMenuEntries: entries,
       inputDecorationTheme: Theme.of(context).inputDecorationTheme,
       menuStyle: MenuStyle(
-        minimumSize: WidgetStatePropertyAll(
-          Size(constraints.maxWidth, 0),
-        ),
+        minimumSize: WidgetStatePropertyAll(Size(constraints.maxWidth, 0)),
         maximumSize: WidgetStatePropertyAll(
           Size(constraints.maxWidth, double.infinity),
         ),

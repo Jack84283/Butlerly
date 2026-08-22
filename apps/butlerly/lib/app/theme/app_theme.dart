@@ -3,13 +3,19 @@ import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter/material.dart';
 
 abstract final class AppTheme {
-  static ThemeData get light => _build(
+  static ThemeData get light => lightFor(ButlerlyColorTheme.butlerRed);
+
+  static ThemeData lightFor(ButlerlyColorTheme theme) => _build(
     brightness: Brightness.light,
-    colors: ButlerlySemanticColors.light,
+    colors: ButlerlySemanticColors.palette(Brightness.light, theme),
   );
 
-  static ThemeData get dark =>
-      _build(brightness: Brightness.dark, colors: ButlerlySemanticColors.dark);
+  static ThemeData get dark => darkFor(ButlerlyColorTheme.butlerRed);
+
+  static ThemeData darkFor(ButlerlyColorTheme theme) => _build(
+    brightness: Brightness.dark,
+    colors: ButlerlySemanticColors.palette(Brightness.dark, theme),
+  );
 
   static ThemeData _build({
     required Brightness brightness,

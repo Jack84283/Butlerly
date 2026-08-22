@@ -42,6 +42,8 @@ final class UserPreferenceController extends AsyncNotifier<UserPreference> {
           timeZoneId: canonical,
           externalAiEnabled: value.externalAiEnabled,
           firstUseCompleted: value.firstUseCompleted,
+          appearance: value.appearance,
+          colorTheme: value.colorTheme,
         );
         await financeServices.saveUserPreference(migrated);
         return migrated;
@@ -63,6 +65,8 @@ final class UserPreferenceController extends AsyncNotifier<UserPreference> {
     String? timeZoneId,
     bool? externalAiEnabled,
     bool? firstUseCompleted,
+    String? appearance,
+    String? colorTheme,
   }) async {
     final current = state.value ?? _defaults(timeZoneId: 'UTC');
     final next = UserPreference(
@@ -71,6 +75,8 @@ final class UserPreferenceController extends AsyncNotifier<UserPreference> {
       timeZoneId: timeZoneId ?? current.timeZoneId,
       externalAiEnabled: externalAiEnabled ?? current.externalAiEnabled,
       firstUseCompleted: firstUseCompleted ?? current.firstUseCompleted,
+      appearance: appearance ?? current.appearance,
+      colorTheme: colorTheme ?? current.colorTheme,
     );
     state = AsyncData(next);
     final financeServices = _services;

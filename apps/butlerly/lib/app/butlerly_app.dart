@@ -2,6 +2,7 @@ import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/app/router/app_router.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/app/theme/theme_mode_provider.dart';
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/features/foundation/presentation/first_use_preferences_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -16,14 +17,18 @@ class ButlerlyApp extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
     final locale = ref.watch(localeProvider);
     final preference = ref.watch(userPreferenceProvider);
+    final colorTheme = ButlerlyColorTheme.values.firstWhere(
+      (value) => value.name == (preference.value?.colorTheme ?? 'butlerRed'),
+      orElse: () => ButlerlyColorTheme.butlerRed,
+    );
 
     final firstUse = preference.value?.firstUseCompleted == false;
 
     return MaterialApp.router(
       title: 'Butlerly',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
+      theme: AppTheme.lightFor(colorTheme),
+      darkTheme: AppTheme.darkFor(colorTheme),
       themeMode: themeMode,
       locale: locale,
       routerConfig: appRouter,
