@@ -643,11 +643,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   }
 
   void _showMasterDataError() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Could not save tag. Your transaction is unchanged.'),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(context.l10n.text('tagSaveFailed'))));
   }
 }
 
@@ -689,7 +687,7 @@ class _LookupDropdown<T> extends StatelessWidget {
           : IconButton(
               onPressed: onCreate,
               icon: const Icon(Icons.add_circle_outline),
-              tooltip: 'Create',
+              tooltip: context.l10n.text('addTag'),
             ),
       dropdownMenuEntries: entries,
       inputDecorationTheme: Theme.of(context).inputDecorationTheme,
@@ -722,9 +720,12 @@ class _TagSelector extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text('Tags', style: Theme.of(context).textTheme.bodySmall),
+      Text(
+        context.l10n.text('tags'),
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
       Wrap(
-        spacing: 6,
+        spacing: ButlerlySpacing.compact,
         children: [
           for (final tag in tags)
             FilterChip(
@@ -737,8 +738,8 @@ class _TagSelector extends StatelessWidget {
               },
             ),
           ActionChip(
-            label: const Text('Create tag'),
-            avatar: const Icon(Icons.add, size: 18),
+            label: Text(context.l10n.text('addTag')),
+            avatar: const Icon(Icons.add),
             onPressed: onCreate,
           ),
         ],
@@ -757,11 +758,11 @@ Future<String?> _prompt(BuildContext context, String title) async {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.text('cancel')),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, controller.text),
-          child: const Text('Save'),
+          child: Text(context.l10n.text('save')),
         ),
       ],
     ),

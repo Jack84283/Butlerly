@@ -6,6 +6,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/evidence/local_ocr_service.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -566,27 +567,27 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       appBar: AppBar(title: Text(context.l10n.text('captureReceipt'))),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(ButlerlySpacing.standard),
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           children: [
             if (_source == null) ...[
               Text(
                 context.l10n.text('addReceipt'),
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+                style: Theme.of(context).textTheme.headlineMedium,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: ButlerlySpacing.small),
               FilledButton.icon(
                 onPressed: _camera,
                 icon: const Icon(Icons.camera_alt_outlined),
                 label: Text(context.l10n.text('takePhoto')),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: ButlerlySpacing.compact),
               OutlinedButton.icon(
                 onPressed: _photo,
                 icon: const Icon(Icons.photo_library_outlined),
                 label: Text(context.l10n.text('choosePhotos')),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: ButlerlySpacing.compact),
               OutlinedButton.icon(
                 onPressed: _file,
                 icon: const Icon(Icons.folder_open_outlined),
@@ -594,13 +595,13 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
               ),
             ] else ...[
               SizedBox(
-                height: 220,
+                height: ButlerlySize.sourcePreviewHeight * 3,
                 child: Image.file(File(_source!.path), fit: BoxFit.contain),
               ),
               if (_processing) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: ButlerlySpacing.small),
                 const LinearProgressIndicator(),
-                const SizedBox(height: 8),
+                const SizedBox(height: ButlerlySpacing.compact),
                 Text(context.l10n.text('readingReceipt')),
               ],
               if (!_processing) ...[
@@ -628,7 +629,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                           labelText: context.l10n.text('merchant'),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: ButlerlySpacing.standard),
                       DropdownButtonFormField<String>(
                         initialValue: _merchantId,
                         decoration: InputDecoration(
@@ -646,7 +647,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                         onChanged: (value) =>
                             setState(() => _merchantId = value),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: ButlerlySpacing.standard),
                       TextFormField(
                         controller: _amount,
                         keyboardType: const TextInputType.numberWithOptions(
@@ -664,7 +665,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                           }
                         },
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: ButlerlySpacing.standard),
                       TextFormField(
                         controller: _currency,
                         textCapitalization: TextCapitalization.characters,
@@ -680,7 +681,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                           }
                         },
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: ButlerlySpacing.standard),
                       ListTile(
                         contentPadding: EdgeInsets.zero,
                         title: Text(context.l10n.text('purchaseDate')),
@@ -688,7 +689,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                         trailing: const Icon(Icons.calendar_today_outlined),
                         onTap: _pickDate,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: ButlerlySpacing.standard),
                       DropdownButtonFormField<String>(
                         initialValue: selectedParentId,
                         decoration: InputDecoration(
@@ -707,7 +708,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                           _categoryId = value;
                         }),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: ButlerlySpacing.standard),
                       DropdownButtonFormField<String>(
                         initialValue: selectedCategory?.parentId == null
                             ? null
@@ -729,7 +730,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                           _categoryId = value ?? selectedParentId;
                         }),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: ButlerlySpacing.standard),
                       DropdownButtonFormField<String>(
                         initialValue: _paymentSourceId,
                         decoration: InputDecoration(
@@ -756,8 +757,8 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                       Align(
                         alignment: Alignment.centerLeft,
                         child: Wrap(
-                          spacing: 6,
-                          runSpacing: 4,
+                          spacing: ButlerlySpacing.compact,
+                          runSpacing: ButlerlySpacing.micro,
                           children: [
                             for (final tag in _tags.where(
                               (value) => value.status == TagStatus.active,
@@ -776,7 +777,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: ButlerlySpacing.standard),
                       TextFormField(
                         controller: _notes,
                         maxLines: 2,
@@ -792,16 +793,20 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                           ),
                           children: [
                             Padding(
-                              padding: const EdgeInsets.all(12),
+                              padding: const EdgeInsets.all(
+                                ButlerlySpacing.small,
+                              ),
                               child: SelectableText(_ocrResult!.rawText),
                             ),
                           ],
                         ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: ButlerlySpacing.section),
                       FilledButton(
                         onPressed: _saving ? null : _save,
                         child: Text(
-                          _saving ? 'Saving…' : 'Save receipt transaction',
+                          _saving
+                              ? context.l10n.text('saving')
+                              : context.l10n.text('saveReceiptTransaction'),
                         ),
                       ),
                     ],

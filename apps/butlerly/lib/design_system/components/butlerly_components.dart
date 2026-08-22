@@ -1,5 +1,6 @@
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 class ButlerlyPage extends StatelessWidget {
@@ -223,7 +224,9 @@ class ButlerlyRecordRow extends StatelessWidget {
     button: onTap != null,
     label: '$title, $amount $currency${needsReview ? ', needs review' : ''}',
     child: ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 72),
+      constraints: const BoxConstraints(
+        minHeight: ButlerlySize.recordRowMinHeight,
+      ),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
@@ -338,7 +341,9 @@ class ButlerlyEmptyState extends StatelessWidget {
     label: '$title. $message',
     child: Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
+        constraints: const BoxConstraints(
+          maxWidth: ButlerlySize.stateContentWidth,
+        ),
         child: Padding(
           padding: const EdgeInsets.all(ButlerlySpacing.large),
           child: Column(
@@ -400,6 +405,33 @@ class ButlerlyErrorState extends StatelessWidget {
   );
 }
 
+class ButlerlyLoadingState extends StatelessWidget {
+  const ButlerlyLoadingState({this.message, super.key});
+
+  final String? message;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    liveRegion: true,
+    label: message,
+    child: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(ButlerlySpacing.large),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            if (message != null) ...[
+              const SizedBox(height: ButlerlySpacing.standard),
+              Text(message!, textAlign: TextAlign.center),
+            ],
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 class ButlerlyReviewCard extends StatelessWidget {
   const ButlerlyReviewCard({
     required this.title,
@@ -452,12 +484,12 @@ class ButlerlyReviewCard extends StatelessWidget {
             if (onEdit != null)
               OutlinedButton(
                 onPressed: onEdit,
-                child: Text(editLabel ?? 'Edit'),
+                child: Text(editLabel ?? context.l10n.text('edit')),
               ),
             if (onDismiss != null)
               TextButton(
                 onPressed: onDismiss,
-                child: Text(dismissLabel ?? 'Dismiss'),
+                child: Text(dismissLabel ?? context.l10n.text('dismiss')),
               ),
           ],
         ),
@@ -485,8 +517,8 @@ class ButlerlySourcePreview extends StatelessWidget {
     child: Row(
       children: [
         Container(
-          width: 64,
-          height: 80,
+          width: ButlerlySize.sourcePreviewWidth,
+          height: ButlerlySize.sourcePreviewHeight,
           decoration: BoxDecoration(
             color: context.colors.subtleSurface,
             borderRadius: BorderRadius.circular(ButlerlyRadius.small),
