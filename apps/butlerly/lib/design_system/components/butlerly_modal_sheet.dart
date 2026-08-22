@@ -69,9 +69,9 @@ Future<T?> showButlerlyBottomSheet<T>({
       width: double.infinity,
       child: Theme(
         data: Theme.of(sheetContext).copyWith(
-          dialogTheme: Theme.of(sheetContext).dialogTheme.copyWith(
-            insetPadding: EdgeInsets.zero,
-          ),
+          dialogTheme: Theme.of(
+            sheetContext,
+          ).dialogTheme.copyWith(insetPadding: EdgeInsets.zero),
         ),
         child: builder(sheetContext),
       ),

@@ -85,7 +85,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
     var type = existing?.type ?? scanned?.type ?? PaymentSourceType.account;
     final saved = await showButlerlyBottomSheet<bool>(
       context: context,
-        builder: (context) => StatefulBuilder(
+      builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => ButlerlySheet(
           title: Text(
             context.l10n.text(
@@ -190,7 +190,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                 if (duplicates.isNotEmpty && context.mounted) {
                   final reuse = await showButlerlyBottomSheet<bool>(
                     context: context,
-        builder: (dialogContext) => ButlerlySheet(
+                    builder: (dialogContext) => ButlerlySheet(
                       title: Text(
                         dialogContext.l10n.text('duplicatePaymentSource'),
                       ),

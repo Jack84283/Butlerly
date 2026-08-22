@@ -1441,7 +1441,7 @@ Future<bool?> _organizeTransaction(
   final selectedTagIds = transaction.tagIds.toSet();
   return showButlerlyBottomSheet<bool>(
     context: context,
-      builder: (dialogContext) => StatefulBuilder(
+    builder: (dialogContext) => StatefulBuilder(
       builder: (dialogContext, setDialogState) => ButlerlySheet(
         title: Text(dialogContext.l10n.text('organizeTransaction')),
         content: SingleChildScrollView(
