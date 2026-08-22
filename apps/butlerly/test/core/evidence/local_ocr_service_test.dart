@@ -392,6 +392,43 @@ TOTAL \$24.50
     );
   });
 
+  test('redacts PANs from every persisted OCR text representation', () {
+    const cases = [
+      'VISA 4111 1111 1111 1234',
+      'VISA 4111111111111234',
+      'VISA 4111-1111-1111-1234',
+      'VISA\n4111 1111 1111 1234',
+    ];
+    for (final text in cases) {
+      final result = ReceiptExtractor.extract(text);
+      final persisted = <String>[
+        result.rawText,
+        ...result.toExtractionValues().values,
+        ...result.observations.map((value) => value.text),
+      ];
+      expect(
+        persisted.every((value) => !value.contains('4111 1111 1111 1234')),
+        isTrue,
+        reason: text,
+      );
+      expect(
+        persisted.every((value) => !value.contains('4111111111111234')),
+        isTrue,
+        reason: text,
+      );
+      expect(
+        persisted.every((value) => !value.contains('4111-1111-1111-1234')),
+        isTrue,
+        reason: text,
+      );
+      expect(result.cardLast4, '1234');
+    }
+
+    final masked = ReceiptExtractor.extract('VISA **** **** **** 1234');
+    expect(masked.rawText, contains('**** **** **** 1234'));
+    expect(masked.cardLast4, '1234');
+  });
+
   test('does not let an adjacent tax row win over the total row', () {
     const observations = [
       OcrObservation(
