@@ -23,6 +23,8 @@ final class ReceiptOcrResult {
   ReceiptOcrResult({
     required String rawText,
     List<OcrObservation> observations = const [],
+    this.ocrConfidence = const {},
+    this.extractionConfidence = const {},
     this.fieldConfidence = const {},
     this.fieldEvidence = const {},
     this.merchant,
@@ -51,6 +53,9 @@ final class ReceiptOcrResult {
 
   final String rawText;
   final List<OcrObservation> observations;
+  final Map<String, double> ocrConfidence;
+  final Map<String, double> extractionConfidence;
+  @Deprecated('Use extractionConfidence instead')
   final Map<String, double> fieldConfidence;
   final Map<String, String> fieldEvidence;
   final String? merchant;
@@ -71,6 +76,13 @@ final class ReceiptOcrResult {
     }
     for (final entry in fieldConfidence.entries) {
       values['${entry.key}Confidence'] = entry.value.toStringAsFixed(3);
+    }
+    for (final entry in ocrConfidence.entries) {
+      values['${entry.key}OcrConfidence'] = entry.value.toStringAsFixed(3);
+    }
+    for (final entry in extractionConfidence.entries) {
+      values['${entry.key}ExtractionConfidence'] = entry.value
+          .toStringAsFixed(3);
     }
     for (final entry in fieldEvidence.entries) {
       values['${entry.key}Evidence'] = redactPanLikeText(entry.value);
@@ -237,6 +249,8 @@ abstract final class ReceiptExtractor {
     return ReceiptOcrResult(
       rawText: text,
       observations: observations,
+      ocrConfidence: values.ocrConfidence,
+      extractionConfidence: values.extractionConfidence,
       fieldConfidence: values.confidence,
       fieldEvidence: values.evidence,
       merchant: values.merchant,
@@ -265,6 +279,8 @@ abstract final class ReceiptExtractor {
     final payment = _paymentRegion(ordered);
     final cardLast4 = payment.lastFour;
     final confidence = <String, double>{};
+    final ocrConfidence = <String, double>{};
+    final extractionConfidence = <String, double>{};
     final evidence = <String, String>{};
     void record(String key, String? value, [double fallback = 0.35]) {
       if (value == null) return;
@@ -282,6 +298,22 @@ abstract final class ReceiptExtractor {
             : ordered.first,
       );
       confidence[key] = source.confidence > 0 ? source.confidence : fallback;
+      ocrConfidence[key] = confidence[key]!;
+      final structural = switch (key) {
+        'amount' => ordered.any(
+              (line) => RegExp(r'\btotal\b', caseSensitive: false).hasMatch(
+                line.text,
+              ),
+            )
+            ? .95
+            : .65,
+        'merchant' => .75,
+        'date' => .8,
+        'cardLast4' || 'cardNetwork' || 'cardType' || 'cardExpiry' => .85,
+        _ => .8,
+      };
+      extractionConfidence[key] =
+          (ocrConfidence[key]! + structural) / 2;
       evidence[key] = key.startsWith('card')
           ? _redactCardEvidence(source.text)
           : source.text;
@@ -309,6 +341,8 @@ abstract final class ReceiptExtractor {
       cardType: payment.type,
       cardExpiry: payment.expiry,
       confidence: confidence,
+      ocrConfidence: ocrConfidence,
+      extractionConfidence: extractionConfidence,
       evidence: evidence,
       lines: lines,
     );
@@ -690,6 +724,8 @@ final class _ReceiptFields {
     this.cardType,
     this.cardExpiry,
     required this.confidence,
+    required this.ocrConfidence,
+    required this.extractionConfidence,
     required this.evidence,
     required this.lines,
   });
@@ -704,6 +740,8 @@ final class _ReceiptFields {
       cardExpiry;
   final DateTime? date;
   final Map<String, double> confidence;
+  final Map<String, double> ocrConfidence;
+  final Map<String, double> extractionConfidence;
   final Map<String, String> evidence;
   final List<String> lines;
 }

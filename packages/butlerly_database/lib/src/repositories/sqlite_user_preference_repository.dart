@@ -24,6 +24,8 @@ final class SqliteUserPreferenceRepository implements UserPreferenceRepository {
         timeZoneId: row['time_zone_id']! as String,
         externalAiEnabled: row['external_ai_enabled'] == 1,
         firstUseCompleted: row['first_use_completed'] == 1,
+        appearance: row['appearance'] as String? ?? 'system',
+        colorTheme: row['color_theme'] as String? ?? 'butlerRed',
       );
     } on Exception catch (error) {
       if (error is RepositoryException) rethrow;
@@ -44,6 +46,8 @@ final class SqliteUserPreferenceRepository implements UserPreferenceRepository {
         'time_zone_id': preference.timeZoneId,
         'external_ai_enabled': preference.externalAiEnabled ? 1 : 0,
         'first_use_completed': preference.firstUseCompleted ? 1 : 0,
+        'appearance': preference.appearance,
+        'color_theme': preference.colorTheme,
       }, conflictAlgorithm: ConflictAlgorithm.replace);
     } on Exception catch (error) {
       if (error is RepositoryException) rethrow;

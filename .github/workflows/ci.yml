@@ -70,3 +70,17 @@ jobs:
       - run: flutter analyze
       - run: flutter test
       - run: flutter build web
+
+  ios_simulator:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: apps/butlerly
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build ios --simulator --no-codesign
