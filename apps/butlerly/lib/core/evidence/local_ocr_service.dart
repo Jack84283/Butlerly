@@ -32,6 +32,9 @@ final class ReceiptOcrResult {
     this.tax,
     this.tip,
     this.cardLast4,
+    this.cardNetwork,
+    this.cardType,
+    this.cardExpiry,
   });
 
   final String rawText;
@@ -45,6 +48,9 @@ final class ReceiptOcrResult {
   final String? tax;
   final String? tip;
   final String? cardLast4;
+  final String? cardNetwork;
+  final String? cardType;
+  final String? cardExpiry;
 
   Map<String, String> toExtractionValues() {
     final values = <String, String>{'rawText': rawText};
@@ -64,6 +70,9 @@ final class ReceiptOcrResult {
     if (tax case final value?) values['tax'] = value;
     if (tip case final value?) values['tip'] = value;
     if (cardLast4 case final value?) values['cardLast4'] = value;
+    if (cardNetwork case final value?) values['cardNetwork'] = value;
+    if (cardType case final value?) values['cardType'] = value;
+    if (cardExpiry case final value?) values['cardExpiry'] = value;
     return values;
   }
 
@@ -167,12 +176,14 @@ abstract final class ReceiptExtractor {
         (observations.isEmpty
                 ? text
                       .split(RegExp(r'\r?\n'))
+                      .asMap()
+                      .entries
                       .map(
-                        (line) => OcrObservation(
-                          text: line,
+                        (entry) => OcrObservation(
+                          text: entry.value,
                           confidence: 0.5,
                           left: 0,
-                          top: 0,
+                          top: entry.key.toDouble(),
                           width: 1,
                           height: 0,
                         ),
@@ -193,6 +204,9 @@ abstract final class ReceiptExtractor {
       tax: values.tax,
       tip: values.tip,
       cardLast4: values.cardLast4,
+      cardNetwork: values.cardNetwork,
+      cardType: values.cardType,
+      cardExpiry: values.cardExpiry,
     );
   }
 
@@ -201,14 +215,13 @@ abstract final class ReceiptExtractor {
     final text = ordered.map((line) => line.text).join('\n');
     final lines = ordered.map((line) => line.text.trim()).toList();
     final merchant = _merchant(ordered);
-    final amount =
-        _keyword(ordered, const ['grand total', 'amount due', 'total']) ??
-        _largest(ordered);
+    final amount = _rankedAmount(ordered);
     final tax = _keyword(ordered, const ['sales tax', 'tax']);
     final tip = _keyword(ordered, const ['tip', 'gratuity']);
-    final date = _date(text);
+    final date = _date(_normalize(text));
     final currency = _currency(text);
-    final cardLast4 = _last4(text);
+    final payment = _paymentRegion(ordered);
+    final cardLast4 = payment.lastFour;
     final confidence = <String, double>{};
     final evidence = <String, String>{};
     void record(String key, String? value, [double fallback = 0.35]) {
@@ -237,6 +250,9 @@ abstract final class ReceiptExtractor {
     record('currency', currency, 0.7);
     record('date', date == null ? null : _iso(date));
     record('cardLast4', cardLast4, 0.8);
+    record('cardNetwork', payment.network, 0.8);
+    record('cardType', payment.type, 0.7);
+    record('cardExpiry', payment.expiry, 0.7);
     return _ReceiptFields(
       merchant: merchant,
       amount: amount,
@@ -245,6 +261,9 @@ abstract final class ReceiptExtractor {
       tax: tax,
       tip: tip,
       cardLast4: cardLast4,
+      cardNetwork: payment.network,
+      cardType: payment.type,
+      cardExpiry: payment.expiry,
       confidence: confidence,
       evidence: evidence,
       lines: lines,
@@ -252,38 +271,130 @@ abstract final class ReceiptExtractor {
   }
 
   static String? _merchant(List<OcrObservation> observations) {
+    String? best;
+    var bestScore = 0.0;
     for (final line in observations.take(6)) {
       final value = line.text.trim();
       if (value.length < 2 || value.length > 60) continue;
-      if (RegExp(r'^\d[\d\s./:-]*$').hasMatch(value)) continue;
-      if (_money(value).isNotEmpty) continue;
+      final normalized = _normalize(value);
+      if (RegExp(r'^\d[\d\s./:-]*$').hasMatch(normalized)) continue;
+      if (_money(normalized).isNotEmpty) continue;
       if (RegExp(
-        r'receipt|invoice|thank you|date|tel',
+        r'\bwelcome\b|thank you|\breceipt\b|\binvoice\b|customer copy|merchant copy|\bsale\b|\bpurchase\b|\border\b|\btransaction\b|\bstore\b|\bregister\b|\bcashier\b|\bdate\b|\btel\b',
         caseSensitive: false,
       ).hasMatch(value)) {
         continue;
       }
-      return value;
+      if (RegExp(
+        r'(@|https?://|\b\d{3}[-.) ]\d{3}[-. ]\d{4}\b)',
+      ).hasMatch(value)) {
+        continue;
+      }
+      final alpha = RegExp(r'[A-Za-z]').allMatches(value).length;
+      final score =
+          line.confidence * .55 +
+          (line.top < .28 ? .30 : .05) +
+          (alpha >= 3 ? .15 : 0);
+      if (score > bestScore) {
+        best = value;
+        bestScore = score;
+      }
     }
-    return observations.isEmpty ? null : observations.first.text.trim();
+    return bestScore >= .45 ? best : null;
+  }
+
+  static String? _rankedAmount(List<OcrObservation> lines) {
+    const positive = [
+      'grand total',
+      'total due',
+      'amount due',
+      'amount paid',
+      'purchase total',
+      'total',
+      'amount',
+      'sale',
+    ];
+    const negative = [
+      'subtotal',
+      'tax',
+      'tip',
+      'gratuity',
+      'change',
+      'cash',
+      'tendered',
+      'savings',
+      'balance before',
+      'reward',
+      'points',
+    ];
+    final candidates = <({String value, double score})>[];
+    for (var index = 0; index < lines.length; index++) {
+      final line = lines[index];
+      final normalized = _normalize(line.text);
+      final joined =
+          (index + 1 < lines.length &&
+                      (lines[index + 1].top - line.top).abs() < .08
+                  ? '$normalized ${_normalize(lines[index + 1].text)}'
+                  : normalized)
+              .toLowerCase();
+      final values = _money(joined);
+      for (final value in values) {
+        final identifierContext = RegExp(
+          r'invoice(?:\s*(?:no|number|#))?|order(?:\s*(?:no|number|#))?|receipt\s*(?:no|number|#)?|transaction\s*(?:id|no|number)?|auth(?:orization)?|reference|\bref\b|terminal|register|store\s*(?:no|number|#)|member\s*id|loyalty\s*id',
+          caseSensitive: false,
+        ).hasMatch(joined);
+        if (identifierContext) continue;
+        var score = line.confidence * .25;
+        final hasFinancialLabel = positive.any(joined.contains);
+        final hasCurrencyMarker = RegExp(
+          r'(?:\$|€|£|¥|\bUSD\b|\bEUR\b|\bGBP\b|\bCNY\b)',
+          caseSensitive: false,
+        ).hasMatch(joined);
+        final hasCents = RegExp(r'\d+[.,]\d{2}\b').hasMatch(value);
+        // A number without a label, currency marker, or cents formatting is
+        // almost always an identifier, not a financial amount.
+        if (!hasFinancialLabel && !hasCurrencyMarker && !hasCents) continue;
+        if (hasFinancialLabel) score += .65;
+        if (hasCurrencyMarker) score += .20;
+        if (hasCents) score += .05;
+        if (negative.any(joined.contains)) score -= .55;
+        if (line.top > .60) score += .10;
+        candidates.add((value: value, score: score));
+      }
+    }
+    if (candidates.isEmpty) return null;
+    candidates.sort((a, b) => b.score.compareTo(a.score));
+    return candidates.first.score >= .45 ? candidates.first.value : null;
   }
 
   static String? _keyword(List<OcrObservation> lines, List<String> words) {
-    for (final line in lines.reversed) {
-      if (!words.any(line.text.toLowerCase().contains)) continue;
-      final values = _money(line.text);
+    for (var index = lines.length - 1; index >= 0; index--) {
+      final current = _normalize(lines[index].text);
+      final next =
+          index + 1 < lines.length &&
+              (lines[index + 1].top - lines[index].top).abs() < .08
+          ? _normalize(lines[index + 1].text)
+          : '';
+      final joined = '$current $next';
+      if (!words.any(joined.toLowerCase().contains)) continue;
+      final values = _money(joined);
       if (values.isNotEmpty) return values.last;
     }
     return null;
   }
 
-  static String? _largest(List<OcrObservation> lines) {
-    final values = lines.expand((line) => _money(line.text)).toList();
-    if (values.isEmpty) return null;
-    values.sort(
-      (a, b) => (double.tryParse(b) ?? 0).compareTo(double.tryParse(a) ?? 0),
+  static String _normalize(String value) {
+    var normalized = value.toUpperCase().replaceAll(RegExp(r'[|]'), 'I');
+    normalized = normalized.replaceAllMapped(
+      RegExp(r'\b(T[0O]T[A4][L1]|AM[0O]UNT|V[1I]SA)\b'),
+      (match) => switch (match.group(1)) {
+        'T0TAL' || 'T0TA1' => 'TOTAL',
+        'AM0UNT' => 'AMOUNT',
+        'V1SA' => 'VISA',
+        _ => match.group(0)!,
+      },
     );
-    return values.first;
+    return normalized.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
   static List<String> _money(String value) {
@@ -322,14 +433,53 @@ abstract final class ReceiptExtractor {
   }
 
   static DateTime? _date(String text) {
+    final monthNames = <String, int>{
+      'JAN': 1,
+      'FEB': 2,
+      'MAR': 3,
+      'APR': 4,
+      'MAY': 5,
+      'JUN': 6,
+      'JUL': 7,
+      'AUG': 8,
+      'SEP': 9,
+      'OCT': 10,
+      'NOV': 11,
+      'DEC': 12,
+    };
+    final named =
+        RegExp(r'\b([A-Za-z]{3,9})\s+(\d{1,2})(?:,?\s+)(20\d{2}|\d{2})\b')
+            .allMatches(text)
+            .where((match) => !_dateIsExcluded(text, match.start))
+            .firstOrNull;
+    if (named != null) {
+      final month = monthNames[named.group(1)!.substring(0, 3).toUpperCase()];
+      final year = int.parse(named.group(3)!);
+      final value = DateTime(
+        year < 100 ? 2000 + year : year,
+        month ?? 0,
+        int.parse(named.group(2)!),
+      );
+      if (month != null &&
+          value.month == month &&
+          value.day == int.parse(named.group(2)!)) {
+        return value;
+      }
+    }
     final patterns = [
       RegExp(r'(?<!\d)(20\d{2})[-/.](\d{1,2})[-/.](\d{1,2})(?!\d)'),
-      RegExp(r'(?<!\d)(\d{1,2})[-/.](\d{1,2})[-/.](20\d{2})(?!\d)'),
+      RegExp(r'(?<!\d)(\d{1,2})[-/.](\d{1,2})[-/.](20\d{2}|\d{2})(?!\d)'),
     ];
     for (var index = 0; index < patterns.length; index++) {
-      final match = patterns[index].firstMatch(text);
+      final match = patterns[index]
+          .allMatches(text)
+          .where((candidate) => !_dateIsExcluded(text, candidate.start))
+          .firstOrNull;
       if (match == null) continue;
-      final year = int.parse(index == 0 ? match.group(1)! : match.group(3)!);
+      final parsedYear = int.parse(
+        index == 0 ? match.group(1)! : match.group(3)!,
+      );
+      final year = parsedYear < 100 ? 2000 + parsedYear : parsedYear;
       final month = int.parse(index == 0 ? match.group(2)! : match.group(1)!);
       final day = int.parse(index == 0 ? match.group(3)! : match.group(2)!);
       final value = DateTime(year, month, day);
@@ -340,10 +490,71 @@ abstract final class ReceiptExtractor {
     return null;
   }
 
-  static String? _last4(String text) => RegExp(
-    r'(?:visa|mastercard|master\s*card|amex|american\s*express|discover|debit|credit|apple\s*pay|ending|last\s*4|card|x{2,}|\*{2,})[^\d]{0,16}(\d{4})(?!\d)',
-    caseSensitive: false,
-  ).firstMatch(text)?.group(1);
+  static bool _dateIsExcluded(String text, int start) {
+    final context = text
+        .substring(start > 32 ? start - 32 : 0, start)
+        .toLowerCase();
+    return RegExp(
+      r'return\s+by|expires?|expiration|valid\s+through|membership\s+ends?|promo',
+    ).hasMatch(context);
+  }
+
+  static _PaymentRegion _paymentRegion(List<OcrObservation> observations) {
+    final indicators = RegExp(
+      r'visa|master\s*card|mastercard|amex|american\s*express|discover|credit|debit|apple\s*pay|contactless|chip|ending|last\s*4|pan|acct|account|x{2,}|\*{2,}|•{2,}',
+      caseSensitive: false,
+    );
+    final anchors = <int>[];
+    for (var index = 0; index < observations.length; index++) {
+      if (indicators.hasMatch(observations[index].text)) anchors.add(index);
+    }
+    if (anchors.isEmpty) return const _PaymentRegion();
+    final selected = <OcrObservation>[];
+    for (final index in anchors) {
+      final anchor = observations[index];
+      for (var candidate = 0; candidate < observations.length; candidate++) {
+        final line = observations[candidate];
+        final sameRegion =
+            (line.top - anchor.top).abs() <= .14 &&
+            (line.left - anchor.left).abs() <= .75;
+        final syntheticNeighbor =
+            line.height == 0 &&
+            anchor.height == 0 &&
+            (line.top - anchor.top).abs() <= 2;
+        if (sameRegion || syntheticNeighbor) selected.add(line);
+      }
+    }
+    final region = selected.toSet().map((line) => line.text).join(' ');
+    final upper = _normalize(region);
+    final network = switch (true) {
+      _ when upper.contains('AMERICAN EXPRESS') || upper.contains('AMEX') =>
+        'American Express',
+      _ when upper.contains('MASTERCARD') || upper.contains('MASTER CARD') =>
+        'Mastercard',
+      _ when upper.contains('VISA') => 'Visa',
+      _ when upper.contains('DISCOVER') => 'Discover',
+      _ => null,
+    };
+    final type = upper.contains('DEBIT')
+        ? 'debit'
+        : upper.contains('CREDIT')
+        ? 'credit'
+        : null;
+    final lastFour = RegExp(
+      r'(?:visa|master\s*card|amex|american\s*express|discover|debit|credit|apple\s*pay|ending(?:\s+in)?|last\s*4|card|pan|acct|account|x{2,}|\*{2,}|•{2,})[^\d]{0,20}(\d{4})(?!\d)',
+      caseSensitive: false,
+    ).firstMatch(region)?.group(1);
+    final expiry = RegExp(
+      r'(?:EXP|EXPIRY|EXPIRATION|VALID\s*THRU|GOOD\s*THRU)\s*[:.]?\s*(0[1-9]|1[0-2])\s*[/ -]\s*(\d{2,4})',
+      caseSensitive: false,
+    ).firstMatch(region);
+    return _PaymentRegion(
+      network: network,
+      type: type,
+      lastFour: lastFour,
+      expiry: expiry == null ? null : '${expiry.group(1)}/${expiry.group(2)}',
+    );
+  }
 
   static String _iso(DateTime value) =>
       '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
@@ -358,13 +569,32 @@ final class _ReceiptFields {
     this.tax,
     this.tip,
     this.cardLast4,
+    this.cardNetwork,
+    this.cardType,
+    this.cardExpiry,
     required this.confidence,
     required this.evidence,
     required this.lines,
   });
-  final String? merchant, amount, currency, tax, tip, cardLast4;
+  final String? merchant,
+      amount,
+      currency,
+      tax,
+      tip,
+      cardLast4,
+      cardNetwork,
+      cardType,
+      cardExpiry;
   final DateTime? date;
   final Map<String, double> confidence;
   final Map<String, String> evidence;
   final List<String> lines;
+}
+
+final class _PaymentRegion {
+  const _PaymentRegion({this.network, this.type, this.lastFour, this.expiry});
+  final String? network;
+  final String? type;
+  final String? lastFour;
+  final String? expiry;
 }

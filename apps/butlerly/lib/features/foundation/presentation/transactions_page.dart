@@ -1014,6 +1014,25 @@ class _EvidenceSection extends StatefulWidget {
 class _EvidenceSectionState extends State<_EvidenceSection> {
   late Future<List<EvidenceItem>> _evidence = _load();
 
+  @override
+  void initState() {
+    super.initState();
+    transactionChanges.addListener(_refreshFromTransactionChange);
+  }
+
+  @override
+  void dispose() {
+    transactionChanges.removeListener(_refreshFromTransactionChange);
+    super.dispose();
+  }
+
+  void _refreshFromTransactionChange() {
+    if (!mounted) return;
+    setState(() {
+      _evidence = _load();
+    });
+  }
+
   Future<List<EvidenceItem>> _load() => widget.finance
       .listEvidenceForTransaction(widget.transactionId)
       .then(

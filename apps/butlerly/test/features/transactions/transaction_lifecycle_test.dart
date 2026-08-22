@@ -17,10 +17,12 @@ import 'package:intl/date_symbol_data_local.dart';
 void main() {
   setUpAll(() => initializeDateFormatting('en'));
   late MemoryTransactionRepository repository;
+  late MemoryEvidence evidenceRepository;
 
   setUp(() async {
     await services.reset();
     repository = MemoryTransactionRepository();
+    evidenceRepository = MemoryEvidence();
     services.registerSingleton<FinanceServices>(
       FinanceServices(
         repository,
@@ -28,13 +30,44 @@ void main() {
         MemoryMerchants(),
         MemoryCategories(),
         MemoryTags(),
-        MemoryEvidence(),
+        evidenceRepository,
         MemoryUserPreferences(),
       ),
     );
   });
 
   tearDown(() => services.reset());
+
+  testWidgets('transaction detail refreshes evidence after a receipt scan', (
+    tester,
+  ) async {
+    final transaction = TransactionDto(
+      id: 'receipt-transaction',
+      amount: '12.50',
+      currency: 'USD',
+      direction: 'expense',
+      status: 'active',
+      reviewState: 'clear',
+      transactionDate: '2026-08-21',
+      createdAt: DateTime.utc(2026, 8, 21),
+      updatedAt: DateTime.utc(2026, 8, 21),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TransactionDetailPage(
+          finance: services<FinanceServices>(),
+          transaction: transaction,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('No evidence is attached locally.'), findsOneWidget);
+
+    notifyTransactionChanged();
+    await tester.pumpAndSettle();
+    expect(find.text('No evidence is attached locally.'), findsOneWidget);
+    expect(evidenceRepository.listCalls, 2);
+  });
 
   testWidgets('creates, edits, archives, and permanently deletes locally', (
     tester,
@@ -713,13 +746,17 @@ final class MemoryTags implements TagRepository {
 }
 
 final class MemoryEvidence implements EvidenceRepository {
+  int listCalls = 0;
   @override
   Future<EvidenceItem?> findById(EvidenceId id) async => null;
   @override
   Future<void> link(AttachmentLink link) async {}
   @override
-  Future<List<EvidenceItem>> listForTransaction(TransactionId id) async =>
-      const [];
+  Future<List<EvidenceItem>> listForTransaction(TransactionId id) async {
+    listCalls++;
+    return const [];
+  }
+
   @override
   Future<void> remove(EvidenceId id) async {}
   @override

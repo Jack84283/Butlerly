@@ -171,4 +171,134 @@ Mastercard **** 2468
     expect(result.amount, '12.84');
     expect(result.fieldConfidence['amount'], lessThan(.5));
   });
+
+  test('normalizes degraded total and supports named and two-digit dates', () {
+    final result = ReceiptTextParser.parse('''
+RESTAURANT
+Aug 21, 2026 19:42
+SUBTOTAL 20.00
+TAX 1.80
+T0TA1 21.80
+''');
+    expect(result.amount, '21.80');
+    expect(result.date, DateTime(2026, 8, 21));
+
+    expect(
+      ReceiptTextParser.parse('SHOP\n08/21/26\nTOTAL 10.00').date,
+      DateTime(2026, 8, 21),
+    );
+  });
+
+  test('supports split total label and split payment observations', () {
+    const observations = [
+      OcrObservation(
+        text: 'V1SA',
+        confidence: .88,
+        left: .05,
+        top: .78,
+        width: .2,
+        height: .04,
+      ),
+      OcrObservation(
+        text: '**** ****',
+        confidence: .82,
+        left: .28,
+        top: .78,
+        width: .3,
+        height: .04,
+      ),
+      OcrObservation(
+        text: '1234',
+        confidence: .91,
+        left: .62,
+        top: .78,
+        width: .2,
+        height: .04,
+      ),
+      OcrObservation(
+        text: 'TOTAL',
+        confidence: .91,
+        left: .05,
+        top: .70,
+        width: .3,
+        height: .04,
+      ),
+      OcrObservation(
+        text: '42.18',
+        confidence: .90,
+        left: .65,
+        top: .70,
+        width: .2,
+        height: .04,
+      ),
+    ];
+    final result = ReceiptExtractor.extract(
+      'V1SA **** **** 1234\nTOTAL 42.18',
+      observations,
+    );
+    expect(result.amount, '42.18');
+    expect(result.cardLast4, '1234');
+  });
+
+  test('does not promote generic header text to merchant', () {
+    final result = ReceiptTextParser.parse('''
+WELCOME
+THANK YOU FOR SHOPPING
+RECEIPT
+TOTAL 24.50
+''');
+    expect(result.merchant, isNull);
+    expect(result.amount, '24.50');
+  });
+
+  test('rejects invoice and reference identifiers as amounts', () {
+    final result = ReceiptTextParser.parse('''
+GOOD MARKET
+INVOICE NO 999999.99
+ORDER 888888
+AUTH 123456
+TOTAL 24.50
+''');
+    expect(result.merchant, 'GOOD MARKET');
+    expect(result.amount, '24.50');
+  });
+
+  test('leaves date unresolved when the receipt has no transaction date', () {
+    final result = ReceiptTextParser.parse('''
+GOOD MARKET
+LOYALTY ID 20260821
+RETURN BY 12/31/2027
+TOTAL 24.50
+''');
+    expect(result.date, isNull);
+  });
+
+  test('extracts structured card metadata only from a payment region', () {
+    final result = ReceiptTextParser.parse('''
+GOOD MARKET
+STORE NO 1234
+TOTAL \$24.50
+VISA
+CREDIT **** **** 5678
+EXP 08/29
+''');
+    expect(result.cardLast4, '5678');
+    expect(result.cardNetwork, 'Visa');
+    expect(result.cardType, 'credit');
+    expect(result.cardExpiry, '08/29');
+    expect(result.toExtractionValues(), isNot(contains('5678')));
+    expect(result.toExtractionValues()['cardLast4'], '5678');
+  });
+
+  test('does not treat unrelated four-digit values as card last four', () {
+    final result = ReceiptTextParser.parse('''
+GOOD MARKET
+STORE NO 1234
+AUTH 5678
+ZIP 90210
+TOTAL \$24.50
+''');
+    expect(result.cardLast4, isNull);
+    expect(result.cardExpiry, isNull);
+  });
 }
