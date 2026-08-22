@@ -683,9 +683,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                       ListTile(
                         contentPadding: EdgeInsets.zero,
                         title: Text(context.l10n.text('purchaseDate')),
-                        subtitle: Text(
-                          _date == null ? '—' : _iso(_date!),
-                        ),
+                        subtitle: Text(_date == null ? '—' : _iso(_date!)),
                         trailing: const Icon(Icons.calendar_today_outlined),
                         onTap: _pickDate,
                       ),
