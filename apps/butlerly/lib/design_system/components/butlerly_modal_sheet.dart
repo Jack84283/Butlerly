@@ -16,6 +16,7 @@ class ButlerlySheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SafeArea(
     child: Column(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (title != null) ...[
