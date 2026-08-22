@@ -15,32 +15,31 @@ class ButlerlySheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SafeArea(
-    child: SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (title != null) ...[
-            DefaultTextStyle(
-              style: Theme.of(context).textTheme.headlineMedium!,
-              child: title!,
-            ),
-            const SizedBox(height: ButlerlySpacing.section),
-          ],
-          ?content,
-          if (actions != null && actions!.isNotEmpty) ...[
-            const SizedBox(height: ButlerlySpacing.section),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                for (var index = 0; index < actions!.length; index++) ...[
-                  if (index > 0) const SizedBox(width: ButlerlySpacing.compact),
-                  actions![index],
-                ],
-              ],
-            ),
-          ],
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (title != null) ...[
+          DefaultTextStyle(
+            style: Theme.of(context).textTheme.headlineMedium!,
+            child: title!,
+          ),
+          const SizedBox(height: ButlerlySpacing.section),
         ],
-      ),
+        if (content != null)
+          Flexible(child: SingleChildScrollView(child: content)),
+        if (actions != null && actions!.isNotEmpty) ...[
+          const SizedBox(height: ButlerlySpacing.section),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              for (var index = 0; index < actions!.length; index++) ...[
+                if (index > 0) const SizedBox(width: ButlerlySpacing.compact),
+                actions![index],
+              ],
+            ],
+          ),
+        ],
+      ],
     ),
   );
 }
