@@ -1,6 +1,7 @@
 import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart';
@@ -9,6 +10,7 @@ import 'package:butlerly/features/foundation/presentation/review_page.dart';
 import 'package:butlerly/features/foundation/presentation/search_page.dart';
 import 'package:butlerly/features/foundation/presentation/settings_page.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
+import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -72,8 +74,12 @@ final appRouter = GoRouter(
       path: '/transactions/add',
       builder: (context, state) => services.isRegistered<FinanceServices>()
           ? TransactionEditorPage(finance: services<FinanceServices>())
-          : const Scaffold(
-              body: Center(child: Text('Local storage is unavailable.')),
+          : Scaffold(
+              body: ButlerlyEmptyState(
+                icon: Icons.storage_outlined,
+                title: context.l10n.text('localStorageUnavailable'),
+                message: context.l10n.text('dataPreserved'),
+              ),
             ),
     ),
     GoRoute(
@@ -96,6 +102,12 @@ final appRouter = GoRouter(
     ),
   ],
   errorBuilder: (context, state) => Scaffold(
-    body: Center(child: Text('The requested page could not be opened.')),
+    body: ButlerlyErrorState(
+      title: context.l10n.text('pageUnavailable'),
+      message: context.l10n.text('pageUnavailableBody'),
+      preserved: context.l10n.text('dataPreserved'),
+      actionLabel: context.l10n.text('tryAgain'),
+      onAction: () => context.go('/'),
+    ),
   ),
 );

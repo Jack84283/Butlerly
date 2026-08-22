@@ -1,6 +1,7 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_ocr_service.dart';
+import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -266,48 +267,64 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(context.l10n.text('paymentSources')),
-      actions: [
-        IconButton(
-          onPressed: _add,
-          icon: const Icon(Icons.add_card_outlined),
-          tooltip: context.l10n.text('addPaymentSource'),
-        ),
-        IconButton(
-          onPressed: _scanCard,
-          icon: const Icon(Icons.document_scanner_outlined),
-          tooltip: context.l10n.text('scanCard'),
-        ),
-      ],
-    ),
-    body: _finance == null
-        ? Center(child: Text(context.l10n.text('paymentSourcesUnavailable')))
-        : FutureBuilder<List<PaymentSource>>(
-            future: _sources,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState != ConnectionState.done) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError) {
-                return Center(
-                  child: FilledButton(
-                    onPressed: _refresh,
-                    child: Text(context.l10n.text('tryAgain')),
-                  ),
-                );
-              }
-              final values = snapshot.requireData;
-              if (values.isEmpty) {
-                return Center(
-                  child: Text(context.l10n.text('noPaymentSourcesYet')),
-                );
-              }
-              return ListView(
+  Widget build(BuildContext context) => ButlerlyPage(
+    title: context.l10n.text('paymentSources'),
+    actions: [
+      IconButton(
+        onPressed: _add,
+        icon: const Icon(Icons.add_card_outlined),
+        tooltip: context.l10n.text('addPaymentSource'),
+      ),
+      IconButton(
+        onPressed: _scanCard,
+        icon: const Icon(Icons.document_scanner_outlined),
+        tooltip: context.l10n.text('scanCard'),
+      ),
+    ],
+    children: [
+      if (_finance == null)
+        ButlerlyEmptyState(
+          icon: Icons.storage_outlined,
+          title: context.l10n.text('paymentSourcesUnavailable'),
+          message: context.l10n.text('dataPreserved'),
+        )
+      else
+        FutureBuilder<List<PaymentSource>>(
+          future: _sources,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const ButlerlyLoadingState();
+            }
+            if (snapshot.hasError) {
+              return ButlerlyErrorState(
+                title: context.l10n.text('paymentSourcesLoadError'),
+                message: context.l10n.text('paymentSourcesLoadError'),
+                preserved: context.l10n.text('dataPreserved'),
+                actionLabel: context.l10n.text('tryAgain'),
+                onAction: _refresh,
+              );
+            }
+            final values = snapshot.requireData;
+            if (values.isEmpty) {
+              return ButlerlyEmptyState(
+                icon: Icons.account_balance_wallet_outlined,
+                title: context.l10n.text('noPaymentSourcesYet'),
+                message: context.l10n.text('paymentSourcesBody'),
+                actionLabel: context.l10n.text('addPaymentSource'),
+                onAction: _add,
+              );
+            }
+            return ButlerlyCard(
+              padding: EdgeInsets.zero,
+              child: ButlerlySeparatedList(
                 children: values
                     .map(
                       (value) => ListTile(
+                        minVerticalPadding: ButlerlySpacing.small,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: ButlerlySpacing.standard,
+                          vertical: ButlerlySpacing.compact,
+                        ),
                         title: Text(
                           value.lastFour == null
                               ? value.name
@@ -371,9 +388,11 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                       ),
                     )
                     .toList(growable: false),
-              );
-            },
-          ),
+              ),
+            );
+          },
+        ),
+    ],
   );
 }
 

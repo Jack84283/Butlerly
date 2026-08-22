@@ -30,6 +30,10 @@ abstract final class ButlerlySize {
   static const tabletGutter = 24.0;
   static const desktopGutter = 32.0;
   static const readableWidth = 760.0;
+  static const stateContentWidth = 520.0;
+  static const recordRowMinHeight = 72.0;
+  static const sourcePreviewWidth = 64.0;
+  static const sourcePreviewHeight = 80.0;
 }
 
 abstract final class ButlerlyMotion {
