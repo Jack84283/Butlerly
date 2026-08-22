@@ -20,9 +20,9 @@ final class OcrObservation {
 }
 
 final class ReceiptOcrResult {
-  const ReceiptOcrResult({
-    required this.rawText,
-    this.observations = const [],
+  ReceiptOcrResult({
+    required String rawText,
+    List<OcrObservation> observations = const [],
     this.fieldConfidence = const {},
     this.fieldEvidence = const {},
     this.merchant,
@@ -35,7 +35,19 @@ final class ReceiptOcrResult {
     this.cardNetwork,
     this.cardType,
     this.cardExpiry,
-  });
+  }) : rawText = redactPanLikeText(rawText),
+       observations = observations
+           .map(
+             (value) => OcrObservation(
+               text: redactPanLikeText(value.text),
+               confidence: value.confidence,
+               left: value.left,
+               top: value.top,
+               width: value.width,
+               height: value.height,
+             ),
+           )
+           .toList(growable: false);
 
   final String rawText;
   final List<OcrObservation> observations;
@@ -61,7 +73,7 @@ final class ReceiptOcrResult {
       values['${entry.key}Confidence'] = entry.value.toStringAsFixed(3);
     }
     for (final entry in fieldEvidence.entries) {
-      values['${entry.key}Evidence'] = entry.value;
+      values['${entry.key}Evidence'] = redactPanLikeText(entry.value);
     }
     if (merchant case final value?) values['merchant'] = value;
     if (amount case final value?) values['amount'] = value;
@@ -73,6 +85,9 @@ final class ReceiptOcrResult {
     if (cardNetwork case final value?) values['cardNetwork'] = value;
     if (cardType case final value?) values['cardType'] = value;
     if (cardExpiry case final value?) values['cardExpiry'] = value;
+    for (final key in values.keys.toList()) {
+      values[key] = redactPanLikeText(values[key]!);
+    }
     return values;
   }
 
@@ -80,6 +95,22 @@ final class ReceiptOcrResult {
       '${value.year.toString().padLeft(4, '0')}-'
       '${value.month.toString().padLeft(2, '0')}-'
       '${value.day.toString().padLeft(2, '0')}';
+}
+
+/// Removes complete payment-card numbers from all derived OCR text while
+/// retaining the safe last-four representation for card matching.
+String redactPanLikeText(String text) {
+  var redacted = text;
+  for (final pattern in [
+    RegExp(r'(?<!\d)\d{13,19}(?!\d)'),
+    RegExp(r'(?<!\d)(?:\d{4}[ -]){3}\d{4}(?!\d)'),
+  ]) {
+    redacted = redacted.replaceAllMapped(pattern, (match) {
+      final digits = match.group(0)!.replaceAll(RegExp(r'[^0-9]'), '');
+      return '****${digits.substring(digits.length - 4)}';
+    });
+  }
+  return redacted;
 }
 
 final class LocalOcrService {
