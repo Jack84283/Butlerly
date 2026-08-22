@@ -2,7 +2,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
-import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
@@ -753,9 +753,9 @@ class _TagSelector extends StatelessWidget {
 
 Future<String?> _prompt(BuildContext context, String title) async {
   final controller = TextEditingController();
-  final value = await showDialog<String>(
+  final value = await showButlerlyBottomSheet<String>(
     context: context,
-    builder: (context) => AlertDialog(
+    builder: (context) => ButlerlySheet(
       title: Text(title),
       content: TextField(controller: controller, autofocus: true),
       actions: [
@@ -1069,9 +1069,9 @@ class _EvidenceSectionState extends State<_EvidenceSection> {
   }
 
   Future<void> _remove(EvidenceItem evidence) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showButlerlyBottomSheet<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => ButlerlySheet(
         title: Text(context.l10n.text('removeEvidenceTitle')),
         content: Text(context.l10n.text('removeEvidenceBody')),
         actions: [
@@ -1114,9 +1114,9 @@ class _EvidenceSectionState extends State<_EvidenceSection> {
     final rawText =
         extraction?.values['rawText'] ??
         extraction?.provenance.originalRepresentation;
-    await showDialog<void>(
+    await showButlerlyBottomSheet<void>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => ButlerlySheet(
         title: Text(evidence.originalName),
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 520, maxHeight: 640),
@@ -1383,9 +1383,9 @@ Future<bool?> _confirm(
   String title,
   String message, {
   bool destructive = false,
-}) => showDialog<bool>(
+}) => showButlerlyBottomSheet<bool>(
   context: context,
-  builder: (context) => AlertDialog(
+  builder: (context) => ButlerlySheet(
     title: Text(title),
     content: Text(message),
     actions: [
@@ -1439,10 +1439,10 @@ Future<bool?> _organizeTransaction(
   String? merchantId = transaction.merchantId;
   String? categoryId = transaction.categoryId;
   final selectedTagIds = transaction.tagIds.toSet();
-  return showDialog<bool>(
+  return showButlerlyBottomSheet<bool>(
     context: context,
     builder: (dialogContext) => StatefulBuilder(
-      builder: (dialogContext, setDialogState) => AlertDialog(
+      builder: (dialogContext, setDialogState) => ButlerlySheet(
         title: Text(dialogContext.l10n.text('organizeTransaction')),
         content: SingleChildScrollView(
           child: Column(
@@ -1576,39 +1576,31 @@ class _OrganizerMenuField extends StatelessWidget {
   final ValueChanged<String> onSelected;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    width: _organizerMenuWidth,
-    child: PopupMenuButton<String>(
-      constraints: const BoxConstraints.tightFor(width: _organizerMenuWidth),
-      onSelected: onSelected,
-      itemBuilder: (context) => [
-        if (includeUnassigned)
-          PopupMenuItem(
-            value: '',
-            child: Text(context.l10n.text('unassigned')),
-          ),
-        for (final option in options)
-          PopupMenuItem(value: option.id, child: Text(option.name)),
-      ],
-      child: ListTile(
-        leading: Icon(icon, color: context.colors.interactive),
-        title: Text(label, style: Theme.of(context).textTheme.bodySmall),
-        subtitle: Text(
-          _optionName(options, value) ?? placeholder,
-          style: Theme.of(context).textTheme.bodyLarge,
-        ),
-        trailing: const Icon(Icons.arrow_drop_down_rounded),
-        dense: true,
-        minVerticalPadding: ButlerlySpacing.compact,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: ButlerlySpacing.standard,
-        ),
+  Widget build(BuildContext context) => DropdownMenu<String>(
+    initialSelection: value,
+    width: double.infinity,
+    menuHeight: 192,
+    label: Text(label),
+    leadingIcon: Icon(icon),
+    hintText: placeholder,
+    inputDecorationTheme: Theme.of(context).inputDecorationTheme,
+    menuStyle: MenuStyle(
+      backgroundColor: WidgetStatePropertyAll(
+        Theme.of(context).colorScheme.surface,
       ),
     ),
+    dropdownMenuEntries: [
+      if (includeUnassigned)
+        DropdownMenuEntry<String>(
+          value: '',
+          label: context.l10n.text('unassigned'),
+        ),
+      for (final option in options)
+        DropdownMenuEntry<String>(value: option.id, label: option.name),
+    ],
+    onSelected: (selected) => onSelected(selected ?? ''),
   );
 }
-
-const _organizerMenuWidth = 280.0;
 
 String? _optionName(List<_MasterDataOption> options, String? id) {
   for (final option in options) {
@@ -1633,22 +1625,27 @@ Future<void> _assignPaymentSource(
   final sources = result.value
       .where((value) => value.status == PaymentSourceStatus.active)
       .toList(growable: false);
-  final sourceId = await showDialog<String?>(
+  final sourceId = await showButlerlyBottomSheet<String?>(
     context: context,
-    builder: (dialogContext) => SimpleDialog(
+    builder: (dialogContext) => ButlerlySheet(
       title: Text(dialogContext.l10n.text('assignPaymentSource')),
-      children: [
-        SimpleDialogOption(
-          onPressed: () => Navigator.pop(dialogContext),
-          child: Text(dialogContext.l10n.text('noPaymentSource')),
-        ),
-        ...sources.map(
-          (value) => SimpleDialogOption(
-            onPressed: () => Navigator.pop(dialogContext, value.id.value),
-            child: Text(value.name),
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            onTap: () => Navigator.pop(dialogContext),
+            title: Text(dialogContext.l10n.text('noPaymentSource')),
           ),
-        ),
-      ],
+          ...sources.map(
+            (value) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              onTap: () => Navigator.pop(dialogContext, value.id.value),
+              title: Text(value.name),
+            ),
+          ),
+        ],
+      ),
     ),
   );
   if (!context.mounted) return;

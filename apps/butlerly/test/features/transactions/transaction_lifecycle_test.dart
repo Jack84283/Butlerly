@@ -103,7 +103,7 @@ void main() {
     await tester.tap(find.text('Organize transaction'));
     await tester.pumpAndSettle();
     expect(find.byType(TextFormField), findsNothing);
-    expect(find.byType(PopupMenuButton<String>), findsNWidgets(3));
+    expect(find.byType(DropdownMenu<String>), findsNWidgets(3));
     expect(find.textContaining('add a new'), findsNothing);
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
@@ -484,15 +484,15 @@ void main() {
     await tester.tap(find.text('Organize transaction'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Merchant'));
+    await tester.tap(find.byType(DropdownMenu<String>).at(0));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Corner Market').last);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Category'));
+    await tester.tap(find.byType(DropdownMenu<String>).at(1));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Groceries').last);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Add tag').last);
+    await tester.tap(find.byType(DropdownMenu<String>).at(2));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Weekly').last);
     await tester.pumpAndSettle();
@@ -549,7 +549,7 @@ void main() {
     final chipBounds = tester.getRect(find.byType(InputChip));
     await tester.tapAt(Offset(chipBounds.right - 16, chipBounds.center.dy));
     await tester.pumpAndSettle();
-    expect(find.text('Remove me'), findsOneWidget);
+    expect(find.text('Remove me').last, findsOneWidget);
     await tester.tap(find.text('Save organization'));
     await tester.pumpAndSettle();
 
@@ -636,9 +636,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('整理交易'), findsNWidgets(2));
-    expect(find.text('商户'), findsOneWidget);
-    expect(find.text('分类'), findsOneWidget);
-    expect(find.text('添加标签'), findsNWidgets(2));
+    expect(find.text('商户').last, findsOneWidget);
+    expect(find.text('分类').last, findsOneWidget);
+    expect(find.text('添加标签'), findsNWidgets(3));
     expect(find.text('保存整理结果'), findsOneWidget);
     expect(find.text('Organize transaction'), findsNothing);
   });

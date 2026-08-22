@@ -1,6 +1,7 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_ocr_service.dart';
+import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -82,10 +83,10 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
     final currency = TextEditingController(text: existing?.currency ?? 'USD');
     final note = TextEditingController(text: existing?.note);
     var type = existing?.type ?? scanned?.type ?? PaymentSourceType.account;
-    final saved = await showDialog<bool>(
+    final saved = await showButlerlyBottomSheet<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+        builder: (context, setDialogState) => ButlerlySheet(
           title: Text(
             context.l10n.text(
               existing == null ? 'addPaymentSource' : 'editPaymentSource',
@@ -187,9 +188,9 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                     const <PaymentSource>[],
                 };
                 if (duplicates.isNotEmpty && context.mounted) {
-                  final reuse = await showDialog<bool>(
+                  final reuse = await showButlerlyBottomSheet<bool>(
                     context: context,
-                    builder: (dialogContext) => AlertDialog(
+                    builder: (dialogContext) => ButlerlySheet(
                       title: Text(
                         dialogContext.l10n.text('duplicatePaymentSource'),
                       ),

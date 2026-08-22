@@ -131,11 +131,11 @@ class _SearchPageState extends State<SearchPage>
         builder: (context, setSheetState) => SafeArea(
           child: Padding(
             padding: EdgeInsets.fromLTRB(
-              ButlerlySpacing.standard,
+              ButlerlySpacing.modalHorizontal,
               0,
-              ButlerlySpacing.standard,
+              ButlerlySpacing.modalHorizontal,
               MediaQuery.viewInsetsOf(context).bottom +
-                  ButlerlySpacing.standard,
+                  ButlerlySpacing.modalBottom,
             ),
             child: SingleChildScrollView(
               child: Column(
