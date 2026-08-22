@@ -4,6 +4,7 @@ import 'package:butlerly/core/database/initial_master_data.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
@@ -26,9 +27,9 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     try {
       final result = await services<LocalDataManager>().exportAll();
       if (!mounted) return;
-      await showDialog<void>(
+      await showButlerlyBottomSheet<void>(
         context: context,
-        builder: (context) => AlertDialog(
+        builder: (context) => ButlerlySheet(
           title: Text(context.l10n.text('exportComplete')),
           content: Text(
             context.l10n.text('exportCompleteBody', {
@@ -52,9 +53,9 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
   }
 
   Future<void> _confirmErase() async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showButlerlyBottomSheet<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => ButlerlySheet(
         title: Text(context.l10n.text('eraseAllTitle')),
         content: Text(context.l10n.text('eraseAllBody')),
         actions: [

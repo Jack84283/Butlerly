@@ -2,6 +2,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/import/local_csv_importer.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
@@ -207,7 +208,7 @@ class _ImportExportPageState extends State<ImportExportPage> {
               .where((value) => value.status == PaymentSourceStatus.active)
               .toList()
         : const <PaymentSource>[];
-    final paymentSourceId = await showDialog<String>(
+    final paymentSourceId = await showButlerlyBottomSheet<String>(
       context: context,
       builder: (context) =>
           _StatementPreviewDialog(preview: preview, sources: activeSources),
@@ -223,9 +224,9 @@ class _ImportExportPageState extends State<ImportExportPage> {
     if (!mounted) return;
     setState(() => _importing = false);
     if (summary.imported > 0) notifyTransactionChanged();
-    await showDialog<void>(
+    await showButlerlyBottomSheet<void>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => ButlerlySheet(
         title: Text(context.l10n.text('importSummary')),
         content: Text(
           context.l10n.text('importSummaryBody', {
@@ -245,9 +246,9 @@ class _ImportExportPageState extends State<ImportExportPage> {
   }
 
   Future<void> _showImportMessage(String title, String message) async {
-    await showDialog<void>(
+    await showButlerlyBottomSheet<void>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => ButlerlySheet(
         title: Text(title),
         content: Text(
           message.isEmpty ? context.l10n.text('noResults') : message,
@@ -270,7 +271,7 @@ class _ImportExportPageState extends State<ImportExportPage> {
               .where((value) => value.status == PaymentSourceStatus.active)
               .toList()
         : const <PaymentSource>[];
-    final command = await showDialog<PaymentTransactionCommand>(
+    final command = await showButlerlyBottomSheet<PaymentTransactionCommand>(
       context: context,
       builder: (context) => _SinglePaymentDialog(sources: activeSources),
     );
@@ -371,7 +372,7 @@ class _SinglePaymentDialogState extends State<_SinglePaymentDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
+  Widget build(BuildContext context) => ButlerlySheet(
     title: Text(context.l10n.text('addPaymentNotification')),
     content: Form(
       key: _formKey,
@@ -508,7 +509,7 @@ class _StatementPreviewDialogState extends State<_StatementPreviewDialog> {
   String? _sourceId;
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
+  Widget build(BuildContext context) => ButlerlySheet(
     title: Text(context.l10n.text('reviewStatementImport')),
     content: SizedBox(
       width: 520,

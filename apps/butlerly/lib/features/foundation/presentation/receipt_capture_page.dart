@@ -5,6 +5,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/evidence/local_ocr_service.dart';
+import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -136,9 +137,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   }
 
   Future<void> _process(XFile source) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showButlerlyBottomSheet<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogContext) => ButlerlySheet(
         title: Text(context.l10n.text('receiptUseTitle')),
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxHeight: 520, maxWidth: 520),
@@ -241,9 +242,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       return matches.isEmpty ? null : matches.single.id.value;
     }
     if (!mounted) return null;
-    return showDialog<String>(
+    return showButlerlyBottomSheet<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogContext) => ButlerlySheet(
         title: Text(dialogContext.l10n.text('multiplePaymentSourcesMatch')),
         content: Text(dialogContext.l10n.text('selectPaymentSource')),
         actions: [
@@ -370,9 +371,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         .where((value) => value.id.value == transaction.paymentSourceId)
         .firstOrNull;
     final sourceLabel = source == null ? null : _paymentSourceLabel(source);
-    return showDialog<bool>(
+    return showButlerlyBottomSheet<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogContext) => ButlerlySheet(
         title: Text(dialogContext.l10n.text('existingTransactionFound')),
         content: Text(
           [

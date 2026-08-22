@@ -9,6 +9,9 @@ abstract final class ButlerlySpacing {
   static const large = 32.0;
   static const major = 48.0;
   static const structural = 64.0;
+  static const modalHorizontal = standard;
+  static const modalBottom = standard;
+  static const modalItem = standard;
 }
 
 abstract final class ButlerlyRadius {

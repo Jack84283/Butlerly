@@ -1,6 +1,7 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/app/theme/theme_mode_provider.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/legal_licenses_page.dart';
@@ -230,9 +231,9 @@ class SettingsPage extends ConsumerWidget {
     String current,
   ) async {
     final controller = TextEditingController(text: current);
-    final value = await showDialog<String>(
+    final value = await showButlerlyBottomSheet<String>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => ButlerlySheet(
         title: Text(context.l10n.text('timeZone')),
         content: TextField(
           controller: controller,
