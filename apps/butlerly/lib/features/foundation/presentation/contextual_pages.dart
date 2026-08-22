@@ -560,10 +560,7 @@ class _StatementPreviewDialogState extends State<_StatementPreviewDialog> {
                         Icons.check_circle_outline,
                         color: context.colors.success,
                       )
-                    : Icon(
-                        Icons.error_outline,
-                        color: context.colors.warning,
-                      ),
+                    : Icon(Icons.error_outline, color: context.colors.warning),
               ),
           ],
         ),

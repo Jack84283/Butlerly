@@ -19,12 +19,15 @@ void main() {
   });
 
   test('color themes produce distinct interactive palettes', () {
-    final red = AppTheme.lightFor(ButlerlyColorTheme.butlerRed)
-        .extension<ButlerlySemanticColors>()!;
-    final blue = AppTheme.lightFor(ButlerlyColorTheme.skyBlue)
-        .extension<ButlerlySemanticColors>()!;
-    final green = AppTheme.lightFor(ButlerlyColorTheme.green)
-        .extension<ButlerlySemanticColors>()!;
+    final red = AppTheme.lightFor(
+      ButlerlyColorTheme.butlerRed,
+    ).extension<ButlerlySemanticColors>()!;
+    final blue = AppTheme.lightFor(
+      ButlerlyColorTheme.skyBlue,
+    ).extension<ButlerlySemanticColors>()!;
+    final green = AppTheme.lightFor(
+      ButlerlyColorTheme.green,
+    ).extension<ButlerlySemanticColors>()!;
 
     expect(red.interactive, isNot(blue.interactive));
     expect(red.interactive, isNot(green.interactive));

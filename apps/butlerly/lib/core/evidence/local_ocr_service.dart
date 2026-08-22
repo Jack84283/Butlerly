@@ -81,8 +81,9 @@ final class ReceiptOcrResult {
       values['${entry.key}OcrConfidence'] = entry.value.toStringAsFixed(3);
     }
     for (final entry in extractionConfidence.entries) {
-      values['${entry.key}ExtractionConfidence'] = entry.value
-          .toStringAsFixed(3);
+      values['${entry.key}ExtractionConfidence'] = entry.value.toStringAsFixed(
+        3,
+      );
     }
     for (final entry in fieldEvidence.entries) {
       values['${entry.key}Evidence'] = redactPanLikeText(entry.value);
@@ -300,20 +301,21 @@ abstract final class ReceiptExtractor {
       confidence[key] = source.confidence > 0 ? source.confidence : fallback;
       ocrConfidence[key] = confidence[key]!;
       final structural = switch (key) {
-        'amount' => ordered.any(
-              (line) => RegExp(r'\btotal\b', caseSensitive: false).hasMatch(
-                line.text,
-              ),
-            )
-            ? .95
-            : .65,
+        'amount' =>
+          ordered.any(
+                (line) => RegExp(
+                  r'\btotal\b',
+                  caseSensitive: false,
+                ).hasMatch(line.text),
+              )
+              ? .95
+              : .65,
         'merchant' => .75,
         'date' => .8,
         'cardLast4' || 'cardNetwork' || 'cardType' || 'cardExpiry' => .85,
         _ => .8,
       };
-      extractionConfidence[key] =
-          (ocrConfidence[key]! + structural) / 2;
+      extractionConfidence[key] = (ocrConfidence[key]! + structural) / 2;
       evidence[key] = key.startsWith('card')
           ? _redactCardEvidence(source.text)
           : source.text;
