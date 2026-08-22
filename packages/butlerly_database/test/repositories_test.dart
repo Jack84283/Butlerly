@@ -286,6 +286,13 @@ void main() {
         createdAt: now,
       ),
     );
+    await transactions.save(
+      transaction.assignMerchant(null, now.add(const Duration(minutes: 1))),
+    );
+    expect(
+      (await evidenceRepository.listForTransaction(transaction.id)).single.id,
+      evidence.id,
+    );
     final suggestions = SqliteSuggestionRepository(database);
     final suggestion = Suggestion(
       id: SuggestionId('suggestion-1'),

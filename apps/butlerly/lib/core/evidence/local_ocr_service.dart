@@ -125,7 +125,7 @@ final class LocalOcrService {
     if (text.trim().isEmpty) {
       throw const FormatException('No readable card details were found.');
     }
-    return CardTextParser.parse(text);
+    return CardTextParser.parse(text, _observations(raw?['observations']));
   }
 }
 
@@ -138,7 +138,10 @@ final class CardScanResult {
 }
 
 abstract final class CardTextParser {
-  static CardScanResult parse(String text) {
+  static CardScanResult parse(
+    String text, [
+    List<OcrObservation> observations = const [],
+  ]) {
     final upper = text.toUpperCase();
     final issuer = switch (true) {
       _ when upper.contains('AMERICAN EXPRESS') || upper.contains('AMEX') =>
@@ -148,11 +151,19 @@ abstract final class CardTextParser {
       _ when upper.contains('DISCOVER') => 'Discover',
       _ => null,
     };
-    final lastFour = RegExp(
-      r'(?:ending|last\s*4|card|visa|mastercard|amex|discover|x{2,}|\*{2,})'
-      r'[^\d]{0,12}(\d{4})(?!\d)',
-      caseSensitive: false,
-    ).firstMatch(text)?.group(1);
+    final structured = observations.isEmpty
+        ? null
+        : ReceiptExtractor.extract(text, observations).cardLast4;
+    final lastFour =
+        structured ??
+        RegExp(
+          r'(?<!\d)\d{4}[\s-]*\d{4}[\s-]*\d{4}[\s-]*(\d{4})(?!\d)',
+        ).firstMatch(text)?.group(1) ??
+        RegExp(
+          r'(?:ending|last\s*4|card|visa|mastercard|amex|discover|x{2,}|\*{2,})'
+          r'[^\d]{0,12}(\d{4})(?!\d)',
+          caseSensitive: false,
+        ).firstMatch(text)?.group(1);
     return CardScanResult(
       issuer: issuer,
       lastFour: lastFour,
@@ -240,7 +251,9 @@ abstract final class ReceiptExtractor {
             : ordered.first,
       );
       confidence[key] = source.confidence > 0 ? source.confidence : fallback;
-      evidence[key] = source.text;
+      evidence[key] = key.startsWith('card')
+          ? _redactCardEvidence(source.text)
+          : source.text;
     }
 
     record('merchant', merchant);
@@ -304,6 +317,9 @@ abstract final class ReceiptExtractor {
   }
 
   static String? _rankedAmount(List<OcrObservation> lines) {
+    final explicit = _explicitTotal(lines);
+    if (explicit != null) return explicit;
+
     const positive = [
       'grand total',
       'total due',
@@ -331,14 +347,21 @@ abstract final class ReceiptExtractor {
     for (var index = 0; index < lines.length; index++) {
       final line = lines[index];
       final normalized = _normalize(line.text);
-      final joined =
-          (index + 1 < lines.length &&
-                      (lines[index + 1].top - line.top).abs() < .08
-                  ? '$normalized ${_normalize(lines[index + 1].text)}'
-                  : normalized)
-              .toLowerCase();
+      final nearby = <String>[normalized];
+      if (index > 0 && (lines[index - 1].top - line.top).abs() < .045) {
+        nearby.add(_normalize(lines[index - 1].text));
+      }
+      if (index + 1 < lines.length &&
+          (lines[index + 1].top - line.top).abs() < .045) {
+        nearby.add(_normalize(lines[index + 1].text));
+      }
+      final joined = nearby.join(' ').toLowerCase();
       final values = _money(joined);
-      for (final value in values) {
+      final joinedHasPositiveLabel = positive.any(joined.contains);
+      final rankedValues = joinedHasPositiveLabel && values.length > 1
+          ? [values.last]
+          : values;
+      for (final value in rankedValues) {
         final identifierContext = RegExp(
           r'invoice(?:\s*(?:no|number|#))?|order(?:\s*(?:no|number|#))?|receipt\s*(?:no|number|#)?|transaction\s*(?:id|no|number)?|auth(?:orization)?|reference|\bref\b|terminal|register|store\s*(?:no|number|#)|member\s*id|loyalty\s*id',
           caseSensitive: false,
@@ -367,12 +390,62 @@ abstract final class ReceiptExtractor {
     return candidates.first.score >= .45 ? candidates.first.value : null;
   }
 
+  /// Explicit TOTAL-family labels are authoritative. Spatial data is used
+  /// only to collect the value from the same OCR row, never to invent a total.
+  static String? _explicitTotal(List<OcrObservation> lines) {
+    const labels = [
+      'grand total',
+      'total due',
+      'amount due',
+      'total paid',
+      'amount paid',
+      'purchase total',
+      'total',
+    ];
+    for (final label in labels) {
+      for (var index = 0; index < lines.length; index++) {
+        final line = lines[index];
+        final normalized = _normalize(line.text).toLowerCase();
+        if (!RegExp('\\b${RegExp.escape(label)}\\b').hasMatch(normalized)) {
+          continue;
+        }
+        final row =
+            lines.where((candidate) => _sameVisualRow(line, candidate)).toList()
+              ..sort((a, b) => a.left.compareTo(b.left));
+        final values = row.expand((value) => _money(value.text)).toList();
+        if (values.isNotEmpty) return values.last;
+      }
+    }
+    return null;
+  }
+
+  static bool _sameVisualRow(OcrObservation left, OcrObservation right) {
+    if (left.height == 0 && right.height == 0) {
+      return (left.top - right.top).abs() < .045;
+    }
+    final leftCenter = left.top + left.height / 2;
+    final rightCenter = right.top + right.height / 2;
+    final overlap =
+        ((left.top + left.height) < (right.top + right.height)
+            ? left.top + left.height
+            : right.top + right.height) -
+        (left.top > right.top ? left.top : right.top);
+    final minimumHeight = left.height < right.height
+        ? left.height
+        : right.height;
+    final hasMeaningfulOverlap = overlap >= minimumHeight * .25;
+    final centerTolerance =
+        (left.height > right.height ? left.height : right.height) * .65;
+    return hasMeaningfulOverlap ||
+        (leftCenter - rightCenter).abs() <= centerTolerance;
+  }
+
   static String? _keyword(List<OcrObservation> lines, List<String> words) {
     for (var index = lines.length - 1; index >= 0; index--) {
       final current = _normalize(lines[index].text);
       final next =
           index + 1 < lines.length &&
-              (lines[index + 1].top - lines[index].top).abs() < .08
+              (lines[index + 1].top - lines[index].top).abs() < .16
           ? _normalize(lines[index + 1].text)
           : '';
       final joined = '$current $next';
@@ -396,6 +469,14 @@ abstract final class ReceiptExtractor {
     );
     return normalized.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
+
+  static String _redactCardEvidence(String value) => value.replaceAllMapped(
+    RegExp(r'(?<!\d)(?:\d[\s-]*){13,19}(?!\d)'),
+    (match) {
+      final digits = match.group(0)!.replaceAll(RegExp(r'\D'), '');
+      return '****${digits.substring(digits.length - 4)}';
+    },
+  );
 
   static List<String> _money(String value) {
     final output = <String>[];
@@ -515,7 +596,7 @@ abstract final class ReceiptExtractor {
       for (var candidate = 0; candidate < observations.length; candidate++) {
         final line = observations[candidate];
         final sameRegion =
-            (line.top - anchor.top).abs() <= .14 &&
+            (line.top - anchor.top).abs() <= .40 &&
             (line.left - anchor.left).abs() <= .75;
         final syntheticNeighbor =
             line.height == 0 &&
@@ -540,10 +621,15 @@ abstract final class ReceiptExtractor {
         : upper.contains('CREDIT')
         ? 'credit'
         : null;
-    final lastFour = RegExp(
-      r'(?:visa|master\s*card|amex|american\s*express|discover|debit|credit|apple\s*pay|ending(?:\s+in)?|last\s*4|card|pan|acct|account|x{2,}|\*{2,}|•{2,})[^\d]{0,20}(\d{4})(?!\d)',
-      caseSensitive: false,
+    final completePanLastFour = RegExp(
+      r'(?<!\d)\d{4}[\s-]*\d{4}[\s-]*\d{4}[\s-]*(\d{4})(?!\d)',
     ).firstMatch(region)?.group(1);
+    final lastFour =
+        completePanLastFour ??
+        RegExp(
+          r'(?:visa|master\s*card|amex|american\s*express|discover|debit|credit|apple\s*pay|ending(?:\s+in)?|last\s*4|card|pan|acct|account|x{2,}|\*{2,}|•{2,})[^\d]{0,20}(\d{4})(?!\d)',
+          caseSensitive: false,
+        ).firstMatch(region)?.group(1);
     final expiry = RegExp(
       r'(?:EXP|EXPIRY|EXPIRATION|VALID\s*THRU|GOOD\s*THRU)\s*[:.]?\s*(0[1-9]|1[0-2])\s*[/ -]\s*(\d{2,4})',
       caseSensitive: false,
