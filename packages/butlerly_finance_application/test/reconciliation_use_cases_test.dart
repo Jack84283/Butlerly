@@ -127,6 +127,68 @@ void main() {
       isEmpty,
     );
   });
+
+  test(
+    'confirm delegates candidate and link as one workflow operation',
+    () async {
+      final workflow = _FakeWorkflow();
+      final candidate = ReconciliationCandidate(
+        id: 'candidate-atomic',
+        receiptTransactionId: TransactionId('receipt-atomic'),
+        paymentTransactionId: TransactionId('payment-atomic'),
+        score: .95,
+        reasons: const ['exact match'],
+      );
+
+      final result = await ConfirmReconciliation(workflow).call(candidate);
+
+      expect(result, isA<ApplicationSuccess<void>>());
+      expect(workflow.confirmedCandidate?.id, candidate.id);
+      expect(workflow.confirmedLink?.candidateId, candidate.id);
+      expect(
+        workflow.confirmedLink?.receiptTransactionId,
+        candidate.receiptTransactionId,
+      );
+      expect(workflow.rejected, isFalse);
+    },
+  );
+
+  test('reject delegates only rejection and never creates a link', () async {
+    final workflow = _FakeWorkflow();
+    final candidate = ReconciliationCandidate(
+      id: 'candidate-reject',
+      receiptTransactionId: TransactionId('receipt-reject'),
+      paymentTransactionId: TransactionId('payment-reject'),
+      score: .80,
+      reasons: const ['near match'],
+    );
+
+    final result = await RejectReconciliation(workflow).call(candidate);
+
+    expect(result, isA<ApplicationSuccess<void>>());
+    expect(workflow.rejected, isTrue);
+    expect(workflow.confirmedLink, isNull);
+  });
+}
+
+final class _FakeWorkflow implements ReconciliationWorkflowRepository {
+  ReconciliationCandidate? confirmedCandidate;
+  ReconciliationLink? confirmedLink;
+  bool rejected = false;
+
+  @override
+  Future<void> confirm(
+    ReconciliationCandidate candidate,
+    ReconciliationLink link,
+  ) async {
+    confirmedCandidate = candidate;
+    confirmedLink = link;
+  }
+
+  @override
+  Future<void> reject(ReconciliationCandidate candidate) async {
+    rejected = true;
+  }
 }
 
 Transaction _transaction({

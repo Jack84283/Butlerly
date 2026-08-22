@@ -63,20 +63,17 @@ class _ReviewPageState extends State<ReviewPage> {
     ReconciliationCandidate candidate,
     bool confirm,
   ) async {
-    final updated = confirm ? candidate.confirm() : candidate.reject();
-    await _finance?.saveReconciliationCandidate(updated);
-    if (confirm) {
-      await _finance?.saveReconciliationLink(
-        ReconciliationLink(
-          id: 'link-${candidate.id}',
-          candidateId: candidate.id,
-          receiptTransactionId: candidate.receiptTransactionId,
-          paymentTransactionId: candidate.paymentTransactionId,
-          createdAt: DateTime.now().toUtc(),
-        ),
+    final result = confirm
+        ? await _finance!.confirmReconciliation(candidate)
+        : await _finance!.rejectReconciliation(candidate);
+    if (!mounted) return;
+    if (result is ApplicationFailure<void>) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.text('dataPreserved'))),
       );
+      return;
     }
-    if (mounted) _refresh();
+    _refresh();
   }
 
   Future<void> _close(ReviewItemDto item, {required bool dismiss}) async {

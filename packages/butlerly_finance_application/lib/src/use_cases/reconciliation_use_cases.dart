@@ -1,6 +1,78 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
 import '../result/application_result.dart';
+import '../dto/transaction_dto.dart';
+
+final class ReceiptPaymentMatchCommand {
+  const ReceiptPaymentMatchCommand({
+    required this.amount,
+    required this.currency,
+    required this.transactionDate,
+    required this.merchant,
+    this.paymentSourceId,
+  });
+
+  final Money amount;
+  final String? transactionDate;
+  final String? merchant;
+  final String currency;
+  final String? paymentSourceId;
+}
+
+final class FindReceiptPaymentMatch {
+  const FindReceiptPaymentMatch(this.repository);
+
+  final TransactionRepository repository;
+
+  Future<ApplicationResult<TransactionDto?>> call(
+    ReceiptPaymentMatchCommand command,
+  ) => runApplication('find receipt payment match', () async {
+    final receipt = Transaction(
+      id: TransactionId('__receipt_match__'),
+      timing: const UnknownTransactionTime(
+        UnknownTransactionTimeReason.unknown,
+      ),
+      money: command.amount,
+      direction: TransactionDirection.expense,
+      sourceType: TransactionSourceType.evidenceCapture,
+      transactionDate: command.transactionDate,
+      rawCounterparty: command.merchant,
+      paymentSourceId: command.paymentSourceId == null
+          ? null
+          : PaymentSourceId(command.paymentSourceId!),
+      provenance: [
+        Provenance(
+          id: ProvenanceId('__receipt_match_provenance__'),
+          sourceType: ProvenanceSourceType.scan,
+          capturedAt: DateTime.utc(1970),
+          originalRepresentation: 'receipt match input',
+        ),
+      ],
+      createdAt: DateTime.utc(1970),
+      updatedAt: DateTime.utc(1970),
+    );
+    final scored = <({Transaction value, double score})>[];
+    for (final transaction in await repository.listAll()) {
+      final isPayment =
+          transaction.status == TransactionStatus.active &&
+          (transaction.sourceType == TransactionSourceType.import ||
+              transaction.sourceType == TransactionSourceType.integration ||
+              (transaction.sourceType == TransactionSourceType.manual &&
+                  transaction.paymentSourceId != null));
+      if (!isPayment) continue;
+      final assessment = ReconciliationMatcher.assess(receipt, transaction);
+      if (!assessment.incompatible && assessment.score >= 0.75) {
+        scored.add((value: transaction, score: assessment.score));
+      }
+    }
+    scored.sort((a, b) => b.score.compareTo(a.score));
+    if (scored.isEmpty ||
+        (scored.length > 1 && scored[0].score - scored[1].score < 0.10)) {
+      return null;
+    }
+    return TransactionDto.fromDomain(scored.first.value);
+  });
+}
 
 final class ReconciliationCandidateGenerator {
   const ReconciliationCandidateGenerator();
@@ -262,6 +334,52 @@ final class SaveReconciliationLink {
       );
     }
   }
+}
+
+final class ConfirmReconciliation {
+  const ConfirmReconciliation(this.repository);
+
+  final ReconciliationWorkflowRepository repository;
+
+  Future<ApplicationResult<void>> call(ReconciliationCandidate candidate) =>
+      runApplication('confirm reconciliation', () async {
+        if (candidate.status != ReconciliationCandidateStatus.proposed) {
+          throw const DomainValidationException(
+            code: DomainErrorCode.invalidState,
+            field: 'status',
+            message:
+                'Only proposed reconciliation candidates can be confirmed.',
+          );
+        }
+        await repository.confirm(
+          candidate,
+          ReconciliationLink(
+            id: 'link-${candidate.id}',
+            candidateId: candidate.id,
+            receiptTransactionId: candidate.receiptTransactionId,
+            paymentTransactionId: candidate.paymentTransactionId,
+            createdAt: DateTime.now().toUtc(),
+          ),
+        );
+      });
+}
+
+final class RejectReconciliation {
+  const RejectReconciliation(this.repository);
+
+  final ReconciliationWorkflowRepository repository;
+
+  Future<ApplicationResult<void>> call(ReconciliationCandidate candidate) =>
+      runApplication('reject reconciliation', () async {
+        if (candidate.status != ReconciliationCandidateStatus.proposed) {
+          throw const DomainValidationException(
+            code: DomainErrorCode.invalidState,
+            field: 'status',
+            message: 'Only proposed reconciliation candidates can be rejected.',
+          );
+        }
+        await repository.reject(candidate);
+      });
 }
 
 final class ListReconciliationLinks {

@@ -261,111 +261,21 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
 
   Future<TransactionDto?> _findExistingPaymentMatch() async {
     final amount = _amount.text.trim();
-    final merchant = _merchantRaw.text.trim().toLowerCase();
-    if (amount.isEmpty || merchant.isEmpty) return null;
-    final result = await finance.listTransactions(
-      const ListTransactionsQuery(),
+    if (amount.isEmpty) return null;
+    final result = await finance.findReceiptPaymentMatch(
+      ReceiptPaymentMatchCommand(
+        amount: Money(
+          amount: DecimalValue.parse(amount),
+          currency: CurrencyCode(_currency.text.trim()),
+        ),
+        currency: _currency.text.trim(),
+        transactionDate: _date == null ? null : _iso(_date!),
+        merchant: _merchantRaw.text.trim(),
+        paymentSourceId: _paymentSourceId,
+      ),
     );
-    if (result is! ApplicationSuccess<List<TransactionDto>>) return null;
-    final scored =
-        result.value
-            .where((transaction) {
-              final isPayment = transaction.provenance.any(
-                (value) =>
-                    value.sourceType == ProvenanceSourceType.import.name ||
-                    value.sourceType == ProvenanceSourceType.integration.name ||
-                    value.sourceType == ProvenanceSourceType.userEntry.name,
-              );
-              return isPayment &&
-                  transaction.status == TransactionStatus.active.name;
-            })
-            .map(
-              (transaction) => (
-                transaction: transaction,
-                score: _scanMatchScore(transaction, amount, merchant),
-              ),
-            )
-            .where((value) => value.score >= 0.75)
-            .toList(growable: false)
-          ..sort((a, b) => b.score.compareTo(a.score));
-    if (scored.isEmpty) return null;
-    // A close second means the scan is ambiguous. Leave both transactions for
-    // Review instead of attaching evidence to an arbitrary row.
-    if (scored.length > 1 && scored[0].score - scored[1].score < 0.10) {
-      return null;
-    }
-    return scored.first.transaction;
+    return result is ApplicationSuccess<TransactionDto?> ? result.value : null;
   }
-
-  double _scanMatchScore(
-    TransactionDto transaction,
-    String amount,
-    String merchant,
-  ) {
-    if (transaction.currency != _currency.text.trim()) return 0;
-    final paymentAmount = double.tryParse(transaction.amount);
-    final receiptAmount = double.tryParse(amount);
-    if (paymentAmount == null || receiptAmount == null || receiptAmount == 0) {
-      return 0;
-    }
-    final amountDifference =
-        (paymentAmount - receiptAmount).abs() / receiptAmount.abs();
-    var score = amountDifference == 0
-        ? 0.55
-        : amountDifference <= 0.10
-        ? 0.35
-        : 0.0;
-    final paymentDate = DateTime.tryParse(transaction.transactionDate ?? '');
-    final receiptDate = _date == null ? null : DateTime.tryParse(_iso(_date!));
-    if (paymentDate != null && receiptDate != null) {
-      final days = paymentDate.difference(receiptDate).inDays.abs();
-      score += days == 0
-          ? 0.25
-          : days == 1
-          ? 0.15
-          : 0;
-    }
-    final receiptTokens = _merchantTokens(merchant);
-    final paymentTokens = _merchantTokens(
-      transaction.rawCounterparty ?? transaction.description ?? '',
-    );
-    if (receiptTokens.isNotEmpty && paymentTokens.isNotEmpty) {
-      final similarity =
-          receiptTokens.intersection(paymentTokens).length /
-          receiptTokens.union(paymentTokens).length;
-      score += similarity >= .99
-          ? .15
-          : similarity >= .50
-          ? .10
-          : 0;
-    }
-    if (_paymentSourceId != null &&
-        transaction.paymentSourceId == _paymentSourceId) {
-      score += 0.05;
-    }
-    return score;
-  }
-
-  Set<String> _merchantTokens(String value) => value
-      .toLowerCase()
-      .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
-      .split(' ')
-      .where(
-        (token) =>
-            token.length > 1 &&
-            !const {
-              'inc',
-              'llc',
-              'ltd',
-              'co',
-              'company',
-              'store',
-              'shop',
-              'pos',
-              'online',
-            }.contains(token),
-      )
-      .toSet();
 
   Future<bool?> _confirmExistingMatch(TransactionDto transaction) {
     final source = _sources

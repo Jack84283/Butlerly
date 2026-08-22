@@ -98,6 +98,15 @@ abstract interface class ReconciliationLinkRepository {
   Future<List<ReconciliationLink>> listAll();
 }
 
+abstract interface class ReconciliationWorkflowRepository {
+  Future<void> confirm(
+    ReconciliationCandidate candidate,
+    ReconciliationLink link,
+  );
+
+  Future<void> reject(ReconciliationCandidate candidate);
+}
+
 abstract interface class UserPreferenceRepository {
   Future<UserPreference?> load();
   Future<void> save(UserPreference preference);

@@ -12,6 +12,7 @@ final class FinanceServices {
     UserPreferenceRepository preferences, {
     ReconciliationCandidateRepository? reconciliationCandidates,
     ReconciliationLinkRepository? reconciliationLinks,
+    ReconciliationWorkflowRepository? reconciliationWorkflow,
   }) : listTransactions = ListTransactions(transactions),
        seedInitialMasterData = SeedInitialMasterData(
          merchants,
@@ -114,7 +115,14 @@ final class FinanceServices {
        ),
        listReconciliationLinks = ListReconciliationLinks(
          reconciliationLinks ?? const _NoReconciliationLinkRepository(),
-       );
+       ),
+       confirmReconciliation = ConfirmReconciliation(
+         reconciliationWorkflow ?? const _NoReconciliationWorkflowRepository(),
+       ),
+       rejectReconciliation = RejectReconciliation(
+         reconciliationWorkflow ?? const _NoReconciliationWorkflowRepository(),
+       ),
+       findReceiptPaymentMatch = FindReceiptPaymentMatch(transactions);
 
   final ListTransactions listTransactions;
   final SeedInitialMasterData seedInitialMasterData;
@@ -156,6 +164,9 @@ final class FinanceServices {
   final RefreshReconciliationCandidates refreshReconciliationCandidates;
   final SaveReconciliationLink saveReconciliationLink;
   final ListReconciliationLinks listReconciliationLinks;
+  final ConfirmReconciliation confirmReconciliation;
+  final RejectReconciliation rejectReconciliation;
+  final FindReceiptPaymentMatch findReceiptPaymentMatch;
 }
 
 final class _NoExtractionLookupRepository
@@ -189,4 +200,28 @@ final class _NoReconciliationLinkRepository
 
   @override
   Future<List<ReconciliationLink>> listAll() async => const [];
+}
+
+final class _NoReconciliationWorkflowRepository
+    implements ReconciliationWorkflowRepository {
+  const _NoReconciliationWorkflowRepository();
+
+  @override
+  Future<void> confirm(
+    ReconciliationCandidate candidate,
+    ReconciliationLink link,
+  ) async {
+    throw const RepositoryException(
+      RepositoryFailureCode.unavailable,
+      'reconciliation workflow unavailable',
+    );
+  }
+
+  @override
+  Future<void> reject(ReconciliationCandidate candidate) async {
+    throw const RepositoryException(
+      RepositoryFailureCode.unavailable,
+      'reconciliation workflow unavailable',
+    );
+  }
 }
