@@ -521,13 +521,13 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
               _LookupDropdown<String>(
                 label: 'Merchant',
                 value: _merchantId,
-                items: [
+                entries: [
                   for (final value in data.merchants.where(
                     (v) => v.status == MerchantStatus.active,
                   ))
-                    DropdownMenuItem(
+                    DropdownMenuEntry(
                       value: value.id.value,
-                      child: Text(value.name),
+                      label: value.name,
                     ),
                 ],
                 onChanged: (value) => setState(() => _merchantId = value),
@@ -537,13 +537,13 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
               _LookupDropdown<String>(
                 label: 'Category',
                 value: selectedParentId,
-                items: [
+                entries: [
                   for (final value in activeCategories.where(
                     (v) => v.parentId == null,
                   ))
-                    DropdownMenuItem(
+                    DropdownMenuEntry(
                       value: value.id.value,
-                      child: Text(value.name),
+                      label: value.name,
                     ),
                 ],
                 onChanged: (value) => setState(() => _categoryId = value),
@@ -552,13 +552,13 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
               _LookupDropdown<String>(
                 label: 'Subcategory',
                 value: selectedCategory?.parentId == null ? null : _categoryId,
-                items: [
+                entries: [
                   for (final value in activeCategories.where(
                     (v) => v.parentId?.value == selectedParentId,
                   ))
-                    DropdownMenuItem(
+                    DropdownMenuEntry(
                       value: value.id.value,
-                      child: Text(value.name),
+                      label: value.name,
                     ),
                 ],
                 onChanged: (value) =>
@@ -568,13 +568,13 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
               _LookupDropdown<String>(
                 label: 'Payment source',
                 value: _paymentSourceId,
-                items: [
+                entries: [
                   for (final value in data.paymentSources.where(
                     (v) => v.status == PaymentSourceStatus.active,
                   ))
-                    DropdownMenuItem(
+                    DropdownMenuEntry(
                       value: value.id.value,
-                      child: Text(value.displayIdentity ?? value.name),
+                      label: value.displayIdentity ?? value.name,
                     ),
                 ],
                 onChanged: (value) => setState(() => _paymentSourceId = value),
@@ -677,37 +677,44 @@ class _LookupDropdown<T> extends StatelessWidget {
   const _LookupDropdown({
     required this.label,
     required this.value,
-    required this.items,
+    required this.entries,
     required this.onChanged,
     this.onCreate,
   });
   final String label;
   final T? value;
-  final List<DropdownMenuItem<T>> items;
+  final List<DropdownMenuEntry<T>> entries;
   final ValueChanged<T?> onChanged;
   final VoidCallback? onCreate;
   @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Expanded(
-        child: DropdownButtonFormField<T>(
-          initialValue: value,
-          isExpanded: true,
-          decoration: InputDecoration(labelText: label),
-          items: [
-            DropdownMenuItem<T>(value: null, child: const Text('Unassigned')),
-            ...items,
-          ],
-          onChanged: onChanged,
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => DropdownMenu<T>(
+      initialSelection: value,
+      width: constraints.maxWidth,
+      menuHeight: 192,
+      label: Text(label),
+      trailingIcon: onCreate == null
+          ? null
+          : IconButton(
+              onPressed: onCreate,
+              icon: const Icon(Icons.add_circle_outline),
+              tooltip: 'Create',
+            ),
+      dropdownMenuEntries: entries,
+      inputDecorationTheme: Theme.of(context).inputDecorationTheme,
+      menuStyle: MenuStyle(
+        minimumSize: WidgetStatePropertyAll(
+          Size(constraints.maxWidth, 0),
+        ),
+        maximumSize: WidgetStatePropertyAll(
+          Size(constraints.maxWidth, double.infinity),
+        ),
+        backgroundColor: WidgetStatePropertyAll(
+          Theme.of(context).colorScheme.surface,
         ),
       ),
-      if (onCreate != null)
-        IconButton(
-          onPressed: onCreate,
-          icon: const Icon(Icons.add_circle_outline),
-          tooltip: 'Create',
-        ),
-    ],
+      onSelected: onChanged,
+    ),
   );
 }
 
@@ -1576,29 +1583,35 @@ class _OrganizerMenuField extends StatelessWidget {
   final ValueChanged<String> onSelected;
 
   @override
-  Widget build(BuildContext context) => DropdownMenu<String>(
-    initialSelection: value,
-    width: double.infinity,
-    menuHeight: 192,
-    label: Text(label),
-    leadingIcon: Icon(icon),
-    hintText: placeholder,
-    inputDecorationTheme: Theme.of(context).inputDecorationTheme,
-    menuStyle: MenuStyle(
-      backgroundColor: WidgetStatePropertyAll(
-        Theme.of(context).colorScheme.surface,
-      ),
-    ),
-    dropdownMenuEntries: [
-      if (includeUnassigned)
-        DropdownMenuEntry<String>(
-          value: '',
-          label: context.l10n.text('unassigned'),
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => DropdownMenu<String>(
+      initialSelection: value,
+      width: constraints.maxWidth,
+      menuHeight: 192,
+      label: Text(label),
+      leadingIcon: Icon(icon),
+      hintText: placeholder,
+      inputDecorationTheme: Theme.of(context).inputDecorationTheme,
+      menuStyle: MenuStyle(
+        minimumSize: WidgetStatePropertyAll(Size(constraints.maxWidth, 0)),
+        maximumSize: WidgetStatePropertyAll(
+          Size(constraints.maxWidth, double.infinity),
         ),
-      for (final option in options)
-        DropdownMenuEntry<String>(value: option.id, label: option.name),
-    ],
-    onSelected: (selected) => onSelected(selected ?? ''),
+        backgroundColor: WidgetStatePropertyAll(
+          Theme.of(context).colorScheme.surface,
+        ),
+      ),
+      dropdownMenuEntries: [
+        if (includeUnassigned)
+          DropdownMenuEntry<String>(
+            value: '',
+            label: context.l10n.text('unassigned'),
+          ),
+        for (final option in options)
+          DropdownMenuEntry<String>(value: option.id, label: option.name),
+      ],
+      onSelected: (selected) => onSelected(selected ?? ''),
+    ),
   );
 }
 
