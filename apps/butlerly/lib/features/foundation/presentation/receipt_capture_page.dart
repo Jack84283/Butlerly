@@ -36,7 +36,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   XFile? _source;
   PreservedEvidenceSource? _preserved;
   ReceiptOcrResult? _ocrResult;
-  DateTime _date = DateTime.now();
+  DateTime? _date;
   bool _processing = false;
   bool _saving = false;
   bool _committed = false;
@@ -203,7 +203,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         _merchantRaw.text = result.merchant ?? '';
         _amount.text = result.amount ?? '';
         if (result.currency != null) _currency.text = result.currency!;
-        if (result.date != null) _date = result.date!;
+        _date = result.date;
         _merchantId = _match(result.merchant);
         _paymentSourceId = paymentSourceId;
         _processing = false;
@@ -314,7 +314,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         ? 0.35
         : 0.0;
     final paymentDate = DateTime.tryParse(transaction.transactionDate ?? '');
-    final receiptDate = DateTime.tryParse(_iso(_date));
+    final receiptDate = _date == null ? null : DateTime.tryParse(_iso(_date!));
     if (paymentDate != null && receiptDate != null) {
       final days = paymentDate.difference(receiptDate).inDays.abs();
       score += days == 0
@@ -417,7 +417,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
             ...ocr.toExtractionValues(),
             'confirmedAmount': _amount.text.trim(),
             'confirmedCurrency': _currency.text.trim(),
-            'confirmedDate': _iso(_date),
+            if (_date != null) 'confirmedDate': _iso(_date!),
           },
           provenance: Provenance(
             id: ProvenanceId('extraction-provenance-${evidence.id.value}'),
@@ -455,7 +455,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   Future<void> _pickDate() async {
     final value = await showDatePicker(
       context: context,
-      initialDate: _date,
+      initialDate: _date ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
@@ -469,6 +469,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     final preserved = _preserved;
     if (source == null ||
         preserved == null ||
+        _date == null ||
         !_formKey.currentState!.validate()) {
       return;
     }
@@ -483,7 +484,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
           amount: DecimalValue.parse(_amount.text.trim()),
           currency: CurrencyCode(_currency.text.trim()),
         ),
-        transactionDate: _iso(_date),
+        transactionDate: _iso(_date!),
         originalRepresentation: source.name,
         rawCounterparty: _merchantRaw.text.trim().isEmpty
             ? null
@@ -524,7 +525,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
             ...ocr.toExtractionValues(),
             'confirmedAmount': _amount.text.trim(),
             'confirmedCurrency': _currency.text.trim(),
-            'confirmedDate': _iso(_date),
+            if (_date != null) 'confirmedDate': _iso(_date!),
           },
           provenance: Provenance(
             id: ProvenanceId('extraction-provenance-$token'),
@@ -682,7 +683,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                       ListTile(
                         contentPadding: EdgeInsets.zero,
                         title: Text(context.l10n.text('purchaseDate')),
-                        subtitle: Text(_iso(_date)),
+                        subtitle: Text(
+                          _date == null ? '—' : _iso(_date!),
+                        ),
                         trailing: const Icon(Icons.calendar_today_outlined),
                         onTap: _pickDate,
                       ),
