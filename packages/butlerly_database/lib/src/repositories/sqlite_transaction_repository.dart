@@ -16,11 +16,24 @@ final class SqliteTransactionRepository implements TransactionRepository {
         for (final provenance in value.provenance) {
           await saveProvenance(executor, provenance);
         }
-        await executor.insert(
+        final row = _transactionToRow(value);
+        final existing = await executor.query(
           'transactions',
-          _transactionToRow(value),
-          conflictAlgorithm: ConflictAlgorithm.replace,
+          columns: ['id'],
+          where: 'id = ?',
+          whereArgs: [value.id.value],
+          limit: 1,
         );
+        if (existing.isEmpty) {
+          await executor.insert('transactions', row);
+        } else {
+          await executor.update(
+            'transactions',
+            row,
+            where: 'id = ?',
+            whereArgs: [value.id.value],
+          );
+        }
         await _replaceChildren(executor, value);
       });
     } on DatabaseException catch (error) {

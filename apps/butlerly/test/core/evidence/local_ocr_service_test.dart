@@ -62,6 +62,17 @@ JOHN DOE
     },
   );
 
+  test('payment-source card scan extracts last four from a full PAN', () {
+    final result = CardTextParser.parse('''
+VISA
+JOHN DOE
+4111 1111 1111 1234
+''');
+    expect(result.issuer, 'Visa');
+    expect(result.lastFour, '1234');
+    expect(result.lastFour, isNot('4111'));
+  });
+
   test('extracts restaurant subtotal tax tip and total', () {
     final result = ReceiptTextParser.parse('''
 Harbor Grill
@@ -300,5 +311,199 @@ TOTAL \$24.50
 ''');
     expect(result.cardLast4, isNull);
     expect(result.cardExpiry, isNull);
+  });
+
+  test('handles split tax receipt totals and a complete PAN safely', () {
+    const observations = [
+      OcrObservation(
+        text: 'SUBTOTAL',
+        confidence: .9,
+        left: .05,
+        top: .68,
+        width: .3,
+        height: .04,
+      ),
+      OcrObservation(
+        text: '20.00',
+        confidence: .9,
+        left: .7,
+        top: .68,
+        width: .2,
+        height: .04,
+      ),
+      OcrObservation(
+        text: 'TAX',
+        confidence: .9,
+        left: .05,
+        top: .74,
+        width: .2,
+        height: .04,
+      ),
+      OcrObservation(
+        text: '1.80',
+        confidence: .9,
+        left: .7,
+        top: .74,
+        width: .2,
+        height: .04,
+      ),
+      OcrObservation(
+        text: 'TOTAL',
+        confidence: .9,
+        left: .05,
+        top: .80,
+        width: .3,
+        height: .04,
+      ),
+      OcrObservation(
+        text: '21.80',
+        confidence: .9,
+        left: .7,
+        top: .80,
+        width: .2,
+        height: .04,
+      ),
+      OcrObservation(
+        text: 'VISA',
+        confidence: .9,
+        left: .05,
+        top: .88,
+        width: .2,
+        height: .04,
+      ),
+      OcrObservation(
+        text: '4111 1111 1111 1234',
+        confidence: .8,
+        left: .3,
+        top: .92,
+        width: .6,
+        height: .04,
+      ),
+    ];
+    final result = ReceiptExtractor.extract(
+      observations.map((value) => value.text).join('\n'),
+      observations,
+    );
+    expect(result.amount, '21.80');
+    expect(result.cardLast4, '1234');
+    expect(
+      result.toExtractionValues().values,
+      isNot(contains('4111 1111 1111 1234')),
+    );
+  });
+
+  test('does not let an adjacent tax row win over the total row', () {
+    const observations = [
+      OcrObservation(
+        text: 'TAX',
+        confidence: .95,
+        left: .05,
+        top: .70,
+        width: .2,
+        height: .04,
+      ),
+      OcrObservation(
+        text: '1.80',
+        confidence: .95,
+        left: .7,
+        top: .70,
+        width: .2,
+        height: .04,
+      ),
+      OcrObservation(
+        text: 'TOTAL',
+        confidence: .95,
+        left: .05,
+        top: .76,
+        width: .2,
+        height: .04,
+      ),
+      OcrObservation(
+        text: '21.80',
+        confidence: .95,
+        left: .7,
+        top: .76,
+        width: .2,
+        height: .04,
+      ),
+    ];
+    final result = ReceiptExtractor.extract(
+      'TAX 1.80\nTOTAL 21.80',
+      observations,
+    );
+    expect(result.amount, '21.80');
+  });
+
+  test('associates slightly skewed horizontal label and amount boxes', () {
+    const observations = [
+      OcrObservation(
+        text: 'TOTAL',
+        confidence: .9,
+        left: .04,
+        top: .70,
+        width: .25,
+        height: .05,
+      ),
+      OcrObservation(
+        text: '21.80',
+        confidence: .9,
+        left: .72,
+        top: .712,
+        width: .18,
+        height: .05,
+      ),
+      OcrObservation(
+        text: 'TAX',
+        confidence: .9,
+        left: .04,
+        top: .80,
+        width: .2,
+        height: .05,
+      ),
+      OcrObservation(
+        text: '1.80',
+        confidence: .9,
+        left: .72,
+        top: .812,
+        width: .18,
+        height: .05,
+      ),
+    ];
+    final result = ReceiptExtractor.extract(
+      'TOTAL 21.80\nTAX 1.80',
+      observations,
+    );
+    expect(result.amount, '21.80');
+  });
+
+  test('recognizes a card number separated from its credit-card label', () {
+    const observations = [
+      OcrObservation(
+        text: 'CREDIT CARD',
+        confidence: .92,
+        left: .05,
+        top: .58,
+        width: .35,
+        height: .05,
+      ),
+      OcrObservation(
+        text: '4111 1111 1111 1234',
+        confidence: .82,
+        left: .05,
+        top: .91,
+        width: .8,
+        height: .05,
+      ),
+    ];
+    final result = ReceiptExtractor.extract(
+      'CREDIT CARD\n4111 1111 1111 1234',
+      observations,
+    );
+    expect(result.cardType, 'credit');
+    expect(result.cardLast4, '1234');
+    expect(
+      result.toExtractionValues().values,
+      isNot(contains('4111 1111 1111 1234')),
+    );
   });
 }
