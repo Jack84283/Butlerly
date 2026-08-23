@@ -117,9 +117,9 @@ void main() {
     () async {
       final repository = SqliteReferenceDataRepository(database);
       final value = ReferenceData(
-      id: ReferenceDataId('payment_source.type.credit_card'),
+        id: ReferenceDataId('payment_source.type.credit_card'),
         code: 'card',
-      type: 'payment_source.type',
+        type: 'payment_source.type',
       );
       await repository.save(value);
       await repository.saveTranslation(
@@ -138,7 +138,7 @@ void main() {
         value.id.value,
       );
       expect(
-      await repository.labels(type: 'payment_source.type', locale: 'zh-Hans'),
+        await repository.labels(type: 'payment_source.type', locale: 'zh-Hans'),
         {value.id.value: '信用卡'},
       );
     },
