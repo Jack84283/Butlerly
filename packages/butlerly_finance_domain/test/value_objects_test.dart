@@ -56,16 +56,19 @@ void main() {
     expect(period.contains(DateTime.utc(2026, 4, 1)), isFalse);
   });
 
-  test('DST transition dates remain calendar dates, not elapsed-hour windows', () {
-    final period = FinancialPeriod.month(
-      year: 2026,
-      month: 3,
-      timeZoneId: 'America/Los_Angeles',
-    );
+  test(
+    'DST transition dates remain calendar dates, not elapsed-hour windows',
+    () {
+      final period = FinancialPeriod.month(
+        year: 2026,
+        month: 3,
+        timeZoneId: 'America/Los_Angeles',
+      );
 
-    expect(period.contains(DateTime(2026, 3, 8, 1, 59)), isTrue);
-    expect(period.contains(DateTime(2026, 3, 8, 3, 1)), isTrue);
-  });
+      expect(period.contains(DateTime(2026, 3, 8, 1, 59)), isTrue);
+      expect(period.contains(DateTime(2026, 3, 8, 3, 1)), isTrue);
+    },
+  );
   group('DecimalValue', () {
     test('preserves exact decimal precision without floating point', () {
       expect(
