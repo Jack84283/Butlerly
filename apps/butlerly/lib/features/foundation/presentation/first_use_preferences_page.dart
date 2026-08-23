@@ -85,28 +85,24 @@ class FirstUsePreferencesPage extends ConsumerWidget {
                     },
                   ),
                   const SizedBox(height: ButlerlySpacing.standard),
-                  DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    initialValue:
+                  DropdownMenu<String>(
+                    initialSelection:
                         timeZoneCatalog.any(
                           (zone) => zone.id == preference.timeZoneId,
                         )
                         ? preference.timeZoneId
                         : 'UTC',
-                    decoration: InputDecoration(
-                      labelText: context.l10n.text('timeZone'),
-                      prefixIcon: const Icon(Icons.schedule_rounded),
-                    ),
-                    items: [
+                    expandedInsets: EdgeInsets.zero,
+                    label: Text(context.l10n.text('timeZone')),
+                    leadingIcon: const Icon(Icons.schedule_rounded),
+                    dropdownMenuEntries: [
                       for (final zone in timeZoneCatalog)
-                        DropdownMenuItem(
+                        DropdownMenuEntry(
                           value: zone.id,
-                          child: Text(
-                            zone.label(Localizations.localeOf(context)),
-                          ),
+                          label: zone.label(Localizations.localeOf(context)),
                         ),
                     ],
-                    onChanged: (value) {
+                    onSelected: (value) {
                       if (value != null) {
                         ref
                             .read(userPreferenceProvider.notifier)
