@@ -97,6 +97,112 @@ void main() {
     expect(preview.rows.first.direction, TransactionDirection.expense);
     expect(preview.rows.first.cardReference, '1234');
   });
+
+  test(
+    'retries an identical preview without duplicating transactions',
+    () async {
+      final preview = CsvStatementPreview(
+        rows: [
+          CsvStatementRow(
+            rowNumber: 2,
+            date: '2026-08-09',
+            description: 'Market',
+            amount: '12.50',
+            currency: 'USD',
+            direction: TransactionDirection.expense,
+            cardReference: null,
+            externalReference: 'bank-1',
+            original: 'original-row',
+          ),
+        ],
+        errors: const [],
+      );
+      final seen = <String>{};
+      final importer = LocalCsvImporter.withHandler((command) async {
+        if (!seen.add(command.id)) {
+          return const ApplicationFailure<TransactionDto>(
+            ApplicationFailureDetail(
+              code: ApplicationFailureCode.conflict,
+              operation: 'import transaction',
+            ),
+          );
+        }
+        return ApplicationSuccess<TransactionDto>(_dto(command));
+      });
+
+      final first = await importer.commitPreview(
+        preview,
+        sourceId: 'statement.csv',
+        sourceLanguage: 'en',
+      );
+      final retry = await importer.commitPreview(
+        preview,
+        sourceId: 'statement.csv',
+        sourceLanguage: 'en',
+      );
+
+      expect(first.imported, 1);
+      expect(retry.imported, 0);
+      expect(retry.duplicates, 1);
+      expect(seen, hasLength(1));
+    },
+  );
+
+  test(
+    'continues after a partial row failure without duplicating successes',
+    () async {
+      final preview = CsvStatementPreview(
+        rows: [
+          CsvStatementRow(
+            rowNumber: 2,
+            date: '2026-08-09',
+            description: 'Good',
+            amount: '12.50',
+            currency: 'USD',
+            direction: TransactionDirection.expense,
+            cardReference: null,
+            externalReference: 'good-1',
+            original: 'good-row',
+          ),
+          CsvStatementRow(
+            rowNumber: 3,
+            date: '2026-08-10',
+            description: 'Bad',
+            amount: '8.00',
+            currency: 'USD',
+            direction: TransactionDirection.expense,
+            cardReference: null,
+            externalReference: 'bad-1',
+            original: 'bad-row',
+          ),
+        ],
+        errors: const [],
+      );
+      final attempts = <String, int>{};
+      final importer = LocalCsvImporter.withHandler((command) async {
+        attempts[command.id] = (attempts[command.id] ?? 0) + 1;
+        if (command.externalReference == 'bad-1') {
+          return const ApplicationFailure<TransactionDto>(
+            ApplicationFailureDetail(
+              code: ApplicationFailureCode.unavailable,
+              operation: 'import transaction',
+            ),
+          );
+        }
+        return ApplicationSuccess<TransactionDto>(_dto(command));
+      });
+
+      final summary = await importer.commitPreview(
+        preview,
+        sourceId: 'statement.csv',
+        sourceLanguage: 'en',
+      );
+
+      expect(summary.imported, 1);
+      expect(summary.failed, 1);
+      expect(attempts.values, contains(1));
+    },
+  );
 }
 
 TransactionDto _dto(ImportTransactionCommand command) {
