@@ -4,12 +4,25 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 /// User/source text deliberately bypasses this catalog.
 String categoryDisplayLabel(Category value, String languageCode) {
   if (value.origin == CategoryOrigin.user) return value.name;
-  return _systemLabel(value.id.value, languageCode) ?? value.name;
+  return _systemLabel(value.id.value, languageCode) ??
+      _systemLabelByEnglish(value.name, languageCode) ??
+      value.name;
 }
 
 String tagDisplayLabel(Tag value, String languageCode) {
   if (value.id.value.startsWith('tag.') == false) return value.name;
-  return _systemLabel(value.id.value, languageCode) ?? value.name;
+  return _systemLabel(value.id.value, languageCode) ??
+      _systemLabelByEnglish(value.name, languageCode) ??
+      value.name;
+}
+
+String? _systemLabelByEnglish(String name, String languageCode) {
+  final normalized = name.trim().toLowerCase();
+  final id = _en.entries
+      .where((entry) => entry.value.toLowerCase() == normalized)
+      .map((entry) => entry.key)
+      .firstOrNull;
+  return id == null ? null : _systemLabel(id, languageCode);
 }
 
 String? _systemLabel(String id, String languageCode) {
