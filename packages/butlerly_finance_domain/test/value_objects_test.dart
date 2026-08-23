@@ -16,6 +16,59 @@ void main() {
       expect(period.contains(DateTime(2026, 9, 1)), isFalse);
     },
   );
+
+  test('handles month boundaries without extending the financial period', () {
+    final period = FinancialPeriod.month(
+      year: 2026,
+      month: 3,
+      timeZoneId: 'America/Los_Angeles',
+    );
+
+    expect(period.contains(DateTime.utc(2026, 3, 31, 23, 59)), isTrue);
+    expect(period.contains(DateTime.utc(2026, 4, 1)), isFalse);
+  });
+
+  test('retains the selected timezone across a timezone preference change', () {
+    final pacific = FinancialPeriod.month(
+      year: 2026,
+      month: 11,
+      timeZoneId: 'America/Los_Angeles',
+    );
+    final shanghai = FinancialPeriod.month(
+      year: 2026,
+      month: 11,
+      timeZoneId: 'Asia/Shanghai',
+    );
+
+    expect(pacific.timeZoneId, isNot(shanghai.timeZoneId));
+    expect(pacific.startDate, shanghai.startDate);
+    expect(pacific.endDate, shanghai.endDate);
+  });
+
+  test('period membership is independent of the device timezone', () {
+    final period = FinancialPeriod.month(
+      year: 2026,
+      month: 3,
+      timeZoneId: 'America/New_York',
+    );
+
+    expect(period.contains(DateTime.utc(2026, 3, 1)), isTrue);
+    expect(period.contains(DateTime.utc(2026, 4, 1)), isFalse);
+  });
+
+  test(
+    'DST transition dates remain calendar dates, not elapsed-hour windows',
+    () {
+      final period = FinancialPeriod.month(
+        year: 2026,
+        month: 3,
+        timeZoneId: 'America/Los_Angeles',
+      );
+
+      expect(period.contains(DateTime(2026, 3, 8, 1, 59)), isTrue);
+      expect(period.contains(DateTime(2026, 3, 8, 3, 1)), isTrue);
+    },
+  );
   group('DecimalValue', () {
     test('preserves exact decimal precision without floating point', () {
       expect(
