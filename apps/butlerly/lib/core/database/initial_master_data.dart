@@ -1,118 +1,91 @@
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
-/// Versioned, idempotent Finance V1 system data. IDs are semantic and are
-/// deliberately independent of the English fallback display names.
+/// The MD-0001 V1 system catalog. Labels are persisted separately as
+/// translations; these domain records contain stable semantic IDs.
 InitialMasterData buildInitialMasterData() => InitialMasterData(
-  merchants: _merchants,
-  categories: _categories,
-  tags: _tags,
+  categories: [
+    for (final row in _categories)
+      Category(
+        id: CategoryId(row.$1),
+        name: row.$2,
+        origin: CategoryOrigin.system,
+        parentId: row.$3 == null ? null : CategoryId(row.$3!),
+      ),
+  ],
+  tags: [for (final row in _tags) Tag(id: TagId(row.$1), name: row.$2)],
 );
 
-Merchant _merchant(String id, String name) =>
-    Merchant(id: MerchantId('system-merchant-$id'), name: name);
-
-final _merchants = <Merchant>[
-  _merchant('grocery', 'Grocery Store'),
-  _merchant('coffee', 'Coffee Shop'),
-  _merchant('restaurant', 'Restaurant'),
-  _merchant('pharmacy', 'Pharmacy'),
-  _merchant('fuel', 'Gas Station'),
-  _merchant('online', 'Online Store'),
+const _categories = <(String, String, String?)>[
+  ('category.income', 'Income', null),
+  ('category.income.salary', 'Salary', 'category.income'),
+  ('category.income.bonus', 'Bonus', 'category.income'),
+  ('category.income.investment', 'Investment Income', 'category.income'),
+  ('category.income.refund', 'Refund', 'category.income'),
+  ('category.income.other', 'Other Income', 'category.income'),
+  ('category.food', 'Food & Dining', null),
+  ('category.food.restaurants', 'Restaurants', 'category.food'),
+  ('category.food.groceries', 'Groceries', 'category.food'),
+  ('category.food.coffee', 'Coffee & Drinks', 'category.food'),
+  ('category.food.delivery', 'Delivery & Takeout', 'category.food'),
+  ('category.transportation', 'Transportation', null),
+  ('category.transportation.fuel', 'Fuel', 'category.transportation'),
+  (
+    'category.transportation.public',
+    'Public Transit',
+    'category.transportation',
+  ),
+  (
+    'category.transportation.rideshare',
+    'Taxi & Rideshare',
+    'category.transportation',
+  ),
+  ('category.transportation.parking', 'Parking', 'category.transportation'),
+  (
+    'category.transportation.maintenance',
+    'Vehicle Maintenance',
+    'category.transportation',
+  ),
+  ('category.housing', 'Housing', null),
+  ('category.housing.rent_mortgage', 'Rent & Mortgage', 'category.housing'),
+  ('category.housing.utilities', 'Utilities', 'category.housing'),
+  ('category.housing.maintenance', 'Home Maintenance', 'category.housing'),
+  ('category.shopping', 'Shopping', null),
+  ('category.shopping.clothing', 'Clothing', 'category.shopping'),
+  ('category.shopping.electronics', 'Electronics', 'category.shopping'),
+  ('category.shopping.household', 'Household', 'category.shopping'),
+  ('category.health', 'Health', null),
+  ('category.health.medical', 'Medical', 'category.health'),
+  ('category.health.pharmacy', 'Pharmacy', 'category.health'),
+  ('category.health.fitness', 'Fitness', 'category.health'),
+  ('category.entertainment', 'Entertainment', null),
+  (
+    'category.entertainment.streaming',
+    'Streaming & Subscriptions',
+    'category.entertainment',
+  ),
+  ('category.entertainment.events', 'Events', 'category.entertainment'),
+  ('category.travel', 'Travel', null),
+  ('category.travel.airfare', 'Airfare', 'category.travel'),
+  ('category.travel.hotel', 'Hotels', 'category.travel'),
+  ('category.travel.local', 'Local Transportation', 'category.travel'),
+  ('category.education', 'Education', null),
+  ('category.personal', 'Personal Care', null),
+  ('category.gifts', 'Gifts & Donations', null),
+  ('category.insurance', 'Insurance', null),
+  ('category.taxes', 'Taxes', null),
+  ('category.fees', 'Fees & Charges', null),
+  ('category.transfer', 'Transfer', null),
+  ('category.uncategorized', 'Uncategorized', null),
+  ('category.other', 'Other', null),
 ];
 
-Category _category(String id, String name, {String? parent}) => Category(
-  id: CategoryId('system-category-$id'),
-  name: name,
-  origin: CategoryOrigin.system,
-  parentId: parent == null ? null : CategoryId('system-category-$parent'),
-);
-
-final _categories = <Category>[
-  _category('income', 'Income'),
-  _category('salary', 'Salary', parent: 'income'),
-  _category('bonus', 'Bonus', parent: 'income'),
-  _category('investment-income', 'Investment income', parent: 'income'),
-  _category('interest', 'Interest', parent: 'income'),
-  _category('refund', 'Refund', parent: 'income'),
-  _category('other-income', 'Other income', parent: 'income'),
-  _category('food-dining', 'Food & dining'),
-  _category('groceries', 'Groceries', parent: 'food-dining'),
-  _category('restaurants', 'Restaurants', parent: 'food-dining'),
-  _category('coffee-drinks', 'Coffee & drinks', parent: 'food-dining'),
-  _category('delivery', 'Delivery', parent: 'food-dining'),
-  _category('housing', 'Housing'),
-  _category('rent-mortgage', 'Rent & mortgage', parent: 'housing'),
-  _category('utilities', 'Utilities', parent: 'housing'),
-  _category('home-maintenance', 'Home maintenance', parent: 'housing'),
-  _category('furniture', 'Furniture', parent: 'housing'),
-  _category('transportation', 'Transportation'),
-  _category('gas-fuel', 'Gas & fuel', parent: 'transportation'),
-  _category('parking', 'Parking', parent: 'transportation'),
-  _category('public-transit', 'Public transit', parent: 'transportation'),
-  _category('ride-share', 'Ride share', parent: 'transportation'),
-  _category('auto-maintenance', 'Auto maintenance', parent: 'transportation'),
-  _category('auto-insurance', 'Auto insurance', parent: 'transportation'),
-  _category('shopping', 'Shopping'),
-  _category('general-shopping', 'General shopping', parent: 'shopping'),
-  _category('clothing', 'Clothing', parent: 'shopping'),
-  _category('electronics', 'Electronics', parent: 'shopping'),
-  _category('household', 'Household', parent: 'shopping'),
-  _category('health', 'Health'),
-  _category('medical', 'Medical', parent: 'health'),
-  _category('dental', 'Dental', parent: 'health'),
-  _category('pharmacy', 'Pharmacy', parent: 'health'),
-  _category('fitness', 'Fitness', parent: 'health'),
-  _category('entertainment', 'Entertainment'),
-  _category('movies-events', 'Movies & events', parent: 'entertainment'),
-  _category('games', 'Games', parent: 'entertainment'),
-  _category('hobbies', 'Hobbies', parent: 'entertainment'),
-  _category('streaming', 'Streaming', parent: 'entertainment'),
-  _category('travel', 'Travel'),
-  _category('flights', 'Flights', parent: 'travel'),
-  _category('hotels', 'Hotels', parent: 'travel'),
-  _category('car-rental', 'Car rental', parent: 'travel'),
-  _category('travel-activities', 'Travel activities', parent: 'travel'),
-  _category('personal', 'Personal'),
-  _category('personal-care', 'Personal care', parent: 'personal'),
-  _category('education', 'Education', parent: 'personal'),
-  _category('gifts', 'Gifts', parent: 'personal'),
-  _category('subscriptions', 'Subscriptions', parent: 'personal'),
-  _category('financial', 'Financial'),
-  _category('bank-fees', 'Bank fees', parent: 'financial'),
-  _category('taxes', 'Taxes', parent: 'financial'),
-  _category('insurance', 'Insurance', parent: 'financial'),
-  _category('investment', 'Investment', parent: 'financial'),
-  _category('loan-payment', 'Loan payment', parent: 'financial'),
-  _category('family', 'Family'),
-  _category('childcare', 'Childcare', parent: 'family'),
-  _category('school', 'School', parent: 'family'),
-  _category('family-support', 'Family support', parent: 'family'),
-  _category('other', 'Other'),
-  _category('charity-donations', 'Charity & donations', parent: 'other'),
-  _category('uncategorized', 'Uncategorized', parent: 'other'),
-  _category('other-item', 'Other', parent: 'other'),
+const _tags = <(String, String)>[
+  ('tag.business', 'Business'),
+  ('tag.personal', 'Personal'),
+  ('tag.reimbursable', 'Reimbursable'),
+  ('tag.tax_related', 'Tax Related'),
+  ('tag.travel', 'Travel'),
+  ('tag.recurring', 'Recurring'),
+  ('tag.subscription', 'Subscription'),
 ];
-
-final _tags = <Tag>[
-  for (final value in [
-    'business',
-    'personal',
-    'family',
-    'travel',
-    'vacation',
-    'work',
-    'reimbursable',
-    'tax-deductible',
-    'subscription',
-    'recurring',
-    'gift',
-    'shared',
-  ])
-    Tag(id: TagId('system-tag-$value'), name: _title(value)),
-];
-
-String _title(String value) => value
-    .split('-')
-    .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
-    .join(' ');
