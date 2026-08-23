@@ -1,6 +1,7 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/time_zone_catalog.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -83,11 +84,33 @@ class FirstUsePreferencesPage extends ConsumerWidget {
                       }
                     },
                   ),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.schedule_rounded),
-                    title: Text(context.l10n.text('timeZone')),
-                    subtitle: Text(preference.timeZoneId),
+                  DropdownButtonFormField<String>(
+                    initialValue:
+                        timeZoneCatalog.any(
+                          (zone) => zone.id == preference.timeZoneId,
+                        )
+                        ? preference.timeZoneId
+                        : 'UTC',
+                    decoration: InputDecoration(
+                      labelText: context.l10n.text('timeZone'),
+                      prefixIcon: const Icon(Icons.schedule_rounded),
+                    ),
+                    items: [
+                      for (final zone in timeZoneCatalog)
+                        DropdownMenuItem(
+                          value: zone.id,
+                          child: Text(
+                            '${zone.label(Localizations.localeOf(context))} · ${zone.id}',
+                          ),
+                        ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        ref
+                            .read(userPreferenceProvider.notifier)
+                            .saveChanges(timeZoneId: value);
+                      }
+                    },
                   ),
                 ],
               ),

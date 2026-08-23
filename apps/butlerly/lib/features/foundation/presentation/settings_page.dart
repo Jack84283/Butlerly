@@ -6,6 +6,7 @@ import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/legal_licenses_page.dart';
 import 'package:butlerly/features/foundation/presentation/payment_sources_page.dart';
+import 'package:butlerly/features/foundation/presentation/time_zone_catalog.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -161,7 +162,7 @@ class SettingsPage extends ConsumerWidget {
               subtitle: Text(
                 preference?.timeZoneId ?? DateTime.now().timeZoneName,
               ),
-              trailing: const Icon(Icons.edit_outlined),
+              trailing: const Icon(Icons.arrow_drop_down_rounded),
               onTap: preference == null
                   ? null
                   : () => _editTimeZone(context, ref, preference.timeZoneId),
@@ -263,13 +264,22 @@ class SettingsPage extends ConsumerWidget {
       context: context,
       builder: (context) => ButlerlySheet(
         title: Text(context.l10n.text('timeZone')),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
+        content: DropdownButtonFormField<String>(
+          initialValue: timeZoneCatalog.any((zone) => zone.id == current)
+              ? current
+              : 'UTC',
           decoration: InputDecoration(
             labelText: context.l10n.text('ianaTimeZone'),
             helperText: context.l10n.text('ianaTimeZoneHelp'),
           ),
+          items: [
+            for (final zone in timeZoneCatalog)
+              DropdownMenuItem(
+                value: zone.id,
+                child: Text(zone.label(Localizations.localeOf(context))),
+              ),
+          ],
+          onChanged: (value) => controller.text = value ?? current,
         ),
         actions: [
           TextButton(

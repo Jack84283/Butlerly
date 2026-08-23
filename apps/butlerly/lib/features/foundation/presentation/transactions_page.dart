@@ -4,6 +4,7 @@ import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/master_data_labels.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -545,7 +546,13 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   for (final value in activeCategories.where(
                     (v) => v.parentId == null,
                   ))
-                    DropdownMenuEntry(value: value.id.value, label: value.name),
+                    DropdownMenuEntry(
+                      value: value.id.value,
+                      label: categoryDisplayLabel(
+                        value,
+                        Localizations.localeOf(context).languageCode,
+                      ),
+                    ),
                 ],
                 onChanged: (value) => setState(() => _categoryId = value),
               ),
@@ -557,7 +564,13 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   for (final value in activeCategories.where(
                     (v) => v.parentId?.value == selectedParentId,
                   ))
-                    DropdownMenuEntry(value: value.id.value, label: value.name),
+                    DropdownMenuEntry(
+                      value: value.id.value,
+                      label: categoryDisplayLabel(
+                        value,
+                        Localizations.localeOf(context).languageCode,
+                      ),
+                    ),
                 ],
                 onChanged: (value) =>
                     setState(() => _categoryId = value ?? selectedParentId),
@@ -736,7 +749,12 @@ class _TagSelector extends StatelessWidget {
         children: [
           for (final tag in tags)
             FilterChip(
-              label: Text(tag.name),
+              label: Text(
+                tagDisplayLabel(
+                  tag,
+                  Localizations.localeOf(context).languageCode,
+                ),
+              ),
               selected: selected.contains(tag.id.value),
               onSelected: (checked) {
                 final next = {...selected};
