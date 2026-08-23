@@ -76,11 +76,13 @@ final class TransactionMasterData {
       categoryNames: {
         for (final value in categories)
           value.id.value:
-              categoryLabels[value.id.value] ?? categoryDisplayLabel(value, languageCode),
+              categoryLabels[value.id.value] ??
+              categoryDisplayLabel(value, languageCode),
       },
       tagNames: {
         for (final value in tags)
-          value.id.value: tagLabels[value.id.value] ?? tagDisplayLabel(value, languageCode),
+          value.id.value:
+              tagLabels[value.id.value] ?? tagDisplayLabel(value, languageCode),
       },
     );
   }
