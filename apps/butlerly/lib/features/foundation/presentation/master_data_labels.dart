@@ -10,8 +10,11 @@ String categoryDisplayLabel(Category value, String languageCode) {
 }
 
 String tagDisplayLabel(Tag value, String languageCode) {
-  if (value.id.value.startsWith('tag.') == false) return value.name;
-  return _systemLabel(value.id.value, languageCode) ??
+  final catalogId = value.id.value.startsWith('system-tag-')
+      ? 'tag.${value.id.value.substring('system-tag-'.length)}'
+      : value.id.value;
+  if (catalogId.startsWith('tag.') == false) return value.name;
+  return _systemLabel(catalogId, languageCode) ??
       _systemLabelByEnglish(value.name, languageCode) ??
       value.name;
 }

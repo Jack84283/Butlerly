@@ -39,4 +39,10 @@ void main() {
       expect(categoryDisplayLabel(legacy, 'zh'), '餐饮');
     },
   );
+
+  test('legacy system tag IDs resolve to MD-0001 translations', () {
+    final legacy = Tag(id: TagId('system-tag-business'), name: 'Business');
+
+    expect(tagDisplayLabel(legacy, 'zh'), '商务');
+  });
 }
