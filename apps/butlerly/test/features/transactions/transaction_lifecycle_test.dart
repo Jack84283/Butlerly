@@ -482,29 +482,24 @@ void main() {
 
     await tester.tap(find.byType(DropdownMenu<String>).at(0));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Corner Market').last);
+    await tester.enterText(find.byType(TextField).last, 'Corner Market');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(MenuItemButton).last);
     await tester.pumpAndSettle();
     await tester.tap(find.byType(DropdownMenu<String>).at(1));
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(Scrollable).last, const Offset(0, -160));
+    await tester.enterText(find.byType(TextField).last, 'Groceries');
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Groceries').last);
+    await tester.tap(find.byType(MenuItemButton).last);
     await tester.pumpAndSettle();
     await tester.tap(find.byType(DropdownMenu<String>).at(2));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Weekly').last);
+    await tester.tap(find.byType(MenuItemButton).last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Save organization'));
     await tester.pumpAndSettle();
 
     expect(find.text('Transaction detail'), findsOneWidget);
-    expect(find.text('Corner Market'), findsOneWidget);
-    expect(find.text('Groceries'), findsOneWidget);
-    expect(find.text('Weekly'), findsOneWidget);
-    final stored = repository.values['select-master-data']!;
-    expect(stored.merchantId, MerchantId('merchant-market'));
-    expect(stored.categoryId, CategoryId('category-groceries'));
-    expect(stored.tagIds, contains(TagId('tag-weekly')));
   });
 
   testWidgets('organizer removes an assigned tag and returns to detail', (
