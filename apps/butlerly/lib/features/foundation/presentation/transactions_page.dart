@@ -527,7 +527,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
               ),
               const SizedBox(height: 16),
               _LookupDropdown<String>(
-                label: 'Merchant',
+                label: context.l10n.text('merchant'),
                 value: _merchantId,
                 entries: [
                   for (final value in data.merchants.where(
@@ -540,7 +540,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
               ),
               const SizedBox(height: 16),
               _LookupDropdown<String>(
-                label: 'Category',
+                label: context.l10n.text('category'),
                 value: selectedParentId,
                 entries: [
                   for (final value in activeCategories.where(
@@ -558,7 +558,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
               ),
               const SizedBox(height: 16),
               _LookupDropdown<String>(
-                label: 'Subcategory',
+                label: context.l10n.text('subcategory'),
                 value: selectedCategory?.parentId == null ? null : _categoryId,
                 entries: [
                   for (final value in activeCategories.where(
