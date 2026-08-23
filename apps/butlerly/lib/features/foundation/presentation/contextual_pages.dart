@@ -188,61 +188,78 @@ class _ImportExportPageState extends State<ImportExportPage> {
   bool _importing = false;
 
   Future<void> _importCsv() async {
-    final sourceLanguage = Localizations.localeOf(context).languageCode;
-    const group = XTypeGroup(label: 'CSV', extensions: ['csv']);
-    final file = await openFile(acceptedTypeGroups: const [group]);
-    if (file == null || !mounted) return;
-    setState(() => _importing = true);
-    final importer = LocalCsvImporter(services<FinanceServices>());
-    final preview = await importer.preview(file);
-    if (!mounted) return;
-    setState(() => _importing = false);
-    if (preview.rows.isEmpty || preview.validCount == 0) {
-      await _showImportMessage('Import validation', preview.errors.join('\n'));
-      return;
-    }
-    final sources = await services<FinanceServices>().listPaymentSources();
-    if (!mounted) return;
-    final activeSources = sources is ApplicationSuccess<List<PaymentSource>>
-        ? sources.value
-              .where((value) => value.status == PaymentSourceStatus.active)
-              .toList()
-        : const <PaymentSource>[];
-    final paymentSourceId = await showButlerlyBottomSheet<String>(
-      context: context,
-      builder: (context) =>
-          _StatementPreviewDialog(preview: preview, sources: activeSources),
-    );
-    if (!mounted || paymentSourceId == null) return;
-    setState(() => _importing = true);
-    final summary = await importer.commitPreview(
-      preview,
-      sourceId: file.name,
-      sourceLanguage: sourceLanguage,
-      paymentSourceId: paymentSourceId.isEmpty ? null : paymentSourceId,
-    );
-    if (!mounted) return;
-    setState(() => _importing = false);
-    if (summary.imported > 0) notifyTransactionChanged();
-    await showButlerlyBottomSheet<void>(
-      context: context,
-      builder: (context) => ButlerlySheet(
-        title: Text(context.l10n.text('importSummary')),
-        content: Text(
-          context.l10n.text('importSummaryBody', {
-            'imported': '${summary.imported}',
-            'duplicates': '${summary.duplicates}',
-            'failed': '${summary.failed}',
-          }),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(context.l10n.text('done')),
+    try {
+      final sourceLanguage = Localizations.localeOf(context).languageCode;
+      const group = XTypeGroup(
+        label: 'CSV',
+        extensions: ['csv'],
+        mimeTypes: ['text/csv'],
+        uniformTypeIdentifiers: ['public.comma-separated-values-text'],
+      );
+      final file = await openFile(acceptedTypeGroups: const [group]);
+      if (file == null || !mounted) return;
+      setState(() => _importing = true);
+      final importer = LocalCsvImporter(services<FinanceServices>());
+      final preview = await importer.preview(file);
+      if (!mounted) return;
+      setState(() => _importing = false);
+      if (preview.rows.isEmpty || preview.validCount == 0) {
+        await _showImportMessage(
+          'Import validation',
+          preview.errors.join('\n'),
+        );
+        return;
+      }
+      final sources = await services<FinanceServices>().listPaymentSources();
+      if (!mounted) return;
+      final activeSources = sources is ApplicationSuccess<List<PaymentSource>>
+          ? sources.value
+                .where((value) => value.status == PaymentSourceStatus.active)
+                .toList()
+          : const <PaymentSource>[];
+      final paymentSourceId = await showButlerlyBottomSheet<String>(
+        context: context,
+        builder: (context) =>
+            _StatementPreviewDialog(preview: preview, sources: activeSources),
+      );
+      if (!mounted || paymentSourceId == null) return;
+      setState(() => _importing = true);
+      final summary = await importer.commitPreview(
+        preview,
+        sourceId: file.name,
+        sourceLanguage: sourceLanguage,
+        paymentSourceId: paymentSourceId.isEmpty ? null : paymentSourceId,
+      );
+      if (!mounted) return;
+      setState(() => _importing = false);
+      if (summary.imported > 0) notifyTransactionChanged();
+      await showButlerlyBottomSheet<void>(
+        context: context,
+        builder: (context) => ButlerlySheet(
+          title: Text(context.l10n.text('importSummary')),
+          content: Text(
+            context.l10n.text('importSummaryBody', {
+              'imported': '${summary.imported}',
+              'duplicates': '${summary.duplicates}',
+              'failed': '${summary.failed}',
+            }),
           ),
-        ],
-      ),
-    );
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(context.l10n.text('done')),
+            ),
+          ],
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _importing = false);
+      await _showImportMessage(
+        context.l10n.text('importFromFile'),
+        context.l10n.text('importFailed'),
+      );
+    }
   }
 
   Future<void> _showImportMessage(String title, String message) async {
@@ -392,6 +409,7 @@ class _SinglePaymentDialogState extends State<_SinglePaymentDialog> {
                   ? context.l10n.text('invalidAmount')
                   : null,
             ),
+            const SizedBox(height: ButlerlySpacing.standard),
             TextFormField(
               controller: _currency,
               decoration: InputDecoration(
@@ -401,6 +419,7 @@ class _SinglePaymentDialogState extends State<_SinglePaymentDialog> {
                   ? context.l10n.text('currencyThreeLetters')
                   : null,
             ),
+            const SizedBox(height: ButlerlySpacing.standard),
             TextFormField(
               controller: _description,
               decoration: InputDecoration(
@@ -410,6 +429,7 @@ class _SinglePaymentDialogState extends State<_SinglePaymentDialog> {
                   ? 'Enter a description.'
                   : null,
             ),
+            const SizedBox(height: ButlerlySpacing.standard),
             DropdownButtonFormField<String>(
               initialValue: _direction,
               decoration: InputDecoration(
@@ -428,6 +448,7 @@ class _SinglePaymentDialogState extends State<_SinglePaymentDialog> {
               onChanged: (value) =>
                   setState(() => _direction = value ?? 'expense'),
             ),
+            const SizedBox(height: ButlerlySpacing.standard),
             DropdownButtonFormField<String>(
               initialValue: _sourceId,
               decoration: InputDecoration(

@@ -26,6 +26,42 @@ String _paymentSourceLabel(PaymentSource source) => source.lastFour == null
     ? (source.displayIdentity ?? source.name)
     : '${source.displayIdentity ?? source.name} ••••${source.lastFour}';
 
+class _ReceiptDropdown<T> extends StatelessWidget {
+  const _ReceiptDropdown({
+    required this.label,
+    required this.value,
+    required this.entries,
+    required this.onChanged,
+  });
+
+  final String label;
+  final T? value;
+  final List<DropdownMenuEntry<T>> entries;
+  final ValueChanged<T?> onChanged;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => DropdownMenu<T>(
+      initialSelection: value,
+      width: constraints.maxWidth,
+      menuHeight: 192,
+      label: Text(label),
+      inputDecorationTheme: Theme.of(context).inputDecorationTheme,
+      menuStyle: MenuStyle(
+        minimumSize: WidgetStatePropertyAll(Size(constraints.maxWidth, 0)),
+        maximumSize: WidgetStatePropertyAll(
+          Size(constraints.maxWidth, double.infinity),
+        ),
+        backgroundColor: WidgetStatePropertyAll(
+          Theme.of(context).colorScheme.surface,
+        ),
+      ),
+      dropdownMenuEntries: entries,
+      onSelected: onChanged,
+    ),
+  );
+}
+
 class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   final _picker = ImagePicker();
   final _ocr = const LocalOcrService();
@@ -600,18 +636,16 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                         onTap: _pickDate,
                       ),
                       const SizedBox(height: ButlerlySpacing.standard),
-                      DropdownButtonFormField<String>(
-                        initialValue: selectedParentId,
-                        decoration: InputDecoration(
-                          labelText: context.l10n.text('category'),
-                        ),
-                        items: [
+                      _ReceiptDropdown<String>(
+                        label: context.l10n.text('category'),
+                        value: selectedParentId,
+                        entries: [
                           for (final category in activeCategories.where(
                             (value) => value.parentId == null,
                           ))
-                            DropdownMenuItem(
+                            DropdownMenuEntry(
                               value: category.id.value,
-                              child: Text(category.name),
+                              label: category.name,
                             ),
                         ],
                         onChanged: (value) => setState(() {
@@ -619,21 +653,19 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                         }),
                       ),
                       const SizedBox(height: ButlerlySpacing.standard),
-                      DropdownButtonFormField<String>(
-                        initialValue: selectedCategory?.parentId == null
+                      _ReceiptDropdown<String>(
+                        label: context.l10n.text('subcategory'),
+                        value: selectedCategory?.parentId == null
                             ? null
                             : _categoryId,
-                        decoration: InputDecoration(
-                          labelText: context.l10n.text('subcategory'),
-                        ),
-                        items: [
+                        entries: [
                           for (final category in activeCategories.where(
                             (value) =>
                                 value.parentId?.value == selectedParentId,
                           ))
-                            DropdownMenuItem(
+                            DropdownMenuEntry(
                               value: category.id.value,
-                              child: Text(category.name),
+                              label: category.name,
                             ),
                         ],
                         onChanged: (value) => setState(() {
@@ -641,23 +673,17 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                         }),
                       ),
                       const SizedBox(height: ButlerlySpacing.standard),
-                      DropdownButtonFormField<String>(
-                        initialValue: _paymentSourceId,
-                        decoration: InputDecoration(
-                          labelText: context.l10n.text('paymentSource'),
-                        ),
-                        items: [
+                      _ReceiptDropdown<String>(
+                        label: context.l10n.text('paymentSource'),
+                        value: _paymentSourceId,
+                        entries: [
                           for (final source in _sources.where(
                             (value) =>
                                 value.status == PaymentSourceStatus.active,
                           ))
-                            DropdownMenuItem(
+                            DropdownMenuEntry(
                               value: source.id.value,
-                              child: Text(
-                                source.lastFour == null
-                                    ? (source.displayIdentity ?? source.name)
-                                    : '${source.displayIdentity ?? source.name} ••••${source.lastFour}',
-                              ),
+                              label: _paymentSourceLabel(source),
                             ),
                         ],
                         onChanged: (value) =>
