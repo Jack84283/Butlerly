@@ -79,6 +79,12 @@ void main() {
     () async {
       final repository = SqliteMasterTranslationRepository(database);
       await database.connection.insert('categories', {
+        'id': 'system-category-food-dining',
+        'name': 'Food & Dining',
+        'origin': 'system',
+        'status': 'active',
+      });
+      await database.connection.insert('categories', {
         'id': 'category.food',
         'name': 'Food & Dining',
         'origin': 'system',
@@ -101,7 +107,7 @@ void main() {
 
       expect(
         await repository.labels(masterType: 'category', locale: 'zh-Hans'),
-        {'category.food': '餐饮'},
+        {'category.food': '餐饮', 'system-category-food-dining': '餐饮'},
       );
     },
   );

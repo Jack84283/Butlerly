@@ -53,8 +53,40 @@ final class SqliteMasterTranslationRepository
       where: 'locale = ?',
       whereArgs: [locale],
     );
-    return {
+    final result = <String, String>{
       for (final row in rows) row[idColumn]! as String: row['label']! as String,
     };
+    // Preserve readability for databases created before MD-0001 stable IDs
+    // were introduced. Legacy rows are mapped by their persisted English
+    // master label; the localized value still comes from translation tables.
+    final masterTable = masterType == 'category' ? 'categories' : 'tags';
+    final masters = await database.connection.query(
+      masterTable,
+      columns: ['id', 'name'],
+    );
+    final englishRows = await database.connection.query(
+      table,
+      columns: [idColumn, 'label'],
+      where: 'locale = ?',
+      whereArgs: ['en'],
+    );
+    final englishByLabel = {
+      for (final row in englishRows)
+        (row['label']! as String).trim().toLowerCase():
+            row[idColumn]! as String,
+    };
+    final localizedByMasterId = {
+      for (final row in rows) row[idColumn]! as String: row['label']! as String,
+    };
+    for (final master in masters) {
+      final id = master['id']! as String;
+      if (result.containsKey(id)) continue;
+      final canonicalId =
+          englishByLabel[(master['name']! as String).trim().toLowerCase()];
+      if (canonicalId != null && localizedByMasterId.containsKey(canonicalId)) {
+        result[id] = localizedByMasterId[canonicalId]!;
+      }
+    }
+    return result;
   }
 }
