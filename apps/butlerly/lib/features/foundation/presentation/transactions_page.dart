@@ -1,3 +1,4 @@
+import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
@@ -14,6 +15,7 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 class TransactionsPage extends StatefulWidget {
@@ -251,7 +253,7 @@ final class _TransactionsData {
   final TransactionMasterData masterData;
 }
 
-class TransactionEditorPage extends StatefulWidget {
+class TransactionEditorPage extends ConsumerStatefulWidget {
   const TransactionEditorPage({
     required this.finance,
     this.existing,
@@ -262,10 +264,11 @@ class TransactionEditorPage extends StatefulWidget {
   final TransactionDto? existing;
 
   @override
-  State<TransactionEditorPage> createState() => _TransactionEditorPageState();
+  ConsumerState<TransactionEditorPage> createState() =>
+      _TransactionEditorPageState();
 }
 
-class _TransactionEditorPageState extends State<TransactionEditorPage> {
+class _TransactionEditorPageState extends ConsumerState<TransactionEditorPage> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _amount;
   late final TextEditingController _currency;
@@ -399,221 +402,227 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(
-        widget.existing == null
-            ? context.l10n.text('addTransaction')
-            : context.l10n.text('editTransaction'),
+  Widget build(BuildContext context) {
+    final languageCode =
+        ref.watch(localeProvider)?.languageCode ??
+        Localizations.localeOf(context).languageCode;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          widget.existing == null
+              ? context.l10n.text('addTransaction')
+              : context.l10n.text('editTransaction'),
+        ),
       ),
-    ),
-    body: FutureBuilder<_EditorMasterData>(
-      future: _masterData,
-      initialData: const _EditorMasterData(
-        merchants: [],
-        categories: [],
-        tags: [],
-        paymentSources: [],
+      body: FutureBuilder<_EditorMasterData>(
+        future: _masterData,
+        initialData: const _EditorMasterData(
+          merchants: [],
+          categories: [],
+          tags: [],
+          paymentSources: [],
+        ),
+        builder: (context, snapshot) {
+          final data = snapshot.requireData;
+          final selectedCategory = data.categories
+              .where((value) => value.id.value == _categoryId)
+              .firstOrNull;
+          final selectedParentId =
+              selectedCategory?.parentId?.value ??
+              (selectedCategory != null && selectedCategory.parentId == null
+                  ? selectedCategory.id.value
+                  : null);
+          final activeCategories = data.categories
+              .where((value) => value.status == CategoryStatus.active)
+              .toList(growable: false);
+          return Form(
+            key: _formKey,
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                SegmentedButton<TransactionDirection>(
+                  showSelectedIcon: false,
+                  segments: [
+                    ButtonSegment(
+                      value: TransactionDirection.expense,
+                      icon: const Icon(Icons.arrow_upward_rounded),
+                      label: Text(context.l10n.text('expense')),
+                    ),
+                    ButtonSegment(
+                      value: TransactionDirection.income,
+                      icon: const Icon(Icons.arrow_downward_rounded),
+                      label: Text(context.l10n.text('income')),
+                    ),
+                  ],
+                  selected: {_direction},
+                  onSelectionChanged: (selection) =>
+                      setState(() => _direction = selection.single),
+                ),
+                const SizedBox(height: ButlerlySpacing.section),
+                TextFormField(
+                  controller: _amount,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: context.l10n.text('amount'),
+                    prefixIcon: const Icon(Icons.payments_outlined),
+                  ),
+                  validator: (value) {
+                    try {
+                      DecimalValue.parse(value?.trim() ?? '');
+                      return null;
+                    } on DomainValidationException {
+                      return context.l10n.text('invalidAmount');
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _currency,
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.text('currency'),
+                  ),
+                  validator: (value) {
+                    try {
+                      CurrencyCode(value?.trim() ?? '');
+                      return null;
+                    } on DomainValidationException {
+                      return context.l10n.text('invalidCurrency');
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(context.l10n.text('date')),
+                  subtitle: Text(_shortDate(_date)),
+                  trailing: const Icon(Icons.calendar_today_outlined),
+                  onTap: () async {
+                    final selected = await showDatePicker(
+                      context: context,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                      initialDate: _date,
+                    );
+                    if (selected != null) {
+                      setState(() {
+                        _date = selected;
+                        _dateChanged = true;
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _description,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.text('descriptionOptional'),
+                    prefixIcon: const Icon(Icons.notes_rounded),
+                  ),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: ButlerlySpacing.standard),
+                TextFormField(
+                  controller: _notes,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.text('notesOptional'),
+                    prefixIcon: const Icon(Icons.sticky_note_2_outlined),
+                  ),
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 16),
+                _LookupDropdown<String>(
+                  label: context.l10n.text('merchant'),
+                  value: _merchantId,
+                  entries: [
+                    for (final value in data.merchants.where(
+                      (v) => v.status == MerchantStatus.active,
+                    ))
+                      DropdownMenuEntry(
+                        value: value.id.value,
+                        label: value.name,
+                      ),
+                  ],
+                  onChanged: (value) => setState(() => _merchantId = value),
+                  onCreate: () => _createMerchant(data),
+                ),
+                const SizedBox(height: 16),
+                _LookupDropdown<String>(
+                  label: context.l10n.text('category'),
+                  value: selectedParentId,
+                  entries: [
+                    for (final value in activeCategories.where(
+                      (v) => v.parentId == null,
+                    ))
+                      DropdownMenuEntry(
+                        value: value.id.value,
+                        label: categoryDisplayLabel(value, languageCode),
+                      ),
+                  ],
+                  onChanged: (value) => setState(() => _categoryId = value),
+                ),
+                const SizedBox(height: 16),
+                _LookupDropdown<String>(
+                  label: context.l10n.text('subcategory'),
+                  value: selectedCategory?.parentId == null
+                      ? null
+                      : _categoryId,
+                  entries: [
+                    for (final value in activeCategories.where(
+                      (v) => v.parentId?.value == selectedParentId,
+                    ))
+                      DropdownMenuEntry(
+                        value: value.id.value,
+                        label: categoryDisplayLabel(value, languageCode),
+                      ),
+                  ],
+                  onChanged: (value) =>
+                      setState(() => _categoryId = value ?? selectedParentId),
+                ),
+                const SizedBox(height: 16),
+                _LookupDropdown<String>(
+                  label: 'Payment source',
+                  value: _paymentSourceId,
+                  entries: [
+                    for (final value in data.paymentSources.where(
+                      (v) => v.status == PaymentSourceStatus.active,
+                    ))
+                      DropdownMenuEntry(
+                        value: value.id.value,
+                        label: value.displayIdentity ?? value.name,
+                      ),
+                  ],
+                  onChanged: (value) =>
+                      setState(() => _paymentSourceId = value),
+                ),
+                const SizedBox(height: 16),
+                _TagSelector(
+                  tags: data.tags
+                      .where((v) => v.status == TagStatus.active)
+                      .toList(),
+                  languageCode: languageCode,
+                  selected: _tagIds,
+                  onChanged: (value) => setState(() => _tagIds = value),
+                  onCreate: () => _createTag(data),
+                ),
+                const SizedBox(height: ButlerlySpacing.section),
+                FilledButton(
+                  onPressed: _saving ? null : _save,
+                  child: Text(
+                    _saving
+                        ? context.l10n.text('saving')
+                        : context.l10n.text('saveLocally'),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
-      builder: (context, snapshot) {
-        final data = snapshot.requireData;
-        final selectedCategory = data.categories
-            .where((value) => value.id.value == _categoryId)
-            .firstOrNull;
-        final selectedParentId =
-            selectedCategory?.parentId?.value ??
-            (selectedCategory != null && selectedCategory.parentId == null
-                ? selectedCategory.id.value
-                : null);
-        final activeCategories = data.categories
-            .where((value) => value.status == CategoryStatus.active)
-            .toList(growable: false);
-        return Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.all(24),
-            children: [
-              SegmentedButton<TransactionDirection>(
-                showSelectedIcon: false,
-                segments: [
-                  ButtonSegment(
-                    value: TransactionDirection.expense,
-                    icon: const Icon(Icons.arrow_upward_rounded),
-                    label: Text(context.l10n.text('expense')),
-                  ),
-                  ButtonSegment(
-                    value: TransactionDirection.income,
-                    icon: const Icon(Icons.arrow_downward_rounded),
-                    label: Text(context.l10n.text('income')),
-                  ),
-                ],
-                selected: {_direction},
-                onSelectionChanged: (selection) =>
-                    setState(() => _direction = selection.single),
-              ),
-              const SizedBox(height: ButlerlySpacing.section),
-              TextFormField(
-                controller: _amount,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: InputDecoration(
-                  labelText: context.l10n.text('amount'),
-                  prefixIcon: const Icon(Icons.payments_outlined),
-                ),
-                validator: (value) {
-                  try {
-                    DecimalValue.parse(value?.trim() ?? '');
-                    return null;
-                  } on DomainValidationException {
-                    return context.l10n.text('invalidAmount');
-                  }
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _currency,
-                textCapitalization: TextCapitalization.characters,
-                decoration: InputDecoration(
-                  labelText: context.l10n.text('currency'),
-                ),
-                validator: (value) {
-                  try {
-                    CurrencyCode(value?.trim() ?? '');
-                    return null;
-                  } on DomainValidationException {
-                    return context.l10n.text('invalidCurrency');
-                  }
-                },
-              ),
-              const SizedBox(height: 16),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(context.l10n.text('date')),
-                subtitle: Text(_shortDate(_date)),
-                trailing: const Icon(Icons.calendar_today_outlined),
-                onTap: () async {
-                  final selected = await showDatePicker(
-                    context: context,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2100),
-                    initialDate: _date,
-                  );
-                  if (selected != null) {
-                    setState(() {
-                      _date = selected;
-                      _dateChanged = true;
-                    });
-                  }
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _description,
-                decoration: InputDecoration(
-                  labelText: context.l10n.text('descriptionOptional'),
-                  prefixIcon: const Icon(Icons.notes_rounded),
-                ),
-                maxLines: 2,
-              ),
-              const SizedBox(height: ButlerlySpacing.standard),
-              TextFormField(
-                controller: _notes,
-                decoration: InputDecoration(
-                  labelText: context.l10n.text('notesOptional'),
-                  prefixIcon: const Icon(Icons.sticky_note_2_outlined),
-                ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 16),
-              _LookupDropdown<String>(
-                label: context.l10n.text('merchant'),
-                value: _merchantId,
-                entries: [
-                  for (final value in data.merchants.where(
-                    (v) => v.status == MerchantStatus.active,
-                  ))
-                    DropdownMenuEntry(value: value.id.value, label: value.name),
-                ],
-                onChanged: (value) => setState(() => _merchantId = value),
-                onCreate: () => _createMerchant(data),
-              ),
-              const SizedBox(height: 16),
-              _LookupDropdown<String>(
-                label: context.l10n.text('category'),
-                value: selectedParentId,
-                entries: [
-                  for (final value in activeCategories.where(
-                    (v) => v.parentId == null,
-                  ))
-                    DropdownMenuEntry(
-                      value: value.id.value,
-                      label: categoryDisplayLabel(
-                        value,
-                        Localizations.localeOf(context).languageCode,
-                      ),
-                    ),
-                ],
-                onChanged: (value) => setState(() => _categoryId = value),
-              ),
-              const SizedBox(height: 16),
-              _LookupDropdown<String>(
-                label: context.l10n.text('subcategory'),
-                value: selectedCategory?.parentId == null ? null : _categoryId,
-                entries: [
-                  for (final value in activeCategories.where(
-                    (v) => v.parentId?.value == selectedParentId,
-                  ))
-                    DropdownMenuEntry(
-                      value: value.id.value,
-                      label: categoryDisplayLabel(
-                        value,
-                        Localizations.localeOf(context).languageCode,
-                      ),
-                    ),
-                ],
-                onChanged: (value) =>
-                    setState(() => _categoryId = value ?? selectedParentId),
-              ),
-              const SizedBox(height: 16),
-              _LookupDropdown<String>(
-                label: 'Payment source',
-                value: _paymentSourceId,
-                entries: [
-                  for (final value in data.paymentSources.where(
-                    (v) => v.status == PaymentSourceStatus.active,
-                  ))
-                    DropdownMenuEntry(
-                      value: value.id.value,
-                      label: value.displayIdentity ?? value.name,
-                    ),
-                ],
-                onChanged: (value) => setState(() => _paymentSourceId = value),
-              ),
-              const SizedBox(height: 16),
-              _TagSelector(
-                tags: data.tags
-                    .where((v) => v.status == TagStatus.active)
-                    .toList(),
-                selected: _tagIds,
-                onChanged: (value) => setState(() => _tagIds = value),
-                onCreate: () => _createTag(data),
-              ),
-              const SizedBox(height: ButlerlySpacing.section),
-              FilledButton(
-                onPressed: _saving ? null : _save,
-                child: Text(
-                  _saving
-                      ? context.l10n.text('saving')
-                      : context.l10n.text('saveLocally'),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    ),
-  );
+    );
+  }
 
   Future<void> _createMerchant(_EditorMasterData data) async {
     final name = await _prompt(context, 'New merchant');
@@ -728,11 +737,13 @@ class _LookupDropdown<T> extends StatelessWidget {
 class _TagSelector extends StatelessWidget {
   const _TagSelector({
     required this.tags,
+    required this.languageCode,
     required this.selected,
     required this.onChanged,
     required this.onCreate,
   });
   final List<Tag> tags;
+  final String languageCode;
   final Set<String> selected;
   final ValueChanged<Set<String>> onChanged;
   final VoidCallback onCreate;
@@ -749,12 +760,7 @@ class _TagSelector extends StatelessWidget {
         children: [
           for (final tag in tags)
             FilterChip(
-              label: Text(
-                tagDisplayLabel(
-                  tag,
-                  Localizations.localeOf(context).languageCode,
-                ),
-              ),
+              label: Text(tagDisplayLabel(tag, languageCode)),
               selected: selected.contains(tag.id.value),
               onSelected: (checked) {
                 final next = {...selected};
