@@ -59,7 +59,14 @@ class _TransactionsPageState extends State<TransactionsPage> {
         'Transactions could not be loaded.',
       ),
     };
-    return _TransactionsData(values, await TransactionMasterData.load(finance));
+    return _TransactionsData(
+      values,
+      await TransactionMasterData.load(
+        finance,
+        languageCode:
+            WidgetsBinding.instance.platformDispatcher.locale.languageCode,
+      ),
+    );
   }
 
   void _refresh() {
@@ -1269,7 +1276,11 @@ class _TransactionMasterDataRowsState
   @override
   void initState() {
     super.initState();
-    _masterData = TransactionMasterData.load(widget.finance);
+    _masterData = TransactionMasterData.load(
+      widget.finance,
+      languageCode:
+          WidgetsBinding.instance.platformDispatcher.locale.languageCode,
+    );
   }
 
   @override

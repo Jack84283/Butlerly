@@ -53,7 +53,11 @@ class _HomePageState extends State<HomePage> {
     final results = await Future.wait([
       finance.listTransactions(const ListTransactionsQuery()),
       finance.listReviewItems(),
-      TransactionMasterData.load(finance),
+      TransactionMasterData.load(
+        finance,
+        languageCode:
+            WidgetsBinding.instance.platformDispatcher.locale.languageCode,
+      ),
     ]);
     final transactions = switch (results[0]) {
       ApplicationSuccess<List<TransactionDto>>(:final value) => value,
