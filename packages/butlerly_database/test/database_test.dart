@@ -39,6 +39,10 @@ void main() {
         'suggestions',
         'review_issues',
         'user_preferences',
+        'category_translations',
+        'tag_translations',
+        'reference_data',
+        'reference_data_translations',
       ]),
     );
     expect(await database.passesIntegrityCheck(), isTrue);
