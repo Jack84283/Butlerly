@@ -158,26 +158,28 @@ Future<T?> _showSetupSelection<T>(
   BuildContext context,
   String title,
   List<(T, String)> options,
-) => showModalBottomSheet<T>(
+) => showDialog<T>(
   context: context,
-  showDragHandle: true,
-  builder: (context) => SafeArea(
-    child: ListView(
-      shrinkWrap: true,
-      padding: const EdgeInsets.only(bottom: ButlerlySpacing.standard),
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: ButlerlySpacing.standard,
-          ),
-          child: Text(title, style: Theme.of(context).textTheme.titleLarge),
-        ),
-        for (final option in options)
-          ListTile(
-            title: Text(option.$2),
-            onTap: () => Navigator.of(context).pop(option.$1),
-          ),
-      ],
+  builder: (context) => AlertDialog(
+    title: Text(title),
+    content: SizedBox(
+      width: double.maxFinite,
+      child: ListView(
+        shrinkWrap: true,
+        children: [
+          for (final option in options)
+            ListTile(
+              title: Text(option.$2),
+              onTap: () => Navigator.of(context).pop(option.$1),
+            ),
+        ],
+      ),
     ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: Text(context.l10n.text('cancel')),
+      ),
+    ],
   ),
 );
