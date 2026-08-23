@@ -12,16 +12,21 @@ final class TransactionMasterData {
   const TransactionMasterData({
     this.merchantNames = const {},
     this.categoryNames = const {},
+    this.categoryParentIds = const {},
     this.tagNames = const {},
   });
 
   final Map<String, String> merchantNames;
   final Map<String, String> categoryNames;
+  final Map<String, String?> categoryParentIds;
   final Map<String, String> tagNames;
 
   String? merchantName(String? id) => id == null ? null : merchantNames[id];
 
   String? categoryName(String? id) => id == null ? null : categoryNames[id];
+
+  String? categoryParentId(String? id) =>
+      id == null ? null : categoryParentIds[id];
 
   String? tagName(String id) => tagNames[id];
 
@@ -78,6 +83,9 @@ final class TransactionMasterData {
           value.id.value:
               categoryLabels[value.id.value] ??
               categoryDisplayLabel(value, languageCode),
+      },
+      categoryParentIds: {
+        for (final value in categories) value.id.value: value.parentId?.value,
       },
       tagNames: {
         for (final value in tags)

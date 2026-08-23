@@ -651,6 +651,17 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   Future<void> _createMerchant(_EditorMasterData data) async {
     final name = await _prompt(context, 'New merchant');
     if (name == null || !mounted) return;
+    final existing = data.merchants
+        .where(
+          (merchant) =>
+              merchant.status == MerchantStatus.active &&
+              merchant.name.trim().toLowerCase() == name.trim().toLowerCase(),
+        )
+        .firstOrNull;
+    if (existing != null) {
+      setState(() => _merchantId = existing.id.value);
+      return;
+    }
     final value = Merchant(
       id: MerchantId('merchant-${DateTime.now().microsecondsSinceEpoch}'),
       name: name,
@@ -808,26 +819,46 @@ class _TagSelector extends StatelessWidget {
 }
 
 Future<String?> _prompt(BuildContext context, String title) async {
-  final controller = TextEditingController();
   final value = await showButlerlyBottomSheet<String>(
     context: context,
-    builder: (context) => ButlerlySheet(
-      title: Text(title),
-      content: TextField(controller: controller, autofocus: true),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(context.l10n.text('cancel')),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, controller.text),
-          child: Text(context.l10n.text('save')),
-        ),
-      ],
-    ),
+    builder: (context) => _PromptSheet(title: title),
   );
-  controller.dispose();
   return value?.trim().isEmpty == true ? null : value?.trim();
+}
+
+class _PromptSheet extends StatefulWidget {
+  const _PromptSheet({required this.title});
+
+  final String title;
+
+  @override
+  State<_PromptSheet> createState() => _PromptSheetState();
+}
+
+class _PromptSheetState extends State<_PromptSheet> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => ButlerlySheet(
+    title: Text(widget.title),
+    content: TextField(controller: _controller, autofocus: true),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: Text(context.l10n.text('cancel')),
+      ),
+      FilledButton(
+        onPressed: () => Navigator.pop(context, _controller.text),
+        child: Text(context.l10n.text('save')),
+      ),
+    ],
+  );
 }
 
 class TransactionDetailPage extends StatefulWidget {
@@ -914,7 +945,13 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               ),
             );
             if (changed == true && context.mounted) {
-              Navigator.of(context).pop(true);
+              final refreshed = await finance.getTransaction(transaction.id);
+              if (!context.mounted) return;
+              if (refreshed case ApplicationSuccess<TransactionDto>(
+                :final value,
+              )) {
+                setState(() => transaction = value);
+              }
             }
           },
           icon: const Icon(Icons.edit_outlined),
@@ -1023,7 +1060,16 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
         ),
         const SizedBox(height: 12),
         OutlinedButton.icon(
-          onPressed: () => _assignPaymentSource(context, finance, transaction),
+          onPressed: () async {
+            final assigned = await _assignPaymentSource(
+              context,
+              finance,
+              transaction,
+            );
+            if (assigned != null && context.mounted) {
+              setState(() => transaction = assigned);
+            }
+          },
           icon: const Icon(Icons.account_balance_wallet_outlined),
           label: Text(context.l10n.text('assignPaymentSource')),
         ),
@@ -1323,15 +1369,24 @@ class _TransactionMasterDataRows extends StatefulWidget {
 
 class _TransactionMasterDataRowsState
     extends State<_TransactionMasterDataRows> {
-  late final Future<TransactionMasterData> _masterData;
+  late Future<TransactionMasterData> _masterData;
+  String? _languageCode;
 
   @override
   void initState() {
     super.initState();
+    _masterData = Future.value(const TransactionMasterData());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final languageCode = Localizations.localeOf(context).languageCode;
+    if (_languageCode == languageCode) return;
+    _languageCode = languageCode;
     _masterData = TransactionMasterData.load(
       widget.finance,
-      languageCode:
-          WidgetsBinding.instance.platformDispatcher.locale.languageCode,
+      languageCode: languageCode,
     );
   }
 
@@ -1357,12 +1412,7 @@ class _TransactionMasterDataRowsState
                   context.l10n.text('unavailableMerchant'),
             ),
           if (transaction.categoryId != null)
-            _DetailRow(
-              label: context.l10n.text('category'),
-              value:
-                  data.categoryName(transaction.categoryId) ??
-                  context.l10n.text('unavailableCategory'),
-            ),
+            ..._categoryRows(context, data, transaction.categoryId),
           if (transaction.tagIds.isNotEmpty)
             _DetailRow(
               label: context.l10n.text('tags'),
@@ -1377,6 +1427,35 @@ class _TransactionMasterDataRowsState
       );
     },
   );
+}
+
+List<Widget> _categoryRows(
+  BuildContext context,
+  TransactionMasterData data,
+  String? categoryId,
+) {
+  final name = data.categoryName(categoryId);
+  final parentId = data.categoryParentId(categoryId);
+  if (parentId == null) {
+    return [
+      _DetailRow(
+        label: context.l10n.text('category'),
+        value: name ?? context.l10n.text('unavailableCategory'),
+      ),
+    ];
+  }
+  return [
+    _DetailRow(
+      label: context.l10n.text('category'),
+      value:
+          data.categoryName(parentId) ??
+          context.l10n.text('unavailableCategory'),
+    ),
+    _DetailRow(
+      label: context.l10n.text('subcategory'),
+      value: name ?? context.l10n.text('unavailableCategory'),
+    ),
+  ];
 }
 
 class _PaymentSourceRow extends StatelessWidget {
@@ -1486,12 +1565,30 @@ Future<bool?> _organizeTransaction(
     ApplicationSuccess<List<Tag>>(:final value) => value,
     _ => const <Tag>[],
   };
+  final languageCode = Localizations.localeOf(context).languageCode;
+  final categoryLabels = switch (await finance.loadMasterTranslations(
+    masterType: 'category',
+    locale: languageCode == 'zh' ? 'zh-Hans' : languageCode,
+  )) {
+    ApplicationSuccess<Map<String, String>>(:final value) => value,
+    _ => const <String, String>{},
+  };
+  if (!context.mounted) return false;
   final merchantOptions = merchants
       .map((value) => _MasterDataOption(value.id.value, value.name))
       .toList(growable: false);
-  final categoryOptions = categories
-      .map((value) => _MasterDataOption(value.id.value, value.name))
+  String categoryName(Category value) =>
+      categoryLabels[value.id.value] ?? value.name;
+  final activeCategories = categories
+      .where((value) => value.status == CategoryStatus.active)
       .toList(growable: false);
+  List<_MasterDataOption> subcategoryOptions(String? parentId) =>
+      activeCategories
+          .where((value) => value.parentId?.value == parentId)
+          .map(
+            (value) => _MasterDataOption(value.id.value, categoryName(value)),
+          )
+          .toList(growable: false);
   final tagOptions = tags
       .map((value) => _MasterDataOption(value.id.value, value.name))
       .toList(growable: false);
@@ -1499,6 +1596,10 @@ Future<bool?> _organizeTransaction(
   String? merchantId = transaction.merchantId;
   String? categoryId = transaction.categoryId;
   final selectedTagIds = transaction.tagIds.toSet();
+  final initialCategory = activeCategories
+      .where((value) => value.id.value == categoryId)
+      .firstOrNull;
+  String? parentCategoryId = initialCategory?.parentId?.value;
   return showButlerlyBottomSheet<bool>(
     context: context,
     builder: (dialogContext) => StatefulBuilder(
@@ -1523,14 +1624,39 @@ Future<bool?> _organizeTransaction(
               _OrganizerMenuField(
                 label: dialogContext.l10n.text('category'),
                 icon: Icons.category_outlined,
-                value: categoryId,
+                value: parentCategoryId ?? categoryId,
                 placeholder: dialogContext.l10n.text('unassigned'),
-                options: categoryOptions,
+                options: activeCategories
+                    .where((value) => value.parentId == null)
+                    .map(
+                      (value) => _MasterDataOption(
+                        value.id.value,
+                        categoryName(value),
+                      ),
+                    )
+                    .toList(growable: false),
                 includeUnassigned: true,
-                onSelected: (value) => setDialogState(
-                  () => categoryId = value.isEmpty ? null : value,
-                ),
+                onSelected: (value) => setDialogState(() {
+                  parentCategoryId = value.isEmpty ? null : value;
+                  categoryId = parentCategoryId;
+                }),
               ),
+              const SizedBox(height: ButlerlySpacing.small),
+              if (subcategoryOptions(parentCategoryId).isNotEmpty)
+                _OrganizerMenuField(
+                  label: dialogContext.l10n.text('subcategory'),
+                  icon: Icons.account_tree_outlined,
+                  value:
+                      parentCategoryId == null || categoryId == parentCategoryId
+                      ? null
+                      : categoryId,
+                  placeholder: dialogContext.l10n.text('unassigned'),
+                  options: subcategoryOptions(parentCategoryId),
+                  includeUnassigned: true,
+                  onSelected: (value) => setDialogState(
+                    () => categoryId = value.isEmpty ? parentCategoryId : value,
+                  ),
+                ),
               const SizedBox(height: ButlerlySpacing.small),
               if (selectedTagIds.isNotEmpty) ...[
                 Align(
@@ -1675,18 +1801,18 @@ String? _optionName(List<_MasterDataOption> options, String? id) {
   return null;
 }
 
-Future<void> _assignPaymentSource(
+Future<TransactionDto?> _assignPaymentSource(
   BuildContext context,
   FinanceServices finance,
   TransactionDto transaction,
 ) async {
   final result = await finance.listPaymentSources();
-  if (!context.mounted) return;
+  if (!context.mounted) return null;
   if (result is! ApplicationSuccess<List<PaymentSource>>) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(context.l10n.text('paymentSourcesLoadError'))),
     );
-    return;
+    return null;
   }
   final sources = result.value
       .where((value) => value.status == PaymentSourceStatus.active)
@@ -1714,16 +1840,19 @@ Future<void> _assignPaymentSource(
       ),
     ),
   );
-  if (!context.mounted) return;
+  if (!context.mounted) return null;
   final assigned = await finance.assignPaymentSource(transaction.id, sourceId);
-  if (!context.mounted) return;
   if (assigned is ApplicationSuccess<TransactionDto>) {
-    Navigator.of(context).pop(true);
+    notifyTransactionChanged();
+    return assigned.value;
   } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.l10n.text('paymentSourceAssignError'))),
-    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.text('paymentSourceAssignError'))),
+      );
+    }
   }
+  return null;
 }
 
 String _transactionDate(TransactionDto value, BuildContext context) =>

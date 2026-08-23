@@ -21,7 +21,11 @@ class AppLogger {
   }
 
   void severe(String message, Object error, StackTrace? stackTrace) {
-    _logger.severe(redact(message));
+    final details = redact('$error');
+    _logger.severe('${redact(message)}: $details');
+    if (kDebugMode && stackTrace != null) {
+      debugPrint(stackTrace.toString());
+    }
   }
 
   /// Removes common sensitive values before an application message is emitted.
