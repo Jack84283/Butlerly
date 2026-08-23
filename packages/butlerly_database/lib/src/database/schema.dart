@@ -1,5 +1,5 @@
 abstract final class Schema {
-  static const version = 12;
+  static const version = 14;
 
   static const migration1 = <String>[
     '''CREATE TABLE payment_sources (
@@ -212,5 +212,39 @@ abstract final class Schema {
   static const migration12 = <String>[
     "ALTER TABLE user_preferences ADD COLUMN appearance TEXT NOT NULL DEFAULT 'system'",
     "ALTER TABLE user_preferences ADD COLUMN color_theme TEXT NOT NULL DEFAULT 'butlerRed'",
+  ];
+
+  static const migration13 = <String>[
+    'ALTER TABLE user_preferences ADD COLUMN formatting_locale TEXT',
+    'ALTER TABLE user_preferences ADD COLUMN region_code TEXT',
+  ];
+
+  static const migration14 = <String>[
+    '''CREATE TABLE category_translations (
+      category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+      locale TEXT NOT NULL,
+      label TEXT NOT NULL,
+      PRIMARY KEY(category_id, locale)
+    )''',
+    '''CREATE TABLE tag_translations (
+      tag_id TEXT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+      locale TEXT NOT NULL,
+      label TEXT NOT NULL,
+      PRIMARY KEY(tag_id, locale)
+    )''',
+    '''CREATE TABLE reference_data (
+      id TEXT PRIMARY KEY NOT NULL,
+      code TEXT NOT NULL UNIQUE,
+      type TEXT NOT NULL,
+      origin TEXT NOT NULL,
+      status TEXT NOT NULL
+    )''',
+    '''CREATE TABLE reference_data_translations (
+      reference_data_id TEXT NOT NULL REFERENCES reference_data(id) ON DELETE CASCADE,
+      locale TEXT NOT NULL,
+      label TEXT NOT NULL,
+      PRIMARY KEY(reference_data_id, locale)
+    )''',
+    'CREATE INDEX idx_reference_data_type ON reference_data(type)',
   ];
 }

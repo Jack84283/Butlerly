@@ -3,6 +3,8 @@ import '../value_objects/currency_code.dart';
 final class UserPreference {
   const UserPreference({
     required this.locale,
+    this.formattingLocale,
+    this.regionCode,
     required this.baseCurrency,
     required this.timeZoneId,
     this.externalAiEnabled = false,
@@ -12,6 +14,8 @@ final class UserPreference {
   });
 
   final String locale;
+  final String? formattingLocale;
+  final String? regionCode;
   final CurrencyCode baseCurrency;
   final String timeZoneId;
   final bool externalAiEnabled;

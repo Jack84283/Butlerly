@@ -39,6 +39,10 @@ void main() {
         'suggestions',
         'review_issues',
         'user_preferences',
+        'category_translations',
+        'tag_translations',
+        'reference_data',
+        'reference_data_translations',
       ]),
     );
     expect(await database.passesIntegrityCheck(), isTrue);
@@ -51,6 +55,8 @@ void main() {
     await repository.save(
       UserPreference(
         locale: 'zh',
+        formattingLocale: 'zh-Hans-CN',
+        regionCode: 'CN',
         baseCurrency: CurrencyCode('CNY'),
         timeZoneId: 'Asia/Shanghai',
         externalAiEnabled: true,
@@ -60,6 +66,8 @@ void main() {
 
     final value = await repository.load();
     expect(value?.locale, 'zh');
+    expect(value?.formattingLocale, 'zh-Hans-CN');
+    expect(value?.regionCode, 'CN');
     expect(value?.baseCurrency.value, 'CNY');
     expect(value?.timeZoneId, 'Asia/Shanghai');
     expect(value?.externalAiEnabled, isTrue);

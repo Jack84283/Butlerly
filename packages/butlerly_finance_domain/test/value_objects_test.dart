@@ -2,6 +2,20 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test(
+    'financial periods retain the persisted timezone and use date-only bounds',
+    () {
+      final period = FinancialPeriod.month(
+        year: 2026,
+        month: 8,
+        timeZoneId: 'America/Los_Angeles',
+      );
+
+      expect(period.timeZoneId, 'America/Los_Angeles');
+      expect(period.contains(DateTime(2026, 8, 1, 23, 59)), isTrue);
+      expect(period.contains(DateTime(2026, 9, 1)), isFalse);
+    },
+  );
   group('DecimalValue', () {
     test('preserves exact decimal precision without floating point', () {
       expect(
