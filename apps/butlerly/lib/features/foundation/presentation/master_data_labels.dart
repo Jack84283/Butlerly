@@ -1,5 +1,22 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
+List<MasterTranslation> systemMasterTranslations() => [
+  for (final entry in _en.entries)
+    MasterTranslation(
+      masterType: entry.key.startsWith('category.') ? 'category' : 'tag',
+      masterId: entry.key,
+      locale: 'en',
+      label: entry.value,
+    ),
+  for (final entry in _zh.entries)
+    MasterTranslation(
+      masterType: entry.key.startsWith('category.') ? 'category' : 'tag',
+      masterId: entry.key,
+      locale: 'zh-Hans',
+      label: entry.value,
+    ),
+];
+
 /// Resolves Butlerly-owned labels without changing the stable domain value.
 /// User/source text deliberately bypasses this catalog.
 String categoryDisplayLabel(Category value, String languageCode) {

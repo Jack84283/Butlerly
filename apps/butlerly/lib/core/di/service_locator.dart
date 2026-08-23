@@ -30,6 +30,9 @@ void configureDependencies({
       SqliteTagRepository(database.persistenceDatabase),
       SqliteEvidenceRepository(database.persistenceDatabase),
       SqliteUserPreferenceRepository(database.persistenceDatabase),
+      masterTranslations: SqliteMasterTranslationRepository(
+        database.persistenceDatabase,
+      ),
       reconciliationCandidates: SqliteReconciliationCandidateRepository(
         database.persistenceDatabase,
       ),

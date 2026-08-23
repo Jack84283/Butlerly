@@ -74,6 +74,38 @@ void main() {
     expect(value?.firstUseCompleted, isTrue);
   });
 
+  test(
+    'persists and retrieves master translations by stable ID and locale',
+    () async {
+      final repository = SqliteMasterTranslationRepository(database);
+      await database.connection.insert('categories', {
+        'id': 'category.food',
+        'name': 'Food & Dining',
+        'origin': 'system',
+        'status': 'active',
+      });
+      await repository.saveAll(const [
+        MasterTranslation(
+          masterType: 'category',
+          masterId: 'category.food',
+          locale: 'en',
+          label: 'Food & Dining',
+        ),
+        MasterTranslation(
+          masterType: 'category',
+          masterId: 'category.food',
+          locale: 'zh-Hans',
+          label: '餐饮',
+        ),
+      ]);
+
+      expect(
+        await repository.labels(masterType: 'category', locale: 'zh-Hans'),
+        {'category.food': '餐饮'},
+      );
+    },
+  );
+
   test('migrates a v1 UTC instant to v2 business-date fields', () async {
     const path = 'butlerly-v1-to-v2-test.db';
     await databaseFactoryFfi.deleteDatabase(path);

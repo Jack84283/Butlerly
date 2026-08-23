@@ -5,7 +5,6 @@ import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
-import 'package:butlerly/features/foundation/presentation/master_data_labels.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -281,6 +280,7 @@ class _TransactionEditorPageState extends ConsumerState<TransactionEditorPage> {
   late String? _paymentSourceId;
   late Set<String> _tagIds;
   late Future<_EditorMasterData> _masterData;
+  String _loadedLanguageCode = 'en';
   bool _dateChanged = false;
   bool _saving = false;
 
@@ -302,16 +302,42 @@ class _TransactionEditorPageState extends ConsumerState<TransactionEditorPage> {
     _categoryId = existing?.categoryId;
     _paymentSourceId = existing?.paymentSourceId;
     _tagIds = {...?existing?.tagIds};
-    _masterData = _loadMasterData();
+    _masterData = _loadMasterData(_loadedLanguageCode);
   }
 
-  Future<_EditorMasterData> _loadMasterData() async {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final languageCode =
+        ref.read(localeProvider)?.languageCode ??
+        Localizations.localeOf(context).languageCode;
+    if (languageCode != _loadedLanguageCode) {
+      _loadedLanguageCode = languageCode;
+      _masterData = _loadMasterData(languageCode);
+    }
+  }
+
+  Future<_EditorMasterData> _loadMasterData(String languageCode) async {
     final results = await Future.wait([
       widget.finance.listMerchants(),
       widget.finance.listCategories(),
       widget.finance.listTags(),
       widget.finance.listPaymentSources(),
     ]);
+    final categoryLabels = switch (await widget.finance.loadMasterTranslations(
+      masterType: 'category',
+      locale: languageCode == 'zh' ? 'zh-Hans' : languageCode,
+    )) {
+      ApplicationSuccess<Map<String, String>>(:final value) => value,
+      _ => const <String, String>{},
+    };
+    final tagLabels = switch (await widget.finance.loadMasterTranslations(
+      masterType: 'tag',
+      locale: languageCode == 'zh' ? 'zh-Hans' : languageCode,
+    )) {
+      ApplicationSuccess<Map<String, String>>(:final value) => value,
+      _ => const <String, String>{},
+    };
     return _EditorMasterData(
       merchants: results[0] is ApplicationSuccess<List<Merchant>>
           ? (results[0] as ApplicationSuccess<List<Merchant>>).value
@@ -325,6 +351,8 @@ class _TransactionEditorPageState extends ConsumerState<TransactionEditorPage> {
       paymentSources: results[3] is ApplicationSuccess<List<PaymentSource>>
           ? (results[3] as ApplicationSuccess<List<PaymentSource>>).value
           : const [],
+      categoryLabels: categoryLabels,
+      tagLabels: tagLabels,
     );
   }
 
@@ -403,9 +431,6 @@ class _TransactionEditorPageState extends ConsumerState<TransactionEditorPage> {
 
   @override
   Widget build(BuildContext context) {
-    final languageCode =
-        ref.watch(localeProvider)?.languageCode ??
-        Localizations.localeOf(context).languageCode;
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -421,6 +446,8 @@ class _TransactionEditorPageState extends ConsumerState<TransactionEditorPage> {
           categories: [],
           tags: [],
           paymentSources: [],
+          categoryLabels: {},
+          tagLabels: {},
         ),
         builder: (context, snapshot) {
           final data = snapshot.requireData;
@@ -558,7 +585,8 @@ class _TransactionEditorPageState extends ConsumerState<TransactionEditorPage> {
                     ))
                       DropdownMenuEntry(
                         value: value.id.value,
-                        label: categoryDisplayLabel(value, languageCode),
+                        label:
+                            data.categoryLabels[value.id.value] ?? value.name,
                       ),
                   ],
                   onChanged: (value) => setState(() => _categoryId = value),
@@ -575,7 +603,8 @@ class _TransactionEditorPageState extends ConsumerState<TransactionEditorPage> {
                     ))
                       DropdownMenuEntry(
                         value: value.id.value,
-                        label: categoryDisplayLabel(value, languageCode),
+                        label:
+                            data.categoryLabels[value.id.value] ?? value.name,
                       ),
                   ],
                   onChanged: (value) =>
@@ -602,7 +631,7 @@ class _TransactionEditorPageState extends ConsumerState<TransactionEditorPage> {
                   tags: data.tags
                       .where((v) => v.status == TagStatus.active)
                       .toList(),
-                  languageCode: languageCode,
+                  labels: data.tagLabels,
                   selected: _tagIds,
                   onChanged: (value) => setState(() => _tagIds = value),
                   onCreate: () => _createTag(data),
@@ -638,7 +667,7 @@ class _TransactionEditorPageState extends ConsumerState<TransactionEditorPage> {
       if (result is ApplicationSuccess<Merchant>) {
         setState(() {
           _merchantId = value.id.value;
-          _masterData = _loadMasterData();
+          _masterData = _loadMasterData(_loadedLanguageCode);
         });
       } else {
         _showMasterDataError();
@@ -661,7 +690,7 @@ class _TransactionEditorPageState extends ConsumerState<TransactionEditorPage> {
       if (result is ApplicationSuccess<Tag>) {
         setState(() {
           _tagIds.add(value.id.value);
-          _masterData = _loadMasterData();
+          _masterData = _loadMasterData(_loadedLanguageCode);
         });
       } else {
         _showMasterDataError();
@@ -684,11 +713,15 @@ final class _EditorMasterData {
     required this.categories,
     required this.tags,
     required this.paymentSources,
+    required this.categoryLabels,
+    required this.tagLabels,
   });
   final List<Merchant> merchants;
   final List<Category> categories;
   final List<Tag> tags;
   final List<PaymentSource> paymentSources;
+  final Map<String, String> categoryLabels;
+  final Map<String, String> tagLabels;
 }
 
 class _LookupDropdown<T> extends StatelessWidget {
@@ -737,13 +770,13 @@ class _LookupDropdown<T> extends StatelessWidget {
 class _TagSelector extends StatelessWidget {
   const _TagSelector({
     required this.tags,
-    required this.languageCode,
+    required this.labels,
     required this.selected,
     required this.onChanged,
     required this.onCreate,
   });
   final List<Tag> tags;
-  final String languageCode;
+  final Map<String, String> labels;
   final Set<String> selected;
   final ValueChanged<Set<String>> onChanged;
   final VoidCallback onCreate;
@@ -760,7 +793,7 @@ class _TagSelector extends StatelessWidget {
         children: [
           for (final tag in tags)
             FilterChip(
-              label: Text(tagDisplayLabel(tag, languageCode)),
+              label: Text(labels[tag.id.value] ?? tag.name),
               selected: selected.contains(tag.id.value),
               onSelected: (checked) {
                 final next = {...selected};

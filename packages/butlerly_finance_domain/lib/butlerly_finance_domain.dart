@@ -6,6 +6,7 @@ export 'src/entities/category.dart';
 export 'src/entities/evidence_item.dart';
 export 'src/entities/exchange_rate.dart';
 export 'src/entities/extraction.dart';
+export 'src/entities/master_translation.dart';
 export 'src/entities/merchant.dart';
 export 'src/entities/provenance.dart';
 export 'src/entities/reconciliation_candidate.dart';
