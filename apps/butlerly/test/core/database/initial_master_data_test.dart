@@ -1,4 +1,5 @@
 import 'package:butlerly/core/database/initial_master_data.dart';
+import 'package:butlerly/core/database/reference_data_seed.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -21,13 +22,13 @@ void main() {
     expect(
       data.referenceData.map((value) => value.id.value),
       containsAll([
-        'transaction_direction.expense',
-        'payment_source_type.card',
+        'transaction.direction.expense',
+        'payment_source.type.credit_card',
         'card_network.visa',
-        'evidence_type.receipt_image',
-        'review_status.needs_review',
-        'reconciliation_status.proposed',
-        'analysis_finding_type.conflict',
+        'evidence.type.receipt',
+        'review.status.needs_review',
+        'reconciliation.status.candidate',
+        'analysis.finding.data_quality',
       ]),
     );
     expect(
@@ -36,5 +37,22 @@ void main() {
           .map((value) => value.label),
       contains('信用卡'),
     );
+  });
+
+  test('matches every MD-0001 simple reference ID and translation', () {
+    final data = buildInitialMasterData();
+    final seeded = {
+      for (final value in data.referenceData) value.id.value: value,
+    };
+    final translations = {
+      for (final value in data.referenceTranslations)
+        '${value.masterId}|${value.locale}': value.label,
+    };
+
+    expect(seeded.keys, {for (final row in md0001ReferenceData) row.id});
+    for (final row in md0001ReferenceData) {
+      expect(translations['${row.id}|en'], row.english);
+      expect(translations['${row.id}|zh-Hans'], row.chinese);
+    }
   });
 }

@@ -117,9 +117,9 @@ void main() {
     () async {
       final repository = SqliteReferenceDataRepository(database);
       final value = ReferenceData(
-        id: ReferenceDataId('payment_source_type.card'),
+      id: ReferenceDataId('payment_source.type.credit_card'),
         code: 'card',
-        type: 'payment_source_type',
+      type: 'payment_source.type',
       );
       await repository.save(value);
       await repository.saveTranslation(
@@ -134,15 +134,36 @@ void main() {
       );
 
       expect(
-        (await repository.list(type: 'payment_source_type')).single.id.value,
+        (await repository.list(type: 'payment_source.type')).single.id.value,
         value.id.value,
       );
       expect(
-        await repository.labels(type: 'payment_source_type', locale: 'zh-Hans'),
+      await repository.labels(type: 'payment_source.type', locale: 'zh-Hans'),
         {value.id.value: '信用卡'},
       );
     },
   );
+
+  test('resolves a legacy reference ID through the MD-0001 alias', () async {
+    final repository = SqliteReferenceDataRepository(database);
+    await database.connection.insert('reference_data', {
+      'id': 'payment_source_type.card',
+      'code': 'card',
+      'type': 'payment_source_type',
+      'origin': 'system',
+      'status': 'active',
+    });
+    await repository.saveTranslation(
+      id: ReferenceDataId('payment_source_type.card'),
+      locale: 'zh-Hans',
+      label: '信用卡',
+    );
+
+    expect(
+      await repository.labels(type: 'payment_source.type', locale: 'zh-Hans'),
+      {'payment_source.type.credit_card': '信用卡'},
+    );
+  });
 
   test('migrates a v1 UTC instant to v2 business-date fields', () async {
     const path = 'butlerly-v1-to-v2-test.db';
