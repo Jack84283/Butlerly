@@ -38,7 +38,13 @@ class ButlerlyApp extends ConsumerWidget {
             body: Center(child: CircularProgressIndicator()),
           );
         }
-        if (firstUse) return const FirstUsePreferencesPage();
+        if (firstUse) {
+          return Overlay(
+            initialEntries: [
+              OverlayEntry(builder: (_) => const FirstUsePreferencesPage()),
+            ],
+          );
+        }
         return child ?? const SizedBox.shrink();
       },
       supportedLocales: AppLocalizations.supportedLocales,

@@ -37,23 +37,21 @@ class FirstUsePreferencesPage extends ConsumerWidget {
                 padding: const EdgeInsets.all(ButlerlySpacing.standard),
                 child: Column(
                   children: [
-                    DropdownButtonFormField<String>(
-                      initialValue: preference.locale,
-                      decoration: InputDecoration(
-                        labelText: context.l10n.text('language'),
-                      ),
-                      items: [
-                        DropdownMenuItem(
+                    _SetupDropdown<String>(
+                      label: context.l10n.text('language'),
+                      value: preference.locale,
+                      entries: [
+                        DropdownMenuEntry(
                           value: 'en',
-                          child: Text(context.l10n.text('english')),
+                          label: context.l10n.text('english'),
                         ),
-                        DropdownMenuItem(
+                        DropdownMenuEntry(
                           value: 'es',
-                          child: Text(context.l10n.text('spanish')),
+                          label: context.l10n.text('spanish'),
                         ),
-                        DropdownMenuItem(
+                        DropdownMenuEntry(
                           value: 'zh',
-                          child: Text(context.l10n.text('chinese')),
+                          label: context.l10n.text('chinese'),
                         ),
                       ],
                       onChanged: (value) {
@@ -65,19 +63,19 @@ class FirstUsePreferencesPage extends ConsumerWidget {
                       },
                     ),
                     const SizedBox(height: ButlerlySpacing.standard),
-                    DropdownButtonFormField<String>(
-                      initialValue: preference.baseCurrency.value,
-                      decoration: InputDecoration(
-                        labelText: context.l10n.text('baseCurrency'),
-                      ),
-                      items: const ['USD', 'EUR', 'GBP', 'CNY', 'JPY']
-                          .map(
-                            (value) => DropdownMenuItem(
-                              value: value,
-                              child: Text(value),
-                            ),
-                          )
-                          .toList(),
+                    _SetupDropdown<String>(
+                      label: context.l10n.text('baseCurrency'),
+                      value: preference.baseCurrency.value,
+                      entries: [
+                        for (final value in const [
+                          'USD',
+                          'EUR',
+                          'GBP',
+                          'CNY',
+                          'JPY',
+                        ])
+                          DropdownMenuEntry(value: value, label: value),
+                      ],
                       onChanged: (value) {
                         if (value != null) {
                           ref
@@ -87,25 +85,20 @@ class FirstUsePreferencesPage extends ConsumerWidget {
                       },
                     ),
                     const SizedBox(height: ButlerlySpacing.standard),
-                    DropdownButtonFormField<String>(
-                      isExpanded: true,
-                      initialValue:
+                    _SetupDropdown<String>(
+                      label: context.l10n.text('timeZone'),
+                      value:
                           timeZoneCatalog.any(
                             (zone) => zone.id == preference.timeZoneId,
                           )
                           ? preference.timeZoneId
                           : 'UTC',
-                      decoration: InputDecoration(
-                        labelText: context.l10n.text('timeZone'),
-                        prefixIcon: const Icon(Icons.schedule_rounded),
-                      ),
-                      items: [
+                      leadingIcon: Icons.schedule_rounded,
+                      entries: [
                         for (final zone in timeZoneCatalog)
-                          DropdownMenuItem(
+                          DropdownMenuEntry(
                             value: zone.id,
-                            child: Text(
-                              zone.label(Localizations.localeOf(context)),
-                            ),
+                            label: zone.label(Localizations.localeOf(context)),
                           ),
                       ],
                       onChanged: (value) {
@@ -132,4 +125,43 @@ class FirstUsePreferencesPage extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _SetupDropdown<T> extends StatelessWidget {
+  const _SetupDropdown({
+    required this.label,
+    required this.value,
+    required this.entries,
+    required this.onChanged,
+    this.leadingIcon,
+  });
+
+  final String label;
+  final T? value;
+  final List<DropdownMenuEntry<T>> entries;
+  final ValueChanged<T?> onChanged;
+  final IconData? leadingIcon;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => DropdownMenu<T>(
+      initialSelection: value,
+      width: constraints.maxWidth,
+      menuHeight: 192,
+      label: Text(label),
+      leadingIcon: leadingIcon == null ? null : Icon(leadingIcon),
+      dropdownMenuEntries: entries,
+      inputDecorationTheme: Theme.of(context).inputDecorationTheme,
+      menuStyle: MenuStyle(
+        minimumSize: WidgetStatePropertyAll(Size(constraints.maxWidth, 0)),
+        maximumSize: WidgetStatePropertyAll(
+          Size(constraints.maxWidth, double.infinity),
+        ),
+        backgroundColor: WidgetStatePropertyAll(
+          Theme.of(context).colorScheme.surface,
+        ),
+      ),
+      onSelected: onChanged,
+    ),
+  );
 }

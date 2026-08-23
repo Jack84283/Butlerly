@@ -607,7 +607,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                 ),
                 const SizedBox(height: 16),
                 _LookupDropdown<String>(
-                  label: 'Payment source',
+                  label: context.l10n.text('paymentSource'),
                   value: _paymentSourceId,
                   entries: [
                     for (final value in data.paymentSources.where(
