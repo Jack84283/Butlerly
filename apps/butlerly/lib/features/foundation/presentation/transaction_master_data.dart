@@ -2,6 +2,8 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
+import 'master_data_labels.dart';
+
 /// Presentation-only lookup data for transaction master-data references.
 ///
 /// Transaction DTOs intentionally carry stable foreign keys. Screens use this
@@ -32,7 +34,10 @@ final class TransactionMasterData {
     return labels.isEmpty ? null : labels.join(' • ');
   }
 
-  static Future<TransactionMasterData> load(FinanceServices finance) async {
+  static Future<TransactionMasterData> load(
+    FinanceServices finance, {
+    String languageCode = 'en',
+  }) async {
     final merchantsResult = await finance.listMerchants();
     final categoriesResult = await finance.listCategories();
     final tagsResult = await finance.listTags();
@@ -55,9 +60,13 @@ final class TransactionMasterData {
         for (final value in merchants) value.id.value: value.name,
       },
       categoryNames: {
-        for (final value in categories) value.id.value: value.name,
+        for (final value in categories)
+          value.id.value: categoryDisplayLabel(value, languageCode),
       },
-      tagNames: {for (final value in tags) value.id.value: value.name},
+      tagNames: {
+        for (final value in tags)
+          value.id.value: tagDisplayLabel(value, languageCode),
+      },
     );
   }
 }
