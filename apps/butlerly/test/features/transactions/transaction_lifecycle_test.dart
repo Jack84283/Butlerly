@@ -490,6 +490,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byType(DropdownMenu<String>).at(1));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Groceries').last);
     await tester.tap(find.text('Groceries').last);
     await tester.pumpAndSettle();
     await tester.tap(find.byType(DropdownMenu<String>).at(2));

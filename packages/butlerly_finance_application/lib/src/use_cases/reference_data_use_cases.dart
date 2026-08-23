@@ -56,12 +56,19 @@ final class SeedInitialMasterData {
           await repository.saveAll(data.translations);
         }
         if (referenceData case final repository?) {
+          // Materialize the complete parent set before inserting translations.
+          // This is important on partially seeded databases: a translation has
+          // a foreign key to reference_data and must never be written first.
           for (final value in data.referenceData) {
-            if (await repository.findById(value.id) == null) {
-              await repository.save(value);
-            }
+            await repository.save(value);
           }
           for (final translation in data.referenceTranslations) {
+            final parent = data.referenceData
+                .where((value) => value.id.value == translation.masterId)
+                .firstOrNull;
+            if (parent != null) {
+              await repository.save(parent);
+            }
             await repository.saveTranslation(
               id: ReferenceDataId(translation.masterId),
               locale: translation.locale,
@@ -158,6 +165,19 @@ final class SaveMerchant {
 
   Future<ApplicationResult<Merchant>> call(Merchant value) =>
       runApplication('save merchant', () async {
+        final normalized = value.name.trim().toLowerCase();
+        final duplicate = (await repository.listAll()).any(
+          (existing) =>
+              existing.id != value.id &&
+              existing.status == MerchantStatus.active &&
+              existing.name.trim().toLowerCase() == normalized,
+        );
+        if (duplicate) {
+          throw RepositoryException(
+            RepositoryFailureCode.constraint,
+            'An active merchant with this name already exists.',
+          );
+        }
         await repository.save(value);
         return value;
       });
