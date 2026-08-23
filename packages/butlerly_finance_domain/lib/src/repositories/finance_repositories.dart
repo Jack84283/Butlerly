@@ -7,6 +7,7 @@ import '../entities/master_translation.dart';
 import '../entities/merchant.dart';
 import '../entities/reconciliation_candidate.dart';
 import '../entities/reconciliation_link.dart';
+import '../entities/reference_data.dart';
 import '../entities/suggestion.dart';
 import '../entities/tag.dart';
 import '../entities/transaction.dart';
@@ -74,6 +75,25 @@ abstract interface class MasterTranslationRepository {
   Future<Map<String, String>> labels({
     required String masterType,
     required String locale,
+  });
+}
+
+abstract interface class ReferenceDataRepository {
+  Future<void> save(ReferenceData value);
+  Future<ReferenceData?> findById(ReferenceDataId id);
+  Future<List<ReferenceData>> list({
+    String? type,
+    bool includeArchived = false,
+  });
+  Future<Map<String, String>> labels({
+    required String type,
+    required String locale,
+    bool includeArchived = false,
+  });
+  Future<void> saveTranslation({
+    required ReferenceDataId id,
+    required String locale,
+    required String label,
   });
 }
 

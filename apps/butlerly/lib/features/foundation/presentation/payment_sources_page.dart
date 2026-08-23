@@ -84,6 +84,16 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
     final currency = TextEditingController(text: existing?.currency ?? 'USD');
     final note = TextEditingController(text: existing?.note);
     var type = existing?.type ?? scanned?.type ?? PaymentSourceType.account;
+    final locale = Localizations.localeOf(context);
+    final typeLabelsResult = await finance.loadReferenceData.labels(
+      type: 'payment_source_type',
+      locale: locale.languageCode == 'zh' ? 'zh-Hans' : locale.languageCode,
+    );
+    if (!mounted) return;
+    final typeLabels =
+        typeLabelsResult is ApplicationSuccess<Map<String, String>>
+        ? typeLabelsResult.value
+        : const <String, String>{};
     final saved = await showButlerlyBottomSheet<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -144,7 +154,10 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                       .map(
                         (value) => DropdownMenuItem(
                           value: value,
-                          child: Text(_typeLabel(context, value)),
+                          child: Text(
+                            typeLabels['payment_source_type.${value.name}'] ??
+                                _typeLabel(context, value),
+                          ),
                         ),
                       )
                       .toList(growable: false),

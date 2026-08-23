@@ -33,6 +33,9 @@ void configureDependencies({
       masterTranslations: SqliteMasterTranslationRepository(
         database.persistenceDatabase,
       ),
+      referenceData: SqliteReferenceDataRepository(
+        database.persistenceDatabase,
+      ),
       reconciliationCandidates: SqliteReconciliationCandidateRepository(
         database.persistenceDatabase,
       ),

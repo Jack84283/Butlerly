@@ -1,7 +1,8 @@
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
-import '../../features/foundation/presentation/master_data_labels.dart';
+import 'master_data_seed.dart';
+import 'reference_data_seed.dart';
 
 /// The MD-0001 V1 system catalog. Labels are persisted separately as
 /// translations; these domain records contain stable semantic IDs.
@@ -17,6 +18,17 @@ InitialMasterData buildInitialMasterData() => InitialMasterData(
   ],
   tags: [for (final row in _tags) Tag(id: TagId(row.$1), name: row.$2)],
   translations: systemMasterTranslations(),
+  referenceData: [for (final row in md0001ReferenceData) row.value],
+  referenceTranslations: [
+    for (final row in md0001ReferenceData)
+      for (final translation in row.translations)
+        MasterTranslation(
+          masterType: 'reference_data',
+          masterId: translation.id.value,
+          locale: translation.locale,
+          label: translation.label,
+        ),
+  ],
 );
 
 const _categories = <(String, String, String?)>[
