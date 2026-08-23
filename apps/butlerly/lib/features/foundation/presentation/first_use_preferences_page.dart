@@ -84,7 +84,9 @@ class FirstUsePreferencesPage extends ConsumerWidget {
                       }
                     },
                   ),
+                  const SizedBox(height: ButlerlySpacing.standard),
                   DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue:
                         timeZoneCatalog.any(
                           (zone) => zone.id == preference.timeZoneId,
