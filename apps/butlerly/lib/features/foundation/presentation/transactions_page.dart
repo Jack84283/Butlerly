@@ -1,4 +1,3 @@
-import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
@@ -14,7 +13,6 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 class TransactionsPage extends StatefulWidget {
@@ -252,7 +250,7 @@ final class _TransactionsData {
   final TransactionMasterData masterData;
 }
 
-class TransactionEditorPage extends ConsumerStatefulWidget {
+class TransactionEditorPage extends StatefulWidget {
   const TransactionEditorPage({
     required this.finance,
     this.existing,
@@ -263,11 +261,10 @@ class TransactionEditorPage extends ConsumerStatefulWidget {
   final TransactionDto? existing;
 
   @override
-  ConsumerState<TransactionEditorPage> createState() =>
-      _TransactionEditorPageState();
+  State<TransactionEditorPage> createState() => _TransactionEditorPageState();
 }
 
-class _TransactionEditorPageState extends ConsumerState<TransactionEditorPage> {
+class _TransactionEditorPageState extends State<TransactionEditorPage> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _amount;
   late final TextEditingController _currency;
@@ -308,9 +305,7 @@ class _TransactionEditorPageState extends ConsumerState<TransactionEditorPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final languageCode =
-        ref.read(localeProvider)?.languageCode ??
-        Localizations.localeOf(context).languageCode;
+    final languageCode = Localizations.localeOf(context).languageCode;
     if (languageCode != _loadedLanguageCode) {
       _loadedLanguageCode = languageCode;
       _masterData = _loadMasterData(languageCode);
