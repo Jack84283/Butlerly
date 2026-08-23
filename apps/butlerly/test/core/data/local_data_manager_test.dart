@@ -45,6 +45,17 @@ void main() {
     final tables = json['tables']! as Map<String, Object?>;
     expect(tables['merchants'], isNotEmpty);
     expect(
+      tables.keys,
+      containsAll([
+        'reconciliation_candidates',
+        'reconciliation_links',
+        'category_translations',
+        'tag_translations',
+        'reference_data',
+        'reference_data_translations',
+      ]),
+    );
+    expect(
       File(
         path.join(exported.directory.path, 'evidence', 'receipt.bin'),
       ).existsSync(),
@@ -53,7 +64,10 @@ void main() {
 
     await manager.eraseAll();
     expect(await database.database.query('merchants'), isEmpty);
+    for (final table in tables.keys) {
+      expect(await database.database.query(table), isEmpty, reason: table);
+    }
     expect(evidence.existsSync(), isFalse);
-    expect(exported.directory.existsSync(), isTrue);
+    expect(exported.directory.existsSync(), isFalse);
   });
 }

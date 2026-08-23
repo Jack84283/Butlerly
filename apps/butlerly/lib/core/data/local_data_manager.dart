@@ -41,6 +41,12 @@ final class LocalDataManager {
     'attachment_links',
     'suggestions',
     'user_preferences',
+    'reconciliation_candidates',
+    'reconciliation_links',
+    'category_translations',
+    'tag_translations',
+    'reference_data',
+    'reference_data_translations',
   ];
 
   static const _eraseOrder = <String>[
@@ -60,6 +66,12 @@ final class LocalDataManager {
     'tags',
     'provenances',
     'user_preferences',
+    'reconciliation_links',
+    'reconciliation_candidates',
+    'reference_data_translations',
+    'reference_data',
+    'tag_translations',
+    'category_translations',
   ];
 
   Future<Directory> evidenceDirectory() async {
@@ -106,11 +118,12 @@ final class LocalDataManager {
         path.join(destination.path, 'evidence'),
       );
       await exportedEvidence.create();
-      await for (final entity in evidence.list()) {
+      await for (final entity in evidence.list(recursive: true)) {
         if (entity is File) {
-          await entity.copy(
-            path.join(exportedEvidence.path, path.basename(entity.path)),
-          );
+          final relative = path.relative(entity.path, from: evidence.path);
+          final destination = File(path.join(exportedEvidence.path, relative));
+          await destination.parent.create(recursive: true);
+          await entity.copy(destination.path);
         }
       }
     }
@@ -125,5 +138,15 @@ final class LocalDataManager {
     });
     final evidence = await evidenceDirectory();
     if (await evidence.exists()) await evidence.delete(recursive: true);
+    final documents =
+        _documentsDirectory ?? await getApplicationDocumentsDirectory();
+    if (await documents.exists()) {
+      await for (final entity in documents.list()) {
+        if (entity is Directory &&
+            path.basename(entity.path).startsWith('Butlerly Export ')) {
+          await entity.delete(recursive: true);
+        }
+      }
+    }
   }
 }
