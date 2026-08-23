@@ -282,6 +282,7 @@ class AppLocalizations {
       'importFromFile': 'Import from file',
       'importFromFileBody': 'Choose a supported transaction file.',
       'importSummary': 'Import summary',
+      'importFailed': 'Unable to import this file.',
       'importSummaryBody':
           'Imported: {imported}\nDuplicates skipped: {duplicates}\nFailed: {failed}',
       'importReceipts': 'Import receipts',
@@ -598,6 +599,7 @@ class AppLocalizations {
       'importFromFile': '从文件导入',
       'importFromFileBody': '选择受支持的交易文件。',
       'importSummary': '导入摘要',
+      'importFailed': '无法导入此文件。',
       'importSummaryBody': '已导入：{imported}\n已跳过重复项：{duplicates}\n失败：{failed}',
       'importReceipts': '导入收据',
       'importReceiptsBody': '附加收据图片或 PDF。',
@@ -925,6 +927,7 @@ class AppLocalizations {
       'importFromFile': 'Importar desde archivo',
       'importFromFileBody': 'Elige un archivo de transacciones compatible.',
       'importSummary': 'Resumen de importación',
+      'importFailed': 'No se puede importar este archivo.',
       'importSummaryBody':
           'Importados: {imported}\nDuplicados omitidos: {duplicates}\nFallidos: {failed}',
       'importReceipts': 'Importar recibos',
