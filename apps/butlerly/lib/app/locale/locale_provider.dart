@@ -17,6 +17,11 @@ final localeProvider = Provider<Locale?>((ref) {
   return preference == null ? null : Locale(preference.locale);
 });
 
+final formattingLocaleProvider = Provider<String?>((ref) {
+  final preference = ref.watch(userPreferenceProvider).value;
+  return preference?.formattingLocale;
+});
+
 final class UserPreferenceController extends AsyncNotifier<UserPreference> {
   FinanceServices? get _services => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
@@ -38,6 +43,8 @@ final class UserPreferenceController extends AsyncNotifier<UserPreference> {
         if (canonical == value.timeZoneId) return value;
         final migrated = UserPreference(
           locale: value.locale,
+          formattingLocale: value.formattingLocale,
+          regionCode: value.regionCode,
           baseCurrency: value.baseCurrency,
           timeZoneId: canonical,
           externalAiEnabled: value.externalAiEnabled,
@@ -61,6 +68,8 @@ final class UserPreferenceController extends AsyncNotifier<UserPreference> {
 
   Future<bool> saveChanges({
     String? locale,
+    String? formattingLocale,
+    String? regionCode,
     String? baseCurrency,
     String? timeZoneId,
     bool? externalAiEnabled,
@@ -71,6 +80,8 @@ final class UserPreferenceController extends AsyncNotifier<UserPreference> {
     final current = state.value ?? _defaults(timeZoneId: 'UTC');
     final next = UserPreference(
       locale: locale ?? current.locale,
+      formattingLocale: formattingLocale ?? current.formattingLocale,
+      regionCode: regionCode ?? current.regionCode,
       baseCurrency: CurrencyCode(baseCurrency ?? current.baseCurrency.value),
       timeZoneId: timeZoneId ?? current.timeZoneId,
       externalAiEnabled: externalAiEnabled ?? current.externalAiEnabled,
@@ -114,6 +125,8 @@ final class UserPreferenceController extends AsyncNotifier<UserPreference> {
     };
     return UserPreference(
       locale: language,
+      formattingLocale: deviceLocale.toLanguageTag(),
+      regionCode: deviceLocale.countryCode,
       baseCurrency: CurrencyCode(currency),
       timeZoneId: timeZoneId,
       firstUseCompleted: firstUseCompleted,

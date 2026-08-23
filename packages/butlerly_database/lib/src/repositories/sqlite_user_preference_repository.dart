@@ -20,6 +20,8 @@ final class SqliteUserPreferenceRepository implements UserPreferenceRepository {
       final row = rows.single;
       return UserPreference(
         locale: row['locale']! as String,
+        formattingLocale: row['formatting_locale'] as String?,
+        regionCode: row['region_code'] as String?,
         baseCurrency: CurrencyCode(row['base_currency']! as String),
         timeZoneId: row['time_zone_id']! as String,
         externalAiEnabled: row['external_ai_enabled'] == 1,
@@ -42,6 +44,8 @@ final class SqliteUserPreferenceRepository implements UserPreferenceRepository {
       await database.connection.insert('user_preferences', {
         'id': 1,
         'locale': preference.locale,
+        'formatting_locale': preference.formattingLocale,
+        'region_code': preference.regionCode,
         'base_currency': preference.baseCurrency.value,
         'time_zone_id': preference.timeZoneId,
         'external_ai_enabled': preference.externalAiEnabled ? 1 : 0,

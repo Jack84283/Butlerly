@@ -21,5 +21,6 @@ export 'src/repositories/repository_failure.dart';
 export 'src/value_objects/currency_code.dart';
 export 'src/value_objects/decimal_value.dart';
 export 'src/value_objects/domain_id.dart';
+export 'src/value_objects/financial_period.dart';
 export 'src/value_objects/money.dart';
 export 'src/value_objects/transaction_timing.dart';

@@ -1,5 +1,5 @@
 abstract final class Schema {
-  static const version = 12;
+  static const version = 13;
 
   static const migration1 = <String>[
     '''CREATE TABLE payment_sources (
@@ -212,5 +212,10 @@ abstract final class Schema {
   static const migration12 = <String>[
     "ALTER TABLE user_preferences ADD COLUMN appearance TEXT NOT NULL DEFAULT 'system'",
     "ALTER TABLE user_preferences ADD COLUMN color_theme TEXT NOT NULL DEFAULT 'butlerRed'",
+  ];
+
+  static const migration13 = <String>[
+    'ALTER TABLE user_preferences ADD COLUMN formatting_locale TEXT',
+    'ALTER TABLE user_preferences ADD COLUMN region_code TEXT',
   ];
 }
