@@ -100,7 +100,7 @@ class FirstUsePreferencesPage extends ConsumerWidget {
                         DropdownMenuItem(
                           value: zone.id,
                           child: Text(
-                            '${zone.label(Localizations.localeOf(context))} · ${zone.id}',
+                            zone.label(Localizations.localeOf(context)),
                           ),
                         ),
                     ],
