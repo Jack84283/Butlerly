@@ -76,6 +76,10 @@ final class TagId extends DomainId {
   TagId(super.value);
 }
 
+final class ReferenceDataId extends DomainId {
+  ReferenceDataId(super.value);
+}
+
 final class TransactionId extends DomainId {
   TransactionId(super.value);
 }

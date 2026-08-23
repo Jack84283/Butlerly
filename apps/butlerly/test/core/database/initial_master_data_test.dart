@@ -18,5 +18,23 @@ void main() {
       data.tags.map((value) => value.id.value),
       contains('tag.tax_related'),
     );
+    expect(
+      data.referenceData.map((value) => value.id.value),
+      containsAll([
+        'transaction_direction.expense',
+        'payment_source_type.card',
+        'card_network.visa',
+        'evidence_type.receipt_image',
+        'review_status.needs_review',
+        'reconciliation_status.proposed',
+        'analysis_finding_type.conflict',
+      ]),
+    );
+    expect(
+      data.referenceTranslations
+          .where((value) => value.locale == 'zh-Hans')
+          .map((value) => value.label),
+      contains('信用卡'),
+    );
   });
 }

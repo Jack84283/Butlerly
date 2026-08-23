@@ -112,6 +112,38 @@ void main() {
     },
   );
 
+  test(
+    'persists generic reference data and localized labels by stable ID',
+    () async {
+      final repository = SqliteReferenceDataRepository(database);
+      final value = ReferenceData(
+        id: ReferenceDataId('payment_source_type.card'),
+        code: 'card',
+        type: 'payment_source_type',
+      );
+      await repository.save(value);
+      await repository.saveTranslation(
+        id: value.id,
+        locale: 'en',
+        label: 'Credit card',
+      );
+      await repository.saveTranslation(
+        id: value.id,
+        locale: 'zh-Hans',
+        label: '信用卡',
+      );
+
+      expect(
+        (await repository.list(type: 'payment_source_type')).single.id.value,
+        value.id.value,
+      );
+      expect(
+        await repository.labels(type: 'payment_source_type', locale: 'zh-Hans'),
+        {value.id.value: '信用卡'},
+      );
+    },
+  );
+
   test('migrates a v1 UTC instant to v2 business-date fields', () async {
     const path = 'butlerly-v1-to-v2-test.db';
     await databaseFactoryFfi.deleteDatabase(path);

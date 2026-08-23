@@ -11,6 +11,7 @@ export 'src/entities/merchant.dart';
 export 'src/entities/provenance.dart';
 export 'src/entities/reconciliation_candidate.dart';
 export 'src/entities/reconciliation_link.dart';
+export 'src/entities/reference_data.dart';
 export 'src/entities/review_issue.dart';
 export 'src/entities/suggestion.dart';
 export 'src/entities/tag.dart';

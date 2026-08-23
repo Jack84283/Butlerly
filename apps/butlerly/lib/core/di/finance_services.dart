@@ -11,6 +11,7 @@ final class FinanceServices {
     EvidenceRepository evidence,
     UserPreferenceRepository preferences, {
     MasterTranslationRepository? masterTranslations,
+    ReferenceDataRepository? referenceData,
     ReconciliationCandidateRepository? reconciliationCandidates,
     ReconciliationLinkRepository? reconciliationLinks,
     ReconciliationWorkflowRepository? reconciliationWorkflow,
@@ -20,9 +21,13 @@ final class FinanceServices {
          categories,
          tags,
          masterTranslations ?? const _NoMasterTranslationRepository(),
+         referenceData ?? const _NoReferenceDataRepository(),
        ),
        loadMasterTranslations = LoadMasterTranslations(
          masterTranslations ?? const _NoMasterTranslationRepository(),
+       ),
+       loadReferenceData = LoadReferenceData(
+         referenceData ?? const _NoReferenceDataRepository(),
        ),
        createTransaction = CreateTransaction(
          transactions,
@@ -132,6 +137,7 @@ final class FinanceServices {
   final ListTransactions listTransactions;
   final SeedInitialMasterData seedInitialMasterData;
   final LoadMasterTranslations loadMasterTranslations;
+  final LoadReferenceData loadReferenceData;
   final CreateTransaction createTransaction;
   final CreateReceiptTransaction createReceiptTransaction;
   final CreatePaymentTransaction createPaymentTransaction;
@@ -187,6 +193,36 @@ final class _NoMasterTranslationRepository
 
   @override
   Future<void> saveAll(List<MasterTranslation> translations) async {}
+}
+
+final class _NoReferenceDataRepository implements ReferenceDataRepository {
+  const _NoReferenceDataRepository();
+
+  @override
+  Future<ReferenceData?> findById(ReferenceDataId id) async => null;
+
+  @override
+  Future<Map<String, String>> labels({
+    required String type,
+    required String locale,
+    bool includeArchived = false,
+  }) async => {};
+
+  @override
+  Future<List<ReferenceData>> list({
+    String? type,
+    bool includeArchived = false,
+  }) async => const [];
+
+  @override
+  Future<void> save(ReferenceData value) async {}
+
+  @override
+  Future<void> saveTranslation({
+    required ReferenceDataId id,
+    required String locale,
+    required String label,
+  }) async {}
 }
 
 final class _NoExtractionLookupRepository

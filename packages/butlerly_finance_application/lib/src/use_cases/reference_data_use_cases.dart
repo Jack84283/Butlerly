@@ -8,12 +8,16 @@ final class InitialMasterData {
     this.categories = const [],
     this.tags = const [],
     this.translations = const [],
+    this.referenceData = const [],
+    this.referenceTranslations = const [],
   });
 
   final List<Merchant> merchants;
   final List<Category> categories;
   final List<Tag> tags;
   final List<MasterTranslation> translations;
+  final List<ReferenceData> referenceData;
+  final List<MasterTranslation> referenceTranslations;
 }
 
 final class SeedInitialMasterData {
@@ -22,12 +26,14 @@ final class SeedInitialMasterData {
     this.categories,
     this.tags, [
     this.translations,
+    this.referenceData,
   ]);
 
   final MerchantRepository merchants;
   final CategoryRepository categories;
   final TagRepository tags;
   final MasterTranslationRepository? translations;
+  final ReferenceDataRepository? referenceData;
 
   Future<ApplicationResult<void>> call(InitialMasterData data) =>
       runApplication('seed initial master data', () async {
@@ -49,6 +55,20 @@ final class SeedInitialMasterData {
         if (translations case final repository?) {
           await repository.saveAll(data.translations);
         }
+        if (referenceData case final repository?) {
+          for (final value in data.referenceData) {
+            if (await repository.findById(value.id) == null) {
+              await repository.save(value);
+            }
+          }
+          for (final translation in data.referenceTranslations) {
+            await repository.saveTranslation(
+              id: ReferenceDataId(translation.masterId),
+              locale: translation.locale,
+              label: translation.label,
+            );
+          }
+        }
       });
 }
 
@@ -62,6 +82,33 @@ final class LoadMasterTranslations {
   }) => runApplication(
     'load master translations',
     () => repository.labels(masterType: masterType, locale: locale),
+  );
+}
+
+final class LoadReferenceData {
+  const LoadReferenceData(this.repository);
+
+  final ReferenceDataRepository repository;
+
+  Future<ApplicationResult<List<ReferenceData>>> call({
+    String? type,
+    bool includeArchived = false,
+  }) => runApplication(
+    'load reference data',
+    () => repository.list(type: type, includeArchived: includeArchived),
+  );
+
+  Future<ApplicationResult<Map<String, String>>> labels({
+    required String type,
+    required String locale,
+    bool includeArchived = false,
+  }) => runApplication(
+    'load reference data labels',
+    () => repository.labels(
+      type: type,
+      locale: locale,
+      includeArchived: includeArchived,
+    ),
   );
 }
 
