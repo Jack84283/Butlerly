@@ -37,79 +37,80 @@ class FirstUsePreferencesPage extends ConsumerWidget {
                 padding: const EdgeInsets.all(ButlerlySpacing.standard),
                 child: Column(
                   children: [
-                    _SetupSelectionRow(
-                      label: context.l10n.text('language'),
-                      value: switch (preference.locale) {
-                        'zh' => context.l10n.text('chinese'),
-                        'es' => context.l10n.text('spanish'),
-                        _ => context.l10n.text('english'),
-                      },
-                      onTap: () async {
-                        final value = await _showSetupSelection<String>(
-                          context,
-                          context.l10n.text('language'),
-                          [
-                            ('en', context.l10n.text('english')),
-                            ('es', context.l10n.text('spanish')),
-                            ('zh', context.l10n.text('chinese')),
-                          ],
-                        );
-                        if (value != null && context.mounted) {
-                          await ref
+                    DropdownButtonFormField<String>(
+                      initialValue: preference.locale,
+                      decoration: InputDecoration(
+                        labelText: context.l10n.text('language'),
+                      ),
+                      items: [
+                        DropdownMenuItem(
+                          value: 'en',
+                          child: Text(context.l10n.text('english')),
+                        ),
+                        DropdownMenuItem(
+                          value: 'es',
+                          child: Text(context.l10n.text('spanish')),
+                        ),
+                        DropdownMenuItem(
+                          value: 'zh',
+                          child: Text(context.l10n.text('chinese')),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          ref
                               .read(userPreferenceProvider.notifier)
                               .saveChanges(locale: value);
                         }
                       },
                     ),
                     const SizedBox(height: ButlerlySpacing.standard),
-                    _SetupSelectionRow(
-                      label: context.l10n.text('baseCurrency'),
-                      value: preference.baseCurrency.value,
-                      onTap: () async {
-                        final value = await _showSetupSelection<String>(
-                          context,
-                          context.l10n.text('baseCurrency'),
-                          [
-                            for (final code in [
-                              'USD',
-                              'EUR',
-                              'GBP',
-                              'CNY',
-                              'JPY',
-                            ])
-                              (code, code),
-                          ],
-                        );
-                        if (value != null && context.mounted) {
-                          await ref
+                    DropdownButtonFormField<String>(
+                      initialValue: preference.baseCurrency.value,
+                      decoration: InputDecoration(
+                        labelText: context.l10n.text('baseCurrency'),
+                      ),
+                      items: const ['USD', 'EUR', 'GBP', 'CNY', 'JPY']
+                          .map(
+                            (value) => DropdownMenuItem(
+                              value: value,
+                              child: Text(value),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          ref
                               .read(userPreferenceProvider.notifier)
                               .saveChanges(baseCurrency: value);
                         }
                       },
                     ),
                     const SizedBox(height: ButlerlySpacing.standard),
-                    _SetupSelectionRow(
-                      label: context.l10n.text('timeZone'),
-                      value: timeZoneCatalog
-                          .firstWhere(
+                    DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      initialValue:
+                          timeZoneCatalog.any(
                             (zone) => zone.id == preference.timeZoneId,
-                            orElse: () => timeZoneCatalog.first,
                           )
-                          .label(Localizations.localeOf(context)),
-                      onTap: () async {
-                        final value = await _showSetupSelection<String>(
-                          context,
-                          context.l10n.text('timeZone'),
-                          [
-                            for (final zone in timeZoneCatalog)
-                              (
-                                zone.id,
-                                zone.label(Localizations.localeOf(context)),
-                              ),
-                          ],
-                        );
-                        if (value != null && context.mounted) {
-                          await ref
+                          ? preference.timeZoneId
+                          : 'UTC',
+                      decoration: InputDecoration(
+                        labelText: context.l10n.text('timeZone'),
+                        prefixIcon: const Icon(Icons.schedule_rounded),
+                      ),
+                      items: [
+                        for (final zone in timeZoneCatalog)
+                          DropdownMenuItem(
+                            value: zone.id,
+                            child: Text(
+                              zone.label(Localizations.localeOf(context)),
+                            ),
+                          ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          ref
                               .read(userPreferenceProvider.notifier)
                               .saveChanges(timeZoneId: value);
                         }
@@ -132,54 +133,3 @@ class FirstUsePreferencesPage extends ConsumerWidget {
     );
   }
 }
-
-class _SetupSelectionRow extends StatelessWidget {
-  const _SetupSelectionRow({
-    required this.label,
-    required this.value,
-    required this.onTap,
-  });
-
-  final String label;
-  final String value;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => ListTile(
-    contentPadding: EdgeInsets.zero,
-    title: Text(label),
-    subtitle: Text(value),
-    trailing: const Icon(Icons.arrow_drop_down_rounded),
-    onTap: onTap,
-  );
-}
-
-Future<T?> _showSetupSelection<T>(
-  BuildContext context,
-  String title,
-  List<(T, String)> options,
-) => showDialog<T>(
-  context: context,
-  builder: (context) => AlertDialog(
-    title: Text(title),
-    content: SizedBox(
-      width: double.maxFinite,
-      child: ListView(
-        shrinkWrap: true,
-        children: [
-          for (final option in options)
-            ListTile(
-              title: Text(option.$2),
-              onTap: () => Navigator.of(context).pop(option.$1),
-            ),
-        ],
-      ),
-    ),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.of(context).pop(),
-        child: Text(context.l10n.text('cancel')),
-      ),
-    ],
-  ),
-);
