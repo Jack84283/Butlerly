@@ -7,19 +7,27 @@ final class InitialMasterData {
     this.merchants = const [],
     this.categories = const [],
     this.tags = const [],
+    this.translations = const [],
   });
 
   final List<Merchant> merchants;
   final List<Category> categories;
   final List<Tag> tags;
+  final List<MasterTranslation> translations;
 }
 
 final class SeedInitialMasterData {
-  const SeedInitialMasterData(this.merchants, this.categories, this.tags);
+  const SeedInitialMasterData(
+    this.merchants,
+    this.categories,
+    this.tags, [
+    this.translations,
+  ]);
 
   final MerchantRepository merchants;
   final CategoryRepository categories;
   final TagRepository tags;
+  final MasterTranslationRepository? translations;
 
   Future<ApplicationResult<void>> call(InitialMasterData data) =>
       runApplication('seed initial master data', () async {
@@ -38,7 +46,23 @@ final class SeedInitialMasterData {
             await tags.save(tag);
           }
         }
+        if (translations case final repository?) {
+          await repository.saveAll(data.translations);
+        }
       });
+}
+
+final class LoadMasterTranslations {
+  const LoadMasterTranslations(this.repository);
+  final MasterTranslationRepository repository;
+
+  Future<ApplicationResult<Map<String, String>>> call({
+    required String masterType,
+    required String locale,
+  }) => runApplication(
+    'load master translations',
+    () => repository.labels(masterType: masterType, locale: locale),
+  );
 }
 
 final class SavePaymentSource {

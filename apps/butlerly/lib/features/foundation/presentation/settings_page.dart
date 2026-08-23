@@ -1,11 +1,11 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/app/theme/theme_mode_provider.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
-import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/legal_licenses_page.dart';
 import 'package:butlerly/features/foundation/presentation/payment_sources_page.dart';
+import 'package:butlerly/features/foundation/presentation/time_zone_catalog.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -155,16 +155,32 @@ class SettingsPage extends ConsumerWidget {
                 }
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.schedule_rounded),
-              title: Text(context.l10n.text('timeZone')),
-              subtitle: Text(
-                preference?.timeZoneId ?? DateTime.now().timeZoneName,
-              ),
-              trailing: const Icon(Icons.edit_outlined),
-              onTap: preference == null
-                  ? null
-                  : () => _editTimeZone(context, ref, preference.timeZoneId),
+            _SettingsDropdownRow<String>(
+              value:
+                  timeZoneCatalog.any(
+                    (zone) => zone.id == (preference?.timeZoneId ?? 'UTC'),
+                  )
+                  ? (preference?.timeZoneId ?? 'UTC')
+                  : 'UTC',
+              label: context.l10n.text('timeZone'),
+              icon: Icons.schedule_rounded,
+              menuMaxHeight: 4 * kMinInteractiveDimension,
+              items: [
+                for (final zone in timeZoneCatalog)
+                  DropdownMenuItem(
+                    value: zone.id,
+                    child: Text(zone.label(Localizations.localeOf(context))),
+                  ),
+              ],
+              onChanged: preference == null
+                  ? (_) {}
+                  : (value) {
+                      if (value != null) {
+                        ref
+                            .read(userPreferenceProvider.notifier)
+                            .saveChanges(timeZoneId: value);
+                      }
+                    },
             ),
           ],
         ),
@@ -252,53 +268,6 @@ class SettingsPage extends ConsumerWidget {
       ],
     );
   }
-
-  Future<void> _editTimeZone(
-    BuildContext context,
-    WidgetRef ref,
-    String current,
-  ) async {
-    final controller = TextEditingController(text: current);
-    final value = await showButlerlyBottomSheet<String>(
-      context: context,
-      builder: (context) => ButlerlySheet(
-        title: Text(context.l10n.text('timeZone')),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: InputDecoration(
-            labelText: context.l10n.text('ianaTimeZone'),
-            helperText: context.l10n.text('ianaTimeZoneHelp'),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(context.l10n.text('cancel')),
-          ),
-          FilledButton(
-            onPressed: () {
-              final normalized = controller.text.trim();
-              if (_validTimeZone(normalized)) {
-                Navigator.pop(context, normalized);
-              }
-            },
-            child: Text(context.l10n.text('save')),
-          ),
-        ],
-      ),
-    );
-    WidgetsBinding.instance.addPostFrameCallback((_) => controller.dispose());
-    if (value != null) {
-      await ref
-          .read(userPreferenceProvider.notifier)
-          .saveChanges(timeZoneId: value);
-    }
-  }
-
-  bool _validTimeZone(String value) =>
-      value == 'UTC' ||
-      RegExp(r'^[A-Za-z_+-]+/[A-Za-z0-9_+\-/]+$').hasMatch(value);
 }
 
 class _SettingsRow extends StatelessWidget {
@@ -347,6 +316,7 @@ class _SettingsDropdownRow<T> extends StatelessWidget {
     required this.icon,
     required this.items,
     required this.onChanged,
+    this.menuMaxHeight,
   });
 
   final T value;
@@ -354,12 +324,17 @@ class _SettingsDropdownRow<T> extends StatelessWidget {
   final IconData icon;
   final List<DropdownMenuItem<T>> items;
   final ValueChanged<T?> onChanged;
+  final double? menuMaxHeight;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) => PopupMenuButton<T>(
       initialValue: value,
-      constraints: BoxConstraints.tightFor(width: constraints.maxWidth),
+      constraints: BoxConstraints(
+        minWidth: constraints.maxWidth,
+        maxWidth: constraints.maxWidth,
+        maxHeight: menuMaxHeight ?? double.infinity,
+      ),
       onSelected: onChanged,
       itemBuilder: (context) => [
         for (final item in items)

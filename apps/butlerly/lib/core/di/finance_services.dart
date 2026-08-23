@@ -10,6 +10,7 @@ final class FinanceServices {
     TagRepository tags,
     EvidenceRepository evidence,
     UserPreferenceRepository preferences, {
+    MasterTranslationRepository? masterTranslations,
     ReconciliationCandidateRepository? reconciliationCandidates,
     ReconciliationLinkRepository? reconciliationLinks,
     ReconciliationWorkflowRepository? reconciliationWorkflow,
@@ -18,6 +19,10 @@ final class FinanceServices {
          merchants,
          categories,
          tags,
+         masterTranslations ?? const _NoMasterTranslationRepository(),
+       ),
+       loadMasterTranslations = LoadMasterTranslations(
+         masterTranslations ?? const _NoMasterTranslationRepository(),
        ),
        createTransaction = CreateTransaction(
          transactions,
@@ -126,6 +131,7 @@ final class FinanceServices {
 
   final ListTransactions listTransactions;
   final SeedInitialMasterData seedInitialMasterData;
+  final LoadMasterTranslations loadMasterTranslations;
   final CreateTransaction createTransaction;
   final CreateReceiptTransaction createReceiptTransaction;
   final CreatePaymentTransaction createPaymentTransaction;
@@ -167,6 +173,20 @@ final class FinanceServices {
   final ConfirmReconciliation confirmReconciliation;
   final RejectReconciliation rejectReconciliation;
   final FindReceiptPaymentMatch findReceiptPaymentMatch;
+}
+
+final class _NoMasterTranslationRepository
+    implements MasterTranslationRepository {
+  const _NoMasterTranslationRepository();
+
+  @override
+  Future<Map<String, String>> labels({
+    required String masterType,
+    required String locale,
+  }) async => {};
+
+  @override
+  Future<void> saveAll(List<MasterTranslation> translations) async {}
 }
 
 final class _NoExtractionLookupRepository

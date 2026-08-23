@@ -54,6 +54,20 @@ final class TransactionMasterData {
       ApplicationSuccess<List<Tag>>(:final value) => value,
       _ => const <Tag>[],
     };
+    final categoryLabels = switch (await finance.loadMasterTranslations(
+      masterType: 'category',
+      locale: languageCode == 'zh' ? 'zh-Hans' : languageCode,
+    )) {
+      ApplicationSuccess<Map<String, String>>(:final value) => value,
+      _ => const <String, String>{},
+    };
+    final tagLabels = switch (await finance.loadMasterTranslations(
+      masterType: 'tag',
+      locale: languageCode == 'zh' ? 'zh-Hans' : languageCode,
+    )) {
+      ApplicationSuccess<Map<String, String>>(:final value) => value,
+      _ => const <String, String>{},
+    };
 
     return TransactionMasterData(
       merchantNames: {
@@ -61,11 +75,14 @@ final class TransactionMasterData {
       },
       categoryNames: {
         for (final value in categories)
-          value.id.value: categoryDisplayLabel(value, languageCode),
+          value.id.value:
+              categoryLabels[value.id.value] ??
+              categoryDisplayLabel(value, languageCode),
       },
       tagNames: {
         for (final value in tags)
-          value.id.value: tagDisplayLabel(value, languageCode),
+          value.id.value:
+              tagLabels[value.id.value] ?? tagDisplayLabel(value, languageCode),
       },
     );
   }

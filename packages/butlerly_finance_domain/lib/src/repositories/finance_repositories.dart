@@ -3,6 +3,7 @@ import '../entities/attachment_link.dart';
 import '../entities/category.dart';
 import '../entities/evidence_item.dart';
 import '../entities/extraction.dart';
+import '../entities/master_translation.dart';
 import '../entities/merchant.dart';
 import '../entities/reconciliation_candidate.dart';
 import '../entities/reconciliation_link.dart';
@@ -66,6 +67,14 @@ abstract interface class TagRepository {
   Future<void> save(Tag tag);
   Future<Tag?> findById(TagId id);
   Future<List<Tag>> listAll();
+}
+
+abstract interface class MasterTranslationRepository {
+  Future<void> saveAll(List<MasterTranslation> translations);
+  Future<Map<String, String>> labels({
+    required String masterType,
+    required String locale,
+  });
 }
 
 abstract interface class EvidenceRepository {

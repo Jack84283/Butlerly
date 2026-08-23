@@ -1,6 +1,7 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/time_zone_catalog.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,65 +32,85 @@ class FirstUsePreferencesPage extends ConsumerWidget {
               textAlign: TextAlign.center,
             ),
             ButlerlySectionHeader(title: context.l10n.text('preferences')),
-            ButlerlyCard(
-              child: Column(
-                children: [
-                  DropdownButtonFormField<String>(
-                    initialValue: preference.locale,
-                    decoration: InputDecoration(
-                      labelText: context.l10n.text('language'),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(ButlerlySpacing.standard),
+                child: Column(
+                  children: [
+                    _SetupDropdown<String>(
+                      label: context.l10n.text('language'),
+                      value: preference.locale,
+                      entries: [
+                        DropdownMenuEntry(
+                          value: 'en',
+                          label: context.l10n.text('english'),
+                        ),
+                        DropdownMenuEntry(
+                          value: 'es',
+                          label: context.l10n.text('spanish'),
+                        ),
+                        DropdownMenuEntry(
+                          value: 'zh',
+                          label: context.l10n.text('chinese'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          ref
+                              .read(userPreferenceProvider.notifier)
+                              .saveChanges(locale: value);
+                        }
+                      },
                     ),
-                    items: [
-                      DropdownMenuItem(
-                        value: 'en',
-                        child: Text(context.l10n.text('english')),
-                      ),
-                      DropdownMenuItem(
-                        value: 'es',
-                        child: Text(context.l10n.text('spanish')),
-                      ),
-                      DropdownMenuItem(
-                        value: 'zh',
-                        child: Text(context.l10n.text('chinese')),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        ref
-                            .read(userPreferenceProvider.notifier)
-                            .saveChanges(locale: value);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: ButlerlySpacing.standard),
-                  DropdownButtonFormField<String>(
-                    initialValue: preference.baseCurrency.value,
-                    decoration: InputDecoration(
-                      labelText: context.l10n.text('baseCurrency'),
+                    const SizedBox(height: ButlerlySpacing.standard),
+                    _SetupDropdown<String>(
+                      label: context.l10n.text('baseCurrency'),
+                      value: preference.baseCurrency.value,
+                      entries: [
+                        for (final value in const [
+                          'USD',
+                          'EUR',
+                          'GBP',
+                          'CNY',
+                          'JPY',
+                        ])
+                          DropdownMenuEntry(value: value, label: value),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          ref
+                              .read(userPreferenceProvider.notifier)
+                              .saveChanges(baseCurrency: value);
+                        }
+                      },
                     ),
-                    items: const ['USD', 'EUR', 'GBP', 'CNY', 'JPY']
-                        .map(
-                          (value) => DropdownMenuItem(
-                            value: value,
-                            child: Text(value),
+                    const SizedBox(height: ButlerlySpacing.standard),
+                    _SetupDropdown<String>(
+                      label: context.l10n.text('timeZone'),
+                      value:
+                          timeZoneCatalog.any(
+                            (zone) => zone.id == preference.timeZoneId,
+                          )
+                          ? preference.timeZoneId
+                          : 'UTC',
+                      leadingIcon: Icons.schedule_rounded,
+                      entries: [
+                        for (final zone in timeZoneCatalog)
+                          DropdownMenuEntry(
+                            value: zone.id,
+                            label: zone.label(Localizations.localeOf(context)),
                           ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        ref
-                            .read(userPreferenceProvider.notifier)
-                            .saveChanges(baseCurrency: value);
-                      }
-                    },
-                  ),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.schedule_rounded),
-                    title: Text(context.l10n.text('timeZone')),
-                    subtitle: Text(preference.timeZoneId),
-                  ),
-                ],
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          ref
+                              .read(userPreferenceProvider.notifier)
+                              .saveChanges(timeZoneId: value);
+                        }
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: ButlerlySpacing.section),
@@ -104,4 +125,43 @@ class FirstUsePreferencesPage extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _SetupDropdown<T> extends StatelessWidget {
+  const _SetupDropdown({
+    required this.label,
+    required this.value,
+    required this.entries,
+    required this.onChanged,
+    this.leadingIcon,
+  });
+
+  final String label;
+  final T? value;
+  final List<DropdownMenuEntry<T>> entries;
+  final ValueChanged<T?> onChanged;
+  final IconData? leadingIcon;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => DropdownMenu<T>(
+      initialSelection: value,
+      width: constraints.maxWidth,
+      menuHeight: 192,
+      label: Text(label),
+      leadingIcon: leadingIcon == null ? null : Icon(leadingIcon),
+      dropdownMenuEntries: entries,
+      inputDecorationTheme: Theme.of(context).inputDecorationTheme,
+      menuStyle: MenuStyle(
+        minimumSize: WidgetStatePropertyAll(Size(constraints.maxWidth, 0)),
+        maximumSize: WidgetStatePropertyAll(
+          Size(constraints.maxWidth, double.infinity),
+        ),
+        backgroundColor: WidgetStatePropertyAll(
+          Theme.of(context).colorScheme.surface,
+        ),
+      ),
+      onSelected: onChanged,
+    ),
+  );
 }

@@ -26,4 +26,23 @@ void main() {
     expect(categoryDisplayLabel(category, 'en'), '我的餐馆');
     expect(tagDisplayLabel(tag, 'zh'), '出差');
   });
+
+  test(
+    'legacy system category names still resolve to MD-0001 translations',
+    () {
+      final legacy = Category(
+        id: CategoryId('system-category-food-dining'),
+        name: 'Food & dining',
+        origin: CategoryOrigin.system,
+      );
+
+      expect(categoryDisplayLabel(legacy, 'zh'), '餐饮');
+    },
+  );
+
+  test('legacy system tag IDs resolve to MD-0001 translations', () {
+    final legacy = Tag(id: TagId('system-tag-business'), name: 'Business');
+
+    expect(tagDisplayLabel(legacy, 'zh'), '商务');
+  });
 }
