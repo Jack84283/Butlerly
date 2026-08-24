@@ -4,10 +4,7 @@ import 'package:test/test.dart';
 void main() {
   final usd = CurrencyCode('USD');
   final cny = CurrencyCode('CNY');
-  final cny700 = Money(
-    amount: DecimalValue.parse('700'),
-    currency: cny,
-  );
+  final cny700 = Money(amount: DecimalValue.parse('700'), currency: cny);
 
   test('same currency does not require normalization', () {
     final result = normalizeMoney(

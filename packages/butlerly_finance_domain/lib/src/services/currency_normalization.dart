@@ -60,8 +60,7 @@ CurrencyNormalizationResult normalizeMoney({
     );
   }
   final amount = DecimalValue.fromParts(
-    coefficient:
-        original.amount.coefficient * exchangeRate.rate.coefficient,
+    coefficient: original.amount.coefficient * exchangeRate.rate.coefficient,
     scale: original.amount.scale + exchangeRate.rate.scale,
   );
   return CurrencyNormalizationResult(
