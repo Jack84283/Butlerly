@@ -1,5 +1,7 @@
 library;
 
+export 'src/repositories/sqlite_exchange_rate_repository.dart';
+
 export 'src/database/butlerly_database.dart';
 export 'src/repositories/sqlite_evidence_repository.dart';
 export 'src/repositories/sqlite_lookup_repositories.dart';

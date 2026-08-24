@@ -174,7 +174,7 @@ final class SqliteTransactionRepository implements TransactionRepository {
                 r.id AS rate_id, r.from_currency, r.to_currency,
                 r.rate_coefficient, r.rate_scale, r.effective_at, r.source
          FROM normalized_money n
-         INNER JOIN exchange_rates r ON r.id = n.exchange_rate_id
+         LEFT JOIN exchange_rates r ON r.id = n.exchange_rate_id
          WHERE n.transaction_id = ? ORDER BY r.effective_at''',
       [id],
     );
@@ -337,42 +337,64 @@ final class SqliteTransactionRepository implements TransactionRepository {
     NormalizedMoney value,
   ) async {
     final rate = value.exchangeRate;
-    await executor.insert('exchange_rates', {
-      'id': rate.id.value,
-      'from_currency': rate.fromCurrency.value,
-      'to_currency': rate.toCurrency.value,
-      ...decimalToColumns(rate.rate, 'rate_coefficient', 'rate_scale'),
-      'effective_at': rate.effectiveAt.toIso8601String(),
-      'source': rate.source,
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    if (rate != null) {
+      await executor.insert('exchange_rates', {
+        'id': rate.id.value,
+        'from_currency': rate.fromCurrency.value,
+        'to_currency': rate.toCurrency.value,
+        ...decimalToColumns(rate.rate, 'rate_coefficient', 'rate_scale'),
+        'effective_at': rate.effectiveAt.toIso8601String(),
+        'source': rate.source,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
     await executor.insert('normalized_money', {
       'transaction_id': transactionId.value,
-      'exchange_rate_id': rate.id.value,
+      'exchange_rate_id': rate?.id.value,
       ...decimalToColumns(
         value.converted.amount,
         'amount_coefficient',
         'amount_scale',
       ),
       'currency': value.converted.currency.value,
+      'normalization_source': value.source.name,
+      'base_currency': value.baseCurrency.value,
+      'effective_date': value.effectiveDate,
+      'updated_at': value.updatedAt.toIso8601String(),
     });
   }
 
   static NormalizedMoney _normalizedMoneyFromRow(
     Money original,
     Map<String, Object?> row,
-  ) => NormalizedMoney(
-    original: original,
-    converted: Money(
-      amount: decimalFromRow(row, 'amount_coefficient', 'amount_scale'),
-      currency: CurrencyCode(row['currency']! as String),
-    ),
-    exchangeRate: ExchangeRate(
-      id: ExchangeRateId(row['rate_id']! as String),
-      fromCurrency: CurrencyCode(row['from_currency']! as String),
-      toCurrency: CurrencyCode(row['to_currency']! as String),
-      rate: decimalFromRow(row, 'rate_coefficient', 'rate_scale'),
-      effectiveAt: DateTime.parse(row['effective_at']! as String),
-      source: row['source']! as String,
-    ),
-  );
+  ) {
+    final rateId = row['rate_id'] as String?;
+    final rate = rateId == null
+        ? null
+        : ExchangeRate(
+            id: ExchangeRateId(rateId),
+            fromCurrency: CurrencyCode(row['from_currency']! as String),
+            toCurrency: CurrencyCode(row['to_currency']! as String),
+            rate: decimalFromRow(row, 'rate_coefficient', 'rate_scale'),
+            effectiveAt: DateTime.parse(row['effective_at']! as String),
+            source: row['source']! as String,
+          );
+    return NormalizedMoney(
+      original: original,
+      converted: Money(
+        amount: decimalFromRow(row, 'amount_coefficient', 'amount_scale'),
+        currency: CurrencyCode(row['currency']! as String),
+      ),
+      exchangeRate: rate,
+      source: NormalizationSource.values.byName(
+        row['normalization_source'] as String? ?? 'exchangeRate',
+      ),
+      baseCurrency: CurrencyCode(
+        row['base_currency'] as String? ?? row['currency']! as String,
+      ),
+      effectiveDate: row['effective_date'] as String? ?? '',
+      updatedAt: row['updated_at'] == null
+          ? null
+          : DateTime.parse(row['updated_at']! as String),
+    );
+  }
 }

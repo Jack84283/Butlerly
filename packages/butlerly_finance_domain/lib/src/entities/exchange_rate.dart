@@ -3,6 +3,7 @@ import '../value_objects/currency_code.dart';
 import '../value_objects/decimal_value.dart';
 import '../value_objects/domain_id.dart';
 import '../value_objects/money.dart';
+import '../services/currency_normalization.dart';
 
 final class ExchangeRate {
   ExchangeRate({
@@ -47,10 +48,17 @@ final class NormalizedMoney {
   NormalizedMoney({
     required this.original,
     required this.converted,
-    required this.exchangeRate,
-  }) {
-    if (original.currency != exchangeRate.fromCurrency ||
-        converted.currency != exchangeRate.toCurrency) {
+    this.exchangeRate,
+    this.source = NormalizationSource.exchangeRate,
+    CurrencyCode? baseCurrency,
+    this.effectiveDate = '',
+    DateTime? updatedAt,
+  }) : baseCurrency = baseCurrency ?? converted.currency,
+       updatedAt = (updatedAt ?? DateTime.now()).toUtc() {
+    if (converted.currency != this.baseCurrency ||
+        (exchangeRate != null &&
+            (original.currency != exchangeRate!.fromCurrency ||
+                converted.currency != exchangeRate!.toCurrency))) {
       invalid(
         code: DomainErrorCode.relationshipMismatch,
         field: 'exchangeRate',
@@ -61,5 +69,9 @@ final class NormalizedMoney {
 
   final Money original;
   final Money converted;
-  final ExchangeRate exchangeRate;
+  final ExchangeRate? exchangeRate;
+  final NormalizationSource source;
+  final CurrencyCode baseCurrency;
+  final String effectiveDate;
+  final DateTime updatedAt;
 }

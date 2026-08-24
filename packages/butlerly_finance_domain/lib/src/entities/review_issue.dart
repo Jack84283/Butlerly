@@ -7,6 +7,7 @@ enum ReviewIssueReason {
   conflict,
   duplicateCandidate,
   other,
+  normalizationMissing,
 }
 
 enum ReviewIssueStatus { active, resolved, dismissed }
@@ -48,6 +49,14 @@ final class ReviewIssue {
 
   ReviewIssue resolve(DateTime at) => _close(ReviewIssueStatus.resolved, at);
   ReviewIssue dismiss(DateTime at) => _close(ReviewIssueStatus.dismissed, at);
+
+  ReviewIssue reopen() => ReviewIssue(
+    id: id,
+    transactionId: transactionId,
+    reason: reason,
+    createdAt: createdAt,
+    detail: detail,
+  );
 
   ReviewIssue _close(ReviewIssueStatus nextStatus, DateTime at) {
     if (status != ReviewIssueStatus.active) {

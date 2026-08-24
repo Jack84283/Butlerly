@@ -15,6 +15,7 @@ final class FinanceServices {
     ReconciliationCandidateRepository? reconciliationCandidates,
     ReconciliationLinkRepository? reconciliationLinks,
     ReconciliationWorkflowRepository? reconciliationWorkflow,
+    ExchangeRateRepository? exchangeRates,
   }) : listTransactions = ListTransactions(transactions),
        seedInitialMasterData = SeedInitialMasterData(
          merchants,
@@ -132,7 +133,18 @@ final class FinanceServices {
        rejectReconciliation = RejectReconciliation(
          reconciliationWorkflow ?? const _NoReconciliationWorkflowRepository(),
        ),
-       findReceiptPaymentMatch = FindReceiptPaymentMatch(transactions);
+       findReceiptPaymentMatch = FindReceiptPaymentMatch(transactions),
+       evaluateTransactionNormalization = EvaluateTransactionNormalization(
+         transactions,
+         preferences,
+         exchangeRates,
+         const SystemApplicationClock(),
+       ),
+       confirmUserNormalizedAmount = ConfirmUserNormalizedAmount(
+         transactions,
+         preferences,
+         const SystemApplicationClock(),
+       );
 
   final ListTransactions listTransactions;
   final SeedInitialMasterData seedInitialMasterData;
@@ -178,6 +190,8 @@ final class FinanceServices {
   final ListReconciliationLinks listReconciliationLinks;
   final ConfirmReconciliation confirmReconciliation;
   final RejectReconciliation rejectReconciliation;
+  final EvaluateTransactionNormalization evaluateTransactionNormalization;
+  final ConfirmUserNormalizedAmount confirmUserNormalizedAmount;
   final FindReceiptPaymentMatch findReceiptPaymentMatch;
 }
 

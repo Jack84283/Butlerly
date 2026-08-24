@@ -17,7 +17,7 @@ final class NormalizedMoneyDto {
       NormalizedMoneyDto(
         amount: value.converted.amount.toString(),
         currency: value.converted.currency.value,
-        rateSource: value.exchangeRate.source,
-        effectiveAt: value.exchangeRate.effectiveAt,
+        rateSource: value.exchangeRate?.source ?? value.source.name,
+        effectiveAt: value.exchangeRate?.effectiveAt ?? value.updatedAt,
       );
 }

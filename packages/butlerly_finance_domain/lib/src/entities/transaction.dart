@@ -189,6 +189,20 @@ final class Transaction {
     return _copy(normalizedMoney: [...normalizedMoney, value], updatedAt: at);
   }
 
+  Transaction replaceNormalizedMoney(NormalizedMoney value, DateTime at) {
+    if (value.original != money) {
+      invalid(
+        code: DomainErrorCode.relationshipMismatch,
+        field: 'normalizedMoney',
+        message: 'Normalization cannot replace the original money.',
+      );
+    }
+    return _copy(normalizedMoney: [value], updatedAt: at);
+  }
+
+  Transaction reopenReviewIssue(ReviewIssueId id, DateTime at) =>
+      _closeReviewIssue(id, at, (issue) => issue.reopen());
+
   Transaction _copy({
     TransactionStatus? status,
     PaymentSourceId? paymentSourceId,
