@@ -17,6 +17,7 @@ export 'src/entities/suggestion.dart';
 export 'src/entities/tag.dart';
 export 'src/entities/transaction.dart';
 export 'src/entities/user_preference.dart';
+export 'src/services/currency_normalization.dart';
 export 'src/errors/domain_error.dart';
 export 'src/repositories/finance_repositories.dart';
 export 'src/repositories/repository_failure.dart';
