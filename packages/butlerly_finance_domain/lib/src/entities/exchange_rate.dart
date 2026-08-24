@@ -1,9 +1,9 @@
 import '../errors/domain_error.dart';
+import '../services/currency_normalization.dart';
 import '../value_objects/currency_code.dart';
 import '../value_objects/decimal_value.dart';
 import '../value_objects/domain_id.dart';
 import '../value_objects/money.dart';
-import '../services/currency_normalization.dart';
 
 final class ExchangeRate {
   ExchangeRate({

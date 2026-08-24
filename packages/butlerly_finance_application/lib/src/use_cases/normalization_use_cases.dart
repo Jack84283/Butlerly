@@ -19,17 +19,19 @@ final class EvaluateTransactionNormalization {
   Future<ApplicationResult<TransactionDto>> call(TransactionId id) async =>
       runApplication('evaluate normalization', () async {
         final transaction = await transactions.findById(id);
-        if (transaction == null)
+        if (transaction == null) {
           throw const RepositoryException(
             RepositoryFailureCode.notFound,
             'transaction not found',
           );
+        }
         final preference = await preferences.load();
-        if (preference == null)
+        if (preference == null) {
           throw const RepositoryException(
             RepositoryFailureCode.notFound,
             'preferences not found',
           );
+        }
         final existing = transaction.normalizedMoney
             .where((v) => v.source == NormalizationSource.userEntered)
             .firstOrNull;
@@ -79,7 +81,7 @@ final class EvaluateTransactionNormalization {
                     ? updated
                     : updated.reopenReviewIssue(reviewId, now));
         } else {
-          if (result.normalized != null && existing == null)
+          if (result.normalized != null && existing == null) {
             updated = updated.replaceNormalizedMoney(
               NormalizedMoney(
                 original: transaction.money,
@@ -92,8 +94,10 @@ final class EvaluateTransactionNormalization {
               ),
               now,
             );
-          if (issue?.status == ReviewIssueStatus.active)
+          }
+          if (issue?.status == ReviewIssueStatus.active) {
             updated = updated.resolveReviewIssue(reviewId, now);
+          }
         }
         await transactions.save(updated);
         return TransactionDto.fromDomain(updated);
@@ -116,17 +120,19 @@ final class ConfirmUserNormalizedAmount {
   }) async => runApplication('confirm normalized amount', () async {
     final transaction = await transactions.findById(id);
     final preference = await preferences.load();
-    if (transaction == null || preference == null)
+    if (transaction == null || preference == null) {
       throw const RepositoryException(
         RepositoryFailureCode.notFound,
         'normalization target not found',
       );
-    if (normalized.currency != preference.baseCurrency)
+    }
+    if (normalized.currency != preference.baseCurrency) {
       throw const DomainValidationException(
         code: DomainErrorCode.invalidCurrency,
         field: 'currency',
         message: 'Normalized amount must use the base currency.',
       );
+    }
     final now = clock.now();
     var updated = transaction.replaceNormalizedMoney(
       NormalizedMoney(

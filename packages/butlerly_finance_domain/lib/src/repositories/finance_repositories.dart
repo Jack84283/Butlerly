@@ -2,6 +2,7 @@ import '../entities/account.dart';
 import '../entities/attachment_link.dart';
 import '../entities/category.dart';
 import '../entities/evidence_item.dart';
+import '../entities/exchange_rate.dart';
 import '../entities/extraction.dart';
 import '../entities/master_translation.dart';
 import '../entities/merchant.dart';
@@ -12,7 +13,6 @@ import '../entities/suggestion.dart';
 import '../entities/tag.dart';
 import '../entities/transaction.dart';
 import '../entities/user_preference.dart';
-import '../entities/exchange_rate.dart';
 import '../value_objects/currency_code.dart';
 import '../value_objects/domain_id.dart';
 
