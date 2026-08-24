@@ -211,21 +211,31 @@ class _ReviewPageState extends State<ReviewPage> {
                         padding: const EdgeInsets.only(
                           bottom: ButlerlySpacing.small,
                         ),
-                        child: ButlerlyReviewCard(
-                          title:
-                              item.description ??
-                              context.l10n.text('untitledTransaction'),
-                          reason: item.detail ?? _reason(item.reason, context),
-                          recommendation: context.l10n.text(
-                            'reviewRecommendation',
-                          ),
-                          primaryLabel: context.l10n.text('resolve'),
-                          onPrimary: () => _close(item, dismiss: false),
-                          editLabel: context.l10n.text('edit'),
-                          dismissLabel: context.l10n.text('dismiss'),
-                          onEdit: () => _openTransaction(item),
-                          onDismiss: () => _close(item, dismiss: true),
-                        ),
+                        child:
+                            item.reason ==
+                                ReviewIssueReason.normalizationMissing.name
+                            ? _NormalizationReviewCard(
+                                item: item,
+                                finance: _finance!,
+                                onDone: _refresh,
+                              )
+                            : ButlerlyReviewCard(
+                                title:
+                                    item.description ??
+                                    context.l10n.text('untitledTransaction'),
+                                reason:
+                                    item.detail ??
+                                    _reason(item.reason, context),
+                                recommendation: context.l10n.text(
+                                  'reviewRecommendation',
+                                ),
+                                primaryLabel: context.l10n.text('resolve'),
+                                onPrimary: () => _close(item, dismiss: false),
+                                editLabel: context.l10n.text('edit'),
+                                dismissLabel: context.l10n.text('dismiss'),
+                                onEdit: () => _openTransaction(item),
+                                onDismiss: () => _close(item, dismiss: true),
+                              ),
                       ),
                     )
                     .toList(growable: false),
@@ -239,6 +249,83 @@ class _ReviewPageState extends State<ReviewPage> {
 }
 
 enum _ReviewView { needsReview, uncategorized, duplicates }
+
+class _NormalizationReviewCard extends StatefulWidget {
+  const _NormalizationReviewCard({
+    required this.item,
+    required this.finance,
+    required this.onDone,
+  });
+  final ReviewItemDto item;
+  final FinanceServices finance;
+  final VoidCallback onDone;
+  @override
+  State<_NormalizationReviewCard> createState() =>
+      _NormalizationReviewCardState();
+}
+
+class _NormalizationReviewCardState extends State<_NormalizationReviewCard> {
+  late final TextEditingController _controller = TextEditingController();
+  bool _saving = false;
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final preference = await widget.finance.loadUserPreference();
+    if (preference is! ApplicationSuccess<UserPreference?> ||
+        preference.value == null) {
+      return;
+    }
+    DecimalValue amount;
+    try {
+      amount = DecimalValue.parse(_controller.text.trim());
+    } on Object {
+      return;
+    }
+    setState(() => _saving = true);
+    final result = await widget.finance.confirmUserNormalizedAmount(
+      id: TransactionId(widget.item.transactionId),
+      normalized: Money(
+        amount: amount,
+        currency: preference.value!.baseCurrency,
+      ),
+    );
+    if (mounted) setState(() => _saving = false);
+    if (result is ApplicationSuccess) {
+      widget.onDone();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => ButlerlyCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.item.description ?? context.l10n.text('untitledTransaction'),
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        Text('${widget.item.amount} ${widget.item.currency}'),
+        const SizedBox(height: ButlerlySpacing.small),
+        TextField(
+          controller: _controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            labelText: context.l10n.text('normalizedAmount'),
+          ),
+        ),
+        const SizedBox(height: ButlerlySpacing.small),
+        FilledButton(
+          onPressed: _saving ? null : _save,
+          child: Text(context.l10n.text('confirm')),
+        ),
+      ],
+    ),
+  );
+}
 
 class _ReconciliationCandidateCard extends StatelessWidget {
   const _ReconciliationCandidateCard({

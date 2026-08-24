@@ -1,5 +1,5 @@
 abstract final class Schema {
-  static const version = 14;
+  static const version = 15;
 
   static const migration1 = <String>[
     '''CREATE TABLE payment_sources (
@@ -246,5 +246,27 @@ abstract final class Schema {
       PRIMARY KEY(reference_data_id, locale)
     )''',
     'CREATE INDEX idx_reference_data_type ON reference_data(type)',
+  ];
+
+  static const migration15 = <String>[
+    '''CREATE TABLE normalized_money_v15 (
+      transaction_id TEXT NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+      exchange_rate_id TEXT REFERENCES exchange_rates(id),
+      amount_coefficient TEXT NOT NULL,
+      amount_scale INTEGER NOT NULL CHECK(amount_scale >= 0),
+      currency TEXT NOT NULL,
+      normalization_source TEXT NOT NULL DEFAULT 'exchangeRate',
+      base_currency TEXT NOT NULL,
+      effective_date TEXT NOT NULL DEFAULT '',
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY(transaction_id, exchange_rate_id)
+    )''',
+    '''INSERT INTO normalized_money_v15
+      (transaction_id, exchange_rate_id, amount_coefficient, amount_scale,
+       currency, base_currency)
+      SELECT transaction_id, exchange_rate_id, amount_coefficient, amount_scale,
+       currency, currency FROM normalized_money''',
+    'DROP TABLE normalized_money',
+    'ALTER TABLE normalized_money_v15 RENAME TO normalized_money',
   ];
 }

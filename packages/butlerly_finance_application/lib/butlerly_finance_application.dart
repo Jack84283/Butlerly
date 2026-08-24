@@ -12,3 +12,4 @@ export 'src/use_cases/receipt_transaction_use_case.dart';
 export 'src/use_cases/payment_transaction_use_case.dart';
 export 'src/use_cases/reconciliation_use_cases.dart';
 export 'src/use_cases/transaction_use_cases.dart';
+export 'src/use_cases/normalization_use_cases.dart';
