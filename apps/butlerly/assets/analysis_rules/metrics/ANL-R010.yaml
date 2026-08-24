@@ -1,0 +1,12 @@
+schemaVersion: "1.0.0"
+ruleId: ANL-R010
+ruleVersion: "1.0.0"
+enabled: true
+type: metric
+nameKey: analysis.rule.r010.name
+descriptionKey: analysis.rule.r010.description
+period: currentPeriod
+grouping: category
+measure:
+  operation: sum
+  field: amount

@@ -1,0 +1,11 @@
+schemaVersion: "1.0.0"
+ruleId: ANL-R090
+ruleVersion: "1.0.0"
+enabled: true
+type: dataQuality
+nameKey: analysis.rule.r090.name
+descriptionKey: analysis.rule.r090.description
+period: currentPeriod
+measure:
+  operation: count
+  field: transaction

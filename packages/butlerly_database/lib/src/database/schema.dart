@@ -1,5 +1,5 @@
 abstract final class Schema {
-  static const version = 15;
+  static const version = 16;
 
   static const migration1 = <String>[
     '''CREATE TABLE payment_sources (
@@ -268,5 +268,48 @@ abstract final class Schema {
        currency, currency FROM normalized_money''',
     'DROP TABLE normalized_money',
     'ALTER TABLE normalized_money_v15 RENAME TO normalized_money',
+  ];
+
+  static const migration16 = <String>[
+    '''CREATE TABLE analysis_rule_definitions (
+      rule_id TEXT NOT NULL,
+      rule_version TEXT NOT NULL,
+      schema_version TEXT NOT NULL,
+      source_type TEXT NOT NULL,
+      definition TEXT NOT NULL,
+      canonical_definition TEXT NOT NULL,
+      definition_hash TEXT NOT NULL,
+      validation_status TEXT NOT NULL,
+      validation_diagnostics TEXT,
+      installed_at TEXT NOT NULL,
+      retired_at TEXT,
+      PRIMARY KEY(rule_id, rule_version)
+    )''',
+    '''CREATE TABLE analysis_rule_activations (
+      rule_id TEXT PRIMARY KEY NOT NULL,
+      active_rule_version TEXT NOT NULL,
+      enabled INTEGER NOT NULL,
+      updated_at TEXT NOT NULL
+    )''',
+    '''CREATE TABLE analysis_rule_configurations (
+      rule_id TEXT PRIMARY KEY NOT NULL,
+      configuration TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )''',
+    '''CREATE TABLE analysis_findings (
+      id TEXT PRIMARY KEY NOT NULL,
+      rule_id TEXT NOT NULL,
+      rule_version TEXT NOT NULL,
+      definition_hash TEXT NOT NULL,
+      period_start TEXT NOT NULL,
+      period_end TEXT NOT NULL,
+      time_zone_id TEXT NOT NULL,
+      payload TEXT NOT NULL,
+      lifecycle TEXT NOT NULL,
+      generated_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )''',
+    'CREATE INDEX idx_analysis_findings_rule ON analysis_findings(rule_id, rule_version)',
+    'CREATE INDEX idx_analysis_findings_lifecycle ON analysis_findings(lifecycle)',
   ];
 }

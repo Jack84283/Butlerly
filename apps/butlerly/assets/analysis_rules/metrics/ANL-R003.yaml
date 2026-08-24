@@ -1,0 +1,14 @@
+schemaVersion: "1.0.0"
+ruleId: ANL-R003
+ruleVersion: "1.0.0"
+enabled: true
+type: metric
+nameKey: analysis.rule.r003.name
+descriptionKey: analysis.rule.r003.description
+period: currentPeriod
+measure:
+  operation: difference
+  field: amount
+dependencies:
+  - ANL-R001
+  - ANL-R002

@@ -1,0 +1,12 @@
+schemaVersion: "1.0.0"
+ruleId: ANL-R016
+ruleVersion: "1.0.0"
+enabled: true
+type: metric
+nameKey: analysis.rule.r016.name
+descriptionKey: analysis.rule.r016.description
+period: currentPeriod
+grouping: day
+measure:
+  operation: count
+  field: transaction
