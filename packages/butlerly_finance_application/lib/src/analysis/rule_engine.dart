@@ -160,7 +160,7 @@ final class AnalysisRuleEngine {
         .toList(growable: false);
     final result = switch (rule.measure.operation) {
       RuleOperation.count => DecimalValue.fromParts(
-        coefficient: BigInt.from(selected.length),
+        coefficient: BigInt.from(_countForField(selected, rule.measure.field)),
         scale: 0,
       ),
       RuleOperation.sum => _sum(amountValues),
@@ -187,6 +187,24 @@ final class AnalysisRuleEngine {
       qualityIssues: dataset.qualityIssues,
       calculatedAt: at,
     );
+  }
+
+  int _countForField(List<AnalysisEconomicTransaction> values, String field) {
+    if (field == 'transaction') return values.length;
+    final code = switch (field) {
+      'unresolvedNormalization' => 'missingFx',
+      'reconciliationUncertainty' => 'reconciliationUncertainty',
+      'dataQuality' => null,
+      _ => null,
+    };
+    if (code == null) {
+      return field == 'dataQuality'
+          ? values.fold(0, (sum, value) => sum + value.dataQuality.length)
+          : values.length;
+    }
+    return values
+        .where((value) => value.dataQuality.any((issue) => issue.code == code))
+        .length;
   }
 
   DecimalValue _difference(

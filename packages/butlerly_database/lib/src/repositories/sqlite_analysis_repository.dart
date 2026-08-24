@@ -163,8 +163,54 @@ final class SqliteAnalysisFindingRepository
   }
 
   @override
-  Future<List<AnalysisFinding>> list({FindingLifecycle? lifecycle}) async =>
-      const [];
+  Future<List<AnalysisFinding>> list({FindingLifecycle? lifecycle}) async {
+    final rows = await database.connection.query(
+      'analysis_findings',
+      where: lifecycle == null ? null : 'lifecycle = ?',
+      whereArgs: lifecycle == null ? null : [lifecycle.name],
+      orderBy: 'generated_at DESC, id',
+    );
+    final definitions = await SqliteAnalysisRuleRepository(
+      database,
+    ).listDefinitions();
+    final byKey = {
+      for (final value in definitions)
+        '${value.identity.value}:${value.version.value}': value,
+    };
+    return rows
+        .map((row) {
+          final rule = byKey['${row['rule_id']}:${row['rule_version']}'];
+          if (rule == null) {
+            throw StateError(
+              'Stored finding references an unavailable rule definition.',
+            );
+          }
+          final payload =
+              jsonDecode(row['payload']! as String) as Map<String, dynamic>;
+          return AnalysisFinding(
+            id: row['id']! as String,
+            rule: rule,
+            context: AnalysisContext(
+              period: AnalysisPeriod(
+                startDate: row['period_start']! as String,
+                endDate: row['period_end']! as String,
+                timeZoneId: row['time_zone_id']! as String,
+              ),
+              datasetMode: DatasetMode.allEligible,
+              currencyBasis: CurrencyBasis.original,
+            ),
+            severity: RuleSeverity.values.byName(
+              payload['severity'] as String? ?? 'info',
+            ),
+            lifecycle: FindingLifecycle.values.byName(
+              row['lifecycle']! as String,
+            ),
+            dimension: payload['dimension'] as String?,
+            generatedAt: DateTime.parse(row['generated_at']! as String),
+          );
+        })
+        .toList(growable: false);
+  }
 
   @override
   Future<void> updateLifecycle(

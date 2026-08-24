@@ -16,5 +16,6 @@ export 'src/use_cases/normalization_use_cases.dart';
 export 'src/analysis/rule_loader.dart';
 export 'src/analysis/rule_engine.dart';
 export 'src/analysis/rule_installation.dart';
+export 'src/analysis/invalidation.dart';
 export 'src/analysis/dataset_builder.dart';
 export 'src/use_cases/analysis_use_cases.dart';
