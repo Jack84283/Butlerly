@@ -9,6 +9,7 @@ import 'package:butlerly/features/foundation/presentation/time_zone_catalog.dart
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:go_router/go_router.dart';
 
 class SettingsPage extends ConsumerWidget {
@@ -155,32 +156,44 @@ class SettingsPage extends ConsumerWidget {
                 }
               },
             ),
-            _SettingsDropdownRow<String>(
-              value:
-                  timeZoneCatalog.any(
-                    (zone) => zone.id == (preference?.timeZoneId ?? 'UTC'),
-                  )
-                  ? (preference?.timeZoneId ?? 'UTC')
-                  : 'UTC',
-              label: context.l10n.text('timeZone'),
-              icon: Icons.schedule_rounded,
-              menuMaxHeight: 4 * kMinInteractiveDimension,
-              items: [
-                for (final zone in timeZoneCatalog)
-                  DropdownMenuItem(
-                    value: zone.id,
-                    child: Text(zone.label(Localizations.localeOf(context))),
-                  ),
-              ],
-              onChanged: preference == null
-                  ? (_) {}
-                  : (value) {
-                      if (value != null) {
-                        ref
-                            .read(userPreferenceProvider.notifier)
-                            .saveChanges(timeZoneId: value);
-                      }
-                    },
+            FutureBuilder<List<TimezoneInfo>>(
+              future: FlutterTimezone.getAvailableTimezones(
+                Localizations.localeOf(context).toLanguageTag(),
+              ),
+              builder: (context, snapshot) {
+                final zones =
+                    snapshot.data ??
+                    timeZoneCatalog
+                        .map((zone) => TimezoneInfo(identifier: zone.id))
+                        .toList(growable: false);
+                final selected = preference?.timeZoneId ?? 'UTC';
+                return _SettingsDropdownRow<String>(
+                  value: zones.any((zone) => zone.identifier == selected)
+                      ? selected
+                      : 'UTC',
+                  label: context.l10n.text('timeZone'),
+                  icon: Icons.schedule_rounded,
+                  menuMaxHeight: 4 * kMinInteractiveDimension,
+                  items: [
+                    for (final zone in zones)
+                      DropdownMenuItem(
+                        value: zone.identifier,
+                        child: Text(
+                          zone.localizedName?.name ?? zone.identifier,
+                        ),
+                      ),
+                  ],
+                  onChanged: preference == null
+                      ? (_) {}
+                      : (value) {
+                          if (value != null) {
+                            ref
+                                .read(userPreferenceProvider.notifier)
+                                .saveChanges(timeZoneId: value);
+                          }
+                        },
+                );
+              },
             ),
           ],
         ),

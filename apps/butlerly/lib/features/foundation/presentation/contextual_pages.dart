@@ -430,42 +430,54 @@ class _SinglePaymentDialogState extends State<_SinglePaymentDialog> {
                   : null,
             ),
             const SizedBox(height: ButlerlySpacing.standard),
-            DropdownButtonFormField<String>(
-              initialValue: _direction,
-              decoration: InputDecoration(
-                labelText: context.l10n.text('direction'),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 360),
+                child: DropdownButtonFormField<String>(
+                  initialValue: _direction,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.text('direction'),
+                  ),
+                  items: [
+                    DropdownMenuItem(
+                      value: 'expense',
+                      child: Text(context.l10n.text('debitExpense')),
+                    ),
+                    DropdownMenuItem(
+                      value: 'income',
+                      child: Text(context.l10n.text('creditRefund')),
+                    ),
+                  ],
+                  onChanged: (value) =>
+                      setState(() => _direction = value ?? 'expense'),
+                ),
               ),
-              items: [
-                DropdownMenuItem(
-                  value: 'expense',
-                  child: Text(context.l10n.text('debitExpense')),
-                ),
-                DropdownMenuItem(
-                  value: 'income',
-                  child: Text(context.l10n.text('creditRefund')),
-                ),
-              ],
-              onChanged: (value) =>
-                  setState(() => _direction = value ?? 'expense'),
             ),
             const SizedBox(height: ButlerlySpacing.standard),
-            DropdownButtonFormField<String>(
-              initialValue: _sourceId,
-              decoration: InputDecoration(
-                labelText: context.l10n.text('paymentSource'),
-              ),
-              items: [
-                DropdownMenuItem(
-                  value: '',
-                  child: Text(context.l10n.text('unassigned')),
-                ),
-                for (final source in widget.sources)
-                  DropdownMenuItem(
-                    value: source.id.value,
-                    child: Text(_paymentSourceLabel(source)),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 360),
+                child: DropdownButtonFormField<String>(
+                  initialValue: _sourceId,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.text('paymentSource'),
                   ),
-              ],
-              onChanged: (value) => setState(() => _sourceId = value),
+                  items: [
+                    DropdownMenuItem(
+                      value: '',
+                      child: Text(context.l10n.text('unassigned')),
+                    ),
+                    for (final source in widget.sources)
+                      DropdownMenuItem(
+                        value: source.id.value,
+                        child: Text(_paymentSourceLabel(source)),
+                      ),
+                  ],
+                  onChanged: (value) => setState(() => _sourceId = value),
+                ),
+              ),
             ),
           ],
         ),
