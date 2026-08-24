@@ -17,26 +17,30 @@ final class AnalysisRuleEngine {
         final values = dataset.transactions
             .where((value) => _eligible(value, dataset.context, rule))
             .toList(growable: false);
-        final metric = _metric(
-          rule,
-          dataset,
-          values,
-          metrics,
-          calculatedAt ?? DateTime.now().toUtc(),
-        );
-        if (metric != null) {
-          metrics[rule.identity.value] = metric;
+        for (final entry in _group(values, rule.grouping).entries) {
+          final metric = _metric(
+            rule,
+            dataset,
+            entry.value,
+            metrics,
+            entry.key,
+            calculatedAt ?? DateTime.now().toUtc(),
+          );
+          if (metric != null) {
+            metrics['${rule.identity.value}:${entry.key}'] = metric;
+            metrics[rule.identity.value] = metric;
+          }
+          results.add(
+            RuleExecutionResult(
+              rule: rule,
+              metric:
+                  rule.type == AnalysisRuleType.metric ||
+                      rule.type == AnalysisRuleType.dataQuality
+                  ? metric
+                  : null,
+            ),
+          );
         }
-        results.add(
-          RuleExecutionResult(
-            rule: rule,
-            metric:
-                rule.type == AnalysisRuleType.metric ||
-                    rule.type == AnalysisRuleType.dataQuality
-                ? metric
-                : null,
-          ),
-        );
       } on Object catch (error) {
         results.add(
           RuleExecutionResult(
@@ -51,6 +55,29 @@ final class AnalysisRuleEngine {
       }
     }
     return results;
+  }
+
+  Map<String, List<AnalysisEconomicTransaction>> _group(
+    List<AnalysisEconomicTransaction> values,
+    RuleGrouping grouping,
+  ) {
+    if (grouping == RuleGrouping.none) return {'': values};
+    String key(AnalysisEconomicTransaction value) => switch (grouping) {
+      RuleGrouping.category => value.categoryId?.value ?? 'uncategorized',
+      RuleGrouping.merchant => value.merchantId?.value ?? 'unresolved',
+      RuleGrouping.paymentSource => value.paymentSourceId?.value ?? 'unknown',
+      RuleGrouping.tag =>
+        value.tagIds.isEmpty ? 'untagged' : value.tagIds.first.value,
+      RuleGrouping.day => value.transactionDate ?? 'unknown',
+      RuleGrouping.week ||
+      RuleGrouping.month => value.transactionDate?.substring(0, 7) ?? 'unknown',
+      RuleGrouping.none => '',
+    };
+    final grouped = <String, List<AnalysisEconomicTransaction>>{};
+    for (final value in values) {
+      grouped.putIfAbsent(key(value), () => []).add(value);
+    }
+    return grouped;
   }
 
   List<AnalysisRuleDefinition> _order(
@@ -114,6 +141,7 @@ final class AnalysisRuleEngine {
     AnalysisDataset dataset,
     List<AnalysisEconomicTransaction> values,
     Map<String, AnalysisMetric> dependencies,
+    String dimension,
     DateTime at,
   ) {
     final selected = values
@@ -146,12 +174,13 @@ final class AnalysisRuleEngine {
         ? dataset.context.baseCurrency
         : (amountValues.isEmpty ? null : selected.first.money.currency);
     return AnalysisMetric(
-      id: '${rule.identity.value}:${dataset.context.period.startDate}',
+      id: '${rule.identity.value}:${dataset.context.period.startDate}:$dimension',
       rule: rule,
       context: dataset.context,
       value: result,
       currency: currency,
       transactionCount: selected.length,
+      dimension: dimension.isEmpty ? null : dimension,
       evidence: selected
           .map((value) => EvidenceReference(transactionId: value.id))
           .toList(growable: false),

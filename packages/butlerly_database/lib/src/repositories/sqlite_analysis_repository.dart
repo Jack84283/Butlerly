@@ -84,29 +84,57 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
         .toList(growable: false);
   }
 
-  AnalysisRuleDefinition _fromJson(Map<String, dynamic> json, String hash) =>
-      AnalysisRuleDefinition(
-        identity: RuleIdentity(json['ruleId'] as String),
-        version: RuleVersion(json['ruleVersion'] as String),
-        schemaVersion: json['schemaVersion'] as String,
-        type: AnalysisRuleType.values.byName(json['type'] as String),
-        nameKey: json['nameKey'] as String,
-        descriptionKey: json['descriptionKey'] as String,
-        enabled: json['enabled'] as bool? ?? true,
-        status: AnalysisRuleStatus.active,
-        period: json['period'] as String? ?? 'currentPeriod',
-        measure: RuleMeasure(
-          operation: RuleOperation.values.byName(
-            (json['measure'] as Map)['operation'] as String,
+  AnalysisRuleDefinition _fromJson(
+    Map<String, dynamic> json,
+    String hash,
+  ) => AnalysisRuleDefinition(
+    identity: RuleIdentity(json['ruleId'] as String),
+    version: RuleVersion(json['ruleVersion'] as String),
+    schemaVersion: json['schemaVersion'] as String,
+    type: AnalysisRuleType.values.byName(json['type'] as String),
+    nameKey: json['nameKey'] as String,
+    descriptionKey: json['descriptionKey'] as String,
+    enabled: json['enabled'] as bool? ?? true,
+    status: AnalysisRuleStatus.active,
+    period: json['period'] as String? ?? 'currentPeriod',
+    measure: RuleMeasure(
+      operation: RuleOperation.values.byName(
+        (json['measure'] as Map)['operation'] as String,
+      ),
+      field: (json['measure'] as Map)['field'] as String,
+    ),
+    grouping: RuleGrouping.values.byName(json['grouping'] as String? ?? 'none'),
+    baseline: RuleBaseline.values.byName(json['baseline'] as String? ?? 'none'),
+    condition: const RuleCondition(operator: 'none'),
+    severity: RuleSeverity.values.byName(json['severity'] as String? ?? 'info'),
+    filters: _filters(json['filters']),
+    dependencies: _dependencies(json['dependencies']),
+    definitionHash: RuleDefinitionHash(hash),
+  );
+
+  List<AnalysisFilter> _filters(Object? raw) {
+    if (raw is! Map) return const [];
+    return raw.entries
+        .map(
+          (entry) => AnalysisFilter(
+            kind: AnalysisFilterKind.values.byName(entry.key.toString()),
+            values: entry.value is List
+                ? (entry.value as List)
+                      .map((value) => value.toString())
+                      .toList(growable: false)
+                : [entry.value.toString()],
           ),
-          field: (json['measure'] as Map)['field'] as String,
-        ),
-        grouping: RuleGrouping.none,
-        baseline: RuleBaseline.none,
-        condition: const RuleCondition(operator: 'none'),
-        severity: RuleSeverity.info,
-        definitionHash: RuleDefinitionHash(hash),
-      );
+        )
+        .toList(growable: false);
+  }
+
+  List<RuleDependency> _dependencies(Object? raw) => raw is! List
+      ? const []
+      : raw
+            .map(
+              (value) => RuleDependency(ruleId: RuleIdentity(value.toString())),
+            )
+            .toList(growable: false);
 }
 
 final class SqliteAnalysisFindingRepository
