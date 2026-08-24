@@ -5,6 +5,7 @@ import 'package:butlerly/features/foundation/presentation/time_zone_catalog.dart
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 
 class FirstUsePreferencesPage extends ConsumerWidget {
   const FirstUsePreferencesPage({super.key});
@@ -85,28 +86,52 @@ class FirstUsePreferencesPage extends ConsumerWidget {
                       },
                     ),
                     const SizedBox(height: ButlerlySpacing.standard),
-                    _SetupDropdown<String>(
-                      label: context.l10n.text('timeZone'),
-                      value:
-                          timeZoneCatalog.any(
-                            (zone) => zone.id == preference.timeZoneId,
-                          )
-                          ? preference.timeZoneId
-                          : 'UTC',
-                      leadingIcon: Icons.schedule_rounded,
-                      entries: [
-                        for (final zone in timeZoneCatalog)
-                          DropdownMenuEntry(
-                            value: zone.id,
-                            label: zone.label(Localizations.localeOf(context)),
-                          ),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          ref
-                              .read(userPreferenceProvider.notifier)
-                              .saveChanges(timeZoneId: value);
-                        }
+                    FutureBuilder<List<TimezoneInfo>>(
+                      future: FlutterTimezone.getAvailableTimezones(
+                        Localizations.localeOf(context).toLanguageTag(),
+                      ),
+                      builder: (context, snapshot) {
+                        final available =
+                            snapshot.data ??
+                            timeZoneCatalog
+                                .map(
+                                  (zone) => TimezoneInfo(identifier: zone.id),
+                                )
+                                .toList(growable: false);
+                        final zones =
+                            {
+                              for (final zone in available)
+                                zone.identifier: zone,
+                            }.values.toList(growable: false)..sort(
+                              (left, right) =>
+                                  left.identifier.compareTo(right.identifier),
+                            );
+                        return _SetupDropdown<String>(
+                          label: context.l10n.text('timeZone'),
+                          value:
+                              zones.any(
+                                (zone) =>
+                                    zone.identifier == preference.timeZoneId,
+                              )
+                              ? preference.timeZoneId
+                              : 'UTC',
+                          leadingIcon: Icons.schedule_rounded,
+                          entries: [
+                            for (final zone in zones)
+                              DropdownMenuEntry(
+                                value: zone.identifier,
+                                label:
+                                    zone.localizedName?.name ?? zone.identifier,
+                              ),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) {
+                              ref
+                                  .read(userPreferenceProvider.notifier)
+                                  .saveChanges(timeZoneId: value);
+                            }
+                          },
+                        );
                       },
                     ),
                   ],

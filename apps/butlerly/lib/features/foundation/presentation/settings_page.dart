@@ -161,11 +161,18 @@ class SettingsPage extends ConsumerWidget {
                 Localizations.localeOf(context).toLanguageTag(),
               ),
               builder: (context, snapshot) {
-                final zones =
+                final availableZones =
                     snapshot.data ??
                     timeZoneCatalog
                         .map((zone) => TimezoneInfo(identifier: zone.id))
                         .toList(growable: false);
+                final zones =
+                    {
+                      for (final zone in availableZones) zone.identifier: zone,
+                    }.values.toList(growable: false)..sort(
+                      (left, right) =>
+                          left.identifier.compareTo(right.identifier),
+                    );
                 final selected = preference?.timeZoneId ?? 'UTC';
                 return _SettingsDropdownRow<String>(
                   value: zones.any((zone) => zone.identifier == selected)
