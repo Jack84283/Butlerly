@@ -115,7 +115,10 @@ void main() {
   test(
     'produces structured insight change and leaves zero baseline percentage undefined',
     () {
-      final insight = rule('ANL-R020', RuleOperation.sum);
+      final insight = rule(
+        'ANL-R020',
+        RuleOperation.sum,
+      ).copyWithBaseline(RuleBaseline.previousEquivalentPeriod);
       final result = const AnalysisRuleEngine().execute(
         dataset: AnalysisDataset(
           context: context,
@@ -138,6 +141,27 @@ extension on AnalysisRuleDefinition {
         version: version,
         schemaVersion: schemaVersion,
         type: type ?? this.type,
+        nameKey: nameKey,
+        descriptionKey: descriptionKey,
+        enabled: enabled,
+        status: status,
+        period: period,
+        measure: measure,
+        grouping: grouping,
+        baseline: baseline,
+        condition: condition,
+        severity: severity,
+        dependencies: dependencies,
+        filters: filters,
+        definitionHash: definitionHash,
+      );
+
+  AnalysisRuleDefinition copyWithBaseline(RuleBaseline baseline) =>
+      AnalysisRuleDefinition(
+        identity: identity,
+        version: version,
+        schemaVersion: schemaVersion,
+        type: type,
         nameKey: nameKey,
         descriptionKey: descriptionKey,
         enabled: enabled,

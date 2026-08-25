@@ -70,7 +70,9 @@ final class AnalysisRuleEngine {
             metrics[rule.identity.value] = metric;
           }
           final finding =
-              rule.type == AnalysisRuleType.insight && metric != null
+              rule.type == AnalysisRuleType.insight &&
+                  metric != null &&
+                  _conditionMatches(rule.condition, metric.value)
               ? _finding(
                   rule,
                   dataset,
@@ -114,17 +116,22 @@ final class AnalysisRuleEngine {
     AnalysisMetric current,
     DateTime at,
   ) {
-    final baselineValues = dataset.baselineTransactions
-        .where((value) => _eligible(value, dataset.context, rule))
-        .toList(growable: false);
-    final baseline = _metric(
-      rule,
-      dataset,
-      baselineValues,
-      const <String, AnalysisMetric>{},
-      dimension,
-      at,
-    );
+    final baseline = rule.baseline == RuleBaseline.none
+        ? null
+        : _metric(
+            rule,
+            dataset,
+            dataset.baselineTransactions
+                .where(
+                  (value) =>
+                      _eligible(value, dataset.context, rule) &&
+                      _matchesQualityField(value, rule),
+                )
+                .toList(growable: false),
+            const <String, AnalysisMetric>{},
+            dimension,
+            at,
+          );
     final baselineValue = baseline?.value;
     final absolute = baselineValue == null
         ? null
@@ -172,6 +179,31 @@ final class AnalysisRuleEngine {
     );
   }
 
+  bool _conditionMatches(RuleCondition condition, DecimalValue value) {
+    if (condition.operator == 'none') return true;
+    if (condition.children.isNotEmpty) {
+      final matches = condition.children
+          .map((child) => _conditionMatches(child, value))
+          .toList(growable: false);
+      return switch (condition.operator) {
+        'all' => matches.every((item) => item),
+        'any' => matches.any((item) => item),
+        'not' => !matches.first,
+        _ => false,
+      };
+    }
+    final target = condition.value;
+    if (target == null) return false;
+    return switch (condition.operator) {
+      'gt' => value.compareTo(target) > 0,
+      'gte' => value.compareTo(target) >= 0,
+      'lt' => value.compareTo(target) < 0,
+      'lte' => value.compareTo(target) <= 0,
+      'eq' => value == target,
+      _ => false,
+    };
+  }
+
   Map<String, List<AnalysisEconomicTransaction>> _group(
     List<AnalysisEconomicTransaction> values,
     RuleGrouping grouping,
@@ -184,15 +216,29 @@ final class AnalysisRuleEngine {
       RuleGrouping.tag =>
         value.tagIds.isEmpty ? 'untagged' : value.tagIds.first.value,
       RuleGrouping.day => value.transactionDate ?? 'unknown',
-      RuleGrouping.week ||
+      RuleGrouping.week => _weekKey(value.transactionDate),
       RuleGrouping.month => value.transactionDate?.substring(0, 7) ?? 'unknown',
       RuleGrouping.none => '',
     };
     final grouped = <String, List<AnalysisEconomicTransaction>>{};
     for (final value in values) {
-      grouped.putIfAbsent(key(value), () => []).add(value);
+      if (grouping == RuleGrouping.tag && value.tagIds.length > 1) {
+        for (final tag in value.tagIds) {
+          grouped.putIfAbsent(tag.value, () => []).add(value);
+        }
+      } else {
+        grouped.putIfAbsent(key(value), () => []).add(value);
+      }
     }
     return grouped;
+  }
+
+  String _weekKey(String? value) {
+    if (value == null) return 'unknown';
+    final date = DateTime.tryParse(value);
+    if (date == null) return 'unknown';
+    final monday = date.subtract(Duration(days: date.weekday - 1));
+    return '${monday.year.toString().padLeft(4, '0')}-${monday.month.toString().padLeft(2, '0')}-${monday.day.toString().padLeft(2, '0')}';
   }
 
   List<AnalysisRuleDefinition> _order(
@@ -247,6 +293,26 @@ final class AnalysisRuleEngine {
       }
       if (filter.kind == AnalysisFilterKind.currency &&
           !filter.values.contains(value.money.currency.value)) {
+        return false;
+      }
+      if (filter.kind == AnalysisFilterKind.category &&
+          !filter.values.contains(value.categoryId?.value)) {
+        return false;
+      }
+      if (filter.kind == AnalysisFilterKind.merchant &&
+          !filter.values.contains(value.merchantId?.value)) {
+        return false;
+      }
+      if (filter.kind == AnalysisFilterKind.paymentSource &&
+          !filter.values.contains(value.paymentSourceId?.value)) {
+        return false;
+      }
+      if (filter.kind == AnalysisFilterKind.tag &&
+          !value.tagIds.any((tag) => filter.values.contains(tag.value))) {
+        return false;
+      }
+      if (filter.kind == AnalysisFilterKind.reviewState &&
+          !filter.values.contains(value.verified ? 'clear' : 'needsReview')) {
         return false;
       }
     }

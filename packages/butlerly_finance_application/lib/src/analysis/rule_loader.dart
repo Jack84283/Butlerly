@@ -284,6 +284,7 @@ final class RuleDefinitionValidator {
           );
         }
       }
+      final condition = _condition(values['condition']);
       definition = AnalysisRuleDefinition(
         identity: RuleIdentity(id ?? ''),
         version: RuleVersion(version ?? ''),
@@ -303,7 +304,7 @@ final class RuleDefinitionValidator {
         ),
         grouping: grouping,
         baseline: baseline,
-        condition: const RuleCondition(operator: 'none'),
+        condition: condition,
         severity: severity,
         dependencies: dependencies,
         filters: filters,
@@ -319,6 +320,21 @@ final class RuleDefinitionValidator {
       diagnostics: diagnostics,
     );
   }
+}
+
+RuleCondition _condition(Object? raw) {
+  if (raw is! Map) return const RuleCondition(operator: 'none');
+  final children = raw['children'] is List
+      ? (raw['children'] as List).map(_condition).toList(growable: false)
+      : const <RuleCondition>[];
+  final value = raw['value'];
+  return RuleCondition(
+    operator: raw['operator']?.toString() ?? 'none',
+    value: value == null ? null : DecimalValue.parse(value.toString()),
+    left: raw['left']?.toString(),
+    right: raw['right']?.toString(),
+    children: children,
+  );
 }
 
 String canonicalize(Map<String, Object?> values) =>
