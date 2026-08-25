@@ -5,7 +5,7 @@ enabled: true
 type: metric
 nameKey: analysis.rule.r001.name
 descriptionKey: analysis.rule.r001.description
-period: currentPeriod
+period: selected_period
 measure:
   operation: sum
   field: amount

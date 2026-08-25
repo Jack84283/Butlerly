@@ -206,6 +206,17 @@ final class RuleDefinitionValidator {
         ),
       );
     }
+    if (period != null &&
+        period != 'selected_period' &&
+        period != 'selected_month') {
+      diagnostics.add(
+        RuleDiagnostic(
+          code: 'unsupportedPeriodType',
+          message: 'Unsupported primary period type: $period.',
+          field: 'period',
+        ),
+      );
+    }
     for (final field in <String, Object?>{
       'schemaVersion': schema,
       'ruleId': id,
