@@ -122,17 +122,27 @@ final class CalculateAnalysisCalendar {
       var count = 0;
       Money? expense;
       Money? income;
+      var mixedCurrencies = false;
+      CurrencyCode? dayCurrency;
       for (final value in values) {
         count++;
         final money = currencyBasis == CurrencyBasis.baseCurrency
             ? value.normalizedMoney
             : value.money;
         if (money == null) continue;
+        if (dayCurrency != null && dayCurrency != money.currency) {
+          mixedCurrencies = true;
+        }
+        dayCurrency ??= money.currency;
         if (value.direction == TransactionDirection.expense) {
           expense = _add(expense, money);
         } else if (value.direction == TransactionDirection.income) {
           income = _add(income, money);
         }
+      }
+      if (mixedCurrencies && currencyBasis == CurrencyBasis.original) {
+        expense = null;
+        income = null;
       }
       days.add(
         AnalysisCalendarDay(
@@ -141,7 +151,15 @@ final class CalculateAnalysisCalendar {
           expenseTotal: expense,
           incomeTotal: income,
           currencyBasis: currencyBasis,
-          qualityIssues: dataset.qualityIssues,
+          qualityIssues: [
+            ...dataset.qualityIssues,
+            if (mixedCurrencies && currencyBasis == CurrencyBasis.original)
+              const DataQualityIssue(
+                code: 'mixedCurrencyCalendarDay',
+                detail:
+                    'Original-currency totals are not aggregatable for this day.',
+              ),
+          ],
         ),
       );
     }

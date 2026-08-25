@@ -50,6 +50,19 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
       _readDefinitions();
 
   @override
+  Future<bool?> existingActivation(RuleIdentity id) async {
+    final rows = await database.connection.query(
+      'analysis_rule_activations',
+      columns: ['enabled'],
+      where: 'rule_id = ?',
+      whereArgs: [id.value],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return rows.first['enabled'] == 1;
+  }
+
+  @override
   Future<void> activate(
     RuleIdentity id,
     RuleVersion version,

@@ -97,12 +97,15 @@ final class InstallBuiltInRules {
         sourceType: 'bundled',
         canonicalDefinition: canonicalById[definition.identity.value]!,
       );
-      await repository.activate(
-        definition.identity,
-        definition.version,
-        definition.enabled,
-        DateTime.now().toUtc(),
-      );
+      final existing = await repository.existingActivation(definition.identity);
+      if (existing == null) {
+        await repository.activate(
+          definition.identity,
+          definition.version,
+          definition.enabled,
+          DateTime.now().toUtc(),
+        );
+      }
       installed.add(definition);
     }
     return RuleInstallationResult(

@@ -48,6 +48,7 @@ abstract interface class AnalysisRuleRepository {
     DateTime at,
   );
   Future<List<AnalysisRuleDefinition>> listActive();
+  Future<bool?> existingActivation(RuleIdentity id);
 }
 
 abstract interface class AnalysisFindingRepository {

@@ -50,7 +50,11 @@ final class AnalysisRuleEngine {
           continue;
         }
         final values = dataset.transactions
-            .where((value) => _eligible(value, dataset.context, rule))
+            .where(
+              (value) =>
+                  _eligible(value, dataset.context, rule) &&
+                  _matchesQualityField(value, rule),
+            )
             .toList(growable: false);
         for (final entry in _group(values, rule.grouping).entries) {
           final metric = _metric(
@@ -226,7 +230,9 @@ final class AnalysisRuleEngine {
     AnalysisRuleDefinition rule,
   ) {
     final date = value.transactionDate;
-    if (date == null) return false;
+    if (date == null) {
+      return rule.type == AnalysisRuleType.dataQuality;
+    }
     if (date.compareTo(context.period.startDate) < 0 ||
         date.compareTo(context.period.endDate) > 0) {
       return false;
@@ -245,6 +251,16 @@ final class AnalysisRuleEngine {
       }
     }
     return true;
+  }
+
+  bool _matchesQualityField(
+    AnalysisEconomicTransaction value,
+    AnalysisRuleDefinition rule,
+  ) {
+    if (rule.type != AnalysisRuleType.dataQuality) return true;
+    final field = rule.measure.field;
+    if (field == 'dataQuality') return value.transactionDate == null;
+    return value.dataQuality.any((issue) => issue.code == field);
   }
 
   AnalysisMetric? _metric(
