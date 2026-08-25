@@ -1,0 +1,39 @@
+name: Codex decision
+description: Resolve a material product or engineering ambiguity
+title: "[Decision] "
+labels:
+  - needs-decision
+body:
+  - type: textarea
+    id: conflict
+    attributes:
+      label: Conflict or ambiguity
+      description: Identify the exact documents, requirements, or persisted meanings in conflict.
+    validations:
+      required: true
+  - type: textarea
+    id: options
+    attributes:
+      label: Available choices and consequences
+      description: List each viable option and its product, data, compatibility, privacy, and implementation effects.
+    validations:
+      required: true
+  - type: textarea
+    id: recommendation
+    attributes:
+      label: Recommended decision
+      description: State the recommended choice and why.
+    validations:
+      required: true
+  - type: textarea
+    id: unaffected
+    attributes:
+      label: Unaffected work that can continue
+      description: List work Codex should continue while this decision is pending.
+    validations:
+      required: true
+  - type: textarea
+    id: resolution
+    attributes:
+      label: Approved resolution
+      description: Completed by the product owner before implementation resumes.

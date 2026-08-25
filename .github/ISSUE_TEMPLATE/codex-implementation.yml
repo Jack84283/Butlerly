@@ -1,0 +1,69 @@
+name: Codex implementation
+description: Implement an approved Butlerly specification
+title: "[Implementation] "
+labels:
+  - codex-ready
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form only after the governing documents are approved.
+  - type: textarea
+    id: documents
+    attributes:
+      label: Authoritative documents
+      description: List repository document paths, versions, approval status, and source links.
+      placeholder: |
+        - docs/analysis/ANL-0003.md — v1.1 — Approved
+        - docs/implementation/IMP-0007.md — v1.1 — Approved
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: State the complete implementation outcome.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Use objective, testable checklist items.
+      placeholder: |
+        - [ ] Existing persisted data upgrades safely.
+        - [ ] Production-path regression tests cover the change.
+        - [ ] All required validation passes.
+    validations:
+      required: true
+  - type: textarea
+    id: tests
+    attributes:
+      label: Required tests
+      description: Name unit, integration, migration, widget, and build checks that apply.
+    validations:
+      required: true
+  - type: textarea
+    id: excluded
+    attributes:
+      label: Explicitly excluded work
+      description: Define nearby work that is not part of this issue.
+    validations:
+      required: true
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Risk classification
+      options:
+        - Low — documentation, tests, or mechanical change
+        - Medium — isolated application behavior
+        - High — financial semantics, persistence, migration, privacy, security, or destructive behavior
+    validations:
+      required: true
+  - type: textarea
+    id: decisions
+    attributes:
+      label: Approved decisions and open questions
+      description: Record approved choices. Write "None" when no question remains.
+    validations:
+      required: true
