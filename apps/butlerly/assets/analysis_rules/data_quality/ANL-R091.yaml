@@ -8,4 +8,4 @@ descriptionKey: analysis.rule.r091.description
 period: currentPeriod
 measure:
   operation: count
-  field: unresolvedNormalization
+  field: missingFx
