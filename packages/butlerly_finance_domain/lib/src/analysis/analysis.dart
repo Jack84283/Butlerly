@@ -211,7 +211,8 @@ final class AnalysisDataset {
   final List<AnalysisEconomicTransaction> transactions;
   final AnalysisContext context;
   final List<AnalysisEconomicTransaction> baselineTransactions;
-  final Map<String, List<AnalysisEconomicTransaction>> primaryTransactionsByPeriod;
+  final Map<String, List<AnalysisEconomicTransaction>>
+  primaryTransactionsByPeriod;
   final List<DataQualityIssue> qualityIssues;
 }
 
