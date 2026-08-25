@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:test/test.dart';
 
@@ -61,5 +63,27 @@ other: *bad
       result.diagnostics.map((value) => value.code),
       contains('unknownField'),
     );
+  });
+
+  test('all bundled initial rules validate through the production loader', () {
+    final root = Directory.current.path;
+    final assets = Directory('$root/../../apps/butlerly/assets/analysis_rules');
+    final files =
+        assets
+            .listSync(recursive: true)
+            .whereType<File>()
+            .where((file) => file.path.endsWith('.yaml'))
+            .where((file) => !file.path.endsWith('catalog.yaml'))
+            .toList()
+          ..sort((a, b) => a.path.compareTo(b.path));
+    expect(files, hasLength(11));
+    final ids = <String>{};
+    for (final file in files) {
+      final parsed = parser.parse(file.readAsStringSync());
+      expect(parsed.isValid, isTrue, reason: file.path);
+      final result = validator.validate(parsed.document!);
+      expect(result.diagnostics, isEmpty, reason: file.path);
+      expect(ids.add(result.definition!.identity.value), isTrue);
+    }
   });
 }
