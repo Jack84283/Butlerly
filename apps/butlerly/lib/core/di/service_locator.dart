@@ -45,6 +45,10 @@ void configureDependencies({
       reconciliationWorkflow: SqliteReconciliationWorkflowRepository(
         database.persistenceDatabase,
       ),
+      analysisRules: SqliteAnalysisRuleRepository(database.persistenceDatabase),
+      analysisFindings: SqliteAnalysisFindingRepository(
+        database.persistenceDatabase,
+      ),
     );
     services
       ..registerSingleton<FinanceServices>(finance)

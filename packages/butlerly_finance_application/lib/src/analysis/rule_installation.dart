@@ -26,6 +26,7 @@ final class InstallBuiltInRules {
     final diagnostics = <String, List<RuleDiagnostic>>{};
     final parsedDefinitions = <AnalysisRuleDefinition>[];
     final canonicalById = <String, String>{};
+    final pathsById = <String, String>{};
     for (final entry in sourceByPath.entries) {
       final parsed = parser.parse(entry.value);
       if (!parsed.isValid) {
@@ -37,10 +38,20 @@ final class InstallBuiltInRules {
         diagnostics[entry.key] = result.diagnostics;
         continue;
       }
+      final id = result.definition!.identity.value;
+      final previousPath = pathsById[id];
+      if (previousPath != null) {
+        diagnostics[entry.key] = [
+          RuleDiagnostic(
+            code: 'duplicateRuleId',
+            message: 'Rule ID $id is already defined by $previousPath.',
+          ),
+        ];
+        continue;
+      }
       parsedDefinitions.add(result.definition!);
-      canonicalById[result.definition!.identity.value] = canonicalize(
-        parsed.document!.values,
-      );
+      pathsById[id] = entry.key;
+      canonicalById[id] = canonicalize(parsed.document!.values);
     }
     final ids = parsedDefinitions.map((value) => value.identity.value).toSet();
     final byId = {

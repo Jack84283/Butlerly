@@ -15,6 +15,22 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
     required String sourceType,
     required String canonicalDefinition,
   }) async {
+    final existing = await database.connection.query(
+      'analysis_rule_definitions',
+      columns: ['definition_hash'],
+      where: 'rule_id = ? AND rule_version = ?',
+      whereArgs: [definition.identity.value, definition.version.value],
+      limit: 1,
+    );
+    if (existing.isNotEmpty) {
+      if (existing.first['definition_hash'] !=
+          definition.definitionHash.value) {
+        throw StateError(
+          'Analysis rule version ${definition.identity.value}@${definition.version.value} is immutable.',
+        );
+      }
+      return;
+    }
     await database.connection.insert('analysis_rule_definitions', {
       'rule_id': definition.identity.value,
       'rule_version': definition.version.value,
@@ -26,7 +42,7 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
       'validation_status': 'valid',
       'validation_diagnostics': null,
       'installed_at': DateTime.now().toUtc().toIso8601String(),
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    });
   }
 
   @override
