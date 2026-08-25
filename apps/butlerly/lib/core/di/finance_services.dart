@@ -16,6 +16,8 @@ final class FinanceServices {
     ReconciliationLinkRepository? reconciliationLinks,
     ReconciliationWorkflowRepository? reconciliationWorkflow,
     ExchangeRateRepository? exchangeRates,
+    AnalysisRuleRepository? analysisRules,
+    AnalysisFindingRepository? analysisFindings,
   }) : listTransactions = ListTransactions(transactions),
        seedInitialMasterData = SeedInitialMasterData(
          merchants,
@@ -144,7 +146,24 @@ final class FinanceServices {
          transactions,
          preferences,
          const SystemApplicationClock(),
-       );
+       ),
+       installBuiltInRules = analysisRules == null
+           ? null
+           : InstallBuiltInRules(analysisRules),
+       calculateAnalysisOverview = analysisRules == null
+           ? null
+           : CalculateAnalysisOverview(
+               analysisRules,
+               AnalysisDatasetBuilder(
+                 transactions,
+                 preferences,
+                 reconciliationLinks,
+               ),
+               const AnalysisRuleEngine(),
+             ),
+       updateAnalysisFindingLifecycle = analysisFindings == null
+           ? null
+           : UpdateFindingLifecycle(analysisFindings);
 
   final ListTransactions listTransactions;
   final SeedInitialMasterData seedInitialMasterData;
@@ -193,6 +212,9 @@ final class FinanceServices {
   final EvaluateTransactionNormalization evaluateTransactionNormalization;
   final ConfirmUserNormalizedAmount confirmUserNormalizedAmount;
   final FindReceiptPaymentMatch findReceiptPaymentMatch;
+  final InstallBuiltInRules? installBuiltInRules;
+  final CalculateAnalysisOverview? calculateAnalysisOverview;
+  final UpdateFindingLifecycle? updateAnalysisFindingLifecycle;
 }
 
 final class _NoMasterTranslationRepository
