@@ -111,6 +111,10 @@ final class AnalysisDatasetBuilder {
     return ApplicationDatasetResult.success(
       AnalysisDataset(
         transactions: result,
+        primaryTransactionsByPeriod: {
+          'selected_period': result,
+          'selected_month': result,
+        },
         baselineTransactions: baseline,
         context: context,
         qualityIssues: quality,

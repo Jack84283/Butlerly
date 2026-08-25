@@ -49,7 +49,10 @@ final class AnalysisRuleEngine {
           resultById[rule.identity.value] = result;
           continue;
         }
-        final values = dataset.transactions
+        final primaryValues =
+            dataset.primaryTransactionsByPeriod[rule.period] ??
+            dataset.transactions;
+        final values = primaryValues
             .where(
               (value) =>
                   _eligible(value, dataset.context, rule) &&

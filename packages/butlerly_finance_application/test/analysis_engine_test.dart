@@ -132,6 +132,53 @@ void main() {
       expect(result.single.finding!.percentageChange, isNull);
     },
   );
+
+  test(
+    'period selects the primary dataset while baseline remains independent',
+    () {
+      final selected = dataset().transactions.sublist(0, 1);
+      final previous = dataset().transactions.sublist(1);
+      final periodRule = rule(
+        'ANL-R030',
+        RuleOperation.sum,
+      ).copyWithPeriod('selected_month');
+      final result = const AnalysisRuleEngine().execute(
+        dataset: AnalysisDataset(
+          context: context,
+          transactions: selected,
+          baselineTransactions: previous,
+          primaryTransactionsByPeriod: {
+            'selected_period': selected,
+            'selected_month': previous,
+          },
+        ),
+        definitions: [periodRule],
+      );
+      expect(result.single.metric!.value, DecimalValue.parse('25'));
+
+      final insight = periodRule
+          .copyWithPeriod('selected_period')
+          .copyWithType(AnalysisRuleType.insight)
+          .copyWithBaseline(RuleBaseline.previousEquivalentPeriod);
+      final finding = const AnalysisRuleEngine()
+          .execute(
+            dataset: AnalysisDataset(
+              context: context,
+              transactions: selected,
+              baselineTransactions: previous,
+              primaryTransactionsByPeriod: {
+                'selected_period': selected,
+                'selected_month': previous,
+              },
+            ),
+            definitions: [insight],
+          )
+          .single
+          .finding!;
+      expect(finding.currentValue, DecimalValue.parse('10'));
+      expect(finding.baselineValue, DecimalValue.parse('25'));
+    },
+  );
 }
 
 extension on AnalysisRuleDefinition {
@@ -157,6 +204,48 @@ extension on AnalysisRuleDefinition {
       );
 
   AnalysisRuleDefinition copyWithBaseline(RuleBaseline baseline) =>
+      AnalysisRuleDefinition(
+        identity: identity,
+        version: version,
+        schemaVersion: schemaVersion,
+        type: type,
+        nameKey: nameKey,
+        descriptionKey: descriptionKey,
+        enabled: enabled,
+        status: status,
+        period: period,
+        measure: measure,
+        grouping: grouping,
+        baseline: baseline,
+        condition: condition,
+        severity: severity,
+        dependencies: dependencies,
+        filters: filters,
+        definitionHash: definitionHash,
+      );
+
+  AnalysisRuleDefinition copyWithPeriod(String period) =>
+      AnalysisRuleDefinition(
+        identity: identity,
+        version: version,
+        schemaVersion: schemaVersion,
+        type: type,
+        nameKey: nameKey,
+        descriptionKey: descriptionKey,
+        enabled: enabled,
+        status: status,
+        period: period,
+        measure: measure,
+        grouping: grouping,
+        baseline: baseline,
+        condition: condition,
+        severity: severity,
+        dependencies: dependencies,
+        filters: filters,
+        definitionHash: definitionHash,
+      );
+
+  AnalysisRuleDefinition copyWithType(AnalysisRuleType type) =>
       AnalysisRuleDefinition(
         identity: identity,
         version: version,
