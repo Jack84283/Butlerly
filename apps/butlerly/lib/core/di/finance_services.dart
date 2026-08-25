@@ -156,9 +156,9 @@ final class FinanceServices {
                analysisRules,
                AnalysisDatasetBuilder(
                  transactions,
-               preferences,
-               reconciliationLinks,
-               candidates: reconciliationCandidates,
+                 preferences,
+                 reconciliationLinks,
+                 candidates: reconciliationCandidates,
                ),
                const AnalysisRuleEngine(),
                findings: analysisFindings,
