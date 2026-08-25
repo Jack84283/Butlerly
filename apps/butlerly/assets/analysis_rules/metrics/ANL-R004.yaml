@@ -1,0 +1,11 @@
+schemaVersion: "1.0.0"
+ruleId: ANL-R004
+ruleVersion: "1.0.0"
+enabled: true
+type: metric
+nameKey: analysis.rule.r004.name
+descriptionKey: analysis.rule.r004.description
+period: currentPeriod
+measure:
+  operation: count
+  field: transaction

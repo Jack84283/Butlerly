@@ -1,5 +1,7 @@
 library;
 
+export 'src/analysis/analysis.dart';
+
 export 'src/entities/account.dart';
 export 'src/entities/attachment_link.dart';
 export 'src/entities/category.dart';

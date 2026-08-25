@@ -1,3 +1,4 @@
+import '../analysis/analysis.dart';
 import '../entities/account.dart';
 import '../entities/attachment_link.dart';
 import '../entities/category.dart';
@@ -31,6 +32,32 @@ abstract interface class ExchangeRateRepository {
     required CurrencyCode toCurrency,
     required DateTime financialDate,
   });
+}
+
+abstract interface class AnalysisRuleRepository {
+  Future<void> install(
+    AnalysisRuleDefinition definition, {
+    required String sourceType,
+    required String canonicalDefinition,
+  });
+  Future<List<AnalysisRuleDefinition>> listDefinitions();
+  Future<void> activate(
+    RuleIdentity id,
+    RuleVersion version,
+    bool enabled,
+    DateTime at,
+  );
+  Future<List<AnalysisRuleDefinition>> listActive();
+}
+
+abstract interface class AnalysisFindingRepository {
+  Future<void> save(AnalysisFinding finding);
+  Future<List<AnalysisFinding>> list({FindingLifecycle? lifecycle});
+  Future<void> updateLifecycle(
+    String id,
+    FindingLifecycle lifecycle,
+    DateTime at,
+  );
 }
 
 final class TransactionRepositoryQuery {

@@ -1,0 +1,35 @@
+schemaVersion: "1.0.0"
+rules:
+  - ruleId: ANL-R001
+    ruleVersion: "1.0.0"
+    file: metrics/ANL-R001.yaml
+  - ruleId: ANL-R002
+    ruleVersion: "1.0.0"
+    file: metrics/ANL-R002.yaml
+  - ruleId: ANL-R003
+    ruleVersion: "1.0.0"
+    file: metrics/ANL-R003.yaml
+  - ruleId: ANL-R004
+    ruleVersion: "1.0.0"
+    file: metrics/ANL-R004.yaml
+  - ruleId: ANL-R010
+    ruleVersion: "1.0.0"
+    file: metrics/ANL-R010.yaml
+  - ruleId: ANL-R014
+    ruleVersion: "1.0.0"
+    file: insights/ANL-R014.yaml
+  - ruleId: ANL-R016
+    ruleVersion: "1.0.0"
+    file: metrics/ANL-R016.yaml
+  - ruleId: ANL-R020
+    ruleVersion: "1.0.0"
+    file: insights/ANL-R020.yaml
+  - ruleId: ANL-R090
+    ruleVersion: "1.0.0"
+    file: data_quality/ANL-R090.yaml
+  - ruleId: ANL-R091
+    ruleVersion: "1.0.0"
+    file: data_quality/ANL-R091.yaml
+  - ruleId: ANL-R092
+    ruleVersion: "1.0.0"
+    file: data_quality/ANL-R092.yaml
