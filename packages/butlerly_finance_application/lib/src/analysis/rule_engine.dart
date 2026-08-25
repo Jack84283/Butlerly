@@ -52,10 +52,13 @@ final class AnalysisRuleEngine {
         final primaryValues =
             dataset.primaryTransactionsByPeriod[rule.period] ??
             dataset.transactions;
+        final primaryWindow =
+            dataset.primaryWindowsByPeriod[rule.period] ??
+            dataset.context.period;
         final values = primaryValues
             .where(
               (value) =>
-                  _eligible(value, dataset.context, rule) &&
+                  _eligible(value, primaryWindow, dataset.context, rule) &&
                   _matchesQualityField(value, rule),
             )
             .toList(growable: false);
@@ -125,11 +128,7 @@ final class AnalysisRuleEngine {
             rule,
             dataset,
             dataset.baselineTransactions
-                .where(
-                  (value) =>
-                      _eligible(value, dataset.context, rule) &&
-                      _matchesQualityField(value, rule),
-                )
+                .where((value) => _matchesQualityField(value, rule))
                 .toList(growable: false),
             const <String, AnalysisMetric>{},
             dimension,
@@ -275,6 +274,7 @@ final class AnalysisRuleEngine {
 
   bool _eligible(
     AnalysisEconomicTransaction value,
+    AnalysisPeriod window,
     AnalysisContext context,
     AnalysisRuleDefinition rule,
   ) {
@@ -282,8 +282,8 @@ final class AnalysisRuleEngine {
     if (date == null) {
       return rule.type == AnalysisRuleType.dataQuality;
     }
-    if (date.compareTo(context.period.startDate) < 0 ||
-        date.compareTo(context.period.endDate) > 0) {
+    if (date.compareTo(window.startDate) < 0 ||
+        date.compareTo(window.endDate) > 0) {
       return false;
     }
     if (context.datasetMode == DatasetMode.verifiedOnly && !value.verified) {

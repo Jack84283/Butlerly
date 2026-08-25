@@ -125,6 +125,10 @@ final class AnalysisDatasetBuilder {
           'selected_period': result,
           'selected_month': result,
         },
+        primaryWindowsByPeriod: {
+          'selected_period': context.period,
+          'selected_month': context.period,
+        },
         baselineTransactions: baseline,
         context: context,
         qualityIssues: quality,

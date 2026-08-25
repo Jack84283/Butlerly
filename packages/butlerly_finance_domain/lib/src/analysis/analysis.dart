@@ -206,6 +206,7 @@ final class AnalysisDataset {
     required this.context,
     this.baselineTransactions = const [],
     this.primaryTransactionsByPeriod = const {},
+    this.primaryWindowsByPeriod = const {},
     this.qualityIssues = const [],
   });
   final List<AnalysisEconomicTransaction> transactions;
@@ -213,6 +214,7 @@ final class AnalysisDataset {
   final List<AnalysisEconomicTransaction> baselineTransactions;
   final Map<String, List<AnalysisEconomicTransaction>>
   primaryTransactionsByPeriod;
+  final Map<String, AnalysisPeriod> primaryWindowsByPeriod;
   final List<DataQualityIssue> qualityIssues;
 }
 

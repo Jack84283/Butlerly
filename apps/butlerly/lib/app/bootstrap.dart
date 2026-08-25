@@ -42,7 +42,13 @@ Future<void> bootstrap() async {
     }
     final sources = <String, String>{};
     for (final path in _analysisRulePaths) {
-      sources[path] = await rootBundle.loadString(path);
+      try {
+        sources[path] = await rootBundle.loadString(path);
+      } on Object catch (error) {
+        logger.warning(
+          'Bundled analysis rule could not be loaded: $path (${error.toString()})',
+        );
+      }
     }
     final installation = await services<FinanceServices>().installBuiltInRules
         ?.call(sources);

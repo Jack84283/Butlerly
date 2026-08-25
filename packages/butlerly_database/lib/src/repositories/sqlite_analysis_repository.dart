@@ -140,7 +140,7 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
     ),
     grouping: RuleGrouping.values.byName(json['grouping'] as String? ?? 'none'),
     baseline: RuleBaseline.values.byName(json['baseline'] as String? ?? 'none'),
-    condition: const RuleCondition(operator: 'none'),
+    condition: _condition(json['condition']),
     severity: RuleSeverity.values.byName(json['severity'] as String? ?? 'info'),
     filters: _filters(json['filters']),
     dependencies: _dependencies(json['dependencies']),
@@ -170,6 +170,21 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
               (value) => RuleDependency(ruleId: RuleIdentity(value.toString())),
             )
             .toList(growable: false);
+
+  RuleCondition _condition(Object? raw) {
+    if (raw is! Map) return const RuleCondition(operator: 'none');
+    final children = raw['children'] is List
+        ? (raw['children'] as List).map(_condition).toList(growable: false)
+        : const <RuleCondition>[];
+    final rawValue = raw['value'];
+    return RuleCondition(
+      operator: raw['operator']?.toString() ?? 'none',
+      value: rawValue == null ? null : DecimalValue.parse(rawValue.toString()),
+      left: raw['left']?.toString(),
+      right: raw['right']?.toString(),
+      children: children,
+    );
+  }
 }
 
 final class SqliteAnalysisFindingRepository
@@ -179,6 +194,16 @@ final class SqliteAnalysisFindingRepository
 
   @override
   Future<void> save(AnalysisFinding finding) async {
+    final existing = await database.connection.query(
+      'analysis_findings',
+      columns: ['lifecycle'],
+      where: 'id = ?',
+      whereArgs: [finding.id],
+      limit: 1,
+    );
+    final lifecycle = existing.isEmpty
+        ? finding.lifecycle.name
+        : existing.first['lifecycle'] as String;
     await database.connection.insert('analysis_findings', {
       'id': finding.id,
       'rule_id': finding.rule.identity.value,
@@ -191,7 +216,7 @@ final class SqliteAnalysisFindingRepository
         'dimension': finding.dimension,
         'severity': finding.severity.name,
       }),
-      'lifecycle': finding.lifecycle.name,
+      'lifecycle': lifecycle,
       'generated_at': finding.generatedAt.toUtc().toIso8601String(),
       'updated_at': DateTime.now().toUtc().toIso8601String(),
     }, conflictAlgorithm: ConflictAlgorithm.replace);
