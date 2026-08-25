@@ -1,10 +1,16 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
 final class AnalysisDatasetBuilder {
-  const AnalysisDatasetBuilder(this.transactions, this.preferences, this.links);
+  const AnalysisDatasetBuilder(
+    this.transactions,
+    this.preferences,
+    this.links, {
+    this.candidates,
+  });
   final TransactionRepository transactions;
   final UserPreferenceRepository preferences;
   final ReconciliationLinkRepository? links;
+  final ReconciliationCandidateRepository? candidates;
 
   Future<String> timeZoneId() async {
     final preference = await preferences.load();
@@ -20,6 +26,9 @@ final class AnalysisDatasetBuilder {
     final reconciliationLinks = links == null
         ? const <ReconciliationLink>[]
         : await links!.listAll();
+    final reconciliationCandidates = candidates == null
+        ? const <ReconciliationCandidate>[]
+        : await candidates!.listAll();
     final receiptIds = reconciliationLinks
         .map((value) => value.receiptTransactionId)
         .toSet();
@@ -36,8 +45,9 @@ final class AnalysisDatasetBuilder {
           )
           .firstOrNull
           ?.converted;
+      final transactionQuality = <DataQualityIssue>[];
       if (transaction.transactionDate == null) {
-        quality.add(
+        transactionQuality.add(
           DataQualityIssue(
             code: 'missingFinancialDate',
             detail: 'Transaction has no authoritative financial date.',
@@ -47,7 +57,7 @@ final class AnalysisDatasetBuilder {
       }
       if (transaction.money.currency != preference.baseCurrency &&
           normalized == null) {
-        quality.add(
+        transactionQuality.add(
           DataQualityIssue(
             code: 'missingFx',
             detail:
@@ -56,6 +66,19 @@ final class AnalysisDatasetBuilder {
           ),
         );
       }
+      for (final candidate in reconciliationCandidates) {
+        if (candidate.status == ReconciliationCandidateStatus.proposed &&
+            candidate.paymentTransactionId == transaction.id) {
+          transactionQuality.add(
+            DataQualityIssue(
+              code: 'reconciliationUncertainty',
+              detail: 'A reconciliation candidate remains unresolved.',
+              transactionId: transaction.id,
+            ),
+          );
+        }
+      }
+      quality.addAll(transactionQuality);
       result.add(
         AnalysisEconomicTransaction(
           id: transaction.id,
@@ -68,9 +91,7 @@ final class AnalysisDatasetBuilder {
           paymentSourceId: transaction.paymentSourceId,
           tagIds: transaction.tagIds,
           verified: transaction.reviewState == TransactionReviewState.clear,
-          dataQuality: quality
-              .where((value) => value.transactionId == transaction.id)
-              .toList(growable: false),
+          dataQuality: transactionQuality,
         ),
       );
     }

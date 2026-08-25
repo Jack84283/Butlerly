@@ -156,10 +156,12 @@ final class FinanceServices {
                analysisRules,
                AnalysisDatasetBuilder(
                  transactions,
-                 preferences,
-                 reconciliationLinks,
+               preferences,
+               reconciliationLinks,
+               candidates: reconciliationCandidates,
                ),
                const AnalysisRuleEngine(),
+               findings: analysisFindings,
              ),
        updateAnalysisFindingLifecycle = analysisFindings == null
            ? null
