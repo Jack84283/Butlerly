@@ -65,6 +65,25 @@ other: *bad
     );
   });
 
+  test('rejects incompatible measure semantics', () {
+    final parsed = parser.parse('''
+schemaVersion: "1.0.0"
+ruleId: ANL-R001
+ruleVersion: "1.0.0"
+enabled: true
+type: metric
+nameKey: analysis.r001.name
+descriptionKey: analysis.r001.description
+period: currentPeriod
+measure:
+  operation: sum
+  field: transactionCount
+''');
+    final result = validator.validate(parsed.document!);
+    expect(result.definition, isNull);
+    expect(result.diagnostics.map((value) => value.code), contains('semantic'));
+  });
+
   test('all bundled initial rules validate through the production loader', () {
     final root = Directory.current.path;
     final assets = Directory('$root/../../apps/butlerly/assets/analysis_rules');

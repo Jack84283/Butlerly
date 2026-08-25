@@ -206,6 +206,26 @@ final class RuleDefinitionValidator {
         ),
       );
     }
+    for (final field in <String, Object?>{
+      'schemaVersion': schema,
+      'ruleId': id,
+      'ruleVersion': version,
+      'enabled': enabled,
+      'type': type,
+      'nameKey': nameKey,
+      'descriptionKey': descriptionKey,
+      'period': period,
+    }.entries) {
+      if (field.value == null) {
+        diagnostics.add(
+          RuleDiagnostic(
+            code: 'required',
+            message: 'Field ${field.key} is required.',
+            field: field.key,
+          ),
+        );
+      }
+    }
     AnalysisRuleDefinition? definition;
     try {
       final operation = (measure as Map?)?['operation'] as String?;
@@ -213,13 +233,29 @@ final class RuleDefinitionValidator {
       if (operation == null || field == null) {
         throw const FormatException('Measure requires operation and field.');
       }
+      final operationValue = RuleOperation.values.byName(operation);
+      final groupingValue = RuleGrouping.values.byName(
+        values['grouping'] as String? ?? 'none',
+      );
+      final typeValue = AnalysisRuleType.values.byName(type ?? '');
+      if (operationValue == RuleOperation.sum && field != 'amount') {
+        throw const FormatException('Only amount can be summed.');
+      }
+      if (operationValue == RuleOperation.difference &&
+          typeValue != AnalysisRuleType.metric) {
+        throw const FormatException('Difference is only valid for metrics.');
+      }
+      if (groupingValue != RuleGrouping.none &&
+          operationValue == RuleOperation.difference) {
+        throw const FormatException(
+          'Difference cannot be combined with grouping.',
+        );
+      }
       final canonical = canonicalize(values);
       final hash = RuleDefinitionHash(
         sha256.convert(utf8.encode(canonical)).toString(),
       );
-      final grouping = RuleGrouping.values.byName(
-        values['grouping'] as String? ?? 'none',
-      );
+      final grouping = groupingValue;
       final baseline = RuleBaseline.values.byName(
         values['baseline'] as String? ?? 'none',
       );
