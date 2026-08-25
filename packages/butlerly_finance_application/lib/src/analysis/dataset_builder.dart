@@ -6,6 +6,11 @@ final class AnalysisDatasetBuilder {
   final UserPreferenceRepository preferences;
   final ReconciliationLinkRepository? links;
 
+  Future<String> timeZoneId() async {
+    final preference = await preferences.load();
+    return preference?.timeZoneId ?? 'UTC';
+  }
+
   Future<ApplicationDatasetResult> build(AnalysisContext context) async {
     final preference = await preferences.load();
     if (preference == null) {
