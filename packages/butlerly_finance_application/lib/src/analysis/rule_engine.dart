@@ -11,9 +11,44 @@ final class AnalysisRuleEngine {
     final ordered = _order(definitions);
     final results = <RuleExecutionResult>[];
     final metrics = <String, AnalysisMetric>{};
+    final resultById = <String, RuleExecutionResult>{};
+    final knownIds = definitions.map((value) => value.identity.value).toSet();
     for (final rule in ordered) {
       if (!rule.enabled || rule.status != AnalysisRuleStatus.active) continue;
       try {
+        final missing = rule.dependencies.where(
+          (value) => !knownIds.contains(value.ruleId.value),
+        );
+        if (missing.isNotEmpty) {
+          final result = RuleExecutionResult(
+            rule: rule,
+            failure: AnalysisFailure(
+              code: 'missingDependency',
+              message:
+                  'Dependency is unavailable: ${missing.first.ruleId.value}.',
+              ruleId: rule.identity,
+            ),
+          );
+          results.add(result);
+          resultById[rule.identity.value] = result;
+          continue;
+        }
+        final hasFailedDependency = rule.dependencies.any(
+          (value) => resultById[value.ruleId.value]?.failure != null,
+        );
+        if (hasFailedDependency) {
+          final result = RuleExecutionResult(
+            rule: rule,
+            failure: AnalysisFailure(
+              code: 'dependencyFailure',
+              message: 'A dependency failed.',
+              ruleId: rule.identity,
+            ),
+          );
+          results.add(result);
+          resultById[rule.identity.value] = result;
+          continue;
+        }
         final values = dataset.transactions
             .where((value) => _eligible(value, dataset.context, rule))
             .toList(growable: false);
@@ -40,29 +75,29 @@ final class AnalysisRuleEngine {
                   calculatedAt ?? DateTime.now().toUtc(),
                 )
               : null;
-          results.add(
-            RuleExecutionResult(
-              rule: rule,
-              metric:
-                  rule.type == AnalysisRuleType.metric ||
-                      rule.type == AnalysisRuleType.dataQuality
-                  ? metric
-                  : null,
-              finding: finding,
-            ),
+          final result = RuleExecutionResult(
+            rule: rule,
+            metric:
+                rule.type == AnalysisRuleType.metric ||
+                    rule.type == AnalysisRuleType.dataQuality
+                ? metric
+                : null,
+            finding: finding,
           );
+          results.add(result);
+          resultById[rule.identity.value] = result;
         }
       } on Object catch (error) {
-        results.add(
-          RuleExecutionResult(
-            rule: rule,
-            failure: AnalysisFailure(
-              code: 'execution',
-              message: error.toString(),
-              ruleId: rule.identity,
-            ),
+        final result = RuleExecutionResult(
+          rule: rule,
+          failure: AnalysisFailure(
+            code: 'execution',
+            message: error.toString(),
+            ruleId: rule.identity,
           ),
         );
+        results.add(result);
+        resultById[rule.identity.value] = result;
       }
     }
     return results;
@@ -241,10 +276,24 @@ final class AnalysisRuleEngine {
       ),
       RuleOperation.sum => _sum(amountValues),
       RuleOperation.average => _sum(amountValues).divideBy(selected.length),
-      RuleOperation.difference => _difference(rule, dependencies),
-      _ => throw StateError(
-        'Unsupported operation for this engine slice: ${rule.measure.operation.name}',
+      RuleOperation.median => _median(amountValues),
+      RuleOperation.minimum =>
+        amountValues.isEmpty
+            ? DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0)
+            : amountValues.reduce((a, b) => a.compareTo(b) <= 0 ? a : b),
+      RuleOperation.maximum =>
+        amountValues.isEmpty
+            ? DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0)
+            : amountValues.reduce((a, b) => a.compareTo(b) >= 0 ? a : b),
+      RuleOperation.distinctCount => DecimalValue.fromParts(
+        coefficient: BigInt.from(_distinct(selected, rule.measure.field)),
+        scale: 0,
       ),
+      RuleOperation.frequency => DecimalValue.fromParts(
+        coefficient: BigInt.from(selected.length),
+        scale: 0,
+      ),
+      RuleOperation.difference => _difference(rule, dependencies),
     };
     final currency = rule.measure.currencyBasis == CurrencyBasis.baseCurrency
         ? dataset.context.baseCurrency
@@ -281,6 +330,31 @@ final class AnalysisRuleEngine {
     return values
         .where((value) => value.dataQuality.any((issue) => issue.code == code))
         .length;
+  }
+
+  int _distinct(List<AnalysisEconomicTransaction> values, String field) =>
+      values
+          .map(
+            (value) => switch (field) {
+              'category' => value.categoryId?.value ?? 'uncategorized',
+              'merchant' => value.merchantId?.value ?? 'unresolved',
+              'paymentSource' => value.paymentSourceId?.value ?? 'unknown',
+              'tag' => value.tagIds.map((tag) => tag.value).join(','),
+              'currency' => value.money.currency.value,
+              _ => value.id.value,
+            },
+          )
+          .toSet()
+          .length;
+
+  DecimalValue _median(List<DecimalValue> values) {
+    if (values.isEmpty) {
+      return DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0);
+    }
+    final sorted = [...values]..sort();
+    final middle = sorted.length ~/ 2;
+    if (sorted.length.isOdd) return sorted[middle];
+    return _sum([sorted[middle - 1], sorted[middle]]).divideBy(2);
   }
 
   DecimalValue _difference(
