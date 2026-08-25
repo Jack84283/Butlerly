@@ -202,10 +202,12 @@ final class AnalysisDataset {
   const AnalysisDataset({
     required this.transactions,
     required this.context,
+    this.baselineTransactions = const [],
     this.qualityIssues = const [],
   });
   final List<AnalysisEconomicTransaction> transactions;
   final AnalysisContext context;
+  final List<AnalysisEconomicTransaction> baselineTransactions;
   final List<DataQualityIssue> qualityIssues;
 }
 

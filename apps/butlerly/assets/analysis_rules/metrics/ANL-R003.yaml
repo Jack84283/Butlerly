@@ -9,6 +9,7 @@ period: currentPeriod
 measure:
   operation: difference
   field: amount
+  currencyBasis: baseCurrency
 dependencies:
   - ANL-R001
   - ANL-R002

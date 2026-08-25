@@ -101,7 +101,10 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
       operation: RuleOperation.values.byName(
         (json['measure'] as Map)['operation'] as String,
       ),
-      field: (json['measure'] as Map)['field'] as String,
+          field: (json['measure'] as Map)['field'] as String,
+          currencyBasis: CurrencyBasis.values.byName(
+            (json['measure'] as Map)['currencyBasis'] as String? ?? 'original',
+          ),
     ),
     grouping: RuleGrouping.values.byName(json['grouping'] as String? ?? 'none'),
     baseline: RuleBaseline.values.byName(json['baseline'] as String? ?? 'none'),

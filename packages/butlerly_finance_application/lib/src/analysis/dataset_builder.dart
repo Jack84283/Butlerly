@@ -69,13 +69,68 @@ final class AnalysisDatasetBuilder {
         ),
       );
     }
+    final start = DateTime.parse(context.period.startDate);
+    final end = DateTime.parse(context.period.endDate);
+    final length = end.difference(start).inDays + 1;
+    final baselineStart = start.subtract(Duration(days: length));
+    final baselineEnd = start.subtract(const Duration(days: 1));
+    final baseline = _buildTransactions(
+      source,
+      reconciliationLinks,
+      preference.baseCurrency,
+      baselineStart,
+      baselineEnd,
+    );
     return ApplicationDatasetResult.success(
       AnalysisDataset(
         transactions: result,
+        baselineTransactions: baseline,
         context: context,
         qualityIssues: quality,
       ),
     );
+  }
+
+  List<AnalysisEconomicTransaction> _buildTransactions(
+    List<Transaction> source,
+    List<ReconciliationLink> links,
+    CurrencyCode baseCurrency,
+    DateTime start,
+    DateTime end,
+  ) {
+    final receiptIds = links.map((value) => value.receiptTransactionId).toSet();
+    return source
+        .where((transaction) {
+          final date = DateTime.tryParse(transaction.transactionDate ?? '');
+          return transaction.status == TransactionStatus.active &&
+              !receiptIds.contains(transaction.id) &&
+              date != null &&
+              !date.isBefore(start) &&
+              !date.isAfter(end);
+        })
+        .map((transaction) {
+          final normalized = transaction.normalizedMoney
+              .where(
+                (value) =>
+                    value.baseCurrency == baseCurrency &&
+                    value.original == transaction.money,
+              )
+              .firstOrNull
+              ?.converted;
+          return AnalysisEconomicTransaction(
+            id: transaction.id,
+            money: transaction.money,
+            normalizedMoney: normalized,
+            direction: transaction.direction,
+            transactionDate: transaction.transactionDate,
+            categoryId: transaction.categoryId,
+            merchantId: transaction.merchantId,
+            paymentSourceId: transaction.paymentSourceId,
+            tagIds: transaction.tagIds,
+            verified: transaction.reviewState == TransactionReviewState.clear,
+          );
+        })
+        .toList(growable: false);
   }
 }
 

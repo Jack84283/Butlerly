@@ -10,3 +10,4 @@ baseline: previousEquivalentPeriod
 measure:
   operation: sum
   field: amount
+  currencyBasis: baseCurrency

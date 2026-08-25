@@ -111,4 +111,45 @@ void main() {
     );
     expect(result.last.metric!.value, DecimalValue.parse('15'));
   });
+
+  test(
+    'produces structured insight change and leaves zero baseline percentage undefined',
+    () {
+      final insight = rule('ANL-R020', RuleOperation.sum);
+      final result = const AnalysisRuleEngine().execute(
+        dataset: AnalysisDataset(
+          context: context,
+          transactions: dataset().transactions,
+          baselineTransactions: const [],
+        ),
+        definitions: [insight.copyWith(type: AnalysisRuleType.insight)],
+      );
+      expect(result.single.finding, isNotNull);
+      expect(result.single.finding!.absoluteChange, DecimalValue.parse('35'));
+      expect(result.single.finding!.percentageChange, isNull);
+    },
+  );
+}
+
+extension on AnalysisRuleDefinition {
+  AnalysisRuleDefinition copyWith({AnalysisRuleType? type}) =>
+      AnalysisRuleDefinition(
+        identity: identity,
+        version: version,
+        schemaVersion: schemaVersion,
+        type: type ?? this.type,
+        nameKey: nameKey,
+        descriptionKey: descriptionKey,
+        enabled: enabled,
+        status: status,
+        period: period,
+        measure: measure,
+        grouping: grouping,
+        baseline: baseline,
+        condition: condition,
+        severity: severity,
+        dependencies: dependencies,
+        filters: filters,
+        definitionHash: definitionHash,
+      );
 }

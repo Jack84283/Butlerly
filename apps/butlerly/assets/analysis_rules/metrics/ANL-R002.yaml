@@ -9,5 +9,6 @@ period: currentPeriod
 measure:
   operation: sum
   field: amount
+  currencyBasis: baseCurrency
 filters:
   direction: income

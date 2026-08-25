@@ -10,3 +10,4 @@ grouping: month
 measure:
   operation: sum
   field: amount
+  currencyBasis: baseCurrency

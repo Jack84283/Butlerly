@@ -261,6 +261,9 @@ final class RuleDefinitionValidator {
         measure: RuleMeasure(
           operation: RuleOperation.values.byName(operation),
           field: field,
+          currencyBasis: CurrencyBasis.values.byName(
+            (measure as Map)['currencyBasis'] as String? ?? 'original',
+          ),
         ),
         grouping: grouping,
         baseline: baseline,

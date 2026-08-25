@@ -30,6 +30,16 @@ final class AnalysisRuleEngine {
             metrics['${rule.identity.value}:${entry.key}'] = metric;
             metrics[rule.identity.value] = metric;
           }
+          final finding =
+              rule.type == AnalysisRuleType.insight && metric != null
+              ? _finding(
+                  rule,
+                  dataset,
+                  entry.key,
+                  metric,
+                  calculatedAt ?? DateTime.now().toUtc(),
+                )
+              : null;
           results.add(
             RuleExecutionResult(
               rule: rule,
@@ -38,6 +48,7 @@ final class AnalysisRuleEngine {
                       rule.type == AnalysisRuleType.dataQuality
                   ? metric
                   : null,
+              finding: finding,
             ),
           );
         }
@@ -55,6 +66,71 @@ final class AnalysisRuleEngine {
       }
     }
     return results;
+  }
+
+  AnalysisFinding _finding(
+    AnalysisRuleDefinition rule,
+    AnalysisDataset dataset,
+    String dimension,
+    AnalysisMetric current,
+    DateTime at,
+  ) {
+    final baselineValues = dataset.baselineTransactions
+        .where((value) => _eligible(value, dataset.context, rule))
+        .toList(growable: false);
+    final baseline = _metric(
+      rule,
+      dataset,
+      baselineValues,
+      const <String, AnalysisMetric>{},
+      dimension,
+      at,
+    );
+    final baselineValue = baseline?.value;
+    final absolute = baselineValue == null
+        ? null
+        : _subtract(current.value, baselineValue);
+    final percentage = baselineValue == null || baselineValue.isZero
+        ? null
+        : DecimalValue.fromParts(
+            coefficient: absolute!.coefficient * BigInt.from(100),
+            scale: absolute.scale,
+          ).divideBy(baselineValue.coefficient.abs().toInt());
+    return AnalysisFinding(
+      id: '${rule.identity.value}:${dataset.context.period.startDate}:$dimension',
+      rule: rule,
+      context: dataset.context,
+      severity: rule.severity,
+      lifecycle: FindingLifecycle.active,
+      currentValue: current.value,
+      baselineValue: baselineValue,
+      absoluteChange: absolute,
+      percentageChange: percentage,
+      dimension: dimension.isEmpty ? null : dimension,
+      supportingMetrics: baseline == null
+          ? [current.id]
+          : [current.id, baseline.id],
+      evidence: current.evidence,
+      qualityIssues: [
+        ...dataset.qualityIssues,
+        if (baseline == null)
+          const DataQualityIssue(
+            code: 'missingBaseline',
+            detail: 'No comparable baseline was available.',
+          ),
+      ],
+      generatedAt: at,
+    );
+  }
+
+  DecimalValue _subtract(DecimalValue left, DecimalValue right) {
+    final scale = left.scale > right.scale ? left.scale : right.scale;
+    return DecimalValue.fromParts(
+      coefficient:
+          left.coefficient * BigInt.from(10).pow(scale - left.scale) -
+          right.coefficient * BigInt.from(10).pow(scale - right.scale),
+      scale: scale,
+    );
   }
 
   Map<String, List<AnalysisEconomicTransaction>> _group(
