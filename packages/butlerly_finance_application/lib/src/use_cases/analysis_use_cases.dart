@@ -6,10 +6,16 @@ import '../analysis/dataset_builder.dart';
 import '../analysis/rule_engine.dart';
 
 final class CalculateAnalysisOverview {
-  const CalculateAnalysisOverview(this.rules, this.datasetBuilder, this.engine);
+  const CalculateAnalysisOverview(
+    this.rules,
+    this.datasetBuilder,
+    this.engine, {
+    this.findings,
+  });
   final AnalysisRuleRepository rules;
   final AnalysisDatasetBuilder datasetBuilder;
   final AnalysisRuleEngine engine;
+  final AnalysisFindingRepository? findings;
 
   Future<ApplicationResult<List<RuleExecutionResult>>> call(
     AnalysisContext context,
@@ -22,10 +28,17 @@ final class CalculateAnalysisOverview {
       );
     }
     final definitions = await rules.listActive();
-    return engine.execute(
+    final results = engine.execute(
       dataset: (dataset as ApplicationDatasetSuccess).dataset,
       definitions: definitions,
     );
+    if (findings != null) {
+      for (final result in results) {
+        final finding = result.finding;
+        if (finding != null) await findings!.save(finding);
+      }
+    }
+    return results;
   });
 }
 

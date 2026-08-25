@@ -1,11 +1,11 @@
 schemaVersion: "1.0.0"
 ruleId: ANL-R020
 ruleVersion: "1.0.0"
-enabled: true
+enabled: false
 type: insight
 nameKey: analysis.rule.r020.name
 descriptionKey: analysis.rule.r020.description
-period: previousEquivalentPeriod
+period: selected_period
 baseline: previousEquivalentPeriod
 measure:
   operation: sum

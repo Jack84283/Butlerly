@@ -158,8 +158,10 @@ final class FinanceServices {
                  transactions,
                  preferences,
                  reconciliationLinks,
+                 candidates: reconciliationCandidates,
                ),
                const AnalysisRuleEngine(),
+               findings: analysisFindings,
              ),
        updateAnalysisFindingLifecycle = analysisFindings == null
            ? null

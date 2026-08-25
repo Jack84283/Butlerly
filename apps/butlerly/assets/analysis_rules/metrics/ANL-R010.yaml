@@ -5,7 +5,7 @@ enabled: true
 type: metric
 nameKey: analysis.rule.r010.name
 descriptionKey: analysis.rule.r010.description
-period: currentPeriod
+period: selected_period
 grouping: category
 measure:
   operation: sum

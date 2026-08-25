@@ -98,11 +98,11 @@ final class InstallBuiltInRules {
         canonicalDefinition: canonicalById[definition.identity.value]!,
       );
       final existing = await repository.existingActivation(definition.identity);
-      if (existing == null) {
+      if (existing == null || existing.version != definition.version) {
         await repository.activate(
           definition.identity,
           definition.version,
-          definition.enabled,
+          existing?.enabled ?? definition.enabled,
           DateTime.now().toUtc(),
         );
       }

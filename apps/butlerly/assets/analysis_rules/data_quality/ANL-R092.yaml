@@ -5,7 +5,7 @@ enabled: true
 type: dataQuality
 nameKey: analysis.rule.r092.name
 descriptionKey: analysis.rule.r092.description
-period: currentPeriod
+period: selected_period
 measure:
   operation: count
   field: reconciliationUncertainty

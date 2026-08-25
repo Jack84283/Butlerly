@@ -1,10 +1,18 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
+import 'period_resolver.dart';
+
 final class AnalysisDatasetBuilder {
-  const AnalysisDatasetBuilder(this.transactions, this.preferences, this.links);
+  const AnalysisDatasetBuilder(
+    this.transactions,
+    this.preferences,
+    this.links, {
+    this.candidates,
+  });
   final TransactionRepository transactions;
   final UserPreferenceRepository preferences;
   final ReconciliationLinkRepository? links;
+  final ReconciliationCandidateRepository? candidates;
 
   Future<String> timeZoneId() async {
     final preference = await preferences.load();
@@ -20,6 +28,9 @@ final class AnalysisDatasetBuilder {
     final reconciliationLinks = links == null
         ? const <ReconciliationLink>[]
         : await links!.listAll();
+    final reconciliationCandidates = candidates == null
+        ? const <ReconciliationCandidate>[]
+        : await candidates!.listAll();
     final receiptIds = reconciliationLinks
         .map((value) => value.receiptTransactionId)
         .toSet();
@@ -36,8 +47,9 @@ final class AnalysisDatasetBuilder {
           )
           .firstOrNull
           ?.converted;
+      final transactionQuality = <DataQualityIssue>[];
       if (transaction.transactionDate == null) {
-        quality.add(
+        transactionQuality.add(
           DataQualityIssue(
             code: 'missingFinancialDate',
             detail: 'Transaction has no authoritative financial date.',
@@ -47,7 +59,7 @@ final class AnalysisDatasetBuilder {
       }
       if (transaction.money.currency != preference.baseCurrency &&
           normalized == null) {
-        quality.add(
+        transactionQuality.add(
           DataQualityIssue(
             code: 'missingFx',
             detail:
@@ -56,6 +68,19 @@ final class AnalysisDatasetBuilder {
           ),
         );
       }
+      for (final candidate in reconciliationCandidates) {
+        if (candidate.status == ReconciliationCandidateStatus.proposed &&
+            candidate.paymentTransactionId == transaction.id) {
+          transactionQuality.add(
+            DataQualityIssue(
+              code: 'reconciliationUncertainty',
+              detail: 'A reconciliation candidate remains unresolved.',
+              transactionId: transaction.id,
+            ),
+          );
+        }
+      }
+      quality.addAll(transactionQuality);
       result.add(
         AnalysisEconomicTransaction(
           id: transaction.id,
@@ -63,32 +88,43 @@ final class AnalysisDatasetBuilder {
           normalizedMoney: normalized,
           direction: transaction.direction,
           transactionDate: transaction.transactionDate,
+          status: transaction.status,
           categoryId: transaction.categoryId,
           merchantId: transaction.merchantId,
           paymentSourceId: transaction.paymentSourceId,
           tagIds: transaction.tagIds,
           verified: transaction.reviewState == TransactionReviewState.clear,
-          dataQuality: quality
-              .where((value) => value.transactionId == transaction.id)
-              .toList(growable: false),
+          dataQuality: transactionQuality,
         ),
       );
     }
-    final start = DateTime.parse(context.period.startDate);
-    final end = DateTime.parse(context.period.endDate);
-    final length = end.difference(start).inDays + 1;
-    final baselineStart = start.subtract(Duration(days: length));
-    final baselineEnd = start.subtract(const Duration(days: 1));
+    final primary = const AnalysisPeriodResolver().resolvePrimary(
+      type: 'selected_period',
+      context: context,
+    );
+    if (primary case AnalysisPeriodResolutionFailure(:final code)) {
+      return ApplicationDatasetResult.failure(code);
+    }
+    final baselineResolution = const AnalysisPeriodResolver()
+        .resolvePreviousEquivalent(
+          primary: (primary as AnalysisPeriodResolved).window,
+        );
+    final baselineWindow =
+        (baselineResolution as AnalysisPeriodResolved).window;
     final baseline = _buildTransactions(
       source,
       reconciliationLinks,
       preference.baseCurrency,
-      baselineStart,
-      baselineEnd,
+      baselineWindow.start,
+      baselineWindow.endExclusive.subtract(const Duration(days: 1)),
     );
     return ApplicationDatasetResult.success(
       AnalysisDataset(
         transactions: result,
+        primaryTransactionsByPeriod: {
+          'selected_period': result,
+          'selected_month': result,
+        },
         baselineTransactions: baseline,
         context: context,
         qualityIssues: quality,
@@ -128,6 +164,7 @@ final class AnalysisDatasetBuilder {
             normalizedMoney: normalized,
             direction: transaction.direction,
             transactionDate: transaction.transactionDate,
+            status: transaction.status,
             categoryId: transaction.categoryId,
             merchantId: transaction.merchantId,
             paymentSourceId: transaction.paymentSourceId,
