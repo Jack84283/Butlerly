@@ -1,0 +1,62 @@
+name: Configure workflow labels
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/setup-labels.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  labels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create or update Butlerly workflow labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = [
+              ['spec-draft', 'D4C5F9', 'Requirements are still under discussion'],
+              ['spec-approved', '0E8A16', 'Product and engineering requirements are approved'],
+              ['codex-ready', '1D76DB', 'Approved issue is ready for Codex implementation'],
+              ['codex-working', '5319E7', 'Codex implementation is active'],
+              ['needs-decision', 'FBCA04', 'A material human decision is required'],
+              ['needs-fix', 'D93F0B', 'CI or code review found a required correction'],
+              ['ready-for-approval', '0E8A16', 'Required checks and review are complete'],
+              ['auto-merge-approved', 'BFDADC', 'Low-risk PR is approved for automatic merge'],
+              ['high-risk', 'B60205', 'Human review and merge approval are required'],
+              ['database-migration', 'C2E0C6', 'Changes database schema or persisted migration behavior'],
+              ['financial-semantics', 'E99695', 'Changes authoritative financial meaning or calculation'],
+              ['privacy-security', '000000', 'Changes a privacy or security boundary'],
+            ];
+
+            for (const [name, color, description] of labels) {
+              try {
+                await github.rest.issues.getLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name,
+                });
+                await github.rest.issues.updateLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name,
+                  new_name: name,
+                  color,
+                  description,
+                });
+              } catch (error) {
+                if (error.status !== 404) throw error;
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name,
+                  color,
+                  description,
+                });
+              }
+            }
