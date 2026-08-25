@@ -315,6 +315,10 @@ final class AnalysisRuleEngine {
           !filter.values.contains(value.verified ? 'clear' : 'needsReview')) {
         return false;
       }
+      if (filter.kind == AnalysisFilterKind.status &&
+          !filter.values.contains(value.status.name)) {
+        return false;
+      }
     }
     return true;
   }

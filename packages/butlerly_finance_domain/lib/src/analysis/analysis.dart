@@ -177,6 +177,7 @@ final class AnalysisEconomicTransaction {
     required this.money,
     required this.direction,
     required this.transactionDate,
+    this.status = TransactionStatus.active,
     this.normalizedMoney,
     this.categoryId,
     this.merchantId,
@@ -189,6 +190,7 @@ final class AnalysisEconomicTransaction {
   final Money money;
   final Money? normalizedMoney;
   final TransactionDirection direction;
+  final TransactionStatus status;
   final String? transactionDate;
   final CategoryId? categoryId;
   final MerchantId? merchantId;
