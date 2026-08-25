@@ -1,5 +1,7 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
+import 'period_resolver.dart';
+
 final class AnalysisDatasetBuilder {
   const AnalysisDatasetBuilder(
     this.transactions,
@@ -96,17 +98,25 @@ final class AnalysisDatasetBuilder {
         ),
       );
     }
-    final start = DateTime.parse(context.period.startDate);
-    final end = DateTime.parse(context.period.endDate);
-    final length = end.difference(start).inDays + 1;
-    final baselineStart = start.subtract(Duration(days: length));
-    final baselineEnd = start.subtract(const Duration(days: 1));
+    final primary = const AnalysisPeriodResolver().resolvePrimary(
+      type: 'selected_period',
+      context: context,
+    );
+    if (primary case AnalysisPeriodResolutionFailure(:final code)) {
+      return ApplicationDatasetResult.failure(code);
+    }
+    final baselineResolution = const AnalysisPeriodResolver()
+        .resolvePreviousEquivalent(
+          primary: (primary as AnalysisPeriodResolved).window,
+        );
+    final baselineWindow =
+        (baselineResolution as AnalysisPeriodResolved).window;
     final baseline = _buildTransactions(
       source,
       reconciliationLinks,
       preference.baseCurrency,
-      baselineStart,
-      baselineEnd,
+      baselineWindow.start,
+      baselineWindow.endExclusive.subtract(const Duration(days: 1)),
     );
     return ApplicationDatasetResult.success(
       AnalysisDataset(
