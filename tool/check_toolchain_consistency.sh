@@ -25,6 +25,8 @@ grep -q './tool/validate.sh' "$workflow" || fail 'CI must invoke tool/validate.s
 grep -q 'tool/toolchain.env' "$action" || fail 'the shared action must consume tool/toolchain.env'
 grep -q './tool/verify_toolchain.sh' "$action" || fail 'the shared action must verify installed SDK versions'
 
+"$repo_root/tool/test_verify_toolchain.sh"
+
 if grep -Eq 'channel:[[:space:]]*stable|sdk:[[:space:]]*stable' "$workflow"; then
   fail 'CI must not select a floating stable SDK'
 fi
