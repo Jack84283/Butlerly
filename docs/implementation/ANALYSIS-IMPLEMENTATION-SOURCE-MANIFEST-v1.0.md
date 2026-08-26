@@ -1,24 +1,26 @@
 # Analysis Implementation Source Manifest
 
 **Version:** 1.0  
-**Purpose:** Fixed handoff manifest for the Butlerly Finance V1 Analysis implementation work.
+**Purpose:** Fixed handoff manifest for the Butlerly Finance V1 Analysis implementation work.  
+**Approval:** Governing Analysis source set explicitly approved for V1 implementation on 2026-08-25.
 
 ## Repository implementation snapshot
 
-- `docs/implementation/IMP-0007-Rule-Based-Analysis-Engine-and-Insights-v1.0.md` — IMP-0007 v1.0 — Source status: Ready for implementation planning.
+- `docs/implementation/IMP-0007-Rule-Based-Analysis-Engine-and-Insights-v1.0.md` — IMP-0007 v1.0 — **Approved fixed implementation input**.
 
 ## Governing source chain
 
-The editable source documents remain in Google Drive. Before an implementation issue is labeled `codex-ready`, their repository-approved status must satisfy `AGENTS.md`.
+The editable source documents remain in Google Drive. The governing Analysis set is approved for V1 implementation and the prior Draft-status gate is cleared.
 
 - PRD-0003 — Finance MVP v1.0 — product authority for Finance V1 scope and behavior.
 - PRD-0004 — Domain Model — product/domain authority for canonical financial concepts.
-- ARC-0405 — Rule-Based Analysis Engine Architecture — architecture authority for the deterministic declarative Analysis engine.
-- ANL-0001 — Analysis Principles & Rule Model — currently marked **Draft for V1 implementation**.
-- ANL-0002 — Built-in Financial Analysis Rule Catalog — currently marked **Draft for V1 implementation**.
-- ANL-0003 — Analysis Dataset & Calculation Semantics — calculation semantics authority once approved.
-- ANL-0004 — Analysis Experience & Interaction Contract — Analysis behavior/presentation contract once approved.
-- ANL-0005 — Declarative Analysis Rule Schema — declarative YAML/schema contract referenced by IMP-0007.
+- ARC-0405 — Rule-Based Analysis Engine Architecture — **Accepted for V1 implementation**.
+- ANL-0001 — Analysis Principles & Rule Model — **Approved for V1 implementation**.
+- ANL-0002 — Built-in Financial Analysis Rule Catalog — **Approved for V1 implementation**.
+- ANL-0003 — Analysis Dataset & Calculation Semantics — **Accepted for V1 implementation**.
+- ANL-0004 — Analysis Experience & Interaction Contract — **Accepted for V1 implementation**.
+- ANL-0005 — Declarative Analysis Rule Schema — **Accepted for V1 implementation**.
+- IMP-0007 — Rule-Based Analysis Engine & Insights — **Approved for V1 implementation**.
 
 ## UX presentation chain
 
@@ -32,8 +34,6 @@ The Analysis UX documentation has been aligned through the presentation and vali
 - UX-0012 — Analysis usability/comprehension validation and release gates.
 - BDS-0000 — concrete design-system implementation authority.
 
-## Current implementation gate
+## Implementation gate
 
-Do **not** apply `codex-ready` while a governing Analysis document required for financial meaning remains Draft. The immediate blocker is the source status of ANL-0001 and ANL-0002. This is a governance/approval gate, not an invitation for Codex to infer or silently select financial semantics.
-
-Once the governing Analysis source set is formally approved, update this manifest or create a reviewed successor version, then move the implementation issue to `codex-ready`.
+**CLEARED.** The governing Analysis source set is approved/accepted for V1 implementation. The linked implementation issue may carry `codex-ready`, and Codex may implement the approved fixed snapshot under `AGENTS.md`. Any later semantic change requires a reviewed source/version update rather than silent reinterpretation.
