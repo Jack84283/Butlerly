@@ -17,48 +17,20 @@ Shared packages will be introduced under `packages/` only when a current capabil
 
 Requirements:
 
-- Flutter 3.44 or a compatible stable release
-- Dart 3.12 or a compatible release
+- The exact Flutter and Dart versions declared in `tool/toolchain.env`
 
-Run the validation pipeline:
-
-```sh
-cd apps/butlerly
-flutter pub get
-dart format --output=none --set-exit-if-changed .
-flutter analyze
-flutter test
-flutter build web
-```
-
-Validate the finance domain independently:
+The repository pin is authoritative for contributors, Codex, and GitHub Actions.
+Setup verifies the installed SDKs and prints both expected and actual versions.
+Run the canonical validation pipeline from anywhere in the checkout:
 
 ```sh
-cd packages/butlerly_finance_domain
-dart pub get
-dart format --output=none --set-exit-if-changed .
-dart analyze
-dart test
+./tool/setup.sh
+./tool/validate.sh
 ```
 
-Validate local persistence:
-
-```sh
-cd packages/butlerly_database
-dart pub get
-dart format --output=none --set-exit-if-changed .
-dart analyze --fatal-infos
-dart test
-```
-
-Validate application services:
-
-```sh
-cd packages/butlerly_finance_application
-dart pub get
-dart format --output=none --set-exit-if-changed .
-dart analyze --fatal-infos
-dart test
-```
+`tool/validate.sh` owns formatting, analysis, package and Flutter tests, and the
+web build. CI calls the same scripts and separately retains the iOS simulator
+build. `tool/check_toolchain_consistency.sh` prevents CI and local configuration
+from silently drifting apart.
 
 The application does not require an account, network service, cloud database, or AI provider for core operation.
