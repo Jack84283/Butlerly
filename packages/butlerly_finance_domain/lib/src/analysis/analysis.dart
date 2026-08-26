@@ -139,7 +139,8 @@ final class AnalysisPeriod {
         message: 'Analysis period start must not be after end.',
       );
     }
-    if (timeZoneId.trim().isEmpty || !timeZoneId.contains('/')) {
+    if (timeZoneId.trim().isEmpty ||
+        (timeZoneId != 'UTC' && !timeZoneId.contains('/'))) {
       invalid(
         code: DomainErrorCode.invalidState,
         field: 'timeZoneId',

@@ -2,6 +2,7 @@ import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
 import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart';
@@ -95,7 +96,8 @@ final appRouter = GoRouter(
       path: '/notifications',
       builder: (_, _) => const NotificationsPage(),
     ),
-    GoRoute(path: '/insights', builder: (_, _) => const InsightsPage()),
+    GoRoute(path: '/analysis', builder: (_, _) => const AnalysisPage()),
+    GoRoute(path: '/insights', redirect: (_, _) => '/analysis'),
     GoRoute(
       path: '/assistant',
       builder: (_, _) => const AssistantUnavailablePage(),

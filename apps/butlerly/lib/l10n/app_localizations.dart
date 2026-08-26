@@ -269,6 +269,20 @@ class AppLocalizations {
       'importExportBody': 'Move supported records in or out of this device.',
       'optionalFeatures': 'Optional features',
       'insights': 'Insights',
+      'analysis': 'Analysis',
+      'overview': 'Overview',
+      'dataQuality': 'Data quality',
+      'analysisUnavailable': 'Analysis is unavailable',
+      'analysisUnavailableBody':
+          'Local calculations could not be completed. No records were changed.',
+      'offlineAnalysisStatus':
+          'Calculated privately on this device and available offline.',
+      'allClear': 'No findings',
+      'allClearBody':
+          'No enabled insight needs your attention for this period.',
+      'baselineUnavailable': 'A comparable baseline is unavailable.',
+      'baselineAvailable':
+          'Compared with an independently calculated baseline.',
       'insightsBody': 'Local summaries based only on confirmed records.',
       'assistant': 'Assistant',
       'assistantUnavailable': 'Assistant is not configured',
@@ -588,6 +602,16 @@ class AppLocalizations {
       'importExportBody': '将支持的记录移入或移出此设备。',
       'optionalFeatures': '可选功能',
       'insights': '洞察',
+      'analysis': '分析',
+      'overview': '概览',
+      'dataQuality': '数据质量',
+      'analysisUnavailable': '分析暂不可用',
+      'analysisUnavailableBody': '无法完成本地计算。未更改任何记录。',
+      'offlineAnalysisStatus': '在此设备上私密计算，可离线使用。',
+      'allClear': '暂无发现',
+      'allClearBody': '此期间没有已启用的洞察需要您关注。',
+      'baselineUnavailable': '没有可比较的基准。',
+      'baselineAvailable': '与独立计算的基准进行比较。',
       'insightsBody': '仅基于已确认记录生成的本地摘要。',
       'assistant': '助手',
       'assistantUnavailable': '助手尚未配置',
@@ -915,6 +939,20 @@ class AppLocalizations {
           'Mueve registros compatibles dentro o fuera del dispositivo.',
       'optionalFeatures': 'Funciones opcionales',
       'insights': 'Información',
+      'analysis': 'Análisis',
+      'overview': 'Resumen',
+      'dataQuality': 'Calidad de datos',
+      'analysisUnavailable': 'El análisis no está disponible',
+      'analysisUnavailableBody':
+          'No se pudieron completar los cálculos locales. No se cambió ningún registro.',
+      'offlineAnalysisStatus':
+          'Calculado de forma privada en este dispositivo y disponible sin conexión.',
+      'allClear': 'Sin hallazgos',
+      'allClearBody':
+          'Ninguna información habilitada requiere tu atención en este período.',
+      'baselineUnavailable': 'No hay una base comparable disponible.',
+      'baselineAvailable':
+          'Comparado con una base calculada de forma independiente.',
       'insightsBody': 'Resúmenes locales basados en registros confirmados.',
       'assistant': 'Asistente',
       'assistantUnavailable': 'El Asistente no está configurado',

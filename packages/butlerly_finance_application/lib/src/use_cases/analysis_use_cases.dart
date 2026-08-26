@@ -17,6 +17,26 @@ final class CalculateAnalysisOverview {
   final AnalysisRuleEngine engine;
   final AnalysisFindingRepository? findings;
 
+  /// Resolves the default month in the application layer so presentation never
+  /// invents financial windows or timezone policy.
+  Future<ApplicationResult<List<RuleExecutionResult>>> currentMonth(
+    DateTime financialDate,
+  ) async {
+    final first = DateTime.utc(financialDate.year, financialDate.month, 1);
+    final last = DateTime.utc(financialDate.year, financialDate.month + 1, 0);
+    return call(
+      AnalysisContext(
+        period: AnalysisPeriod(
+          startDate: _date(first),
+          endDate: _date(last),
+          timeZoneId: await datasetBuilder.timeZoneId(),
+        ),
+        datasetMode: DatasetMode.allEligible,
+        currencyBasis: CurrencyBasis.original,
+      ),
+    );
+  }
+
   Future<ApplicationResult<List<RuleExecutionResult>>> call(
     AnalysisContext context,
   ) => runApplication('calculate analysis overview', () async {
