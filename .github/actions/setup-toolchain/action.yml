@@ -1,0 +1,17 @@
+name: Set up pinned Butlerly toolchain
+description: Install and verify the Flutter and Dart versions pinned by the repository
+runs:
+  using: composite
+  steps:
+    - id: versions
+      shell: bash
+      run: |
+        source tool/toolchain.env
+        echo "flutter=$FLUTTER_VERSION" >> "$GITHUB_OUTPUT"
+    - uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ steps.versions.outputs.flutter }}
+        channel: stable
+        cache: true
+    - shell: bash
+      run: ./tool/verify_toolchain.sh
