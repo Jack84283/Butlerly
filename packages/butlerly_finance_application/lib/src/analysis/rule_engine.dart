@@ -316,41 +316,7 @@ final class AnalysisRuleEngine {
     if (context.datasetMode == DatasetMode.verifiedOnly && !value.verified) {
       return false;
     }
-    for (final filter in rule.filters) {
-      if (filter.kind == AnalysisFilterKind.direction &&
-          !filter.values.contains(value.direction.name)) {
-        return false;
-      }
-      if (filter.kind == AnalysisFilterKind.currency &&
-          !filter.values.contains(value.money.currency.value)) {
-        return false;
-      }
-      if (filter.kind == AnalysisFilterKind.category &&
-          !filter.values.contains(value.categoryId?.value)) {
-        return false;
-      }
-      if (filter.kind == AnalysisFilterKind.merchant &&
-          !filter.values.contains(value.merchantId?.value)) {
-        return false;
-      }
-      if (filter.kind == AnalysisFilterKind.paymentSource &&
-          !filter.values.contains(value.paymentSourceId?.value)) {
-        return false;
-      }
-      if (filter.kind == AnalysisFilterKind.tag &&
-          !value.tagIds.any((tag) => filter.values.contains(tag.value))) {
-        return false;
-      }
-      if (filter.kind == AnalysisFilterKind.reviewState &&
-          !filter.values.contains(value.verified ? 'clear' : 'needsReview')) {
-        return false;
-      }
-      if (filter.kind == AnalysisFilterKind.status &&
-          !filter.values.contains(value.status.name)) {
-        return false;
-      }
-    }
-    return true;
+    return _matchesFilters(value, rule.filters);
   }
 
   bool _matchesQualityField(
@@ -376,14 +342,15 @@ final class AnalysisRuleEngine {
         .where((value) => _matchesFilters(value, measure.filters))
         .where(
           (value) => measure.currencyBasis == CurrencyBasis.baseCurrency
-              ? value.normalizedMoney != null
+              ? value.normalizedMoney != null ||
+                    value.money.currency == dataset.context.baseCurrency
               : true,
         )
         .toList(growable: false);
     final amountValues = selected
         .map(
           (value) => measure.currencyBasis == CurrencyBasis.baseCurrency
-              ? value.normalizedMoney!.amount
+              ? (value.normalizedMoney ?? value.money).amount
               : value.money.amount,
         )
         .toList(growable: false);
@@ -404,7 +371,7 @@ final class AnalysisRuleEngine {
             ? DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0)
             : amountValues.reduce((a, b) => a.compareTo(b) >= 0 ? a : b),
       RuleOperation.distinctCount => DecimalValue.fromParts(
-        coefficient: BigInt.from(_distinct(selected, rule.measure.field)),
+        coefficient: BigInt.from(_distinct(selected, measure.field)),
         scale: 0,
       ),
       RuleOperation.frequency => DecimalValue.fromParts(
@@ -447,10 +414,31 @@ final class AnalysisRuleEngine {
     List<AnalysisFilter> filters,
   ) {
     for (final filter in filters) {
-      if (filter.kind == AnalysisFilterKind.direction &&
-          !filter.values.contains(value.direction.name)) {
-        return false;
-      }
+      final matches = switch (filter.kind) {
+        AnalysisFilterKind.direction => filter.values.contains(
+          value.direction.name,
+        ),
+        AnalysisFilterKind.currency => filter.values.contains(
+          value.money.currency.value,
+        ),
+        AnalysisFilterKind.category => filter.values.contains(
+          value.categoryId?.value,
+        ),
+        AnalysisFilterKind.merchant => filter.values.contains(
+          value.merchantId?.value,
+        ),
+        AnalysisFilterKind.paymentSource => filter.values.contains(
+          value.paymentSourceId?.value,
+        ),
+        AnalysisFilterKind.tag => value.tagIds.any(
+          (tag) => filter.values.contains(tag.value),
+        ),
+        AnalysisFilterKind.reviewState => filter.values.contains(
+          value.verified ? 'clear' : 'needsReview',
+        ),
+        AnalysisFilterKind.status => filter.values.contains(value.status.name),
+      };
+      if (!matches) return false;
     }
     return true;
   }

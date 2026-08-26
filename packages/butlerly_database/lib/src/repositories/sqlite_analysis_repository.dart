@@ -116,40 +116,42 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
         .toList(growable: false);
   }
 
-  AnalysisRuleDefinition _fromJson(
-    Map<String, dynamic> json,
-    String hash,
-  ) => AnalysisRuleDefinition(
-    identity: RuleIdentity(json['ruleId'] as String),
-    version: RuleVersion(json['ruleVersion'] as String),
-    schemaVersion: json['schemaVersion'] as String,
-    type: AnalysisRuleType.values.byName(json['type'] as String),
-    nameKey: json['nameKey'] as String,
-    descriptionKey: json['descriptionKey'] as String,
-    enabled: json['enabled'] as bool? ?? true,
-    status: AnalysisRuleStatus.active,
-    period: json['period'] as String? ?? 'currentPeriod',
-    measure: RuleMeasure(
-      operation: RuleOperation.values.byName(
-        (json['measure'] as Map)['operation'] as String,
+  AnalysisRuleDefinition _fromJson(Map<String, dynamic> json, String hash) {
+    final measures = _measures(json);
+    final rawLegacyMeasure = json['measure'];
+    final legacyMeasure = rawLegacyMeasure is Map
+        ? _measure(rawLegacyMeasure)
+        : measures.first;
+    return AnalysisRuleDefinition(
+      identity: RuleIdentity(json['ruleId'] as String),
+      version: RuleVersion(json['ruleVersion'] as String),
+      schemaVersion: json['schemaVersion'] as String,
+      type: AnalysisRuleType.values.byName(json['type'] as String),
+      nameKey: json['nameKey'] as String,
+      descriptionKey: json['descriptionKey'] as String,
+      enabled: json['enabled'] as bool? ?? true,
+      status: AnalysisRuleStatus.active,
+      period: json['period'] as String? ?? 'currentPeriod',
+      measure: legacyMeasure,
+      measures: measures,
+      surface: AnalysisSurface.values.byName(
+        json['surface'] as String? ?? 'overview',
       ),
-      field: (json['measure'] as Map)['field'] as String,
-      currencyBasis: CurrencyBasis.values.byName(
-        (json['measure'] as Map)['currencyBasis'] as String? ?? 'original',
+      grouping: RuleGrouping.values.byName(
+        json['grouping'] as String? ?? 'none',
       ),
-    ),
-    measures: _measures(json),
-    surface: AnalysisSurface.values.byName(
-      json['surface'] as String? ?? 'overview',
-    ),
-    grouping: RuleGrouping.values.byName(json['grouping'] as String? ?? 'none'),
-    baseline: RuleBaseline.values.byName(json['baseline'] as String? ?? 'none'),
-    condition: const RuleCondition(operator: 'none'),
-    severity: RuleSeverity.values.byName(json['severity'] as String? ?? 'info'),
-    filters: _filters(json['filters']),
-    dependencies: _dependencies(json['dependencies']),
-    definitionHash: RuleDefinitionHash(hash),
-  );
+      baseline: RuleBaseline.values.byName(
+        json['baseline'] as String? ?? 'none',
+      ),
+      condition: const RuleCondition(operator: 'none'),
+      severity: RuleSeverity.values.byName(
+        json['severity'] as String? ?? 'info',
+      ),
+      filters: _filters(json['filters']),
+      dependencies: _dependencies(json['dependencies']),
+      definitionHash: RuleDefinitionHash(hash),
+    );
+  }
 
   List<AnalysisFilter> _filters(Object? raw) {
     if (raw is! Map) return const [];
@@ -173,20 +175,20 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
     return raw
         .map((value) {
           final measure = value as Map;
-          return RuleMeasure(
-            operation: RuleOperation.values.byName(
-              measure['operation'] as String,
-            ),
-            field: measure['field'] as String,
-            key: measure['key']?.toString() ?? 'value',
-            currencyBasis: CurrencyBasis.values.byName(
-              measure['currencyBasis'] as String? ?? 'original',
-            ),
-            filters: _filters(measure['filters']),
-          );
+          return _measure(measure);
         })
         .toList(growable: false);
   }
+
+  RuleMeasure _measure(Map measure) => RuleMeasure(
+    operation: RuleOperation.values.byName(measure['operation'] as String),
+    field: measure['field'] as String,
+    key: measure['key']?.toString() ?? 'value',
+    currencyBasis: CurrencyBasis.values.byName(
+      measure['currencyBasis'] as String? ?? 'original',
+    ),
+    filters: _filters(measure['filters']),
+  );
 
   List<RuleDependency> _dependencies(Object? raw) => raw is! List
       ? const []
@@ -263,8 +265,9 @@ final class SqliteAnalysisFindingRepository
       whereArgs: lifecycle == null ? null : [lifecycle.name],
       orderBy: 'generated_at DESC, id',
     );
-    final definitions = await SqliteAnalysisRuleRepository(database)
-        .listDefinitions();
+    final definitions = await SqliteAnalysisRuleRepository(
+      database,
+    ).listDefinitions();
     final byKey = {
       for (final value in definitions)
         '${value.identity.value}:${value.version.value}': value,

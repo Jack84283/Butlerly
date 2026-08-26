@@ -3,6 +3,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -10,9 +11,21 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 
 class AnalysisPage extends StatefulWidget {
-  const AnalysisPage({super.key, this.load});
+  const AnalysisPage({
+    super.key,
+    this.load,
+    this.loadCalendar,
+    this.loadTransactionsForDate,
+  });
 
   final Future<ApplicationResult<List<RuleExecutionResult>>> Function()? load;
+  final Future<ApplicationResult<AnalysisCalendarResult>> Function(
+    int year,
+    int month,
+  )?
+  loadCalendar;
+  final Future<ApplicationResult<List<TransactionDto>>> Function(String date)?
+  loadTransactionsForDate;
 
   @override
   State<AnalysisPage> createState() => _AnalysisPageState();
@@ -20,11 +33,17 @@ class AnalysisPage extends StatefulWidget {
 
 class _AnalysisPageState extends State<AnalysisPage> {
   late Future<ApplicationResult<List<RuleExecutionResult>>> _result;
+  late DateTime _calendarMonth;
+  Future<ApplicationResult<AnalysisCalendarResult>>? _calendarResult;
+  String? _selectedDate;
+  Future<ApplicationResult<List<TransactionDto>>>? _transactions;
 
   @override
   void initState() {
     super.initState();
+    _calendarMonth = DateTime(DateTime.now().year, DateTime.now().month);
     _result = _load();
+    _calendarResult = _loadCalendar();
   }
 
   Future<ApplicationResult<List<RuleExecutionResult>>> _load() {
@@ -53,10 +72,65 @@ class _AnalysisPageState extends State<AnalysisPage> {
     return useCase.currentMonth(DateTime.now());
   }
 
+  Future<ApplicationResult<AnalysisCalendarResult>>? _loadCalendar() {
+    if (widget.loadCalendar != null) {
+      return widget.loadCalendar!(_calendarMonth.year, _calendarMonth.month);
+    }
+    if (!services.isRegistered<FinanceServices>()) return null;
+    final finance = services<FinanceServices>();
+    final useCase = finance.calculateAnalysisCalendar;
+    if (useCase == null) return null;
+    return finance.loadUserPreference().then((preferenceResult) {
+      final preference = preferenceResult is ApplicationSuccess<UserPreference?>
+          ? preferenceResult.value
+          : null;
+      return useCase(
+        year: _calendarMonth.year,
+        month: _calendarMonth.month,
+        datasetMode: DatasetMode.allEligible,
+        currencyBasis: CurrencyBasis.baseCurrency,
+        baseCurrency: preference?.baseCurrency,
+      );
+    });
+  }
+
+  void _moveMonth(int delta) {
+    setState(() {
+      _calendarMonth = DateTime(
+        _calendarMonth.year,
+        _calendarMonth.month + delta,
+      );
+      _selectedDate = null;
+      _transactions = null;
+      _calendarResult = _loadCalendar();
+    });
+  }
+
+  void _selectDate(String date) {
+    Future<ApplicationResult<List<TransactionDto>>>? transactions;
+    if (widget.loadTransactionsForDate != null) {
+      transactions = widget.loadTransactionsForDate!(date);
+    } else if (services.isRegistered<FinanceServices>()) {
+      transactions = services<FinanceServices>()
+          .queryTransactionsForFinancialDate(date);
+    }
+    setState(() {
+      _selectedDate = date;
+      _transactions = transactions;
+    });
+  }
+
   Future<void> _refresh() async {
     final value = _load();
-    setState(() => _result = value);
-    await value;
+    final calendar = _loadCalendar();
+    setState(() {
+      _result = value;
+      _calendarResult = calendar;
+    });
+    await Future.wait([
+      value,
+      ...?calendar == null ? null : [calendar],
+    ]);
   }
 
   @override
@@ -84,7 +158,15 @@ class _AnalysisPageState extends State<AnalysisPage> {
               ],
             );
           }
-          return _AnalysisResults(results: result.value);
+          return _AnalysisResults(
+            results: result.value,
+            calendarResult: _calendarResult,
+            selectedDate: _selectedDate,
+            transactions: _transactions,
+            onPreviousMonth: () => _moveMonth(-1),
+            onNextMonth: () => _moveMonth(1),
+            onSelectDate: _selectDate,
+          );
         },
       ),
     ),
@@ -92,46 +174,46 @@ class _AnalysisPageState extends State<AnalysisPage> {
 }
 
 class _AnalysisResults extends StatelessWidget {
-  const _AnalysisResults({required this.results});
+  const _AnalysisResults({
+    required this.results,
+    required this.calendarResult,
+    required this.selectedDate,
+    required this.transactions,
+    required this.onPreviousMonth,
+    required this.onNextMonth,
+    required this.onSelectDate,
+  });
+
   final List<RuleExecutionResult> results;
+  final Future<ApplicationResult<AnalysisCalendarResult>>? calendarResult;
+  final String? selectedDate;
+  final Future<ApplicationResult<List<TransactionDto>>>? transactions;
+  final VoidCallback onPreviousMonth;
+  final VoidCallback onNextMonth;
+  final ValueChanged<String> onSelectDate;
 
   @override
   Widget build(BuildContext context) {
-    final overview = results
-        .where(
-          (value) =>
-              value.metric != null &&
-              value.rule.surface == AnalysisSurface.overview,
-        )
-        .toList();
-    final spending = results
-        .where(
-          (value) =>
-              value.metric != null &&
-              value.rule.surface == AnalysisSurface.spending,
-        )
-        .toList();
-    final calendar = results
-        .where(
-          (value) =>
-              value.metric != null &&
-              value.rule.surface == AnalysisSurface.calendar,
-        )
-        .toList();
+    List<RuleExecutionResult> surface(AnalysisSurface surface) => results
+        .where((value) => value.metric != null && value.rule.surface == surface)
+        .toList(growable: false);
+    final overview = surface(AnalysisSurface.overview);
+    final spending = surface(AnalysisSurface.spending);
+    final dataQuality = surface(AnalysisSurface.dataQuality);
     final trends = results
         .where(
           (value) =>
               value.finding != null &&
               value.rule.surface == AnalysisSurface.trends,
         )
-        .toList();
+        .toList(growable: false);
     final findings = results
         .where(
           (value) =>
               value.finding != null &&
               value.rule.surface == AnalysisSurface.insights,
         )
-        .toList();
+        .toList(growable: false);
     final limitations = results
         .expand(
           (value) => [
@@ -140,7 +222,7 @@ class _AnalysisResults extends StatelessWidget {
             ...?value.finding?.qualityIssues,
           ],
         )
-        .toList();
+        .toList(growable: false);
     final failures = results.where((value) => value.failure != null).toList();
     return ListView(
       padding: const EdgeInsets.all(ButlerlySpacing.standard),
@@ -179,9 +261,16 @@ class _AnalysisResults extends StatelessWidget {
           ButlerlySectionHeader(title: context.l10n.text('trends')),
           ...trends.map((result) => _FindingCard(finding: result.finding!)),
         ],
-        if (calendar.isNotEmpty) ...[
+        if (calendarResult != null) ...[
           ButlerlySectionHeader(title: context.l10n.text('financialCalendar')),
-          ...calendar.map((result) => _MetricCard(metric: result.metric!)),
+          _FinancialCalendar(
+            result: calendarResult!,
+            selectedDate: selectedDate,
+            transactions: transactions,
+            onPreviousMonth: onPreviousMonth,
+            onNextMonth: onNextMonth,
+            onSelectDate: onSelectDate,
+          ),
         ],
         ButlerlySectionHeader(title: context.l10n.text('insights')),
         if (findings.isEmpty && failures.isEmpty)
@@ -203,23 +292,241 @@ class _AnalysisResults extends StatelessWidget {
             title: context.l10n.text('insightsUnavailable'),
             message: context.l10n.text('insightsUnavailableBody'),
           ),
-        if (limitations.isNotEmpty || failures.isNotEmpty) ...[
+        if (dataQuality.isNotEmpty ||
+            limitations.isNotEmpty ||
+            failures.isNotEmpty) ...[
           ButlerlySectionHeader(title: context.l10n.text('dataQuality')),
-          ButlerlyCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ...limitations.map((issue) => Text('• ${issue.detail}')),
-                ...failures.map(
-                  (result) => Text('• ${result.failure!.message}'),
-                ),
-              ],
-            ),
+          ...dataQuality.map(
+            (result) => _DataQualityCard(metric: result.metric!),
           ),
+          if (limitations.isNotEmpty || failures.isNotEmpty)
+            ButlerlyCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ...limitations.map((issue) => Text('• ${issue.detail}')),
+                  ...failures.map(
+                    (result) => Text('• ${result.failure!.message}'),
+                  ),
+                ],
+              ),
+            ),
         ],
       ],
     );
   }
+}
+
+class _FinancialCalendar extends StatelessWidget {
+  const _FinancialCalendar({
+    required this.result,
+    required this.selectedDate,
+    required this.transactions,
+    required this.onPreviousMonth,
+    required this.onNextMonth,
+    required this.onSelectDate,
+  });
+
+  final Future<ApplicationResult<AnalysisCalendarResult>> result;
+  final String? selectedDate;
+  final Future<ApplicationResult<List<TransactionDto>>>? transactions;
+  final VoidCallback onPreviousMonth;
+  final VoidCallback onNextMonth;
+  final ValueChanged<String> onSelectDate;
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) => FutureBuilder<ApplicationResult<AnalysisCalendarResult>>(
+    future: result,
+    builder: (context, snapshot) {
+      final value = snapshot.data;
+      if (snapshot.connectionState != ConnectionState.done) {
+        return const ButlerlyCard(
+          child: Center(child: CircularProgressIndicator()),
+        );
+      }
+      if (value is! ApplicationSuccess<AnalysisCalendarResult>) {
+        return ButlerlyCard(
+          child: ListTile(
+            leading: const Icon(Icons.error_outline),
+            title: Text(context.l10n.text('analysisUnavailable')),
+            subtitle: Text(context.l10n.text('dataPreserved')),
+          ),
+        );
+      }
+      final calendar = value.value;
+      final first = DateTime(calendar.year, calendar.month);
+      final leading = first.weekday - DateTime.monday;
+      final today = financialDateAt(DateTime.now(), calendar.timeZoneId);
+      final todayDate =
+          '${today.year.toString().padLeft(4, '0')}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+      return ButlerlyCard(
+        child: Column(
+          children: [
+            Row(
+              children: [
+                IconButton(
+                  key: const ValueKey('analysis-calendar-previous'),
+                  tooltip: 'Previous month',
+                  onPressed: onPreviousMonth,
+                  icon: const Icon(Icons.chevron_left),
+                ),
+                Expanded(
+                  child: Text(
+                    MaterialLocalizations.of(context).formatMonthYear(first),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                IconButton(
+                  key: const ValueKey('analysis-calendar-next'),
+                  tooltip: 'Next month',
+                  onPressed: onNextMonth,
+                  icon: const Icon(Icons.chevron_right),
+                ),
+              ],
+            ),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: leading + calendar.days.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 7,
+              ),
+              itemBuilder: (context, index) {
+                if (index < leading) return const SizedBox.shrink();
+                final day = calendar.days[index - leading];
+                final selected = selectedDate == day.financialDate;
+                final isToday = todayDate == day.financialDate;
+                final number = int.parse(day.financialDate.substring(8));
+                return Semantics(
+                  label:
+                      '${day.financialDate}${isToday ? ', today' : ''}, ${day.transactionCount} transactions',
+                  selected: selected,
+                  button: true,
+                  child: InkWell(
+                    key: ValueKey('analysis-calendar-${day.financialDate}'),
+                    onTap: () => onSelectDate(day.financialDate),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: selected
+                              ? Theme.of(context).colorScheme.primary
+                              : isToday
+                              ? Theme.of(context).colorScheme.secondary
+                              : Colors.transparent,
+                          width: selected ? 2 : 1,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text('$number'),
+                          Text(
+                            '${day.transactionCount}',
+                            style: Theme.of(context).textTheme.labelSmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            if (selectedDate != null) ...[
+              const Divider(),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  selectedDate!,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+              _CalendarTransactions(result: transactions),
+            ],
+          ],
+        ),
+      );
+    },
+  );
+}
+
+class _CalendarTransactions extends StatelessWidget {
+  const _CalendarTransactions({required this.result});
+  final Future<ApplicationResult<List<TransactionDto>>>? result;
+
+  @override
+  Widget build(BuildContext context) {
+    if (result == null) return const SizedBox.shrink();
+    return FutureBuilder<ApplicationResult<List<TransactionDto>>>(
+      future: result,
+      builder: (context, snapshot) {
+        final value = snapshot.data;
+        if (value is! ApplicationSuccess<List<TransactionDto>>) {
+          return const LinearProgressIndicator();
+        }
+        if (value.value.isEmpty) {
+          return Text(context.l10n.text('noTransactions'));
+        }
+        return Column(
+          children: value.value
+              .map(
+                (transaction) => ListTile(
+                  key: ValueKey(
+                    'analysis-calendar-transaction-${transaction.id}',
+                  ),
+                  title: Text(
+                    transaction.description ??
+                        transaction.rawCounterparty ??
+                        transaction.id,
+                  ),
+                  subtitle: Text(
+                    '${transaction.amount} ${transaction.currency}',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    if (!services.isRegistered<FinanceServices>()) return;
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => TransactionDetailPage(
+                          finance: services<FinanceServices>(),
+                          transaction: transaction,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              )
+              .toList(growable: false),
+        );
+      },
+    );
+  }
+}
+
+class _DataQualityCard extends StatelessWidget {
+  const _DataQualityCard({required this.metric});
+  final AnalysisMetric metric;
+
+  @override
+  Widget build(BuildContext context) => ButlerlyCard(
+    child: ExpansionTile(
+      leading: const Icon(Icons.fact_check_outlined),
+      title: Text(context.l10n.text(metric.rule.nameKey)),
+      subtitle: Text('${metric.evidence.length} supporting transactions'),
+      trailing: Text(localizedDecimal(context, metric.value.toString())),
+      children: metric.evidence
+          .map(
+            (evidence) => ListTile(
+              leading: const Icon(Icons.receipt_long_outlined),
+              title: Text(evidence.transactionId.value),
+            ),
+          )
+          .toList(growable: false),
+    ),
+  );
 }
 
 class _MetricCard extends StatelessWidget {

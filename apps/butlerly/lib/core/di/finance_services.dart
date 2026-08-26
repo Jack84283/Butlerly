@@ -175,6 +175,9 @@ final class FinanceServices {
                analysisRules,
                const AnalysisRuleEngine(),
              ),
+       queryTransactionsForFinancialDate = QueryTransactionsForFinancialDate(
+         transactions,
+       ),
        updateAnalysisFindingLifecycle = analysisFindings == null
            ? null
            : UpdateFindingLifecycle(analysisFindings);
@@ -229,6 +232,7 @@ final class FinanceServices {
   final InstallBuiltInRules? installBuiltInRules;
   final CalculateAnalysisOverview? calculateAnalysisOverview;
   final CalculateAnalysisCalendar? calculateAnalysisCalendar;
+  final QueryTransactionsForFinancialDate queryTransactionsForFinancialDate;
   final UpdateFindingLifecycle? updateAnalysisFindingLifecycle;
 }
 
