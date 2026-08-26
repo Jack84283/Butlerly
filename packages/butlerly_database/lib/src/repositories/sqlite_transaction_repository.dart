@@ -146,11 +146,19 @@ final class SqliteTransactionRepository implements TransactionRepository {
   @override
   Future<void> removePermanently(TransactionId id) async {
     try {
-      await database.connection.delete(
-        'transactions',
-        where: 'id = ?',
-        whereArgs: [id.value],
-      );
+      await database.transaction((tx) async {
+        await tx.update(
+          'statement_rows',
+          {
+            'transaction_id': null,
+            'status': StatementRowStatus.pending.name,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          },
+          where: 'transaction_id = ?',
+          whereArgs: [id.value],
+        );
+        await tx.delete('transactions', where: 'id = ?', whereArgs: [id.value]);
+      });
     } on DatabaseException catch (error) {
       throw mapDatabaseException(error, 'remove transaction permanently');
     }

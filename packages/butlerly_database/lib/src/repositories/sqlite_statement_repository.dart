@@ -10,53 +10,64 @@ final class SqliteStatementRepository
   final ButlerlyDatabase database;
 
   @override
-  Future<void> saveStatement(FinancialStatement value) =>
-      database.connection.insert(
-        'financial_statements',
-        _statementRow(value),
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+  Future<void> saveStatement(FinancialStatement value) => _mapped(
+    'save statement',
+    () => database.connection.insert(
+      'financial_statements',
+      _statementRow(value),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    ),
+  );
 
   @override
-  Future<void> saveRows(List<StatementRow> rows) =>
-      database.transaction((tx) async {
-        for (final row in rows) {
-          await tx.insert(
-            'statement_rows',
-            _row(row),
-            conflictAlgorithm: ConflictAlgorithm.abort,
-          );
-        }
-      });
+  Future<void> saveRows(List<StatementRow> rows) => _mapped(
+    'save statement rows',
+    () => database.transaction((tx) async {
+      for (final row in rows) {
+        await tx.insert(
+          'statement_rows',
+          _row(row),
+          conflictAlgorithm: ConflictAlgorithm.abort,
+        );
+      }
+    }),
+  );
 
   @override
   Future<FinancialStatement?> findStatement(String id) async {
-    final rows = await database.connection.query(
-      'financial_statements',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-    return rows.isEmpty ? null : _statement(rows.single);
+    return _mapped('find statement', () async {
+      final rows = await database.connection.query(
+        'financial_statements',
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+      return rows.isEmpty ? null : _statement(rows.single);
+    });
   }
 
   @override
   Future<List<FinancialStatement>> listStatements({
     bool includeArchived = false,
-  }) async => (await database.connection.query(
-    'financial_statements',
-    where: includeArchived ? null : 'status != ?',
-    whereArgs: includeArchived ? null : [StatementStatus.archived.name],
-    orderBy: 'updated_at DESC',
-  )).map(_statement).toList(growable: false);
+  }) => _mapped(
+    'list statements',
+    () async => (await database.connection.query(
+      'financial_statements',
+      where: includeArchived ? null : 'status != ?',
+      whereArgs: includeArchived ? null : [StatementStatus.archived.name],
+      orderBy: 'updated_at DESC',
+    )).map(_statement).toList(growable: false),
+  );
 
   @override
-  Future<List<StatementRow>> listRows(String statementId) async =>
-      (await database.connection.query(
-        'statement_rows',
-        where: 'statement_id = ?',
-        whereArgs: [statementId],
-        orderBy: 'position',
-      )).map(_statementRowFromDb).toList(growable: false);
+  Future<List<StatementRow>> listRows(String statementId) => _mapped(
+    'list statement rows',
+    () async => (await database.connection.query(
+      'statement_rows',
+      where: 'statement_id = ?',
+      whereArgs: [statementId],
+      orderBy: 'position',
+    )).map(_statementRowFromDb).toList(growable: false),
+  );
 
   @override
   Future<void> assignPaymentSource(
@@ -64,86 +75,104 @@ final class SqliteStatementRepository
     String paymentSourceId,
     DateTime updatedAt,
   ) async {
-    final count = await database.connection.update(
-      'financial_statements',
-      {
-        'payment_source_id': paymentSourceId,
-        'status': StatementStatus.ready.name,
-        'updated_at': updatedAt.toUtc().toIso8601String(),
-      },
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-    if (count != 1) {
-      throw const RepositoryException(
-        RepositoryFailureCode.notFound,
-        'assign statement payment source',
+    try {
+      final count = await database.connection.update(
+        'financial_statements',
+        {
+          'payment_source_id': paymentSourceId,
+          'status': StatementStatus.ready.name,
+          'updated_at': updatedAt.toUtc().toIso8601String(),
+        },
+        where: 'id = ?',
+        whereArgs: [id],
       );
+      if (count != 1) {
+        throw const RepositoryException(
+          RepositoryFailureCode.notFound,
+          'assign statement payment source',
+        );
+      }
+    } on DatabaseException catch (error) {
+      throw mapDatabaseException(error, 'assign statement payment source');
     }
   }
 
   @override
   Future<void> updateRow(StatementRow row) async {
-    final count = await database.connection.update(
-      'statement_rows',
-      _row(row),
-      where: 'id = ?',
-      whereArgs: [row.id],
-    );
-    if (count != 1) {
-      throw const RepositoryException(
-        RepositoryFailureCode.notFound,
-        'update statement row',
+    try {
+      final count = await database.connection.update(
+        'statement_rows',
+        _row(row),
+        where: 'id = ?',
+        whereArgs: [row.id],
       );
+      if (count != 1) {
+        throw const RepositoryException(
+          RepositoryFailureCode.notFound,
+          'update statement row',
+        );
+      }
+    } on DatabaseException catch (error) {
+      throw mapDatabaseException(error, 'update statement row');
     }
   }
 
   @override
-  Future<void> removeStatement(String id) => database.connection.delete(
-    'financial_statements',
-    where: 'id = ?',
-    whereArgs: [id],
+  Future<void> removeStatement(String id) => _mapped(
+    'remove statement',
+    () => database.connection.delete(
+      'financial_statements',
+      where: 'id = ?',
+      whereArgs: [id],
+    ),
   );
 
   @override
   Future<void> saveRowTransaction(StatementRow row, Transaction transaction) =>
-      database.transaction((tx) async {
-        await SqliteTransactionRepository.saveWithExecutor(tx, transaction);
-        final count = await tx.update(
-          'statement_rows',
-          _row(row),
-          where: 'id = ? AND status NOT IN (?, ?)',
-          whereArgs: [
-            row.id,
-            StatementRowStatus.saved.name,
-            StatementRowStatus.linked.name,
-          ],
-        );
-        if (count != 1) {
-          throw const RepositoryException(
-            RepositoryFailureCode.constraint,
-            'complete statement row once',
+      _mapped(
+        'save statement row transaction',
+        () => database.transaction((tx) async {
+          await SqliteTransactionRepository.saveWithExecutor(tx, transaction);
+          final count = await tx.update(
+            'statement_rows',
+            _row(row),
+            where: 'id = ? AND status NOT IN (?, ?)',
+            whereArgs: [
+              row.id,
+              StatementRowStatus.saved.name,
+              StatementRowStatus.linked.name,
+            ],
           );
-        }
-      });
+          if (count != 1) {
+            throw const RepositoryException(
+              RepositoryFailureCode.constraint,
+              'complete statement row once',
+            );
+          }
+        }),
+      );
 
   @override
   Future<void> linkRow(StatementRow row) async {
-    final count = await database.connection.update(
-      'statement_rows',
-      _row(row),
-      where: 'id = ? AND status NOT IN (?, ?)',
-      whereArgs: [
-        row.id,
-        StatementRowStatus.saved.name,
-        StatementRowStatus.linked.name,
-      ],
-    );
-    if (count != 1) {
-      throw const RepositoryException(
-        RepositoryFailureCode.constraint,
-        'link statement row once',
+    try {
+      final count = await database.connection.update(
+        'statement_rows',
+        _row(row),
+        where: 'id = ? AND status NOT IN (?, ?)',
+        whereArgs: [
+          row.id,
+          StatementRowStatus.saved.name,
+          StatementRowStatus.linked.name,
+        ],
       );
+      if (count != 1) {
+        throw const RepositoryException(
+          RepositoryFailureCode.constraint,
+          'link statement row once',
+        );
+      }
+    } on DatabaseException catch (error) {
+      throw mapDatabaseException(error, 'link statement row');
     }
   }
 
@@ -221,4 +250,12 @@ final class SqliteStatementRepository
       value?.toIso8601String().substring(0, 10);
   static DateTime? _parseDate(Object? value) =>
       value == null ? null : DateTime.parse(value as String);
+
+  Future<T> _mapped<T>(String operation, Future<T> Function() action) async {
+    try {
+      return await action();
+    } on DatabaseException catch (error) {
+      throw mapDatabaseException(error, operation);
+    }
+  }
 }
