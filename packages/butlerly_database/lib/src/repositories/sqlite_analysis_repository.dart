@@ -238,8 +238,9 @@ final class SqliteAnalysisFindingRepository
       whereArgs: lifecycle == null ? null : [lifecycle.name],
       orderBy: 'generated_at DESC, id',
     );
-    final definitions = await SqliteAnalysisRuleRepository(database)
-        .listDefinitions();
+    final definitions = await SqliteAnalysisRuleRepository(
+      database,
+    ).listDefinitions();
     final byKey = {
       for (final value in definitions)
         '${value.identity.value}:${value.version.value}': value,
