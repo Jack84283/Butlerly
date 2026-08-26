@@ -1,9 +1,8 @@
 # IMP-0007 — Rule-Based Analysis Engine & Insights
 
 **Version:** 1.0  
-**Source status:** Ready for implementation planning  
-**Snapshot status:** Fixed repository task input; not Codex-ready until governing Draft analysis documents are approved  
-**Source revision:** `AIroW34VvHRA9AywDFcaIUvG_cy8_WnUDT_bY7drkwneAh07xUCW4AJqXsqglJ-yOvZ4Sc3P-whbMAe_4LZcv9rhGh8FPDxfrHS-fkmC6w4`  
+**Source status:** Approved for V1 implementation  
+**Snapshot status:** Approved fixed repository task input  
 **Authority:** PRD-0003, PRD-0004, ANL-0001 through ANL-0004, ARC-0405
 
 ## 1. Objective
@@ -139,4 +138,4 @@ Implementation is not complete until bundled YAML rules seed idempotently into S
 
 ## Snapshot governance note
 
-This file is a fixed implementation snapshot copied from the editable Google Drive source. Under `AGENTS.md`, Codex implementation must not begin while governing inputs remain Draft/Proposed/Superseded/Pending Decision. At snapshot time, ANL-0001 and ANL-0002 are still marked **Draft for V1 implementation**, so an implementation issue referencing this snapshot must remain blocked until those statuses are formally accepted or the governing source set is otherwise resolved.
+This file is an approved fixed implementation snapshot copied from the editable Google Drive source. The governing Analysis source set was explicitly approved for V1 implementation on 2026-08-25. Codex may implement this snapshot subject to `AGENTS.md` and the linked implementation issue.
