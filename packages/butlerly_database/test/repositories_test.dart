@@ -21,6 +21,63 @@ void main() {
 
   tearDown(() => database.close());
 
+  test('recalculation preserves acknowledged and dismissed findings', () async {
+    final repository = SqliteAnalysisFindingRepository(database);
+    final rule = AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R099'),
+      version: RuleVersion('1.0.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.insight,
+      nameKey: 'test.name',
+      descriptionKey: 'test.description',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
+      grouping: RuleGrouping.none,
+      baseline: RuleBaseline.none,
+      condition: const RuleCondition(operator: 'none'),
+      severity: RuleSeverity.info,
+      definitionHash: RuleDefinitionHash('b' * 64),
+    );
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-08-01',
+        endDate: '2026-08-31',
+        timeZoneId: 'UTC',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.original,
+    );
+    AnalysisFinding finding(String id) => AnalysisFinding(
+      id: id,
+      rule: rule,
+      context: context,
+      severity: RuleSeverity.info,
+      lifecycle: FindingLifecycle.active,
+      generatedAt: now,
+    );
+
+    for (final lifecycle in [
+      FindingLifecycle.acknowledged,
+      FindingLifecycle.dismissed,
+    ]) {
+      final value = finding('finding-${lifecycle.name}');
+      await repository.save(value);
+      await repository.updateLifecycle(value.id, lifecycle, now);
+      await repository.save(value);
+    }
+
+    final rows = await database.connection.query(
+      'analysis_findings',
+      orderBy: 'id',
+    );
+    expect(rows.map((row) => row['lifecycle']), [
+      FindingLifecycle.acknowledged.name,
+      FindingLifecycle.dismissed.name,
+    ]);
+  });
+
   test(
     'persists master-data lifecycle fields without changing stable IDs',
     () async {

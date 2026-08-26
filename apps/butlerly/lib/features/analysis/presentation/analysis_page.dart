@@ -139,7 +139,7 @@ class _AnalysisResults extends StatelessWidget {
         else
           ...metrics.map((result) => _MetricCard(metric: result.metric!)),
         ButlerlySectionHeader(title: context.l10n.text('insights')),
-        if (findings.isEmpty)
+        if (findings.isEmpty && failures.isEmpty)
           ButlerlyCard(
             child: ListTile(
               leading: Icon(
@@ -150,8 +150,14 @@ class _AnalysisResults extends StatelessWidget {
               subtitle: Text(context.l10n.text('allClearBody')),
             ),
           )
-        else
+        else if (findings.isNotEmpty)
           ...findings.map((result) => _FindingCard(finding: result.finding!)),
+        if (findings.isEmpty && failures.isNotEmpty)
+          ButlerlyEmptyState(
+            icon: Icons.error_outline,
+            title: context.l10n.text('insightsUnavailable'),
+            message: context.l10n.text('insightsUnavailableBody'),
+          ),
         if (limitations.isNotEmpty || failures.isNotEmpty) ...[
           ButlerlySectionHeader(title: context.l10n.text('dataQuality')),
           ButlerlyCard(

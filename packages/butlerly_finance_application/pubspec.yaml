@@ -10,6 +10,7 @@ dependencies:
   butlerly_finance_domain:
     path: ../butlerly_finance_domain
   crypto: ^3.0.6
+  timezone: ^0.10.1
   yaml: ^3.1.3
 
 dev_dependencies:

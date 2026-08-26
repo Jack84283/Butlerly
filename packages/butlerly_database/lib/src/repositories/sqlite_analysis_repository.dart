@@ -179,7 +179,7 @@ final class SqliteAnalysisFindingRepository
 
   @override
   Future<void> save(AnalysisFinding finding) async {
-    await database.connection.insert('analysis_findings', {
+    final values = {
       'id': finding.id,
       'rule_id': finding.rule.identity.value,
       'rule_version': finding.rule.version.value,
@@ -194,7 +194,40 @@ final class SqliteAnalysisFindingRepository
       'lifecycle': finding.lifecycle.name,
       'generated_at': finding.generatedAt.toUtc().toIso8601String(),
       'updated_at': DateTime.now().toUtc().toIso8601String(),
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    };
+    // Recalculation may update the derived payload, but viewing Analysis must
+    // never reactivate a finding that the user acknowledged or dismissed.
+    await database.connection.rawInsert(
+      '''
+      INSERT INTO analysis_findings
+        (id, rule_id, rule_version, definition_hash, period_start, period_end,
+         time_zone_id, payload, lifecycle, generated_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        rule_id = excluded.rule_id,
+        rule_version = excluded.rule_version,
+        definition_hash = excluded.definition_hash,
+        period_start = excluded.period_start,
+        period_end = excluded.period_end,
+        time_zone_id = excluded.time_zone_id,
+        payload = excluded.payload,
+        generated_at = excluded.generated_at,
+        updated_at = excluded.updated_at
+      ''',
+      [
+        values['id'],
+        values['rule_id'],
+        values['rule_version'],
+        values['definition_hash'],
+        values['period_start'],
+        values['period_end'],
+        values['time_zone_id'],
+        values['payload'],
+        values['lifecycle'],
+        values['generated_at'],
+        values['updated_at'],
+      ],
+    );
   }
 
   @override
@@ -205,9 +238,8 @@ final class SqliteAnalysisFindingRepository
       whereArgs: lifecycle == null ? null : [lifecycle.name],
       orderBy: 'generated_at DESC, id',
     );
-    final definitions = await SqliteAnalysisRuleRepository(
-      database,
-    ).listDefinitions();
+    final definitions = await SqliteAnalysisRuleRepository(database)
+        .listDefinitions();
     final byKey = {
       for (final value in definitions)
         '${value.identity.value}:${value.version.value}': value,

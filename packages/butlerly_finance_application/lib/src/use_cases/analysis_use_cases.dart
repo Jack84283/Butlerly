@@ -1,4 +1,6 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
+import 'package:timezone/data/latest.dart' as time_zone_data;
+import 'package:timezone/timezone.dart' as time_zone;
 
 import '../result/application_result.dart';
 import '../dto/transaction_dto.dart';
@@ -20,8 +22,10 @@ final class CalculateAnalysisOverview {
   /// Resolves the default month in the application layer so presentation never
   /// invents financial windows or timezone policy.
   Future<ApplicationResult<List<RuleExecutionResult>>> currentMonth(
-    DateTime financialDate,
+    DateTime instant,
   ) async {
+    final timeZoneId = await datasetBuilder.timeZoneId();
+    final financialDate = financialDateAt(instant, timeZoneId);
     final first = DateTime.utc(financialDate.year, financialDate.month, 1);
     final last = DateTime.utc(financialDate.year, financialDate.month + 1, 0);
     return call(
@@ -29,7 +33,7 @@ final class CalculateAnalysisOverview {
         period: AnalysisPeriod(
           startDate: _date(first),
           endDate: _date(last),
-          timeZoneId: await datasetBuilder.timeZoneId(),
+          timeZoneId: timeZoneId,
         ),
         datasetMode: DatasetMode.allEligible,
         currencyBasis: CurrencyBasis.original,
@@ -60,6 +64,17 @@ final class CalculateAnalysisOverview {
     }
     return results;
   });
+}
+
+/// Converts an instant to the calendar date in the persisted financial zone.
+/// The returned value is used only for its calendar components.
+DateTime financialDateAt(DateTime instant, String timeZoneId) {
+  time_zone_data.initializeTimeZones();
+  final value = time_zone.TZDateTime.from(
+    instant.toUtc(),
+    time_zone.getLocation(timeZoneId),
+  );
+  return DateTime.utc(value.year, value.month, value.day);
 }
 
 final class QueryTransactionsForFinancialDate {
