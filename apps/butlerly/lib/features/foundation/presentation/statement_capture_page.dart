@@ -1,7 +1,9 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
+import 'package:butlerly/core/evidence/local_statement_ocr_support.dart';
 import 'package:butlerly/core/evidence/statement_extractor.dart';
+import 'package:butlerly/core/evidence/statement_source_matcher.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:file_selector/file_selector.dart';
@@ -66,7 +68,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     StatementExtraction? extraction;
     try {
       final localFile = await store.fileForPreserved(preserved);
-      if (localFile != null) {
+      if (localFile != null && supportsLocalStatementOcr()) {
         extraction = await const LocalStatementExtractor().extract(
           localFile.path,
         );
@@ -82,6 +84,13 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     }
     final now = DateTime.now().toUtc();
     final id = 'statement-${now.microsecondsSinceEpoch}';
+    final matchedSource = extraction == null
+        ? null
+        : confidentlyMatchStatementSource(
+            maskedAccountIdentifier: extraction.maskedAccountIdentifier,
+            institution: extraction.institution,
+            sources: _sources,
+          );
     final rows = extraction == null
         ? <StatementRow>[]
         : _extractedRows(id, extraction.rows, now);
@@ -89,11 +98,18 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
       FinancialStatement(
         id: id,
         evidenceId: evidence.id.value,
-        status: StatementStatus.needsSource,
+        paymentSourceId: matchedSource?.id.value,
+        status: matchedSource == null
+            ? StatementStatus.needsSource
+            : StatementStatus.ready,
+        institution: extraction?.institution,
+        maskedAccountIdentifier: extraction?.maskedAccountIdentifier,
         createdAt: now,
         updatedAt: now,
         extractionMessage: rows.isEmpty
-            ? 'No supported rows were found. Add rows manually.'
+            ? supportsLocalStatementOcr()
+                  ? 'No supported rows were found. Add rows manually.'
+                  : 'Automatic text recognition is not available on this platform. Add rows manually.'
             : null,
       ),
       rows,
@@ -226,11 +242,121 @@ class _StatementReviewPage extends StatefulWidget {
 class _StatementReviewPageState extends State<_StatementReviewPage> {
   String? _sourceId;
   late List<StatementRow> _rows;
+  late List<PaymentSource> _sources;
   @override
   void initState() {
     super.initState();
     _sourceId = widget.statement.paymentSourceId;
     _rows = [...widget.rows];
+    _sources = [...widget.sources];
+  }
+
+  Future<void> _createSource() async {
+    final name = TextEditingController(text: widget.statement.institution);
+    final lastFour = TextEditingController(
+      text: RegExp(
+        r'(\d{4})$',
+      ).firstMatch(widget.statement.maskedAccountIdentifier ?? '')?.group(1),
+    );
+    var type = PaymentSourceType.account;
+    final create = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Create payment source'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: name,
+                  decoration: const InputDecoration(labelText: 'Name'),
+                ),
+                DropdownButtonFormField<PaymentSourceType>(
+                  initialValue: type,
+                  decoration: const InputDecoration(labelText: 'Type'),
+                  items: PaymentSourceType.values
+                      .map(
+                        (value) => DropdownMenuItem(
+                          value: value,
+                          child: Text(value.name),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) =>
+                      setDialogState(() => type = value ?? type),
+                ),
+                TextField(
+                  controller: lastFour,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Last four digits (optional)',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Create and use'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (create != true || name.text.trim().isEmpty) {
+      name.dispose();
+      lastFour.dispose();
+      return;
+    }
+    final digits = lastFour.text.trim();
+    if (digits.isNotEmpty && !RegExp(r'^\d{4}$').hasMatch(digits)) {
+      _message('Enter exactly four digits, or leave the field empty.');
+      name.dispose();
+      lastFour.dispose();
+      return;
+    }
+    final source = PaymentSource(
+      id: PaymentSourceId('source-${DateTime.now().microsecondsSinceEpoch}'),
+      name: name.text.trim(),
+      type: type,
+      displayIdentity: name.text.trim(),
+      lastFour: digits.isEmpty ? null : digits,
+      issuer: widget.statement.institution,
+    );
+    name.dispose();
+    lastFour.dispose();
+    final saved = await services<FinanceServices>().savePaymentSource(source);
+    if (saved is! ApplicationSuccess<PaymentSource>) {
+      _message('The payment source could not be created.');
+      return;
+    }
+    final assigned = await widget.service.assignSource(
+      widget.statement.id,
+      source.id.value,
+    );
+    if (!mounted) return;
+    setState(() => _sources.add(source));
+    if (assigned is ApplicationSuccess<void>) {
+      setState(() {
+        _sourceId = source.id.value;
+      });
+    } else {
+      _message(
+        'The source was created, but could not be linked. Select it to retry.',
+      );
+    }
+  }
+
+  void _message(String text) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+    }
   }
 
   Future<void> _addRows() async {
@@ -270,19 +396,22 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
       String? amount;
       String? direction;
       try {
-        final signed = DecimalValue.parse(parts[2]);
+        final amountText = parts[2].trim();
+        final signed = DecimalValue.parse(amountText);
         amount = DecimalValue.fromParts(
           coefficient: signed.coefficient.abs(),
           scale: signed.scale,
         ).toString();
-        direction = signed.coefficient.isNegative
+        direction = amountText.startsWith('-')
             ? TransactionDirection.expense.name
-            : TransactionDirection.income.name;
+            : amountText.startsWith('+')
+            ? TransactionDirection.income.name
+            : null;
       } on DomainValidationException {
         /* Keep the row unresolved. */
       }
       final position = _rows.length + rows.length;
-      final date = DateTime.tryParse(parts[0]);
+      final date = LocalStatementExtractor.parseDate(parts[0]);
       final currency = RegExp(r'^[A-Za-z]{3}$').hasMatch(parts[3])
           ? parts[3].toUpperCase()
           : null;
@@ -298,7 +427,11 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
           currency: currency,
           direction: direction,
           sourceContext: 'User correction after local extraction',
-          status: date != null && amount != null && currency != null
+          status:
+              date != null &&
+                  amount != null &&
+                  currency != null &&
+                  direction != null
               ? StatementRowStatus.pending
               : StatementRowStatus.unresolved,
           createdAt: now,
@@ -325,7 +458,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
     final description = TextEditingController(text: row.description);
     final amount = TextEditingController(text: row.amount);
     final currency = TextEditingController(text: row.currency);
-    var direction = row.direction ?? TransactionDirection.expense.name;
+    var direction = row.direction;
     final accepted = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -356,6 +489,9 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                 ),
                 DropdownButtonFormField<String>(
                   initialValue: direction,
+                  decoration: const InputDecoration(
+                    labelText: 'Direction (required)',
+                  ),
                   items: TransactionDirection.values
                       .map(
                         (v) => DropdownMenuItem(
@@ -364,7 +500,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                         ),
                       )
                       .toList(),
-                  onChanged: (v) => setDialogState(() => direction = v!),
+                  onChanged: (v) => setDialogState(() => direction = v),
                 ),
               ],
             ),
@@ -375,7 +511,9 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
               child: const Text('Cancel'),
             ),
             FilledButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: direction == null
+                  ? null
+                  : () => Navigator.pop(context, true),
               child: const Text('Save corrections'),
             ),
           ],
@@ -385,28 +523,41 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
     if (accepted != true) return;
     String? normalizedAmount;
     try {
-      normalizedAmount = DecimalValue.parse(amount.text.trim()).toString();
+      final parsedAmount = DecimalValue.parse(amount.text.trim());
+      normalizedAmount = DecimalValue.fromParts(
+        coefficient: parsedAmount.coefficient.abs(),
+        scale: parsedAmount.scale,
+      ).toString();
     } on DomainValidationException {
       normalizedAmount = null;
     }
+    final correctedDate = LocalStatementExtractor.parseDate(date.text.trim());
+    final correctedCurrency =
+        RegExp(r'^[A-Za-z]{3}$').hasMatch(currency.text.trim())
+        ? currency.text.trim().toUpperCase()
+        : null;
     final corrected = StatementRow(
       id: row.id,
       statementId: row.statementId,
       position: row.position,
       originalText: row.originalText,
-      transactionDate: DateTime.tryParse(date.text.trim()),
+      transactionDate: correctedDate,
       postingDate: row.postingDate,
       description: description.text.trim(),
       amount: normalizedAmount,
-      currency: RegExp(r'^[A-Za-z]{3}$').hasMatch(currency.text.trim())
-          ? currency.text.trim().toUpperCase()
-          : null,
+      currency: correctedCurrency,
       direction: direction,
       kind: row.kind,
       confidence: row.confidence,
       sourceContext:
           '${row.sourceContext ?? 'Local extraction'}; user corrected',
-      status: StatementRowStatus.pending,
+      status:
+          correctedDate != null &&
+              normalizedAmount != null &&
+              correctedCurrency != null &&
+              direction != null
+          ? StatementRowStatus.pending
+          : StatementRowStatus.unresolved,
       createdAt: row.createdAt,
       updatedAt: DateTime.now().toUtc(),
     );
@@ -480,7 +631,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
           decoration: const InputDecoration(
             labelText: 'Payment source (required)',
           ),
-          items: widget.sources
+          items: _sources
               .where(
                 (s) =>
                     s.status == PaymentSourceStatus.active ||
@@ -504,6 +655,14 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
             setState(() => _sourceId = value);
           },
         ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: _createSource,
+            icon: const Icon(Icons.add_card_outlined),
+            label: const Text('Create new payment source'),
+          ),
+        ),
         const SizedBox(height: 16),
         if (_rows.isEmpty)
           Column(
@@ -517,6 +676,15 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                 label: const Text('Add or correct rows'),
               ),
             ],
+          ),
+        if (_rows.isNotEmpty)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: _addRows,
+              icon: const Icon(Icons.add),
+              label: const Text('Add missing row'),
+            ),
           ),
         for (final row in _rows)
           Card(
@@ -535,6 +703,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                           'Date needs review',
                       row.currency ?? 'Currency needs review',
                       row.amount ?? 'Amount needs review',
+                      row.direction ?? 'Direction needs review',
                       row.status.name,
                     ].join(' · '),
                   ),
@@ -553,7 +722,8 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                               _sourceId != null &&
                                   row.transactionDate != null &&
                                   row.amount != null &&
-                                  row.currency != null
+                                  row.currency != null &&
+                                  row.direction != null
                               ? () => _act(row, StatementRowStatus.saved)
                               : null,
                           child: const Text('Save'),
