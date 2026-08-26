@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:butlerly_database/butlerly_database.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' hide Transaction;
 import 'package:test/test.dart';
@@ -77,6 +80,106 @@ void main() {
       FindingLifecycle.dismissed.name,
     ]);
   });
+
+  test(
+    'round-trips the bundled multi-measure R016 definition through SQLite',
+    () async {
+      final source = File(
+        '../../apps/butlerly/assets/analysis_rules/metrics/ANL-R016.yaml',
+      ).readAsStringSync();
+      final parsed = const RestrictedRuleParser().parse(source);
+      expect(parsed.diagnostics, isEmpty);
+      final validated = const RuleDefinitionValidator().validate(
+        parsed.document!,
+      );
+      expect(validated.diagnostics, isEmpty);
+      final definition = validated.definition!;
+      final repository = SqliteAnalysisRuleRepository(database);
+      await repository.install(
+        definition,
+        sourceType: 'bundled',
+        canonicalDefinition: canonicalize(parsed.document!.values),
+      );
+      await repository.activate(
+        definition.identity,
+        definition.version,
+        true,
+        now,
+      );
+
+      final reloaded = (await repository.listActive()).single;
+      expect(reloaded.identity.value, 'ANL-R016');
+      expect(reloaded.measures, hasLength(3));
+      expect(reloaded.measure, reloaded.measures.first);
+      expect(
+        reloaded.measures[1].filters.single.kind,
+        AnalysisFilterKind.direction,
+      );
+    },
+  );
+
+  test(
+    'rule upgrades preserve historical versions and activate the new surface',
+    () async {
+      final repository = SqliteAnalysisRuleRepository(database);
+      AnalysisRuleDefinition definition(
+        String version,
+        String hash,
+        AnalysisSurface surface,
+      ) => AnalysisRuleDefinition(
+        identity: RuleIdentity('ANL-R010'),
+        version: RuleVersion(version),
+        schemaVersion: '1.0.0',
+        type: AnalysisRuleType.metric,
+        nameKey: 'analysis.rule.r010.name',
+        descriptionKey: 'analysis.rule.r010.description',
+        enabled: true,
+        status: AnalysisRuleStatus.active,
+        period: 'selected_period',
+        measure: const RuleMeasure(
+          operation: RuleOperation.sum,
+          field: 'amount',
+        ),
+        grouping: RuleGrouping.category,
+        baseline: RuleBaseline.none,
+        condition: const RuleCondition(operator: 'none'),
+        severity: RuleSeverity.info,
+        surface: surface,
+        definitionHash: RuleDefinitionHash(hash * 64),
+      );
+      const oldJson =
+          '{"descriptionKey":"analysis.rule.r010.description","enabled":true,"grouping":"category","measure":{"field":"amount","operation":"sum"},"nameKey":"analysis.rule.r010.name","period":"selected_period","ruleId":"ANL-R010","ruleVersion":"1.0.0","schemaVersion":"1.0.0","type":"metric"}';
+      const newJson =
+          '{"descriptionKey":"analysis.rule.r010.description","enabled":true,"grouping":"category","measure":{"field":"amount","operation":"sum"},"nameKey":"analysis.rule.r010.name","period":"selected_period","ruleId":"ANL-R010","ruleVersion":"1.1.0","schemaVersion":"1.0.0","surface":"spending","type":"metric"}';
+      await repository.install(
+        definition('1.0.0', 'a', AnalysisSurface.overview),
+        sourceType: 'bundled',
+        canonicalDefinition: oldJson,
+      );
+      await repository.activate(
+        RuleIdentity('ANL-R010'),
+        RuleVersion('1.0.0'),
+        true,
+        now,
+      );
+      await repository.install(
+        definition('1.1.0', 'b', AnalysisSurface.spending),
+        sourceType: 'bundled',
+        canonicalDefinition: newJson,
+      );
+      await repository.activate(
+        RuleIdentity('ANL-R010'),
+        RuleVersion('1.1.0'),
+        true,
+        now,
+      );
+
+      expect(await repository.listDefinitions(), hasLength(2));
+      final active = (await repository.listActive()).single;
+      expect(active.version.value, '1.1.0');
+      expect(active.surface, AnalysisSurface.spending);
+    },
+  );
 
   test(
     'persists master-data lifecycle fields without changing stable IDs',

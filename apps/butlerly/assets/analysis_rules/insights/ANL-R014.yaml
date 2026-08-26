@@ -1,7 +1,8 @@
 schemaVersion: "1.0.0"
 ruleId: ANL-R014
-ruleVersion: "1.0.0"
+ruleVersion: "1.1.0"
 enabled: true
+surface: trends
 type: insight
 nameKey: analysis.rule.r014.name
 descriptionKey: analysis.rule.r014.description

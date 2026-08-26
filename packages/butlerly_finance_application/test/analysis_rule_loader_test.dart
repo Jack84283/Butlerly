@@ -1,9 +1,13 @@
 import 'dart:io';
 
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
+import 'package:butlerly_database/butlerly_database.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:test/test.dart';
 
 void main() {
+  setUpAll(sqfliteFfiInit);
   const parser = RestrictedRuleParser();
   const validator = RuleDefinitionValidator();
 
@@ -97,12 +101,65 @@ measure:
           ..sort((a, b) => a.path.compareTo(b.path));
     expect(files, hasLength(11));
     final ids = <String>{};
+    final definitions = <String, dynamic>{};
     for (final file in files) {
       final parsed = parser.parse(file.readAsStringSync());
       expect(parsed.isValid, isTrue, reason: file.path);
       final result = validator.validate(parsed.document!);
       expect(result.diagnostics, isEmpty, reason: file.path);
       expect(ids.add(result.definition!.identity.value), isTrue);
+      definitions[result.definition!.identity.value] = result.definition;
     }
+    expect(definitions['ANL-R010'].surface, AnalysisSurface.spending);
+    expect(definitions['ANL-R010'].filters.single.values, ['expense']);
+    expect(definitions['ANL-R016'].surface, AnalysisSurface.calendar);
+    expect(definitions['ANL-R016'].measures, hasLength(3));
+    expect(
+      definitions['ANL-R016'].measures.first.operation,
+      RuleOperation.count,
+    );
+    expect(definitions['ANL-R020'].enabled, isTrue);
+    expect(definitions['ANL-R020'].surface, AnalysisSurface.insights);
+    expect(definitions['ANL-R090'].surface, AnalysisSurface.dataQuality);
+  });
+
+  test('bundled R016 installs and reloads through SQLite', () async {
+    final source = File(
+      '${Directory.current.path}/../../apps/butlerly/assets/analysis_rules/metrics/ANL-R016.yaml',
+    ).readAsStringSync();
+    final parsed = parser.parse(source);
+    final validated = validator.validate(parsed.document!);
+    final database = ButlerlyDatabase(
+      factory: databaseFactoryFfi,
+      path: inMemoryDatabasePath,
+    );
+    await database.open();
+    addTearDown(database.close);
+    final repository = SqliteAnalysisRuleRepository(database);
+    final definition = validated.definition!;
+    await repository.install(
+      definition,
+      sourceType: 'bundled',
+      canonicalDefinition: canonicalize(parsed.document!.values),
+    );
+    await repository.activate(
+      definition.identity,
+      definition.version,
+      true,
+      DateTime.utc(2026, 8, 26),
+    );
+
+    final restored = (await repository.listActive()).single;
+    expect(restored.identity.value, 'ANL-R016');
+    expect(restored.measure.key, 'transactionCount');
+    expect(restored.measures.map((measure) => measure.key), [
+      'transactionCount',
+      'expenseTotal',
+      'incomeTotal',
+    ]);
+    expect(
+      restored.measures[1].filters.single.kind,
+      AnalysisFilterKind.direction,
+    );
   });
 }

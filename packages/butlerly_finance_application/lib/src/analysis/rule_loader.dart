@@ -134,6 +134,8 @@ final class RuleDefinitionValidator {
       'severity',
       'dependencies',
       'filters',
+      'surface',
+      'measures',
     };
     for (final key in values.keys) {
       if (!supported.contains(key)) {
@@ -169,7 +171,8 @@ final class RuleDefinitionValidator {
     final period = read<String>('period');
     final enabled = read<bool>('enabled');
     final measure = values['measure'];
-    if (measure is! Map) {
+    final measures = values['measures'];
+    if (measure is! Map && measures is! List) {
       diagnostics.add(
         const RuleDiagnostic(
           code: 'required',
@@ -239,11 +242,12 @@ final class RuleDefinitionValidator {
     }
     AnalysisRuleDefinition? definition;
     try {
-      final operation = (measure as Map?)?['operation'] as String?;
-      final field = (measure)?['field'] as String?;
-      if (operation == null || field == null) {
-        throw const FormatException('Measure requires operation and field.');
-      }
+      final rawMeasures = measures is List
+          ? measures.cast<Map<Object?, Object?>>()
+          : <Map<Object?, Object?>>[measure as Map<Object?, Object?>];
+      final parsedMeasures = rawMeasures.map(_measure).toList(growable: false);
+      final operation = parsedMeasures.first.operation.name;
+      final field = parsedMeasures.first.field;
       final operationValue = RuleOperation.values.byName(operation);
       final groupingValue = RuleGrouping.values.byName(
         values['grouping'] as String? ?? 'none',
@@ -306,12 +310,10 @@ final class RuleDefinitionValidator {
         enabled: enabled ?? false,
         status: AnalysisRuleStatus.active,
         period: period ?? 'currentPeriod',
-        measure: RuleMeasure(
-          operation: RuleOperation.values.byName(operation),
-          field: field,
-          currencyBasis: CurrencyBasis.values.byName(
-            (measure as Map)['currencyBasis'] as String? ?? 'original',
-          ),
+        measure: parsedMeasures.first,
+        measures: parsedMeasures,
+        surface: AnalysisSurface.values.byName(
+          values['surface'] as String? ?? 'overview',
         ),
         grouping: grouping,
         baseline: baseline,
@@ -331,6 +333,39 @@ final class RuleDefinitionValidator {
       diagnostics: diagnostics,
     );
   }
+}
+
+RuleMeasure _measure(Map<Object?, Object?> raw) {
+  final operation = RuleOperation.values.byName(raw['operation'] as String);
+  final field = raw['field'] as String;
+  if (operation == RuleOperation.sum && field != 'amount') {
+    throw const FormatException('Only amount can be summed.');
+  }
+  final filters = <AnalysisFilter>[];
+  final rawFilters = raw['filters'];
+  if (rawFilters is Map) {
+    for (final entry in rawFilters.entries) {
+      filters.add(
+        AnalysisFilter(
+          kind: AnalysisFilterKind.values.byName(entry.key.toString()),
+          values: entry.value is List
+              ? (entry.value as List)
+                    .map((value) => value.toString())
+                    .toList(growable: false)
+              : [entry.value.toString()],
+        ),
+      );
+    }
+  }
+  return RuleMeasure(
+    operation: operation,
+    field: field,
+    key: raw['key']?.toString() ?? 'value',
+    currencyBasis: CurrencyBasis.values.byName(
+      raw['currencyBasis'] as String? ?? 'original',
+    ),
+    filters: filters,
+  );
 }
 
 RuleCondition _condition(Object? raw) {

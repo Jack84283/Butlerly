@@ -19,6 +19,9 @@ final class AnalysisDatasetBuilder {
     return preference?.timeZoneId ?? 'UTC';
   }
 
+  Future<CurrencyCode?> baseCurrency() async =>
+      (await preferences.load())?.baseCurrency;
+
   Future<ApplicationDatasetResult> build(AnalysisContext context) async {
     final preference = await preferences.load();
     if (preference == null) {

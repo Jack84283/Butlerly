@@ -212,6 +212,293 @@ void main() {
       isNotNull,
     );
   });
+
+  test('count measures are dimensionless and retain drill-down evidence', () {
+    final count = rule('ANL-R004', RuleOperation.count);
+    final metric = const AnalysisRuleEngine()
+        .execute(dataset: dataset(), definitions: [count])
+        .single
+        .metric!;
+    expect(metric.value, DecimalValue.parse('2'));
+    expect(metric.currency, isNull);
+    expect(metric.evidence.map((value) => value.transactionId.value), [
+      't1',
+      't2',
+    ]);
+  });
+
+  test('base-currency measures use original same-currency money', () {
+    final usd = CurrencyCode('USD');
+    final baseContext = AnalysisContext(
+      period: context.period,
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+      baseCurrency: usd,
+    );
+    final definition = AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R016'),
+      version: RuleVersion('1.1.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.metric,
+      nameKey: 'daily',
+      descriptionKey: 'daily.description',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_month',
+      measure: const RuleMeasure(
+        operation: RuleOperation.sum,
+        field: 'amount',
+        currencyBasis: CurrencyBasis.baseCurrency,
+      ),
+      grouping: RuleGrouping.none,
+      baseline: RuleBaseline.none,
+      condition: const RuleCondition(operator: 'none'),
+      severity: RuleSeverity.info,
+      definitionHash: RuleDefinitionHash('2' * 64),
+    );
+    final metric = const AnalysisRuleEngine()
+        .execute(
+          dataset: AnalysisDataset(
+            context: baseContext,
+            transactions: dataset().transactions,
+          ),
+          definitions: [definition],
+        )
+        .single
+        .metric!;
+    expect(metric.value, DecimalValue.parse('35'));
+    expect(metric.currency, usd);
+    expect(metric.transactionCount, 2);
+  });
+
+  test('measure filters apply every supported filter kind', () {
+    final transaction = AnalysisEconomicTransaction(
+      id: TransactionId('filtered'),
+      money: Money(
+        amount: DecimalValue.parse('7'),
+        currency: CurrencyCode('USD'),
+      ),
+      direction: TransactionDirection.expense,
+      transactionDate: '2026-01-02',
+      categoryId: CategoryId('category'),
+      merchantId: MerchantId('merchant'),
+      paymentSourceId: PaymentSourceId('source'),
+      tagIds: [TagId('tag')],
+      verified: true,
+    );
+    for (final filter in <AnalysisFilter>[
+      const AnalysisFilter(
+        kind: AnalysisFilterKind.direction,
+        values: ['income'],
+      ),
+      const AnalysisFilter(kind: AnalysisFilterKind.currency, values: ['EUR']),
+      const AnalysisFilter(
+        kind: AnalysisFilterKind.category,
+        values: ['other'],
+      ),
+      const AnalysisFilter(
+        kind: AnalysisFilterKind.merchant,
+        values: ['other'],
+      ),
+      const AnalysisFilter(
+        kind: AnalysisFilterKind.paymentSource,
+        values: ['other'],
+      ),
+      const AnalysisFilter(kind: AnalysisFilterKind.tag, values: ['other']),
+      const AnalysisFilter(
+        kind: AnalysisFilterKind.reviewState,
+        values: ['needsReview'],
+      ),
+      const AnalysisFilter(
+        kind: AnalysisFilterKind.status,
+        values: ['archived'],
+      ),
+    ]) {
+      final definition = rule('ANL-R001', RuleOperation.count);
+      final filteredDefinition = AnalysisRuleDefinition(
+        identity: definition.identity,
+        version: definition.version,
+        schemaVersion: definition.schemaVersion,
+        type: definition.type,
+        nameKey: definition.nameKey,
+        descriptionKey: definition.descriptionKey,
+        enabled: definition.enabled,
+        status: definition.status,
+        period: definition.period,
+        measure: RuleMeasure(
+          operation: RuleOperation.count,
+          field: 'transaction',
+          filters: [filter],
+        ),
+        measures: [
+          RuleMeasure(
+            operation: RuleOperation.count,
+            field: 'transaction',
+            filters: [filter],
+          ),
+        ],
+        grouping: definition.grouping,
+        baseline: definition.baseline,
+        condition: definition.condition,
+        severity: definition.severity,
+        definitionHash: definition.definitionHash,
+      );
+      final metric = const AnalysisRuleEngine()
+          .execute(
+            dataset: AnalysisDataset(
+              context: context,
+              transactions: [transaction],
+            ),
+            definitions: [filteredDefinition],
+          )
+          .single
+          .metric!;
+      expect(metric.value, DecimalValue.parse('0'), reason: filter.kind.name);
+    }
+  });
+
+  test('each distinct-count measure uses its own declared field', () {
+    final definition = AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R016'),
+      version: RuleVersion('1.1.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.metric,
+      nameKey: 'distinct',
+      descriptionKey: 'distinct.description',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(
+        operation: RuleOperation.distinctCount,
+        field: 'transaction',
+        key: 'transactions',
+      ),
+      measures: const [
+        RuleMeasure(
+          operation: RuleOperation.distinctCount,
+          field: 'transaction',
+          key: 'transactions',
+        ),
+        RuleMeasure(
+          operation: RuleOperation.distinctCount,
+          field: 'category',
+          key: 'categories',
+        ),
+      ],
+      grouping: RuleGrouping.none,
+      baseline: RuleBaseline.none,
+      condition: const RuleCondition(operator: 'none'),
+      severity: RuleSeverity.info,
+      definitionHash: RuleDefinitionHash('3' * 64),
+    );
+    final results = const AnalysisRuleEngine().execute(
+      dataset: AnalysisDataset(
+        context: context,
+        transactions: [
+          for (var index = 0; index < 2; index++)
+            AnalysisEconomicTransaction(
+              id: TransactionId('distinct-$index'),
+              money: Money(
+                amount: DecimalValue.parse('1'),
+                currency: CurrencyCode('USD'),
+              ),
+              direction: TransactionDirection.expense,
+              transactionDate: '2026-01-02',
+              categoryId: CategoryId('shared-category'),
+            ),
+        ],
+      ),
+      definitions: [definition],
+    );
+    expect(results[0].metric!.value, DecimalValue.parse('2'));
+    expect(results[1].metric!.value, DecimalValue.parse('1'));
+  });
+
+  test(
+    'generic grouped multi-measures apply independent direction filters',
+    () {
+      final daily = AnalysisRuleDefinition(
+        identity: RuleIdentity('ANL-R016'),
+        version: RuleVersion('1.1.0'),
+        schemaVersion: '1.0.0',
+        type: AnalysisRuleType.metric,
+        nameKey: 'daily',
+        descriptionKey: 'daily.description',
+        enabled: true,
+        status: AnalysisRuleStatus.active,
+        period: 'selected_period',
+        measure: const RuleMeasure(
+          operation: RuleOperation.count,
+          field: 'transaction',
+        ),
+        measures: const [
+          RuleMeasure(
+            operation: RuleOperation.count,
+            field: 'transaction',
+            key: 'transactionCount',
+          ),
+          RuleMeasure(
+            operation: RuleOperation.sum,
+            field: 'amount',
+            key: 'expenseTotal',
+            filters: [
+              AnalysisFilter(
+                kind: AnalysisFilterKind.direction,
+                values: ['expense'],
+              ),
+            ],
+          ),
+          RuleMeasure(
+            operation: RuleOperation.sum,
+            field: 'amount',
+            key: 'incomeTotal',
+            filters: [
+              AnalysisFilter(
+                kind: AnalysisFilterKind.direction,
+                values: ['income'],
+              ),
+            ],
+          ),
+        ],
+        grouping: RuleGrouping.day,
+        baseline: RuleBaseline.none,
+        condition: const RuleCondition(operator: 'none'),
+        severity: RuleSeverity.info,
+        surface: AnalysisSurface.calendar,
+        definitionHash: RuleDefinitionHash('1' * 64),
+      );
+      final results = const AnalysisRuleEngine().execute(
+        dataset: AnalysisDataset(
+          context: context,
+          transactions: [
+            ...dataset().transactions,
+            AnalysisEconomicTransaction(
+              id: TransactionId('t3'),
+              money: Money(
+                amount: DecimalValue.parse('5'),
+                currency: CurrencyCode('USD'),
+              ),
+              direction: TransactionDirection.expense,
+              transactionDate: '2026-01-02',
+            ),
+          ],
+        ),
+        definitions: [daily],
+      );
+      expect(results, hasLength(6));
+      AnalysisMetric metric(String dimension) => results
+          .singleWhere((value) => value.metric!.dimension == dimension)
+          .metric!;
+      expect(
+        metric('2026-01-02:transactionCount').value,
+        DecimalValue.parse('2'),
+      );
+      expect(metric('2026-01-02:transactionCount').currency, isNull);
+      expect(metric('2026-01-02:expenseTotal').value, DecimalValue.parse('15'));
+      expect(metric('2026-01-03:incomeTotal').value, DecimalValue.parse('25'));
+      expect(metric('2026-01-02:incomeTotal').value, DecimalValue.parse('0'));
+    },
+  );
 }
 
 extension on AnalysisRuleDefinition {

@@ -74,41 +74,46 @@ final class AnalysisRuleEngine {
             )
             .toList(growable: false);
         for (final entry in _group(values, rule.grouping).entries) {
-          final metric = _metric(
-            rule,
-            dataset,
-            entry.value,
-            metrics,
-            entry.key,
-            calculatedAt ?? DateTime.now().toUtc(),
-          );
-          if (metric != null) {
-            metrics['${rule.identity.value}:${entry.key}'] = metric;
-            metrics[rule.identity.value] = metric;
+          for (final measure
+              in rule.measures.isEmpty ? [rule.measure] : rule.measures) {
+            final metric = _metric(
+              rule,
+              measure,
+              dataset,
+              entry.value,
+              metrics,
+              entry.key,
+              calculatedAt ?? DateTime.now().toUtc(),
+            );
+            if (metric != null) {
+              metrics['${rule.identity.value}:${entry.key}:${measure.key}'] =
+                  metric;
+              metrics[rule.identity.value] = metric;
+            }
+            final finding =
+                rule.type == AnalysisRuleType.insight &&
+                    metric != null &&
+                    _conditionMatches(rule.condition, metric.value)
+                ? _finding(
+                    rule,
+                    dataset,
+                    entry.key,
+                    metric,
+                    calculatedAt ?? DateTime.now().toUtc(),
+                  )
+                : null;
+            final result = RuleExecutionResult(
+              rule: rule,
+              metric:
+                  rule.type == AnalysisRuleType.metric ||
+                      rule.type == AnalysisRuleType.dataQuality
+                  ? metric
+                  : null,
+              finding: finding,
+            );
+            results.add(result);
+            resultById[rule.identity.value] = result;
           }
-          final finding =
-              rule.type == AnalysisRuleType.insight &&
-                  metric != null &&
-                  _conditionMatches(rule.condition, metric.value)
-              ? _finding(
-                  rule,
-                  dataset,
-                  entry.key,
-                  metric,
-                  calculatedAt ?? DateTime.now().toUtc(),
-                )
-              : null;
-          final result = RuleExecutionResult(
-            rule: rule,
-            metric:
-                rule.type == AnalysisRuleType.metric ||
-                    rule.type == AnalysisRuleType.dataQuality
-                ? metric
-                : null,
-            finding: finding,
-          );
-          results.add(result);
-          resultById[rule.identity.value] = result;
         }
       } on Object catch (error) {
         final result = RuleExecutionResult(
@@ -139,6 +144,7 @@ final class AnalysisRuleEngine {
         ? null
         : _metric(
             rule,
+            rule.measure,
             dataset,
             dataset.baselineTransactions
                 .where(
@@ -310,41 +316,7 @@ final class AnalysisRuleEngine {
     if (context.datasetMode == DatasetMode.verifiedOnly && !value.verified) {
       return false;
     }
-    for (final filter in rule.filters) {
-      if (filter.kind == AnalysisFilterKind.direction &&
-          !filter.values.contains(value.direction.name)) {
-        return false;
-      }
-      if (filter.kind == AnalysisFilterKind.currency &&
-          !filter.values.contains(value.money.currency.value)) {
-        return false;
-      }
-      if (filter.kind == AnalysisFilterKind.category &&
-          !filter.values.contains(value.categoryId?.value)) {
-        return false;
-      }
-      if (filter.kind == AnalysisFilterKind.merchant &&
-          !filter.values.contains(value.merchantId?.value)) {
-        return false;
-      }
-      if (filter.kind == AnalysisFilterKind.paymentSource &&
-          !filter.values.contains(value.paymentSourceId?.value)) {
-        return false;
-      }
-      if (filter.kind == AnalysisFilterKind.tag &&
-          !value.tagIds.any((tag) => filter.values.contains(tag.value))) {
-        return false;
-      }
-      if (filter.kind == AnalysisFilterKind.reviewState &&
-          !filter.values.contains(value.verified ? 'clear' : 'needsReview')) {
-        return false;
-      }
-      if (filter.kind == AnalysisFilterKind.status &&
-          !filter.values.contains(value.status.name)) {
-        return false;
-      }
-    }
-    return true;
+    return _matchesFilters(value, rule.filters);
   }
 
   bool _matchesQualityField(
@@ -359,6 +331,7 @@ final class AnalysisRuleEngine {
 
   AnalysisMetric? _metric(
     AnalysisRuleDefinition rule,
+    RuleMeasure measure,
     AnalysisDataset dataset,
     List<AnalysisEconomicTransaction> values,
     Map<String, AnalysisMetric> dependencies,
@@ -366,22 +339,24 @@ final class AnalysisRuleEngine {
     DateTime at,
   ) {
     final selected = values
+        .where((value) => _matchesFilters(value, measure.filters))
         .where(
-          (value) => rule.measure.currencyBasis == CurrencyBasis.baseCurrency
-              ? value.normalizedMoney != null
+          (value) => measure.currencyBasis == CurrencyBasis.baseCurrency
+              ? value.normalizedMoney != null ||
+                    value.money.currency == dataset.context.baseCurrency
               : true,
         )
         .toList(growable: false);
     final amountValues = selected
         .map(
-          (value) => rule.measure.currencyBasis == CurrencyBasis.baseCurrency
-              ? value.normalizedMoney!.amount
+          (value) => measure.currencyBasis == CurrencyBasis.baseCurrency
+              ? (value.normalizedMoney ?? value.money).amount
               : value.money.amount,
         )
         .toList(growable: false);
-    final result = switch (rule.measure.operation) {
+    final result = switch (measure.operation) {
       RuleOperation.count => DecimalValue.fromParts(
-        coefficient: BigInt.from(_countForField(selected, rule.measure.field)),
+        coefficient: BigInt.from(_countForField(selected, measure.field)),
         scale: 0,
       ),
       RuleOperation.sum => _sum(amountValues),
@@ -396,7 +371,7 @@ final class AnalysisRuleEngine {
             ? DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0)
             : amountValues.reduce((a, b) => a.compareTo(b) >= 0 ? a : b),
       RuleOperation.distinctCount => DecimalValue.fromParts(
-        coefficient: BigInt.from(_distinct(selected, rule.measure.field)),
+        coefficient: BigInt.from(_distinct(selected, measure.field)),
         scale: 0,
       ),
       RuleOperation.frequency => DecimalValue.fromParts(
@@ -405,23 +380,67 @@ final class AnalysisRuleEngine {
       ),
       RuleOperation.difference => _difference(rule, dependencies),
     };
-    final currency = rule.measure.currencyBasis == CurrencyBasis.baseCurrency
+    final monetary = {
+      RuleOperation.sum,
+      RuleOperation.average,
+      RuleOperation.median,
+      RuleOperation.minimum,
+      RuleOperation.maximum,
+      RuleOperation.difference,
+    }.contains(measure.operation);
+    final currency = !monetary
+        ? null
+        : measure.currencyBasis == CurrencyBasis.baseCurrency
         ? dataset.context.baseCurrency
         : (amountValues.isEmpty ? null : selected.first.money.currency);
     return AnalysisMetric(
-      id: '${rule.identity.value}:${dataset.context.period.startDate}:$dimension',
+      id: '${rule.identity.value}:${dataset.context.period.startDate}:$dimension:${measure.key}',
       rule: rule,
       context: dataset.context,
       value: result,
       currency: currency,
       transactionCount: selected.length,
-      dimension: dimension.isEmpty ? null : dimension,
+      dimension: dimension.isEmpty ? measure.key : '$dimension:${measure.key}',
       evidence: selected
           .map((value) => EvidenceReference(transactionId: value.id))
           .toList(growable: false),
       qualityIssues: dataset.qualityIssues,
       calculatedAt: at,
     );
+  }
+
+  bool _matchesFilters(
+    AnalysisEconomicTransaction value,
+    List<AnalysisFilter> filters,
+  ) {
+    for (final filter in filters) {
+      final matches = switch (filter.kind) {
+        AnalysisFilterKind.direction => filter.values.contains(
+          value.direction.name,
+        ),
+        AnalysisFilterKind.currency => filter.values.contains(
+          value.money.currency.value,
+        ),
+        AnalysisFilterKind.category => filter.values.contains(
+          value.categoryId?.value,
+        ),
+        AnalysisFilterKind.merchant => filter.values.contains(
+          value.merchantId?.value,
+        ),
+        AnalysisFilterKind.paymentSource => filter.values.contains(
+          value.paymentSourceId?.value,
+        ),
+        AnalysisFilterKind.tag => value.tagIds.any(
+          (tag) => filter.values.contains(tag.value),
+        ),
+        AnalysisFilterKind.reviewState => filter.values.contains(
+          value.verified ? 'clear' : 'needsReview',
+        ),
+        AnalysisFilterKind.status => filter.values.contains(value.status.name),
+      };
+      if (!matches) return false;
+    }
+    return true;
   }
 
   int _countForField(List<AnalysisEconomicTransaction> values, String field) {

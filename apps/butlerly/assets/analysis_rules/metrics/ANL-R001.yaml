@@ -1,7 +1,8 @@
 schemaVersion: "1.0.0"
 ruleId: ANL-R001
-ruleVersion: "1.0.0"
+ruleVersion: "1.1.0"
 enabled: true
+surface: overview
 type: metric
 nameKey: analysis.rule.r001.name
 descriptionKey: analysis.rule.r001.description
