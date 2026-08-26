@@ -63,6 +63,7 @@ jobs:
               body: [
                 '@codex Implement this approved issue completely.',
                 '',
+                'When you actually pick up this task for execution, first post a short comment on this issue confirming that Codex Cloud has started work. Do not treat this delegation comment itself as the acknowledgement.',
                 'Follow AGENTS.md, .github/codex/prompts/implement.md, and every approved repository document linked by this issue.',
                 'Continue through validation and create or update the pull request.',
                 'Stop only for a material decision under the clarification protocol.',
