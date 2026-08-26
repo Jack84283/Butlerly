@@ -18,6 +18,7 @@ final class FinanceServices {
     ExchangeRateRepository? exchangeRates,
     AnalysisRuleRepository? analysisRules,
     AnalysisFindingRepository? analysisFindings,
+    StatementRepository? statements,
   }) : listTransactions = ListTransactions(transactions),
        seedInitialMasterData = SeedInitialMasterData(
          merchants,
@@ -108,6 +109,7 @@ final class FinanceServices {
        loadUserPreference = LoadUserPreference(preferences),
        saveUserPreference = SaveUserPreference(preferences),
        storeAndAttachEvidence = StoreAndAttachEvidence(evidence),
+       storeEvidence = StoreEvidence(evidence),
        removeEvidence = RemoveEvidence(evidence),
        saveExtraction = SaveExtraction(evidence),
        listReconciliationCandidates = ListReconciliationCandidates(
@@ -178,6 +180,14 @@ final class FinanceServices {
        queryTransactionsForFinancialDate = QueryTransactionsForFinancialDate(
          transactions,
        ),
+       statementServices = statements == null
+           ? null
+           : StatementServices(
+               statements,
+               transactions,
+               statements as StatementWorkflowRepository,
+               const SystemApplicationClock(),
+             ),
        updateAnalysisFindingLifecycle = analysisFindings == null
            ? null
            : UpdateFindingLifecycle(analysisFindings);
@@ -217,6 +227,7 @@ final class FinanceServices {
   final LoadUserPreference loadUserPreference;
   final SaveUserPreference saveUserPreference;
   final StoreAndAttachEvidence storeAndAttachEvidence;
+  final StoreEvidence storeEvidence;
   final RemoveEvidence removeEvidence;
   final SaveExtraction saveExtraction;
   final ListReconciliationCandidates listReconciliationCandidates;
@@ -234,6 +245,7 @@ final class FinanceServices {
   final CalculateAnalysisCalendar? calculateAnalysisCalendar;
   final QueryTransactionsForFinancialDate queryTransactionsForFinancialDate;
   final UpdateFindingLifecycle? updateAnalysisFindingLifecycle;
+  final StatementServices? statementServices;
 }
 
 final class _NoMasterTranslationRepository

@@ -10,5 +10,6 @@ export 'src/repositories/sqlite_reconciliation_link_repository.dart';
 export 'src/repositories/sqlite_reconciliation_repository.dart';
 export 'src/repositories/sqlite_reconciliation_workflow_repository.dart';
 export 'src/repositories/sqlite_reference_data_repository.dart';
+export 'src/repositories/sqlite_statement_repository.dart';
 export 'src/repositories/sqlite_transaction_repository.dart';
 export 'src/repositories/sqlite_user_preference_repository.dart';

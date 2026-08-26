@@ -208,6 +208,12 @@ class SettingsPage extends ConsumerWidget {
         _SettingsSectionCard(
           children: [
             _SettingsRow(
+              icon: Icons.document_scanner_outlined,
+              title: context.l10n.text('reviewStatementImport'),
+              subtitle: 'Preserve and review bank or card statements locally.',
+              onTap: () => context.push('/statements'),
+            ),
+            _SettingsRow(
               icon: Icons.account_balance_wallet_outlined,
               title: context.l10n.text('paymentSources'),
               subtitle: context.l10n.text('paymentSourcesBody'),

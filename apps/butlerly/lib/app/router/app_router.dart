@@ -10,6 +10,7 @@ import 'package:butlerly/features/foundation/presentation/receipt_capture_page.d
 import 'package:butlerly/features/foundation/presentation/review_page.dart';
 import 'package:butlerly/features/foundation/presentation/search_page.dart';
 import 'package:butlerly/features/foundation/presentation/settings_page.dart';
+import 'package:butlerly/features/foundation/presentation/statement_capture_page.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -90,6 +91,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/receipts/capture',
       builder: (_, _) => const ReceiptCapturePage(),
+    ),
+    GoRoute(
+      path: '/statements',
+      builder: (_, _) => const StatementCapturePage(),
     ),
     GoRoute(path: '/privacy-data', builder: (_, _) => const PrivacyDataPage()),
     GoRoute(

@@ -22,6 +22,7 @@ void configureDependencies({
   services.registerSingleton<LocalDataManager>(LocalDataManager(database));
 
   if (database.status == DatabaseStatus.ready) {
+    final statements = SqliteStatementRepository(database.persistenceDatabase);
     final finance = FinanceServices(
       SqliteTransactionRepository(database.persistenceDatabase),
       SqlitePaymentSourceRepository(database.persistenceDatabase),
@@ -49,6 +50,7 @@ void configureDependencies({
       analysisFindings: SqliteAnalysisFindingRepository(
         database.persistenceDatabase,
       ),
+      statements: statements,
     );
     services
       ..registerSingleton<FinanceServices>(finance)
