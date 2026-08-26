@@ -128,8 +128,13 @@ void main() {
         definitions: [insight.copyWith(type: AnalysisRuleType.insight)],
       );
       expect(result.single.finding, isNotNull);
-      expect(result.single.finding!.absoluteChange, DecimalValue.parse('35'));
+      expect(result.single.finding!.baselineValue, isNull);
+      expect(result.single.finding!.absoluteChange, isNull);
       expect(result.single.finding!.percentageChange, isNull);
+      expect(
+        result.single.finding!.qualityIssues.single.code,
+        'missingBaseline',
+      );
     },
   );
 
@@ -179,6 +184,34 @@ void main() {
       expect(finding.baselineValue, DecimalValue.parse('25'));
     },
   );
+
+  test('isolates dependency cycles without suppressing valid rules', () {
+    final first = rule(
+      'ANL-R030',
+      RuleOperation.sum,
+      dependencies: [RuleDependency(ruleId: RuleIdentity('ANL-R031'))],
+    );
+    final second = rule(
+      'ANL-R031',
+      RuleOperation.sum,
+      dependencies: [RuleDependency(ruleId: RuleIdentity('ANL-R030'))],
+    );
+    final valid = rule('ANL-R001', RuleOperation.count);
+    final results = const AnalysisRuleEngine().execute(
+      dataset: dataset(),
+      definitions: [first, valid, second],
+    );
+    expect(
+      results.where((result) => result.failure?.code == 'dependencyCycle'),
+      hasLength(2),
+    );
+    expect(
+      results
+          .singleWhere((result) => result.rule.identity.value == 'ANL-R001')
+          .metric,
+      isNotNull,
+    );
+  });
 }
 
 extension on AnalysisRuleDefinition {

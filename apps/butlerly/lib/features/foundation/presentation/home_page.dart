@@ -325,6 +325,11 @@ class _QuickActions extends StatelessWidget {
           label: context.l10n.text('searchRecords'),
           onTap: () => context.go('/search'),
         ),
+        _QuickAction(
+          icon: Icons.insights_outlined,
+          label: context.l10n.text('analysis'),
+          onTap: () => context.push('/analysis'),
+        ),
       ];
       return Wrap(
         spacing: spacing,

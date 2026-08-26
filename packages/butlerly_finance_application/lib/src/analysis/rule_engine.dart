@@ -8,7 +8,8 @@ final class AnalysisRuleEngine {
     required List<AnalysisRuleDefinition> definitions,
     DateTime? calculatedAt,
   }) {
-    final ordered = _order(definitions);
+    final ordering = _order(definitions);
+    final ordered = ordering.ordered;
     final results = <RuleExecutionResult>[];
     final metrics = <String, AnalysisMetric>{};
     final resultById = <String, RuleExecutionResult>{};
@@ -16,6 +17,19 @@ final class AnalysisRuleEngine {
     for (final rule in ordered) {
       if (!rule.enabled || rule.status != AnalysisRuleStatus.active) continue;
       try {
+        if (ordering.cyclicIds.contains(rule.identity.value)) {
+          final result = RuleExecutionResult(
+            rule: rule,
+            failure: AnalysisFailure(
+              code: 'dependencyCycle',
+              message: 'Rule belongs to a dependency cycle.',
+              ruleId: rule.identity,
+            ),
+          );
+          results.add(result);
+          resultById[rule.identity.value] = result;
+          continue;
+        }
         final missing = rule.dependencies.where(
           (value) => !knownIds.contains(value.ruleId.value),
         );
@@ -119,7 +133,9 @@ final class AnalysisRuleEngine {
     AnalysisMetric current,
     DateTime at,
   ) {
-    final baseline = rule.baseline == RuleBaseline.none
+    final baseline =
+        rule.baseline == RuleBaseline.none ||
+            dataset.baselineTransactions.isEmpty
         ? null
         : _metric(
             rule,
@@ -244,23 +260,28 @@ final class AnalysisRuleEngine {
     return '${monday.year.toString().padLeft(4, '0')}-${monday.month.toString().padLeft(2, '0')}-${monday.day.toString().padLeft(2, '0')}';
   }
 
-  List<AnalysisRuleDefinition> _order(
-    List<AnalysisRuleDefinition> definitions,
-  ) {
+  _RuleOrdering _order(List<AnalysisRuleDefinition> definitions) {
     final byId = {for (final value in definitions) value.identity.value: value};
     final ordered = <AnalysisRuleDefinition>[];
     final visiting = <String>{};
     final visited = <String>{};
+    final cyclicIds = <String>{};
+    final stack = <String>[];
     void visit(AnalysisRuleDefinition value) {
       if (visited.contains(value.identity.value)) return;
-      if (!visiting.add(value.identity.value)) {
-        throw StateError('Analysis rule dependency cycle.');
+      if (visiting.contains(value.identity.value)) {
+        final cycleStart = stack.indexOf(value.identity.value);
+        cyclicIds.addAll(stack.skip(cycleStart));
+        return;
       }
+      visiting.add(value.identity.value);
+      stack.add(value.identity.value);
       for (final dependency in value.dependencies) {
         final target = byId[dependency.ruleId.value];
         if (target != null) visit(target);
       }
       visiting.remove(value.identity.value);
+      stack.removeLast();
       visited.add(value.identity.value);
       ordered.add(value);
     }
@@ -270,7 +291,7 @@ final class AnalysisRuleEngine {
     ]..sort((a, b) => a.identity.value.compareTo(b.identity.value))) {
       visit(definition);
     }
-    return ordered;
+    return _RuleOrdering(ordered, cyclicIds);
   }
 
   bool _eligible(
@@ -485,6 +506,12 @@ final class AnalysisRuleEngine {
     );
     return DecimalValue.fromParts(coefficient: coefficient, scale: scale);
   }
+}
+
+final class _RuleOrdering {
+  const _RuleOrdering(this.ordered, this.cyclicIds);
+  final List<AnalysisRuleDefinition> ordered;
+  final Set<String> cyclicIds;
 }
 
 extension on DecimalValue {

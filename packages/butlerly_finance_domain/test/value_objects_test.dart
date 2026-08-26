@@ -2,6 +2,14 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('UTC is accepted as an IANA financial timezone', () {
+    final period = AnalysisPeriod(
+      startDate: '2026-01-01',
+      endDate: '2026-01-31',
+      timeZoneId: 'UTC',
+    );
+    expect(period.timeZoneId, 'UTC');
+  });
   test(
     'financial periods retain the persisted timezone and use date-only bounds',
     () {
