@@ -49,7 +49,8 @@ For a `codex-ready` issue:
 11. Review the final complete diff against `main` one last time.
 12. Commit and push the branch.
 13. Create or update the pull request only after the self-review, fresh independent review, and CI-parity exit criteria are satisfied.
-14. Include requirement-to-test traceability, completed self-review evidence, fresh independent-review evidence, and validation evidence in the PR description.
+14. Monitor all required GitHub checks after every PR push and perform the mandatory post-PR CI repair loop below until all required checks pass.
+15. Include requirement-to-test traceability, completed self-review evidence, fresh independent-review evidence, validation evidence, and final CI status in the PR description.
 
 Continue until the complete task is reviewable. Do not stop after an intermediate increment or leave a known in-scope problem for unspecified future work.
 
@@ -165,6 +166,39 @@ A new implementation PR may be created only when all of the following are true:
 - The final diff has received an adversarial self-review using the same standards expected from the later independent PR review.
 
 The independent GitHub PR review remains required. The purpose of the fresh pre-PR review is to catch avoidable P1/P2 defects before publication, not to replace the post-publication quality gate.
+
+## Mandatory post-PR CI repair loop
+
+Creating or updating a pull request does not complete a Codex implementation task. Codex owns the PR through required-check completion.
+
+After every push to an implementation PR branch, Codex must:
+
+1. Monitor the PR until all required GitHub checks for the new head commit reach a terminal state. Do not rely on stale checks from an earlier commit.
+2. Confirm that every required check actually ran. A missing expected check, missing check suite, or workflow that failed to start is itself an item to diagnose when it is caused by the PR or repository configuration.
+3. If all required checks pass, record the green CI state on the PR/issue and proceed to readiness reporting.
+4. If any required check fails, inspect the failing job, step, and logs before stopping.
+5. Classify the failure as one of:
+   - **in-scope implementation/repository failure** — code, tests, formatting, generated files, dependency configuration, workflow configuration, platform build, validation script, or another defect introduced/exposed by the PR;
+   - **transient CI/infrastructure failure** — runner outage, service outage, rate limit, temporary network failure, or another failure not caused by repository content;
+   - **material decision/blocker** — requires a human product/architecture/security decision or credentials/permissions Codex cannot obtain.
+6. For every in-scope implementation/repository failure, fix the root cause on the **same PR branch**, add or improve regression coverage when appropriate, rerun the relevant local validation/self-review, push the correction, and return to step 1.
+7. For a likely transient CI/infrastructure failure, retry the failed job/run when permitted. If the same failure repeats and appears repository-related, treat it as an in-scope failure and repair it rather than repeatedly rerunning unchanged code.
+8. Do not declare the PR ready, do not stop merely because a PR exists, and do not ask the human owner to initiate ordinary CI repair while any required in-scope check is red.
+9. Continue the repair loop until **all required checks pass on the current PR head**.
+10. Stop before green CI only when a genuine material decision, external infrastructure outage, or unavailable credential/permission prevents further progress. Report the exact blocker, evidence, and required human action.
+
+### Post-PR review findings
+
+If an independent GitHub PR review produces actionable P1/P2 findings while CI is running or after it is green, Codex must address those findings on the same PR branch, rerun the affected self-review/validation, push, and restart the CI repair loop for the new head. Green checks on an older commit do not satisfy readiness after review fixes.
+
+### Post-PR completion criteria
+
+Codex may report implementation complete only when:
+
+- all required GitHub checks have run and passed on the current PR head;
+- no known actionable P1/P2 review finding remains;
+- the PR contains the required validation and review evidence;
+- no material blocker or unresolved decision remains.
 
 ## Clarification protocol
 
