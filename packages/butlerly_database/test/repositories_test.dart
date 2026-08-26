@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:butlerly_database/butlerly_database.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' hide Transaction;
 import 'package:test/test.dart';
@@ -77,6 +80,43 @@ void main() {
       FindingLifecycle.dismissed.name,
     ]);
   });
+
+  test(
+    'round-trips the bundled multi-measure R016 definition through SQLite',
+    () async {
+      final source = File(
+        '../../apps/butlerly/assets/analysis_rules/metrics/ANL-R016.yaml',
+      ).readAsStringSync();
+      final parsed = const RestrictedRuleParser().parse(source);
+      expect(parsed.diagnostics, isEmpty);
+      final validated = const RuleDefinitionValidator().validate(
+        parsed.document!,
+      );
+      expect(validated.diagnostics, isEmpty);
+      final definition = validated.definition!;
+      final repository = SqliteAnalysisRuleRepository(database);
+      await repository.install(
+        definition,
+        sourceType: 'bundled',
+        canonicalDefinition: canonicalize(parsed.document!.values),
+      );
+      await repository.activate(
+        definition.identity,
+        definition.version,
+        true,
+        now,
+      );
+
+      final reloaded = (await repository.listActive()).single;
+      expect(reloaded.identity.value, 'ANL-R016');
+      expect(reloaded.measures, hasLength(3));
+      expect(reloaded.measure, reloaded.measures.first);
+      expect(
+        reloaded.measures[1].filters.single.kind,
+        AnalysisFilterKind.direction,
+      );
+    },
+  );
 
   test(
     'rule upgrades preserve historical versions and activate the new surface',
