@@ -7,6 +7,15 @@ import '../value_objects/money.dart';
 
 enum AnalysisRuleType { metric, insight, dataQuality }
 
+enum AnalysisSurface {
+  overview,
+  spending,
+  trends,
+  calendar,
+  insights,
+  dataQuality,
+}
+
 enum AnalysisRuleStatus { active, disabled, retired }
 
 enum DatasetMode { allEligible, verifiedOnly }
@@ -228,10 +237,14 @@ final class RuleMeasure {
     required this.operation,
     required this.field,
     this.currencyBasis = CurrencyBasis.original,
+    this.key = 'value',
+    this.filters = const [],
   });
   final RuleOperation operation;
   final String field;
   final CurrencyBasis currencyBasis;
+  final String key;
+  final List<AnalysisFilter> filters;
 }
 
 final class RuleCondition {
@@ -266,6 +279,8 @@ final class AnalysisRuleDefinition {
     required this.condition,
     required this.severity,
     required this.definitionHash,
+    this.surface = AnalysisSurface.overview,
+    this.measures = const [],
     this.dependencies = const [],
     this.filters = const [],
   });
@@ -279,6 +294,8 @@ final class AnalysisRuleDefinition {
   final AnalysisRuleStatus status;
   final String period;
   final RuleMeasure measure;
+  final List<RuleMeasure> measures;
+  final AnalysisSurface surface;
   final RuleGrouping grouping;
   final RuleBaseline baseline;
   final RuleCondition condition;

@@ -97,8 +97,41 @@ class _AnalysisResults extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final metrics = results.where((value) => value.metric != null).toList();
-    final findings = results.where((value) => value.finding != null).toList();
+    final overview = results
+        .where(
+          (value) =>
+              value.metric != null &&
+              value.rule.surface == AnalysisSurface.overview,
+        )
+        .toList();
+    final spending = results
+        .where(
+          (value) =>
+              value.metric != null &&
+              value.rule.surface == AnalysisSurface.spending,
+        )
+        .toList();
+    final calendar = results
+        .where(
+          (value) =>
+              value.metric != null &&
+              value.rule.surface == AnalysisSurface.calendar,
+        )
+        .toList();
+    final trends = results
+        .where(
+          (value) =>
+              value.finding != null &&
+              value.rule.surface == AnalysisSurface.trends,
+        )
+        .toList();
+    final findings = results
+        .where(
+          (value) =>
+              value.finding != null &&
+              value.rule.surface == AnalysisSurface.insights,
+        )
+        .toList();
     final limitations = results
         .expand(
           (value) => [
@@ -130,14 +163,26 @@ class _AnalysisResults extends StatelessWidget {
           ),
         ),
         ButlerlySectionHeader(title: context.l10n.text('overview')),
-        if (metrics.isEmpty)
+        if (overview.isEmpty)
           ButlerlyEmptyState(
             icon: Icons.insights_outlined,
             title: context.l10n.text('notEnoughInsightData'),
             message: context.l10n.text('notEnoughInsightDataBody'),
           )
         else
-          ...metrics.map((result) => _MetricCard(metric: result.metric!)),
+          ...overview.map((result) => _MetricCard(metric: result.metric!)),
+        if (spending.isNotEmpty) ...[
+          ButlerlySectionHeader(title: context.l10n.text('spending')),
+          ...spending.map((result) => _MetricCard(metric: result.metric!)),
+        ],
+        if (trends.isNotEmpty) ...[
+          ButlerlySectionHeader(title: context.l10n.text('trends')),
+          ...trends.map((result) => _FindingCard(finding: result.finding!)),
+        ],
+        if (calendar.isNotEmpty) ...[
+          ButlerlySectionHeader(title: context.l10n.text('financialCalendar')),
+          ...calendar.map((result) => _MetricCard(metric: result.metric!)),
+        ],
         ButlerlySectionHeader(title: context.l10n.text('insights')),
         if (findings.isEmpty && failures.isEmpty)
           ButlerlyCard(

@@ -138,6 +138,10 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
         (json['measure'] as Map)['currencyBasis'] as String? ?? 'original',
       ),
     ),
+    measures: _measures(json),
+    surface: AnalysisSurface.values.byName(
+      json['surface'] as String? ?? 'overview',
+    ),
     grouping: RuleGrouping.values.byName(json['grouping'] as String? ?? 'none'),
     baseline: RuleBaseline.values.byName(json['baseline'] as String? ?? 'none'),
     condition: const RuleCondition(operator: 'none'),
@@ -160,6 +164,27 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
                 : [entry.value.toString()],
           ),
         )
+        .toList(growable: false);
+  }
+
+  List<RuleMeasure> _measures(Map<String, dynamic> json) {
+    final raw = json['measures'];
+    if (raw is! List) return const [];
+    return raw
+        .map((value) {
+          final measure = value as Map;
+          return RuleMeasure(
+            operation: RuleOperation.values.byName(
+              measure['operation'] as String,
+            ),
+            field: measure['field'] as String,
+            key: measure['key']?.toString() ?? 'value',
+            currencyBasis: CurrencyBasis.values.byName(
+              measure['currencyBasis'] as String? ?? 'original',
+            ),
+            filters: _filters(measure['filters']),
+          );
+        })
         .toList(growable: false);
   }
 
@@ -238,9 +263,8 @@ final class SqliteAnalysisFindingRepository
       whereArgs: lifecycle == null ? null : [lifecycle.name],
       orderBy: 'generated_at DESC, id',
     );
-    final definitions = await SqliteAnalysisRuleRepository(
-      database,
-    ).listDefinitions();
+    final definitions = await SqliteAnalysisRuleRepository(database)
+        .listDefinitions();
     final byKey = {
       for (final value in definitions)
         '${value.identity.value}:${value.version.value}': value,

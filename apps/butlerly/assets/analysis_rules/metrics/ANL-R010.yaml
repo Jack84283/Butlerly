@@ -1,7 +1,8 @@
 schemaVersion: "1.0.0"
 ruleId: ANL-R010
-ruleVersion: "1.0.0"
+ruleVersion: "1.1.0"
 enabled: true
+surface: spending
 type: metric
 nameKey: analysis.rule.r010.name
 descriptionKey: analysis.rule.r010.description
@@ -11,3 +12,5 @@ measure:
   operation: sum
   field: amount
   currencyBasis: baseCurrency
+filters:
+  direction: expense

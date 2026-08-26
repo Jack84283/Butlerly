@@ -74,41 +74,46 @@ final class AnalysisRuleEngine {
             )
             .toList(growable: false);
         for (final entry in _group(values, rule.grouping).entries) {
-          final metric = _metric(
-            rule,
-            dataset,
-            entry.value,
-            metrics,
-            entry.key,
-            calculatedAt ?? DateTime.now().toUtc(),
-          );
-          if (metric != null) {
-            metrics['${rule.identity.value}:${entry.key}'] = metric;
-            metrics[rule.identity.value] = metric;
+          for (final measure
+              in rule.measures.isEmpty ? [rule.measure] : rule.measures) {
+            final metric = _metric(
+              rule,
+              measure,
+              dataset,
+              entry.value,
+              metrics,
+              entry.key,
+              calculatedAt ?? DateTime.now().toUtc(),
+            );
+            if (metric != null) {
+              metrics['${rule.identity.value}:${entry.key}:${measure.key}'] =
+                  metric;
+              metrics[rule.identity.value] = metric;
+            }
+            final finding =
+                rule.type == AnalysisRuleType.insight &&
+                    metric != null &&
+                    _conditionMatches(rule.condition, metric.value)
+                ? _finding(
+                    rule,
+                    dataset,
+                    entry.key,
+                    metric,
+                    calculatedAt ?? DateTime.now().toUtc(),
+                  )
+                : null;
+            final result = RuleExecutionResult(
+              rule: rule,
+              metric:
+                  rule.type == AnalysisRuleType.metric ||
+                      rule.type == AnalysisRuleType.dataQuality
+                  ? metric
+                  : null,
+              finding: finding,
+            );
+            results.add(result);
+            resultById[rule.identity.value] = result;
           }
-          final finding =
-              rule.type == AnalysisRuleType.insight &&
-                  metric != null &&
-                  _conditionMatches(rule.condition, metric.value)
-              ? _finding(
-                  rule,
-                  dataset,
-                  entry.key,
-                  metric,
-                  calculatedAt ?? DateTime.now().toUtc(),
-                )
-              : null;
-          final result = RuleExecutionResult(
-            rule: rule,
-            metric:
-                rule.type == AnalysisRuleType.metric ||
-                    rule.type == AnalysisRuleType.dataQuality
-                ? metric
-                : null,
-            finding: finding,
-          );
-          results.add(result);
-          resultById[rule.identity.value] = result;
         }
       } on Object catch (error) {
         final result = RuleExecutionResult(
@@ -139,6 +144,7 @@ final class AnalysisRuleEngine {
         ? null
         : _metric(
             rule,
+            rule.measure,
             dataset,
             dataset.baselineTransactions
                 .where(
@@ -359,6 +365,7 @@ final class AnalysisRuleEngine {
 
   AnalysisMetric? _metric(
     AnalysisRuleDefinition rule,
+    RuleMeasure measure,
     AnalysisDataset dataset,
     List<AnalysisEconomicTransaction> values,
     Map<String, AnalysisMetric> dependencies,
@@ -366,22 +373,23 @@ final class AnalysisRuleEngine {
     DateTime at,
   ) {
     final selected = values
+        .where((value) => _matchesFilters(value, measure.filters))
         .where(
-          (value) => rule.measure.currencyBasis == CurrencyBasis.baseCurrency
+          (value) => measure.currencyBasis == CurrencyBasis.baseCurrency
               ? value.normalizedMoney != null
               : true,
         )
         .toList(growable: false);
     final amountValues = selected
         .map(
-          (value) => rule.measure.currencyBasis == CurrencyBasis.baseCurrency
+          (value) => measure.currencyBasis == CurrencyBasis.baseCurrency
               ? value.normalizedMoney!.amount
               : value.money.amount,
         )
         .toList(growable: false);
-    final result = switch (rule.measure.operation) {
+    final result = switch (measure.operation) {
       RuleOperation.count => DecimalValue.fromParts(
-        coefficient: BigInt.from(_countForField(selected, rule.measure.field)),
+        coefficient: BigInt.from(_countForField(selected, measure.field)),
         scale: 0,
       ),
       RuleOperation.sum => _sum(amountValues),
@@ -405,23 +413,46 @@ final class AnalysisRuleEngine {
       ),
       RuleOperation.difference => _difference(rule, dependencies),
     };
-    final currency = rule.measure.currencyBasis == CurrencyBasis.baseCurrency
+    final monetary = {
+      RuleOperation.sum,
+      RuleOperation.average,
+      RuleOperation.median,
+      RuleOperation.minimum,
+      RuleOperation.maximum,
+      RuleOperation.difference,
+    }.contains(measure.operation);
+    final currency = !monetary
+        ? null
+        : measure.currencyBasis == CurrencyBasis.baseCurrency
         ? dataset.context.baseCurrency
         : (amountValues.isEmpty ? null : selected.first.money.currency);
     return AnalysisMetric(
-      id: '${rule.identity.value}:${dataset.context.period.startDate}:$dimension',
+      id: '${rule.identity.value}:${dataset.context.period.startDate}:$dimension:${measure.key}',
       rule: rule,
       context: dataset.context,
       value: result,
       currency: currency,
       transactionCount: selected.length,
-      dimension: dimension.isEmpty ? null : dimension,
+      dimension: dimension.isEmpty ? measure.key : '$dimension:${measure.key}',
       evidence: selected
           .map((value) => EvidenceReference(transactionId: value.id))
           .toList(growable: false),
       qualityIssues: dataset.qualityIssues,
       calculatedAt: at,
     );
+  }
+
+  bool _matchesFilters(
+    AnalysisEconomicTransaction value,
+    List<AnalysisFilter> filters,
+  ) {
+    for (final filter in filters) {
+      if (filter.kind == AnalysisFilterKind.direction &&
+          !filter.values.contains(value.direction.name)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   int _countForField(List<AnalysisEconomicTransaction> values, String field) {

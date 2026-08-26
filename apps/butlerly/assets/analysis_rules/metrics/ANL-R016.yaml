@@ -1,12 +1,26 @@
 schemaVersion: "1.0.0"
 ruleId: ANL-R016
-ruleVersion: "1.0.0"
+ruleVersion: "1.1.0"
 enabled: true
+surface: calendar
 type: metric
 nameKey: analysis.rule.r016.name
 descriptionKey: analysis.rule.r016.description
 period: selected_month
 grouping: day
-measure:
-  operation: count
-  field: transaction
+measures:
+  - key: transactionCount
+    operation: count
+    field: transaction
+  - key: expenseTotal
+    operation: sum
+    field: amount
+    currencyBasis: baseCurrency
+    filters:
+      direction: expense
+  - key: incomeTotal
+    operation: sum
+    field: amount
+    currencyBasis: baseCurrency
+    filters:
+      direction: income

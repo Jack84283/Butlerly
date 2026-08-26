@@ -163,6 +163,18 @@ final class FinanceServices {
                const AnalysisRuleEngine(),
                findings: analysisFindings,
              ),
+       calculateAnalysisCalendar = analysisRules == null
+           ? null
+           : CalculateAnalysisCalendar(
+               AnalysisDatasetBuilder(
+                 transactions,
+                 preferences,
+                 reconciliationLinks,
+                 candidates: reconciliationCandidates,
+               ),
+               analysisRules,
+               const AnalysisRuleEngine(),
+             ),
        updateAnalysisFindingLifecycle = analysisFindings == null
            ? null
            : UpdateFindingLifecycle(analysisFindings);
@@ -216,6 +228,7 @@ final class FinanceServices {
   final FindReceiptPaymentMatch findReceiptPaymentMatch;
   final InstallBuiltInRules? installBuiltInRules;
   final CalculateAnalysisOverview? calculateAnalysisOverview;
+  final CalculateAnalysisCalendar? calculateAnalysisCalendar;
   final UpdateFindingLifecycle? updateAnalysisFindingLifecycle;
 }
 

@@ -25,6 +25,7 @@ final class CalculateAnalysisOverview {
     DateTime instant,
   ) async {
     final timeZoneId = await datasetBuilder.timeZoneId();
+    final baseCurrency = await datasetBuilder.baseCurrency();
     final financialDate = financialDateAt(instant, timeZoneId);
     final first = DateTime.utc(financialDate.year, financialDate.month, 1);
     final last = DateTime.utc(financialDate.year, financialDate.month + 1, 0);
@@ -36,7 +37,8 @@ final class CalculateAnalysisOverview {
           timeZoneId: timeZoneId,
         ),
         datasetMode: DatasetMode.allEligible,
-        currencyBasis: CurrencyBasis.original,
+        currencyBasis: CurrencyBasis.baseCurrency,
+        baseCurrency: baseCurrency,
       ),
     );
   }
@@ -103,6 +105,7 @@ final class AnalysisCalendarDay {
     required this.incomeTotal,
     required this.currencyBasis,
     this.qualityIssues = const [],
+    this.evidence = const [],
   });
 
   final String financialDate;
@@ -111,6 +114,7 @@ final class AnalysisCalendarDay {
   final Money? incomeTotal;
   final CurrencyBasis currencyBasis;
   final List<DataQualityIssue> qualityIssues;
+  final List<EvidenceReference> evidence;
 }
 
 final class AnalysisCalendarResult {
@@ -130,8 +134,10 @@ final class AnalysisCalendarResult {
 /// Builds the backend contract for a selected financial month. It deliberately
 /// consumes the canonical dataset instead of querying raw SQLite rows.
 final class CalculateAnalysisCalendar {
-  const CalculateAnalysisCalendar(this.datasetBuilder);
+  const CalculateAnalysisCalendar(this.datasetBuilder, this.rules, this.engine);
   final AnalysisDatasetBuilder datasetBuilder;
+  final AnalysisRuleRepository rules;
+  final AnalysisRuleEngine engine;
 
   Future<ApplicationResult<AnalysisCalendarResult>> call({
     required int year,
@@ -157,6 +163,14 @@ final class CalculateAnalysisCalendar {
       throw RepositoryException(RepositoryFailureCode.unavailable, code);
     }
     final dataset = (result as ApplicationDatasetSuccess).dataset;
+    final definitions = (await rules.listActive())
+        .where((rule) => rule.surface == AnalysisSurface.calendar)
+        .toList(growable: false);
+    final metrics = engine
+        .execute(dataset: dataset, definitions: definitions)
+        .where((result) => result.metric != null)
+        .map((result) => result.metric!)
+        .toList(growable: false);
     final days = <AnalysisCalendarDay>[];
     for (
       var day = first;
@@ -164,50 +178,36 @@ final class CalculateAnalysisCalendar {
       day = day.add(const Duration(days: 1))
     ) {
       final date = _date(day);
-      final values = dataset.transactions.where(
-        (value) => value.transactionDate == date,
-      );
-      var count = 0;
-      Money? expense;
-      Money? income;
-      var mixedCurrencies = false;
-      CurrencyCode? dayCurrency;
-      for (final value in values) {
-        count++;
-        final money = currencyBasis == CurrencyBasis.baseCurrency
-            ? value.normalizedMoney
-            : value.money;
-        if (money == null) continue;
-        if (dayCurrency != null && dayCurrency != money.currency) {
-          mixedCurrencies = true;
-        }
-        dayCurrency ??= money.currency;
-        if (value.direction == TransactionDirection.expense) {
-          expense = _add(expense, money);
-        } else if (value.direction == TransactionDirection.income) {
-          income = _add(income, money);
-        }
-      }
-      if (mixedCurrencies && currencyBasis == CurrencyBasis.original) {
-        expense = null;
-        income = null;
-      }
+      AnalysisMetric? named(String key) =>
+          metrics.cast<AnalysisMetric?>().firstWhere(
+            (metric) => metric?.dimension == '$date:$key',
+            orElse: () => null,
+          );
+      final countMetric = named('transactionCount');
+      final expenseMetric = named('expenseTotal');
+      final incomeMetric = named('incomeTotal');
+      Money? money(AnalysisMetric? metric) => metric?.currency == null
+          ? null
+          : Money(amount: metric!.value, currency: metric.currency!);
       days.add(
         AnalysisCalendarDay(
           financialDate: date,
-          transactionCount: count,
-          expenseTotal: expense,
-          incomeTotal: income,
+          transactionCount:
+              int.tryParse(countMetric?.value.toString() ?? '') ?? 0,
+          expenseTotal: money(expenseMetric),
+          incomeTotal: money(incomeMetric),
           currencyBasis: currencyBasis,
           qualityIssues: [
             ...dataset.qualityIssues,
-            if (mixedCurrencies && currencyBasis == CurrencyBasis.original)
-              const DataQualityIssue(
-                code: 'mixedCurrencyCalendarDay',
-                detail:
-                    'Original-currency totals are not aggregatable for this day.',
-              ),
+            ...?countMetric?.qualityIssues,
+            ...?expenseMetric?.qualityIssues,
+            ...?incomeMetric?.qualityIssues,
           ],
+          evidence: {
+            ...?countMetric?.evidence,
+            ...?expenseMetric?.evidence,
+            ...?incomeMetric?.evidence,
+          }.toList(growable: false),
         ),
       );
     }
@@ -222,22 +222,6 @@ final class CalculateAnalysisCalendar {
 
 String _date(DateTime value) =>
     '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
-
-Money _add(Money? left, Money right) {
-  if (left == null) return right;
-  if (left.currency != right.currency) return left;
-  final scale = left.amount.scale > right.amount.scale
-      ? left.amount.scale
-      : right.amount.scale;
-  final coefficient =
-      left.amount.coefficient * BigInt.from(10).pow(scale - left.amount.scale) +
-      right.amount.coefficient *
-          BigInt.from(10).pow(scale - right.amount.scale);
-  return Money(
-    amount: DecimalValue.fromParts(coefficient: coefficient, scale: scale),
-    currency: left.currency,
-  );
-}
 
 final class UpdateFindingLifecycle {
   const UpdateFindingLifecycle(this.repository);

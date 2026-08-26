@@ -1,7 +1,8 @@
 schemaVersion: "1.0.0"
 ruleId: ANL-R020
-ruleVersion: "1.0.0"
-enabled: false
+ruleVersion: "1.1.0"
+enabled: true
+surface: insights
 type: insight
 nameKey: analysis.rule.r020.name
 descriptionKey: analysis.rule.r020.description
@@ -11,3 +12,5 @@ measure:
   operation: sum
   field: amount
   currencyBasis: baseCurrency
+filters:
+  direction: expense
