@@ -4,33 +4,44 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
+format_check() {
+  local before after
+  before="$(find . -type f -name '*.dart' -print0 | sort -z | xargs -0 sha256sum)"
+  dart format --output=none . >/dev/null
+  after="$(find . -type f -name '*.dart' -print0 | sort -z | xargs -0 sha256sum)"
+  if [[ "$before" != "$after" ]]; then
+    echo 'Dart formatting changed tracked source files.' >&2
+    return 1
+  fi
+}
+
 ./tool/check_toolchain_consistency.sh
 ./tool/verify_toolchain.sh
 
 (
   cd packages/butlerly_finance_domain
-  dart format --output=none --set-exit-if-changed .
+  format_check
   dart analyze --fatal-infos
   dart test
 )
 
 (
   cd packages/butlerly_finance_application
-  dart format --output=none --set-exit-if-changed .
+  format_check
   dart analyze --fatal-infos
   dart test
 )
 
 (
   cd packages/butlerly_database
-  dart format --output=none --set-exit-if-changed .
+  format_check
   dart analyze --fatal-infos
   dart test
 )
 
 (
   cd apps/butlerly
-  dart format --output=none --set-exit-if-changed .
+  format_check
   flutter analyze
   flutter test
   flutter build web
