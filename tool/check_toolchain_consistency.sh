@@ -26,6 +26,9 @@ grep -q 'tool/toolchain.env' "$action" || fail 'the shared action must consume t
 grep -q './tool/verify_toolchain.sh' "$action" || fail 'the shared action must verify installed SDK versions'
 
 "$repo_root/tool/test_verify_toolchain.sh"
+if [[ "${BUTLERLY_SKIP_CONSISTENCY_REGRESSION:-}" != 1 ]]; then
+  "$repo_root/tool/test_check_toolchain_consistency.sh"
+fi
 
 if grep -Eq 'channel:[[:space:]]*stable|sdk:[[:space:]]*stable' "$workflow"; then
   fail 'CI must not select a floating stable SDK'
@@ -35,17 +38,18 @@ if grep -Eq 'dart (format|analyze|test)|flutter (analyze|test|build web)' "$work
   fail 'canonical validation commands must remain in tool/validate.sh, not CI'
 fi
 
-while IFS= read -r file; do
-  [[ "$file" == "$pin" ]] && continue
+while IFS= read -r -d '' relative_file; do
+  case "$relative_file" in
+    tool/toolchain.env | apps/butlerly/android/local.properties)
+      continue
+      ;;
+  esac
+  file="$repo_root/$relative_file"
   if grep -Fq "$FLUTTER_VERSION" "$file" || grep -Fq "$DART_VERSION" "$file"; then
-    fail "pinned version literal duplicated in ${file#"$repo_root/"}"
+    fail "pinned version literal duplicated in $relative_file"
   fi
 done < <(
-  find "$repo_root" -type f \
-    -not -path '*/.git/*' \
-    -not -path '*/.dart_tool/*' \
-    -not -path '*/build/*' \
-    -not -name '.flutter-plugins-dependencies'
+  git -C "$repo_root" ls-files -z
 )
 
 printf 'Toolchain configuration is consistent.\n'
