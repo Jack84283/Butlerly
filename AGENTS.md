@@ -44,11 +44,12 @@ For a `codex-ready` issue:
 6. Run `./tool/validate.sh`.
 7. Fix all in-scope failures.
 8. Perform the mandatory iterative pre-PR self-review described below. Fix every in-scope problem found and repeat review/validation until no consequential in-scope defect remains.
-9. Perform the pre-PR CI parity gate described below and leave the working tree clean.
-10. Review the final complete diff against `main` one last time.
-11. Commit and push the branch.
-12. Create or update the pull request only after the self-review and CI-parity exit criteria are satisfied.
-13. Include requirement-to-test traceability, completed self-review evidence, and validation evidence in the PR description.
+9. Perform the mandatory fresh independent pre-PR review described below. Fix every actionable P1/P2-equivalent finding and repeat that review until none remain.
+10. Perform the pre-PR CI parity gate described below and leave the working tree clean.
+11. Review the final complete diff against `main` one last time.
+12. Commit and push the branch.
+13. Create or update the pull request only after the self-review, fresh independent review, and CI-parity exit criteria are satisfied.
+14. Include requirement-to-test traceability, completed self-review evidence, fresh independent-review evidence, and validation evidence in the PR description.
 
 Continue until the complete task is reviewable. Do not stop after an intermediate increment or leave a known in-scope problem for unspecified future work.
 
@@ -89,22 +90,45 @@ At minimum, each cycle must include these review passes:
 
 - Review the implementation as if reviewing another engineer's PR and actively try to find reasons it should not merge.
 - Apply the repository Code Review Rules below to the final diff.
-- Explicitly search for P1/P2-class defects: production-path failure, incorrect financial values, persistence/reload breakage, unreachable required UI, silently ignored supported semantics, data loss, privacy/security regressions, and misleading success/all-clear states.
+- Explicitly search for P1/P2-class defects: production-path failure, incorrect financial values, persistence/reload breakage, unreachable required UI, silently ignored supported semantics, data loss, privacy/security regressions, misleading success/all-clear states, environment-dependent parsing, shell/toolchain assumptions, and platform-specific failures.
 - Inspect nearby existing behavior for regressions that task-specific tests may miss.
 - Add targeted regression tests for every defect discovered during self-review.
 - Re-run `./tool/validate.sh` after corrections.
 
-### Pass 5 — Independent-review simulation
-
-Before PR creation, perform one final review without relying on the implementation notes or intended design choices. Read only the issue/approved sources and the final diff, as an independent reviewer would.
-
-- Try to reproduce the kinds of findings expected from the later PR review.
-- Confirm the implementation would be understandable and defensible to a reviewer who did not author it.
-- Inspect all changed persistence boundaries, public APIs, declarative definitions, UI entry points, and error paths.
-- Verify every new test fails against the pre-change behavior or otherwise proves a meaningful requirement/regression.
-- If this simulation produces any actionable P1/P2-style finding, fix it and restart the affected self-review cycle before creating the PR.
-
 If any pass finds a consequential in-scope defect, fix it, add or improve tests where appropriate, and repeat the affected passes. More than one iteration is expected when changes are non-trivial. Do not create the PR merely because a fixed number of passes has been completed.
+
+## Mandatory fresh independent pre-PR review
+
+Self-review is necessary but not sufficient. For every non-trivial implementation, Codex must perform a **fresh independent review in a separate review context** after implementation and self-review are complete, and before opening the PR.
+
+The independent reviewer must not rely on the implementation conversation, implementation notes, rationale, intermediate plans, or the author's assumptions. It must start from only:
+
+- the approved GitHub issue and linked authoritative repository sources;
+- `AGENTS.md` and `.github/codex/prompts/review.md`;
+- the final diff against `main`;
+- the final test/validation evidence.
+
+The independent review must use the same severity standard as the later GitHub PR review and actively search for defects rather than confirm the implementation. It must inspect production behavior, integration, persistence/reconstruction, financial semantics where applicable, UI reachability, failure states, data loss/privacy/security risks, declarative semantics, shell/toolchain portability, environment-dependent behavior, and tests that may merely mirror the implementation.
+
+### Fresh-review execution rules
+
+- Treat the independent review as a new reviewer assignment, not another continuation of the implementation reasoning.
+- Do not prime the reviewer with statements such as “the implementation is complete,” “all tests pass,” or explanations of why particular design choices were made beyond what exists in authoritative sources and the final diff.
+- Require explicit P0/P1/P2-style findings with file/line evidence when issues exist.
+- If the fresh review finds any actionable P1/P2-equivalent issue, return to implementation, fix it, add regression coverage, rerun validation, and then run a **new fresh independent review again** over the updated final diff.
+- Repeat until a fresh independent review returns no actionable P1/P2-equivalent findings.
+- P3-only cleanup may be deferred when clearly non-consequential and outside acceptance criteria, but it must be documented in the PR description.
+
+### Fresh-review evidence
+
+The PR description must record:
+
+- that a fresh independent pre-PR review was executed;
+- the final reviewed commit/diff state;
+- any P1/P2 findings discovered before PR creation and how they were fixed;
+- confirmation that the final fresh review found no unresolved actionable P1/P2-equivalent issue.
+
+If the environment or available Codex tooling cannot create a genuinely separate review context, do not silently substitute ordinary self-review. Report that limitation on the issue before PR creation and use the strongest available independent-review mechanism.
 
 ## Pre-PR CI parity gate
 
@@ -130,7 +154,8 @@ A new implementation PR may be created only when all of the following are true:
 - Every acceptance criterion is implemented and mapped to verification.
 - No known consequential in-scope defect remains.
 - At least two complete self-review cycles have been performed for non-trivial work, and the final complete cycle found no consequential defect.
-- The independent-review simulation found no unresolved P1/P2-style issue.
+- A fresh independent pre-PR review has been performed in a separate review context for non-trivial work.
+- The final fresh independent review found no unresolved actionable P1/P2-equivalent issue.
 - Production UI paths are wired and reachable where required.
 - Persistence/reconstruction/migration paths affected by the change have been exercised.
 - Financial calculations and units have been sanity-checked with representative edge cases when applicable.
@@ -139,7 +164,7 @@ A new implementation PR may be created only when all of the following are true:
 - `git diff --check` passes and `git status --short` shows no unintended working-tree changes.
 - The final diff has received an adversarial self-review using the same standards expected from the later independent PR review.
 
-The independent PR review remains required. The purpose of self-review is to prevent avoidable defects from being delegated to that later review stage, not to replace independent review.
+The independent GitHub PR review remains required. The purpose of the fresh pre-PR review is to catch avoidable P1/P2 defects before publication, not to replace the post-publication quality gate.
 
 ## Clarification protocol
 
