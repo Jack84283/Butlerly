@@ -50,11 +50,14 @@ For a `codex-ready` issue:
 12. Commit and push the branch.
 13. Create or update the pull request only after the self-review, fresh independent review, and CI-parity exit criteria are satisfied.
 14. Monitor all required GitHub checks after every PR push and perform the mandatory post-PR CI repair loop below until all required checks pass.
-15. Include requirement-to-test traceability, completed self-review evidence, fresh independent-review evidence, validation evidence, and final CI status in the PR description.
+15. When current-head CI is green, post a standardized **Ready for independent ChatGPT review** comment on the PR and wait for the independent review outcome.
+16. If the independent review outcome is **CHANGES REQUIRED**, address every actionable finding on the same PR branch, rerun affected self-review/validation, push, return to the CI repair loop, and request independent review again after CI is green.
+17. Continue the review/fix/CI cycle until the PR receives an explicit **APPROVED FOR MERGE** independent-review outcome on the current head.
+18. Include requirement-to-test traceability, completed self-review evidence, fresh independent-review evidence, validation evidence, final CI status, and independent post-PR review status in the PR description or PR conversation.
 
-Continue until the complete task is reviewable. Do not stop after an intermediate increment or leave a known in-scope problem for unspecified future work.
+Continue until the complete task is reviewable and independently approved. Do not stop after an intermediate increment, after merely creating the PR, after only reaching green CI, or while a known in-scope problem remains.
 
-Stop only when a material ambiguity could change financial meaning, persisted compatibility, privacy, security, or destructive behavior.
+Stop only when a material ambiguity could change financial meaning, persisted compatibility, privacy, security, or destructive behavior, or when a genuine external blocker prevents further progress.
 
 ## Mandatory iterative pre-PR self-review
 
@@ -169,13 +172,13 @@ The independent GitHub PR review remains required. The purpose of the fresh pre-
 
 ## Mandatory post-PR CI repair loop
 
-Creating or updating a pull request does not complete a Codex implementation task. Codex owns the PR through required-check completion.
+Creating or updating a pull request does not complete a Codex implementation task. Codex owns the PR through required-check completion and independent review approval.
 
 After every push to an implementation PR branch, Codex must:
 
 1. Monitor the PR until all required GitHub checks for the new head commit reach a terminal state. Do not rely on stale checks from an earlier commit.
 2. Confirm that every required check actually ran. A missing expected check, missing check suite, or workflow that failed to start is itself an item to diagnose when it is caused by the PR or repository configuration.
-3. If all required checks pass, record the green CI state on the PR/issue and proceed to readiness reporting.
+3. If all required checks pass, record the green CI state on the PR/issue and proceed to the independent post-PR review gate below.
 4. If any required check fails, inspect the failing job, step, and logs before stopping.
 5. Classify the failure as one of:
    - **in-scope implementation/repository failure** — code, tests, formatting, generated files, dependency configuration, workflow configuration, platform build, validation script, or another defect introduced/exposed by the PR;
@@ -187,18 +190,72 @@ After every push to an implementation PR branch, Codex must:
 9. Continue the repair loop until **all required checks pass on the current PR head**.
 10. Stop before green CI only when a genuine material decision, external infrastructure outage, or unavailable credential/permission prevents further progress. Report the exact blocker, evidence, and required human action.
 
-### Post-PR review findings
+## Mandatory independent post-PR review gate
 
-If an independent GitHub PR review produces actionable P1/P2 findings while CI is running or after it is green, Codex must address those findings on the same PR branch, rerun the affected self-review/validation, push, and restart the CI repair loop for the new head. Green checks on an older commit do not satisfy readiness after review fixes.
+Green CI is necessary but not sufficient for merge readiness. After current-head CI is green, Codex must request an independent ChatGPT review on the PR and must not consider the task complete until that review produces an explicit merge outcome.
 
-### Post-PR completion criteria
+### Requesting review
 
-Codex may report implementation complete only when:
+When CI is green, Codex must post a concise top-level PR comment using this state label:
 
-- all required GitHub checks have run and passed on the current PR head;
+`READY FOR INDEPENDENT CHATGPT REVIEW`
+
+The comment must include:
+
+- the current PR head SHA;
+- confirmation that all required GitHub checks are green on that head;
+- a short summary of implemented scope;
+- links or references to the issue and validation evidence;
+- any known P3-only deferred cleanup;
+- a statement that no known P1/P2 issue remains.
+
+This comment is the formal handoff point. It does not itself constitute approval.
+
+### Accepted independent review outcomes
+
+The independent ChatGPT reviewer should record one of these top-level PR outcomes:
+
+`INDEPENDENT REVIEW: APPROVED FOR MERGE`
+
+or
+
+`INDEPENDENT REVIEW: CHANGES REQUIRED`
+
+An approval should identify the reviewed head SHA and confirm that no consequential finding remains and current-head CI is green.
+
+A changes-required response should identify each actionable finding, severity where applicable, and the evidence/path needed for repair.
+
+### Required response to CHANGES REQUIRED
+
+If the PR receives `INDEPENDENT REVIEW: CHANGES REQUIRED`, Codex must:
+
+1. Acknowledge pickup of the findings on the PR.
+2. Fix all actionable in-scope findings on the **same PR branch**.
+3. Add or improve regression coverage where appropriate.
+4. Rerun affected self-review and local validation.
+5. Push the fix.
+6. Restart the mandatory post-PR CI repair loop for the new head.
+7. After current-head CI is green again, post a new `READY FOR INDEPENDENT CHATGPT REVIEW` comment referencing the new head and prior findings.
+8. Repeat until the independent review outcome is `APPROVED FOR MERGE` on the current head.
+
+A previous approval does not carry forward after any subsequent push. Every code-changing push invalidates prior merge approval and requires current-head CI plus a fresh independent review outcome.
+
+### Review pickup limitation
+
+The repository workflow cannot assume that ChatGPT will be automatically awakened by GitHub events. Codex must create the standardized review-request comment and leave the PR in that explicit state. The human owner may need to prompt ChatGPT to perform the independent review. Once the review outcome is posted, Codex owns all subsequent repair/CI/re-review work until approval.
+
+## Post-PR completion criteria
+
+Codex may report implementation complete only when all of the following are true on the **current PR head**:
+
+- all required GitHub checks have run and passed;
 - no known actionable P1/P2 review finding remains;
-- the PR contains the required validation and review evidence;
+- the PR contains required validation, self-review, and fresh pre-PR review evidence;
+- a `READY FOR INDEPENDENT CHATGPT REVIEW` handoff was posted after the latest green CI state;
+- the PR received `INDEPENDENT REVIEW: APPROVED FOR MERGE` for the same current head;
 - no material blocker or unresolved decision remains.
+
+Until all conditions are satisfied, the task is still active. Only the human owner performs the final merge unless explicitly instructed otherwise.
 
 ## Clarification protocol
 
