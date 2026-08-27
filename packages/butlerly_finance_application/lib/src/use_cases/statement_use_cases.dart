@@ -3,6 +3,7 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import '../dto/transaction_dto.dart';
 import '../result/application_result.dart';
 import 'transaction_use_cases.dart';
+import 'reconciliation_use_cases.dart';
 
 final class StatementServices {
   const StatementServices(
@@ -61,24 +62,25 @@ final class StatementServices {
         row.transactionDate == null) {
       return const [];
     }
-    final candidates = await transactions.query(
-      TransactionRepositoryQuery(
-        from: row.transactionDate,
-        to: row.transactionDate,
-        paymentSourceId: PaymentSourceId(paymentSourceId),
-        currency: row.currency,
+    final result = await FindReceiptPaymentMatch(transactions).call(
+      ReceiptPaymentMatchCommand(
+        amount: Money(
+          amount: DecimalValue.parse(row.amount!),
+          currency: CurrencyCode(row.currency!),
+        ),
+        currency: row.currency!,
+        transactionDate: row.transactionDate!.toIso8601String().substring(
+          0,
+          10,
+        ),
+        merchant: row.description,
+        paymentSourceId: paymentSourceId,
       ),
     );
-    final amount = DecimalValue.parse(row.amount!);
-    return candidates
-        .where(
-          (candidate) =>
-              candidate.money.amount == amount &&
-              candidate.direction.name == row.direction &&
-              candidate.status == TransactionStatus.active,
-        )
-        .map(TransactionDto.fromDomain)
-        .toList(growable: false);
+    return switch (result) {
+      ApplicationSuccess<TransactionDto?>(value: final value?) => [value],
+      _ => const [],
+    };
   });
 
   Future<ApplicationResult<void>> link(
@@ -91,6 +93,7 @@ final class StatementServices {
         row,
         status: StatementRowStatus.linked,
         transactionId: transactionId,
+        dispositionReason: 'linkExisting',
         updatedAt: clock.now(),
       ),
     ),
@@ -98,8 +101,17 @@ final class StatementServices {
 
   Future<ApplicationResult<TransactionDto>> save(
     StatementRow row,
-    String paymentSourceId,
-  ) => runApplication('save statement row', () async {
+    String paymentSourceId, {
+    bool allowCreateNew = false,
+  }) => runApplication('save statement row', () async {
+    if ((row.status == StatementRowStatus.saved ||
+            row.status == StatementRowStatus.linked) &&
+        row.transactionId != null) {
+      final existing = await transactions.findById(
+        TransactionId(row.transactionId!),
+      );
+      if (existing != null) return TransactionDto.fromDomain(existing);
+    }
     if (row.amount == null ||
         row.currency == null ||
         row.transactionDate == null ||
@@ -109,6 +121,19 @@ final class StatementServices {
         field: 'statementRow',
         message: 'A date, amount, currency, and direction are required.',
       );
+    }
+    if (!allowCreateNew) {
+      final matches = await likelyMatches(row, paymentSourceId);
+      if (matches case ApplicationSuccess<List<TransactionDto>>(
+        value: final values,
+      ) when values.isNotEmpty) {
+        throw const DomainValidationException(
+          code: DomainErrorCode.invalidState,
+          field: 'statementRow',
+          message:
+              'A likely existing transaction requires an explicit decision.',
+        );
+      }
     }
     final now = clock.now();
     final transactionId = 'statement-${row.statementId}-${row.id}';
@@ -147,6 +172,7 @@ final class StatementServices {
         row,
         status: StatementRowStatus.saved,
         transactionId: transactionId,
+        dispositionReason: 'createNew',
         updatedAt: now,
       ),
       transaction,
@@ -158,6 +184,7 @@ final class StatementServices {
     StatementRow row, {
     required StatementRowStatus status,
     String? transactionId,
+    String? dispositionReason,
     required DateTime updatedAt,
   }) => StatementRow(
     id: row.id,
@@ -175,6 +202,14 @@ final class StatementServices {
     sourceContext: row.sourceContext,
     status: status,
     transactionId: transactionId ?? row.transactionId,
+    merchantId: row.merchantId,
+    categoryId: row.categoryId,
+    subcategoryId: row.subcategoryId,
+    tagIds: row.tagIds,
+    paymentSourceId: row.paymentSourceId,
+    sourceReferenceId: row.sourceReferenceId,
+    reviewReason: row.reviewReason,
+    dispositionReason: dispositionReason ?? row.dispositionReason,
     createdAt: row.createdAt,
     updatedAt: updatedAt,
   );

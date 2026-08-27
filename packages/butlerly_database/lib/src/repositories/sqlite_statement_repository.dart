@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:sqflite_common/sqlite_api.dart' hide Transaction;
 
@@ -185,6 +187,12 @@ final class SqliteStatementRepository
     'masked_account_identifier': v.maskedAccountIdentifier,
     'period_start': _date(v.periodStart),
     'period_end': _date(v.periodEnd),
+    'statement_date': _date(v.statementDate),
+    'currency': v.currency,
+    'opening_balance': v.openingBalance,
+    'closing_balance': v.closingBalance,
+    'original_filename': v.originalFilename,
+    'raw_text_reference': v.rawTextReference,
     'extraction_message': v.extractionMessage,
     'created_at': v.createdAt.toUtc().toIso8601String(),
     'updated_at': v.updatedAt.toUtc().toIso8601String(),
@@ -200,6 +208,12 @@ final class SqliteStatementRepository
         maskedAccountIdentifier: r['masked_account_identifier'] as String?,
         periodStart: _parseDate(r['period_start']),
         periodEnd: _parseDate(r['period_end']),
+        statementDate: _parseDate(r['statement_date']),
+        currency: r['currency'] as String?,
+        openingBalance: r['opening_balance'] as String?,
+        closingBalance: r['closing_balance'] as String?,
+        originalFilename: r['original_filename'] as String?,
+        rawTextReference: r['raw_text_reference'] as String?,
         extractionMessage: r['extraction_message'] as String?,
         createdAt: DateTime.parse(r['created_at']! as String),
         updatedAt: DateTime.parse(r['updated_at']! as String),
@@ -221,6 +235,14 @@ final class SqliteStatementRepository
     'source_context': v.sourceContext,
     'status': v.status.name,
     'transaction_id': v.transactionId,
+    'merchant_id': v.merchantId,
+    'category_id': v.categoryId,
+    'subcategory_id': v.subcategoryId,
+    'tag_ids': jsonEncode(v.tagIds),
+    'payment_source_id': v.paymentSourceId,
+    'source_reference_id': v.sourceReferenceId,
+    'review_reason': v.reviewReason,
+    'disposition_reason': v.dispositionReason,
     'created_at': v.createdAt.toUtc().toIso8601String(),
     'updated_at': v.updatedAt.toUtc().toIso8601String(),
   };
@@ -242,6 +264,14 @@ final class SqliteStatementRepository
         sourceContext: r['source_context'] as String?,
         status: StatementRowStatus.values.byName(r['status']! as String),
         transactionId: r['transaction_id'] as String?,
+        merchantId: r['merchant_id'] as String?,
+        categoryId: r['category_id'] as String?,
+        subcategoryId: r['subcategory_id'] as String?,
+        tagIds: _decodeTags(r['tag_ids']),
+        paymentSourceId: r['payment_source_id'] as String?,
+        sourceReferenceId: r['source_reference_id'] as String?,
+        reviewReason: r['review_reason'] as String?,
+        dispositionReason: r['disposition_reason'] as String?,
         createdAt: DateTime.parse(r['created_at']! as String),
         updatedAt: DateTime.parse(r['updated_at']! as String),
       );
@@ -250,6 +280,14 @@ final class SqliteStatementRepository
       value?.toIso8601String().substring(0, 10);
   static DateTime? _parseDate(Object? value) =>
       value == null ? null : DateTime.parse(value as String);
+
+  static List<String> _decodeTags(Object? value) {
+    if (value is! String || value.isEmpty) return const [];
+    final decoded = jsonDecode(value);
+    return decoded is List
+        ? decoded.whereType<String>().toList(growable: false)
+        : const [];
+  }
 
   Future<T> _mapped<T>(String operation, Future<T> Function() action) async {
     try {
