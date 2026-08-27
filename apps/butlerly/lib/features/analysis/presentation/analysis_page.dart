@@ -444,7 +444,13 @@ class _FinancialCalendar extends StatelessWidget {
                           Text('$number'),
                           Text(
                             '${day.transactionCount}',
-                            style: Theme.of(context).textTheme.labelSmall,
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant
+                                      .withValues(alpha: 0.65),
+                                ),
                           ),
                         ],
                       ),
@@ -537,6 +543,7 @@ class _DataQualityCard extends StatelessWidget {
         context.l10n.text('supportingTransactions', {
           'count': localizedCount(context, metric.evidence.length.toString()),
         }),
+        style: Theme.of(context).textTheme.bodySmall,
       ),
       trailing: Text(
         localizedDecimal(context, metric.value.toString()),
@@ -586,7 +593,10 @@ class _MetricCard extends StatelessWidget {
           child: ListTile(
             title: Text(label),
             subtitle: showDimension && metric.dimension != null
-                ? Text(metric.dimension!)
+                ? Text(
+                    _withoutValueLabel(metric.dimension!),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  )
                 : null,
             trailing: showValue
                 ? Text(
@@ -602,7 +612,7 @@ class _MetricCard extends StatelessWidget {
 }
 
 String _withoutValueLabel(String label) => label
-    .replaceAll(RegExp(r'value', caseSensitive: false), '')
+    .replaceAll(RegExp(r'\s*:\s*value\b', caseSensitive: false), '')
     .replaceAll(RegExp(r'\s{2,}'), ' ')
     .trim();
 
@@ -619,6 +629,7 @@ class _FindingCard extends StatelessWidget {
         finding.baselineValue == null
             ? context.l10n.text('baselineUnavailable')
             : context.l10n.text('baselineAvailable'),
+        style: Theme.of(context).textTheme.bodySmall,
       ),
     ),
   );
