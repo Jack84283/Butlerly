@@ -10,6 +10,7 @@ final class ReceiptPaymentMatchCommand {
     required this.transactionDate,
     required this.merchant,
     this.paymentSourceId,
+    this.direction = TransactionDirection.expense,
   });
 
   final Money amount;
@@ -17,6 +18,7 @@ final class ReceiptPaymentMatchCommand {
   final String? merchant;
   final String currency;
   final String? paymentSourceId;
+  final TransactionDirection direction;
 }
 
 final class FindReceiptPaymentMatch {
@@ -33,7 +35,7 @@ final class FindReceiptPaymentMatch {
         UnknownTransactionTimeReason.unknown,
       ),
       money: command.amount,
-      direction: TransactionDirection.expense,
+      direction: command.direction,
       sourceType: TransactionSourceType.evidenceCapture,
       transactionDate: command.transactionDate,
       rawCounterparty: command.merchant,
@@ -57,8 +59,7 @@ final class FindReceiptPaymentMatch {
           transaction.status == TransactionStatus.active &&
           (transaction.sourceType == TransactionSourceType.import ||
               transaction.sourceType == TransactionSourceType.integration ||
-              (transaction.sourceType == TransactionSourceType.manual &&
-                  transaction.paymentSourceId != null));
+              transaction.sourceType == TransactionSourceType.manual);
       if (!isPayment) continue;
       final assessment = ReconciliationMatcher.assess(receipt, transaction);
       if (!assessment.incompatible && assessment.score >= 0.75) {
@@ -193,11 +194,7 @@ final class ReconciliationMatcher {
   static bool _directionsCanMatch(
     TransactionDirection receipt,
     TransactionDirection payment,
-  ) =>
-      (receipt == TransactionDirection.refund &&
-          payment == TransactionDirection.refund) ||
-      (receipt == TransactionDirection.expense &&
-          payment == TransactionDirection.expense);
+  ) => receipt == payment;
 
   static double? _amountDifferenceRatio(Transaction left, Transaction right) {
     if (left.money.currency != right.money.currency) return null;

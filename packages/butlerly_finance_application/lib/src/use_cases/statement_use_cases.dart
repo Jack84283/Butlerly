@@ -75,6 +75,11 @@ final class StatementServices {
         ),
         merchant: row.description,
         paymentSourceId: paymentSourceId,
+        direction: row.direction == TransactionDirection.income.name
+            ? TransactionDirection.income
+            : row.kind == StatementRowKind.refund
+            ? TransactionDirection.refund
+            : TransactionDirection.expense,
       ),
     );
     return switch (result) {
