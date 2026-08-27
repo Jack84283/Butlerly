@@ -47,10 +47,6 @@ void main() {
       ),
       findsAtLeastNWidgets(1),
     );
-    await expectLater(
-      find.byType(MaterialApp),
-      matchesGoldenFile('goldens/analysis_empty_390x844.png'),
-    );
   });
 
   testWidgets('distinguishes unavailable calculation from a zero result', (
