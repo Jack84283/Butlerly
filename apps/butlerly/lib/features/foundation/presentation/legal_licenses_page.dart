@@ -34,7 +34,7 @@ class LegalLicensesPage extends StatelessWidget {
                   Icons.description_outlined,
                   color: context.colors.interactive,
                 ),
-                title: Text(document.title),
+                title: Text(context.l10n.text(document.titleKey)),
                 trailing: Icon(
                   Icons.chevron_right_rounded,
                   color: context.colors.interactive,
@@ -59,7 +59,7 @@ class LegalDocumentPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(document.title)),
+    appBar: AppBar(title: Text(context.l10n.text(document.titleKey))),
     body: FutureBuilder<String>(
       future: rootBundle.loadString(document.assetPath),
       builder: (context, snapshot) {
@@ -86,20 +86,20 @@ class LegalDocumentPage extends StatelessWidget {
 }
 
 class LegalDocument {
-  const LegalDocument(this.title, this.assetPath);
-  final String title;
+  const LegalDocument(this.titleKey, this.assetPath);
+  final String titleKey;
   final String assetPath;
 }
 
 const _documents = [
-  LegalDocument('Terms of Use', 'assets/legal/terms_of_use.txt'),
-  LegalDocument('Privacy Policy', 'assets/legal/privacy_policy.txt'),
+  LegalDocument('termsOfUse', 'assets/legal/terms_of_use.txt'),
+  LegalDocument('privacyPolicy', 'assets/legal/privacy_policy.txt'),
   LegalDocument(
-    'Software License & Third-Party Notices',
+    'softwareLicenseThirdPartyNotices',
     'assets/legal/third_party_notices.txt',
   ),
   LegalDocument(
-    'AI & Professional-Advice Disclosures',
+    'aiProfessionalAdviceDisclosures',
     'assets/legal/ai_disclosures.txt',
   ),
 ];

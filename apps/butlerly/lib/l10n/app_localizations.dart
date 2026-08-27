@@ -39,6 +39,13 @@ class AppLocalizations {
       'appName': 'Butlerly',
       'home': 'Home',
       'transactions': 'Transactions',
+      'statements': 'Statements',
+      'statement': 'Statement',
+      'addStatement': 'Add statement',
+      'statementsEmptyBody':
+          'Add a bank or card statement. The original stays on this device and every row waits for your review.',
+      'choosePaymentSourceToContinue': 'Choose a payment source to continue',
+      'reviewInProgress': 'Review in progress',
       'review': 'Review',
       'search': 'Search',
       'settings': 'Settings',
@@ -362,6 +369,11 @@ class AppLocalizations {
       'about': 'About Butlerly',
       'legalLicenses': 'Legal & licenses',
       'legalLicensesBody': 'Terms, privacy, notices, and app information.',
+      'termsOfUse': 'Terms of Use',
+      'privacyPolicy': 'Privacy Policy',
+      'softwareLicenseThirdPartyNotices':
+          'Software License & Third-Party Notices',
+      'aiProfessionalAdviceDisclosures': 'AI & Professional-Advice Disclosures',
       'legalDocumentLoadError': 'This legal document could not be loaded.',
       'addSource': 'Add source',
       'name': 'Name',
@@ -391,6 +403,8 @@ class AppLocalizations {
       'addPaymentNotificationBody':
           'Record one card notification with integration provenance.',
       'reviewStatementImport': 'Review statement import',
+      'reviewStatementImportBody':
+          'Preserve and review bank or card statements locally.',
       'validRowsReady': '{count} valid row(s) ready to import.',
       'rowsNeedCorrection': '{count} row(s) need correction.',
       'importValidRows': 'Import valid rows',
@@ -406,6 +420,12 @@ class AppLocalizations {
       'appName': 'Butlerly',
       'home': '首页',
       'transactions': '交易',
+      'statements': '账单',
+      'statement': '账单',
+      'addStatement': '添加账单',
+      'statementsEmptyBody': '添加银行或信用卡账单。原始文件会保留在本设备上，每一行都需要你审核。',
+      'choosePaymentSourceToContinue': '选择付款来源以继续',
+      'reviewInProgress': '审核进行中',
       'review': '审核',
       'search': '搜索',
       'settings': '设置',
@@ -698,6 +718,10 @@ class AppLocalizations {
       'about': '关于 Butlerly',
       'legalLicenses': '法律与许可',
       'legalLicensesBody': '条款、隐私、声明和应用信息。',
+      'termsOfUse': '使用条款',
+      'privacyPolicy': '隐私政策',
+      'softwareLicenseThirdPartyNotices': '软件许可与第三方声明',
+      'aiProfessionalAdviceDisclosures': '人工智能与专业建议声明',
       'legalDocumentLoadError': '无法加载此法律文档。',
       'addSource': '添加来源',
       'name': '名称',
@@ -723,6 +747,7 @@ class AppLocalizations {
       'addPaymentNotification': '添加支付通知',
       'addPaymentNotificationBody': '记录一笔带有集成来源的一次性卡通知。',
       'reviewStatementImport': '检查账单导入',
+      'reviewStatementImportBody': '在本地保留并检查银行或信用卡账单。',
       'validRowsReady': '有 {count} 行有效记录可导入。',
       'rowsNeedCorrection': '有 {count} 行需要修正。',
       'importValidRows': '导入有效记录',
@@ -738,6 +763,14 @@ class AppLocalizations {
       'appName': 'Butlerly',
       'home': 'Inicio',
       'transactions': 'Transacciones',
+      'statements': 'Extractos',
+      'statement': 'Extracto',
+      'addStatement': 'Añadir extracto',
+      'statementsEmptyBody':
+          'Añade un extracto bancario o de tarjeta. El original permanece en este dispositivo y cada fila espera tu revisión.',
+      'choosePaymentSourceToContinue':
+          'Elige una fuente de pago para continuar',
+      'reviewInProgress': 'Revisión en curso',
       'review': 'Revisar',
       'search': 'Buscar',
       'settings': 'Ajustes',
@@ -1070,6 +1103,12 @@ class AppLocalizations {
       'legalLicenses': 'Avisos legales y licencias',
       'legalLicensesBody':
           'Términos, privacidad, avisos e información de la aplicación.',
+      'termsOfUse': 'Términos de uso',
+      'privacyPolicy': 'Política de privacidad',
+      'softwareLicenseThirdPartyNotices':
+          'Licencia de software y avisos de terceros',
+      'aiProfessionalAdviceDisclosures':
+          'Declaraciones sobre IA y asesoramiento profesional',
       'legalDocumentLoadError': 'No se pudo cargar este documento legal.',
       'addSource': 'Añadir fuente',
       'name': 'Nombre',
@@ -1098,6 +1137,8 @@ class AppLocalizations {
       'addPaymentNotificationBody':
           'Registra una notificación de tarjeta con procedencia de integración.',
       'reviewStatementImport': 'Revisar importación del extracto',
+      'reviewStatementImportBody':
+          'Conserva y revisa localmente los extractos bancarios o de tarjeta.',
       'validRowsReady': '{count} fila(s) válida(s) listas para importar.',
       'rowsNeedCorrection': '{count} fila(s) necesitan corrección.',
       'importValidRows': 'Importar filas válidas',
