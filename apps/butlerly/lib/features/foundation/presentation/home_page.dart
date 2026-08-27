@@ -169,7 +169,10 @@ class _HomePageState extends State<HomePage> {
                                   context.l10n.text('untitledTransaction'),
                               subtitle: data.masterData.summary(value),
                               meta: _date(value, context),
-                              amount: localizedDecimal(context, value.amount),
+                              amount: localizedTransactionAmount(
+                                context,
+                                value.amount,
+                              ),
                               currency: value.currency,
                               icon:
                                   value.direction ==

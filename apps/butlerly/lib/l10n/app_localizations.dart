@@ -300,6 +300,7 @@ class AppLocalizations {
       'baselineUnavailable': 'A comparable baseline is unavailable.',
       'baselineAvailable':
           'Compared with an independently calculated baseline.',
+      'supportingTransactions': '{count} supporting transactions',
       'insightsBody': 'Local summaries based only on confirmed records.',
       'assistant': 'Assistant',
       'assistantUnavailable': 'Assistant is not configured',
@@ -645,6 +646,7 @@ class AppLocalizations {
       'analysis.rule.r092.name': '未解决的对账',
       'baselineUnavailable': '没有可比较的基准。',
       'baselineAvailable': '与独立计算的基准进行比较。',
+      'supportingTransactions': '支持的交易：{count}',
       'insightsBody': '仅基于已确认记录生成的本地摘要。',
       'assistant': '助手',
       'assistantUnavailable': '助手尚未配置',
@@ -1003,6 +1005,7 @@ class AppLocalizations {
       'baselineUnavailable': 'No hay una base comparable disponible.',
       'baselineAvailable':
           'Comparado con una base calculada de forma independiente.',
+      'supportingTransactions': '{count} transacciones de respaldo',
       'insightsBody': 'Resúmenes locales basados en registros confirmados.',
       'assistant': 'Asistente',
       'assistantUnavailable': 'El Asistente no está configurado',

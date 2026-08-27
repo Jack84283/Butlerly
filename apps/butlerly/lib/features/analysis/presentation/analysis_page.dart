@@ -222,7 +222,13 @@ class _AnalysisResults extends StatelessWidget {
             ...?value.finding?.qualityIssues,
           ],
         )
-        .toList(growable: false);
+        .toList(growable: false)
+        .fold<List<DataQualityIssue>>(
+          [],
+          (unique, issue) => unique.any((item) => item.detail == issue.detail)
+              ? unique
+              : [...unique, issue],
+        );
     final failures = results.where((value) => value.failure != null).toList();
     return ListView(
       padding: const EdgeInsets.all(ButlerlySpacing.standard),
@@ -252,7 +258,10 @@ class _AnalysisResults extends StatelessWidget {
             message: context.l10n.text('notEnoughInsightDataBody'),
           )
         else
-          ...overview.map((result) => _MetricCard(metric: result.metric!)),
+          ...overview.map(
+            (result) =>
+                _MetricCard(metric: result.metric!, showDimension: false),
+          ),
         if (spending.isNotEmpty) ...[
           ButlerlySectionHeader(title: context.l10n.text('spending')),
           ...spending.map((result) => _MetricCard(metric: result.metric!)),
@@ -297,14 +306,19 @@ class _AnalysisResults extends StatelessWidget {
             failures.isNotEmpty) ...[
           ButlerlySectionHeader(title: context.l10n.text('dataQuality')),
           ...dataQuality.map(
-            (result) => _DataQualityCard(metric: result.metric!),
+            (result) => Padding(
+              padding: const EdgeInsets.only(bottom: ButlerlySpacing.compact),
+              child: _DataQualityCard(metric: result.metric!),
+            ),
           ),
           if (limitations.isNotEmpty || failures.isNotEmpty)
             ButlerlyCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ...limitations.map((issue) => Text('• ${issue.detail}')),
+                  ...limitations.map(
+                    (issue) => Text('• ${_localizedIssue(context, issue)}'),
+                  ),
                   ...failures.map(
                     (result) => Text('• ${result.failure!.message}'),
                   ),
@@ -399,6 +413,7 @@ class _FinancialCalendar extends StatelessWidget {
                 final day = calendar.days[index - leading];
                 final selected = selectedDate == day.financialDate;
                 final isToday = todayDate == day.financialDate;
+                final hasTransactions = day.transactionCount > 0;
                 final number = int.parse(day.financialDate.substring(8));
                 return Semantics(
                   label:
@@ -418,6 +433,9 @@ class _FinancialCalendar extends StatelessWidget {
                               : Colors.transparent,
                           width: selected ? 2 : 1,
                         ),
+                        color: hasTransactions
+                            ? Theme.of(context).colorScheme.primaryContainer
+                            : null,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Column(
@@ -515,8 +533,15 @@ class _DataQualityCard extends StatelessWidget {
     child: ExpansionTile(
       leading: const Icon(Icons.fact_check_outlined),
       title: Text(context.l10n.text(metric.rule.nameKey)),
-      subtitle: Text('${metric.evidence.length} supporting transactions'),
-      trailing: Text(localizedDecimal(context, metric.value.toString())),
+      subtitle: Text(
+        context.l10n.text('supportingTransactions', {
+          'count': localizedCount(context, metric.evidence.length.toString()),
+        }),
+      ),
+      trailing: Text(
+        localizedDecimal(context, metric.value.toString()),
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
       children: metric.evidence
           .map(
             (evidence) => ListTile(
@@ -529,14 +554,29 @@ class _DataQualityCard extends StatelessWidget {
   );
 }
 
+String _localizedIssue(BuildContext context, DataQualityIssue issue) {
+  if (issue.detail == 'No comparable baseline was available.') {
+    return context.l10n.text('baselineUnavailable');
+  }
+  return issue.detail;
+}
+
 class _MetricCard extends StatelessWidget {
-  const _MetricCard({required this.metric});
+  const _MetricCard({
+    required this.metric,
+    this.showValue = true,
+    this.showDimension = true,
+  });
   final AnalysisMetric metric;
+  final bool showValue;
+  final bool showDimension;
 
   @override
   Widget build(BuildContext context) {
-    final value = localizedDecimal(context, metric.value.toString());
-    final label = context.l10n.text(metric.rule.nameKey);
+    final value = metric.rule.measure.operation == RuleOperation.count
+        ? localizedCount(context, metric.value.toString())
+        : localizedDecimal(context, metric.value.toString());
+    final label = _withoutValueLabel(context.l10n.text(metric.rule.nameKey));
     return Padding(
       padding: const EdgeInsets.only(bottom: ButlerlySpacing.compact),
       child: Semantics(
@@ -545,17 +585,26 @@ class _MetricCard extends StatelessWidget {
         child: ButlerlyCard(
           child: ListTile(
             title: Text(label),
-            subtitle: metric.dimension == null ? null : Text(metric.dimension!),
-            trailing: Text(
-              '$value${metric.currency == null ? '' : ' ${metric.currency!.value}'}',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            subtitle: showDimension && metric.dimension != null
+                ? Text(metric.dimension!)
+                : null,
+            trailing: showValue
+                ? Text(
+                    '$value${metric.currency == null ? '' : ' ${metric.currency!.value}'}',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  )
+                : null,
           ),
         ),
       ),
     );
   }
 }
+
+String _withoutValueLabel(String label) => label
+    .replaceAll(RegExp(r'value', caseSensitive: false), '')
+    .replaceAll(RegExp(r'\s{2,}'), ' ')
+    .trim();
 
 class _FindingCard extends StatelessWidget {
   const _FindingCard({required this.finding});

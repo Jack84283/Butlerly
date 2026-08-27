@@ -213,7 +213,10 @@ class _TransactionsPageState extends State<TransactionsPage> {
                               : context.l10n.text('untitledTransaction'),
                           subtitle: data.masterData.summary(value),
                           meta: _transactionDate(value, context),
-                          amount: localizedDecimal(context, value.amount),
+                          amount: localizedTransactionAmount(
+                            context,
+                            value.amount,
+                          ),
                           currency: value.currency,
                           icon:
                               value.direction ==
@@ -967,7 +970,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
         ),
         const SizedBox(height: 8),
         Text(
-          '${localizedDecimal(context, transaction.amount)} ${transaction.currency}',
+          '${localizedTransactionAmount(context, transaction.amount)} ${transaction.currency}',
           style: Theme.of(context).textTheme.titleLarge,
         ),
         if (transaction.normalizedMoney.isNotEmpty) ...[
@@ -982,7 +985,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 'currency': value.currency,
               }),
               value:
-                  '${localizedDecimal(context, value.amount)} ${value.currency}',
+                  '${localizedTransactionAmount(context, value.amount)} ${value.currency}',
             ),
           ),
         ],

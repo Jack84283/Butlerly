@@ -11,3 +11,21 @@ String localizedDecimal(BuildContext context, String canonicalValue) {
     decimalDigits: fraction,
   ).format(value);
 }
+
+String localizedTransactionAmount(BuildContext context, String canonicalValue) {
+  final value = num.tryParse(canonicalValue);
+  if (value == null) return canonicalValue;
+  final locale = Localizations.localeOf(context).toLanguageTag();
+  return (NumberFormat.decimalPattern(locale)
+        ..minimumFractionDigits = 0
+        ..maximumFractionDigits = 2)
+      .format(value);
+}
+
+String localizedCount(BuildContext context, String canonicalValue) {
+  final value = num.tryParse(canonicalValue);
+  if (value == null) return canonicalValue;
+  return NumberFormat.decimalPattern(
+    Localizations.localeOf(context).toLanguageTag(),
+  ).format(value);
+}

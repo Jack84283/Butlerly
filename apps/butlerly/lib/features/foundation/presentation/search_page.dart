@@ -423,7 +423,10 @@ class _SearchPageState extends State<SearchPage>
                               context,
                             ).toLanguageTag(),
                           ),
-                          amount: localizedDecimal(context, value.amount),
+                          amount: localizedTransactionAmount(
+                            context,
+                            value.amount,
+                          ),
                           currency: value.currency,
                           icon: Icons.receipt_long_outlined,
                           isIncome:
