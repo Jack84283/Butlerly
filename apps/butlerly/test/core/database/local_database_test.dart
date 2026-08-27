@@ -33,7 +33,7 @@ void main() {
     );
 
     expect(database.status, DatabaseStatus.ready);
-    expect(await database.database.getVersion(), 17);
+    expect(await database.database.getVersion(), 19);
     expect(tables.map((row) => row['name']), contains('transactions'));
 
     await database.close();
