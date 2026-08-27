@@ -200,7 +200,6 @@ class ButlerlyRecordRow extends StatelessWidget {
     required this.title,
     required this.amount,
     required this.currency,
-    required this.icon,
     this.subtitle,
     this.meta,
     this.isIncome = false,
@@ -214,7 +213,6 @@ class ButlerlyRecordRow extends StatelessWidget {
   final String? meta;
   final String amount;
   final String currency;
-  final IconData icon;
   final bool isIncome;
   final bool needsReview;
   final VoidCallback? onTap;
@@ -237,23 +235,6 @@ class ButlerlyRecordRow extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Container(
-                width: ButlerlySize.preferredTarget,
-                height: ButlerlySize.preferredTarget,
-                decoration: BoxDecoration(
-                  color: needsReview
-                      ? context.colors.warning.withValues(alpha: 0.15)
-                      : context.colors.brand.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(ButlerlyRadius.full),
-                ),
-                child: Icon(
-                  icon,
-                  color: needsReview
-                      ? context.colors.warning
-                      : context.colors.brandStrong,
-                ),
-              ),
-              const SizedBox(width: ButlerlySpacing.small),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

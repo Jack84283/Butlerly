@@ -8,6 +8,7 @@ import 'package:butlerly/core/evidence/local_ocr_service.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -86,6 +87,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   List<Category> _categories = const [];
   List<Tag> _tags = const [];
   List<PaymentSource> _sources = const [];
+  TransactionMasterData _masterData = const TransactionMasterData();
 
   FinanceServices get finance => services<FinanceServices>();
   LocalEvidenceStore get evidenceStore => services<LocalEvidenceStore>();
@@ -140,8 +142,17 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         value: final value?,
       )) {
         _currency.text = value.baseCurrency.value;
+        unawaited(_loadMasterData(value.locale));
       }
     });
+  }
+
+  Future<void> _loadMasterData(String languageCode) async {
+    final data = await TransactionMasterData.load(
+      finance,
+      languageCode: languageCode,
+    );
+    if (mounted) setState(() => _masterData = data);
   }
 
   Future<void> _camera() async {
@@ -645,7 +656,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                           ))
                             DropdownMenuEntry(
                               value: category.id.value,
-                              label: category.name,
+                              label:
+                                  _masterData.categoryName(category.id.value) ??
+                                  category.name,
                             ),
                         ],
                         onChanged: (value) => setState(() {
@@ -665,7 +678,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                           ))
                             DropdownMenuEntry(
                               value: category.id.value,
-                              label: category.name,
+                              label:
+                                  _masterData.categoryName(category.id.value) ??
+                                  category.name,
                             ),
                         ],
                         onChanged: (value) => setState(() {
