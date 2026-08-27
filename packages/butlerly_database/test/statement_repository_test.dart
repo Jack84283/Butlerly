@@ -114,6 +114,10 @@ void main() {
         StatementRowStatus.saved,
       );
       expect(
+        (await statements.findStatement('statement'))?.status,
+        StatementStatus.completed,
+      );
+      expect(
         await SqliteTransactionRepository(database).findById(transaction.id),
         isNotNull,
       );

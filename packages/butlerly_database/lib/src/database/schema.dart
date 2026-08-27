@@ -1,5 +1,5 @@
 abstract final class Schema {
-  static const version = 20;
+  static const version = 19;
 
   static const migration1 = <String>[
     '''CREATE TABLE payment_sources (
@@ -369,9 +369,5 @@ abstract final class Schema {
     'ALTER TABLE statement_rows ADD COLUMN source_reference_id TEXT',
     'ALTER TABLE statement_rows ADD COLUMN review_reason TEXT',
     'ALTER TABLE statement_rows ADD COLUMN disposition_reason TEXT',
-  ];
-
-  static const migration20 = <String>[
-    'ALTER TABLE statement_rows ADD COLUMN subcategory_id TEXT REFERENCES categories(id)',
   ];
 }

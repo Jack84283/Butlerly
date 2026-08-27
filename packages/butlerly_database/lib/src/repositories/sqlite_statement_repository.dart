@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:sqflite_common/sqlite_api.dart' hide Transaction;
+import 'package:sqflite_common/sqlite_api.dart' as sqflite;
 
 import '../database/butlerly_database.dart';
 import 'sqlite_transaction_repository.dart';
@@ -102,18 +103,21 @@ final class SqliteStatementRepository
   @override
   Future<void> updateRow(StatementRow row) async {
     try {
-      final count = await database.connection.update(
-        'statement_rows',
-        _row(row),
-        where: 'id = ?',
-        whereArgs: [row.id],
-      );
-      if (count != 1) {
-        throw const RepositoryException(
-          RepositoryFailureCode.notFound,
-          'update statement row',
+      await database.transaction((tx) async {
+        final count = await tx.update(
+          'statement_rows',
+          _row(row),
+          where: 'id = ?',
+          whereArgs: [row.id],
         );
-      }
+        if (count != 1) {
+          throw const RepositoryException(
+            RepositoryFailureCode.notFound,
+            'update statement row',
+          );
+        }
+        await _refreshStatementStatus(tx, row.statementId);
+      });
     } on DatabaseException catch (error) {
       throw mapDatabaseException(error, 'update statement row');
     }
@@ -151,31 +155,68 @@ final class SqliteStatementRepository
               'complete statement row once',
             );
           }
+          await _refreshStatementStatus(tx, row.statementId);
         }),
       );
 
   @override
   Future<void> linkRow(StatementRow row) async {
     try {
-      final count = await database.connection.update(
-        'statement_rows',
-        _row(row),
-        where: 'id = ? AND status NOT IN (?, ?)',
-        whereArgs: [
-          row.id,
-          StatementRowStatus.saved.name,
-          StatementRowStatus.linked.name,
-        ],
-      );
-      if (count != 1) {
-        throw const RepositoryException(
-          RepositoryFailureCode.constraint,
-          'link statement row once',
+      await database.transaction((tx) async {
+        final count = await tx.update(
+          'statement_rows',
+          _row(row),
+          where: 'id = ? AND status NOT IN (?, ?)',
+          whereArgs: [
+            row.id,
+            StatementRowStatus.saved.name,
+            StatementRowStatus.linked.name,
+          ],
         );
-      }
+        if (count != 1) {
+          throw const RepositoryException(
+            RepositoryFailureCode.constraint,
+            'link statement row once',
+          );
+        }
+        await _refreshStatementStatus(tx, row.statementId);
+      });
     } on DatabaseException catch (error) {
       throw mapDatabaseException(error, 'link statement row');
     }
+  }
+
+  static Future<void> _refreshStatementStatus(
+    sqflite.Transaction tx,
+    String statementId,
+  ) async {
+    final statementRows = await tx.query(
+      'statement_rows',
+      columns: ['status'],
+      where: 'statement_id = ?',
+      whereArgs: [statementId],
+    );
+    if (statementRows.isEmpty) return;
+    final terminal = statementRows.every(
+      (row) => const ['saved', 'linked', 'skipped'].contains(row['status']),
+    );
+    final hasTerminal = statementRows.any(
+      (row) => const ['saved', 'linked', 'skipped'].contains(row['status']),
+    );
+    final status = terminal
+        ? StatementStatus.completed
+        : hasTerminal
+        ? StatementStatus.partial
+        : StatementStatus.ready;
+    await tx.update(
+      'financial_statements',
+      {
+        'status': status.name,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [statementId],
+    );
   }
 
   static Map<String, Object?> _statementRow(FinancialStatement v) => {
@@ -237,7 +278,6 @@ final class SqliteStatementRepository
     'transaction_id': v.transactionId,
     'merchant_id': v.merchantId,
     'category_id': v.categoryId,
-    'subcategory_id': v.subcategoryId,
     'tag_ids': jsonEncode(v.tagIds),
     'payment_source_id': v.paymentSourceId,
     'source_reference_id': v.sourceReferenceId,
@@ -266,7 +306,6 @@ final class SqliteStatementRepository
         transactionId: r['transaction_id'] as String?,
         merchantId: r['merchant_id'] as String?,
         categoryId: r['category_id'] as String?,
-        subcategoryId: r['subcategory_id'] as String?,
         tagIds: _decodeTags(r['tag_ids']),
         paymentSourceId: r['payment_source_id'] as String?,
         sourceReferenceId: r['source_reference_id'] as String?,

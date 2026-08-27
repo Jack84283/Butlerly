@@ -503,8 +503,15 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
     final amount = TextEditingController(text: row.amount);
     final currency = TextEditingController(text: row.currency);
     var direction = row.direction;
-    var categoryId = row.categoryId;
-    var subcategoryId = row.subcategoryId;
+    var subcategoryId =
+        row.categoryId != null &&
+            widget.masterData.presentation.categoryParentId(row.categoryId) !=
+                null
+        ? row.categoryId
+        : null;
+    var categoryId =
+        widget.masterData.presentation.categoryParentId(row.categoryId) ??
+        row.categoryId;
     var merchantId = row.merchantId;
     var tagIds = row.tagIds.toSet();
     final accepted = await showDialog<bool>(
@@ -644,8 +651,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
               direction != null
           ? StatementRowStatus.pending
           : StatementRowStatus.unresolved,
-      categoryId: categoryId,
-      subcategoryId: subcategoryId,
+      categoryId: subcategoryId ?? categoryId,
       merchantId: merchantId,
       tagIds: tagIds.toList(growable: false),
       paymentSourceId: row.paymentSourceId,

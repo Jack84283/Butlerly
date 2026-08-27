@@ -153,7 +153,10 @@ final class StatementServices {
       transactionDate: row.transactionDate!.toIso8601String().substring(0, 10),
       description: row.description,
       rawCounterparty: row.originalText,
-      paymentSourceId: PaymentSourceId(paymentSourceId),
+      paymentSourceId: PaymentSourceId(row.paymentSourceId ?? paymentSourceId),
+      merchantId: row.merchantId == null ? null : MerchantId(row.merchantId!),
+      categoryId: row.categoryId == null ? null : CategoryId(row.categoryId!),
+      tagIds: row.tagIds.map(TagId.new).toList(growable: false),
       externalReference: 'statement-row:${row.id}',
       provenance: [
         Provenance(
@@ -204,7 +207,6 @@ final class StatementServices {
     transactionId: transactionId ?? row.transactionId,
     merchantId: row.merchantId,
     categoryId: row.categoryId,
-    subcategoryId: row.subcategoryId,
     tagIds: row.tagIds,
     paymentSourceId: row.paymentSourceId,
     sourceReferenceId: row.sourceReferenceId,
