@@ -79,22 +79,25 @@ final class SqliteStatementRepository
     DateTime updatedAt,
   ) async {
     try {
-      final count = await database.connection.update(
-        'financial_statements',
-        {
-          'payment_source_id': paymentSourceId,
-          'status': StatementStatus.ready.name,
-          'updated_at': updatedAt.toUtc().toIso8601String(),
-        },
-        where: 'id = ?',
-        whereArgs: [id],
-      );
-      if (count != 1) {
-        throw const RepositoryException(
-          RepositoryFailureCode.notFound,
-          'assign statement payment source',
+      await database.transaction((tx) async {
+        final count = await tx.update(
+          'financial_statements',
+          {
+            'payment_source_id': paymentSourceId,
+            'status': StatementStatus.ready.name,
+            'updated_at': updatedAt.toUtc().toIso8601String(),
+          },
+          where: 'id = ?',
+          whereArgs: [id],
         );
-      }
+        if (count != 1) {
+          throw const RepositoryException(
+            RepositoryFailureCode.notFound,
+            'assign statement payment source',
+          );
+        }
+        await _refreshStatementStatus(tx, id, updatedAt);
+      });
     } on DatabaseException catch (error) {
       throw mapDatabaseException(error, 'assign statement payment source');
     }
@@ -116,7 +119,7 @@ final class SqliteStatementRepository
             'update statement row',
           );
         }
-        await _refreshStatementStatus(tx, row.statementId);
+        await _refreshStatementStatus(tx, row.statementId, row.updatedAt);
       });
     } on DatabaseException catch (error) {
       throw mapDatabaseException(error, 'update statement row');
@@ -155,7 +158,7 @@ final class SqliteStatementRepository
               'complete statement row once',
             );
           }
-          await _refreshStatementStatus(tx, row.statementId);
+          await _refreshStatementStatus(tx, row.statementId, row.updatedAt);
         }),
       );
 
@@ -179,7 +182,7 @@ final class SqliteStatementRepository
             'link statement row once',
           );
         }
-        await _refreshStatementStatus(tx, row.statementId);
+        await _refreshStatementStatus(tx, row.statementId, row.updatedAt);
       });
     } on DatabaseException catch (error) {
       throw mapDatabaseException(error, 'link statement row');
@@ -189,7 +192,18 @@ final class SqliteStatementRepository
   static Future<void> _refreshStatementStatus(
     sqflite.Transaction tx,
     String statementId,
+    DateTime updatedAt,
   ) async {
+    final parents = await tx.query(
+      'financial_statements',
+      columns: ['status', 'payment_source_id'],
+      where: 'id = ?',
+      whereArgs: [statementId],
+      limit: 1,
+    );
+    if (parents.isEmpty) return;
+    final currentStatus = parents.single['status'] as String;
+    if (currentStatus == StatementStatus.archived.name) return;
     final statementRows = await tx.query(
       'statement_rows',
       columns: ['status'],
@@ -203,7 +217,9 @@ final class SqliteStatementRepository
     final hasTerminal = statementRows.any(
       (row) => const ['saved', 'linked', 'skipped'].contains(row['status']),
     );
-    final status = terminal
+    final status = parents.single['payment_source_id'] == null
+        ? StatementStatus.needsSource
+        : terminal
         ? StatementStatus.completed
         : hasTerminal
         ? StatementStatus.partial
@@ -212,7 +228,7 @@ final class SqliteStatementRepository
       'financial_statements',
       {
         'status': status.name,
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
+        'updated_at': updatedAt.toUtc().toIso8601String(),
       },
       where: 'id = ?',
       whereArgs: [statementId],

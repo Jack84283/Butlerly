@@ -189,6 +189,98 @@ void main() {
   });
 
   test(
+    'recalculates parent progress without losing setup or archive state',
+    () async {
+      final now = DateTime.utc(2026, 8, 26);
+      await statements.saveStatement(
+        FinancialStatement(
+          id: 'progress-statement',
+          evidenceId: 'evidence',
+          status: StatementStatus.needsSource,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      final first = StatementRow(
+        id: 'progress-row-1',
+        statementId: 'progress-statement',
+        position: 0,
+        originalText: 'row 1',
+        status: StatementRowStatus.pending,
+        createdAt: now,
+        updatedAt: now,
+      );
+      final second = StatementRow(
+        id: 'progress-row-2',
+        statementId: 'progress-statement',
+        position: 1,
+        originalText: 'row 2',
+        status: StatementRowStatus.pending,
+        createdAt: now,
+        updatedAt: now,
+      );
+      await statements.saveRows([first, second]);
+      await statements.updateRow(
+        StatementRow(
+          id: first.id,
+          statementId: first.statementId,
+          position: first.position,
+          originalText: first.originalText,
+          status: StatementRowStatus.skipped,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      expect(
+        (await statements.findStatement('progress-statement'))?.status,
+        StatementStatus.needsSource,
+      );
+
+      await statements.assignPaymentSource('progress-statement', 'source', now);
+      expect(
+        (await statements.findStatement('progress-statement'))?.status,
+        StatementStatus.partial,
+      );
+      await statements.updateRow(
+        StatementRow(
+          id: second.id,
+          statementId: second.statementId,
+          position: second.position,
+          originalText: second.originalText,
+          status: StatementRowStatus.skipped,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      expect(
+        (await statements.findStatement('progress-statement'))?.status,
+        StatementStatus.completed,
+      );
+      await database.connection.update(
+        'financial_statements',
+        {'status': StatementStatus.archived.name},
+        where: 'id = ?',
+        whereArgs: ['progress-statement'],
+      );
+      await statements.updateRow(
+        StatementRow(
+          id: second.id,
+          statementId: second.statementId,
+          position: second.position,
+          originalText: second.originalText,
+          status: StatementRowStatus.skipped,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      expect(
+        (await statements.findStatement('progress-statement'))?.status,
+        StatementStatus.archived,
+      );
+    },
+  );
+
+  test(
     'deleting statement removes candidates but preserves canonical transaction',
     () async {
       final now = DateTime.utc(2026);
