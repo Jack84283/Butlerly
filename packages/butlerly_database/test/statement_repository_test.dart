@@ -6,6 +6,7 @@ import 'package:test/test.dart';
 void main() {
   late ButlerlyDatabase database;
   late SqliteStatementRepository statements;
+  late SqliteTransactionRepository transactions;
   setUp(() async {
     sqfliteFfiInit();
     database = ButlerlyDatabase(
@@ -14,6 +15,7 @@ void main() {
     );
     await database.open();
     statements = SqliteStatementRepository(database);
+    transactions = SqliteTransactionRepository(database);
     final evidence = SqliteEvidenceRepository(database);
     await evidence.save(
       EvidenceItem(
@@ -126,6 +128,121 @@ void main() {
         throwsA(isA<RepositoryException>()),
       );
       expect((await SqliteTransactionRepository(database).listAll()).length, 1);
+    },
+  );
+
+  test(
+    'links a statement row and receipt evidence to one canonical transaction',
+    () async {
+      final now = DateTime.utc(2026, 8, 26);
+      await statements.saveStatement(
+        FinancialStatement(
+          id: 'multi-evidence-statement',
+          evidenceId: 'evidence',
+          paymentSourceId: 'source',
+          status: StatementStatus.ready,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      final row = StatementRow(
+        id: 'multi-evidence-row',
+        statementId: 'multi-evidence-statement',
+        position: 0,
+        originalText: 'Cafe 12.00',
+        amount: '12.00',
+        currency: 'USD',
+        direction: TransactionDirection.expense.name,
+        status: StatementRowStatus.pending,
+        createdAt: now,
+        updatedAt: now,
+      );
+      await statements.saveRows([row]);
+      final transaction = Transaction(
+        id: TransactionId('multi-evidence-transaction'),
+        timing: const UnknownTransactionTime(
+          UnknownTransactionTimeReason.unknown,
+        ),
+        money: Money(
+          amount: DecimalValue.parse('99.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        sourceType: TransactionSourceType.manual,
+        transactionDate: '2026-08-26',
+        description: 'Canonical value',
+        paymentSourceId: PaymentSourceId('source'),
+        provenance: [
+          Provenance(
+            id: ProvenanceId('multi-evidence-tx-p'),
+            sourceType: ProvenanceSourceType.userEntry,
+            capturedAt: now,
+          ),
+        ],
+        createdAt: now,
+        updatedAt: now,
+      );
+      await transactions.save(transaction);
+      await statements.linkRow(
+        StatementRow(
+          id: row.id,
+          statementId: row.statementId,
+          position: row.position,
+          originalText: row.originalText,
+          amount: row.amount,
+          currency: row.currency,
+          direction: row.direction,
+          status: StatementRowStatus.linked,
+          transactionId: transaction.id.value,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      final evidenceRepository = SqliteEvidenceRepository(database);
+      await evidenceRepository.save(
+        EvidenceItem(
+          id: EvidenceId('receipt-evidence'),
+          type: EvidenceType.receiptImage,
+          originalName: 'receipt.jpg',
+          mediaType: 'image/jpeg',
+          provenance: Provenance(
+            id: ProvenanceId('receipt-evidence-p'),
+            sourceType: ProvenanceSourceType.scan,
+            capturedAt: now,
+            originalRepresentation: 'receipt.jpg',
+          ),
+          createdAt: now,
+        ),
+      );
+      await evidenceRepository.link(
+        AttachmentLink(
+          id: AttachmentLinkId('receipt-link'),
+          transactionId: transaction.id,
+          evidenceId: EvidenceId('receipt-evidence'),
+          createdAt: now,
+        ),
+      );
+      await evidenceRepository.link(
+        AttachmentLink(
+          id: AttachmentLinkId('receipt-link-duplicate'),
+          transactionId: transaction.id,
+          evidenceId: EvidenceId('receipt-evidence'),
+          createdAt: now,
+        ),
+      );
+      expect((await transactions.listAll()), hasLength(1));
+      expect(
+        (await statements.listRows(row.statementId)).single.transactionId,
+        transaction.id.value,
+      );
+      expect(
+        (await evidenceRepository.listForTransaction(transaction.id)),
+        hasLength(1),
+      );
+      expect(
+        (await transactions.findById(transaction.id))?.description,
+        'Canonical value',
+      );
     },
   );
 

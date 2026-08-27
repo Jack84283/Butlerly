@@ -446,6 +446,14 @@ void main() {
         createdAt: now,
       ),
     );
+    await evidenceRepository.link(
+      AttachmentLink(
+        id: AttachmentLinkId('link-duplicate'),
+        transactionId: transaction.id,
+        evidenceId: evidence.id,
+        createdAt: now,
+      ),
+    );
     await transactions.save(
       transaction.assignMerchant(null, now.add(const Duration(minutes: 1))),
     );
