@@ -22,7 +22,6 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage>
     with AutomaticKeepAliveClientMixin {
-  static const _currencyOptions = ['USD', 'EUR', 'GBP', 'CAD', 'CNY', 'JPY'];
   final _text = TextEditingController();
   String? _currency;
   TransactionDirection? _direction;
@@ -33,8 +32,9 @@ class _SearchPageState extends State<SearchPage>
   DateTime? _to;
   Future<List<TransactionDto>>? _results;
   late Future<TransactionMasterDataSnapshot> _masterData;
+  late Future<List<String>> _currencies;
   TransactionMasterData _presentation = const TransactionMasterData();
-  bool _masterDataStarted = false;
+  String? _loadedLanguageCode;
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
@@ -46,11 +46,15 @@ class _SearchPageState extends State<SearchPage>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_masterDataStarted) return;
-    _masterDataStarted = true;
-    _masterData = _loadMasterData();
+    final languageCode = Localizations.localeOf(context).languageCode;
+    if (_loadedLanguageCode == languageCode) return;
+    _loadedLanguageCode = languageCode;
+    _masterData = _loadMasterData(languageCode);
+    _currencies = _loadCurrencies();
     _masterData.then((value) {
-      if (mounted) setState(() => _presentation = value.presentation);
+      if (mounted && _loadedLanguageCode == languageCode) {
+        setState(() => _presentation = value.presentation);
+      }
     });
   }
 
@@ -83,7 +87,9 @@ class _SearchPageState extends State<SearchPage>
     };
   }
 
-  Future<TransactionMasterDataSnapshot> _loadMasterData() async {
+  Future<TransactionMasterDataSnapshot> _loadMasterData(
+    String languageCode,
+  ) async {
     final finance = _finance;
     if (finance == null) {
       return const TransactionMasterDataSnapshot(
@@ -96,7 +102,21 @@ class _SearchPageState extends State<SearchPage>
     }
     return TransactionMasterDataProvider(
       finance,
-    ).load(languageCode: Localizations.localeOf(context).languageCode);
+    ).load(languageCode: languageCode);
+  }
+
+  Future<List<String>> _loadCurrencies() async {
+    final finance = _finance;
+    if (finance == null) return const [];
+    final result = await finance.listTransactions(
+      const ListTransactionsQuery(),
+    );
+    return switch (result) {
+      ApplicationSuccess<List<TransactionDto>>(:final value) =>
+        value.map((transaction) => transaction.currency).toSet().toList()
+          ..sort(),
+      ApplicationFailure<List<TransactionDto>>() => const [],
+    };
   }
 
   void _submit() => setState(() {
@@ -137,12 +157,16 @@ class _SearchPageState extends State<SearchPage>
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: ButlerlySpacing.compact),
-                ButlerlyCurrencyFilter(
-                  currencies: _currencyOptions,
-                  value: _currency,
-                  label: context.l10n.text('currency'),
-                  anyLabel: context.l10n.text('anyCurrency'),
-                  onChanged: (value) => setSheetState(() => _currency = value),
+                FutureBuilder<List<String>>(
+                  future: _currencies,
+                  builder: (context, snapshot) => ButlerlyCurrencyFilter(
+                    currencies: snapshot.data ?? const [],
+                    value: _currency,
+                    label: context.l10n.text('currency'),
+                    anyLabel: context.l10n.text('anyCurrency'),
+                    onChanged: (value) =>
+                        setSheetState(() => _currency = value),
+                  ),
                 ),
                 const SizedBox(height: ButlerlySpacing.standard),
                 ButlerlyDirectionFilter(
