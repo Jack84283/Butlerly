@@ -327,19 +327,26 @@ class ButlerlySelectField<T> extends StatelessWidget {
       width: constraints.maxWidth,
       menuHeight: 192,
       label: Text(label),
-      trailingIcon: onCreate != null
-          ? IconButton(
-              onPressed: onCreate,
-              icon: const Icon(Icons.add_circle_outline),
-              tooltip: createTooltip,
-            )
-          : onClear != null
-          ? IconButton(
-              onPressed: onClear,
-              icon: const Icon(Icons.clear),
-              tooltip: clearTooltip,
-            )
-          : null,
+      trailingIcon: onCreate == null && onClear == null
+          ? null
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (onCreate != null)
+                  IconButton(
+                    onPressed: onCreate,
+                    icon: const Icon(Icons.add_circle_outline),
+                    tooltip: createTooltip,
+                  ),
+                if (onClear != null)
+                  IconButton(
+                    onPressed: onClear,
+                    icon: const Icon(Icons.clear),
+                    tooltip: clearTooltip,
+                  ),
+                const Icon(Icons.arrow_drop_down),
+              ],
+            ),
       inputDecorationTheme: Theme.of(context).inputDecorationTheme,
       menuStyle: MenuStyle(
         minimumSize: WidgetStatePropertyAll(Size(constraints.maxWidth, 0)),

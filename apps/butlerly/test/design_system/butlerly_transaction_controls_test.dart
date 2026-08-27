@@ -91,6 +91,30 @@ void main() {
     expect(find.byTooltip('清除支付来源'), findsWidgets);
   });
 
+  testWidgets('merchant selector exposes create and clear actions', (
+    tester,
+  ) async {
+    String? value = 'merchant';
+    await pump(
+      tester,
+      StatefulBuilder(
+        builder: (context, setState) => ButlerlyMerchantSelector(
+          merchants: [Merchant(id: MerchantId('merchant'), name: 'Shop')],
+          value: value,
+          label: 'Merchant',
+          clearLabel: '清除商户',
+          createTooltip: '添加商户',
+          onChanged: (next) => setState(() => value = next),
+          onCreate: () {},
+        ),
+      ),
+    );
+    expect(find.byTooltip('添加商户'), findsWidgets);
+    expect(find.byTooltip('清除商户'), findsWidgets);
+    await tester.tap(find.byTooltip('清除商户').first);
+    expect(value, isNull);
+  });
+
   testWidgets('tag picker supports localized search and multi-selection', (
     tester,
   ) async {
@@ -115,8 +139,12 @@ void main() {
           ..addAll(value),
       ),
     );
-    expect(find.text('工作'), findsOneWidget);
-    await tester.tap(find.text('工作'));
+    expect(find.text('工作'), findsWidgets);
+    await tester.enterText(find.byType(TextField), '工作');
+    await tester.pump();
+    expect(find.text('家庭'), findsNothing);
+    expect(find.text('工作'), findsWidgets);
+    await tester.tap(find.text('工作').last);
     await tester.pump();
     expect(selected, contains('work'));
   });
