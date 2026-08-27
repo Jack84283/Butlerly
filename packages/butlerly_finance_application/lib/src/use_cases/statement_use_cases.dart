@@ -30,6 +30,9 @@ final class StatementServices {
   Future<ApplicationResult<List<StatementRow>>> rows(String id) =>
       runApplication('list statement rows', () => statements.listRows(id));
 
+  Future<ApplicationResult<void>> addRows(List<StatementRow> rows) =>
+      runApplication('add statement rows', () => statements.saveRows(rows));
+
   Future<ApplicationResult<void>> assignSource(String id, String sourceId) =>
       runApplication(
         'assign statement payment source',
@@ -45,6 +48,9 @@ final class StatementServices {
       _copy(row, status: status, updatedAt: clock.now()),
     ),
   );
+
+  Future<ApplicationResult<void>> correct(StatementRow row) =>
+      runApplication('correct statement row', () => statements.updateRow(row));
 
   Future<ApplicationResult<List<TransactionDto>>> likelyMatches(
     StatementRow row,
@@ -68,6 +74,7 @@ final class StatementServices {
         .where(
           (candidate) =>
               candidate.money.amount == amount &&
+              candidate.direction.name == row.direction &&
               candidate.status == TransactionStatus.active,
         )
         .map(TransactionDto.fromDomain)

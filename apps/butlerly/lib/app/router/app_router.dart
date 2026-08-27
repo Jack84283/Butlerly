@@ -94,7 +94,15 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/statements',
-      builder: (_, _) => const StatementCapturePage(),
+      builder: (context, _) => services.isRegistered<FinanceServices>()
+          ? const StatementCapturePage()
+          : Scaffold(
+              body: ButlerlyEmptyState(
+                icon: Icons.storage_outlined,
+                title: context.l10n.text('localStorageUnavailable'),
+                message: context.l10n.text('dataPreserved'),
+              ),
+            ),
     ),
     GoRoute(path: '/privacy-data', builder: (_, _) => const PrivacyDataPage()),
     GoRoute(

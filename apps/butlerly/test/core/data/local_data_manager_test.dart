@@ -47,6 +47,8 @@ void main() {
     expect(
       tables.keys,
       containsAll([
+        'financial_statements',
+        'statement_rows',
         'reconciliation_candidates',
         'reconciliation_links',
         'category_translations',
@@ -56,9 +58,8 @@ void main() {
       ]),
     );
     expect(
-      File(
-        path.join(exported.directory.path, 'evidence', 'receipt.bin'),
-      ).existsSync(),
+      File(path.join(exported.directory.path, 'evidence', 'receipt.bin'))
+          .existsSync(),
       isTrue,
     );
 

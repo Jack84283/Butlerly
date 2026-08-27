@@ -142,4 +142,70 @@ void main() {
       expect(await statements.findStatement('statement'), isNull);
     },
   );
+
+  test('permanent transaction deletion reopens its statement row', () async {
+    final now = DateTime.utc(2026, 8, 26);
+    await statements.saveStatement(
+      FinancialStatement(
+        id: 'statement',
+        evidenceId: 'evidence',
+        paymentSourceId: 'source',
+        status: StatementStatus.ready,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    final transaction = Transaction(
+      id: TransactionId('linked-transaction'),
+      timing: const UnknownTransactionTime(
+        UnknownTransactionTimeReason.unknown,
+      ),
+      money: Money(
+        amount: DecimalValue.parse('12'),
+        currency: CurrencyCode('USD'),
+      ),
+      direction: TransactionDirection.expense,
+      sourceType: TransactionSourceType.import,
+      transactionDate: '2026-08-20',
+      paymentSourceId: PaymentSourceId('source'),
+      provenance: [
+        Provenance(
+          id: ProvenanceId('linked-transaction-p'),
+          sourceType: ProvenanceSourceType.import,
+          capturedAt: now,
+          originalRepresentation: '2026-08-20 SHOP -12.00 USD',
+        ),
+      ],
+      createdAt: now,
+      updatedAt: now,
+    );
+    final linked = StatementRow(
+      id: 'linked-row',
+      statementId: 'statement',
+      position: 0,
+      originalText: '2026-08-20 SHOP -12.00 USD',
+      transactionDate: DateTime.utc(2026, 8, 20),
+      amount: '12',
+      currency: 'USD',
+      direction: TransactionDirection.expense.name,
+      status: StatementRowStatus.saved,
+      transactionId: transaction.id.value,
+      createdAt: now,
+      updatedAt: now,
+    );
+    await SqliteTransactionRepository(database).save(transaction);
+    await statements.saveRows([linked]);
+
+    await SqliteTransactionRepository(
+      database,
+    ).removePermanently(transaction.id);
+
+    final reopened = (await statements.listRows('statement')).single;
+    expect(reopened.status, StatementRowStatus.pending);
+    expect(reopened.transactionId, isNull);
+    expect(
+      await SqliteTransactionRepository(database).findById(transaction.id),
+      isNull,
+    );
+  });
 }
