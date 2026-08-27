@@ -5,6 +5,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/evidence/local_ocr_service.dart';
+import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
@@ -26,42 +27,6 @@ class ReceiptCapturePage extends StatefulWidget {
 String _paymentSourceLabel(PaymentSource source) => source.lastFour == null
     ? (source.displayIdentity ?? source.name)
     : '${source.displayIdentity ?? source.name} ••••${source.lastFour}';
-
-class _ReceiptDropdown<T> extends StatelessWidget {
-  const _ReceiptDropdown({
-    required this.label,
-    required this.value,
-    required this.entries,
-    required this.onChanged,
-  });
-
-  final String label;
-  final T? value;
-  final List<DropdownMenuEntry<T>> entries;
-  final ValueChanged<T?> onChanged;
-
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) => DropdownMenu<T>(
-      initialSelection: value,
-      width: constraints.maxWidth,
-      menuHeight: 192,
-      label: Text(label),
-      inputDecorationTheme: Theme.of(context).inputDecorationTheme,
-      menuStyle: MenuStyle(
-        minimumSize: WidgetStatePropertyAll(Size(constraints.maxWidth, 0)),
-        maximumSize: WidgetStatePropertyAll(
-          Size(constraints.maxWidth, double.infinity),
-        ),
-        backgroundColor: WidgetStatePropertyAll(
-          Theme.of(context).colorScheme.surface,
-        ),
-      ),
-      dropdownMenuEntries: entries,
-      onSelected: onChanged,
-    ),
-  );
-}
 
 class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   final _picker = ImagePicker();
@@ -659,7 +624,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                         onTap: _pickDate,
                       ),
                       const SizedBox(height: ButlerlySpacing.standard),
-                      _ReceiptDropdown<String>(
+                      ButlerlySelectField<String>(
                         label: context.l10n.text('category'),
                         value: selectedParentId,
                         entries: [
@@ -678,7 +643,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                         }),
                       ),
                       const SizedBox(height: ButlerlySpacing.standard),
-                      _ReceiptDropdown<String>(
+                      ButlerlySelectField<String>(
                         label: context.l10n.text('subcategory'),
                         value: selectedCategory?.parentId == null
                             ? null
@@ -700,7 +665,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                         }),
                       ),
                       const SizedBox(height: ButlerlySpacing.standard),
-                      _ReceiptDropdown<String>(
+                      ButlerlySelectField<String>(
                         label: context.l10n.text('paymentSource'),
                         value: _paymentSourceId,
                         entries: [
@@ -727,7 +692,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                               (value) => value.status == TagStatus.active,
                             ))
                               FilterChip(
-                                label: Text(tag.name),
+                                label: Text(
+                                  _masterData.tagName(tag.id.value) ?? tag.name,
+                                ),
                                 selected: _tagIds.contains(tag.id.value),
                                 onSelected: (selected) => setState(() {
                                   if (selected) {

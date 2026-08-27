@@ -562,7 +562,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   maxLines: 3,
                 ),
                 const SizedBox(height: 16),
-                _LookupDropdown<String>(
+                ButlerlySelectField<String>(
                   label: context.l10n.text('merchant'),
                   value: _merchantId,
                   entries: [
@@ -578,7 +578,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   onCreate: () => _createMerchant(data),
                 ),
                 const SizedBox(height: 16),
-                _LookupDropdown<String>(
+                ButlerlySelectField<String>(
                   label: context.l10n.text('category'),
                   value: selectedParentId,
                   entries: [
@@ -594,7 +594,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   onChanged: (value) => setState(() => _categoryId = value),
                 ),
                 const SizedBox(height: 16),
-                _LookupDropdown<String>(
+                ButlerlySelectField<String>(
                   label: context.l10n.text('subcategory'),
                   value: selectedCategory?.parentId == null
                       ? null
@@ -613,7 +613,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                       setState(() => _categoryId = value ?? selectedParentId),
                 ),
                 const SizedBox(height: 16),
-                _LookupDropdown<String>(
+                ButlerlySelectField<String>(
                   label: context.l10n.text('paymentSource'),
                   value: _paymentSourceId,
                   entries: [
@@ -735,49 +735,6 @@ final class _EditorMasterData {
   final List<PaymentSource> paymentSources;
   final Map<String, String> categoryLabels;
   final Map<String, String> tagLabels;
-}
-
-class _LookupDropdown<T> extends StatelessWidget {
-  const _LookupDropdown({
-    required this.label,
-    required this.value,
-    required this.entries,
-    required this.onChanged,
-    this.onCreate,
-  });
-  final String label;
-  final T? value;
-  final List<DropdownMenuEntry<T>> entries;
-  final ValueChanged<T?> onChanged;
-  final VoidCallback? onCreate;
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) => DropdownMenu<T>(
-      initialSelection: value,
-      width: constraints.maxWidth,
-      menuHeight: 192,
-      label: Text(label),
-      trailingIcon: onCreate == null
-          ? null
-          : IconButton(
-              onPressed: onCreate,
-              icon: const Icon(Icons.add_circle_outline),
-              tooltip: context.l10n.text('addTag'),
-            ),
-      dropdownMenuEntries: entries,
-      inputDecorationTheme: Theme.of(context).inputDecorationTheme,
-      menuStyle: MenuStyle(
-        minimumSize: WidgetStatePropertyAll(Size(constraints.maxWidth, 0)),
-        maximumSize: WidgetStatePropertyAll(
-          Size(constraints.maxWidth, double.infinity),
-        ),
-        backgroundColor: WidgetStatePropertyAll(
-          Theme.of(context).colorScheme.surface,
-        ),
-      ),
-      onSelected: onChanged,
-    ),
-  );
 }
 
 class _TagSelector extends StatelessWidget {

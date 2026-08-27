@@ -296,6 +296,56 @@ class ButlerlyRecordRow extends StatelessWidget {
   );
 }
 
+/// Shared selection control for form fields backed by canonical values.
+/// Labels are presentation-only; callers keep the selected ID/value unchanged.
+class ButlerlySelectField<T> extends StatelessWidget {
+  const ButlerlySelectField({
+    required this.label,
+    required this.value,
+    required this.entries,
+    required this.onChanged,
+    this.onCreate,
+    this.createTooltip,
+    super.key,
+  });
+
+  final String label;
+  final T? value;
+  final List<DropdownMenuEntry<T>> entries;
+  final ValueChanged<T?> onChanged;
+  final VoidCallback? onCreate;
+  final String? createTooltip;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => DropdownMenu<T>(
+      initialSelection: value,
+      width: constraints.maxWidth,
+      menuHeight: 192,
+      label: Text(label),
+      trailingIcon: onCreate == null
+          ? null
+          : IconButton(
+              onPressed: onCreate,
+              icon: const Icon(Icons.add_circle_outline),
+              tooltip: createTooltip ?? 'Create $label',
+            ),
+      inputDecorationTheme: Theme.of(context).inputDecorationTheme,
+      menuStyle: MenuStyle(
+        minimumSize: WidgetStatePropertyAll(Size(constraints.maxWidth, 0)),
+        maximumSize: WidgetStatePropertyAll(
+          Size(constraints.maxWidth, double.infinity),
+        ),
+        backgroundColor: WidgetStatePropertyAll(
+          Theme.of(context).colorScheme.surface,
+        ),
+      ),
+      dropdownMenuEntries: entries,
+      onSelected: onChanged,
+    ),
+  );
+}
+
 class ButlerlyEmptyState extends StatelessWidget {
   const ButlerlyEmptyState({
     required this.icon,
