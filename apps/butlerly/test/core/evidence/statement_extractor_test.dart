@@ -24,4 +24,34 @@ Balance forward 100.00
     );
     expect(rows, isEmpty);
   });
+
+  test('leaves an unsigned amount unresolved', () {
+    final rows = LocalStatementExtractor.parse(
+      '2026-08-12 Grocery Store 42.10 USD',
+    );
+
+    expect(rows, hasLength(1));
+    expect(rows.single.amount, '42.1');
+    expect(rows.single.direction, isNull);
+  });
+
+  test('uses explicit debit and credit markers for direction', () {
+    final rows = LocalStatementExtractor.parse('''
+2026-08-12 Grocery Store 42.10 DR USD
+2026-08-13 Refund 10.00 CREDIT USD
+''');
+
+    expect(rows[0].direction, TransactionDirection.expense.name);
+    expect(rows[1].direction, TransactionDirection.income.name);
+  });
+
+  test('rejects overflowing calendar dates', () {
+    final rows = LocalStatementExtractor.parse(
+      '02/30/2026 Grocery Store -42.10 USD',
+    );
+
+    expect(rows, hasLength(1));
+    expect(rows.single.date, isNull);
+    expect(LocalStatementExtractor.parseDate('202-1-1'), isNull);
+  });
 }
