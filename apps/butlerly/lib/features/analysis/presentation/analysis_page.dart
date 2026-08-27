@@ -292,10 +292,7 @@ class _AnalysisResults extends StatelessWidget {
                 color: context.colors.success,
               ),
               title: Text(context.l10n.text('allClear')),
-              subtitle: Text(
-                context.l10n.text('allClearBody'),
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
+              subtitle: Text(context.l10n.text('allClearBody')),
             ),
           )
         else if (findings.isNotEmpty)
