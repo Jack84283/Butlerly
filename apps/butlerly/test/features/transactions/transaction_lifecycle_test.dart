@@ -631,7 +631,7 @@ void main() {
     expect(find.text('整理交易'), findsNWidgets(2));
     expect(find.text('商户').last, findsOneWidget);
     expect(find.text('分类').last, findsOneWidget);
-    expect(find.text('添加标签'), findsNWidgets(3));
+    expect(find.text('添加标签'), findsOneWidget);
     expect(find.text('保存整理结果'), findsOneWidget);
     expect(find.text('Organize transaction'), findsNothing);
   });

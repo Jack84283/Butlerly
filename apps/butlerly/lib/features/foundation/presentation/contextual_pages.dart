@@ -3,6 +3,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/import/local_csv_importer.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
@@ -434,23 +435,17 @@ class _SinglePaymentDialogState extends State<_SinglePaymentDialog> {
               alignment: AlignmentDirectional.centerStart,
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 360),
-                child: DropdownButtonFormField<String>(
-                  initialValue: _direction,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('direction'),
+                child: ButlerlyDirectionFilter(
+                  value: _direction == 'income'
+                      ? TransactionDirection.income
+                      : TransactionDirection.expense,
+                  label: context.l10n.text('direction'),
+                  anyLabel: context.l10n.text('clear'),
+                  onChanged: (value) => setState(
+                    () => _direction = value == TransactionDirection.income
+                        ? 'income'
+                        : 'expense',
                   ),
-                  items: [
-                    DropdownMenuItem(
-                      value: 'expense',
-                      child: Text(context.l10n.text('debitExpense')),
-                    ),
-                    DropdownMenuItem(
-                      value: 'income',
-                      child: Text(context.l10n.text('creditRefund')),
-                    ),
-                  ],
-                  onChanged: (value) =>
-                      setState(() => _direction = value ?? 'expense'),
                 ),
               ),
             ),
@@ -459,22 +454,11 @@ class _SinglePaymentDialogState extends State<_SinglePaymentDialog> {
               alignment: AlignmentDirectional.centerStart,
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 360),
-                child: DropdownButtonFormField<String>(
-                  initialValue: _sourceId,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('paymentSource'),
-                  ),
-                  items: [
-                    DropdownMenuItem(
-                      value: '',
-                      child: Text(context.l10n.text('unassigned')),
-                    ),
-                    for (final source in widget.sources)
-                      DropdownMenuItem(
-                        value: source.id.value,
-                        child: Text(_paymentSourceLabel(source)),
-                      ),
-                  ],
+                child: ButlerlyPaymentSourceSelector(
+                  value: _sourceId,
+                  label: context.l10n.text('paymentSource'),
+                  clearLabel: context.l10n.text('unassigned'),
+                  sources: widget.sources,
                   onChanged: (value) => setState(() => _sourceId = value),
                 ),
               ),
@@ -523,10 +507,6 @@ class _SinglePaymentDialogState extends State<_SinglePaymentDialog> {
 String _isoDate(DateTime value) =>
     '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 
-String _paymentSourceLabel(PaymentSource source) => source.lastFour == null
-    ? (source.displayIdentity ?? source.name)
-    : '${source.displayIdentity ?? source.name} ••••${source.lastFour}';
-
 class _StatementPreviewDialog extends StatefulWidget {
   const _StatementPreviewDialog({required this.preview, required this.sources});
 
@@ -564,22 +544,11 @@ class _StatementPreviewDialogState extends State<_StatementPreviewDialog> {
               ),
             ],
             const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: _sourceId,
-              decoration: InputDecoration(
-                labelText: context.l10n.text('paymentSource'),
-              ),
-              items: [
-                DropdownMenuItem(
-                  value: '',
-                  child: Text(context.l10n.text('unassigned')),
-                ),
-                for (final source in widget.sources)
-                  DropdownMenuItem(
-                    value: source.id.value,
-                    child: Text(_paymentSourceLabel(source)),
-                  ),
-              ],
+            ButlerlyPaymentSourceSelector(
+              value: _sourceId,
+              label: context.l10n.text('paymentSource'),
+              clearLabel: context.l10n.text('unassigned'),
+              sources: widget.sources,
               onChanged: (value) => setState(() => _sourceId = value),
             ),
             const SizedBox(height: 12),

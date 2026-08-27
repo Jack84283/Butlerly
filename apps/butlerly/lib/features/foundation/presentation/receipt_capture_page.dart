@@ -540,20 +540,11 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                         ),
                       ),
                       const SizedBox(height: ButlerlySpacing.standard),
-                      DropdownButtonFormField<String>(
-                        initialValue: _merchantId,
-                        decoration: InputDecoration(
-                          labelText: context.l10n.text('merchant'),
-                        ),
-                        items: [
-                          for (final merchant in _merchants.where(
-                            (value) => value.status == MerchantStatus.active,
-                          ))
-                            DropdownMenuItem(
-                              value: merchant.id.value,
-                              child: Text(merchant.name),
-                            ),
-                        ],
+                      ButlerlyMerchantSelector(
+                        merchants: _merchants,
+                        value: _merchantId,
+                        label: context.l10n.text('merchant'),
+                        clearLabel: context.l10n.text('clear'),
                         onChanged: (value) =>
                             setState(() => _merchantId = value),
                       ),

@@ -580,20 +580,13 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                   controller: currency,
                   decoration: const InputDecoration(labelText: 'Currency'),
                 ),
-                DropdownButtonFormField<String>(
-                  initialValue: direction,
-                  decoration: const InputDecoration(
-                    labelText: 'Direction (required)',
-                  ),
-                  items: TransactionDirection.values
-                      .map(
-                        (v) => DropdownMenuItem(
-                          value: v.name,
-                          child: Text(v.name),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (v) => setDialogState(() => direction = v),
+                ButlerlyDirectionFilter(
+                  value: direction == null
+                      ? null
+                      : TransactionDirection.values.byName(direction!),
+                  label: context.l10n.text('direction'),
+                  anyLabel: context.l10n.text('clear'),
+                  onChanged: (v) => setDialogState(() => direction = v?.name),
                 ),
               ],
             ),

@@ -2,8 +2,10 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
@@ -135,46 +137,17 @@ class _SearchPageState extends State<SearchPage>
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: ButlerlySpacing.compact),
-                DropdownButtonFormField<String?>(
-                  initialValue: _currency,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('currency'),
-                  ),
-                  items: [
-                    DropdownMenuItem(
-                      child: Text(context.l10n.text('anyCurrency')),
-                    ),
-                    for (final code in const [
-                      'USD',
-                      'EUR',
-                      'GBP',
-                      'CAD',
-                      'CNY',
-                      'JPY',
-                    ])
-                      DropdownMenuItem(value: code, child: Text(code)),
-                  ],
+                ButlerlyCurrencyFilter(
+                  value: _currency,
+                  label: context.l10n.text('currency'),
+                  anyLabel: context.l10n.text('anyCurrency'),
                   onChanged: (value) => setSheetState(() => _currency = value),
                 ),
                 const SizedBox(height: ButlerlySpacing.standard),
-                DropdownButtonFormField<TransactionDirection?>(
-                  initialValue: _direction,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('direction'),
-                  ),
-                  items: [
-                    DropdownMenuItem(
-                      child: Text(context.l10n.text('anyDirection')),
-                    ),
-                    DropdownMenuItem(
-                      value: TransactionDirection.income,
-                      child: Text(context.l10n.text('income')),
-                    ),
-                    DropdownMenuItem(
-                      value: TransactionDirection.expense,
-                      child: Text(context.l10n.text('expense')),
-                    ),
-                  ],
+                ButlerlyDirectionFilter(
+                  value: _direction,
+                  label: context.l10n.text('direction'),
+                  anyLabel: context.l10n.text('anyDirection'),
                   onChanged: (value) => setSheetState(() => _direction = value),
                 ),
                 const SizedBox(height: ButlerlySpacing.standard),
@@ -228,51 +201,30 @@ class _SearchPageState extends State<SearchPage>
                 const SizedBox(height: ButlerlySpacing.standard),
                 FutureBuilder<List<Category>>(
                   future: _categories,
-                  builder: (context, snapshot) =>
-                      DropdownButtonFormField<String?>(
-                        key: const ValueKey('search-category-filter'),
-                        initialValue: _categoryId,
-                        decoration: InputDecoration(
-                          labelText: context.l10n.text('anyCategory'),
-                        ),
-                        items: [
-                          DropdownMenuItem(
-                            child: Text(context.l10n.text('anyCategory')),
-                          ),
-                          ...?snapshot.data?.map(
-                            (value) => DropdownMenuItem(
-                              value: value.id.value,
-                              child: Text(value.name),
-                            ),
-                          ),
-                        ],
-                        onChanged: (value) =>
-                            setSheetState(() => _categoryId = value),
-                      ),
+                  builder: (context, snapshot) => ButlerlyCategoryFilter(
+                    key: const ValueKey('search-category-filter'),
+                    categories: snapshot.data ?? const [],
+                    masterData: TransactionMasterData(
+                      categoryNames: _categoryNames,
+                    ),
+                    value: _categoryId,
+                    label: context.l10n.text('anyCategory'),
+                    anyLabel: context.l10n.text('anyCategory'),
+                    onChanged: (value) =>
+                        setSheetState(() => _categoryId = value),
+                  ),
                 ),
                 const SizedBox(height: ButlerlySpacing.standard),
                 FutureBuilder<List<PaymentSource>>(
                   future: _paymentSources,
-                  builder: (context, snapshot) =>
-                      DropdownButtonFormField<String?>(
-                        initialValue: _paymentSourceId,
-                        decoration: InputDecoration(
-                          labelText: context.l10n.text('anyPaymentSource'),
-                        ),
-                        items: [
-                          DropdownMenuItem(
-                            child: Text(context.l10n.text('anyPaymentSource')),
-                          ),
-                          ...?snapshot.data?.map(
-                            (value) => DropdownMenuItem(
-                              value: value.id.value,
-                              child: Text(value.name),
-                            ),
-                          ),
-                        ],
-                        onChanged: (value) =>
-                            setSheetState(() => _paymentSourceId = value),
-                      ),
+                  builder: (context, snapshot) => ButlerlyPaymentSourceFilter(
+                    sources: snapshot.data ?? const [],
+                    value: _paymentSourceId,
+                    label: context.l10n.text('anyPaymentSource'),
+                    anyLabel: context.l10n.text('anyPaymentSource'),
+                    onChanged: (value) =>
+                        setSheetState(() => _paymentSourceId = value),
+                  ),
                 ),
                 const SizedBox(height: ButlerlySpacing.standard),
                 SwitchListTile.adaptive(
@@ -347,15 +299,12 @@ class _SearchPageState extends State<SearchPage>
         const SizedBox(height: ButlerlySpacing.small),
         Row(
           children: [
-            FilterChip(
+            ButlerlyFilterButton(
               selected: _activeFilterCount > 0,
-              avatar: const Icon(Icons.tune_rounded, size: 18),
-              label: Text(
-                _activeFilterCount > 0
-                    ? '${context.l10n.text('filters')} ($_activeFilterCount)'
-                    : context.l10n.text('filters'),
-              ),
-              onSelected: (_) => _openFilters(),
+              label: _activeFilterCount > 0
+                  ? '${context.l10n.text('filters')} ($_activeFilterCount)'
+                  : context.l10n.text('filters'),
+              onPressed: _openFilters,
             ),
             if (_activeFilterCount > 0) ...[
               const SizedBox(width: ButlerlySpacing.compact),

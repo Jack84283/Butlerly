@@ -1303,14 +1303,11 @@ class _TransactionMasterDataRowsState
           if (transaction.categoryId != null)
             ..._categoryRows(context, data, transaction.categoryId),
           if (transaction.tagIds.isNotEmpty)
-            _DetailRow(
+            ButlerlyReadOnlyTagList(
+              tagIds: transaction.tagIds.map((id) => id),
+              masterData: data,
               label: context.l10n.text('tags'),
-              value: transaction.tagIds
-                  .map(
-                    (id) =>
-                        data.tagName(id) ?? context.l10n.text('unavailableTag'),
-                  )
-                  .join(', '),
+              unavailableLabel: context.l10n.text('unavailableTag'),
             ),
         ],
       );
@@ -1463,24 +1460,17 @@ Future<bool?> _organizeTransaction(
     _ => const <String, String>{},
   };
   if (!context.mounted) return false;
-  final merchantOptions = merchants
-      .map((value) => _MasterDataOption(value.id.value, value.name))
-      .toList(growable: false);
-  String categoryName(Category value) =>
-      categoryLabels[value.id.value] ?? value.name;
   final activeCategories = categories
       .where((value) => value.status == CategoryStatus.active)
       .toList(growable: false);
-  List<_MasterDataOption> subcategoryOptions(String? parentId) =>
-      activeCategories
-          .where((value) => value.parentId?.value == parentId)
-          .map(
-            (value) => _MasterDataOption(value.id.value, categoryName(value)),
-          )
-          .toList(growable: false);
-  final tagOptions = tags
-      .map((value) => _MasterDataOption(value.id.value, value.name))
-      .toList(growable: false);
+  final presentation = TransactionMasterData.fromEntities(
+    merchants: merchants,
+    categories: categories,
+    tags: tags,
+    categoryLabels: categoryLabels,
+    tagLabels: const {},
+    languageCode: languageCode,
+  );
 
   String? merchantId = transaction.merchantId;
   String? categoryId = transaction.categoryId;
@@ -1498,97 +1488,49 @@ Future<bool?> _organizeTransaction(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _OrganizerMenuField(
-                label: dialogContext.l10n.text('merchant'),
-                icon: Icons.storefront_outlined,
+              ButlerlyMerchantSelector(
+                merchants: merchants,
                 value: merchantId,
-                placeholder: dialogContext.l10n.text('unassigned'),
-                options: merchantOptions,
-                includeUnassigned: true,
-                onSelected: (value) => setDialogState(
-                  () => merchantId = value.isEmpty ? null : value,
-                ),
+                label: dialogContext.l10n.text('merchant'),
+                clearLabel: dialogContext.l10n.text('clear'),
+                onChanged: (value) => setDialogState(() => merchantId = value),
               ),
               const SizedBox(height: ButlerlySpacing.small),
-              _OrganizerMenuField(
+              ButlerlyCategorySelector(
+                categories: activeCategories,
+                masterData: presentation,
+                value: parentCategoryId,
                 label: dialogContext.l10n.text('category'),
-                icon: Icons.category_outlined,
-                value: parentCategoryId ?? categoryId,
-                placeholder: dialogContext.l10n.text('unassigned'),
-                options: activeCategories
-                    .where((value) => value.parentId == null)
-                    .map(
-                      (value) => _MasterDataOption(
-                        value.id.value,
-                        categoryName(value),
-                      ),
-                    )
-                    .toList(growable: false),
-                includeUnassigned: true,
-                onSelected: (value) => setDialogState(() {
-                  parentCategoryId = value.isEmpty ? null : value;
-                  categoryId = parentCategoryId;
+                clearLabel: dialogContext.l10n.text('clear'),
+                onChanged: (value) => setDialogState(() {
+                  parentCategoryId = value;
+                  categoryId = value;
                 }),
               ),
               const SizedBox(height: ButlerlySpacing.small),
-              if (subcategoryOptions(parentCategoryId).isNotEmpty)
-                _OrganizerMenuField(
-                  label: dialogContext.l10n.text('subcategory'),
-                  icon: Icons.account_tree_outlined,
-                  value:
-                      parentCategoryId == null || categoryId == parentCategoryId
-                      ? null
-                      : categoryId,
-                  placeholder: dialogContext.l10n.text('unassigned'),
-                  options: subcategoryOptions(parentCategoryId),
-                  includeUnassigned: true,
-                  onSelected: (value) => setDialogState(
-                    () => categoryId = value.isEmpty ? parentCategoryId : value,
-                  ),
+              ButlerlySubcategorySelector(
+                categories: activeCategories,
+                masterData: presentation,
+                parentId: parentCategoryId,
+                value: categoryId == parentCategoryId ? null : categoryId,
+                label: dialogContext.l10n.text('subcategory'),
+                clearLabel: dialogContext.l10n.text('clear'),
+                onChanged: (value) => setDialogState(
+                  () => categoryId = value ?? parentCategoryId,
                 ),
+              ),
               const SizedBox(height: ButlerlySpacing.small),
-              if (selectedTagIds.isNotEmpty) ...[
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: Text(
-                    dialogContext.l10n.text('assignedTags'),
-                    style: Theme.of(dialogContext).textTheme.labelLarge,
-                  ),
-                ),
-                const SizedBox(height: ButlerlySpacing.compact),
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: Wrap(
-                    spacing: ButlerlySpacing.compact,
-                    runSpacing: ButlerlySpacing.compact,
-                    children: selectedTagIds
-                        .map(
-                          (id) => InputChip(
-                            label: Text(
-                              _optionName(tagOptions, id) ??
-                                  dialogContext.l10n.text('unavailableTag'),
-                            ),
-                            tooltip: dialogContext.l10n.text('removeTag'),
-                            onDeleted: () =>
-                                setDialogState(() => selectedTagIds.remove(id)),
-                          ),
-                        )
-                        .toList(growable: false),
-                  ),
-                ),
-                const SizedBox(height: ButlerlySpacing.small),
-              ],
-              _OrganizerMenuField(
-                key: ValueKey(selectedTagIds.length),
-                label: dialogContext.l10n.text('addTag'),
-                icon: Icons.sell_outlined,
-                placeholder: dialogContext.l10n.text('addTag'),
-                options: tagOptions
-                    .where((option) => !selectedTagIds.contains(option.id))
-                    .toList(growable: false),
-                onSelected: (value) {
-                  setDialogState(() => selectedTagIds.add(value));
-                },
+              ButlerlyTagPicker(
+                tags: tags,
+                masterData: presentation,
+                selected: selectedTagIds,
+                searchLabel: dialogContext.l10n.text('search'),
+                createLabel: dialogContext.l10n.text('addTag'),
+                onChanged: (value) => setDialogState(() {
+                  selectedTagIds
+                    ..clear()
+                    ..addAll(value);
+                }),
               ),
             ],
           ),
@@ -1621,73 +1563,6 @@ Future<bool?> _organizeTransaction(
       ),
     ),
   );
-}
-
-final class _MasterDataOption {
-  const _MasterDataOption(this.id, this.name);
-
-  final String id;
-  final String name;
-}
-
-class _OrganizerMenuField extends StatelessWidget {
-  const _OrganizerMenuField({
-    required this.label,
-    required this.icon,
-    required this.placeholder,
-    required this.options,
-    required this.onSelected,
-    this.value,
-    this.includeUnassigned = false,
-    super.key,
-  });
-
-  final String label;
-  final IconData icon;
-  final String? value;
-  final String placeholder;
-  final List<_MasterDataOption> options;
-  final bool includeUnassigned;
-  final ValueChanged<String> onSelected;
-
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) => DropdownMenu<String>(
-      initialSelection: value,
-      width: constraints.maxWidth,
-      menuHeight: 192,
-      label: Text(label),
-      leadingIcon: Icon(icon),
-      hintText: placeholder,
-      inputDecorationTheme: Theme.of(context).inputDecorationTheme,
-      menuStyle: MenuStyle(
-        minimumSize: WidgetStatePropertyAll(Size(constraints.maxWidth, 0)),
-        maximumSize: WidgetStatePropertyAll(
-          Size(constraints.maxWidth, double.infinity),
-        ),
-        backgroundColor: WidgetStatePropertyAll(
-          Theme.of(context).colorScheme.surface,
-        ),
-      ),
-      dropdownMenuEntries: [
-        if (includeUnassigned)
-          DropdownMenuEntry<String>(
-            value: '',
-            label: context.l10n.text('unassigned'),
-          ),
-        for (final option in options)
-          DropdownMenuEntry<String>(value: option.id, label: option.name),
-      ],
-      onSelected: (selected) => onSelected(selected ?? ''),
-    ),
-  );
-}
-
-String? _optionName(List<_MasterDataOption> options, String? id) {
-  for (final option in options) {
-    if (option.id == id) return option.name;
-  }
-  return null;
 }
 
 Future<TransactionDto?> _assignPaymentSource(
