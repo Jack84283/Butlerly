@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:sqflite_common/sqlite_api.dart' hide Transaction;
+import 'package:sqflite_common/sqlite_api.dart' as sqflite;
 
 import '../database/butlerly_database.dart';
 import 'sqlite_transaction_repository.dart';
@@ -76,22 +79,25 @@ final class SqliteStatementRepository
     DateTime updatedAt,
   ) async {
     try {
-      final count = await database.connection.update(
-        'financial_statements',
-        {
-          'payment_source_id': paymentSourceId,
-          'status': StatementStatus.ready.name,
-          'updated_at': updatedAt.toUtc().toIso8601String(),
-        },
-        where: 'id = ?',
-        whereArgs: [id],
-      );
-      if (count != 1) {
-        throw const RepositoryException(
-          RepositoryFailureCode.notFound,
-          'assign statement payment source',
+      await database.transaction((tx) async {
+        final count = await tx.update(
+          'financial_statements',
+          {
+            'payment_source_id': paymentSourceId,
+            'status': StatementStatus.ready.name,
+            'updated_at': updatedAt.toUtc().toIso8601String(),
+          },
+          where: 'id = ?',
+          whereArgs: [id],
         );
-      }
+        if (count != 1) {
+          throw const RepositoryException(
+            RepositoryFailureCode.notFound,
+            'assign statement payment source',
+          );
+        }
+        await _refreshStatementStatus(tx, id, updatedAt);
+      });
     } on DatabaseException catch (error) {
       throw mapDatabaseException(error, 'assign statement payment source');
     }
@@ -100,18 +106,21 @@ final class SqliteStatementRepository
   @override
   Future<void> updateRow(StatementRow row) async {
     try {
-      final count = await database.connection.update(
-        'statement_rows',
-        _row(row),
-        where: 'id = ?',
-        whereArgs: [row.id],
-      );
-      if (count != 1) {
-        throw const RepositoryException(
-          RepositoryFailureCode.notFound,
-          'update statement row',
+      await database.transaction((tx) async {
+        final count = await tx.update(
+          'statement_rows',
+          _row(row),
+          where: 'id = ?',
+          whereArgs: [row.id],
         );
-      }
+        if (count != 1) {
+          throw const RepositoryException(
+            RepositoryFailureCode.notFound,
+            'update statement row',
+          );
+        }
+        await _refreshStatementStatus(tx, row.statementId, row.updatedAt);
+      });
     } on DatabaseException catch (error) {
       throw mapDatabaseException(error, 'update statement row');
     }
@@ -149,31 +158,81 @@ final class SqliteStatementRepository
               'complete statement row once',
             );
           }
+          await _refreshStatementStatus(tx, row.statementId, row.updatedAt);
         }),
       );
 
   @override
   Future<void> linkRow(StatementRow row) async {
     try {
-      final count = await database.connection.update(
-        'statement_rows',
-        _row(row),
-        where: 'id = ? AND status NOT IN (?, ?)',
-        whereArgs: [
-          row.id,
-          StatementRowStatus.saved.name,
-          StatementRowStatus.linked.name,
-        ],
-      );
-      if (count != 1) {
-        throw const RepositoryException(
-          RepositoryFailureCode.constraint,
-          'link statement row once',
+      await database.transaction((tx) async {
+        final count = await tx.update(
+          'statement_rows',
+          _row(row),
+          where: 'id = ? AND status NOT IN (?, ?)',
+          whereArgs: [
+            row.id,
+            StatementRowStatus.saved.name,
+            StatementRowStatus.linked.name,
+          ],
         );
-      }
+        if (count != 1) {
+          throw const RepositoryException(
+            RepositoryFailureCode.constraint,
+            'link statement row once',
+          );
+        }
+        await _refreshStatementStatus(tx, row.statementId, row.updatedAt);
+      });
     } on DatabaseException catch (error) {
       throw mapDatabaseException(error, 'link statement row');
     }
+  }
+
+  static Future<void> _refreshStatementStatus(
+    sqflite.Transaction tx,
+    String statementId,
+    DateTime updatedAt,
+  ) async {
+    final parents = await tx.query(
+      'financial_statements',
+      columns: ['status', 'payment_source_id'],
+      where: 'id = ?',
+      whereArgs: [statementId],
+      limit: 1,
+    );
+    if (parents.isEmpty) return;
+    final currentStatus = parents.single['status'] as String;
+    if (currentStatus == StatementStatus.archived.name) return;
+    final statementRows = await tx.query(
+      'statement_rows',
+      columns: ['status'],
+      where: 'statement_id = ?',
+      whereArgs: [statementId],
+    );
+    if (statementRows.isEmpty) return;
+    final terminal = statementRows.every(
+      (row) => const ['saved', 'linked', 'skipped'].contains(row['status']),
+    );
+    final hasTerminal = statementRows.any(
+      (row) => const ['saved', 'linked', 'skipped'].contains(row['status']),
+    );
+    final status = parents.single['payment_source_id'] == null
+        ? StatementStatus.needsSource
+        : terminal
+        ? StatementStatus.completed
+        : hasTerminal
+        ? StatementStatus.partial
+        : StatementStatus.ready;
+    await tx.update(
+      'financial_statements',
+      {
+        'status': status.name,
+        'updated_at': updatedAt.toUtc().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [statementId],
+    );
   }
 
   static Map<String, Object?> _statementRow(FinancialStatement v) => {
@@ -185,6 +244,12 @@ final class SqliteStatementRepository
     'masked_account_identifier': v.maskedAccountIdentifier,
     'period_start': _date(v.periodStart),
     'period_end': _date(v.periodEnd),
+    'statement_date': _date(v.statementDate),
+    'currency': v.currency,
+    'opening_balance': v.openingBalance,
+    'closing_balance': v.closingBalance,
+    'original_filename': v.originalFilename,
+    'raw_text_reference': v.rawTextReference,
     'extraction_message': v.extractionMessage,
     'created_at': v.createdAt.toUtc().toIso8601String(),
     'updated_at': v.updatedAt.toUtc().toIso8601String(),
@@ -200,6 +265,12 @@ final class SqliteStatementRepository
         maskedAccountIdentifier: r['masked_account_identifier'] as String?,
         periodStart: _parseDate(r['period_start']),
         periodEnd: _parseDate(r['period_end']),
+        statementDate: _parseDate(r['statement_date']),
+        currency: r['currency'] as String?,
+        openingBalance: r['opening_balance'] as String?,
+        closingBalance: r['closing_balance'] as String?,
+        originalFilename: r['original_filename'] as String?,
+        rawTextReference: r['raw_text_reference'] as String?,
         extractionMessage: r['extraction_message'] as String?,
         createdAt: DateTime.parse(r['created_at']! as String),
         updatedAt: DateTime.parse(r['updated_at']! as String),
@@ -221,6 +292,13 @@ final class SqliteStatementRepository
     'source_context': v.sourceContext,
     'status': v.status.name,
     'transaction_id': v.transactionId,
+    'merchant_id': v.merchantId,
+    'category_id': v.categoryId,
+    'tag_ids': jsonEncode(v.tagIds),
+    'payment_source_id': v.paymentSourceId,
+    'source_reference_id': v.sourceReferenceId,
+    'review_reason': v.reviewReason,
+    'disposition_reason': v.dispositionReason,
     'created_at': v.createdAt.toUtc().toIso8601String(),
     'updated_at': v.updatedAt.toUtc().toIso8601String(),
   };
@@ -242,6 +320,13 @@ final class SqliteStatementRepository
         sourceContext: r['source_context'] as String?,
         status: StatementRowStatus.values.byName(r['status']! as String),
         transactionId: r['transaction_id'] as String?,
+        merchantId: r['merchant_id'] as String?,
+        categoryId: r['category_id'] as String?,
+        tagIds: _decodeTags(r['tag_ids']),
+        paymentSourceId: r['payment_source_id'] as String?,
+        sourceReferenceId: r['source_reference_id'] as String?,
+        reviewReason: r['review_reason'] as String?,
+        dispositionReason: r['disposition_reason'] as String?,
         createdAt: DateTime.parse(r['created_at']! as String),
         updatedAt: DateTime.parse(r['updated_at']! as String),
       );
@@ -250,6 +335,14 @@ final class SqliteStatementRepository
       value?.toIso8601String().substring(0, 10);
   static DateTime? _parseDate(Object? value) =>
       value == null ? null : DateTime.parse(value as String);
+
+  static List<String> _decodeTags(Object? value) {
+    if (value is! String || value.isEmpty) return const [];
+    final decoded = jsonDecode(value);
+    return decoded is List
+        ? decoded.whereType<String>().toList(growable: false)
+        : const [];
+  }
 
   Future<T> _mapped<T>(String operation, Future<T> Function() action) async {
     try {

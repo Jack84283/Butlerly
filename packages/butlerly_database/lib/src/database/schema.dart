@@ -1,5 +1,5 @@
 abstract final class Schema {
-  static const version = 17;
+  static const version = 19;
 
   static const migration1 = <String>[
     '''CREATE TABLE payment_sources (
@@ -350,5 +350,24 @@ abstract final class Schema {
     )''',
     'CREATE INDEX idx_statement_rows_status ON statement_rows(statement_id, status)',
     'CREATE INDEX idx_statements_period ON financial_statements(payment_source_id, period_start, period_end)',
+  ];
+
+  static const migration18 = <String>[
+    'ALTER TABLE financial_statements ADD COLUMN statement_date TEXT',
+    'ALTER TABLE financial_statements ADD COLUMN currency TEXT',
+    'ALTER TABLE financial_statements ADD COLUMN opening_balance TEXT',
+    'ALTER TABLE financial_statements ADD COLUMN closing_balance TEXT',
+    'ALTER TABLE financial_statements ADD COLUMN original_filename TEXT',
+    'ALTER TABLE financial_statements ADD COLUMN raw_text_reference TEXT',
+  ];
+
+  static const migration19 = <String>[
+    'ALTER TABLE statement_rows ADD COLUMN merchant_id TEXT REFERENCES merchants(id)',
+    'ALTER TABLE statement_rows ADD COLUMN category_id TEXT REFERENCES categories(id)',
+    'ALTER TABLE statement_rows ADD COLUMN tag_ids TEXT',
+    'ALTER TABLE statement_rows ADD COLUMN payment_source_id TEXT REFERENCES payment_sources(id)',
+    'ALTER TABLE statement_rows ADD COLUMN source_reference_id TEXT',
+    'ALTER TABLE statement_rows ADD COLUMN review_reason TEXT',
+    'ALTER TABLE statement_rows ADD COLUMN disposition_reason TEXT',
   ];
 }

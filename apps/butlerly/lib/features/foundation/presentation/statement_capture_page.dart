@@ -4,11 +4,14 @@ import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/evidence/local_statement_ocr_support.dart';
 import 'package:butlerly/core/evidence/statement_extractor.dart';
 import 'package:butlerly/core/evidence/statement_source_matcher.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 class StatementCapturePage extends StatefulWidget {
   const StatementCapturePage({super.key});
@@ -21,6 +24,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
   List<FinancialStatement> _statements = const [];
   List<PaymentSource> _sources = const [];
   bool _busy = false;
+  final _imagePicker = ImagePicker();
   StatementServices get statement =>
       services<FinanceServices>().statementServices!;
 
@@ -39,7 +43,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
   Future<void> _reload() async {
     final results = await Future.wait([
       statement.list(),
-      services<FinanceServices>().listPaymentSources(),
+      TransactionMasterDataProvider(services<FinanceServices>()).load(),
     ]);
     if (!mounted) return;
     setState(() {
@@ -48,10 +52,8 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
       )) {
         _statements = v;
       }
-      if (results[1] case ApplicationSuccess<List<PaymentSource>>(
-        value: final v,
-      )) {
-        _sources = v;
+      if (results[1] case final TransactionMasterDataSnapshot v) {
+        _sources = v.paymentSources;
       }
     });
   }
@@ -63,6 +65,20 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     );
     final file = await openFile(acceptedTypeGroups: const [types]);
     if (file == null || !mounted) return;
+    await _ingest(file);
+  }
+
+  Future<void> _captureImage(ImageSource source) async {
+    final file = await _imagePicker.pickImage(
+      source: source,
+      imageQuality: 100,
+      requestFullMetadata: false,
+    );
+    if (file == null || !mounted) return;
+    await _ingest(file);
+  }
+
+  Future<void> _ingest(XFile file) async {
     setState(() => _busy = true);
     final store = services<LocalEvidenceStore>();
     final preserved = await store.preserve(file);
@@ -94,7 +110,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
           );
     final rows = extraction == null
         ? <StatementRow>[]
-        : _extractedRows(id, extraction.rows, now);
+        : _extractedRows(id, extraction.rows, now, matchedSource?.id.value);
     final result = await statement.create(
       FinancialStatement(
         id: id,
@@ -105,6 +121,8 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
             : StatementStatus.ready,
         institution: extraction?.institution,
         maskedAccountIdentifier: extraction?.maskedAccountIdentifier,
+        originalFilename: file.name,
+        rawTextReference: extraction == null ? null : evidence.id.value,
         createdAt: now,
         updatedAt: now,
         extractionMessage: rows.isEmpty
@@ -129,6 +147,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     String statementId,
     List<StatementExtractedRow> extracted,
     DateTime now,
+    String? paymentSourceId,
   ) => extracted.indexed
       .map((entry) {
         final (position, value) = entry;
@@ -149,6 +168,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
           direction: value.direction,
           confidence: value.confidence,
           sourceContext: 'On-device OCR, line ${position + 1}',
+          paymentSourceId: paymentSourceId,
           status: complete
               ? StatementRowStatus.pending
               : StatementRowStatus.unresolved,
@@ -159,10 +179,17 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
       .toList(growable: false);
 
   Future<void> _open(FinancialStatement item) async {
-    final rowsResult = await statement.rows(item.id);
-    if (!mounted || rowsResult is! ApplicationSuccess<List<StatementRow>>) {
+    final results = await Future.wait([
+      statement.rows(item.id),
+      TransactionMasterDataProvider(services<FinanceServices>()).load(),
+    ]);
+    if (!mounted ||
+        results[0] is! ApplicationSuccess<List<StatementRow>> ||
+        results[1] is! TransactionMasterDataSnapshot) {
       return;
     }
+    final rowsResult = results[0] as ApplicationSuccess<List<StatementRow>>;
+    final masterData = results[1] as TransactionMasterDataSnapshot;
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -170,6 +197,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
           statement: item,
           rows: rowsResult.value,
           sources: _sources,
+          masterData: masterData,
           service: statement,
         ),
       ),
@@ -191,6 +219,16 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     appBar: AppBar(
       title: Text(context.l10n.text('statements')),
       actions: [
+        IconButton(
+          onPressed: _busy ? null : () => _captureImage(ImageSource.camera),
+          icon: const Icon(Icons.camera_alt_outlined),
+          tooltip: context.l10n.text('scanReceipt'),
+        ),
+        IconButton(
+          onPressed: _busy ? null : () => _captureImage(ImageSource.gallery),
+          icon: const Icon(Icons.photo_library_outlined),
+          tooltip: context.l10n.text('importData'),
+        ),
         IconButton(
           onPressed: _busy ? null : _capture,
           icon: const Icon(Icons.document_scanner_outlined),
@@ -232,11 +270,13 @@ class _StatementReviewPage extends StatefulWidget {
     required this.statement,
     required this.rows,
     required this.sources,
+    required this.masterData,
     required this.service,
   });
   final FinancialStatement statement;
   final List<StatementRow> rows;
   final List<PaymentSource> sources;
+  final TransactionMasterDataSnapshot masterData;
   final StatementServices service;
   @override
   State<_StatementReviewPage> createState() => _StatementReviewPageState();
@@ -430,6 +470,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
           currency: currency,
           direction: direction,
           sourceContext: 'User correction after local extraction',
+          paymentSourceId: _sourceId,
           status:
               date != null &&
                   amount != null &&
@@ -462,6 +503,17 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
     final amount = TextEditingController(text: row.amount);
     final currency = TextEditingController(text: row.currency);
     var direction = row.direction;
+    var subcategoryId =
+        row.categoryId != null &&
+            widget.masterData.presentation.categoryParentId(row.categoryId) !=
+                null
+        ? row.categoryId
+        : null;
+    var categoryId =
+        widget.masterData.presentation.categoryParentId(row.categoryId) ??
+        row.categoryId;
+    var merchantId = row.merchantId;
+    var tagIds = row.tagIds.toSet();
     final accepted = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -481,6 +533,44 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                 TextField(
                   controller: description,
                   decoration: const InputDecoration(labelText: 'Description'),
+                ),
+                ButlerlyMerchantSelector(
+                  merchants: widget.masterData.merchants,
+                  value: merchantId,
+                  label: context.l10n.text('merchant'),
+                  clearLabel: context.l10n.text('clear'),
+                  createTooltip: context.l10n.text('create'),
+                  onChanged: (value) =>
+                      setDialogState(() => merchantId = value),
+                ),
+                ButlerlyCategorySelector(
+                  categories: widget.masterData.categories,
+                  masterData: widget.masterData.presentation,
+                  value: categoryId,
+                  label: context.l10n.text('category'),
+                  clearLabel: context.l10n.text('clear'),
+                  onChanged: (value) => setDialogState(() {
+                    categoryId = value;
+                    subcategoryId = null;
+                  }),
+                ),
+                ButlerlySubcategorySelector(
+                  categories: widget.masterData.categories,
+                  masterData: widget.masterData.presentation,
+                  parentId: categoryId,
+                  value: subcategoryId,
+                  label: context.l10n.text('subcategory'),
+                  clearLabel: context.l10n.text('clear'),
+                  onChanged: (value) =>
+                      setDialogState(() => subcategoryId = value),
+                ),
+                ButlerlyTagPicker(
+                  tags: widget.masterData.tags,
+                  masterData: widget.masterData.presentation,
+                  selected: tagIds,
+                  searchLabel: context.l10n.text('search'),
+                  createLabel: context.l10n.text('create'),
+                  onChanged: (value) => setDialogState(() => tagIds = value),
                 ),
                 TextField(
                   controller: amount,
@@ -561,6 +651,13 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
               direction != null
           ? StatementRowStatus.pending
           : StatementRowStatus.unresolved,
+      categoryId: subcategoryId ?? categoryId,
+      merchantId: merchantId,
+      tagIds: tagIds.toList(growable: false),
+      paymentSourceId: row.paymentSourceId,
+      sourceReferenceId: row.sourceReferenceId,
+      reviewReason: row.reviewReason,
+      dispositionReason: row.dispositionReason,
       createdAt: row.createdAt,
       updatedAt: DateTime.now().toUtc(),
     );
@@ -606,10 +703,10 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
           await widget.service.link(row, values.first.id);
           status = StatementRowStatus.linked;
         } else {
-          await widget.service.save(row, _sourceId!);
+          await widget.service.save(row, _sourceId!, allowCreateNew: true);
         }
       } else {
-        await widget.service.save(row, _sourceId!);
+        await widget.service.save(row, _sourceId!, allowCreateNew: true);
       }
     } else {
       await widget.service.setDisposition(row, status);
@@ -625,35 +722,43 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Review statement')),
+    appBar: AppBar(title: Text(context.l10n.text('reviewStatementImport'))),
     body: ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        DropdownButtonFormField<String>(
-          initialValue: _sourceId,
-          decoration: const InputDecoration(
-            labelText: 'Payment source (required)',
+        if (widget.statement.institution != null ||
+            widget.statement.maskedAccountIdentifier != null ||
+            widget.statement.periodStart != null)
+          Card(
+            child: ListTile(
+              title: Text(
+                widget.statement.institution ?? context.l10n.text('statement'),
+              ),
+              subtitle: Text(
+                [
+                  if (widget.statement.maskedAccountIdentifier != null)
+                    widget.statement.maskedAccountIdentifier!,
+                  if (widget.statement.periodStart != null &&
+                      widget.statement.periodEnd != null)
+                    '${widget.statement.periodStart!.toIso8601String().substring(0, 10)} – '
+                        '${widget.statement.periodEnd!.toIso8601String().substring(0, 10)}',
+                ].join(' · '),
+              ),
+            ),
           ),
-          items: _sources
-              .where(
-                (s) =>
-                    s.status == PaymentSourceStatus.active ||
-                    s.id.value == _sourceId,
-              )
-              .map(
-                (s) => DropdownMenuItem(
-                  value: s.id.value,
-                  enabled:
-                      s.status == PaymentSourceStatus.active ||
-                      s.id.value == _sourceId,
-                  child: Text(
-                    '${s.displayIdentity ?? s.name}${s.status == PaymentSourceStatus.archived ? ' (archived)' : ''}',
-                  ),
-                ),
-              )
-              .toList(),
+        const SizedBox(height: 8),
+        _ProgressSummary(rows: _rows),
+        const SizedBox(height: 16),
+        ButlerlyPaymentSourceSelector(
+          value: _sourceId,
+          label: '${context.l10n.text('paymentSource')} *',
+          clearLabel: context.l10n.text('clear'),
+          sources: _sources,
           onChanged: (value) async {
-            if (value == null) return;
+            if (value == null) {
+              setState(() => _sourceId = null);
+              return;
+            }
             await widget.service.assignSource(widget.statement.id, value);
             setState(() => _sourceId = value);
           },
@@ -750,4 +855,24 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
       ],
     ),
   );
+}
+
+class _ProgressSummary extends StatelessWidget {
+  const _ProgressSummary({required this.rows});
+  final List<StatementRow> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    int count(StatementRowStatus status) =>
+        rows.where((row) => row.status == status).length;
+    return Text(
+      '${context.l10n.text('statementRows')}: ${rows.length}  '
+      '${context.l10n.text('statementSaved')}: ${count(StatementRowStatus.saved)}  '
+      '${context.l10n.text('statementLinked')}: ${count(StatementRowStatus.linked)}  '
+      '${context.l10n.text('statementNeedsReview')}: '
+      '${count(StatementRowStatus.pending) + count(StatementRowStatus.unresolved)}  '
+      '${context.l10n.text('statementSkipped')}: ${count(StatementRowStatus.skipped)}',
+      style: Theme.of(context).textTheme.bodySmall,
+    );
+  }
 }

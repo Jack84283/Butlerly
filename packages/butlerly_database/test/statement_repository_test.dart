@@ -114,6 +114,10 @@ void main() {
         StatementRowStatus.saved,
       );
       expect(
+        (await statements.findStatement('statement'))?.status,
+        StatementStatus.completed,
+      );
+      expect(
         await SqliteTransactionRepository(database).findById(transaction.id),
         isNotNull,
       );
@@ -122,6 +126,157 @@ void main() {
         throwsA(isA<RepositoryException>()),
       );
       expect((await SqliteTransactionRepository(database).listAll()).length, 1);
+    },
+  );
+
+  test('round-trips statement metadata and reviewed row fields', () async {
+    final now = DateTime.utc(2026, 8, 26);
+    await statements.saveStatement(
+      FinancialStatement(
+        id: 'metadata-statement',
+        evidenceId: 'evidence',
+        paymentSourceId: 'source',
+        status: StatementStatus.partial,
+        institution: 'Issuer',
+        maskedAccountIdentifier: '••••1234',
+        periodStart: DateTime.utc(2026, 8, 1),
+        periodEnd: DateTime.utc(2026, 8, 31),
+        statementDate: DateTime.utc(2026, 9, 1),
+        currency: 'USD',
+        openingBalance: '100.00',
+        closingBalance: '88.00',
+        originalFilename: 'statement.pdf',
+        rawTextReference: 'evidence/raw-text',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await statements.saveRows([
+      StatementRow(
+        id: 'metadata-row',
+        statementId: 'metadata-statement',
+        position: 0,
+        originalText: '08/20 SHOP -12.00 USD',
+        transactionDate: DateTime.utc(2026, 8, 20),
+        postingDate: DateTime.utc(2026, 8, 21),
+        description: 'SHOP',
+        amount: '12.00',
+        currency: 'USD',
+        direction: TransactionDirection.expense.name,
+        status: StatementRowStatus.skipped,
+        tagIds: const ['tag-1', 'tag-2'],
+        paymentSourceId: 'source',
+        sourceReferenceId: 'row-ref',
+        reviewReason: 'low confidence',
+        dispositionReason: 'user skipped',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    ]);
+
+    final savedStatement = await statements.findStatement('metadata-statement');
+    final savedRow = (await statements.listRows('metadata-statement')).single;
+    expect(savedStatement?.currency, 'USD');
+    expect(savedStatement?.openingBalance, '100.00');
+    expect(savedStatement?.originalFilename, 'statement.pdf');
+    expect(savedStatement?.rawTextReference, 'evidence/raw-text');
+    expect(
+      savedRow.postingDate?.toIso8601String().substring(0, 10),
+      '2026-08-21',
+    );
+    expect(savedRow.tagIds, ['tag-1', 'tag-2']);
+    expect(savedRow.dispositionReason, 'user skipped');
+  });
+
+  test(
+    'recalculates parent progress without losing setup or archive state',
+    () async {
+      final now = DateTime.utc(2026, 8, 26);
+      await statements.saveStatement(
+        FinancialStatement(
+          id: 'progress-statement',
+          evidenceId: 'evidence',
+          status: StatementStatus.needsSource,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      final first = StatementRow(
+        id: 'progress-row-1',
+        statementId: 'progress-statement',
+        position: 0,
+        originalText: 'row 1',
+        status: StatementRowStatus.pending,
+        createdAt: now,
+        updatedAt: now,
+      );
+      final second = StatementRow(
+        id: 'progress-row-2',
+        statementId: 'progress-statement',
+        position: 1,
+        originalText: 'row 2',
+        status: StatementRowStatus.pending,
+        createdAt: now,
+        updatedAt: now,
+      );
+      await statements.saveRows([first, second]);
+      await statements.updateRow(
+        StatementRow(
+          id: first.id,
+          statementId: first.statementId,
+          position: first.position,
+          originalText: first.originalText,
+          status: StatementRowStatus.skipped,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      expect(
+        (await statements.findStatement('progress-statement'))?.status,
+        StatementStatus.needsSource,
+      );
+
+      await statements.assignPaymentSource('progress-statement', 'source', now);
+      expect(
+        (await statements.findStatement('progress-statement'))?.status,
+        StatementStatus.partial,
+      );
+      await statements.updateRow(
+        StatementRow(
+          id: second.id,
+          statementId: second.statementId,
+          position: second.position,
+          originalText: second.originalText,
+          status: StatementRowStatus.skipped,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      expect(
+        (await statements.findStatement('progress-statement'))?.status,
+        StatementStatus.completed,
+      );
+      await database.connection.update(
+        'financial_statements',
+        {'status': StatementStatus.archived.name},
+        where: 'id = ?',
+        whereArgs: ['progress-statement'],
+      );
+      await statements.updateRow(
+        StatementRow(
+          id: second.id,
+          statementId: second.statementId,
+          position: second.position,
+          originalText: second.originalText,
+          status: StatementRowStatus.skipped,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      expect(
+        (await statements.findStatement('progress-statement'))?.status,
+        StatementStatus.archived,
+      );
     },
   );
 

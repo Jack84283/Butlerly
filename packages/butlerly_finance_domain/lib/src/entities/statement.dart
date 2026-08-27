@@ -1,6 +1,6 @@
 import '../errors/domain_error.dart';
 
-enum StatementStatus { needsSource, ready, partial, archived }
+enum StatementStatus { needsSource, ready, partial, completed, archived }
 
 enum StatementRowStatus {
   pending,
@@ -25,6 +25,12 @@ final class FinancialStatement {
     this.maskedAccountIdentifier,
     this.periodStart,
     this.periodEnd,
+    this.statementDate,
+    this.currency,
+    this.openingBalance,
+    this.closingBalance,
+    this.originalFilename,
+    this.rawTextReference,
     this.extractionMessage,
   }) {
     if (id.trim().isEmpty || evidenceId.trim().isEmpty) {
@@ -52,6 +58,12 @@ final class FinancialStatement {
   final String? maskedAccountIdentifier;
   final DateTime? periodStart;
   final DateTime? periodEnd;
+  final DateTime? statementDate;
+  final String? currency;
+  final String? openingBalance;
+  final String? closingBalance;
+  final String? originalFilename;
+  final String? rawTextReference;
   final String? extractionMessage;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -76,6 +88,13 @@ final class StatementRow {
     this.confidence,
     this.sourceContext,
     this.transactionId,
+    this.merchantId,
+    this.categoryId,
+    this.tagIds = const [],
+    this.paymentSourceId,
+    this.sourceReferenceId,
+    this.reviewReason,
+    this.dispositionReason,
   }) {
     if (id.trim().isEmpty ||
         statementId.trim().isEmpty ||
@@ -120,6 +139,13 @@ final class StatementRow {
   final String? sourceContext;
   final StatementRowStatus status;
   final String? transactionId;
+  final String? merchantId;
+  final String? categoryId;
+  final List<String> tagIds;
+  final String? paymentSourceId;
+  final String? sourceReferenceId;
+  final String? reviewReason;
+  final String? dispositionReason;
   final DateTime createdAt;
   final DateTime updatedAt;
 }
