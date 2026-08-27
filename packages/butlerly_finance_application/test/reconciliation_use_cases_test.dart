@@ -129,6 +129,97 @@ void main() {
   });
 
   test(
+    'matcher preserves compatible tip differences as explainable conflicts',
+    () {
+      final now = DateTime.utc(2026, 8, 20);
+      final receipt = _transaction(
+        id: 'receipt-tip',
+        sourceType: TransactionSourceType.evidenceCapture,
+        date: '2026-08-20',
+        merchant: 'Cafe',
+        provenanceType: ProvenanceSourceType.scan,
+        now: now,
+      );
+      final settled = Transaction(
+        id: TransactionId('settled-tip'),
+        timing: const UnknownTransactionTime(
+          UnknownTransactionTimeReason.unknown,
+        ),
+        money: Money(
+          amount: DecimalValue.parse('27.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        sourceType: TransactionSourceType.import,
+        transactionDate: '2026-08-20',
+        rawCounterparty: 'Cafe',
+        provenance: [
+          Provenance(
+            id: ProvenanceId('settled-tip-prov'),
+            sourceType: ProvenanceSourceType.import,
+            capturedAt: now,
+            originalRepresentation: 'Cafe',
+          ),
+        ],
+        createdAt: now,
+        updatedAt: now,
+      );
+      final assessment = ReconciliationMatcher.assess(receipt, settled);
+      expect(assessment.incompatible, isFalse);
+      expect(
+        assessment.reasons,
+        contains('amount is within 10% (possible tip or adjustment)'),
+      );
+      expect(assessment.conflicts, contains('amount differs'));
+    },
+  );
+
+  test(
+    'callAll preserves multiple plausible candidates instead of hiding ambiguity',
+    () async {
+      final now = DateTime.utc(2026, 8, 20);
+      final repository = _FakeTransactions([
+        _transaction(
+          id: 'manual-a',
+          sourceType: TransactionSourceType.manual,
+          date: '2026-08-20',
+          merchant: 'Cafe',
+          provenanceType: ProvenanceSourceType.userEntry,
+          now: now,
+        ),
+        _transaction(
+          id: 'manual-b',
+          sourceType: TransactionSourceType.manual,
+          date: '2026-08-20',
+          merchant: 'Cafe',
+          provenanceType: ProvenanceSourceType.userEntry,
+          now: now,
+        ),
+      ]);
+      final result = await FindReceiptPaymentMatch(repository).callAll(
+        ReceiptPaymentMatchCommand(
+          amount: Money(
+            amount: DecimalValue.parse('25.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          currency: 'USD',
+          transactionDate: '2026-08-20',
+          merchant: 'Cafe',
+        ),
+      );
+      expect(
+        result,
+        isA<ApplicationSuccess<List<ReconciliationMatchCandidate>>>(),
+      );
+      expect(
+        (result as ApplicationSuccess<List<ReconciliationMatchCandidate>>)
+            .value,
+        hasLength(2),
+      );
+    },
+  );
+
+  test(
     'confirm delegates candidate and link as one workflow operation',
     () async {
       final workflow = _FakeWorkflow();
@@ -189,6 +280,23 @@ final class _FakeWorkflow implements ReconciliationWorkflowRepository {
   Future<void> reject(ReconciliationCandidate candidate) async {
     rejected = true;
   }
+}
+
+final class _FakeTransactions implements TransactionRepository {
+  _FakeTransactions(this.values);
+  final List<Transaction> values;
+  @override
+  Future<void> save(Transaction transaction) async {}
+  @override
+  Future<Transaction?> findById(TransactionId id) async =>
+      values.where((v) => v.id == id).firstOrNull;
+  @override
+  Future<List<Transaction>> listAll() async => values;
+  @override
+  Future<List<Transaction>> query(TransactionRepositoryQuery query) async =>
+      values;
+  @override
+  Future<void> removePermanently(TransactionId id) async {}
 }
 
 Transaction _transaction({

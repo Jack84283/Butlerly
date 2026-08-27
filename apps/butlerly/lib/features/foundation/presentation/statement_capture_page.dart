@@ -696,7 +696,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context, false),
+                onPressed: () => Navigator.pop(context),
                 child: const Text('Create separately'),
               ),
             ],
