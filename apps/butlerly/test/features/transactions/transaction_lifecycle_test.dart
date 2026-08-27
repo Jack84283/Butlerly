@@ -100,6 +100,7 @@ void main() {
       200,
       scrollable: find.byType(Scrollable).last,
     );
+    await tester.ensureVisible(find.text('Organize transaction'));
     await tester.tap(find.text('Organize transaction'));
     await tester.pumpAndSettle();
     expect(find.byType(TextFormField), findsNothing);

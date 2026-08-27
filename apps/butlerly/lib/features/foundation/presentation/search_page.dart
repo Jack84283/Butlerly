@@ -22,6 +22,7 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage>
     with AutomaticKeepAliveClientMixin {
+  static const _currencyOptions = ['USD', 'EUR', 'GBP', 'CAD', 'CNY', 'JPY'];
   final _text = TextEditingController();
   String? _currency;
   TransactionDirection? _direction;
@@ -31,9 +32,9 @@ class _SearchPageState extends State<SearchPage>
   DateTime? _from;
   DateTime? _to;
   Future<List<TransactionDto>>? _results;
-  late Future<List<Category>> _categories;
-  late Future<List<PaymentSource>> _paymentSources;
-  Map<String, String> _categoryNames = const {};
+  late Future<TransactionMasterDataSnapshot> _masterData;
+  TransactionMasterData _presentation = const TransactionMasterData();
+  bool _masterDataStarted = false;
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
@@ -43,10 +44,14 @@ class _SearchPageState extends State<SearchPage>
   bool get wantKeepAlive => true;
 
   @override
-  void initState() {
-    super.initState();
-    _categories = _loadCategories();
-    _paymentSources = _loadPaymentSources();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_masterDataStarted) return;
+    _masterDataStarted = true;
+    _masterData = _loadMasterData();
+    _masterData.then((value) {
+      if (mounted) setState(() => _presentation = value.presentation);
+    });
   }
 
   @override
@@ -78,25 +83,20 @@ class _SearchPageState extends State<SearchPage>
     };
   }
 
-  Future<List<Category>> _loadCategories() async {
-    final result = await _finance?.listCategories();
-    final categories = switch (result) {
-      ApplicationSuccess<List<Category>>(:final value) => value,
-      _ => const <Category>[],
-    };
-    _categoryNames = {
-      for (final category in categories) category.id.value: category.name,
-    };
-    if (mounted) setState(() {});
-    return categories;
-  }
-
-  Future<List<PaymentSource>> _loadPaymentSources() async {
-    final result = await _finance?.listPaymentSources();
-    return switch (result) {
-      ApplicationSuccess<List<PaymentSource>>(:final value) => value,
-      _ => const [],
-    };
+  Future<TransactionMasterDataSnapshot> _loadMasterData() async {
+    final finance = _finance;
+    if (finance == null) {
+      return const TransactionMasterDataSnapshot(
+        presentation: TransactionMasterData(),
+        merchants: [],
+        categories: [],
+        tags: [],
+        paymentSources: [],
+      );
+    }
+    return TransactionMasterDataProvider(
+      finance,
+    ).load(languageCode: Localizations.localeOf(context).languageCode);
   }
 
   void _submit() => setState(() {
@@ -138,6 +138,7 @@ class _SearchPageState extends State<SearchPage>
               children: [
                 const SizedBox(height: ButlerlySpacing.compact),
                 ButlerlyCurrencyFilter(
+                  currencies: _currencyOptions,
                   value: _currency,
                   label: context.l10n.text('currency'),
                   anyLabel: context.l10n.text('anyCurrency'),
@@ -151,62 +152,24 @@ class _SearchPageState extends State<SearchPage>
                   onChanged: (value) => setSheetState(() => _direction = value),
                 ),
                 const SizedBox(height: ButlerlySpacing.standard),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () async {
-                          final value = await showDatePicker(
-                            context: context,
-                            firstDate: DateTime(2000),
-                            lastDate: DateTime.now(),
-                            initialDate: _from ?? DateTime.now(),
-                          );
-                          if (value != null) {
-                            setSheetState(() => _from = value);
-                          }
-                        },
-                        icon: const Icon(Icons.calendar_today_outlined),
-                        label: Text(
-                          _from == null
-                              ? context.l10n.text('fromDate')
-                              : _searchDate(_from!),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: ButlerlySpacing.compact),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () async {
-                          final value = await showDatePicker(
-                            context: context,
-                            firstDate: _from ?? DateTime(2000),
-                            lastDate: DateTime.now(),
-                            initialDate: _to ?? DateTime.now(),
-                          );
-                          if (value != null) {
-                            setSheetState(() => _to = value);
-                          }
-                        },
-                        icon: const Icon(Icons.event_outlined),
-                        label: Text(
-                          _to == null
-                              ? context.l10n.text('toDate')
-                              : _searchDate(_to!),
-                        ),
-                      ),
-                    ),
-                  ],
+                ButlerlyDateRangeFilter(
+                  from: _from,
+                  to: _to,
+                  fromLabel: context.l10n.text('fromDate'),
+                  toLabel: context.l10n.text('toDate'),
+                  formatDate: _searchDate,
+                  onFromChanged: (value) => setSheetState(() => _from = value),
+                  onToChanged: (value) => setSheetState(() => _to = value),
                 ),
                 const SizedBox(height: ButlerlySpacing.standard),
-                FutureBuilder<List<Category>>(
-                  future: _categories,
+                FutureBuilder<TransactionMasterDataSnapshot>(
+                  future: _masterData,
                   builder: (context, snapshot) => ButlerlyCategoryFilter(
                     key: const ValueKey('search-category-filter'),
-                    categories: snapshot.data ?? const [],
-                    masterData: TransactionMasterData(
-                      categoryNames: _categoryNames,
-                    ),
+                    categories: snapshot.data?.categories ?? const [],
+                    masterData:
+                        snapshot.data?.presentation ??
+                        const TransactionMasterData(),
                     value: _categoryId,
                     label: context.l10n.text('anyCategory'),
                     anyLabel: context.l10n.text('anyCategory'),
@@ -215,10 +178,10 @@ class _SearchPageState extends State<SearchPage>
                   ),
                 ),
                 const SizedBox(height: ButlerlySpacing.standard),
-                FutureBuilder<List<PaymentSource>>(
-                  future: _paymentSources,
+                FutureBuilder<TransactionMasterDataSnapshot>(
+                  future: _masterData,
                   builder: (context, snapshot) => ButlerlyPaymentSourceFilter(
-                    sources: snapshot.data ?? const [],
+                    sources: snapshot.data?.paymentSources ?? const [],
                     value: _paymentSourceId,
                     label: context.l10n.text('anyPaymentSource'),
                     anyLabel: context.l10n.text('anyPaymentSource'),
@@ -227,12 +190,11 @@ class _SearchPageState extends State<SearchPage>
                   ),
                 ),
                 const SizedBox(height: ButlerlySpacing.standard),
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(context.l10n.text('needsReview')),
-                  value: _needsReview == true,
+                ButlerlyReviewFilter(
+                  value: _needsReview,
+                  label: context.l10n.text('needsReview'),
                   onChanged: (value) =>
-                      setSheetState(() => _needsReview = value ? true : null),
+                      setSheetState(() => _needsReview = value),
                 ),
                 const SizedBox(height: ButlerlySpacing.section),
                 FilledButton(
@@ -364,7 +326,7 @@ class _SearchPageState extends State<SearchPage>
                               context.l10n.text('untitledTransaction'),
                           subtitle: value.categoryId == null
                               ? null
-                              : _categoryNames[value.categoryId],
+                              : _presentation.categoryName(value.categoryId),
                           meta: transactionDateLabel(
                             value,
                             pendingLabel: context.l10n.text('datePending'),

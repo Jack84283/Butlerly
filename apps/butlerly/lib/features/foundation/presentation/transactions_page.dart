@@ -435,23 +435,11 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
             child: ListView(
               padding: const EdgeInsets.all(24),
               children: [
-                SegmentedButton<TransactionDirection>(
-                  showSelectedIcon: false,
-                  segments: [
-                    ButtonSegment(
-                      value: TransactionDirection.expense,
-                      icon: const Icon(Icons.arrow_upward_rounded),
-                      label: Text(context.l10n.text('expense')),
-                    ),
-                    ButtonSegment(
-                      value: TransactionDirection.income,
-                      icon: const Icon(Icons.arrow_downward_rounded),
-                      label: Text(context.l10n.text('income')),
-                    ),
-                  ],
-                  selected: {_direction},
-                  onSelectionChanged: (selection) =>
-                      setState(() => _direction = selection.single),
+                ButlerlyDirectionSelector(
+                  value: _direction,
+                  expenseLabel: context.l10n.text('expense'),
+                  incomeLabel: context.l10n.text('income'),
+                  onChanged: (value) => setState(() => _direction = value),
                 ),
                 const SizedBox(height: ButlerlySpacing.section),
                 TextFormField(
@@ -1308,6 +1296,7 @@ class _TransactionMasterDataRowsState
               masterData: data,
               label: context.l10n.text('tags'),
               unavailableLabel: context.l10n.text('unavailableTag'),
+              compact: true,
             ),
         ],
       );
