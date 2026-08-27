@@ -220,7 +220,7 @@ void main() {
   );
 
   test(
-    'cross-source evidence can target statement-created and receipt-created transactions',
+    'receipt reconciliation can target a statement-created transaction',
     () async {
       final now = DateTime.utc(2026, 8, 20);
       final repository = _FakeTransactions([
@@ -255,10 +255,8 @@ void main() {
       final values =
           (result as ApplicationSuccess<List<ReconciliationMatchCandidate>>)
               .value;
-      expect(
-        values.map((candidate) => candidate.transaction.id),
-        contains('statement-created'),
-      );
+      expect(values, hasLength(1));
+      expect(values.single.transaction.id, 'statement-created');
     },
   );
 

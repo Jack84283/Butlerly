@@ -134,7 +134,7 @@ void main() {
   );
 
   test(
-    'links a statement row and receipt evidence to one canonical transaction',
+    'statement link targets a receipt-created transaction and preserves one canonical record',
     () async {
       final now = DateTime.utc(2026, 8, 26);
       await statements.saveStatement(
@@ -170,15 +170,16 @@ void main() {
           currency: CurrencyCode('USD'),
         ),
         direction: TransactionDirection.expense,
-        sourceType: TransactionSourceType.manual,
+        sourceType: TransactionSourceType.evidenceCapture,
         transactionDate: '2026-08-26',
         description: 'Canonical value',
         paymentSourceId: PaymentSourceId('source'),
         provenance: [
           Provenance(
             id: ProvenanceId('multi-evidence-tx-p'),
-            sourceType: ProvenanceSourceType.userEntry,
+            sourceType: ProvenanceSourceType.scan,
             capturedAt: now,
+            originalRepresentation: 'receipt.jpg',
           ),
         ],
         createdAt: now,
