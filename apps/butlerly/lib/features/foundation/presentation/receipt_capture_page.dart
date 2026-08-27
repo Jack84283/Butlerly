@@ -5,8 +5,8 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/evidence/local_ocr_service.dart';
-import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -624,60 +624,33 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                         onTap: _pickDate,
                       ),
                       const SizedBox(height: ButlerlySpacing.standard),
-                      ButlerlySelectField<String>(
+                      ButlerlyCategorySelector(
                         label: context.l10n.text('category'),
+                        categories: activeCategories,
+                        masterData: _masterData,
                         value: selectedParentId,
-                        entries: [
-                          for (final category in activeCategories.where(
-                            (value) => value.parentId == null,
-                          ))
-                            DropdownMenuEntry(
-                              value: category.id.value,
-                              label:
-                                  _masterData.categoryName(category.id.value) ??
-                                  category.name,
-                            ),
-                        ],
                         onChanged: (value) => setState(() {
                           _categoryId = value;
                         }),
                       ),
                       const SizedBox(height: ButlerlySpacing.standard),
-                      ButlerlySelectField<String>(
+                      ButlerlySubcategorySelector(
                         label: context.l10n.text('subcategory'),
+                        categories: activeCategories,
+                        masterData: _masterData,
+                        parentId: selectedParentId,
                         value: selectedCategory?.parentId == null
                             ? null
                             : _categoryId,
-                        entries: [
-                          for (final category in activeCategories.where(
-                            (value) =>
-                                value.parentId?.value == selectedParentId,
-                          ))
-                            DropdownMenuEntry(
-                              value: category.id.value,
-                              label:
-                                  _masterData.categoryName(category.id.value) ??
-                                  category.name,
-                            ),
-                        ],
                         onChanged: (value) => setState(() {
                           _categoryId = value ?? selectedParentId;
                         }),
                       ),
                       const SizedBox(height: ButlerlySpacing.standard),
-                      ButlerlySelectField<String>(
+                      ButlerlyPaymentSourceSelector(
                         label: context.l10n.text('paymentSource'),
+                        sources: _sources,
                         value: _paymentSourceId,
-                        entries: [
-                          for (final source in _sources.where(
-                            (value) =>
-                                value.status == PaymentSourceStatus.active,
-                          ))
-                            DropdownMenuEntry(
-                              value: source.id.value,
-                              label: _paymentSourceLabel(source),
-                            ),
-                        ],
                         onChanged: (value) =>
                             setState(() => _paymentSourceId = value),
                       ),
@@ -688,22 +661,16 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                           spacing: ButlerlySpacing.compact,
                           runSpacing: ButlerlySpacing.micro,
                           children: [
-                            for (final tag in _tags.where(
-                              (value) => value.status == TagStatus.active,
-                            ))
-                              FilterChip(
-                                label: Text(
-                                  _masterData.tagName(tag.id.value) ?? tag.name,
-                                ),
-                                selected: _tagIds.contains(tag.id.value),
-                                onSelected: (selected) => setState(() {
-                                  if (selected) {
-                                    _tagIds.add(tag.id.value);
-                                  } else {
-                                    _tagIds.remove(tag.id.value);
-                                  }
-                                }),
-                              ),
+                            ButlerlyTagPicker(
+                              tags: _tags,
+                              masterData: _masterData,
+                              selected: _tagIds,
+                              onChanged: (value) => setState(() {
+                                _tagIds
+                                  ..clear()
+                                  ..addAll(value);
+                              }),
+                            ),
                           ],
                         ),
                       ),
