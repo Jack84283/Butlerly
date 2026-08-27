@@ -562,6 +562,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                 const SizedBox(height: 16),
                 ButlerlyMerchantSelector(
                   label: context.l10n.text('merchant'),
+                  clearLabel: context.l10n.text('clear'),
                   merchants: data.merchants,
                   value: _merchantId,
                   onChanged: (value) => setState(() => _merchantId = value),
@@ -570,6 +571,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                 const SizedBox(height: 16),
                 ButlerlyCategorySelector(
                   label: context.l10n.text('category'),
+                  clearLabel: context.l10n.text('clear'),
                   categories: data.categories,
                   masterData: TransactionMasterData(
                     categoryNames: data.categoryLabels,
@@ -581,6 +583,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                 const SizedBox(height: 16),
                 ButlerlySubcategorySelector(
                   label: context.l10n.text('subcategory'),
+                  clearLabel: context.l10n.text('clear'),
                   categories: data.categories,
                   masterData: TransactionMasterData(
                     categoryNames: data.categoryLabels,
@@ -596,6 +599,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                 const SizedBox(height: 16),
                 ButlerlyPaymentSourceSelector(
                   label: context.l10n.text('paymentSource'),
+                  clearLabel: context.l10n.text('clear'),
                   sources: data.paymentSources,
                   value: _paymentSourceId,
                   onChanged: (value) =>
@@ -610,6 +614,8 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     ButlerlyTagPicker(
+                      searchLabel: context.l10n.text('search'),
+                      createLabel: context.l10n.text('addTag'),
                       tags: data.tags,
                       masterData: TransactionMasterData(
                         categoryNames: data.categoryLabels,
@@ -617,11 +623,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                       ),
                       selected: _tagIds,
                       onChanged: (value) => setState(() => _tagIds = value),
-                    ),
-                    ActionChip(
-                      label: Text(context.l10n.text('addTag')),
-                      avatar: const Icon(Icons.add),
-                      onPressed: () => _createTag(data),
+                      onCreate: () => _createTag(data),
                     ),
                   ],
                 ),

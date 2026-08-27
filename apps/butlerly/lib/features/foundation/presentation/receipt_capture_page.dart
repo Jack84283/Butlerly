@@ -626,6 +626,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                       const SizedBox(height: ButlerlySpacing.standard),
                       ButlerlyCategorySelector(
                         label: context.l10n.text('category'),
+                        clearLabel: context.l10n.text('clear'),
                         categories: activeCategories,
                         masterData: _masterData,
                         value: selectedParentId,
@@ -636,6 +637,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                       const SizedBox(height: ButlerlySpacing.standard),
                       ButlerlySubcategorySelector(
                         label: context.l10n.text('subcategory'),
+                        clearLabel: context.l10n.text('clear'),
                         categories: activeCategories,
                         masterData: _masterData,
                         parentId: selectedParentId,
@@ -649,6 +651,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                       const SizedBox(height: ButlerlySpacing.standard),
                       ButlerlyPaymentSourceSelector(
                         label: context.l10n.text('paymentSource'),
+                        clearLabel: context.l10n.text('clear'),
                         sources: _sources,
                         value: _paymentSourceId,
                         onChanged: (value) =>
@@ -662,6 +665,8 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                           runSpacing: ButlerlySpacing.micro,
                           children: [
                             ButlerlyTagPicker(
+                              searchLabel: context.l10n.text('search'),
+                              createLabel: context.l10n.text('addTag'),
                               tags: _tags,
                               masterData: _masterData,
                               selected: _tagIds,

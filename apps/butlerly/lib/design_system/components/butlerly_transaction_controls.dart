@@ -14,6 +14,7 @@ class ButlerlyCategorySelector extends StatelessWidget {
     required this.value,
     required this.label,
     required this.onChanged,
+    required this.clearLabel,
     super.key,
   });
   final List<Category> categories;
@@ -21,6 +22,7 @@ class ButlerlyCategorySelector extends StatelessWidget {
   final String? value;
   final String label;
   final ValueChanged<String?> onChanged;
+  final String clearLabel;
 
   @override
   Widget build(BuildContext context) => ButlerlySelectField<String>(
@@ -38,6 +40,8 @@ class ButlerlyCategorySelector extends StatelessWidget {
         ),
     ],
     onChanged: onChanged,
+    onClear: value == null ? null : () => onChanged(null),
+    clearTooltip: clearLabel,
   );
 }
 
@@ -49,6 +53,7 @@ class ButlerlySubcategorySelector extends StatelessWidget {
     required this.value,
     required this.label,
     required this.onChanged,
+    required this.clearLabel,
     super.key,
   });
   final List<Category> categories;
@@ -57,6 +62,7 @@ class ButlerlySubcategorySelector extends StatelessWidget {
   final String? value;
   final String label;
   final ValueChanged<String?> onChanged;
+  final String clearLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -79,6 +85,8 @@ class ButlerlySubcategorySelector extends StatelessWidget {
           ),
       ],
       onChanged: (next) => onChanged(next ?? parentId),
+      onClear: selected == null ? null : () => onChanged(parentId),
+      clearTooltip: clearLabel,
     );
   }
 }
@@ -90,6 +98,7 @@ class ButlerlyMerchantSelector extends StatelessWidget {
     required this.label,
     required this.onChanged,
     this.onCreate,
+    required this.clearLabel,
     super.key,
   });
   final List<Merchant> merchants;
@@ -97,6 +106,7 @@ class ButlerlyMerchantSelector extends StatelessWidget {
   final String label;
   final ValueChanged<String?> onChanged;
   final VoidCallback? onCreate;
+  final String clearLabel;
 
   @override
   Widget build(BuildContext context) => ButlerlySelectField<String>(
@@ -110,6 +120,8 @@ class ButlerlyMerchantSelector extends StatelessWidget {
     ],
     onChanged: onChanged,
     onCreate: onCreate,
+    onClear: value == null ? null : () => onChanged(null),
+    clearTooltip: clearLabel,
   );
 }
 
@@ -119,12 +131,14 @@ class ButlerlyPaymentSourceSelector extends StatelessWidget {
     required this.value,
     required this.label,
     required this.onChanged,
+    required this.clearLabel,
     super.key,
   });
   final List<PaymentSource> sources;
   final String? value;
   final String label;
   final ValueChanged<String?> onChanged;
+  final String clearLabel;
 
   @override
   Widget build(BuildContext context) => ButlerlySelectField<String>(
@@ -140,41 +154,85 @@ class ButlerlyPaymentSourceSelector extends StatelessWidget {
         ),
     ],
     onChanged: onChanged,
+    onClear: value == null ? null : () => onChanged(null),
+    clearTooltip: clearLabel,
   );
 }
 
-class ButlerlyTagPicker extends StatelessWidget {
+class ButlerlyTagPicker extends StatefulWidget {
   const ButlerlyTagPicker({
     required this.tags,
     required this.masterData,
     required this.selected,
     required this.onChanged,
+    this.onCreate,
+    required this.searchLabel,
+    required this.createLabel,
     super.key,
   });
   final List<Tag> tags;
   final TransactionMasterData masterData;
   final Set<String> selected;
   final ValueChanged<Set<String>> onChanged;
+  final VoidCallback? onCreate;
+  final String searchLabel;
+  final String createLabel;
 
   @override
-  Widget build(BuildContext context) => Wrap(
-    spacing: 8,
-    runSpacing: 4,
-    children: [
-      for (final tag in tags.where((tag) => tag.status == TagStatus.active))
-        FilterChip(
-          label: Text(masterData.tagName(tag.id.value) ?? tag.name),
-          selected: selected.contains(tag.id.value),
-          onSelected: (isSelected) {
-            final next = {...selected};
-            if (isSelected) {
-              next.add(tag.id.value);
-            } else {
-              next.remove(tag.id.value);
-            }
-            onChanged(next);
-          },
+  State<ButlerlyTagPicker> createState() => _ButlerlyTagPickerState();
+}
+
+class _ButlerlyTagPickerState extends State<ButlerlyTagPicker> {
+  String _query = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final tags = widget.tags.where((tag) => tag.status == TagStatus.active);
+    final visible = tags.where((tag) {
+      final label = widget.masterData.tagName(tag.id.value) ?? tag.name;
+      return _query.trim().isEmpty ||
+          label.toLowerCase().contains(_query.trim().toLowerCase());
+    });
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (widget.tags.length > 8)
+          TextField(
+            decoration: InputDecoration(
+              labelText: widget.searchLabel,
+              prefixIcon: const Icon(Icons.search),
+            ),
+            onChanged: (value) => setState(() => _query = value),
+          ),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            for (final tag in visible)
+              FilterChip(
+                label: Text(
+                  widget.masterData.tagName(tag.id.value) ?? tag.name,
+                ),
+                selected: widget.selected.contains(tag.id.value),
+                onSelected: (isSelected) {
+                  final next = {...widget.selected};
+                  if (isSelected) {
+                    next.add(tag.id.value);
+                  } else {
+                    next.remove(tag.id.value);
+                  }
+                  widget.onChanged(next);
+                },
+              ),
+            if (widget.onCreate != null)
+              ActionChip(
+                label: Text(widget.createLabel),
+                avatar: const Icon(Icons.add),
+                onPressed: widget.onCreate,
+              ),
+          ],
         ),
-    ],
-  );
+      ],
+    );
+  }
 }
