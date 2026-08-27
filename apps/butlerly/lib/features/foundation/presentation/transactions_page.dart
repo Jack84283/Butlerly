@@ -227,11 +227,6 @@ class _TransactionsPageState extends State<TransactionsPage> {
                             value.amount,
                           ),
                           currency: value.currency,
-                          icon:
-                              value.direction ==
-                                  TransactionDirection.income.name
-                              ? Icons.work_outline_rounded
-                              : Icons.shopping_bag_outlined,
                           isIncome:
                               value.direction ==
                               TransactionDirection.income.name,

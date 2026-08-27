@@ -428,7 +428,6 @@ class _SearchPageState extends State<SearchPage>
                             value.amount,
                           ),
                           currency: value.currency,
-                          icon: Icons.receipt_long_outlined,
                           isIncome:
                               value.direction ==
                               TransactionDirection.income.name,

@@ -530,11 +530,6 @@ class _CalendarTransactions extends StatelessWidget {
                         transaction.amount,
                       ),
                       currency: transaction.currency,
-                      icon:
-                          transaction.direction ==
-                              TransactionDirection.income.name
-                          ? Icons.work_outline_rounded
-                          : Icons.shopping_bag_outlined,
                       isIncome:
                           transaction.direction ==
                           TransactionDirection.income.name,
