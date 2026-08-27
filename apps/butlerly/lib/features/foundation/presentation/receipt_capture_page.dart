@@ -198,11 +198,11 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         _paymentSourceId = paymentSourceId;
         _processing = false;
       });
-      final match = await _findExistingPaymentMatch();
-      if (match != null && mounted) {
-        final attach = await _confirmExistingMatch(match);
+      final matches = await _findExistingPaymentMatches();
+      if (matches.isNotEmpty && mounted) {
+        final attach = await _confirmExistingMatch(matches.first);
         if (attach == true) {
-          await _attachReceiptToExisting(match);
+          await _attachReceiptToExisting(matches.first.transaction);
         }
       }
     } catch (_) {
@@ -247,10 +247,11 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     );
   }
 
-  Future<TransactionDto?> _findExistingPaymentMatch() async {
+  Future<List<ReconciliationMatchCandidate>>
+  _findExistingPaymentMatches() async {
     final amount = _amount.text.trim();
-    if (amount.isEmpty) return null;
-    final result = await finance.findReceiptPaymentMatch(
+    if (amount.isEmpty) return const [];
+    final result = await finance.findReceiptPaymentMatch.callAll(
       ReceiptPaymentMatchCommand(
         amount: Money(
           amount: DecimalValue.parse(amount),
@@ -262,10 +263,13 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         paymentSourceId: _paymentSourceId,
       ),
     );
-    return result is ApplicationSuccess<TransactionDto?> ? result.value : null;
+    return result is ApplicationSuccess<List<ReconciliationMatchCandidate>>
+        ? result.value
+        : const [];
   }
 
-  Future<bool?> _confirmExistingMatch(TransactionDto transaction) {
+  Future<bool?> _confirmExistingMatch(ReconciliationMatchCandidate candidate) {
+    final transaction = candidate.transaction;
     final source = _sources
         .where((value) => value.id.value == transaction.paymentSourceId)
         .firstOrNull;
@@ -279,6 +283,10 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
             transaction.rawCounterparty ?? transaction.description ?? '',
             '${transaction.currency} ${transaction.amount} · ${transaction.transactionDate}',
             ?sourceLabel,
+            if (candidate.assessment.reasons.isNotEmpty)
+              candidate.assessment.reasons.join('\n'),
+            if (candidate.assessment.conflicts.isNotEmpty)
+              candidate.assessment.conflicts.join('\n'),
           ].join('\n'),
         ),
         actions: [
@@ -377,11 +385,11 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     // OCR performs an early convenience check, but the user may have edited
     // the extracted fields. Recheck immediately before creating anything so
     // the final decision uses the values the user actually approved.
-    final existing = await _findExistingPaymentMatch();
-    if (existing != null && mounted) {
-      final attach = await _confirmExistingMatch(existing);
+    final matches = await _findExistingPaymentMatches();
+    if (matches.isNotEmpty && mounted) {
+      final attach = await _confirmExistingMatch(matches.first);
       if (attach == true) {
-        await _attachReceiptToExisting(existing);
+        await _attachReceiptToExisting(matches.first.transaction);
         return;
       }
     }

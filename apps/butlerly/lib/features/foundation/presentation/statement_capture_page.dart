@@ -670,7 +670,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
     if (status == StatementRowStatus.saved) {
       final matches = await widget.service.likelyMatches(row, _sourceId!);
       if (!mounted) return;
-      if (matches case ApplicationSuccess<List<TransactionDto>>(
+      if (matches case ApplicationSuccess<List<ReconciliationMatchCandidate>>(
         value: final values,
       ) when values.isNotEmpty) {
         final link = await showDialog<bool>(
@@ -678,7 +678,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
           builder: (_) => AlertDialog(
             title: const Text('Likely existing transaction'),
             content: Text(
-              '${values.first.transactionDate} · ${values.first.direction} · ${values.first.currency} ${values.first.amount}\n${values.first.description ?? values.first.rawCounterparty ?? ''}\n\nLink this statement row instead of creating a duplicate?',
+              '${values.first.transaction.transactionDate} · ${values.first.transaction.direction} · ${values.first.transaction.currency} ${values.first.transaction.amount}\n${values.first.transaction.description ?? values.first.transaction.rawCounterparty ?? ''}\n\n${values.first.assessment.reasons.join('\n')}\n${values.first.assessment.conflicts.join('\n')}\n\nLink this statement row instead of creating a duplicate?',
             ),
             actions: [
               TextButton(
@@ -693,7 +693,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
           ),
         );
         if (link == true) {
-          await widget.service.link(row, values.first.id);
+          await widget.service.link(row, values.first.transaction.id);
           status = StatementRowStatus.linked;
         } else {
           await widget.service.save(row, _sourceId!, allowCreateNew: true);

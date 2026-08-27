@@ -53,7 +53,7 @@ final class StatementServices {
   Future<ApplicationResult<void>> correct(StatementRow row) =>
       runApplication('correct statement row', () => statements.updateRow(row));
 
-  Future<ApplicationResult<List<TransactionDto>>> likelyMatches(
+  Future<ApplicationResult<List<ReconciliationMatchCandidate>>> likelyMatches(
     StatementRow row,
     String paymentSourceId,
   ) => runApplication('cross-check statement row', () async {
@@ -80,8 +80,8 @@ final class StatementServices {
     );
     return switch (result) {
       ApplicationSuccess<List<ReconciliationMatchCandidate>>(:final value) =>
-        value.map((candidate) => candidate.transaction).toList(growable: false),
-      _ => const [],
+        value,
+      ApplicationFailure<List<ReconciliationMatchCandidate>>() => const [],
     };
   });
 
