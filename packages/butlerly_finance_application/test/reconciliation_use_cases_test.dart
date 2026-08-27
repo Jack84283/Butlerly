@@ -244,6 +244,39 @@ void main() {
     },
   );
 
+  test('matcher preserves material conflicts for review', () {
+    final now = DateTime.utc(2026, 8, 20);
+    final receipt = _transaction(
+      id: 'receipt-conflict',
+      sourceType: TransactionSourceType.evidenceCapture,
+      date: '2026-08-20',
+      merchant: 'Cafe',
+      provenanceType: ProvenanceSourceType.scan,
+      now: now,
+      paymentSourceId: 'cash',
+    );
+    final payment = _transaction(
+      id: 'payment-conflict',
+      sourceType: TransactionSourceType.manual,
+      date: '2026-09-20',
+      merchant: 'Market',
+      provenanceType: ProvenanceSourceType.userEntry,
+      now: now,
+      paymentSourceId: 'card',
+      currency: 'EUR',
+    );
+    final assessment = ReconciliationMatcher.assess(receipt, payment);
+    expect(
+      assessment.conflicts,
+      containsAll([
+        'currency conflicts',
+        'transaction date differs',
+        'merchant text differs',
+        'payment source differs',
+      ]),
+    );
+  });
+
   test('reject delegates only rejection and never creates a link', () async {
     final workflow = _FakeWorkflow();
     final candidate = ReconciliationCandidate(
@@ -307,17 +340,20 @@ Transaction _transaction({
   required ProvenanceSourceType provenanceType,
   required DateTime now,
   TransactionDirection direction = TransactionDirection.expense,
+  String paymentSourceId = 'cash',
+  String currency = 'USD',
 }) => Transaction(
   id: TransactionId(id),
   timing: const UnknownTransactionTime(UnknownTransactionTimeReason.unknown),
   money: Money(
     amount: DecimalValue.parse('25.00'),
-    currency: CurrencyCode('USD'),
+    currency: CurrencyCode(currency),
   ),
   direction: direction,
   sourceType: sourceType,
   transactionDate: date,
   rawCounterparty: merchant,
+  paymentSourceId: PaymentSourceId(paymentSourceId),
   provenance: [
     Provenance(
       id: ProvenanceId('$id-prov'),

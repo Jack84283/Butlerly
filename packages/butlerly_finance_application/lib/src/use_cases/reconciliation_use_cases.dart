@@ -173,6 +173,9 @@ final class ReconciliationMatcher {
     final conflicts = <String>[];
     if (receipt.money.currency != payment.money.currency) {
       conflicts.add('currency conflicts');
+      if (receipt.money.amount != payment.money.amount) {
+        conflicts.add('amount differs');
+      }
     } else if (receipt.money == payment.money) {
       score += 0.55;
       reasons.add('amount and currency match');
