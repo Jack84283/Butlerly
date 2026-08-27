@@ -5,8 +5,8 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/evidence/local_ocr_service.dart';
-import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -52,7 +52,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   List<Category> _categories = const [];
   List<Tag> _tags = const [];
   List<PaymentSource> _sources = const [];
-  TransactionMasterData _masterData = const TransactionMasterData();
+  TransactionMasterDataSnapshot? _masterDataSnapshot;
+  TransactionMasterData get _masterData =>
+      _masterDataSnapshot?.presentation ?? const TransactionMasterData();
 
   FinanceServices get finance => services<FinanceServices>();
   LocalEvidenceStore get evidenceStore => services<LocalEvidenceStore>();
@@ -76,48 +78,22 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   }
 
   Future<void> _load() async {
-    final values = await Future.wait([
-      finance.listMerchants(),
-      finance.listCategories(),
-      finance.listTags(),
-      finance.listPaymentSources(),
-      finance.loadUserPreference(),
-    ]);
+    final preferenceResult = await finance.loadUserPreference();
+    final preference = preferenceResult is ApplicationSuccess<UserPreference?>
+        ? preferenceResult.value
+        : null;
+    final snapshot = await TransactionMasterDataProvider(
+      finance,
+    ).load(languageCode: preference?.locale ?? 'en');
     if (!mounted) return;
     setState(() {
-      if (values[0] case ApplicationSuccess<List<Merchant>>(
-        value: final value,
-      )) {
-        _merchants = value;
-      }
-      if (values[1] case ApplicationSuccess<List<Category>>(
-        value: final value,
-      )) {
-        _categories = value;
-      }
-      if (values[2] case ApplicationSuccess<List<Tag>>(value: final value)) {
-        _tags = value;
-      }
-      if (values[3] case ApplicationSuccess<List<PaymentSource>>(
-        value: final value,
-      )) {
-        _sources = value;
-      }
-      if (values[4] case ApplicationSuccess<UserPreference?>(
-        value: final value?,
-      )) {
-        _currency.text = value.baseCurrency.value;
-        unawaited(_loadMasterData(value.locale));
-      }
+      _masterDataSnapshot = snapshot;
+      _merchants = snapshot.merchants;
+      _categories = snapshot.categories;
+      _tags = snapshot.tags;
+      _sources = snapshot.paymentSources;
+      if (preference != null) _currency.text = preference.baseCurrency.value;
     });
-  }
-
-  Future<void> _loadMasterData(String languageCode) async {
-    final data = await TransactionMasterData.load(
-      finance,
-      languageCode: languageCode,
-    );
-    if (mounted) setState(() => _masterData = data);
   }
 
   Future<void> _camera() async {
@@ -624,60 +600,36 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                         onTap: _pickDate,
                       ),
                       const SizedBox(height: ButlerlySpacing.standard),
-                      ButlerlySelectField<String>(
+                      ButlerlyCategorySelector(
                         label: context.l10n.text('category'),
+                        clearLabel: context.l10n.text('clear'),
+                        categories: activeCategories,
+                        masterData: _masterData,
                         value: selectedParentId,
-                        entries: [
-                          for (final category in activeCategories.where(
-                            (value) => value.parentId == null,
-                          ))
-                            DropdownMenuEntry(
-                              value: category.id.value,
-                              label:
-                                  _masterData.categoryName(category.id.value) ??
-                                  category.name,
-                            ),
-                        ],
                         onChanged: (value) => setState(() {
                           _categoryId = value;
                         }),
                       ),
                       const SizedBox(height: ButlerlySpacing.standard),
-                      ButlerlySelectField<String>(
+                      ButlerlySubcategorySelector(
                         label: context.l10n.text('subcategory'),
+                        clearLabel: context.l10n.text('clear'),
+                        categories: activeCategories,
+                        masterData: _masterData,
+                        parentId: selectedParentId,
                         value: selectedCategory?.parentId == null
                             ? null
                             : _categoryId,
-                        entries: [
-                          for (final category in activeCategories.where(
-                            (value) =>
-                                value.parentId?.value == selectedParentId,
-                          ))
-                            DropdownMenuEntry(
-                              value: category.id.value,
-                              label:
-                                  _masterData.categoryName(category.id.value) ??
-                                  category.name,
-                            ),
-                        ],
                         onChanged: (value) => setState(() {
                           _categoryId = value ?? selectedParentId;
                         }),
                       ),
                       const SizedBox(height: ButlerlySpacing.standard),
-                      ButlerlySelectField<String>(
+                      ButlerlyPaymentSourceSelector(
                         label: context.l10n.text('paymentSource'),
+                        clearLabel: context.l10n.text('clear'),
+                        sources: _sources,
                         value: _paymentSourceId,
-                        entries: [
-                          for (final source in _sources.where(
-                            (value) =>
-                                value.status == PaymentSourceStatus.active,
-                          ))
-                            DropdownMenuEntry(
-                              value: source.id.value,
-                              label: _paymentSourceLabel(source),
-                            ),
-                        ],
                         onChanged: (value) =>
                             setState(() => _paymentSourceId = value),
                       ),
@@ -688,22 +640,18 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                           spacing: ButlerlySpacing.compact,
                           runSpacing: ButlerlySpacing.micro,
                           children: [
-                            for (final tag in _tags.where(
-                              (value) => value.status == TagStatus.active,
-                            ))
-                              FilterChip(
-                                label: Text(
-                                  _masterData.tagName(tag.id.value) ?? tag.name,
-                                ),
-                                selected: _tagIds.contains(tag.id.value),
-                                onSelected: (selected) => setState(() {
-                                  if (selected) {
-                                    _tagIds.add(tag.id.value);
-                                  } else {
-                                    _tagIds.remove(tag.id.value);
-                                  }
-                                }),
-                              ),
+                            ButlerlyTagPicker(
+                              searchLabel: context.l10n.text('search'),
+                              createLabel: context.l10n.text('addTag'),
+                              tags: _tags,
+                              masterData: _masterData,
+                              selected: _tagIds,
+                              onChanged: (value) => setState(() {
+                                _tagIds
+                                  ..clear()
+                                  ..addAll(value);
+                              }),
+                            ),
                           ],
                         ),
                       ),

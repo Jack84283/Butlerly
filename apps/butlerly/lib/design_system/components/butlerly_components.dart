@@ -306,6 +306,8 @@ class ButlerlySelectField<T> extends StatelessWidget {
     required this.onChanged,
     this.onCreate,
     this.createTooltip,
+    this.onClear,
+    this.clearTooltip,
     super.key,
   });
 
@@ -315,6 +317,8 @@ class ButlerlySelectField<T> extends StatelessWidget {
   final ValueChanged<T?> onChanged;
   final VoidCallback? onCreate;
   final String? createTooltip;
+  final VoidCallback? onClear;
+  final String? clearTooltip;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -323,12 +327,25 @@ class ButlerlySelectField<T> extends StatelessWidget {
       width: constraints.maxWidth,
       menuHeight: 192,
       label: Text(label),
-      trailingIcon: onCreate == null
+      trailingIcon: onCreate == null && onClear == null
           ? null
-          : IconButton(
-              onPressed: onCreate,
-              icon: const Icon(Icons.add_circle_outline),
-              tooltip: createTooltip ?? 'Create $label',
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (onCreate != null)
+                  IconButton(
+                    onPressed: onCreate,
+                    icon: const Icon(Icons.add_circle_outline),
+                    tooltip: createTooltip,
+                  ),
+                if (onClear != null)
+                  IconButton(
+                    onPressed: onClear,
+                    icon: const Icon(Icons.clear),
+                    tooltip: clearTooltip,
+                  ),
+                const Icon(Icons.arrow_drop_down),
+              ],
             ),
       inputDecorationTheme: Theme.of(context).inputDecorationTheme,
       menuStyle: MenuStyle(

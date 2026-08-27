@@ -3,6 +3,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
@@ -320,42 +321,10 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   }
 
   Future<_EditorMasterData> _loadMasterData(String languageCode) async {
-    final results = await Future.wait([
-      widget.finance.listMerchants(),
-      widget.finance.listCategories(),
-      widget.finance.listTags(),
-      widget.finance.listPaymentSources(),
-    ]);
-    final categoryLabels = switch (await widget.finance.loadMasterTranslations(
-      masterType: 'category',
-      locale: languageCode == 'zh' ? 'zh-Hans' : languageCode,
-    )) {
-      ApplicationSuccess<Map<String, String>>(:final value) => value,
-      _ => const <String, String>{},
-    };
-    final tagLabels = switch (await widget.finance.loadMasterTranslations(
-      masterType: 'tag',
-      locale: languageCode == 'zh' ? 'zh-Hans' : languageCode,
-    )) {
-      ApplicationSuccess<Map<String, String>>(:final value) => value,
-      _ => const <String, String>{},
-    };
-    return _EditorMasterData(
-      merchants: results[0] is ApplicationSuccess<List<Merchant>>
-          ? (results[0] as ApplicationSuccess<List<Merchant>>).value
-          : const [],
-      categories: results[1] is ApplicationSuccess<List<Category>>
-          ? (results[1] as ApplicationSuccess<List<Category>>).value
-          : const [],
-      tags: results[2] is ApplicationSuccess<List<Tag>>
-          ? (results[2] as ApplicationSuccess<List<Tag>>).value
-          : const [],
-      paymentSources: results[3] is ApplicationSuccess<List<PaymentSource>>
-          ? (results[3] as ApplicationSuccess<List<PaymentSource>>).value
-          : const [],
-      categoryLabels: categoryLabels,
-      tagLabels: tagLabels,
-    );
+    final snapshot = await TransactionMasterDataProvider(
+      widget.finance,
+    ).load(languageCode: languageCode);
+    return _EditorMasterData.fromSnapshot(snapshot);
   }
 
   @override
@@ -461,9 +430,6 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
               (selectedCategory != null && selectedCategory.parentId == null
                   ? selectedCategory.id.value
                   : null);
-          final activeCategories = data.categories
-              .where((value) => value.status == CategoryStatus.active)
-              .toList(growable: false);
           return Form(
             key: _formKey,
             child: ListView(
@@ -562,81 +528,73 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   maxLines: 3,
                 ),
                 const SizedBox(height: 16),
-                ButlerlySelectField<String>(
+                ButlerlyMerchantSelector(
                   label: context.l10n.text('merchant'),
+                  clearLabel: context.l10n.text('clear'),
+                  merchants: data.merchants,
                   value: _merchantId,
-                  entries: [
-                    for (final value in data.merchants.where(
-                      (v) => v.status == MerchantStatus.active,
-                    ))
-                      DropdownMenuEntry(
-                        value: value.id.value,
-                        label: value.name,
-                      ),
-                  ],
                   onChanged: (value) => setState(() => _merchantId = value),
                   onCreate: () => _createMerchant(data),
+                  createTooltip: context.l10n.text('merchant'),
                 ),
                 const SizedBox(height: 16),
-                ButlerlySelectField<String>(
+                ButlerlyCategorySelector(
                   label: context.l10n.text('category'),
+                  clearLabel: context.l10n.text('clear'),
+                  categories: data.categories,
+                  masterData: TransactionMasterData(
+                    categoryNames: data.categoryLabels,
+                    tagNames: data.tagLabels,
+                  ),
                   value: selectedParentId,
-                  entries: [
-                    for (final value in activeCategories.where(
-                      (v) => v.parentId == null,
-                    ))
-                      DropdownMenuEntry(
-                        value: value.id.value,
-                        label:
-                            data.categoryLabels[value.id.value] ?? value.name,
-                      ),
-                  ],
                   onChanged: (value) => setState(() => _categoryId = value),
                 ),
                 const SizedBox(height: 16),
-                ButlerlySelectField<String>(
+                ButlerlySubcategorySelector(
                   label: context.l10n.text('subcategory'),
+                  clearLabel: context.l10n.text('clear'),
+                  categories: data.categories,
+                  masterData: TransactionMasterData(
+                    categoryNames: data.categoryLabels,
+                    tagNames: data.tagLabels,
+                  ),
+                  parentId: selectedParentId,
                   value: selectedCategory?.parentId == null
                       ? null
                       : _categoryId,
-                  entries: [
-                    for (final value in activeCategories.where(
-                      (v) => v.parentId?.value == selectedParentId,
-                    ))
-                      DropdownMenuEntry(
-                        value: value.id.value,
-                        label:
-                            data.categoryLabels[value.id.value] ?? value.name,
-                      ),
-                  ],
                   onChanged: (value) =>
                       setState(() => _categoryId = value ?? selectedParentId),
                 ),
                 const SizedBox(height: 16),
-                ButlerlySelectField<String>(
+                ButlerlyPaymentSourceSelector(
                   label: context.l10n.text('paymentSource'),
+                  clearLabel: context.l10n.text('clear'),
+                  sources: data.paymentSources,
                   value: _paymentSourceId,
-                  entries: [
-                    for (final value in data.paymentSources.where(
-                      (v) => v.status == PaymentSourceStatus.active,
-                    ))
-                      DropdownMenuEntry(
-                        value: value.id.value,
-                        label: value.displayIdentity ?? value.name,
-                      ),
-                  ],
                   onChanged: (value) =>
                       setState(() => _paymentSourceId = value),
                 ),
                 const SizedBox(height: 16),
-                _TagSelector(
-                  tags: data.tags
-                      .where((v) => v.status == TagStatus.active)
-                      .toList(),
-                  labels: data.tagLabels,
-                  selected: _tagIds,
-                  onChanged: (value) => setState(() => _tagIds = value),
-                  onCreate: () => _createTag(data),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.l10n.text('tags'),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    ButlerlyTagPicker(
+                      searchLabel: context.l10n.text('search'),
+                      createLabel: context.l10n.text('addTag'),
+                      tags: data.tags,
+                      masterData: TransactionMasterData(
+                        categoryNames: data.categoryLabels,
+                        tagNames: data.tagLabels,
+                      ),
+                      selected: _tagIds,
+                      onChanged: (value) => setState(() => _tagIds = value),
+                      onCreate: () => _createTag(data),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: ButlerlySpacing.section),
                 FilledButton(
@@ -729,57 +687,24 @@ final class _EditorMasterData {
     required this.categoryLabels,
     required this.tagLabels,
   });
+
+  factory _EditorMasterData.fromSnapshot(
+    TransactionMasterDataSnapshot snapshot,
+  ) => _EditorMasterData(
+    merchants: snapshot.merchants,
+    categories: snapshot.categories,
+    tags: snapshot.tags,
+    paymentSources: snapshot.paymentSources,
+    categoryLabels: snapshot.presentation.categoryNames,
+    tagLabels: snapshot.presentation.tagNames,
+  );
+
   final List<Merchant> merchants;
   final List<Category> categories;
   final List<Tag> tags;
   final List<PaymentSource> paymentSources;
   final Map<String, String> categoryLabels;
   final Map<String, String> tagLabels;
-}
-
-class _TagSelector extends StatelessWidget {
-  const _TagSelector({
-    required this.tags,
-    required this.labels,
-    required this.selected,
-    required this.onChanged,
-    required this.onCreate,
-  });
-  final List<Tag> tags;
-  final Map<String, String> labels;
-  final Set<String> selected;
-  final ValueChanged<Set<String>> onChanged;
-  final VoidCallback onCreate;
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        context.l10n.text('tags'),
-        style: Theme.of(context).textTheme.bodySmall,
-      ),
-      Wrap(
-        spacing: ButlerlySpacing.compact,
-        children: [
-          for (final tag in tags)
-            FilterChip(
-              label: Text(labels[tag.id.value] ?? tag.name),
-              selected: selected.contains(tag.id.value),
-              onSelected: (checked) {
-                final next = {...selected};
-                checked ? next.add(tag.id.value) : next.remove(tag.id.value);
-                onChanged(next);
-              },
-            ),
-          ActionChip(
-            label: Text(context.l10n.text('addTag')),
-            avatar: const Icon(Icons.add),
-            onPressed: onCreate,
-          ),
-        ],
-      ),
-    ],
-  );
 }
 
 Future<String?> _prompt(BuildContext context, String title) async {
