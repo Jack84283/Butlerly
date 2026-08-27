@@ -62,7 +62,7 @@ final class StatementServices {
         row.transactionDate == null) {
       return const [];
     }
-    final result = await FindReceiptPaymentMatch(transactions).call(
+    final result = await FindReceiptPaymentMatch(transactions).callAll(
       ReceiptPaymentMatchCommand(
         amount: Money(
           amount: DecimalValue.parse(row.amount!),
@@ -75,15 +75,12 @@ final class StatementServices {
         ),
         merchant: row.description,
         paymentSourceId: paymentSourceId,
-        direction: row.direction == TransactionDirection.income.name
-            ? TransactionDirection.income
-            : row.kind == StatementRowKind.refund
-            ? TransactionDirection.refund
-            : TransactionDirection.expense,
+        direction: _directionForRow(row),
       ),
     );
     return switch (result) {
-      ApplicationSuccess<TransactionDto?>(value: final value?) => [value],
+      ApplicationSuccess<List<ReconciliationMatchCandidate>>(:final value) =>
+        value.map((candidate) => candidate.transaction).toList(growable: false),
       _ => const [],
     };
   });
@@ -151,9 +148,7 @@ final class StatementServices {
         amount: DecimalValue.parse(row.amount!),
         currency: CurrencyCode(row.currency!),
       ),
-      direction: row.direction == TransactionDirection.income.name
-          ? TransactionDirection.income
-          : TransactionDirection.expense,
+      direction: _directionForRow(row),
       sourceType: TransactionSourceType.import,
       transactionDate: row.transactionDate!.toIso8601String().substring(0, 10),
       description: row.description,
@@ -220,4 +215,15 @@ final class StatementServices {
     createdAt: row.createdAt,
     updatedAt: updatedAt,
   );
+
+  static TransactionDirection _directionForRow(StatementRow row) {
+    if (row.direction == TransactionDirection.income.name) {
+      return TransactionDirection.income;
+    }
+    if (row.direction == TransactionDirection.refund.name ||
+        row.kind == StatementRowKind.refund) {
+      return TransactionDirection.refund;
+    }
+    return TransactionDirection.expense;
+  }
 }

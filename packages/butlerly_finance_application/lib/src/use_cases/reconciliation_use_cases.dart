@@ -26,7 +26,7 @@ final class FindReceiptPaymentMatch {
 
   final TransactionRepository repository;
 
-  Future<ApplicationResult<TransactionDto?>> call(
+  Future<ApplicationResult<List<ReconciliationMatchCandidate>>> callAll(
     ReceiptPaymentMatchCommand command,
   ) => runApplication('find receipt payment match', () async {
     final receipt = Transaction(
@@ -53,7 +53,7 @@ final class FindReceiptPaymentMatch {
       createdAt: DateTime.utc(1970),
       updatedAt: DateTime.utc(1970),
     );
-    final scored = <({Transaction value, double score})>[];
+    final scored = <ReconciliationMatchCandidate>[];
     for (final transaction in await repository.listAll()) {
       final isPayment =
           transaction.status == TransactionStatus.active &&
@@ -62,17 +62,38 @@ final class FindReceiptPaymentMatch {
               transaction.sourceType == TransactionSourceType.manual);
       if (!isPayment) continue;
       final assessment = ReconciliationMatcher.assess(receipt, transaction);
-      if (!assessment.incompatible && assessment.score >= 0.75) {
-        scored.add((value: transaction, score: assessment.score));
+      if (!assessment.incompatible && assessment.score >= 0.45) {
+        scored.add(
+          ReconciliationMatchCandidate(
+            transaction: TransactionDto.fromDomain(transaction),
+            assessment: assessment,
+          ),
+        );
       }
     }
-    scored.sort((a, b) => b.score.compareTo(a.score));
-    if (scored.isEmpty ||
-        (scored.length > 1 && scored[0].score - scored[1].score < 0.10)) {
-      return null;
-    }
-    return TransactionDto.fromDomain(scored.first.value);
+    scored.sort((a, b) => b.assessment.score.compareTo(a.assessment.score));
+    return List.unmodifiable(scored);
   });
+
+  Future<ApplicationResult<TransactionDto?>> call(
+    ReceiptPaymentMatchCommand command,
+  ) => callAll(command).then(
+    (result) => switch (result) {
+      ApplicationSuccess<List<ReconciliationMatchCandidate>>(:final value)
+          when value.length == 1 =>
+        ApplicationSuccess(value.first.transaction),
+      _ => const ApplicationSuccess<TransactionDto?>(null),
+    },
+  );
+}
+
+final class ReconciliationMatchCandidate {
+  const ReconciliationMatchCandidate({
+    required this.transaction,
+    required this.assessment,
+  });
+  final TransactionDto transaction;
+  final ReconciliationAssessment assessment;
 }
 
 final class ReconciliationCandidateGenerator {
@@ -117,11 +138,13 @@ final class ReconciliationAssessment {
     required this.score,
     required this.reasons,
     this.incompatible = false,
+    this.conflicts = const [],
   });
 
   final double score;
   final List<String> reasons;
   final bool incompatible;
+  final List<String> conflicts;
 }
 
 /// Shared matching rules for Review and the scan-to-match shortcut.
@@ -139,6 +162,7 @@ final class ReconciliationMatcher {
       return const ReconciliationAssessment(
         score: 0,
         reasons: ['transaction direction conflicts'],
+        conflicts: ['transaction direction conflicts'],
         incompatible: true,
       );
     }
@@ -146,17 +170,21 @@ final class ReconciliationMatcher {
     var score = 0.0;
     final reasons = <String>[];
     final amountRatio = _amountDifferenceRatio(receipt, payment);
-    if (receipt.money == payment.money) {
+    final conflicts = <String>[];
+    if (receipt.money.currency != payment.money.currency) {
+      conflicts.add('currency conflicts');
+    } else if (receipt.money == payment.money) {
       score += 0.55;
       reasons.add('amount and currency match');
-    } else if (receipt.money.currency == payment.money.currency &&
-        amountRatio != null &&
-        amountRatio <= 0.10) {
+    } else if (amountRatio != null && amountRatio <= 0.10) {
       // A receipt total can differ from the posted amount because of a tip or
       // a small bank adjustment. Keep this below an exact match so it cannot
       // silently outrank an exact same-day transaction.
       score += 0.35;
       reasons.add('amount is within 10% (possible tip or adjustment)');
+      conflicts.add('amount differs');
+    } else {
+      conflicts.add('amount differs');
     }
 
     final dateDistance = _dateDistance(
@@ -169,6 +197,8 @@ final class ReconciliationMatcher {
     } else if (dateDistance != null && dateDistance <= 1) {
       score += 0.15;
       reasons.add('transaction date is within one day');
+    } else if (dateDistance != null) {
+      conflicts.add('transaction date differs');
     }
 
     final merchantScore = _merchantSimilarity(receipt, payment);
@@ -178,16 +208,23 @@ final class ReconciliationMatcher {
     } else if (merchantScore >= 0.50) {
       score += 0.10;
       reasons.add('merchant text is similar');
+    } else if (merchantScore == 0 &&
+        (receipt.rawCounterparty != null || payment.rawCounterparty != null)) {
+      conflicts.add('merchant text differs');
     }
 
     if (receipt.paymentSourceId != null &&
         receipt.paymentSourceId == payment.paymentSourceId) {
       score += 0.05;
       reasons.add('payment source matches');
+    } else if (receipt.paymentSourceId != null &&
+        payment.paymentSourceId != null) {
+      conflicts.add('payment source differs');
     }
     return ReconciliationAssessment(
       score: score,
       reasons: List.unmodifiable(reasons),
+      conflicts: List.unmodifiable(conflicts),
     );
   }
 
