@@ -220,6 +220,49 @@ void main() {
   );
 
   test(
+    'cross-source evidence can target statement-created and receipt-created transactions',
+    () async {
+      final now = DateTime.utc(2026, 8, 20);
+      final repository = _FakeTransactions([
+        _transaction(
+          id: 'statement-created',
+          sourceType: TransactionSourceType.import,
+          date: '2026-08-20',
+          merchant: 'Cafe',
+          provenanceType: ProvenanceSourceType.import,
+          now: now,
+        ),
+        _transaction(
+          id: 'receipt-created',
+          sourceType: TransactionSourceType.evidenceCapture,
+          date: '2026-08-20',
+          merchant: 'Cafe',
+          provenanceType: ProvenanceSourceType.scan,
+          now: now,
+        ),
+      ]);
+      final result = await FindReceiptPaymentMatch(repository).callAll(
+        ReceiptPaymentMatchCommand(
+          amount: Money(
+            amount: DecimalValue.parse('25.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          currency: 'USD',
+          transactionDate: '2026-08-20',
+          merchant: 'Cafe',
+        ),
+      );
+      final values =
+          (result as ApplicationSuccess<List<ReconciliationMatchCandidate>>)
+              .value;
+      expect(
+        values.map((candidate) => candidate.transaction.id),
+        contains('statement-created'),
+      );
+    },
+  );
+
+  test(
     'confirm delegates candidate and link as one workflow operation',
     () async {
       final workflow = _FakeWorkflow();
