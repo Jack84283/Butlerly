@@ -1,7 +1,6 @@
 library;
 
 export 'src/analysis/analysis.dart';
-
 export 'src/entities/account.dart';
 export 'src/entities/attachment_link.dart';
 export 'src/entities/category.dart';
@@ -15,6 +14,7 @@ export 'src/entities/reconciliation_candidate.dart';
 export 'src/entities/reconciliation_link.dart';
 export 'src/entities/reference_data.dart';
 export 'src/entities/review_issue.dart';
+export 'src/entities/statement.dart';
 export 'src/entities/suggestion.dart';
 export 'src/entities/tag.dart';
 export 'src/entities/transaction.dart';

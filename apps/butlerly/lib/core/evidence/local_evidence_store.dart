@@ -90,6 +90,29 @@ final class LocalEvidenceStore {
     return null;
   }
 
+  Future<EvidenceItem?> storePreservedStatement(
+    PreservedEvidenceSource source,
+  ) async {
+    final token = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
+    final now = DateTime.now().toUtc();
+    final evidence = EvidenceItem(
+      id: EvidenceId('statement-evidence-$token'),
+      type: EvidenceType.document,
+      originalName: source.originalName,
+      mediaType: source.mediaType,
+      localFileName: source.localFileName,
+      provenance: Provenance(
+        id: ProvenanceId('statement-evidence-provenance-$token'),
+        sourceType: ProvenanceSourceType.scan,
+        capturedAt: now,
+        originalRepresentation: source.originalName,
+      ),
+      createdAt: now,
+    );
+    final result = await finance.storeEvidence(evidence);
+    return result is ApplicationSuccess<EvidenceItem> ? result.value : null;
+  }
+
   Future<EvidenceItem?> attachAndReturn({
     required String transactionId,
     required XFile source,

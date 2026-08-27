@@ -1,5 +1,5 @@
 abstract final class Schema {
-  static const version = 16;
+  static const version = 17;
 
   static const migration1 = <String>[
     '''CREATE TABLE payment_sources (
@@ -311,5 +311,44 @@ abstract final class Schema {
     )''',
     'CREATE INDEX idx_analysis_findings_rule ON analysis_findings(rule_id, rule_version)',
     'CREATE INDEX idx_analysis_findings_lifecycle ON analysis_findings(lifecycle)',
+  ];
+
+  static const migration17 = <String>[
+    '''CREATE TABLE financial_statements (
+      id TEXT PRIMARY KEY NOT NULL,
+      evidence_id TEXT NOT NULL UNIQUE REFERENCES evidence_items(id) ON DELETE CASCADE,
+      payment_source_id TEXT REFERENCES payment_sources(id),
+      status TEXT NOT NULL,
+      institution TEXT,
+      masked_account_identifier TEXT,
+      period_start TEXT,
+      period_end TEXT,
+      extraction_message TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      CHECK ((period_start IS NULL) = (period_end IS NULL))
+    )''',
+    '''CREATE TABLE statement_rows (
+      id TEXT PRIMARY KEY NOT NULL,
+      statement_id TEXT NOT NULL REFERENCES financial_statements(id) ON DELETE CASCADE,
+      position INTEGER NOT NULL CHECK(position >= 0),
+      original_text TEXT NOT NULL,
+      transaction_date TEXT,
+      posting_date TEXT,
+      description TEXT,
+      amount TEXT,
+      currency TEXT,
+      direction TEXT,
+      row_kind TEXT NOT NULL,
+      confidence REAL CHECK(confidence IS NULL OR (confidence >= 0 AND confidence <= 1)),
+      source_context TEXT,
+      status TEXT NOT NULL,
+      transaction_id TEXT REFERENCES transactions(id),
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(statement_id, position)
+    )''',
+    'CREATE INDEX idx_statement_rows_status ON statement_rows(statement_id, status)',
+    'CREATE INDEX idx_statements_period ON financial_statements(payment_source_id, period_start, period_end)',
   ];
 }

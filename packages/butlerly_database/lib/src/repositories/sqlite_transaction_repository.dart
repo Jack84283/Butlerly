@@ -12,33 +12,40 @@ final class SqliteTransactionRepository implements TransactionRepository {
   @override
   Future<void> save(Transaction value) async {
     try {
-      await database.transaction((executor) async {
-        for (final provenance in value.provenance) {
-          await saveProvenance(executor, provenance);
-        }
-        final row = _transactionToRow(value);
-        final existing = await executor.query(
-          'transactions',
-          columns: ['id'],
-          where: 'id = ?',
-          whereArgs: [value.id.value],
-          limit: 1,
-        );
-        if (existing.isEmpty) {
-          await executor.insert('transactions', row);
-        } else {
-          await executor.update(
-            'transactions',
-            row,
-            where: 'id = ?',
-            whereArgs: [value.id.value],
-          );
-        }
-        await _replaceChildren(executor, value);
-      });
+      await database.transaction(
+        (executor) => saveWithExecutor(executor, value),
+      );
     } on DatabaseException catch (error) {
       throw mapDatabaseException(error, 'save transaction');
     }
+  }
+
+  static Future<void> saveWithExecutor(
+    DatabaseExecutor executor,
+    Transaction value,
+  ) async {
+    for (final provenance in value.provenance) {
+      await saveProvenance(executor, provenance);
+    }
+    final row = _transactionToRow(value);
+    final existing = await executor.query(
+      'transactions',
+      columns: ['id'],
+      where: 'id = ?',
+      whereArgs: [value.id.value],
+      limit: 1,
+    );
+    if (existing.isEmpty) {
+      await executor.insert('transactions', row);
+    } else {
+      await executor.update(
+        'transactions',
+        row,
+        where: 'id = ?',
+        whereArgs: [value.id.value],
+      );
+    }
+    await _replaceChildren(executor, value);
   }
 
   @override
@@ -139,11 +146,19 @@ final class SqliteTransactionRepository implements TransactionRepository {
   @override
   Future<void> removePermanently(TransactionId id) async {
     try {
-      await database.connection.delete(
-        'transactions',
-        where: 'id = ?',
-        whereArgs: [id.value],
-      );
+      await database.transaction((tx) async {
+        await tx.update(
+          'statement_rows',
+          {
+            'transaction_id': null,
+            'status': StatementRowStatus.pending.name,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          },
+          where: 'transaction_id = ?',
+          whereArgs: [id.value],
+        );
+        await tx.delete('transactions', where: 'id = ?', whereArgs: [id.value]);
+      });
     } on DatabaseException catch (error) {
       throw mapDatabaseException(error, 'remove transaction permanently');
     }
@@ -220,7 +235,7 @@ final class SqliteTransactionRepository implements TransactionRepository {
     );
   }
 
-  Future<void> _replaceChildren(
+  static Future<void> _replaceChildren(
     DatabaseExecutor executor,
     Transaction value,
   ) async {

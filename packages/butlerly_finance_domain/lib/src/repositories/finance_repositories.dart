@@ -10,6 +10,7 @@ import '../entities/merchant.dart';
 import '../entities/reconciliation_candidate.dart';
 import '../entities/reconciliation_link.dart';
 import '../entities/reference_data.dart';
+import '../entities/statement.dart';
 import '../entities/suggestion.dart';
 import '../entities/tag.dart';
 import '../entities/transaction.dart';
@@ -149,6 +150,28 @@ abstract interface class EvidenceRepository {
   Future<EvidenceItem?> findById(EvidenceId id);
   Future<List<EvidenceItem>> listForTransaction(TransactionId id);
   Future<void> remove(EvidenceId id);
+}
+
+abstract interface class StatementRepository {
+  Future<void> saveStatement(FinancialStatement statement);
+  Future<void> saveRows(List<StatementRow> rows);
+  Future<FinancialStatement?> findStatement(String id);
+  Future<List<FinancialStatement>> listStatements({
+    bool includeArchived = false,
+  });
+  Future<List<StatementRow>> listRows(String statementId);
+  Future<void> assignPaymentSource(
+    String statementId,
+    String paymentSourceId,
+    DateTime updatedAt,
+  );
+  Future<void> updateRow(StatementRow row);
+  Future<void> removeStatement(String id);
+}
+
+abstract interface class StatementWorkflowRepository {
+  Future<void> saveRowTransaction(StatementRow row, Transaction transaction);
+  Future<void> linkRow(StatementRow row);
 }
 
 abstract interface class ExtractionLookupRepository {

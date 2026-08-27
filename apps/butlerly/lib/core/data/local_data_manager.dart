@@ -37,6 +37,8 @@ final class LocalDataManager {
     'exchange_rates',
     'normalized_money',
     'evidence_items',
+    'financial_statements',
+    'statement_rows',
     'extractions',
     'attachment_links',
     'suggestions',
@@ -50,6 +52,8 @@ final class LocalDataManager {
   ];
 
   static const _eraseOrder = <String>[
+    'statement_rows',
+    'financial_statements',
     'suggestions',
     'attachment_links',
     'extractions',
