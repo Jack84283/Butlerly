@@ -46,6 +46,31 @@ final class TransactionMasterData {
   String? categoryNameForParent(String? id) =>
       categoryName(categoryParentId(id));
 
+  static TransactionMasterData fromEntities({
+    required List<Merchant> merchants,
+    required List<Category> categories,
+    required List<Tag> tags,
+    required Map<String, String> categoryLabels,
+    required Map<String, String> tagLabels,
+    required String languageCode,
+  }) => TransactionMasterData(
+    merchantNames: {for (final value in merchants) value.id.value: value.name},
+    categoryNames: {
+      for (final value in categories)
+        value.id.value:
+            categoryLabels[value.id.value] ??
+            categoryDisplayLabel(value, languageCode),
+    },
+    categoryParentIds: {
+      for (final value in categories) value.id.value: value.parentId?.value,
+    },
+    tagNames: {
+      for (final value in tags)
+        value.id.value:
+            tagLabels[value.id.value] ?? tagDisplayLabel(value, languageCode),
+    },
+  );
+
   static Future<TransactionMasterData> load(
     FinanceServices finance, {
     String languageCode = 'en',
@@ -81,24 +106,13 @@ final class TransactionMasterData {
       _ => const <String, String>{},
     };
 
-    return TransactionMasterData(
-      merchantNames: {
-        for (final value in merchants) value.id.value: value.name,
-      },
-      categoryNames: {
-        for (final value in categories)
-          value.id.value:
-              categoryLabels[value.id.value] ??
-              categoryDisplayLabel(value, languageCode),
-      },
-      categoryParentIds: {
-        for (final value in categories) value.id.value: value.parentId?.value,
-      },
-      tagNames: {
-        for (final value in tags)
-          value.id.value:
-              tagLabels[value.id.value] ?? tagDisplayLabel(value, languageCode),
-      },
+    return fromEntities(
+      merchants: merchants,
+      categories: categories,
+      tags: tags,
+      categoryLabels: categoryLabels,
+      tagLabels: tagLabels,
+      languageCode: languageCode,
     );
   }
 }
@@ -135,14 +149,32 @@ final class TransactionMasterDataProvider {
       finance.listCategories(),
       finance.listTags(),
       finance.listPaymentSources(),
-      TransactionMasterData.load(finance, languageCode: languageCode),
+      finance.loadMasterTranslations(
+        masterType: 'category',
+        locale: languageCode == 'zh' ? 'zh-Hans' : languageCode,
+      ),
+      finance.loadMasterTranslations(
+        masterType: 'tag',
+        locale: languageCode == 'zh' ? 'zh-Hans' : languageCode,
+      ),
     ]);
     List<T> valueOf<T>(int index) => switch (results[index]) {
       ApplicationSuccess<List<T>>(:final value) => value,
       _ => const <Never>[] as List<T>,
     };
     return TransactionMasterDataSnapshot(
-      presentation: results[4] as TransactionMasterData,
+      presentation: TransactionMasterData.fromEntities(
+        merchants: valueOf<Merchant>(0),
+        categories: valueOf<Category>(1),
+        tags: valueOf<Tag>(2),
+        categoryLabels: results[4] is ApplicationSuccess<Map<String, String>>
+            ? (results[4] as ApplicationSuccess<Map<String, String>>).value
+            : const {},
+        tagLabels: results[5] is ApplicationSuccess<Map<String, String>>
+            ? (results[5] as ApplicationSuccess<Map<String, String>>).value
+            : const {},
+        languageCode: languageCode,
+      ),
       merchants: valueOf<Merchant>(0),
       categories: valueOf<Category>(1),
       tags: valueOf<Tag>(2),
