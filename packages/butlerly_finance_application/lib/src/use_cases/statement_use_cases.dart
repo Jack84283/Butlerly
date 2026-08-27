@@ -126,7 +126,7 @@ final class StatementServices {
     }
     if (!allowCreateNew) {
       final matches = await likelyMatches(row, paymentSourceId);
-      if (matches case ApplicationSuccess<List<TransactionDto>>(
+      if (matches case ApplicationSuccess<List<ReconciliationMatchCandidate>>(
         value: final values,
       ) when values.isNotEmpty) {
         throw const DomainValidationException(

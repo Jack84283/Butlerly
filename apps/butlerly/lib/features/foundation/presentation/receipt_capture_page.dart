@@ -200,9 +200,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       });
       final matches = await _findExistingPaymentMatches();
       if (matches.isNotEmpty && mounted) {
-        final attach = await _confirmExistingMatch(matches.first);
-        if (attach == true) {
-          await _attachReceiptToExisting(matches.first.transaction);
+        final selected = await _selectExistingMatch(matches);
+        if (selected != null) {
+          await _attachReceiptToExisting(selected.transaction);
         }
       }
     } catch (_) {
@@ -268,35 +268,25 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         : const [];
   }
 
-  Future<bool?> _confirmExistingMatch(ReconciliationMatchCandidate candidate) {
-    final transaction = candidate.transaction;
-    final source = _sources
-        .where((value) => value.id.value == transaction.paymentSourceId)
-        .firstOrNull;
-    final sourceLabel = source == null ? null : _paymentSourceLabel(source);
-    return showButlerlyBottomSheet<bool>(
+  Future<ReconciliationMatchCandidate?> _selectExistingMatch(
+    List<ReconciliationMatchCandidate> candidates,
+  ) {
+    return showButlerlyBottomSheet<ReconciliationMatchCandidate>(
       context: context,
       builder: (dialogContext) => ButlerlySheet(
         title: Text(dialogContext.l10n.text('existingTransactionFound')),
-        content: Text(
-          [
-            transaction.rawCounterparty ?? transaction.description ?? '',
-            '${transaction.currency} ${transaction.amount} · ${transaction.transactionDate}',
-            ?sourceLabel,
-            if (candidate.assessment.reasons.isNotEmpty)
-              candidate.assessment.reasons.join('\n'),
-            if (candidate.assessment.conflicts.isNotEmpty)
-              candidate.assessment.conflicts.join('\n'),
-          ].join('\n'),
-        ),
+        content: Text(dialogContext.l10n.text('existingTransactionFound')),
         actions: [
+          for (final candidate in candidates)
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, candidate),
+              child: Text(
+                '${candidate.transaction.currency} ${candidate.transaction.amount} · ${candidate.transaction.transactionDate}\n${candidate.transaction.description ?? candidate.transaction.rawCounterparty ?? ''}\n${candidate.assessment.reasons.join('; ')}',
+              ),
+            ),
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text(dialogContext.l10n.text('notThisTransaction')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(dialogContext.l10n.text('attachReceipt')),
           ),
         ],
       ),
@@ -387,9 +377,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     // the final decision uses the values the user actually approved.
     final matches = await _findExistingPaymentMatches();
     if (matches.isNotEmpty && mounted) {
-      final attach = await _confirmExistingMatch(matches.first);
-      if (attach == true) {
-        await _attachReceiptToExisting(matches.first.transaction);
+      final selected = await _selectExistingMatch(matches);
+      if (selected != null) {
+        await _attachReceiptToExisting(selected.transaction);
         return;
       }
     }
