@@ -148,4 +148,55 @@ void main() {
     await tester.pump();
     expect(selected, contains('work'));
   });
+
+  testWidgets(
+    'shared filters support nullable values and localized direction',
+    (tester) async {
+      String? currency = 'USD';
+      TransactionDirection? direction = TransactionDirection.expense;
+      await pump(
+        tester,
+        Column(
+          children: [
+            ButlerlyCurrencyFilter(
+              currencies: const ['USD', 'INR'],
+              value: currency,
+              label: 'Currency',
+              anyLabel: 'Any currency',
+              onChanged: (value) => currency = value,
+            ),
+            ButlerlyDirectionFilter(
+              value: direction,
+              label: 'Direction',
+              anyLabel: 'Any direction',
+              onChanged: (value) => direction = value,
+            ),
+          ],
+        ),
+      );
+      expect(find.byTooltip('Any currency'), findsWidgets);
+      expect(find.byTooltip('Any direction'), findsWidgets);
+      await tester.tap(find.byTooltip('Any currency').first);
+      expect(currency, isNull);
+    },
+  );
+
+  testWidgets('read-only tags localize, wrap, and expose overflow accessibly', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      ButlerlyReadOnlyTagList(
+        tagIds: const ['work', 'home', 'missing'],
+        masterData: labels,
+        label: 'Tags',
+        unavailableLabel: 'Unavailable',
+        maxVisible: 2,
+      ),
+    );
+    expect(find.text('工作'), findsOneWidget);
+    expect(find.text('家庭'), findsOneWidget);
+    expect(find.text('+1'), findsOneWidget);
+    expect(find.bySemanticsLabel('Tags'), findsOneWidget);
+  });
 }

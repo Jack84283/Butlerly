@@ -195,6 +195,26 @@ class ButlerlyStatusChip extends StatelessWidget {
   }
 }
 
+class ButlerlyFilterButton extends StatelessWidget {
+  const ButlerlyFilterButton({
+    required this.label,
+    required this.selected,
+    required this.onPressed,
+    super.key,
+  });
+  final String label;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => FilterChip(
+    selected: selected,
+    avatar: const Icon(Icons.tune_rounded, size: 18),
+    label: Text(label),
+    onSelected: (_) => onPressed(),
+  );
+}
+
 class ButlerlyRecordRow extends StatelessWidget {
   const ButlerlyRecordRow({
     required this.title,
