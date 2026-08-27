@@ -433,6 +433,18 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       return;
     }
 
+    // OCR performs an early convenience check, but the user may have edited
+    // the extracted fields. Recheck immediately before creating anything so
+    // the final decision uses the values the user actually approved.
+    final existing = await _findExistingPaymentMatch();
+    if (existing != null && mounted) {
+      final attach = await _confirmExistingMatch(existing);
+      if (attach == true) {
+        await _attachReceiptToExisting(existing);
+        return;
+      }
+    }
+
     setState(() => _saving = true);
     final token = DateTime.now().microsecondsSinceEpoch;
     final result = await finance.createReceiptTransaction(
