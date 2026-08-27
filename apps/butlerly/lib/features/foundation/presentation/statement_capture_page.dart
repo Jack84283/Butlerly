@@ -4,6 +4,8 @@ import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/evidence/local_statement_ocr_support.dart';
 import 'package:butlerly/core/evidence/statement_extractor.dart';
 import 'package:butlerly/core/evidence/statement_source_matcher.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -39,7 +41,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
   Future<void> _reload() async {
     final results = await Future.wait([
       statement.list(),
-      services<FinanceServices>().listPaymentSources(),
+      TransactionMasterDataProvider(services<FinanceServices>()).load(),
     ]);
     if (!mounted) return;
     setState(() {
@@ -48,10 +50,8 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
       )) {
         _statements = v;
       }
-      if (results[1] case ApplicationSuccess<List<PaymentSource>>(
-        value: final v,
-      )) {
-        _sources = v;
+      if (results[1] case final TransactionMasterDataSnapshot v) {
+        _sources = v.paymentSources;
       }
     });
   }
@@ -629,31 +629,16 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
     body: ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        DropdownButtonFormField<String>(
-          initialValue: _sourceId,
-          decoration: const InputDecoration(
-            labelText: 'Payment source (required)',
-          ),
-          items: _sources
-              .where(
-                (s) =>
-                    s.status == PaymentSourceStatus.active ||
-                    s.id.value == _sourceId,
-              )
-              .map(
-                (s) => DropdownMenuItem(
-                  value: s.id.value,
-                  enabled:
-                      s.status == PaymentSourceStatus.active ||
-                      s.id.value == _sourceId,
-                  child: Text(
-                    '${s.displayIdentity ?? s.name}${s.status == PaymentSourceStatus.archived ? ' (archived)' : ''}',
-                  ),
-                ),
-              )
-              .toList(),
+        ButlerlyPaymentSourceSelector(
+          value: _sourceId,
+          label: 'Payment source (required)',
+          clearLabel: 'Clear payment source',
+          sources: _sources,
           onChanged: (value) async {
-            if (value == null) return;
+            if (value == null) {
+              setState(() => _sourceId = null);
+              return;
+            }
             await widget.service.assignSource(widget.statement.id, value);
             setState(() => _sourceId = value);
           },
