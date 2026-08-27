@@ -25,6 +25,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late Future<_HomeData> _data;
+  String? _loadedLanguageCode;
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
@@ -38,6 +39,15 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final languageCode = Localizations.localeOf(context).languageCode;
+    if (_loadedLanguageCode == languageCode) return;
+    _loadedLanguageCode = languageCode;
+    _data = _load(languageCode: languageCode);
+  }
+
+  @override
   void dispose() {
     transactionChanges.removeListener(_handleTransactionChange);
     super.dispose();
@@ -47,17 +57,13 @@ class _HomePageState extends State<HomePage> {
     if (mounted) _refresh();
   }
 
-  Future<_HomeData> _load() async {
+  Future<_HomeData> _load({String? languageCode}) async {
     final finance = _finance;
     if (finance == null) return const _HomeData([], 0, 0);
     final results = await Future.wait([
       finance.listTransactions(const ListTransactionsQuery()),
       finance.listReviewItems(),
-      TransactionMasterData.load(
-        finance,
-        languageCode:
-            WidgetsBinding.instance.platformDispatcher.locale.languageCode,
-      ),
+      TransactionMasterData.load(finance, languageCode: languageCode ?? 'en'),
     ]);
     final transactions = switch (results[0]) {
       ApplicationSuccess<List<TransactionDto>>(:final value) => value,
@@ -312,11 +318,6 @@ class _QuickActions extends StatelessWidget {
             await context.push('/transactions/add');
             await onRefresh();
           },
-        ),
-        _QuickAction(
-          icon: Icons.document_scanner_outlined,
-          label: context.l10n.text('scanReceipt'),
-          onTap: () => context.push('/import-export'),
         ),
         _QuickAction(
           icon: Icons.file_open_outlined,

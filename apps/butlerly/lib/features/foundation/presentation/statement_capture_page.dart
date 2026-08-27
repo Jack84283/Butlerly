@@ -4,6 +4,7 @@ import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/evidence/local_statement_ocr_support.dart';
 import 'package:butlerly/core/evidence/statement_extractor.dart';
 import 'package:butlerly/core/evidence/statement_source_matcher.dart';
+import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:file_selector/file_selector.dart';
@@ -187,21 +188,23 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Statements')),
-    floatingActionButton: FloatingActionButton.extended(
-      onPressed: _busy ? null : _capture,
-      icon: const Icon(Icons.document_scanner_outlined),
-      label: const Text('Add statement'),
+    appBar: AppBar(
+      title: Text(context.l10n.text('statements')),
+      actions: [
+        IconButton(
+          onPressed: _busy ? null : _capture,
+          icon: const Icon(Icons.document_scanner_outlined),
+          tooltip: context.l10n.text('addStatement'),
+        ),
+      ],
     ),
     body: _busy
         ? const Center(child: CircularProgressIndicator())
         : _statements.isEmpty
-        ? const Center(
+        ? Center(
             child: Padding(
               padding: EdgeInsets.all(32),
-              child: Text(
-                'Add a bank or card statement. The original stays on this device and every row waits for your review.',
-              ),
+              child: Text(context.l10n.text('statementsEmptyBody')),
             ),
           )
         : ListView.builder(
@@ -210,11 +213,11 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
               final item = _statements[index];
               return ListTile(
                 leading: const Icon(Icons.description_outlined),
-                title: Text(item.institution ?? 'Statement'),
+                title: Text(item.institution ?? context.l10n.text('statement')),
                 subtitle: Text(
                   item.paymentSourceId == null
-                      ? 'Choose a payment source to continue'
-                      : 'Review in progress',
+                      ? context.l10n.text('choosePaymentSourceToContinue')
+                      : context.l10n.text('reviewInProgress'),
                 ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _open(item),

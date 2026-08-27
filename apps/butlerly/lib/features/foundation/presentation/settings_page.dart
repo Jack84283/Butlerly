@@ -210,7 +210,7 @@ class SettingsPage extends ConsumerWidget {
             _SettingsRow(
               icon: Icons.document_scanner_outlined,
               title: context.l10n.text('reviewStatementImport'),
-              subtitle: 'Preserve and review bank or card statements locally.',
+              subtitle: context.l10n.text('reviewStatementImportBody'),
               onTap: () => context.push('/statements'),
             ),
             _SettingsRow(

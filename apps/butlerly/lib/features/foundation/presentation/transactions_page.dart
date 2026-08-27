@@ -25,6 +25,7 @@ class TransactionsPage extends StatefulWidget {
 class _TransactionsPageState extends State<TransactionsPage> {
   late Future<_TransactionsData> _transactions;
   _TransactionFilter _filter = _TransactionFilter.all;
+  String? _loadedLanguageCode;
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
@@ -38,6 +39,15 @@ class _TransactionsPageState extends State<TransactionsPage> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final languageCode = Localizations.localeOf(context).languageCode;
+    if (_loadedLanguageCode == languageCode) return;
+    _loadedLanguageCode = languageCode;
+    _transactions = _load(languageCode: languageCode);
+  }
+
+  @override
   void dispose() {
     transactionChanges.removeListener(_handleTransactionChange);
     super.dispose();
@@ -47,7 +57,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
     if (mounted) _refresh();
   }
 
-  Future<_TransactionsData> _load() async {
+  Future<_TransactionsData> _load({String? languageCode}) async {
     final finance = _finance;
     if (finance == null) return const _TransactionsData([]);
     final result = await finance.listTransactions(
@@ -63,8 +73,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
       values,
       await TransactionMasterData.load(
         finance,
-        languageCode:
-            WidgetsBinding.instance.platformDispatcher.locale.languageCode,
+        languageCode: languageCode ?? 'en',
       ),
     );
   }

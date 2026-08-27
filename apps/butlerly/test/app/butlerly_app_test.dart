@@ -68,7 +68,7 @@ void main() {
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.text('Local records'), findsOneWidget);
     expect(find.text('Add transaction'), findsOneWidget);
-    expect(find.text('Scan receipt'), findsOneWidget);
+    expect(find.text('Scan receipt'), findsNothing);
     expect(find.text('Import data'), findsOneWidget);
     expect(find.text('Search records'), findsOneWidget);
   });

@@ -33,11 +33,18 @@ final class TransactionMasterData {
   String? summary(TransactionDto transaction) {
     final labels = <String>[
       ?merchantName(transaction.merchantId),
-      ?categoryName(transaction.categoryId),
+      if (categoryParentId(transaction.categoryId) case final parentId?)
+        ?categoryName(parentId),
+      if (categoryName(transaction.categoryId) case final categoryName?
+          when categoryName != categoryNameForParent(transaction.categoryId))
+        categoryName,
       ...transaction.tagIds.map(tagName).whereType<String>(),
     ];
     return labels.isEmpty ? null : labels.join(' • ');
   }
+
+  String? categoryNameForParent(String? id) =>
+      categoryName(categoryParentId(id));
 
   static Future<TransactionMasterData> load(
     FinanceServices finance, {

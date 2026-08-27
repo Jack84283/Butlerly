@@ -3,6 +3,8 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
@@ -494,36 +496,64 @@ class _CalendarTransactions extends StatelessWidget {
         if (value.value.isEmpty) {
           return Text(context.l10n.text('noTransactions'));
         }
-        return Column(
-          children: value.value
-              .map(
-                (transaction) => ListTile(
-                  key: ValueKey(
-                    'analysis-calendar-transaction-${transaction.id}',
-                  ),
-                  title: Text(
-                    transaction.description ??
-                        transaction.rawCounterparty ??
-                        transaction.id,
-                  ),
-                  subtitle: Text(
-                    '${transaction.amount} ${transaction.currency}',
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    if (!services.isRegistered<FinanceServices>()) return;
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => TransactionDetailPage(
-                          finance: services<FinanceServices>(),
-                          transaction: transaction,
-                        ),
+        final finance = services.isRegistered<FinanceServices>()
+            ? services<FinanceServices>()
+            : null;
+        final masterData = finance == null
+            ? Future.value(TransactionMasterData())
+            : TransactionMasterData.load(
+                finance,
+                languageCode: Localizations.localeOf(context).languageCode,
+              );
+        return FutureBuilder<TransactionMasterData>(
+          future: masterData,
+          builder: (context, masterSnapshot) {
+            final data = masterSnapshot.data ?? const TransactionMasterData();
+            return ButlerlySeparatedList(
+              children: value.value
+                  .map(
+                    (transaction) => ButlerlyRecordRow(
+                      key: ValueKey(
+                        'analysis-calendar-transaction-${transaction.id}',
                       ),
-                    );
-                  },
-                ),
-              )
-              .toList(growable: false),
+                      title: transaction.description?.trim().isNotEmpty == true
+                          ? transaction.description!
+                          : context.l10n.text('untitledTransaction'),
+                      subtitle: data.summary(transaction),
+                      meta: transactionDateLabel(
+                        transaction,
+                        pendingLabel: context.l10n.text('pending'),
+                        locale: Localizations.localeOf(context).languageCode,
+                      ),
+                      amount: localizedTransactionAmount(
+                        context,
+                        transaction.amount,
+                      ),
+                      currency: transaction.currency,
+                      icon:
+                          transaction.direction ==
+                              TransactionDirection.income.name
+                          ? Icons.work_outline_rounded
+                          : Icons.shopping_bag_outlined,
+                      isIncome:
+                          transaction.direction ==
+                          TransactionDirection.income.name,
+                      needsReview: transaction.reviewState == 'needsReview',
+                      onTap: finance == null
+                          ? null
+                          : () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => TransactionDetailPage(
+                                  finance: finance,
+                                  transaction: transaction,
+                                ),
+                              ),
+                            ),
+                    ),
+                  )
+                  .toList(growable: false),
+            );
+          },
         );
       },
     );
@@ -569,13 +599,8 @@ String _localizedIssue(BuildContext context, DataQualityIssue issue) {
 }
 
 class _MetricCard extends StatelessWidget {
-  const _MetricCard({
-    required this.metric,
-    this.showValue = true,
-    this.showDimension = true,
-  });
+  const _MetricCard({required this.metric, this.showDimension = true});
   final AnalysisMetric metric;
-  final bool showValue;
   final bool showDimension;
 
   @override
@@ -598,12 +623,10 @@ class _MetricCard extends StatelessWidget {
                     style: Theme.of(context).textTheme.bodySmall,
                   )
                 : null,
-            trailing: showValue
-                ? Text(
-                    '$value${metric.currency == null ? '' : ' ${metric.currency!.value}'}',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  )
-                : null,
+            trailing: Text(
+              '$value${metric.currency == null ? '' : ' ${metric.currency!.value}'}',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
           ),
         ),
       ),
