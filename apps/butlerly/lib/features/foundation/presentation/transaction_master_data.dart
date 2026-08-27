@@ -102,3 +102,51 @@ final class TransactionMasterData {
     );
   }
 }
+
+/// Canonical presentation snapshot shared by transaction workflows.
+/// It contains retrieval results and localized labels, while selection state
+/// remains owned by the consuming page.
+final class TransactionMasterDataSnapshot {
+  const TransactionMasterDataSnapshot({
+    required this.presentation,
+    required this.merchants,
+    required this.categories,
+    required this.tags,
+    required this.paymentSources,
+  });
+
+  final TransactionMasterData presentation;
+  final List<Merchant> merchants;
+  final List<Category> categories;
+  final List<Tag> tags;
+  final List<PaymentSource> paymentSources;
+}
+
+final class TransactionMasterDataProvider {
+  const TransactionMasterDataProvider(this.finance);
+
+  final FinanceServices finance;
+
+  Future<TransactionMasterDataSnapshot> load({
+    String languageCode = 'en',
+  }) async {
+    final results = await Future.wait([
+      finance.listMerchants(),
+      finance.listCategories(),
+      finance.listTags(),
+      finance.listPaymentSources(),
+      TransactionMasterData.load(finance, languageCode: languageCode),
+    ]);
+    List<T> valueOf<T>(int index) => switch (results[index]) {
+      ApplicationSuccess<List<T>>(:final value) => value,
+      _ => const <Never>[] as List<T>,
+    };
+    return TransactionMasterDataSnapshot(
+      presentation: results[4] as TransactionMasterData,
+      merchants: valueOf<Merchant>(0),
+      categories: valueOf<Category>(1),
+      tags: valueOf<Tag>(2),
+      paymentSources: valueOf<PaymentSource>(3),
+    );
+  }
+}

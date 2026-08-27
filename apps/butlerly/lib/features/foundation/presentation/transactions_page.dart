@@ -321,42 +321,10 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   }
 
   Future<_EditorMasterData> _loadMasterData(String languageCode) async {
-    final results = await Future.wait([
-      widget.finance.listMerchants(),
-      widget.finance.listCategories(),
-      widget.finance.listTags(),
-      widget.finance.listPaymentSources(),
-    ]);
-    final categoryLabels = switch (await widget.finance.loadMasterTranslations(
-      masterType: 'category',
-      locale: languageCode == 'zh' ? 'zh-Hans' : languageCode,
-    )) {
-      ApplicationSuccess<Map<String, String>>(:final value) => value,
-      _ => const <String, String>{},
-    };
-    final tagLabels = switch (await widget.finance.loadMasterTranslations(
-      masterType: 'tag',
-      locale: languageCode == 'zh' ? 'zh-Hans' : languageCode,
-    )) {
-      ApplicationSuccess<Map<String, String>>(:final value) => value,
-      _ => const <String, String>{},
-    };
-    return _EditorMasterData(
-      merchants: results[0] is ApplicationSuccess<List<Merchant>>
-          ? (results[0] as ApplicationSuccess<List<Merchant>>).value
-          : const [],
-      categories: results[1] is ApplicationSuccess<List<Category>>
-          ? (results[1] as ApplicationSuccess<List<Category>>).value
-          : const [],
-      tags: results[2] is ApplicationSuccess<List<Tag>>
-          ? (results[2] as ApplicationSuccess<List<Tag>>).value
-          : const [],
-      paymentSources: results[3] is ApplicationSuccess<List<PaymentSource>>
-          ? (results[3] as ApplicationSuccess<List<PaymentSource>>).value
-          : const [],
-      categoryLabels: categoryLabels,
-      tagLabels: tagLabels,
-    );
+    final snapshot = await TransactionMasterDataProvider(
+      widget.finance,
+    ).load(languageCode: languageCode);
+    return _EditorMasterData.fromSnapshot(snapshot);
   }
 
   @override
@@ -567,6 +535,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   value: _merchantId,
                   onChanged: (value) => setState(() => _merchantId = value),
                   onCreate: () => _createMerchant(data),
+                  createTooltip: context.l10n.text('merchant'),
                 ),
                 const SizedBox(height: 16),
                 ButlerlyCategorySelector(
@@ -718,6 +687,18 @@ final class _EditorMasterData {
     required this.categoryLabels,
     required this.tagLabels,
   });
+
+  factory _EditorMasterData.fromSnapshot(
+    TransactionMasterDataSnapshot snapshot,
+  ) => _EditorMasterData(
+    merchants: snapshot.merchants,
+    categories: snapshot.categories,
+    tags: snapshot.tags,
+    paymentSources: snapshot.paymentSources,
+    categoryLabels: snapshot.presentation.categoryNames,
+    tagLabels: snapshot.presentation.tagNames,
+  );
+
   final List<Merchant> merchants;
   final List<Category> categories;
   final List<Tag> tags;

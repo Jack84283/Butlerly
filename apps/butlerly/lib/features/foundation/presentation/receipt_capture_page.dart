@@ -52,7 +52,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   List<Category> _categories = const [];
   List<Tag> _tags = const [];
   List<PaymentSource> _sources = const [];
-  TransactionMasterData _masterData = const TransactionMasterData();
+  TransactionMasterDataSnapshot? _masterDataSnapshot;
+  TransactionMasterData get _masterData =>
+      _masterDataSnapshot?.presentation ?? const TransactionMasterData();
 
   FinanceServices get finance => services<FinanceServices>();
   LocalEvidenceStore get evidenceStore => services<LocalEvidenceStore>();
@@ -76,48 +78,22 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   }
 
   Future<void> _load() async {
-    final values = await Future.wait([
-      finance.listMerchants(),
-      finance.listCategories(),
-      finance.listTags(),
-      finance.listPaymentSources(),
-      finance.loadUserPreference(),
-    ]);
+    final preferenceResult = await finance.loadUserPreference();
+    final preference = preferenceResult is ApplicationSuccess<UserPreference?>
+        ? preferenceResult.value
+        : null;
+    final snapshot = await TransactionMasterDataProvider(
+      finance,
+    ).load(languageCode: preference?.locale ?? 'en');
     if (!mounted) return;
     setState(() {
-      if (values[0] case ApplicationSuccess<List<Merchant>>(
-        value: final value,
-      )) {
-        _merchants = value;
-      }
-      if (values[1] case ApplicationSuccess<List<Category>>(
-        value: final value,
-      )) {
-        _categories = value;
-      }
-      if (values[2] case ApplicationSuccess<List<Tag>>(value: final value)) {
-        _tags = value;
-      }
-      if (values[3] case ApplicationSuccess<List<PaymentSource>>(
-        value: final value,
-      )) {
-        _sources = value;
-      }
-      if (values[4] case ApplicationSuccess<UserPreference?>(
-        value: final value?,
-      )) {
-        _currency.text = value.baseCurrency.value;
-        unawaited(_loadMasterData(value.locale));
-      }
+      _masterDataSnapshot = snapshot;
+      _merchants = snapshot.merchants;
+      _categories = snapshot.categories;
+      _tags = snapshot.tags;
+      _sources = snapshot.paymentSources;
+      if (preference != null) _currency.text = preference.baseCurrency.value;
     });
-  }
-
-  Future<void> _loadMasterData(String languageCode) async {
-    final data = await TransactionMasterData.load(
-      finance,
-      languageCode: languageCode,
-    );
-    if (mounted) setState(() => _masterData = data);
   }
 
   Future<void> _camera() async {

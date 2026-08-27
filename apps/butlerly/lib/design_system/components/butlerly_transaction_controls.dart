@@ -98,6 +98,7 @@ class ButlerlyMerchantSelector extends StatelessWidget {
     required this.label,
     required this.onChanged,
     this.onCreate,
+    this.createTooltip,
     required this.clearLabel,
     super.key,
   });
@@ -106,23 +107,28 @@ class ButlerlyMerchantSelector extends StatelessWidget {
   final String label;
   final ValueChanged<String?> onChanged;
   final VoidCallback? onCreate;
+  final String? createTooltip;
   final String clearLabel;
 
   @override
-  Widget build(BuildContext context) => ButlerlySelectField<String>(
-    label: label,
-    value: value,
-    entries: [
-      for (final merchant in merchants.where(
-        (merchant) => merchant.status == MerchantStatus.active,
-      ))
-        DropdownMenuEntry(value: merchant.id.value, label: merchant.name),
-    ],
-    onChanged: onChanged,
-    onCreate: onCreate,
-    onClear: value == null ? null : () => onChanged(null),
-    clearTooltip: clearLabel,
-  );
+  Widget build(BuildContext context) {
+    assert(onCreate == null || createTooltip != null);
+    return ButlerlySelectField<String>(
+      label: label,
+      value: value,
+      entries: [
+        for (final merchant in merchants.where(
+          (merchant) => merchant.status == MerchantStatus.active,
+        ))
+          DropdownMenuEntry(value: merchant.id.value, label: merchant.name),
+      ],
+      onChanged: onChanged,
+      onCreate: onCreate,
+      createTooltip: createTooltip,
+      onClear: value == null ? null : () => onChanged(null),
+      clearTooltip: clearLabel,
+    );
+  }
 }
 
 class ButlerlyPaymentSourceSelector extends StatelessWidget {
