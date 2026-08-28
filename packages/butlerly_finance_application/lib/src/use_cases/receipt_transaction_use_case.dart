@@ -46,6 +46,15 @@ final class CreateReceiptTransaction {
     return runApplication('create receipt transaction', () async {
       final existing = await repository.findById(TransactionId(command.id));
       if (existing != null) return TransactionDto.fromDomain(existing);
+      await assertNoDuplicateTransaction(
+        repository,
+        DuplicateTransactionCheckCommand(
+          transactionDate: command.transactionDate,
+          amount: command.money.amount.toString(),
+          currency: command.money.currency.value,
+          direction: TransactionDirection.expense,
+        ),
+      );
       final now = clock.now();
       final transaction = Transaction(
         id: TransactionId(command.id),

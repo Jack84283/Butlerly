@@ -706,10 +706,10 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
           await widget.service.link(row, link);
           status = StatementRowStatus.linked;
         } else {
-          await widget.service.save(row, _sourceId!, allowCreateNew: true);
+          await widget.service.save(row, _sourceId!);
         }
       } else {
-        await widget.service.save(row, _sourceId!, allowCreateNew: true);
+        await widget.service.save(row, _sourceId!);
       }
     } else {
       await widget.service.setDisposition(row, status);

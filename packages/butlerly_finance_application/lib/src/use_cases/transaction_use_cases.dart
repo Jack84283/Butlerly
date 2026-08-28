@@ -25,6 +25,18 @@ final class CreateTransaction {
   Future<ApplicationResult<TransactionDto>> call(
     CreateTransactionCommand command,
   ) => runApplication('create transaction', () async {
+    final transactionDate = command.transactionDate;
+    if (transactionDate != null) {
+      await assertNoDuplicateTransaction(
+        repository,
+        DuplicateTransactionCheckCommand(
+          transactionDate: transactionDate,
+          amount: command.money.amount.toString(),
+          currency: command.money.currency.value,
+          direction: command.direction,
+        ),
+      );
+    }
     final now = clock.now();
     final transaction = Transaction(
       id: TransactionId(command.id),
@@ -109,6 +121,16 @@ final class UpdateTransaction {
         transactionDate: command.transactionDate ?? current.transactionDate,
         timeZoneId: command.timeZoneId ?? current.timeZoneId,
       );
+      await assertNoDuplicateTransaction(
+        repository,
+        DuplicateTransactionCheckCommand(
+          transactionDate: updated.transactionDate!,
+          amount: updated.money.amount.toString(),
+          currency: updated.money.currency.value,
+          direction: updated.direction,
+          excludeTransactionId: updated.id.value,
+        ),
+      );
       await repository.save(updated);
       return TransactionDto.fromDomain(updated);
     });
@@ -169,6 +191,15 @@ final class ImportTransaction {
       updatedAt: now,
       transactionDate: command.transactionDate,
       timeZoneId: command.timeZoneId,
+    );
+    await assertNoDuplicateTransaction(
+      repository,
+      DuplicateTransactionCheckCommand(
+        transactionDate: transaction.transactionDate!,
+        amount: transaction.money.amount.toString(),
+        currency: transaction.money.currency.value,
+        direction: transaction.direction,
+      ),
     );
     await repository.save(transaction);
     return TransactionDto.fromDomain(transaction);
