@@ -670,30 +670,40 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
     if (status == StatementRowStatus.saved) {
       final matches = await widget.service.likelyMatches(row, _sourceId!);
       if (!mounted) return;
-      if (matches case ApplicationSuccess<List<TransactionDto>>(
+      if (matches case ApplicationSuccess<List<ReconciliationMatchCandidate>>(
         value: final values,
       ) when values.isNotEmpty) {
-        final link = await showDialog<bool>(
+        final link = await showDialog<String>(
           context: context,
           builder: (_) => AlertDialog(
             title: const Text('Likely existing transaction'),
-            content: Text(
-              '${values.first.transactionDate} · ${values.first.direction} · ${values.first.currency} ${values.first.amount}\n${values.first.description ?? values.first.rawCounterparty ?? ''}\n\nLink this statement row instead of creating a duplicate?',
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Select an existing transaction to link:'),
+                for (final candidate in values)
+                  ListTile(
+                    title: Text(
+                      '${candidate.transaction.currency} ${candidate.transaction.amount} · ${candidate.transaction.transactionDate}',
+                    ),
+                    subtitle: Text(
+                      'Score ${candidate.assessment.score.toStringAsFixed(2)}\n${candidate.assessment.reasons.join('; ')}${candidate.assessment.conflicts.isEmpty ? '' : '\n${candidate.assessment.conflicts.join('; ')}'}',
+                    ),
+                    onTap: () =>
+                        Navigator.pop(context, candidate.transaction.id),
+                  ),
+              ],
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context, false),
+                onPressed: () => Navigator.pop(context),
                 child: const Text('Create separately'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Link existing'),
               ),
             ],
           ),
         );
-        if (link == true) {
-          await widget.service.link(row, values.first.id);
+        if (link != null) {
+          await widget.service.link(row, link);
           status = StatementRowStatus.linked;
         } else {
           await widget.service.save(row, _sourceId!, allowCreateNew: true);

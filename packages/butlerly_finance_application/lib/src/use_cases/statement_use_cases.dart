@@ -53,7 +53,7 @@ final class StatementServices {
   Future<ApplicationResult<void>> correct(StatementRow row) =>
       runApplication('correct statement row', () => statements.updateRow(row));
 
-  Future<ApplicationResult<List<TransactionDto>>> likelyMatches(
+  Future<ApplicationResult<List<ReconciliationMatchCandidate>>> likelyMatches(
     StatementRow row,
     String paymentSourceId,
   ) => runApplication('cross-check statement row', () async {
@@ -62,7 +62,7 @@ final class StatementServices {
         row.transactionDate == null) {
       return const [];
     }
-    final result = await FindReceiptPaymentMatch(transactions).call(
+    final result = await FindReceiptPaymentMatch(transactions).callAll(
       ReceiptPaymentMatchCommand(
         amount: Money(
           amount: DecimalValue.parse(row.amount!),
@@ -75,11 +75,13 @@ final class StatementServices {
         ),
         merchant: row.description,
         paymentSourceId: paymentSourceId,
+        direction: _directionForRow(row),
       ),
     );
     return switch (result) {
-      ApplicationSuccess<TransactionDto?>(value: final value?) => [value],
-      _ => const [],
+      ApplicationSuccess<List<ReconciliationMatchCandidate>>(:final value) =>
+        value,
+      ApplicationFailure<List<ReconciliationMatchCandidate>>() => const [],
     };
   });
 
@@ -124,7 +126,7 @@ final class StatementServices {
     }
     if (!allowCreateNew) {
       final matches = await likelyMatches(row, paymentSourceId);
-      if (matches case ApplicationSuccess<List<TransactionDto>>(
+      if (matches case ApplicationSuccess<List<ReconciliationMatchCandidate>>(
         value: final values,
       ) when values.isNotEmpty) {
         throw const DomainValidationException(
@@ -146,9 +148,7 @@ final class StatementServices {
         amount: DecimalValue.parse(row.amount!),
         currency: CurrencyCode(row.currency!),
       ),
-      direction: row.direction == TransactionDirection.income.name
-          ? TransactionDirection.income
-          : TransactionDirection.expense,
+      direction: _directionForRow(row),
       sourceType: TransactionSourceType.import,
       transactionDate: row.transactionDate!.toIso8601String().substring(0, 10),
       description: row.description,
@@ -215,4 +215,15 @@ final class StatementServices {
     createdAt: row.createdAt,
     updatedAt: updatedAt,
   );
+
+  static TransactionDirection _directionForRow(StatementRow row) {
+    if (row.direction == TransactionDirection.income.name) {
+      return TransactionDirection.income;
+    }
+    if (row.direction == TransactionDirection.refund.name ||
+        row.kind == StatementRowKind.refund) {
+      return TransactionDirection.refund;
+    }
+    return TransactionDirection.expense;
+  }
 }

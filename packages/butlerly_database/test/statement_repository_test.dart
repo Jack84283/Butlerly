@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:butlerly_database/butlerly_database.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' hide Transaction;
@@ -6,6 +8,7 @@ import 'package:test/test.dart';
 void main() {
   late ButlerlyDatabase database;
   late SqliteStatementRepository statements;
+  late SqliteTransactionRepository transactions;
   setUp(() async {
     sqfliteFfiInit();
     database = ButlerlyDatabase(
@@ -14,6 +17,7 @@ void main() {
     );
     await database.open();
     statements = SqliteStatementRepository(database);
+    transactions = SqliteTransactionRepository(database);
     final evidence = SqliteEvidenceRepository(database);
     await evidence.save(
       EvidenceItem(
@@ -129,6 +133,122 @@ void main() {
     },
   );
 
+  test(
+    'statement link targets a receipt-created transaction and preserves one canonical record',
+    () async {
+      final now = DateTime.utc(2026, 8, 26);
+      await statements.saveStatement(
+        FinancialStatement(
+          id: 'multi-evidence-statement',
+          evidenceId: 'evidence',
+          paymentSourceId: 'source',
+          status: StatementStatus.ready,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      final row = StatementRow(
+        id: 'multi-evidence-row',
+        statementId: 'multi-evidence-statement',
+        position: 0,
+        originalText: 'Cafe 12.00',
+        amount: '12.00',
+        currency: 'USD',
+        direction: TransactionDirection.expense.name,
+        status: StatementRowStatus.pending,
+        createdAt: now,
+        updatedAt: now,
+      );
+      await statements.saveRows([row]);
+      final transaction = Transaction(
+        id: TransactionId('multi-evidence-transaction'),
+        timing: const UnknownTransactionTime(
+          UnknownTransactionTimeReason.unknown,
+        ),
+        money: Money(
+          amount: DecimalValue.parse('99.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        sourceType: TransactionSourceType.evidenceCapture,
+        transactionDate: '2026-08-26',
+        description: 'Canonical value',
+        paymentSourceId: PaymentSourceId('source'),
+        provenance: [
+          Provenance(
+            id: ProvenanceId('multi-evidence-tx-p'),
+            sourceType: ProvenanceSourceType.scan,
+            capturedAt: now,
+            originalRepresentation: 'receipt.jpg',
+          ),
+        ],
+        createdAt: now,
+        updatedAt: now,
+      );
+      await transactions.save(transaction);
+      await statements.linkRow(
+        StatementRow(
+          id: row.id,
+          statementId: row.statementId,
+          position: row.position,
+          originalText: row.originalText,
+          amount: row.amount,
+          currency: row.currency,
+          direction: row.direction,
+          status: StatementRowStatus.linked,
+          transactionId: transaction.id.value,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      final evidenceRepository = SqliteEvidenceRepository(database);
+      await evidenceRepository.save(
+        EvidenceItem(
+          id: EvidenceId('receipt-evidence'),
+          type: EvidenceType.receiptImage,
+          originalName: 'receipt.jpg',
+          mediaType: 'image/jpeg',
+          provenance: Provenance(
+            id: ProvenanceId('receipt-evidence-p'),
+            sourceType: ProvenanceSourceType.scan,
+            capturedAt: now,
+            originalRepresentation: 'receipt.jpg',
+          ),
+          createdAt: now,
+        ),
+      );
+      await evidenceRepository.link(
+        AttachmentLink(
+          id: AttachmentLinkId('receipt-link'),
+          transactionId: transaction.id,
+          evidenceId: EvidenceId('receipt-evidence'),
+          createdAt: now,
+        ),
+      );
+      await evidenceRepository.link(
+        AttachmentLink(
+          id: AttachmentLinkId('receipt-link-duplicate'),
+          transactionId: transaction.id,
+          evidenceId: EvidenceId('receipt-evidence'),
+          createdAt: now,
+        ),
+      );
+      expect((await transactions.listAll()), hasLength(1));
+      expect(
+        (await statements.listRows(row.statementId)).single.transactionId,
+        transaction.id.value,
+      );
+      expect(
+        (await evidenceRepository.listForTransaction(transaction.id)),
+        hasLength(1),
+      );
+      expect(
+        (await transactions.findById(transaction.id))?.description,
+        'Canonical value',
+      );
+    },
+  );
+
   test('round-trips statement metadata and reviewed row fields', () async {
     final now = DateTime.utc(2026, 8, 26);
     await statements.saveStatement(
@@ -186,6 +306,113 @@ void main() {
     );
     expect(savedRow.tagIds, ['tag-1', 'tag-2']);
     expect(savedRow.dispositionReason, 'user skipped');
+  });
+
+  test('close and reopen preserves both evidence relationships', () async {
+    final directory = await Directory.systemTemp.createTemp('butlerly-reopen-');
+    final path = '${directory.path}/finance.sqlite';
+    final first = ButlerlyDatabase(factory: databaseFactoryFfi, path: path);
+    await first.open();
+    final txRepo = SqliteTransactionRepository(first);
+    final statementRepo = SqliteStatementRepository(first);
+    final evidenceRepo = SqliteEvidenceRepository(first);
+    final now = DateTime.utc(2026, 8, 27);
+    final tx = Transaction(
+      id: TransactionId('reopen-transaction'),
+      timing: const UnknownTransactionTime(
+        UnknownTransactionTimeReason.unknown,
+      ),
+      money: Money(
+        amount: DecimalValue.parse('42'),
+        currency: CurrencyCode('USD'),
+      ),
+      direction: TransactionDirection.expense,
+      sourceType: TransactionSourceType.manual,
+      transactionDate: '2026-08-27',
+      description: 'Canonical purchase',
+      provenance: [
+        Provenance(
+          id: ProvenanceId('reopen-tx-p'),
+          sourceType: ProvenanceSourceType.userEntry,
+          capturedAt: now,
+        ),
+      ],
+      createdAt: now,
+      updatedAt: now,
+    );
+    await txRepo.save(tx);
+    await evidenceRepo.save(
+      EvidenceItem(
+        id: EvidenceId('reopen-receipt'),
+        type: EvidenceType.receiptImage,
+        originalName: 'receipt.jpg',
+        mediaType: 'image/jpeg',
+        provenance: Provenance(
+          id: ProvenanceId('reopen-receipt-p'),
+          sourceType: ProvenanceSourceType.scan,
+          capturedAt: now,
+          originalRepresentation: 'receipt.jpg',
+        ),
+        createdAt: now,
+      ),
+    );
+    await evidenceRepo.link(
+      AttachmentLink(
+        id: AttachmentLinkId('reopen-link'),
+        transactionId: tx.id,
+        evidenceId: EvidenceId('reopen-receipt'),
+        createdAt: now,
+      ),
+    );
+    await statementRepo.saveStatement(
+      FinancialStatement(
+        id: 'reopen-statement',
+        evidenceId: 'reopen-receipt',
+        status: StatementStatus.ready,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    final row = StatementRow(
+      id: 'reopen-row',
+      statementId: 'reopen-statement',
+      position: 0,
+      originalText: 'source row',
+      status: StatementRowStatus.pending,
+      createdAt: now,
+      updatedAt: now,
+    );
+    await statementRepo.saveRows([row]);
+    await statementRepo.linkRow(
+      StatementRow(
+        id: row.id,
+        statementId: row.statementId,
+        position: row.position,
+        originalText: row.originalText,
+        status: StatementRowStatus.linked,
+        transactionId: tx.id.value,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await first.close();
+
+    final second = ButlerlyDatabase(factory: databaseFactoryFfi, path: path);
+    await second.open();
+    final reopenedTx = SqliteTransactionRepository(second);
+    final reopenedStatements = SqliteStatementRepository(second);
+    final reopenedEvidence = SqliteEvidenceRepository(second);
+    expect(await reopenedTx.findById(tx.id), isNotNull);
+    expect((await reopenedTx.listAll()), hasLength(1));
+    expect((await reopenedEvidence.listForTransaction(tx.id)), hasLength(1));
+    expect(
+      (await reopenedStatements.listRows(
+        'reopen-statement',
+      )).single.transactionId,
+      tx.id.value,
+    );
+    await second.close();
+    await directory.delete(recursive: true);
   });
 
   test(

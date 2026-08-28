@@ -44,6 +44,8 @@ final class CreateReceiptTransaction {
     ReceiptTransactionCommand command,
   ) {
     return runApplication('create receipt transaction', () async {
+      final existing = await repository.findById(TransactionId(command.id));
+      if (existing != null) return TransactionDto.fromDomain(existing);
       final now = clock.now();
       final transaction = Transaction(
         id: TransactionId(command.id),

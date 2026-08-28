@@ -198,11 +198,11 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         _paymentSourceId = paymentSourceId;
         _processing = false;
       });
-      final match = await _findExistingPaymentMatch();
-      if (match != null && mounted) {
-        final attach = await _confirmExistingMatch(match);
-        if (attach == true) {
-          await _attachReceiptToExisting(match);
+      final matches = await _findExistingPaymentMatches();
+      if (matches.isNotEmpty && mounted) {
+        final selected = await _selectExistingMatch(matches);
+        if (selected != null) {
+          await _attachReceiptToExisting(selected.transaction);
         }
       }
     } catch (_) {
@@ -247,10 +247,11 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     );
   }
 
-  Future<TransactionDto?> _findExistingPaymentMatch() async {
+  Future<List<ReconciliationMatchCandidate>>
+  _findExistingPaymentMatches() async {
     final amount = _amount.text.trim();
-    if (amount.isEmpty) return null;
-    final result = await finance.findReceiptPaymentMatch(
+    if (amount.isEmpty) return const [];
+    final result = await finance.findReceiptPaymentMatch.callAll(
       ReceiptPaymentMatchCommand(
         amount: Money(
           amount: DecimalValue.parse(amount),
@@ -262,33 +263,30 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         paymentSourceId: _paymentSourceId,
       ),
     );
-    return result is ApplicationSuccess<TransactionDto?> ? result.value : null;
+    return result is ApplicationSuccess<List<ReconciliationMatchCandidate>>
+        ? result.value
+        : const [];
   }
 
-  Future<bool?> _confirmExistingMatch(TransactionDto transaction) {
-    final source = _sources
-        .where((value) => value.id.value == transaction.paymentSourceId)
-        .firstOrNull;
-    final sourceLabel = source == null ? null : _paymentSourceLabel(source);
-    return showButlerlyBottomSheet<bool>(
+  Future<ReconciliationMatchCandidate?> _selectExistingMatch(
+    List<ReconciliationMatchCandidate> candidates,
+  ) {
+    return showButlerlyBottomSheet<ReconciliationMatchCandidate>(
       context: context,
       builder: (dialogContext) => ButlerlySheet(
         title: Text(dialogContext.l10n.text('existingTransactionFound')),
-        content: Text(
-          [
-            transaction.rawCounterparty ?? transaction.description ?? '',
-            '${transaction.currency} ${transaction.amount} · ${transaction.transactionDate}',
-            ?sourceLabel,
-          ].join('\n'),
-        ),
+        content: Text(dialogContext.l10n.text('existingTransactionFound')),
         actions: [
+          for (final candidate in candidates)
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, candidate),
+              child: Text(
+                '${candidate.transaction.currency} ${candidate.transaction.amount} · ${candidate.transaction.transactionDate}\n${candidate.transaction.description ?? candidate.transaction.rawCounterparty ?? ''}\n${candidate.assessment.reasons.join('; ')}',
+              ),
+            ),
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text(dialogContext.l10n.text('notThisTransaction')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(dialogContext.l10n.text('attachReceipt')),
           ),
         ],
       ),
@@ -377,11 +375,11 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     // OCR performs an early convenience check, but the user may have edited
     // the extracted fields. Recheck immediately before creating anything so
     // the final decision uses the values the user actually approved.
-    final existing = await _findExistingPaymentMatch();
-    if (existing != null && mounted) {
-      final attach = await _confirmExistingMatch(existing);
-      if (attach == true) {
-        await _attachReceiptToExisting(existing);
+    final matches = await _findExistingPaymentMatches();
+    if (matches.isNotEmpty && mounted) {
+      final selected = await _selectExistingMatch(matches);
+      if (selected != null) {
+        await _attachReceiptToExisting(selected.transaction);
         return;
       }
     }

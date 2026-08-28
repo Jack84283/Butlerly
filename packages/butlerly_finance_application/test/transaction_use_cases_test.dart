@@ -39,6 +39,48 @@ void main() {
   );
 
   test(
+    'receipt creation is idempotent and preserves reviewed fields',
+    () async {
+      final command = ReceiptTransactionCommand(
+        id: 'receipt-transaction',
+        provenanceId: 'receipt-provenance',
+        money: Money(
+          amount: DecimalValue.parse('12.50'),
+          currency: CurrencyCode('USD'),
+        ),
+        transactionDate: '2026-08-09',
+        originalRepresentation: 'receipt.jpg',
+        rawCounterparty: 'Cafe',
+        description: 'Cafe',
+        merchantId: 'merchant-1',
+        categoryId: 'food',
+        paymentSourceId: 'card-1',
+        tagIds: ['tag-1', 'tag-2'],
+      );
+      final useCase = CreateReceiptTransaction(transactions, clock);
+      await useCase.call(command);
+      await useCase.call(
+        ReceiptTransactionCommand(
+          id: command.id,
+          provenanceId: command.provenanceId,
+          money: money('99.00'),
+          transactionDate: command.transactionDate,
+          originalRepresentation: 'different-source.jpg',
+          description: 'Conflicting source',
+        ),
+      );
+      expect(transactions.values, hasLength(1));
+      final stored = transactions.values.values.single;
+      expect(stored.merchantId?.value, 'merchant-1');
+      expect(stored.categoryId?.value, 'food');
+      expect(
+        stored.tagIds.map((id) => id.value),
+        containsAll(['tag-1', 'tag-2']),
+      );
+    },
+  );
+
+  test(
     'imports a date-only transaction without inventing an instant',
     () async {
       final result = await ImportTransaction(transactions, clock)(
