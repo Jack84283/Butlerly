@@ -13,6 +13,25 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+sealed class StatementReconciliationDecision {
+  const StatementReconciliationDecision();
+}
+
+final class LinkStatementReconciliation
+    extends StatementReconciliationDecision {
+  const LinkStatementReconciliation(this.transactionId);
+  final String transactionId;
+}
+
+final class CreateStatementSeparately extends StatementReconciliationDecision {
+  const CreateStatementSeparately();
+}
+
+final class CancelStatementReconciliation
+    extends StatementReconciliationDecision {
+  const CancelStatementReconciliation();
+}
+
 class StatementCapturePage extends StatefulWidget {
   const StatementCapturePage({super.key});
   @override
@@ -668,44 +687,102 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
   Future<void> _act(StatementRow row, StatementRowStatus status) async {
     if (_sourceId == null) return;
     if (status == StatementRowStatus.saved) {
+      final strict = await widget.service.duplicates(row);
+      if (!mounted) return;
+      if (strict case ApplicationSuccess<DuplicateTransactionCheckResult>(
+        value: final duplicate,
+      ) when duplicate.requiresConfirmation) {
+        final proposed = TransactionDto(
+          id: '__statement-proposed__',
+          amount: row.amount!,
+          currency: row.currency!,
+          direction: row.direction!,
+          status: TransactionStatus.active.name,
+          reviewState: TransactionReviewState.clear.name,
+          transactionDate: row.transactionDate!.toIso8601String().substring(
+            0,
+            10,
+          ),
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+          description: row.description,
+          rawCounterparty: row.originalText,
+          paymentSourceId: row.paymentSourceId ?? _sourceId,
+          merchantId: row.merchantId,
+          categoryId: row.categoryId,
+          tagIds: row.tagIds,
+        );
+        final decision = await showDialog<ButlerlyDuplicateConfirmationResult>(
+          context: context,
+          builder: (_) => ButlerlyDuplicateTransactionConfirmation(
+            proposed: proposed,
+            candidates: duplicate.candidates,
+            paymentSourceLabels: {
+              for (final source in _sources)
+                source.id.value: source.lastFour == null
+                    ? (source.displayIdentity ?? source.name)
+                    : '${source.displayIdentity ?? source.name} ••••${source.lastFour}',
+            },
+            onDecision: (value) => Navigator.pop(context, value),
+          ),
+        );
+        if (!mounted || decision == null) return;
+        if (decision.decision == ButlerlyDuplicateDecision.useExisting &&
+            decision.selectedTransactionId != null) {
+          await widget.service.link(row, decision.selectedTransactionId!);
+        } else if (decision.decision ==
+            ButlerlyDuplicateDecision.continueAnyway) {
+          await widget.service.save(row, _sourceId!, allowCreateNew: true);
+        }
+        return;
+      }
       final matches = await widget.service.likelyMatches(row, _sourceId!);
       if (!mounted) return;
       if (matches case ApplicationSuccess<List<ReconciliationMatchCandidate>>(
         value: final values,
       ) when values.isNotEmpty) {
-        final link = await showDialog<String>(
+        final decision = await showDialog<StatementReconciliationDecision>(
           context: context,
           builder: (_) => AlertDialog(
-            title: const Text('Likely existing transaction'),
+            title: Text(context.l10n.text('statementReconciliationTitle')),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Select an existing transaction to link:'),
+                Text(context.l10n.text('statementReconciliationPrompt')),
                 for (final candidate in values)
                   ListTile(
                     title: Text(
                       '${candidate.transaction.currency} ${candidate.transaction.amount} · ${candidate.transaction.transactionDate}',
                     ),
                     subtitle: Text(
-                      'Score ${candidate.assessment.score.toStringAsFixed(2)}\n${candidate.assessment.reasons.join('; ')}${candidate.assessment.conflicts.isEmpty ? '' : '\n${candidate.assessment.conflicts.join('; ')}'}',
+                      '${context.l10n.text('reconciliationScore', {'score': candidate.assessment.score.toStringAsFixed(2)})}\n${candidate.assessment.reasons.join('; ')}${candidate.assessment.conflicts.isEmpty ? '' : '\n${candidate.assessment.conflicts.join('; ')}'}',
                     ),
-                    onTap: () =>
-                        Navigator.pop(context, candidate.transaction.id),
+                    onTap: () => Navigator.pop(
+                      context,
+                      LinkStatementReconciliation(candidate.transaction.id),
+                    ),
                   ),
               ],
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Create separately'),
+                onPressed: () =>
+                    Navigator.pop(context, const CreateStatementSeparately()),
+                child: Text(context.l10n.text('createSeparately')),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(
+                  context,
+                  const CancelStatementReconciliation(),
+                ),
+                child: Text(context.l10n.text('cancel')),
               ),
             ],
           ),
         );
-        if (link != null) {
-          await widget.service.link(row, link);
-          status = StatementRowStatus.linked;
-        } else {
+        if (decision is LinkStatementReconciliation) {
+          await widget.service.link(row, decision.transactionId);
+        } else if (decision is CreateStatementSeparately) {
           await widget.service.save(row, _sourceId!, allowCreateNew: true);
         }
       } else {

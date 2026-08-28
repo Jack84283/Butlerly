@@ -4,20 +4,47 @@ import '../dto/transaction_dto.dart';
 import '../result/application_result.dart';
 import 'transaction_use_cases.dart';
 import 'reconciliation_use_cases.dart';
+import 'duplicate_transaction_use_cases.dart';
 
 final class StatementServices {
   const StatementServices(
     this.statements,
     this.transactions,
     this.workflow,
-    this.clock,
-    {this.evidence}
-  );
+    this.clock, {
+    this.evidence,
+    required this.duplicateChecker,
+  });
   final StatementRepository statements;
   final TransactionRepository transactions;
   final StatementWorkflowRepository workflow;
   final ApplicationClock clock;
   final EvidenceRepository? evidence;
+  final DuplicateTransactionChecker duplicateChecker;
+
+  Future<ApplicationResult<DuplicateTransactionCheckResult>> duplicates(
+    StatementRow row,
+  ) async {
+    if (row.amount == null ||
+        row.currency == null ||
+        row.transactionDate == null ||
+        row.direction == null) {
+      return const ApplicationSuccess(DuplicateTransactionCheckResult([]));
+    }
+    return duplicateChecker(
+      DuplicateTransactionCheckCommand(
+        transactionDate: row.transactionDate!.toIso8601String().substring(
+          0,
+          10,
+        ),
+        amount: row.amount!,
+        currency: row.currency!,
+        direction: _directionForRow(row),
+        paymentSourceId: row.paymentSourceId,
+        merchantId: row.merchantId,
+      ),
+    );
+  }
 
   Future<ApplicationResult<void>> create(
     FinancialStatement statement,
@@ -90,40 +117,37 @@ final class StatementServices {
   Future<ApplicationResult<void>> link(
     StatementRow row,
     String transactionId,
-  ) => runApplication(
-    'link statement row',
-    () async {
-      final statement = await statements.findStatement(row.statementId);
-      if (statement == null) {
-        throw const RepositoryException(
-          RepositoryFailureCode.notFound,
-          'link statement row: statement',
-        );
-      }
-      await workflow.linkRow(
-        _copy(
-          row,
-          status: StatementRowStatus.linked,
-          transactionId: transactionId,
-          dispositionReason: 'linkExisting',
-          updatedAt: clock.now(),
+  ) => runApplication('link statement row', () async {
+    final statement = await statements.findStatement(row.statementId);
+    if (statement == null) {
+      throw const RepositoryException(
+        RepositoryFailureCode.notFound,
+        'link statement row: statement',
+      );
+    }
+    await workflow.linkRow(
+      _copy(
+        row,
+        status: StatementRowStatus.linked,
+        transactionId: transactionId,
+        dispositionReason: 'linkExisting',
+        updatedAt: clock.now(),
+      ),
+    );
+    final evidenceRepository = evidence;
+    if (evidenceRepository != null) {
+      await evidenceRepository.link(
+        AttachmentLink(
+          id: AttachmentLinkId(
+            'statement-attachment-${statement.id}-$transactionId',
+          ),
+          transactionId: TransactionId(transactionId),
+          evidenceId: EvidenceId(statement.evidenceId),
+          createdAt: clock.now(),
         ),
       );
-      final evidenceRepository = evidence;
-      if (evidenceRepository != null) {
-        await evidenceRepository.link(
-          AttachmentLink(
-            id: AttachmentLinkId(
-              'statement-attachment-${statement.id}-$transactionId',
-            ),
-            transactionId: TransactionId(transactionId),
-            evidenceId: EvidenceId(statement.evidenceId),
-            createdAt: clock.now(),
-          ),
-        );
-      }
-    },
-  );
+    }
+  });
 
   Future<ApplicationResult<TransactionDto>> save(
     StatementRow row,

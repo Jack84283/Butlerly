@@ -189,6 +189,7 @@ final class FinanceServices {
                statements as StatementWorkflowRepository,
                const SystemApplicationClock(),
                evidence: evidence,
+               duplicateChecker: DuplicateTransactionChecker(transactions),
              ),
        updateAnalysisFindingLifecycle = analysisFindings == null
            ? null
