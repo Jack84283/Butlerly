@@ -183,14 +183,21 @@ final class _Transactions implements TransactionRepository {
   final List<Transaction> values;
   int saveCalls = 0;
   int removeCalls = 0;
+
+  @override
   Future<void> save(Transaction value) async {
     saveCalls++;
     values.add(value);
   }
 
+  @override
   Future<Transaction?> findById(TransactionId id) async =>
       values.where((v) => v.id == id).firstOrNull;
+
+  @override
   Future<List<Transaction>> listAll() async => values;
+
+  @override
   Future<List<Transaction>> query(TransactionRepositoryQuery query) async =>
       values
           .where(
@@ -204,6 +211,7 @@ final class _Transactions implements TransactionRepository {
                 (query.status == null || v.status == query.status),
           )
           .toList();
+  @override
   Future<void> removePermanently(TransactionId id) async => _remove(id);
 
   void _remove(TransactionId id) {

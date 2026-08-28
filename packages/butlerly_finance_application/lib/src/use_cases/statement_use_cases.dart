@@ -114,7 +114,7 @@ final class StatementServices {
         await evidenceRepository.link(
           AttachmentLink(
             id: AttachmentLinkId(
-              'statement-attachment-${statement.id}-${transactionId}',
+              'statement-attachment-${statement.id}-$transactionId',
             ),
             transactionId: TransactionId(transactionId),
             evidenceId: EvidenceId(statement.evidenceId),

@@ -640,8 +640,14 @@ void main() {
   testWidgets('add editor saves and returns a typed saved result', (
     tester,
   ) async {
+    TransactionEditorResult? result;
     await tester.pumpWidget(
-      MaterialApp(home: _EditorHarness(finance: services<FinanceServices>())),
+      MaterialApp(
+        home: _EditorHarness(
+          finance: services<FinanceServices>(),
+          onResult: (value) => result = value,
+        ),
+      ),
     );
     await tester.tap(find.text('Open editor'));
     await tester.pumpAndSettle();
@@ -653,19 +659,22 @@ void main() {
     );
     await tester.tap(find.text('Save locally'));
     await tester.pumpAndSettle();
-    final harness = tester.state<_EditorHarnessState>(
-      find.byType(_EditorHarness),
-    );
-    expect(harness.lastResult, isA<TransactionEditorSaved>());
+    expect(result, isA<TransactionEditorSaved>());
     expect(repository.values, hasLength(1));
   });
 
   testWidgets(
     'add editor Use Existing returns the selected candidate without saving',
     (tester) async {
+      TransactionEditorResult? result;
       await repository.save(_editorTransaction('existing-editor'));
       await tester.pumpWidget(
-        MaterialApp(home: _EditorHarness(finance: services<FinanceServices>())),
+        MaterialApp(
+          home: _EditorHarness(
+            finance: services<FinanceServices>(),
+            onResult: (value) => result = value,
+          ),
+        ),
       );
       await tester.tap(find.text('Open editor'));
       await tester.pumpAndSettle();
@@ -680,12 +689,9 @@ void main() {
       expect(find.text('Possible duplicate'), findsOneWidget);
       await tester.tap(find.text('Use existing'));
       await tester.pumpAndSettle();
-      final harness = tester.state<_EditorHarnessState>(
-        find.byType(_EditorHarness),
-      );
-      expect(harness.lastResult, isA<TransactionEditorUseExisting>());
+      expect(result, isA<TransactionEditorUseExisting>());
       expect(
-        (harness.lastResult! as TransactionEditorUseExisting).transactionId,
+        (result! as TransactionEditorUseExisting).transactionId,
         'existing-editor',
       );
       expect(repository.values.keys, ['existing-editor']);
@@ -718,6 +724,185 @@ void main() {
     expect(repository.values['current-editor']?.money, current.money);
     expect(repository.values['current-editor']?.direction, current.direction);
   });
+
+  testWidgets('add editor Continue Anyway creates a second transaction', (
+    tester,
+  ) async {
+    TransactionEditorResult? result;
+    final original = _editorTransaction('add-original');
+    await repository.save(original);
+    await _openEditorForTest(tester, onResult: (value) => result = value);
+    await tester.enterText(find.byType(TextFormField).at(0), '25');
+    await _tapEditorSave(tester);
+    expect(find.text('Possible duplicate'), findsOneWidget);
+    await tester.tap(find.text('Continue anyway'));
+    await tester.pumpAndSettle();
+    expect(result, isA<TransactionEditorSaved>());
+    expect(repository.values, hasLength(2));
+    expect(repository.values['add-original'], same(original));
+  });
+
+  testWidgets('add editor Cancel leaves the candidate and creates nothing', (
+    tester,
+  ) async {
+    final original = _editorTransaction('add-cancel');
+    await repository.save(original);
+    await _openEditorForTest(tester);
+    await tester.enterText(find.byType(TextFormField).at(0), '25');
+    await _tapEditorSave(tester);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(find.byType(TransactionEditorPage), findsOneWidget);
+    expect(repository.values, hasLength(1));
+    expect(repository.values['add-cancel'], same(original));
+  });
+
+  testWidgets(
+    'add editor selects the intended duplicate among multiple candidates',
+    (tester) async {
+      TransactionEditorResult? result;
+      await repository.save(_editorTransaction('add-first'));
+      await repository.save(_editorTransaction('add-second'));
+      await _openEditorForTest(tester, onResult: (value) => result = value);
+      await tester.enterText(find.byType(TextFormField).at(0), '25');
+      await _tapEditorSave(tester);
+      expect(find.byType(RadioListTile<String>), findsNWidgets(2));
+      await tester.tap(find.byType(RadioListTile<String>).at(1));
+      await tester.pump();
+      await tester.tap(find.text('Use existing'));
+      await tester.pumpAndSettle();
+      expect(
+        (result! as TransactionEditorUseExisting).transactionId,
+        'add-second',
+      );
+      expect(repository.values, hasLength(2));
+    },
+  );
+
+  testWidgets(
+    'edit matching another transaction offers Continue Anyway and updates only A',
+    (tester) async {
+      TransactionEditorResult? result;
+      final a = _editorTransaction('edit-a');
+      final b = _editorTransaction('edit-b');
+      await repository.save(a);
+      await repository.save(b);
+      await _openEditorForTest(
+        tester,
+        existing: TransactionDto.fromDomain(a),
+        onResult: (value) => result = value,
+      );
+      await _tapEditorSave(tester);
+      expect(find.text('Possible duplicate'), findsOneWidget);
+      await tester.tap(find.text('Continue anyway'));
+      await tester.pumpAndSettle();
+      expect(result, isA<TransactionEditorSaved>());
+      expect(repository.values['edit-a'], isNot(same(a)));
+      expect(repository.values['edit-b'], same(b));
+    },
+  );
+
+  testWidgets(
+    'edit matching another transaction Use Existing preserves both records',
+    (tester) async {
+      TransactionEditorResult? result;
+      final a = _editorTransaction('edit-use-a');
+      final b = _editorTransaction('edit-use-b');
+      await repository.save(a);
+      await repository.save(b);
+      await _openEditorForTest(
+        tester,
+        existing: TransactionDto.fromDomain(a),
+        onResult: (value) => result = value,
+      );
+      await _tapEditorSave(tester);
+      await tester.tap(find.text('Use existing'));
+      await tester.pumpAndSettle();
+      expect(
+        (result! as TransactionEditorUseExisting).transactionId,
+        'edit-use-b',
+      );
+      expect(repository.values['edit-use-a'], same(a));
+      expect(repository.values['edit-use-b'], same(b));
+    },
+  );
+
+  testWidgets(
+    'edit matching another transaction Cancel preserves both records',
+    (tester) async {
+      final a = _editorTransaction('edit-cancel-a');
+      final b = _editorTransaction('edit-cancel-b');
+      await repository.save(a);
+      await repository.save(b);
+      await _openEditorForTest(tester, existing: TransactionDto.fromDomain(a));
+      await _tapEditorSave(tester);
+      expect(find.text('Possible duplicate'), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.byType(TransactionEditorPage), findsOneWidget);
+      expect(repository.values['edit-cancel-a'], same(a));
+      expect(repository.values['edit-cancel-b'], same(b));
+    },
+  );
+
+  testWidgets(
+    'edit matching multiple transactions returns explicitly selected candidate',
+    (tester) async {
+      TransactionEditorResult? result;
+      final a = _editorTransaction('edit-multi-a');
+      final b = _editorTransaction('edit-multi-b');
+      final c = _editorTransaction('edit-multi-c');
+      await repository.save(a);
+      await repository.save(b);
+      await repository.save(c);
+      await _openEditorForTest(
+        tester,
+        existing: TransactionDto.fromDomain(a),
+        onResult: (value) => result = value,
+      );
+      await _tapEditorSave(tester);
+      expect(find.byType(RadioListTile<String>), findsNWidgets(2));
+      await tester.tap(find.byType(RadioListTile<String>).at(1));
+      await tester.pump();
+      await tester.tap(find.text('Use existing'));
+      await tester.pumpAndSettle();
+      expect(
+        (result! as TransactionEditorUseExisting).transactionId,
+        'edit-multi-c',
+      );
+      expect(repository.values['edit-multi-a'], same(a));
+      expect(repository.values['edit-multi-b'], same(b));
+      expect(repository.values['edit-multi-c'], same(c));
+    },
+  );
+}
+
+Future<void> _openEditorForTest(
+  WidgetTester tester, {
+  TransactionDto? existing,
+  ValueChanged<TransactionEditorResult?>? onResult,
+}) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      home: _EditorHarness(
+        finance: services<FinanceServices>(),
+        existing: existing,
+        onResult: onResult,
+      ),
+    ),
+  );
+  await tester.tap(find.text('Open editor'));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _tapEditorSave(WidgetTester tester) async {
+  await tester.scrollUntilVisible(
+    find.text('Save locally'),
+    160,
+    scrollable: find.byType(Scrollable).last,
+  );
+  await tester.tap(find.text('Save locally'));
+  await tester.pumpAndSettle();
 }
 
 Transaction _editorTransaction(String id) {
@@ -747,9 +932,10 @@ Transaction _editorTransaction(String id) {
 }
 
 class _EditorHarness extends StatefulWidget {
-  const _EditorHarness({required this.finance, this.existing});
+  const _EditorHarness({required this.finance, this.existing, this.onResult});
   final FinanceServices finance;
   final TransactionDto? existing;
+  final ValueChanged<TransactionEditorResult?>? onResult;
   @override
   State<_EditorHarness> createState() => _EditorHarnessState();
 }
@@ -770,7 +956,10 @@ class _EditorHarnessState extends State<_EditorHarness> {
               ),
             ),
           );
-          if (mounted) setState(() => lastResult = result);
+          if (mounted) {
+            setState(() => lastResult = result);
+            widget.onResult?.call(result);
+          }
         },
         child: const Text('Open editor'),
       ),
