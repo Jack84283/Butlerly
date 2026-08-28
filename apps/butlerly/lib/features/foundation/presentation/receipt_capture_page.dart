@@ -24,6 +24,10 @@ class ReceiptCapturePage extends StatefulWidget {
     this.ocr,
     this.pickImage,
     this.openFile,
+    this.preserveEvidence,
+    this.fileForPreserved,
+    this.discardPreserved,
+    this.attachPreserved,
     super.key,
   });
 
@@ -32,6 +36,16 @@ class ReceiptCapturePage extends StatefulWidget {
   final Future<ReceiptOcrResult> Function(String path)? ocr;
   final Future<XFile?> Function(ImageSource source)? pickImage;
   final Future<files.XFile?> Function(files.XTypeGroup group)? openFile;
+  final Future<PreservedEvidenceSource> Function(XFile source)?
+  preserveEvidence;
+  final Future<File?> Function(PreservedEvidenceSource source)?
+  fileForPreserved;
+  final Future<void> Function(PreservedEvidenceSource source)? discardPreserved;
+  final Future<EvidenceItem?> Function(
+    String transactionId,
+    PreservedEvidenceSource source,
+  )?
+  attachPreserved;
 
   @override
   State<ReceiptCapturePage> createState() => _ReceiptCapturePageState();
@@ -67,8 +81,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   TransactionMasterData get _masterData =>
       _masterDataSnapshot?.presentation ?? const TransactionMasterData();
 
-  FinanceServices get finance =>
-      widget.finance ?? services<FinanceServices>();
+  FinanceServices get finance => widget.finance ?? services<FinanceServices>();
   LocalEvidenceStore get evidenceStore =>
       widget.evidenceStore ?? services<LocalEvidenceStore>();
 
@@ -170,8 +183,12 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     PreservedEvidenceSource preserved;
     File? stableFile;
     try {
-      preserved = await evidenceStore.preserve(source);
-      stableFile = await evidenceStore.fileForPreserved(preserved);
+      preserved = widget.preserveEvidence == null
+          ? await evidenceStore.preserve(source)
+          : await widget.preserveEvidence!(source);
+      stableFile = widget.fileForPreserved == null
+          ? await evidenceStore.fileForPreserved(preserved)
+          : await widget.fileForPreserved!(preserved);
       if (stableFile == null || !await stableFile.exists()) {
         throw const FileSystemException('Preserved receipt is unavailable.');
       }
@@ -184,9 +201,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     }
 
     final previous = _preserved;
-    if (previous != null) await evidenceStore.discardPreserved(previous);
+    if (previous != null) await _discard(previous);
     if (!mounted) {
-      await evidenceStore.discardPreserved(preserved);
+      await _discard(preserved);
       return;
     }
 
@@ -231,6 +248,21 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       );
     }
   }
+
+  Future<void> _discard(PreservedEvidenceSource source) =>
+      widget.discardPreserved == null
+      ? evidenceStore.discardPreserved(source)
+      : widget.discardPreserved!(source);
+
+  Future<EvidenceItem?> _attach(
+    String transactionId,
+    PreservedEvidenceSource source,
+  ) => widget.attachPreserved == null
+      ? evidenceStore.attachPreservedAndReturn(
+          transactionId: transactionId,
+          source: source,
+        )
+      : widget.attachPreserved!(transactionId, source);
 
   Future<String?> _resolvePaymentSource(String? lastFour) async {
     if (lastFour == null) return null;
@@ -312,10 +344,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     final ocr = _ocrResult;
     if (preserved == null) return;
     setState(() => _saving = true);
-    final evidence = await evidenceStore.attachPreservedAndReturn(
-      transactionId: transaction.id,
-      source: preserved,
-    );
+    final evidence = await _attach(transaction.id, preserved);
     if (evidence == null) {
       if (mounted) setState(() => _saving = false);
       return;
@@ -493,10 +522,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       return;
     }
 
-    final evidence = await evidenceStore.attachPreservedAndReturn(
-      transactionId: result.value.id,
-      source: preserved,
-    );
+    final evidence = await _attach(result.value.id, preserved);
     if (evidence == null) {
       await finance.deleteTransactionPermanently(result.value.id);
       if (mounted) setState(() => _saving = false);
