@@ -2,12 +2,75 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 
 String _paymentSourceText(PaymentSource source) => source.lastFour == null
     ? (source.displayIdentity ?? source.name)
     : '${source.displayIdentity ?? source.name} ••••${source.lastFour}';
+
+enum ButlerlyDuplicateDecision { useExisting, continueAnyway, cancel }
+
+/// Shared, workflow-neutral confirmation for strict duplicate candidates.
+class ButlerlyDuplicateTransactionConfirmation extends StatelessWidget {
+  const ButlerlyDuplicateTransactionConfirmation({
+    required this.proposed,
+    required this.candidates,
+    required this.onDecision,
+    super.key,
+  });
+  final TransactionDto proposed;
+  final List<DuplicateTransactionCandidate> candidates;
+  final ValueChanged<ButlerlyDuplicateDecision> onDecision;
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Semantics(
+      liveRegion: true,
+      header: true,
+      child: Text(context.l10n.text('possibleDuplicate')),
+    ),
+    content: SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(context.l10n.text('proposedTransaction')),
+          _summary(proposed),
+          const SizedBox(height: 16),
+          Text(context.l10n.text('existingTransactions')),
+          for (final candidate in candidates) ...[
+            const Divider(),
+            _summary(candidate.transaction),
+          ],
+        ],
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => onDecision(ButlerlyDuplicateDecision.cancel),
+        child: Text(context.l10n.text('cancel')),
+      ),
+      TextButton(
+        onPressed: () => onDecision(ButlerlyDuplicateDecision.continueAnyway),
+        child: Text(context.l10n.text('continueAnyway')),
+      ),
+      FilledButton(
+        onPressed: () => onDecision(ButlerlyDuplicateDecision.useExisting),
+        child: Text(context.l10n.text('useExistingTransaction')),
+      ),
+    ],
+  );
+
+  Widget _summary(TransactionDto transaction) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Text(
+      '${transaction.transactionDate ?? '—'} · ${transaction.amount} ${transaction.currency} · ${transaction.direction}\n'
+      '${transaction.description ?? transaction.rawCounterparty ?? ''}'
+      '${transaction.paymentSourceId == null ? '' : '\n${transaction.paymentSourceId}'}',
+    ),
+  );
+}
 
 class ButlerlyCategorySelector extends StatelessWidget {
   const ButlerlyCategorySelector({

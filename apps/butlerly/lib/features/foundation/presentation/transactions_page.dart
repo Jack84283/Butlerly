@@ -338,12 +338,57 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _saving = true);
     final money = Money(
       amount: DecimalValue.parse(_amount.text.trim()),
       currency: CurrencyCode(_currency.text.trim()),
     );
     final existing = widget.existing;
+    final proposed = TransactionDto(
+      id: existing?.id ?? '__proposed__',
+      amount: money.amount.toString(),
+      currency: money.currency.value,
+      direction: _direction.name,
+      status: TransactionStatus.active.name,
+      reviewState: TransactionReviewState.clear.name,
+      transactionDate: _shortDate(_date),
+      createdAt: existing?.createdAt ?? DateTime.now().toUtc(),
+      updatedAt: DateTime.now().toUtc(),
+      description: _description.text.trim().isEmpty
+          ? null
+          : _description.text.trim(),
+      paymentSourceId: _paymentSourceId,
+      merchantId: _merchantId,
+      categoryId: _categoryId,
+      tagIds: _tagIds.toList(growable: false),
+    );
+    final duplicate = await widget.finance.duplicateTransactionChecker.call(
+      DuplicateTransactionCheckCommand(
+        transactionDate: proposed.transactionDate!,
+        amount: proposed.amount,
+        currency: proposed.currency,
+        direction: _direction,
+        excludeTransactionId: existing?.id,
+        paymentSourceId: _paymentSourceId,
+        merchantId: _merchantId,
+      ),
+    );
+    if (!mounted) return;
+    if (duplicate case ApplicationSuccess<DuplicateTransactionCheckResult>(
+      value: final check,
+    ) when check.requiresConfirmation) {
+      final decision = await showDialog<ButlerlyDuplicateDecision>(
+        context: context,
+        builder: (_) => ButlerlyDuplicateTransactionConfirmation(
+          proposed: proposed,
+          candidates: check.candidates,
+          onDecision: (value) => Navigator.pop(context, value),
+        ),
+      );
+      if (!mounted || decision != ButlerlyDuplicateDecision.continueAnyway) {
+        return;
+      }
+    }
+    setState(() => _saving = true);
     final timing =
         existing != null && !_dateChanged && existing.occurredAt != null
         ? KnownTransactionTime(existing.occurredAt!)
