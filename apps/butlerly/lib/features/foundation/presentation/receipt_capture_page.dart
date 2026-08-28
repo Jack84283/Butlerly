@@ -17,6 +17,16 @@ import 'package:file_selector/file_selector.dart' as files;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+final class ReceiptCaptureInitialData {
+  const ReceiptCaptureInitialData({
+    required this.preference,
+    required this.snapshot,
+  });
+
+  final UserPreference? preference;
+  final TransactionMasterDataSnapshot snapshot;
+}
+
 class ReceiptCapturePage extends StatefulWidget {
   const ReceiptCapturePage({
     this.finance,
@@ -28,6 +38,7 @@ class ReceiptCapturePage extends StatefulWidget {
     this.fileForPreserved,
     this.discardPreserved,
     this.attachPreserved,
+    this.loadInitialData,
     super.key,
   });
 
@@ -46,6 +57,7 @@ class ReceiptCapturePage extends StatefulWidget {
     PreservedEvidenceSource source,
   )?
   attachPreserved;
+  final Future<ReceiptCaptureInitialData> Function()? loadInitialData;
 
   @override
   State<ReceiptCapturePage> createState() => _ReceiptCapturePageState();
@@ -104,6 +116,12 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   }
 
   Future<void> _load() async {
+    if (widget.loadInitialData != null) {
+      final initial = await widget.loadInitialData!();
+      if (!mounted) return;
+      _applyInitialData(initial);
+      return;
+    }
     final preferenceResult = await finance.loadUserPreference();
     final preference = preferenceResult is ApplicationSuccess<UserPreference?>
         ? preferenceResult.value
@@ -112,13 +130,21 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       finance,
     ).load(languageCode: preference?.locale ?? 'en');
     if (!mounted) return;
+    _applyInitialData(
+      ReceiptCaptureInitialData(preference: preference, snapshot: snapshot),
+    );
+  }
+
+  void _applyInitialData(ReceiptCaptureInitialData initial) {
     setState(() {
-      _masterDataSnapshot = snapshot;
-      _merchants = snapshot.merchants;
-      _categories = snapshot.categories;
-      _tags = snapshot.tags;
-      _sources = snapshot.paymentSources;
-      if (preference != null) _currency.text = preference.baseCurrency.value;
+      _masterDataSnapshot = initial.snapshot;
+      _merchants = initial.snapshot.merchants;
+      _categories = initial.snapshot.categories;
+      _tags = initial.snapshot.tags;
+      _sources = initial.snapshot.paymentSources;
+      if (initial.preference != null) {
+        _currency.text = initial.preference!.baseCurrency.value;
+      }
     });
   }
 
