@@ -2,6 +2,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -9,7 +10,9 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 
 class ReviewPage extends StatefulWidget {
-  const ReviewPage({super.key});
+  const ReviewPage({this.showPossibleDuplicates = false, super.key});
+
+  final bool showPossibleDuplicates;
 
   @override
   State<ReviewPage> createState() => _ReviewPageState();
@@ -19,7 +22,9 @@ class _ReviewPageState extends State<ReviewPage> {
   late Future<List<ReviewItemDto>> _items;
   late Future<List<DuplicateCandidateGroup>> _duplicateGroups;
   late Future<List<ReconciliationCandidate>> _candidates;
+  late Future<TransactionMasterDataSnapshot> _masterData;
   _ReviewView _view = _ReviewView.needsReview;
+  String? _loadedLanguageCode;
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
@@ -28,9 +33,39 @@ class _ReviewPageState extends State<ReviewPage> {
   @override
   void initState() {
     super.initState();
+    _view = widget.showPossibleDuplicates
+        ? _ReviewView.duplicates
+        : _ReviewView.needsReview;
     _items = _load();
     _duplicateGroups = _loadDuplicateGroups();
     _candidates = _loadCandidates();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final languageCode = Localizations.localeOf(context).languageCode;
+    if (_loadedLanguageCode == languageCode) return;
+    _loadedLanguageCode = languageCode;
+    _masterData = _loadMasterData(languageCode);
+  }
+
+  Future<TransactionMasterDataSnapshot> _loadMasterData(
+    String languageCode,
+  ) async {
+    final finance = _finance;
+    if (finance == null) {
+      return const TransactionMasterDataSnapshot(
+        presentation: TransactionMasterData(),
+        merchants: [],
+        categories: [],
+        tags: [],
+        paymentSources: [],
+      );
+    }
+    return TransactionMasterDataProvider(
+      finance,
+    ).load(languageCode: languageCode);
   }
 
   Future<List<ReviewItemDto>> _load() async {
@@ -208,7 +243,14 @@ class _ReviewPageState extends State<ReviewPage> {
             ),
             ButtonSegment(
               value: _ReviewView.duplicates,
-              label: Text(context.l10n.text('possibleDuplicates')),
+              label: FutureBuilder<List<DuplicateCandidateGroup>>(
+                future: _duplicateGroups,
+                builder: (context, snapshot) {
+                  final count = snapshot.data?.length;
+                  final label = context.l10n.text('possibleDuplicates');
+                  return Text(count == null ? label : '$label ($count)');
+                },
+              ),
             ),
           ],
           selected: {_view},
@@ -255,6 +297,7 @@ class _ReviewPageState extends State<ReviewPage> {
                     _DuplicateGroupCard(
                       group: group,
                       finance: _finance!,
+                      masterData: _masterData,
                       onKeepBoth: () => _resolveDuplicate(
                         group,
                         DuplicateCandidateGroupStatus.keepBoth,
@@ -384,6 +427,7 @@ class _DuplicateGroupCard extends StatefulWidget {
   const _DuplicateGroupCard({
     required this.group,
     required this.finance,
+    required this.masterData,
     required this.onKeepBoth,
     required this.onReviewLater,
     required this.onConsolidate,
@@ -391,6 +435,7 @@ class _DuplicateGroupCard extends StatefulWidget {
 
   final DuplicateCandidateGroup group;
   final FinanceServices finance;
+  final Future<TransactionMasterDataSnapshot> masterData;
   final VoidCallback onKeepBoth;
   final VoidCallback onReviewLater;
   final ValueChanged<TransactionId> onConsolidate;
@@ -401,6 +446,26 @@ class _DuplicateGroupCard extends StatefulWidget {
 
 class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
   TransactionId? _selectedTransactionId;
+  late Future<(List<TransactionDto>, TransactionMasterDataSnapshot)>
+  _candidateData;
+
+  @override
+  void initState() {
+    super.initState();
+    _candidateData = _loadCandidateData();
+  }
+
+  @override
+  void didUpdateWidget(covariant _DuplicateGroupCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.group.id != widget.group.id ||
+        oldWidget.group.transactionIds != widget.group.transactionIds) {
+      _selectedTransactionId = null;
+      _candidateData = _loadCandidateData();
+    } else if (oldWidget.masterData != widget.masterData) {
+      _candidateData = _loadCandidateData();
+    }
+  }
 
   Future<List<TransactionDto>> _loadTransactions() => Future.wait(
     widget.group.transactionIds.map(
@@ -412,6 +477,10 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
       },
     ),
   );
+
+  Future<(List<TransactionDto>, TransactionMasterDataSnapshot)>
+  _loadCandidateData() async =>
+      (await _loadTransactions(), await widget.masterData);
 
   @override
   Widget build(BuildContext context) {
@@ -435,17 +504,15 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
               ],
             ),
             const SizedBox(height: ButlerlySpacing.small),
-            Text(
-              '${widget.group.duplicateKey.transactionDate} · '
-              '${widget.group.duplicateKey.amount} '
-              '${widget.group.duplicateKey.currency} · '
-              '${widget.group.duplicateKey.direction}',
-            ),
+            Text(_duplicateKeyLabel(context)),
             const SizedBox(height: ButlerlySpacing.small),
-            FutureBuilder<List<TransactionDto>>(
-              future: _loadTransactions(),
+            FutureBuilder<
+              (List<TransactionDto>, TransactionMasterDataSnapshot)
+            >(
+              future: _candidateData,
               builder: (context, snapshot) {
-                final transactions = snapshot.data ?? const [];
+                final transactions = snapshot.data?.$1 ?? const [];
+                final masterData = snapshot.data?.$2;
                 return RadioGroup<TransactionId>(
                   groupValue: _selectedTransactionId,
                   onChanged: (id) =>
@@ -462,8 +529,11 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                                 : context.l10n.text('untitledTransaction'),
                           ),
                           subtitle: Text(
-                            '${transaction.amount} ${transaction.currency} · '
-                            '${transaction.transactionDate ?? ''}',
+                            _transactionEvidenceLabel(
+                              context,
+                              transaction,
+                              masterData,
+                            ),
                           ),
                         ),
                     ],
@@ -498,7 +568,63 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
       ),
     );
   }
+
+  String _duplicateKeyLabel(BuildContext context) =>
+      '${widget.group.duplicateKey.transactionDate} · '
+      '${widget.group.duplicateKey.amount} '
+      '${widget.group.duplicateKey.currency} · '
+      '${_directionLabel(context, widget.group.duplicateKey.direction)}';
 }
+
+String _transactionEvidenceLabel(
+  BuildContext context,
+  TransactionDto transaction,
+  TransactionMasterDataSnapshot? masterData,
+) {
+  final paymentSource = masterData?.paymentSources
+      .where((value) => value.id.value == transaction.paymentSourceId)
+      .map((value) => value.name)
+      .firstOrNull;
+  final merchant = masterData?.presentation.merchantName(
+    transaction.merchantId,
+  );
+  final supporting = [
+    ?merchant,
+    ?paymentSource,
+    if (transaction.provenance.isNotEmpty)
+      _reviewProvenanceLabel(context, transaction.provenance.first.sourceType),
+  ];
+  final details = [
+    '${transaction.amount} ${transaction.currency}',
+    transaction.transactionDate ?? '',
+    ...supporting,
+  ].where((value) => value.isNotEmpty).join(' · ');
+  return details;
+}
+
+String _directionLabel(BuildContext context, String direction) =>
+    switch (direction) {
+      'income' => context.l10n.text('income'),
+      'expense' => context.l10n.text('expense'),
+      'transfer' => context.l10n.text('transfer'),
+      'refund' => context.l10n.text('refund'),
+      'adjustment' => context.l10n.text('adjustment'),
+      _ => context.l10n.text('direction'),
+    };
+
+String _reviewProvenanceLabel(BuildContext context, String sourceType) =>
+    switch (sourceType) {
+      'userEntry' => context.l10n.text('enteredLocally'),
+      'import' => context.l10n.text('imported'),
+      'scan' => context.l10n.text('scanned'),
+      'evidenceExtraction' => context.l10n.text('evidenceExtraction'),
+      'integration' => context.l10n.text('integration'),
+      'deterministicCalculation' => context.l10n.text('calculation'),
+      'localAi' => context.l10n.text('localAi'),
+      'externalAi' => context.l10n.text('externalAi'),
+      'migration' => context.l10n.text('migration'),
+      _ => context.l10n.text('recordOrigin'),
+    };
 
 class _NormalizationReviewCard extends StatefulWidget {
   const _NormalizationReviewCard({

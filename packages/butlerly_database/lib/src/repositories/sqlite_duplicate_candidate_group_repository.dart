@@ -27,39 +27,42 @@ final class SqliteDuplicateCandidateGroupRepository
   findActiveDuplicateGroups() async {
     final rows = await database.connection.rawQuery(
       '''
-      SELECT t.id, t.transaction_date, t.amount_coefficient,
-             t.amount_scale, t.currency, t.direction
+      SELECT t.transaction_date, t.amount_coefficient,
+             t.amount_scale, UPPER(t.currency) AS currency, t.direction,
+             GROUP_CONCAT(t.id) AS transaction_ids
       FROM transactions t
       WHERE t.status = ? AND t.transaction_date IS NOT NULL
-      ORDER BY t.transaction_date, t.id
+      GROUP BY t.transaction_date, t.amount_coefficient,
+               t.amount_scale, UPPER(t.currency), t.direction
+      HAVING COUNT(*) > 1
+      ORDER BY t.transaction_date, t.amount_coefficient,
+               t.amount_scale, UPPER(t.currency), t.direction
     ''',
       [TransactionStatus.active.name],
     );
-    final grouped = <String, List<TransactionId>>{};
-    final keys = <String, DuplicateTransactionKey>{};
-    for (final row in rows) {
-      final key = DuplicateTransactionKey(
-        transactionDate: row['transaction_date']! as String,
-        amount: DecimalValue.fromParts(
-          coefficient: BigInt.parse(row['amount_coefficient']! as String),
-          scale: row['amount_scale']! as int,
-        ),
-        currency: row['currency']! as String,
-        direction: row['direction']! as String,
-      );
-      grouped
-          .putIfAbsent(key.canonical, () => [])
-          .add(TransactionId(row['id']! as String));
-      keys[key.canonical] = key;
-    }
-    return [
-      for (final entry in grouped.entries)
-        if (entry.value.length > 1)
-          DuplicateTransactionGroupMatch(
-            duplicateKey: keys[entry.key]!,
-            transactionIds: List.unmodifiable(entry.value),
-          ),
-    ];
+    return rows
+        .map((row) {
+          final key = DuplicateTransactionKey(
+            transactionDate: row['transaction_date']! as String,
+            amount: DecimalValue.fromParts(
+              coefficient: BigInt.parse(row['amount_coefficient']! as String),
+              scale: row['amount_scale']! as int,
+            ),
+            currency: row['currency']! as String,
+            direction: row['direction']! as String,
+          );
+          final transactionIds =
+              (row['transaction_ids']! as String)
+                  .split(',')
+                  .map(TransactionId.new)
+                  .toList()
+                ..sort((a, b) => a.value.compareTo(b.value));
+          return DuplicateTransactionGroupMatch(
+            duplicateKey: key,
+            transactionIds: List.unmodifiable(transactionIds),
+          );
+        })
+        .toList(growable: false);
   }
 
   @override

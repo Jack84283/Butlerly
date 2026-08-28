@@ -5,6 +5,7 @@ import 'package:butlerly/features/foundation/presentation/payment_sources_page.d
 import 'package:butlerly/features/foundation/presentation/review_page.dart';
 import 'package:butlerly/features/foundation/presentation/search_page.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -18,20 +19,25 @@ void main() {
   setUpAll(() => initializeDateFormatting('en'));
   late MemoryTransactionRepository repository;
   late MemoryEvidence evidenceRepository;
+  late MemoryDuplicateGroups duplicateGroups;
+  late MemoryPaymentSources paymentSources;
 
   setUp(() async {
     await services.reset();
     repository = MemoryTransactionRepository();
     evidenceRepository = MemoryEvidence();
+    duplicateGroups = MemoryDuplicateGroups(repository);
+    paymentSources = MemoryPaymentSources();
     services.registerSingleton<FinanceServices>(
       FinanceServices(
         repository,
-        MemoryPaymentSources(),
+        paymentSources,
         MemoryMerchants(),
         MemoryCategories(),
         MemoryTags(),
         evidenceRepository,
         MemoryUserPreferences(),
+        duplicateGroups: duplicateGroups,
       ),
     );
   });
@@ -333,6 +339,133 @@ void main() {
 
     expect(find.text('You’re all caught up'), findsOneWidget);
   });
+
+  testWidgets(
+    'Possible Duplicates review shows groups and resolves Keep Both',
+    (tester) async {
+      final first = _editorTransaction('review-duplicate-a');
+      final second = _editorTransaction('review-duplicate-b');
+      paymentSources.values['source-internal-1'] = PaymentSource(
+        id: PaymentSourceId('source-internal-1'),
+        name: 'Travel card',
+        type: PaymentSourceType.card,
+      );
+      final now = DateTime.now().toUtc();
+      final firstWithSource = first.assignPaymentSource(
+        PaymentSourceId('source-internal-1'),
+        now,
+      );
+      final masterData = await TransactionMasterDataProvider(
+        services<FinanceServices>(),
+      ).load();
+      expect(masterData.paymentSources.single.name, 'Travel card');
+      expect(firstWithSource.paymentSourceId?.value, 'source-internal-1');
+      await repository.save(firstWithSource);
+      await repository.save(second);
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(body: ReviewPage(showPossibleDuplicates: true)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Possible duplicate group'), findsOneWidget);
+      expect(find.byType(RadioListTile<TransactionId>), findsNWidgets(2));
+      expect(find.text('Keep both'), findsOneWidget);
+      expect(
+        find.textContaining('Travel card', skipOffstage: false),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('source-internal-1', skipOffstage: false),
+        findsNothing,
+      );
+
+      await tester.tap(find.text('Keep both'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('No possible duplicates found'), findsOneWidget);
+      expect(
+        duplicateGroups.groups.single.status,
+        DuplicateCandidateGroupStatus.keepBoth,
+      );
+      expect(
+        repository.values.keys,
+        containsAll([firstWithSource.id.value, second.id.value]),
+      );
+    },
+  );
+
+  testWidgets('Possible Duplicates Review Later leaves records unchanged', (
+    tester,
+  ) async {
+    final first = _editorTransaction('review-later-a');
+    final second = _editorTransaction('review-later-b');
+    await repository.save(first);
+    await repository.save(second);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: ReviewPage(showPossibleDuplicates: true)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Review later'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Possible duplicate group'), findsOneWidget);
+    expect(
+      duplicateGroups.groups.single.status,
+      DuplicateCandidateGroupStatus.unresolved,
+    );
+    expect(repository.values['review-later-a'], same(first));
+    expect(repository.values['review-later-b'], same(second));
+  });
+
+  testWidgets(
+    'Possible Duplicates consolidate choice records metadata without mutating records',
+    (tester) async {
+      final first = _editorTransaction('consolidate-a');
+      final second = _editorTransaction('consolidate-b');
+      await repository.save(first);
+      await repository.save(second);
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(body: ReviewPage(showPossibleDuplicates: true)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final candidate = find.byType(RadioListTile<TransactionId>).last;
+      await tester.ensureVisible(candidate);
+      await tester.tap(candidate);
+      await tester.pump();
+      final consolidate = find.text('Consolidate / use one');
+      await tester.ensureVisible(consolidate);
+      expect(
+        tester
+            .widget<OutlinedButton>(
+              find.widgetWithText(OutlinedButton, 'Consolidate / use one'),
+            )
+            .onPressed,
+        isNotNull,
+      );
+      await tester.tap(consolidate);
+      await tester.pumpAndSettle();
+
+      expect(
+        duplicateGroups.groups.single.status,
+        DuplicateCandidateGroupStatus.consolidated,
+      );
+      expect(
+        duplicateGroups.groups.single.selectedTransactionId?.value,
+        second.id.value,
+      );
+      expect(repository.values['consolidate-a'], same(first));
+      expect(repository.values['consolidate-b'], same(second));
+    },
+  );
 
   testWidgets('creates and archives a local payment source', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: PaymentSourcesPage()));
@@ -1022,6 +1155,66 @@ final class MemoryTransactionRepository implements TransactionRepository {
   @override
   Future<void> save(Transaction transaction) async {
     values[transaction.id.value] = transaction;
+  }
+}
+
+final class MemoryDuplicateGroups implements DuplicateCandidateGroupRepository {
+  MemoryDuplicateGroups(this.transactions);
+
+  final MemoryTransactionRepository transactions;
+  final groups = <DuplicateCandidateGroup>[];
+
+  @override
+  Future<List<DuplicateCandidateGroup>> list({
+    DuplicateCandidateGroupStatus? status,
+  }) async => groups
+      .where((group) => status == null || group.status == status)
+      .toList();
+
+  @override
+  Future<List<DuplicateTransactionGroupMatch>>
+  findActiveDuplicateGroups() async {
+    final byKey = <String, DuplicateTransactionGroupMatch>{};
+    for (final transaction in transactions.values.values) {
+      if (transaction.status != TransactionStatus.active ||
+          transaction.transactionDate == null) {
+        continue;
+      }
+      final key = DuplicateTransactionKey(
+        transactionDate: transaction.transactionDate!,
+        amount: transaction.money.amount,
+        currency: transaction.money.currency.value,
+        direction: transaction.direction.name,
+      );
+      final previous = byKey[key.canonical];
+      byKey[key.canonical] = DuplicateTransactionGroupMatch(
+        duplicateKey: key,
+        transactionIds: [...?previous?.transactionIds, transaction.id],
+      );
+    }
+    return byKey.values
+        .where((match) => match.transactionIds.length > 1)
+        .map(
+          (match) => DuplicateTransactionGroupMatch(
+            duplicateKey: match.duplicateKey,
+            transactionIds: List.unmodifiable(
+              match.transactionIds.toList()
+                ..sort((a, b) => a.value.compareTo(b.value)),
+            ),
+          ),
+        )
+        .toList();
+  }
+
+  @override
+  Future<void> save(DuplicateCandidateGroup group) async {
+    groups.removeWhere((value) => value.id == group.id);
+    groups.add(group);
+  }
+
+  @override
+  Future<void> remove(String id) async {
+    groups.removeWhere((group) => group.id == id);
   }
 }
 

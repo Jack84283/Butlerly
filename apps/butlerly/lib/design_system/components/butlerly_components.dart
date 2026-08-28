@@ -226,6 +226,7 @@ class ButlerlyRecordRow extends StatelessWidget {
     this.needsReview = false,
     this.possibleDuplicate = false,
     this.possibleDuplicateLabel,
+    this.onPossibleDuplicateTap,
     this.onTap,
     super.key,
   });
@@ -239,6 +240,7 @@ class ButlerlyRecordRow extends StatelessWidget {
   final bool needsReview;
   final bool possibleDuplicate;
   final String? possibleDuplicateLabel;
+  final VoidCallback? onPossibleDuplicateTap;
   final VoidCallback? onTap;
 
   @override
@@ -297,10 +299,26 @@ class ButlerlyRecordRow extends StatelessWidget {
                           ),
                           child: Tooltip(
                             message: possibleDuplicateLabel ?? '',
-                            child: Icon(
-                              Icons.warning_amber_rounded,
-                              size: 16,
-                              color: Colors.amber.shade800,
+                            child: InkWell(
+                              onTap: onPossibleDuplicateTap,
+                              borderRadius: BorderRadius.circular(
+                                ButlerlyRadius.small,
+                              ),
+                              child: Semantics(
+                                container: true,
+                                button: onPossibleDuplicateTap != null,
+                                label: possibleDuplicateLabel,
+                                child: const Padding(
+                                  padding: EdgeInsets.all(
+                                    ButlerlySpacing.micro,
+                                  ),
+                                  child: Icon(
+                                    Icons.warning_amber_rounded,
+                                    size: 16,
+                                    color: Colors.amber,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ),

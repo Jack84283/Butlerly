@@ -27,6 +27,9 @@ void main() {
     final tables = await database.connection.rawQuery(
       "SELECT name FROM sqlite_master WHERE type = 'table'",
     );
+    final indexes = await database.connection.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'index'",
+    );
 
     expect(version, Schema.version);
     expect(foreignKeys.single.values.single, 1);
@@ -46,6 +49,10 @@ void main() {
         'duplicate_candidate_groups',
         'duplicate_candidate_group_transactions',
       ]),
+    );
+    expect(
+      indexes.map((row) => row['name']),
+      contains('idx_transactions_duplicate_group_lookup'),
     );
     expect(await database.passesIntegrityCheck(), isTrue);
   });

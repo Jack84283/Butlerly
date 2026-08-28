@@ -1,5 +1,5 @@
 abstract final class Schema {
-  static const version = 20;
+  static const version = 21;
 
   static const migration1 = <String>[
     '''CREATE TABLE payment_sources (
@@ -392,5 +392,10 @@ abstract final class Schema {
     'CREATE INDEX idx_duplicate_groups_status ON duplicate_candidate_groups(status)',
     'CREATE INDEX idx_duplicate_group_transactions_transaction ON duplicate_candidate_group_transactions(transaction_id)',
     'CREATE INDEX idx_transactions_duplicate_lookup ON transactions(transaction_date, currency, direction, status)',
+  ];
+
+  static const migration21 = <String>[
+    'DROP INDEX IF EXISTS idx_transactions_duplicate_lookup',
+    'CREATE INDEX idx_transactions_duplicate_group_lookup ON transactions(transaction_date, amount_coefficient, amount_scale, currency, direction, status)',
   ];
 }

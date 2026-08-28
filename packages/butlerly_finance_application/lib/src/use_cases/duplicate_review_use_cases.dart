@@ -20,13 +20,21 @@ final class ScanExistingTransactionsForDuplicates {
           final id = _groupId(match);
           activeIds.add(id);
           final previous = existingById[id];
+          final transactionIds = _sortedIds(match.transactionIds);
+          final membershipUnchanged =
+              previous != null &&
+              _sameIds(previous.transactionIds, transactionIds);
+          final status = membershipUnchanged
+              ? previous.status
+              : DuplicateCandidateGroupStatus.unresolved;
           final group = DuplicateCandidateGroup(
             id: id,
-            transactionIds: match.transactionIds,
+            transactionIds: transactionIds,
             duplicateKey: match.duplicateKey,
-            status:
-                previous?.status ?? DuplicateCandidateGroupStatus.unresolved,
-            selectedTransactionId: previous?.selectedTransactionId,
+            status: status,
+            selectedTransactionId: membershipUnchanged
+                ? previous.selectedTransactionId
+                : null,
             createdAt: previous?.createdAt ?? clock.now(),
             updatedAt: clock.now(),
           );
@@ -44,8 +52,19 @@ final class ScanExistingTransactionsForDuplicates {
       });
 
   String _groupId(DuplicateTransactionGroupMatch match) {
-    final ids = match.transactionIds.map((id) => id.value).toList()..sort();
-    return 'duplicate:${match.duplicateKey.canonical}:${ids.join(',')}';
+    return 'duplicate:${match.duplicateKey.canonical}';
+  }
+
+  List<TransactionId> _sortedIds(List<TransactionId> ids) => List.unmodifiable(
+    ids.toList()..sort((a, b) => a.value.compareTo(b.value)),
+  );
+
+  bool _sameIds(List<TransactionId> left, List<TransactionId> right) {
+    if (left.length != right.length) return false;
+    for (var index = 0; index < left.length; index++) {
+      if (left[index] != right[index]) return false;
+    }
+    return true;
   }
 }
 
@@ -85,6 +104,9 @@ final class ResolveDuplicateCandidateGroup {
       }
     }
     if (group == null) return;
+    // Consolidation is currently a non-destructive review decision only. The
+    // application has no safe financial-record merge operation, so resolving
+    // this state must never delete, overwrite, archive, or mutate a transaction.
     if (status == DuplicateCandidateGroupStatus.consolidated &&
         (selectedTransactionId == null ||
             !group.transactionIds.contains(selectedTransactionId))) {
