@@ -6,21 +6,23 @@ import '../use_cases/duplicate_review_use_cases.dart';
 /// mutation without copying duplicate identity rules into each use case.
 final class DuplicateReviewingTransactionRepository
     implements TransactionRepository {
-  const DuplicateReviewingTransactionRepository(this.delegate, this.groups);
+  const DuplicateReviewingTransactionRepository(this.delegate, this.refresh);
 
   final TransactionRepository delegate;
-  final ScanExistingTransactionsForDuplicates groups;
+  final RefreshDuplicateGroupForTransaction refresh;
 
   @override
   Future<void> save(Transaction transaction) async {
+    final previous = await delegate.findById(transaction.id);
     await delegate.save(transaction);
-    await _refreshReviewMetadata();
+    await _refreshReviewMetadata(previous: previous, current: transaction);
   }
 
   @override
   Future<void> removePermanently(TransactionId id) async {
+    final previous = await delegate.findById(id);
     await delegate.removePermanently(id);
-    await _refreshReviewMetadata();
+    await _refreshReviewMetadata(previous: previous);
   }
 
   @override
@@ -33,11 +35,14 @@ final class DuplicateReviewingTransactionRepository
   Future<List<Transaction>> query(TransactionRepositoryQuery query) =>
       delegate.query(query);
 
-  Future<void> _refreshReviewMetadata() async {
+  Future<void> _refreshReviewMetadata({
+    Transaction? previous,
+    Transaction? current,
+  }) async {
     // A transaction mutation must remain authoritative even if review metadata
     // cannot be refreshed immediately; the Review rescan repairs it later.
     try {
-      await groups();
+      await refresh(previous: previous, current: current);
     } on Object {
       // Persistence failures are surfaced by the explicit rescan operation.
     }

@@ -206,12 +206,6 @@ final class FinanceServices {
                const SystemApplicationClock(),
                evidence: evidence,
                duplicateChecker: DuplicateTransactionChecker(transactions),
-               duplicateReviewScan: duplicateGroups == null
-                   ? null
-                   : ScanExistingTransactionsForDuplicates(
-                       duplicateGroups,
-                       const SystemApplicationClock(),
-                     ),
              ),
        updateAnalysisFindingLifecycle = analysisFindings == null
            ? null

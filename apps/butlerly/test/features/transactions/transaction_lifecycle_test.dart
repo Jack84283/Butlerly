@@ -362,6 +362,8 @@ void main() {
       expect(firstWithSource.paymentSourceId?.value, 'source-internal-1');
       await repository.save(firstWithSource);
       await repository.save(second);
+      await services<FinanceServices>()
+          .scanExistingTransactionsForDuplicates!();
 
       await tester.pumpWidget(
         const MaterialApp(
@@ -404,6 +406,7 @@ void main() {
     final second = _editorTransaction('review-later-b');
     await repository.save(first);
     await repository.save(second);
+    await services<FinanceServices>().scanExistingTransactionsForDuplicates!();
 
     await tester.pumpWidget(
       const MaterialApp(
@@ -430,6 +433,8 @@ void main() {
       final second = _editorTransaction('consolidate-b');
       await repository.save(first);
       await repository.save(second);
+      await services<FinanceServices>()
+          .scanExistingTransactionsForDuplicates!();
 
       await tester.pumpWidget(
         const MaterialApp(
@@ -466,6 +471,30 @@ void main() {
       expect(repository.values['consolidate-b'], same(second));
     },
   );
+
+  testWidgets('loading Possible Duplicates does not run a historical scan', (
+    tester,
+  ) async {
+    await repository.save(_editorTransaction('review-load-a'));
+    await repository.save(_editorTransaction('review-load-b'));
+    final finance = services<FinanceServices>();
+    await finance.scanExistingTransactionsForDuplicates!();
+    duplicateGroups.fullScanCalls = 0;
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: ReviewPage(showPossibleDuplicates: true)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Possible duplicate group'), findsOneWidget);
+    expect(duplicateGroups.fullScanCalls, 0);
+
+    await tester.tap(find.text('Rescan possible duplicates'));
+    await tester.pumpAndSettle();
+    expect(duplicateGroups.fullScanCalls, 1);
+  });
 
   testWidgets('creates and archives a local payment source', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: PaymentSourcesPage()));
@@ -1163,6 +1192,7 @@ final class MemoryDuplicateGroups implements DuplicateCandidateGroupRepository {
 
   final MemoryTransactionRepository transactions;
   final groups = <DuplicateCandidateGroup>[];
+  int fullScanCalls = 0;
 
   @override
   Future<List<DuplicateCandidateGroup>> list({
@@ -1174,6 +1204,7 @@ final class MemoryDuplicateGroups implements DuplicateCandidateGroupRepository {
   @override
   Future<List<DuplicateTransactionGroupMatch>>
   findActiveDuplicateGroups() async {
+    fullScanCalls++;
     final byKey = <String, DuplicateTransactionGroupMatch>{};
     for (final transaction in transactions.values.values) {
       if (transaction.status != TransactionStatus.active ||
@@ -1205,6 +1236,22 @@ final class MemoryDuplicateGroups implements DuplicateCandidateGroupRepository {
         )
         .toList();
   }
+
+  @override
+  Future<List<TransactionId>> findActiveTransactionIdsForKey(
+    DuplicateTransactionKey key,
+  ) async =>
+      transactions.values.values
+          .where(
+            (transaction) =>
+                DuplicateTransactionKey.fromTransaction(
+                  transaction,
+                )?.canonical ==
+                key.canonical,
+          )
+          .map((transaction) => transaction.id)
+          .toList()
+        ..sort((left, right) => left.value.compareTo(right.value));
 
   @override
   Future<void> save(DuplicateCandidateGroup group) async {

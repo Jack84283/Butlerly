@@ -68,6 +68,77 @@ final class ScanExistingTransactionsForDuplicates {
   }
 }
 
+/// Refreshes only the duplicate key(s) affected by one transaction mutation.
+/// The historical scan remains reserved for explicit rescan/repair actions.
+final class RefreshDuplicateGroupForTransaction {
+  const RefreshDuplicateGroupForTransaction(this.groups, this.clock);
+
+  final DuplicateCandidateGroupRepository groups;
+  final ApplicationClock clock;
+
+  Future<ApplicationResult<void>> call({
+    Transaction? previous,
+    Transaction? current,
+  }) => runApplication('refresh possible duplicate group', () async {
+    final keys = <String, DuplicateTransactionKey>{};
+    final previousKey = previous == null
+        ? null
+        : DuplicateTransactionKey.fromTransaction(previous);
+    final currentKey = current == null
+        ? null
+        : DuplicateTransactionKey.fromTransaction(current);
+    if (previousKey != null) keys[previousKey.canonical] = previousKey;
+    if (currentKey != null) keys[currentKey.canonical] = currentKey;
+    if (keys.isEmpty) return;
+
+    final existing = await groups.list();
+    final existingById = {for (final group in existing) group.id: group};
+    for (final key in keys.values) {
+      await _refreshKey(key, existingById);
+    }
+  });
+
+  Future<void> _refreshKey(
+    DuplicateTransactionKey key,
+    Map<String, DuplicateCandidateGroup> existingById,
+  ) async {
+    final groupId = 'duplicate:${key.canonical}';
+    final previous = existingById[groupId];
+    final transactionIds = (await groups.findActiveTransactionIdsForKey(key))
+      ..sort((left, right) => left.value.compareTo(right.value));
+
+    if (transactionIds.length < 2) {
+      if (previous?.isUnresolved ?? false) await groups.remove(groupId);
+      return;
+    }
+
+    final membershipUnchanged =
+        previous != null && _sameIds(previous.transactionIds, transactionIds);
+    final group = DuplicateCandidateGroup(
+      id: groupId,
+      transactionIds: transactionIds,
+      duplicateKey: key,
+      status: membershipUnchanged
+          ? previous.status
+          : DuplicateCandidateGroupStatus.unresolved,
+      selectedTransactionId: membershipUnchanged
+          ? previous.selectedTransactionId
+          : null,
+      createdAt: previous?.createdAt ?? clock.now(),
+      updatedAt: clock.now(),
+    );
+    await groups.save(group);
+  }
+
+  bool _sameIds(List<TransactionId> left, List<TransactionId> right) {
+    if (left.length != right.length) return false;
+    for (var index = 0; index < left.length; index++) {
+      if (left[index] != right[index]) return false;
+    }
+    return true;
+  }
+}
+
 final class ListDuplicateCandidateGroups {
   const ListDuplicateCandidateGroups(this.repository);
 

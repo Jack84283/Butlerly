@@ -1,5 +1,6 @@
 import '../value_objects/decimal_value.dart';
 import '../value_objects/domain_id.dart';
+import 'transaction.dart';
 
 enum DuplicateCandidateGroupStatus { unresolved, keepBoth, consolidated }
 
@@ -16,6 +17,21 @@ final class DuplicateTransactionKey {
   final DecimalValue amount;
   final String currency;
   final String direction;
+
+  /// Returns the duplicate key only when the transaction participates in the
+  /// active duplicate-review population.
+  static DuplicateTransactionKey? fromTransaction(Transaction transaction) {
+    final date = transaction.transactionDate;
+    if (transaction.status != TransactionStatus.active || date == null) {
+      return null;
+    }
+    return DuplicateTransactionKey(
+      transactionDate: date,
+      amount: transaction.money.amount,
+      currency: transaction.money.currency.value,
+      direction: transaction.direction.name,
+    );
+  }
 
   String get canonical =>
       '$transactionDate|$amount|${currency.trim().toUpperCase()}|$direction';

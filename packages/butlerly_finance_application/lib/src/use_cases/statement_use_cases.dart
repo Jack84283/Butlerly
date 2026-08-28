@@ -5,7 +5,6 @@ import '../result/application_result.dart';
 import 'transaction_use_cases.dart';
 import 'reconciliation_use_cases.dart';
 import 'duplicate_transaction_use_cases.dart';
-import 'duplicate_review_use_cases.dart';
 
 final class StatementServices {
   const StatementServices(
@@ -15,7 +14,6 @@ final class StatementServices {
     this.clock, {
     this.evidence,
     required this.duplicateChecker,
-    this.duplicateReviewScan,
   });
   final StatementRepository statements;
   final TransactionRepository transactions;
@@ -23,7 +21,6 @@ final class StatementServices {
   final ApplicationClock clock;
   final EvidenceRepository? evidence;
   final DuplicateTransactionChecker duplicateChecker;
-  final ScanExistingTransactionsForDuplicates? duplicateReviewScan;
 
   Future<ApplicationResult<DuplicateTransactionCheckResult>> duplicates(
     StatementRow row,
@@ -231,11 +228,6 @@ final class StatementServices {
       ),
       transaction,
     );
-    try {
-      await duplicateReviewScan?.call();
-    } on Object {
-      // The statement transaction remains authoritative; Review can rescan.
-    }
     return TransactionDto.fromDomain(transaction);
   });
 

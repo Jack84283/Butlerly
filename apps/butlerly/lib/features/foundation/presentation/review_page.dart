@@ -88,13 +88,8 @@ class _ReviewPageState extends State<ReviewPage> {
 
   Future<List<DuplicateCandidateGroup>> _loadDuplicateGroups() async {
     final finance = _finance;
-    if (finance == null ||
-        finance.scanExistingTransactionsForDuplicates == null) {
+    if (finance == null || finance.listDuplicateCandidateGroups == null) {
       return const [];
-    }
-    final scanned = await finance.scanExistingTransactionsForDuplicates!();
-    if (scanned is ApplicationFailure<List<DuplicateCandidateGroup>>) {
-      throw StateError('Possible duplicates could not be scanned.');
     }
     final result = await finance.listDuplicateCandidateGroups!();
     return switch (result) {
@@ -118,7 +113,10 @@ class _ReviewPageState extends State<ReviewPage> {
       );
       return;
     }
-    setState(() => _duplicateGroups = _loadDuplicateGroupsWithoutScan());
+    final groups = _loadDuplicateGroupsWithoutScan();
+    setState(() {
+      _duplicateGroups = groups;
+    });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(context.l10n.text('possibleDuplicatesScanComplete')),

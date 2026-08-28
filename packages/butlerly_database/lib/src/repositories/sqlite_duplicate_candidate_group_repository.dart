@@ -66,6 +66,32 @@ final class SqliteDuplicateCandidateGroupRepository
   }
 
   @override
+  Future<List<TransactionId>> findActiveTransactionIdsForKey(
+    DuplicateTransactionKey key,
+  ) async {
+    final rows = await database.connection.query(
+      'transactions',
+      columns: ['id'],
+      where:
+          'transaction_date = ? AND amount_coefficient = ? AND '
+          'amount_scale = ? AND UPPER(currency) = ? AND direction = ? AND '
+          'status = ?',
+      whereArgs: [
+        key.transactionDate,
+        key.amount.coefficient.toString(),
+        key.amount.scale,
+        key.currency,
+        key.direction,
+        TransactionStatus.active.name,
+      ],
+      orderBy: 'id',
+    );
+    return rows
+        .map((row) => TransactionId(row['id']! as String))
+        .toList(growable: false);
+  }
+
+  @override
   Future<void> save(DuplicateCandidateGroup group) async {
     try {
       await database.transaction((tx) async {

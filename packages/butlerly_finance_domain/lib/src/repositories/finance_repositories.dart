@@ -43,6 +43,9 @@ abstract interface class DuplicateCandidateGroupRepository {
   });
 
   Future<List<DuplicateTransactionGroupMatch>> findActiveDuplicateGroups();
+  Future<List<TransactionId>> findActiveTransactionIdsForKey(
+    DuplicateTransactionKey key,
+  );
   Future<void> save(DuplicateCandidateGroup group);
   Future<void> remove(String id);
 }

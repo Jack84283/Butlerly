@@ -26,7 +26,7 @@ void configureDependencies({
     final duplicateGroups = SqliteDuplicateCandidateGroupRepository(
       database.persistenceDatabase,
     );
-    final duplicateScan = ScanExistingTransactionsForDuplicates(
+    final duplicateRefresh = RefreshDuplicateGroupForTransaction(
       duplicateGroups,
       const SystemApplicationClock(),
     );
@@ -35,7 +35,7 @@ void configureDependencies({
     );
     final transactions = DuplicateReviewingTransactionRepository(
       rawTransactions,
-      duplicateScan,
+      duplicateRefresh,
     );
     final statements = SqliteStatementRepository(database.persistenceDatabase);
     final finance = FinanceServices(
