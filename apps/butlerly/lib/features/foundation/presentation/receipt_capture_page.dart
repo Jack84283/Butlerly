@@ -198,13 +198,6 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         _paymentSourceId = paymentSourceId;
         _processing = false;
       });
-      final matches = await _findExistingPaymentMatches();
-      if (matches.isNotEmpty && mounted) {
-        final selected = await _selectExistingMatch(matches);
-        if (selected != null) {
-          await _attachReceiptToExisting(selected.transaction);
-        }
-      }
     } catch (_) {
       if (!mounted) return;
       setState(() => _processing = false);
@@ -372,9 +365,73 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       return;
     }
 
-    // OCR performs an early convenience check, but the user may have edited
-    // the extracted fields. Recheck immediately before creating anything so
-    // the final decision uses the values the user actually approved.
+    // Check strict duplicates immediately before creating anything so the
+    // final decision uses the values the user actually approved.
+    final proposed = TransactionDto(
+      id: '__receipt-proposed__',
+      amount: _amount.text.trim(),
+      currency: _currency.text.trim().toUpperCase(),
+      direction: TransactionDirection.expense.name,
+      status: TransactionStatus.active.name,
+      reviewState: TransactionReviewState.clear.name,
+      transactionDate: _iso(_date!),
+      createdAt: DateTime.now().toUtc(),
+      updatedAt: DateTime.now().toUtc(),
+      description: _merchantRaw.text.trim().isEmpty
+          ? 'Receipt purchase'
+          : _merchantRaw.text.trim(),
+      rawCounterparty: _merchantRaw.text.trim().isEmpty
+          ? null
+          : _merchantRaw.text.trim(),
+      paymentSourceId: _paymentSourceId,
+      merchantId: _merchantId,
+      categoryId: _categoryId,
+      tagIds: _tagIds.toList(growable: false),
+    );
+    final duplicate = await finance.duplicateTransactionChecker.call(
+      DuplicateTransactionCheckCommand(
+        transactionDate: proposed.transactionDate!,
+        amount: proposed.amount,
+        currency: proposed.currency,
+        direction: TransactionDirection.expense,
+        paymentSourceId: _paymentSourceId,
+        merchantId: _merchantId,
+      ),
+    );
+    if (!mounted) return;
+    if (duplicate case ApplicationSuccess<DuplicateTransactionCheckResult>(
+      value: final check,
+    ) when check.requiresConfirmation) {
+      final decision = await showDialog<ButlerlyDuplicateConfirmationResult>(
+        context: context,
+        builder: (dialogContext) => ButlerlyDuplicateTransactionConfirmation(
+          proposed: proposed,
+          candidates: check.candidates,
+          paymentSourceLabels: {
+            for (final source in _sources)
+              source.id.value: _paymentSourceLabel(source),
+          },
+          onDecision: (value) => Navigator.pop(dialogContext, value),
+        ),
+      );
+      if (!mounted ||
+          decision == null ||
+          decision.decision == ButlerlyDuplicateDecision.cancel) {
+        return;
+      }
+      if (decision.decision == ButlerlyDuplicateDecision.useExisting) {
+        final selectedId = decision.selectedTransactionId;
+        final selected = check.candidates
+            .where((candidate) => candidate.transaction.id == selectedId)
+            .firstOrNull;
+        if (selected != null) {
+          await _attachReceiptToExisting(selected.transaction);
+        }
+        return;
+      }
+    }
+
+    // Reconciliation is deliberately separate from strict duplicate identity.
     final matches = await _findExistingPaymentMatches();
     if (matches.isNotEmpty && mounted) {
       final selected = await _selectExistingMatch(matches);
