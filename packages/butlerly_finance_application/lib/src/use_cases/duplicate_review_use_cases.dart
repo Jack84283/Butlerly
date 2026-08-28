@@ -24,7 +24,9 @@ final class ScanExistingTransactionsForDuplicates {
           final membershipUnchanged =
               previous != null &&
               _sameIds(previous.transactionIds, transactionIds);
-          final status = membershipUnchanged
+          final status =
+              membershipUnchanged &&
+                  previous.status != DuplicateCandidateGroupStatus.keepBoth
               ? previous.status
               : DuplicateCandidateGroupStatus.unresolved;
           final group = DuplicateCandidateGroup(
@@ -32,7 +34,9 @@ final class ScanExistingTransactionsForDuplicates {
             transactionIds: transactionIds,
             duplicateKey: match.duplicateKey,
             status: status,
-            selectedTransactionId: membershipUnchanged
+            selectedTransactionId:
+                membershipUnchanged &&
+                    previous.status != DuplicateCandidateGroupStatus.keepBoth
                 ? previous.selectedTransactionId
                 : null,
             createdAt: previous?.createdAt ?? clock.now(),

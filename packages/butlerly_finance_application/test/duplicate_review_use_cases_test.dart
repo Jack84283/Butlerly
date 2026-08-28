@@ -3,7 +3,7 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('scan groups exact canonical keys and preserves Keep Both', () async {
+  test('explicit scan reopens Keep Both groups', () async {
     final repository = _Groups([_match('a', '25.0'), _match('b', '25.00')]);
     final clock = _Clock(DateTime.utc(2026, 1, 1));
     final scan = ScanExistingTransactionsForDuplicates(repository, clock);
@@ -31,7 +31,7 @@ void main() {
           .value
           .single
           .status,
-      DuplicateCandidateGroupStatus.keepBoth,
+      DuplicateCandidateGroupStatus.unresolved,
     );
   });
 
