@@ -17,8 +17,47 @@ import 'package:file_selector/file_selector.dart' as files;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+final class ReceiptCaptureInitialData {
+  const ReceiptCaptureInitialData({
+    required this.preference,
+    required this.snapshot,
+  });
+
+  final UserPreference? preference;
+  final TransactionMasterDataSnapshot snapshot;
+}
+
 class ReceiptCapturePage extends StatefulWidget {
-  const ReceiptCapturePage({super.key});
+  const ReceiptCapturePage({
+    this.finance,
+    this.evidenceStore,
+    this.ocr,
+    this.pickImage,
+    this.openFile,
+    this.preserveEvidence,
+    this.fileForPreserved,
+    this.discardPreserved,
+    this.attachPreserved,
+    this.loadInitialData,
+    super.key,
+  });
+
+  final FinanceServices? finance;
+  final LocalEvidenceStore? evidenceStore;
+  final Future<ReceiptOcrResult> Function(String path)? ocr;
+  final Future<XFile?> Function(ImageSource source)? pickImage;
+  final Future<files.XFile?> Function(files.XTypeGroup group)? openFile;
+  final Future<PreservedEvidenceSource> Function(XFile source)?
+  preserveEvidence;
+  final Future<File?> Function(PreservedEvidenceSource source)?
+  fileForPreserved;
+  final Future<void> Function(PreservedEvidenceSource source)? discardPreserved;
+  final Future<EvidenceItem?> Function(
+    String transactionId,
+    PreservedEvidenceSource source,
+  )?
+  attachPreserved;
+  final Future<ReceiptCaptureInitialData> Function()? loadInitialData;
 
   @override
   State<ReceiptCapturePage> createState() => _ReceiptCapturePageState();
@@ -29,8 +68,6 @@ String _paymentSourceLabel(PaymentSource source) => source.lastFour == null
     : '${source.displayIdentity ?? source.name} ••••${source.lastFour}';
 
 class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
-  final _picker = ImagePicker();
-  final _ocr = const LocalOcrService();
   final _formKey = GlobalKey<FormState>();
   final _amount = TextEditingController();
   final _currency = TextEditingController(text: 'USD');
@@ -56,8 +93,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   TransactionMasterData get _masterData =>
       _masterDataSnapshot?.presentation ?? const TransactionMasterData();
 
-  FinanceServices get finance => services<FinanceServices>();
-  LocalEvidenceStore get evidenceStore => services<LocalEvidenceStore>();
+  FinanceServices get finance => widget.finance ?? services<FinanceServices>();
+  LocalEvidenceStore get evidenceStore =>
+      widget.evidenceStore ?? services<LocalEvidenceStore>();
 
   @override
   void initState() {
@@ -78,6 +116,12 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   }
 
   Future<void> _load() async {
+    if (widget.loadInitialData != null) {
+      final initial = await widget.loadInitialData!();
+      if (!mounted) return;
+      _applyInitialData(initial);
+      return;
+    }
     final preferenceResult = await finance.loadUserPreference();
     final preference = preferenceResult is ApplicationSuccess<UserPreference?>
         ? preferenceResult.value
@@ -86,31 +130,43 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       finance,
     ).load(languageCode: preference?.locale ?? 'en');
     if (!mounted) return;
+    _applyInitialData(
+      ReceiptCaptureInitialData(preference: preference, snapshot: snapshot),
+    );
+  }
+
+  void _applyInitialData(ReceiptCaptureInitialData initial) {
     setState(() {
-      _masterDataSnapshot = snapshot;
-      _merchants = snapshot.merchants;
-      _categories = snapshot.categories;
-      _tags = snapshot.tags;
-      _sources = snapshot.paymentSources;
-      if (preference != null) _currency.text = preference.baseCurrency.value;
+      _masterDataSnapshot = initial.snapshot;
+      _merchants = initial.snapshot.merchants;
+      _categories = initial.snapshot.categories;
+      _tags = initial.snapshot.tags;
+      _sources = initial.snapshot.paymentSources;
+      if (initial.preference != null) {
+        _currency.text = initial.preference!.baseCurrency.value;
+      }
     });
   }
 
   Future<void> _camera() async {
-    final source = await _picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 95,
-      requestFullMetadata: false,
-    );
+    final source = widget.pickImage != null
+        ? await widget.pickImage!(ImageSource.camera)
+        : await ImagePicker().pickImage(
+            source: ImageSource.camera,
+            imageQuality: 95,
+            requestFullMetadata: false,
+          );
     if (source != null) await _process(source);
   }
 
   Future<void> _photo() async {
-    final source = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 100,
-      requestFullMetadata: false,
-    );
+    final source = widget.pickImage != null
+        ? await widget.pickImage!(ImageSource.gallery)
+        : await ImagePicker().pickImage(
+            source: ImageSource.gallery,
+            imageQuality: 100,
+            requestFullMetadata: false,
+          );
     if (source != null) await _process(source);
   }
 
@@ -119,7 +175,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       label: 'Receipt images',
       extensions: ['jpg', 'jpeg', 'png', 'heic', 'webp'],
     );
-    final source = await files.openFile(acceptedTypeGroups: const [group]);
+    final source = widget.openFile != null
+        ? await widget.openFile!(group)
+        : await files.openFile(acceptedTypeGroups: const [group]);
     if (source != null) {
       await _process(XFile(source.path, name: source.name));
     }
@@ -151,8 +209,12 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     PreservedEvidenceSource preserved;
     File? stableFile;
     try {
-      preserved = await evidenceStore.preserve(source);
-      stableFile = await evidenceStore.fileForPreserved(preserved);
+      preserved = widget.preserveEvidence == null
+          ? await evidenceStore.preserve(source)
+          : await widget.preserveEvidence!(source);
+      stableFile = widget.fileForPreserved == null
+          ? await evidenceStore.fileForPreserved(preserved)
+          : await widget.fileForPreserved!(preserved);
       if (stableFile == null || !await stableFile.exists()) {
         throw const FileSystemException('Preserved receipt is unavailable.');
       }
@@ -165,9 +227,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     }
 
     final previous = _preserved;
-    if (previous != null) await evidenceStore.discardPreserved(previous);
+    if (previous != null) await _discard(previous);
     if (!mounted) {
-      await evidenceStore.discardPreserved(preserved);
+      await _discard(preserved);
       return;
     }
 
@@ -184,7 +246,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     });
 
     try {
-      final result = await _ocr.recognize(stableSource.path);
+      final result = widget.ocr == null
+          ? await const LocalOcrService().recognize(stableSource.path)
+          : await widget.ocr!(stableSource.path);
       if (!mounted) return;
       final paymentSourceId = await _resolvePaymentSource(result.cardLast4);
       if (!mounted) return;
@@ -198,13 +262,6 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         _paymentSourceId = paymentSourceId;
         _processing = false;
       });
-      final matches = await _findExistingPaymentMatches();
-      if (matches.isNotEmpty && mounted) {
-        final selected = await _selectExistingMatch(matches);
-        if (selected != null) {
-          await _attachReceiptToExisting(selected.transaction);
-        }
-      }
     } catch (_) {
       if (!mounted) return;
       setState(() => _processing = false);
@@ -217,6 +274,21 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       );
     }
   }
+
+  Future<void> _discard(PreservedEvidenceSource source) =>
+      widget.discardPreserved == null
+      ? evidenceStore.discardPreserved(source)
+      : widget.discardPreserved!(source);
+
+  Future<EvidenceItem?> _attach(
+    String transactionId,
+    PreservedEvidenceSource source,
+  ) => widget.attachPreserved == null
+      ? evidenceStore.attachPreservedAndReturn(
+          transactionId: transactionId,
+          source: source,
+        )
+      : widget.attachPreserved!(transactionId, source);
 
   Future<String?> _resolvePaymentSource(String? lastFour) async {
     if (lastFour == null) return null;
@@ -298,10 +370,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     final ocr = _ocrResult;
     if (preserved == null) return;
     setState(() => _saving = true);
-    final evidence = await evidenceStore.attachPreservedAndReturn(
-      transactionId: transaction.id,
-      source: preserved,
-    );
+    final evidence = await _attach(transaction.id, preserved);
     if (evidence == null) {
       if (mounted) setState(() => _saving = false);
       return;
@@ -372,9 +441,73 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       return;
     }
 
-    // OCR performs an early convenience check, but the user may have edited
-    // the extracted fields. Recheck immediately before creating anything so
-    // the final decision uses the values the user actually approved.
+    // Check strict duplicates immediately before creating anything so the
+    // final decision uses the values the user actually approved.
+    final proposed = TransactionDto(
+      id: '__receipt-proposed__',
+      amount: _amount.text.trim(),
+      currency: _currency.text.trim().toUpperCase(),
+      direction: TransactionDirection.expense.name,
+      status: TransactionStatus.active.name,
+      reviewState: TransactionReviewState.clear.name,
+      transactionDate: _iso(_date!),
+      createdAt: DateTime.now().toUtc(),
+      updatedAt: DateTime.now().toUtc(),
+      description: _merchantRaw.text.trim().isEmpty
+          ? 'Receipt purchase'
+          : _merchantRaw.text.trim(),
+      rawCounterparty: _merchantRaw.text.trim().isEmpty
+          ? null
+          : _merchantRaw.text.trim(),
+      paymentSourceId: _paymentSourceId,
+      merchantId: _merchantId,
+      categoryId: _categoryId,
+      tagIds: _tagIds.toList(growable: false),
+    );
+    final duplicate = await finance.duplicateTransactionChecker.call(
+      DuplicateTransactionCheckCommand(
+        transactionDate: proposed.transactionDate!,
+        amount: proposed.amount,
+        currency: proposed.currency,
+        direction: TransactionDirection.expense,
+        paymentSourceId: _paymentSourceId,
+        merchantId: _merchantId,
+      ),
+    );
+    if (!mounted) return;
+    if (duplicate case ApplicationSuccess<DuplicateTransactionCheckResult>(
+      value: final check,
+    ) when check.requiresConfirmation) {
+      final decision = await showDialog<ButlerlyDuplicateConfirmationResult>(
+        context: context,
+        builder: (dialogContext) => ButlerlyDuplicateTransactionConfirmation(
+          proposed: proposed,
+          candidates: check.candidates,
+          paymentSourceLabels: {
+            for (final source in _sources)
+              source.id.value: _paymentSourceLabel(source),
+          },
+          onDecision: (value) => Navigator.pop(dialogContext, value),
+        ),
+      );
+      if (!mounted ||
+          decision == null ||
+          decision.decision == ButlerlyDuplicateDecision.cancel) {
+        return;
+      }
+      if (decision.decision == ButlerlyDuplicateDecision.useExisting) {
+        final selectedId = decision.selectedTransactionId;
+        final selected = check.candidates
+            .where((candidate) => candidate.transaction.id == selectedId)
+            .firstOrNull;
+        if (selected != null) {
+          await _attachReceiptToExisting(selected.transaction);
+        }
+        return;
+      }
+    }
+
+    // Reconciliation is deliberately separate from strict duplicate identity.
     final matches = await _findExistingPaymentMatches();
     if (matches.isNotEmpty && mounted) {
       final selected = await _selectExistingMatch(matches);
@@ -415,10 +548,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       return;
     }
 
-    final evidence = await evidenceStore.attachPreservedAndReturn(
-      transactionId: result.value.id,
-      source: preserved,
-    );
+    final evidence = await _attach(result.value.id, preserved);
     if (evidence == null) {
       await finance.deleteTransactionPermanently(result.value.id);
       if (mounted) setState(() => _saving = false);
