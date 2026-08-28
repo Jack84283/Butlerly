@@ -11,7 +11,7 @@ final class StatementServices {
     this.transactions,
     this.workflow,
     this.clock,
-    {this.evidence},
+    {this.evidence}
   );
   final StatementRepository statements;
   final TransactionRepository transactions;
