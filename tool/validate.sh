@@ -18,31 +18,56 @@ format_check() {
 ./tool/check_toolchain_consistency.sh
 ./tool/verify_toolchain.sh
 
-(
+validate_finance_domain() (
   cd packages/butlerly_finance_domain
   format_check
   dart analyze --fatal-infos
   dart test
 )
 
-(
+validate_finance_application() (
   cd packages/butlerly_finance_application
   format_check
   dart analyze --fatal-infos
   dart test
 )
 
-(
+validate_database() (
   cd packages/butlerly_database
   format_check
   dart analyze --fatal-infos
   dart test
 )
 
-(
+validate_flutter_application() (
   cd apps/butlerly
   format_check
   flutter analyze
   flutter test
   flutter build web
 )
+
+case "${1:-all}" in
+  all)
+    validate_finance_domain
+    validate_database
+    validate_finance_application
+    validate_flutter_application
+    ;;
+  finance_domain)
+    validate_finance_domain
+    ;;
+  database)
+    validate_database
+    ;;
+  finance_application)
+    validate_finance_application
+    ;;
+  flutter_application)
+    validate_flutter_application
+    ;;
+  *)
+    echo "Usage: $0 [all|finance_domain|database|finance_application|flutter_application]" >&2
+    exit 2
+    ;;
+esac

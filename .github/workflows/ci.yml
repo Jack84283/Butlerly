@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   validate:
+    name: Validate (full)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,7 +18,44 @@ jobs:
       - run: ./tool/setup.sh
       - run: ./tool/validate.sh
 
+  finance_domain:
+    name: Finance Domain
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-toolchain
+      - run: ./tool/setup.sh
+      - run: ./tool/validate.sh finance_domain
+
+  database:
+    name: Database
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-toolchain
+      - run: ./tool/setup.sh
+      - run: ./tool/validate.sh database
+
+  finance_application:
+    name: Finance Application
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-toolchain
+      - run: ./tool/setup.sh
+      - run: ./tool/validate.sh finance_application
+
+  flutter_application:
+    name: Flutter Application
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-toolchain
+      - run: ./tool/setup.sh
+      - run: ./tool/validate.sh flutter_application
+
   ios_simulator:
+    name: iOS Simulator
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
