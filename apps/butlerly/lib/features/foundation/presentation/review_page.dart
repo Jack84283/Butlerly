@@ -2,6 +2,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -152,6 +153,7 @@ class _ReviewPageState extends State<ReviewPage> {
       );
       return;
     }
+    notifyTransactionChanged();
     _refresh();
   }
 
@@ -273,10 +275,24 @@ class _ReviewPageState extends State<ReviewPage> {
               }
               final groups = snapshot.data ?? const [];
               if (groups.isEmpty) {
-                return ButlerlyEmptyState(
-                  icon: Icons.copy_all_outlined,
-                  title: context.l10n.text('noPossibleDuplicates'),
-                  message: context.l10n.text('reviewEmptyBody'),
+                return Column(
+                  children: [
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: _rescanDuplicates,
+                        icon: const Icon(Icons.refresh),
+                        label: Text(
+                          context.l10n.text('rescanPossibleDuplicates'),
+                        ),
+                      ),
+                    ),
+                    ButlerlyEmptyState(
+                      icon: Icons.copy_all_outlined,
+                      title: context.l10n.text('noPossibleDuplicates'),
+                      message: context.l10n.text('reviewEmptyBody'),
+                    ),
+                  ],
                 );
               }
               return Column(
@@ -300,7 +316,6 @@ class _ReviewPageState extends State<ReviewPage> {
                         group,
                         DuplicateCandidateGroupStatus.keepBoth,
                       ),
-                      onReviewLater: () {},
                       onConsolidate: (id) => _resolveDuplicate(
                         group,
                         DuplicateCandidateGroupStatus.consolidated,
@@ -427,7 +442,6 @@ class _DuplicateGroupCard extends StatefulWidget {
     required this.finance,
     required this.masterData,
     required this.onKeepBoth,
-    required this.onReviewLater,
     required this.onConsolidate,
   });
 
@@ -435,7 +449,6 @@ class _DuplicateGroupCard extends StatefulWidget {
   final FinanceServices finance;
   final Future<TransactionMasterDataSnapshot> masterData;
   final VoidCallback onKeepBoth;
-  final VoidCallback onReviewLater;
   final ValueChanged<TransactionId> onConsolidate;
 
   @override
@@ -545,10 +558,6 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                 FilledButton(
                   onPressed: widget.onKeepBoth,
                   child: Text(context.l10n.text('keepBoth')),
-                ),
-                OutlinedButton(
-                  onPressed: widget.onReviewLater,
-                  child: Text(context.l10n.text('reviewLater')),
                 ),
                 Tooltip(
                   message: context.l10n.text('consolidateUseOneHint'),

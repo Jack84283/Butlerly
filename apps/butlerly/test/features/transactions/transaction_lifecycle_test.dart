@@ -399,33 +399,6 @@ void main() {
     },
   );
 
-  testWidgets('Possible Duplicates Review Later leaves records unchanged', (
-    tester,
-  ) async {
-    final first = _editorTransaction('review-later-a');
-    final second = _editorTransaction('review-later-b');
-    await repository.save(first);
-    await repository.save(second);
-    await services<FinanceServices>().scanExistingTransactionsForDuplicates!();
-
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(body: ReviewPage(showPossibleDuplicates: true)),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Review later'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Possible duplicate group'), findsOneWidget);
-    expect(
-      duplicateGroups.groups.single.status,
-      DuplicateCandidateGroupStatus.unresolved,
-    );
-    expect(repository.values['review-later-a'], same(first));
-    expect(repository.values['review-later-b'], same(second));
-  });
-
   testWidgets(
     'Possible Duplicates consolidate choice records metadata without mutating records',
     (tester) async {
