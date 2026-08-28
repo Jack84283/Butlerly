@@ -478,18 +478,20 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     if (duplicate case ApplicationSuccess<DuplicateTransactionCheckResult>(
       value: final check,
     ) when check.requiresConfirmation) {
-      final decision = await showDialog<ButlerlyDuplicateConfirmationResult>(
-        context: context,
-        builder: (dialogContext) => ButlerlyDuplicateTransactionConfirmation(
-          proposed: proposed,
-          candidates: check.candidates,
-          paymentSourceLabels: {
-            for (final source in _sources)
-              source.id.value: _paymentSourceLabel(source),
-          },
-          onDecision: (value) => Navigator.pop(dialogContext, value),
-        ),
-      );
+      final decision =
+          await showButlerlyBottomSheet<ButlerlyDuplicateConfirmationResult>(
+            context: context,
+            builder: (dialogContext) =>
+                ButlerlyDuplicateTransactionConfirmation(
+                  proposed: proposed,
+                  candidates: check.candidates,
+                  paymentSourceLabels: {
+                    for (final source in _sources)
+                      source.id.value: _paymentSourceLabel(source),
+                  },
+                  onDecision: (value) => Navigator.pop(dialogContext, value),
+                ),
+          );
       if (!mounted ||
           decision == null ||
           decision.decision == ButlerlyDuplicateDecision.cancel) {

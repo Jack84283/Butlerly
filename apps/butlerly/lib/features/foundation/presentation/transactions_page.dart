@@ -430,20 +430,21 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
     ) when check.requiresConfirmation) {
       final editorData = await _masterData;
       if (!mounted) return;
-      final decision = await showDialog<ButlerlyDuplicateConfirmationResult>(
-        context: context,
-        builder: (dialogContext) => ButlerlyDuplicateTransactionConfirmation(
-          proposed: proposed,
-          candidates: check.candidates,
-          paymentSourceLabels: {
-            for (final source in editorData.paymentSources)
-              source.id.value: source.lastFour == null
-                  ? (source.displayIdentity ?? source.name)
-                  : '${source.displayIdentity ?? source.name} ••••${source.lastFour}',
-          },
-          onDecision: (value) => Navigator.pop(dialogContext, value),
-        ),
-      );
+      final decision =
+          await showButlerlyBottomSheet<ButlerlyDuplicateConfirmationResult>(
+            context: context,
+            builder: (dialogContext) => ButlerlyDuplicateTransactionConfirmation(
+              proposed: proposed,
+              candidates: check.candidates,
+              paymentSourceLabels: {
+                for (final source in editorData.paymentSources)
+                  source.id.value: source.lastFour == null
+                      ? (source.displayIdentity ?? source.name)
+                      : '${source.displayIdentity ?? source.name} ••••${source.lastFour}',
+              },
+              onDecision: (value) => Navigator.pop(dialogContext, value),
+            ),
+          );
       if (!mounted || decision == null) {
         return;
       }

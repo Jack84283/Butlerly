@@ -460,20 +460,36 @@ abstract final class ReceiptExtractor {
   /// Explicit TOTAL-family labels are authoritative. Spatial data is used
   /// only to collect the value from the same OCR row, never to invent a total.
   static String? _explicitTotal(List<OcrObservation> lines) {
+    // Ordered from most authoritative to least authoritative for one
+    // receipt-like transaction. Statement row extraction does not use this.
     const labels = [
       'grand total',
       'total due',
       'amount due',
-      'total paid',
       'amount paid',
       'purchase total',
+      'payment amount',
+      'amount',
+      'balance',
       'total',
+      'sale',
     ];
     for (final label in labels) {
       for (var index = 0; index < lines.length; index++) {
         final line = lines[index];
         final normalized = _normalize(line.text).toLowerCase();
         if (!RegExp('\\b${RegExp.escape(label)}\\b').hasMatch(normalized)) {
+          continue;
+        }
+        if (label == 'balance' &&
+            RegExp(
+              r'\b(?:balance\s+before|previous\s+balance|beginning\s+balance)\b',
+            ).hasMatch(normalized)) {
+          continue;
+        }
+        if (RegExp(
+          r'\b(?:subtotal|tax|tip|gratuity|change|cash|tendered|savings|rewards?|points)\b',
+        ).hasMatch(normalized)) {
           continue;
         }
         final row =

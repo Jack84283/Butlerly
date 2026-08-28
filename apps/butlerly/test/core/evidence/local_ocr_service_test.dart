@@ -543,4 +543,26 @@ TOTAL \$24.50
       isNot(contains('4111 1111 1111 1234')),
     );
   });
+
+  test('uses deterministic single-transaction amount label precedence', () {
+    const cases = <(String, String)>[
+      ('Grand Total 25.00\nAmount 24.00\nTotal 22.00', '25.00'),
+      ('Total Due 25.00\nAmount Due 24.00\nTotal 22.00', '25.00'),
+      ('Amount Due 24.00\nAmount Paid 23.00\nTotal 22.00', '24.00'),
+      ('Amount Paid 24.00\nPurchase Total 23.00\nTotal 22.00', '24.00'),
+      ('Purchase Total 24.00\nPayment Amount 23.00\nTotal 22.00', '24.00'),
+      ('Payment Amount 24.00\nAmount 23.00\nTotal 22.00', '24.00'),
+      ('Amount 24.00\nBalance 23.00\nTotal 22.00', '24.00'),
+      ('Balance 23.00\nTotal 22.00', '23.00'),
+      ('Total 22.00\nSale 21.00', '22.00'),
+      ('Sale 21.00', '21.00'),
+      ('Subtotal 20.00\nTax 2.00\nTip 4.00\nTotal 22.00', '22.00'),
+      ('Balance Before 100.00\nBalance 23.00\nTotal 22.00', '23.00'),
+      ('Previous Balance 100.00\nTotal 22.00', '22.00'),
+      ('TOTAL DUE: \$25.00', '25.00'),
+    ];
+    for (final (text, expected) in cases) {
+      expect(ReceiptExtractor.extract(text).amount, expected, reason: text);
+    }
+  });
 }
