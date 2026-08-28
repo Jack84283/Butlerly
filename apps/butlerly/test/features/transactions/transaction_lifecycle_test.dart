@@ -636,6 +636,146 @@ void main() {
     expect(find.text('保存整理结果'), findsOneWidget);
     expect(find.text('Organize transaction'), findsNothing);
   });
+
+  testWidgets('add editor saves and returns a typed saved result', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(home: _EditorHarness(finance: services<FinanceServices>())),
+    );
+    await tester.tap(find.text('Open editor'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).at(0), '12.50');
+    await tester.scrollUntilVisible(
+      find.text('Save locally'),
+      160,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.text('Save locally'));
+    await tester.pumpAndSettle();
+    final harness = tester.state<_EditorHarnessState>(
+      find.byType(_EditorHarness),
+    );
+    expect(harness.lastResult, isA<TransactionEditorSaved>());
+    expect(repository.values, hasLength(1));
+  });
+
+  testWidgets(
+    'add editor Use Existing returns the selected candidate without saving',
+    (tester) async {
+      await repository.save(_editorTransaction('existing-editor'));
+      await tester.pumpWidget(
+        MaterialApp(home: _EditorHarness(finance: services<FinanceServices>())),
+      );
+      await tester.tap(find.text('Open editor'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField).at(0), '25');
+      await tester.scrollUntilVisible(
+        find.text('Save locally'),
+        160,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.tap(find.text('Save locally'));
+      await tester.pumpAndSettle();
+      expect(find.text('Possible duplicate'), findsOneWidget);
+      await tester.tap(find.text('Use existing'));
+      await tester.pumpAndSettle();
+      final harness = tester.state<_EditorHarnessState>(
+        find.byType(_EditorHarness),
+      );
+      expect(harness.lastResult, isA<TransactionEditorUseExisting>());
+      expect(
+        (harness.lastResult! as TransactionEditorUseExisting).transactionId,
+        'existing-editor',
+      );
+      expect(repository.values.keys, ['existing-editor']);
+    },
+  );
+
+  testWidgets('edit editor excludes itself and preserves it on Use Existing', (
+    tester,
+  ) async {
+    final current = _editorTransaction('current-editor');
+    await repository.save(current);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: _EditorHarness(
+          finance: services<FinanceServices>(),
+          existing: TransactionDto.fromDomain(current),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Open editor'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Save locally'),
+      160,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.text('Save locally'));
+    await tester.pumpAndSettle();
+    expect(find.text('Possible duplicate'), findsNothing);
+    expect(repository.values['current-editor']?.money, current.money);
+    expect(repository.values['current-editor']?.direction, current.direction);
+  });
+}
+
+Transaction _editorTransaction(String id) {
+  final now = DateTime.now().toUtc();
+  final date = now.toIso8601String().substring(0, 10);
+  return Transaction(
+    id: TransactionId(id),
+    timing: const UnknownTransactionTime(UnknownTransactionTimeReason.unknown),
+    money: Money(
+      amount: DecimalValue.parse('25.00'),
+      currency: CurrencyCode('USD'),
+    ),
+    direction: TransactionDirection.expense,
+    sourceType: TransactionSourceType.manual,
+    transactionDate: date,
+    provenance: [
+      Provenance(
+        id: ProvenanceId('$id-p'),
+        sourceType: ProvenanceSourceType.userEntry,
+        capturedAt: now,
+        originalRepresentation: 'manual',
+      ),
+    ],
+    createdAt: now,
+    updatedAt: now,
+  );
+}
+
+class _EditorHarness extends StatefulWidget {
+  const _EditorHarness({required this.finance, this.existing});
+  final FinanceServices finance;
+  final TransactionDto? existing;
+  @override
+  State<_EditorHarness> createState() => _EditorHarnessState();
+}
+
+class _EditorHarnessState extends State<_EditorHarness> {
+  TransactionEditorResult? lastResult;
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: Center(
+      child: ElevatedButton(
+        onPressed: () async {
+          final result = await Navigator.push<TransactionEditorResult>(
+            context,
+            MaterialPageRoute(
+              builder: (_) => TransactionEditorPage(
+                finance: widget.finance,
+                existing: widget.existing,
+              ),
+            ),
+          );
+          if (mounted) setState(() => lastResult = result);
+        },
+        child: const Text('Open editor'),
+      ),
+    ),
+  );
 }
 
 final class MemoryUserPreferences implements UserPreferenceRepository {

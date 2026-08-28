@@ -905,15 +905,18 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
         IconButton(
           tooltip: context.l10n.text('editTransaction'),
           onPressed: () async {
-            final changed = await Navigator.of(context).push<bool>(
-              MaterialPageRoute(
-                builder: (_) => TransactionEditorPage(
-                  finance: finance,
-                  existing: transaction,
-                ),
-              ),
-            );
-            if (changed == true && context.mounted) {
+            final changed = await Navigator.of(context)
+                .push<TransactionEditorResult>(
+                  MaterialPageRoute(
+                    builder: (_) => TransactionEditorPage(
+                      finance: finance,
+                      existing: transaction,
+                    ),
+                  ),
+                );
+            if ((changed is TransactionEditorSaved ||
+                    changed is TransactionEditorUseExisting) &&
+                context.mounted) {
               final refreshed = await finance.getTransaction(transaction.id);
               if (!context.mounted) return;
               if (refreshed case ApplicationSuccess<TransactionDto>(
