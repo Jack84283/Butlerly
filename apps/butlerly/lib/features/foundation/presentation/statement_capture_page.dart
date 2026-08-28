@@ -13,6 +13,25 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+sealed class StatementReconciliationDecision {
+  const StatementReconciliationDecision();
+}
+
+final class LinkStatementReconciliation
+    extends StatementReconciliationDecision {
+  const LinkStatementReconciliation(this.transactionId);
+  final String transactionId;
+}
+
+final class CreateStatementSeparately extends StatementReconciliationDecision {
+  const CreateStatementSeparately();
+}
+
+final class CancelStatementReconciliation
+    extends StatementReconciliationDecision {
+  const CancelStatementReconciliation();
+}
+
 class StatementCapturePage extends StatefulWidget {
   const StatementCapturePage({super.key});
   @override
@@ -722,36 +741,50 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
       if (matches case ApplicationSuccess<List<ReconciliationMatchCandidate>>(
         value: final values,
       ) when values.isNotEmpty) {
-        final link = await showDialog<String>(
+        final decision = await showDialog<StatementReconciliationDecision>(
           context: context,
           builder: (_) => AlertDialog(
-            title: const Text('Likely existing transaction'),
+            title: Text(context.l10n.text('statementReconciliationTitle')),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Select an existing transaction to link:'),
+                Text(context.l10n.text('statementReconciliationPrompt')),
                 for (final candidate in values)
                   ListTile(
                     title: Text(
                       '${candidate.transaction.currency} ${candidate.transaction.amount} · ${candidate.transaction.transactionDate}',
                     ),
                     subtitle: Text(
-                      'Score ${candidate.assessment.score.toStringAsFixed(2)}\n${candidate.assessment.reasons.join('; ')}${candidate.assessment.conflicts.isEmpty ? '' : '\n${candidate.assessment.conflicts.join('; ')}'}',
+                      '${context.l10n.text('reconciliationScore', {'score': candidate.assessment.score.toStringAsFixed(2)})}\n${candidate.assessment.reasons.join('; ')}${candidate.assessment.conflicts.isEmpty ? '' : '\n${candidate.assessment.conflicts.join('; ')}'}',
                     ),
-                    onTap: () =>
-                        Navigator.pop(context, candidate.transaction.id),
+                    onTap: () => Navigator.pop(
+                      context,
+                      LinkStatementReconciliation(candidate.transaction.id),
+                    ),
                   ),
               ],
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Create separately'),
+                onPressed: () =>
+                    Navigator.pop(context, const CreateStatementSeparately()),
+                child: Text(context.l10n.text('createSeparately')),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(
+                  context,
+                  const CancelStatementReconciliation(),
+                ),
+                child: Text(context.l10n.text('cancel')),
               ),
             ],
           ),
         );
-        if (link != null) await widget.service.link(row, link);
+        if (decision is LinkStatementReconciliation) {
+          await widget.service.link(row, decision.transactionId);
+        } else if (decision is CreateStatementSeparately) {
+          await widget.service.save(row, _sourceId!, allowCreateNew: true);
+        }
       } else {
         await widget.service.save(row, _sourceId!, allowCreateNew: true);
       }
