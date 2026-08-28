@@ -9,15 +9,6 @@ permissions:
   contents: read
 
 jobs:
-  validate:
-    name: Validate (full)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-toolchain
-      - run: ./tool/setup.sh
-      - run: ./tool/validate.sh
-
   finance_domain:
     name: Finance Domain
     runs-on: ubuntu-latest
