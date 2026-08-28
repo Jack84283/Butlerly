@@ -138,6 +138,7 @@ final class FinanceServices {
          reconciliationWorkflow ?? const _NoReconciliationWorkflowRepository(),
        ),
        findReceiptPaymentMatch = FindReceiptPaymentMatch(transactions),
+       duplicateTransactionChecker = DuplicateTransactionChecker(transactions),
        evaluateTransactionNormalization = EvaluateTransactionNormalization(
          transactions,
          preferences,
@@ -241,6 +242,7 @@ final class FinanceServices {
   final EvaluateTransactionNormalization evaluateTransactionNormalization;
   final ConfirmUserNormalizedAmount confirmUserNormalizedAmount;
   final FindReceiptPaymentMatch findReceiptPaymentMatch;
+  final DuplicateTransactionChecker duplicateTransactionChecker;
   final InstallBuiltInRules? installBuiltInRules;
   final CalculateAnalysisOverview? calculateAnalysisOverview;
   final CalculateAnalysisCalendar? calculateAnalysisCalendar;

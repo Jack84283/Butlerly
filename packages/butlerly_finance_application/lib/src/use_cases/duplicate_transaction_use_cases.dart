@@ -53,11 +53,13 @@ final class DuplicateTransactionChecker {
   Future<ApplicationResult<DuplicateTransactionCheckResult>> call(
     DuplicateTransactionCheckCommand command,
   ) => runApplication('check duplicate transaction', () async {
+    final amount = DecimalValue.parse(command.amount);
+    final currency = command.currency.trim().toUpperCase();
     final candidates = await repository.query(
       TransactionRepositoryQuery(
         from: DateTime.parse(command.transactionDate),
         to: DateTime.parse(command.transactionDate),
-        currency: command.currency,
+        currency: currency,
         direction: command.direction,
         status: TransactionStatus.active,
       ),
@@ -67,9 +69,8 @@ final class DuplicateTransactionChecker {
           (value) =>
               value.id.value != command.excludeTransactionId &&
               value.transactionDate == command.transactionDate &&
-              value.money.amount.toString() == command.amount &&
-              value.money.currency.value ==
-                  command.currency.trim().toUpperCase(),
+              value.money.amount == amount &&
+              value.money.currency.value == currency,
         )
         .map(
           (value) => DuplicateTransactionCandidate(

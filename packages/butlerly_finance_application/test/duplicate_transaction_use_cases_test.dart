@@ -110,9 +110,18 @@ final class _Transactions implements TransactionRepository {
   Future<List<Transaction>> query(TransactionRepositoryQuery query) async =>
       values
           .where(
-            (v) => query.direction == null || v.direction == query.direction,
+            (v) =>
+                (query.from == null ||
+                    v.transactionDate! == _date(query.from!)) &&
+                (query.to == null || v.transactionDate! == _date(query.to!)) &&
+                (query.currency == null ||
+                    v.money.currency.value == query.currency) &&
+                (query.direction == null || v.direction == query.direction) &&
+                (query.status == null || v.status == query.status),
           )
           .toList();
   Future<void> removePermanently(TransactionId id) async =>
       values.removeWhere((v) => v.id == id);
 }
+
+String _date(DateTime value) => value.toIso8601String().substring(0, 10);
