@@ -22,7 +22,7 @@ final class ButlerlyDuplicateConfirmationResult {
 }
 
 /// Shared, workflow-neutral confirmation for strict duplicate candidates.
-class ButlerlyDuplicateTransactionConfirmation extends StatelessWidget {
+class ButlerlyDuplicateTransactionConfirmation extends StatefulWidget {
   const ButlerlyDuplicateTransactionConfirmation({
     required this.proposed,
     required this.candidates,
@@ -35,88 +35,86 @@ class ButlerlyDuplicateTransactionConfirmation extends StatelessWidget {
   final ValueChanged<ButlerlyDuplicateConfirmationResult> onDecision;
   final Map<String, String> paymentSourceLabels;
 
-  void _choose(
-    BuildContext context,
-    ButlerlyDuplicateDecision decision,
-    String? id,
-  ) => onDecision(
+  @override
+  State<ButlerlyDuplicateTransactionConfirmation> createState() =>
+      _ButlerlyDuplicateTransactionConfirmationState();
+}
+
+class _ButlerlyDuplicateTransactionConfirmationState
+    extends State<ButlerlyDuplicateTransactionConfirmation> {
+  String? _selectedTransactionId;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.candidates.length == 1) {
+      _selectedTransactionId = widget.candidates.single.transaction.id;
+    }
+  }
+
+  void _choose(ButlerlyDuplicateDecision decision) => widget.onDecision(
     ButlerlyDuplicateConfirmationResult(
       decision: decision,
-      selectedTransactionId: id,
+      selectedTransactionId: decision == ButlerlyDuplicateDecision.useExisting
+          ? _selectedTransactionId
+          : null,
     ),
   );
 
   @override
-  Widget build(BuildContext context) {
-    final selection = ValueNotifier<String?>(
-      candidates.length == 1 ? candidates.single.transaction.id : null,
-    );
-    return ValueListenableBuilder<String?>(
-      valueListenable: selection,
-      builder: (context, selected, _) => AlertDialog(
-        title: Semantics(
-          liveRegion: true,
-          header: true,
-          child: Text(context.l10n.text('possibleDuplicate')),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(context.l10n.text('proposedTransaction')),
-              _summary(proposed),
-              const SizedBox(height: 16),
-              Text(context.l10n.text('existingTransactions')),
-              for (final candidate in candidates) ...[
-                const Divider(),
-                RadioListTile<String>(
-                  contentPadding: EdgeInsets.zero,
+  Widget build(BuildContext context) => AlertDialog(
+    title: Semantics(
+      liveRegion: true,
+      header: true,
+      child: Text(context.l10n.text('possibleDuplicate')),
+    ),
+    content: SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(context.l10n.text('proposedTransaction')),
+          _summary(widget.proposed),
+          const SizedBox(height: 16),
+          Text(context.l10n.text('existingTransactions')),
+          for (final candidate in widget.candidates) ...[
+            const Divider(),
+            RadioListTile<String>(
+              contentPadding: EdgeInsets.zero,
               title: _summary(candidate.transaction),
               value: candidate.transaction.id,
               // ignore: deprecated_member_use
-              groupValue: selected,
+              groupValue: _selectedTransactionId,
               // ignore: deprecated_member_use
-              onChanged: (value) => selection.value = value,
-                ),
-              ],
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () =>
-                _choose(context, ButlerlyDuplicateDecision.cancel, null),
-            child: Text(context.l10n.text('cancel')),
-          ),
-          TextButton(
-            onPressed: () => _choose(
-              context,
-              ButlerlyDuplicateDecision.continueAnyway,
-              null,
+              onChanged: (value) =>
+                  setState(() => _selectedTransactionId = value),
             ),
-            child: Text(context.l10n.text('continueAnyway')),
-          ),
-          FilledButton(
-            onPressed: selected == null
-                ? null
-                : () => _choose(
-                    context,
-                    ButlerlyDuplicateDecision.useExisting,
-                    selected,
-                  ),
-            child: Text(context.l10n.text('useExistingTransaction')),
-          ),
+          ],
         ],
       ),
-    );
-  }
-
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => _choose(ButlerlyDuplicateDecision.cancel),
+        child: Text(context.l10n.text('cancel')),
+      ),
+      TextButton(
+        onPressed: () => _choose(ButlerlyDuplicateDecision.continueAnyway),
+        child: Text(context.l10n.text('continueAnyway')),
+      ),
+      FilledButton(
+        onPressed: _selectedTransactionId == null
+            ? null
+            : () => _choose(ButlerlyDuplicateDecision.useExisting),
+        child: Text(context.l10n.text('useExistingTransaction')),
+      ),
+    ],
+  );
   Widget _summary(TransactionDto transaction) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 6),
     child: Text(
       '${transaction.transactionDate ?? '—'} · ${transaction.amount} ${transaction.currency} · ${transaction.direction}\n'
       '${transaction.description ?? transaction.rawCounterparty ?? ''}'
-      '${transaction.paymentSourceId == null || paymentSourceLabels[transaction.paymentSourceId] == null ? '' : '\n${paymentSourceLabels[transaction.paymentSourceId]}'}',
+      '${transaction.paymentSourceId == null || widget.paymentSourceLabels[transaction.paymentSourceId] == null ? '' : '\n${widget.paymentSourceLabels[transaction.paymentSourceId]}'}',
     ),
   );
 }

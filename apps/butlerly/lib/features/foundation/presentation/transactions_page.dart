@@ -89,13 +89,16 @@ class _TransactionsPageState extends State<TransactionsPage> {
   Future<void> _openEditor([TransactionDto? transaction]) async {
     final finance = _finance;
     if (finance == null) return;
-    final changed = await Navigator.of(context).push<bool>(
+    final result = await Navigator.of(context).push<TransactionEditorResult>(
       MaterialPageRoute(
         builder: (_) =>
             TransactionEditorPage(finance: finance, existing: transaction),
       ),
     );
-    if (changed == true) _refresh();
+    if (result is TransactionEditorSaved ||
+        result is TransactionEditorUseExisting) {
+      _refresh();
+    }
   }
 
   Future<void> _openDetail(TransactionDto transaction) async {
@@ -258,6 +261,30 @@ final class _TransactionsData {
   final TransactionMasterData masterData;
 }
 
+sealed class TransactionEditorResult {
+  const TransactionEditorResult();
+  const factory TransactionEditorResult.saved(TransactionDto transaction) =
+      TransactionEditorSaved;
+  const factory TransactionEditorResult.cancelled() =
+      TransactionEditorCancelled;
+  const factory TransactionEditorResult.useExisting(String transactionId) =
+      TransactionEditorUseExisting;
+}
+
+final class TransactionEditorSaved extends TransactionEditorResult {
+  const TransactionEditorSaved(this.transaction);
+  final TransactionDto transaction;
+}
+
+final class TransactionEditorCancelled extends TransactionEditorResult {
+  const TransactionEditorCancelled();
+}
+
+final class TransactionEditorUseExisting extends TransactionEditorResult {
+  const TransactionEditorUseExisting(this.transactionId);
+  final String transactionId;
+}
+
 class TransactionEditorPage extends StatefulWidget {
   const TransactionEditorPage({
     required this.finance,
@@ -392,11 +419,19 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
           onDecision: (value) => Navigator.pop(context, value),
         ),
       );
-      if (!mounted ||
-          decision == null ||
-          decision.decision != ButlerlyDuplicateDecision.continueAnyway) {
+      if (!mounted || decision == null) {
         return;
       }
+      if (decision.decision == ButlerlyDuplicateDecision.useExisting) {
+        final selectedId = decision.selectedTransactionId;
+        if (selectedId != null) {
+          Navigator.of(
+            context,
+          ).pop(TransactionEditorResult.useExisting(selectedId));
+        }
+        return;
+      }
+      if (decision.decision == ButlerlyDuplicateDecision.cancel) return;
     }
     setState(() => _saving = true);
     final timing =
@@ -452,7 +487,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
       return;
     }
     notifyTransactionChanged();
-    Navigator.of(context).pop(true);
+    if (result case ApplicationSuccess<TransactionDto>(value: final saved)) {
+      Navigator.of(context).pop(TransactionEditorResult.saved(saved));
+    }
   }
 
   @override
