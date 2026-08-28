@@ -128,6 +128,7 @@ final class StatementServices {
   Future<ApplicationResult<TransactionDto>> save(
     StatementRow row,
     String paymentSourceId, {
+    bool allowCreateNew = false,
   }) => runApplication('save statement row', () async {
     if ((row.status == StatementRowStatus.saved ||
             row.status == StatementRowStatus.linked) &&
@@ -147,15 +148,19 @@ final class StatementServices {
         message: 'A date, amount, currency, and direction are required.',
       );
     }
-    await assertNoDuplicateTransaction(
-      transactions,
-      DuplicateTransactionCheckCommand(
-        transactionDate: row.transactionDate!.toIso8601String().substring(0, 10),
-        amount: row.amount!,
-        currency: row.currency!,
-        direction: _directionForRow(row),
-      ),
-    );
+    if (!allowCreateNew) {
+      final matches = await likelyMatches(row, paymentSourceId);
+      if (matches case ApplicationSuccess<List<ReconciliationMatchCandidate>>(
+        value: final values,
+      ) when values.isNotEmpty) {
+        throw const DomainValidationException(
+          code: DomainErrorCode.invalidState,
+          field: 'statementRow',
+          message:
+              'A likely existing transaction requires an explicit decision.',
+        );
+      }
+    }
     final now = clock.now();
     final transactionId = 'statement-${row.statementId}-${row.id}';
     final transaction = Transaction(

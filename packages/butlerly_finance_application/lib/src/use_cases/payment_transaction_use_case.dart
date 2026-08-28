@@ -43,15 +43,6 @@ final class CreatePaymentTransaction {
   Future<ApplicationResult<TransactionDto>> call(
     PaymentTransactionCommand command,
   ) => runApplication('create payment transaction', () async {
-    await assertNoDuplicateTransaction(
-      repository,
-      DuplicateTransactionCheckCommand(
-        transactionDate: command.transactionDate,
-        amount: command.money.amount.toString(),
-        currency: command.money.currency.value,
-        direction: command.direction,
-      ),
-    );
     final now = clock.now();
     final transaction = Transaction(
       id: TransactionId(command.id),

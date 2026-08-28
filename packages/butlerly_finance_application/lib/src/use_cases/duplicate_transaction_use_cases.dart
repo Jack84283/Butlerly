@@ -87,18 +87,3 @@ final class DuplicateTransactionChecker {
     return DuplicateTransactionCheckResult(List.unmodifiable(matches));
   });
 }
-
-Future<void> assertNoDuplicateTransaction(
-  TransactionRepository repository,
-  DuplicateTransactionCheckCommand command,
-) async {
-  final result = await DuplicateTransactionChecker(repository)(command);
-  if (result case ApplicationSuccess<DuplicateTransactionCheckResult>(
-    value: final check,
-  ) when check.requiresConfirmation) {
-    throw const RepositoryException(
-      RepositoryFailureCode.constraint,
-      'duplicate transaction',
-    );
-  }
-}

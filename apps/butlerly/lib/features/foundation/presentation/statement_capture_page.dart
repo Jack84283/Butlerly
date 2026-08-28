@@ -673,43 +673,59 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
       if (matches case ApplicationSuccess<List<ReconciliationMatchCandidate>>(
         value: final values,
       ) when values.isNotEmpty) {
-        final link = await showDialog<String>(
+        final proposed = TransactionDto(
+          id: '__statement-proposed__',
+          amount: row.amount!,
+          currency: row.currency!,
+          direction: row.direction!,
+          status: TransactionStatus.active.name,
+          reviewState: TransactionReviewState.clear.name,
+          transactionDate: row.transactionDate!
+              .toIso8601String()
+              .substring(0, 10),
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+          description: row.description,
+          rawCounterparty: row.originalText,
+          paymentSourceId: row.paymentSourceId ?? _sourceId,
+          merchantId: row.merchantId,
+          categoryId: row.categoryId,
+          tagIds: row.tagIds,
+        );
+        final decision = await showDialog<
+          ButlerlyDuplicateConfirmationResult
+        >(
           context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('Likely existing transaction'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('Select an existing transaction to link:'),
-                for (final candidate in values)
-                  ListTile(
-                    title: Text(
-                      '${candidate.transaction.currency} ${candidate.transaction.amount} · ${candidate.transaction.transactionDate}',
-                    ),
-                    subtitle: Text(
-                      'Score ${candidate.assessment.score.toStringAsFixed(2)}\n${candidate.assessment.reasons.join('; ')}${candidate.assessment.conflicts.isEmpty ? '' : '\n${candidate.assessment.conflicts.join('; ')}'}',
-                    ),
-                    onTap: () =>
-                        Navigator.pop(context, candidate.transaction.id),
-                  ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Create separately'),
-              ),
+          builder: (_) => ButlerlyDuplicateTransactionConfirmation(
+            proposed: proposed,
+            candidates: [
+              for (final candidate in values)
+                DuplicateTransactionCandidate(
+                  transaction: candidate.transaction,
+                  confidence: candidate.assessment.score,
+                  matchingReasons: candidate.assessment.reasons,
+                ),
             ],
+            paymentSourceLabels: {
+              for (final source in _sources)
+                source.id.value: source.lastFour == null
+                    ? (source.displayIdentity ?? source.name)
+                    : '${source.displayIdentity ?? source.name} ••••${source.lastFour}',
+            },
+            onDecision: (value) => Navigator.pop(context, value),
           ),
         );
-        if (link != null) {
-          await widget.service.link(row, link);
+        if (!mounted || decision == null) return;
+        if (decision.decision == ButlerlyDuplicateDecision.useExisting &&
+            decision.selectedTransactionId != null) {
+          await widget.service.link(row, decision.selectedTransactionId!);
           status = StatementRowStatus.linked;
-        } else {
-          await widget.service.save(row, _sourceId!);
+        } else if (decision.decision ==
+            ButlerlyDuplicateDecision.continueAnyway) {
+          await widget.service.save(row, _sourceId!, allowCreateNew: true);
         }
       } else {
-        await widget.service.save(row, _sourceId!);
+        await widget.service.save(row, _sourceId!, allowCreateNew: true);
       }
     } else {
       await widget.service.setDisposition(row, status);
