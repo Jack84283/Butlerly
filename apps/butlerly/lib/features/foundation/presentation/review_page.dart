@@ -17,6 +17,7 @@ class ReviewPage extends StatefulWidget {
 
 class _ReviewPageState extends State<ReviewPage> {
   late Future<List<ReviewItemDto>> _items;
+  late Future<List<DuplicateCandidateGroup>> _duplicateGroups;
   late Future<List<ReconciliationCandidate>> _candidates;
   _ReviewView _view = _ReviewView.needsReview;
 
@@ -28,6 +29,7 @@ class _ReviewPageState extends State<ReviewPage> {
   void initState() {
     super.initState();
     _items = _load();
+    _duplicateGroups = _loadDuplicateGroups();
     _candidates = _loadCandidates();
   }
 
@@ -45,8 +47,80 @@ class _ReviewPageState extends State<ReviewPage> {
 
   void _refresh() => setState(() {
     _items = _load();
+    _duplicateGroups = _loadDuplicateGroups();
     _candidates = _loadCandidates();
   });
+
+  Future<List<DuplicateCandidateGroup>> _loadDuplicateGroups() async {
+    final finance = _finance;
+    if (finance == null ||
+        finance.scanExistingTransactionsForDuplicates == null) {
+      return const [];
+    }
+    final scanned = await finance.scanExistingTransactionsForDuplicates!();
+    if (scanned is ApplicationFailure<List<DuplicateCandidateGroup>>) {
+      throw StateError('Possible duplicates could not be scanned.');
+    }
+    final result = await finance.listDuplicateCandidateGroups!();
+    return switch (result) {
+      ApplicationSuccess<List<DuplicateCandidateGroup>>(:final value) => value,
+      ApplicationFailure<List<DuplicateCandidateGroup>>() => throw StateError(
+        'Possible duplicates could not be loaded.',
+      ),
+    };
+  }
+
+  Future<void> _rescanDuplicates() async {
+    final scan = _finance?.scanExistingTransactionsForDuplicates;
+    if (scan == null) return;
+    final result = await scan();
+    if (!mounted) return;
+    if (result is ApplicationFailure<List<DuplicateCandidateGroup>>) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.l10n.text('possibleDuplicatesScanFailed')),
+        ),
+      );
+      return;
+    }
+    setState(() => _duplicateGroups = _loadDuplicateGroupsWithoutScan());
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(context.l10n.text('possibleDuplicatesScanComplete')),
+      ),
+    );
+  }
+
+  Future<List<DuplicateCandidateGroup>>
+  _loadDuplicateGroupsWithoutScan() async {
+    final result = await _finance!.listDuplicateCandidateGroups!();
+    return switch (result) {
+      ApplicationSuccess<List<DuplicateCandidateGroup>>(:final value) => value,
+      ApplicationFailure<List<DuplicateCandidateGroup>>() => throw StateError(
+        'Possible duplicates could not be loaded.',
+      ),
+    };
+  }
+
+  Future<void> _resolveDuplicate(
+    DuplicateCandidateGroup group,
+    DuplicateCandidateGroupStatus status, {
+    TransactionId? selectedTransactionId,
+  }) async {
+    final result = await _finance!.resolveDuplicateCandidateGroup!(
+      group.id,
+      status,
+      selectedTransactionId: selectedTransactionId,
+    );
+    if (!mounted) return;
+    if (result is ApplicationFailure<void>) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.text('dataPreserved'))),
+      );
+      return;
+    }
+    _refresh();
+  }
 
   Future<List<ReconciliationCandidate>> _loadCandidates() async {
     final finance = _finance;
@@ -142,23 +216,79 @@ class _ReviewPageState extends State<ReviewPage> {
         ),
         const SizedBox(height: ButlerlySpacing.section),
         if (_view == _ReviewView.duplicates)
+          FutureBuilder<List<DuplicateCandidateGroup>>(
+            future: _duplicateGroups,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return ButlerlyErrorState(
+                  title: context.l10n.text('reviewLoadError'),
+                  message: context.l10n.text('tryAgain'),
+                  preserved: context.l10n.text('dataPreserved'),
+                  actionLabel: context.l10n.text('tryAgain'),
+                  onAction: _refresh,
+                );
+              }
+              final groups = snapshot.data ?? const [];
+              if (groups.isEmpty) {
+                return ButlerlyEmptyState(
+                  icon: Icons.copy_all_outlined,
+                  title: context.l10n.text('noPossibleDuplicates'),
+                  message: context.l10n.text('reviewEmptyBody'),
+                );
+              }
+              return Column(
+                children: [
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: _rescanDuplicates,
+                      icon: const Icon(Icons.refresh),
+                      label: Text(
+                        context.l10n.text('rescanPossibleDuplicates'),
+                      ),
+                    ),
+                  ),
+                  for (final group in groups)
+                    _DuplicateGroupCard(
+                      group: group,
+                      finance: _finance!,
+                      onKeepBoth: () => _resolveDuplicate(
+                        group,
+                        DuplicateCandidateGroupStatus.keepBoth,
+                      ),
+                      onReviewLater: () {},
+                      onConsolidate: (id) => _resolveDuplicate(
+                        group,
+                        DuplicateCandidateGroupStatus.consolidated,
+                        selectedTransactionId: id,
+                      ),
+                    ),
+                ],
+              );
+            },
+          )
+        else if (_view == _ReviewView.reconciliation)
           FutureBuilder<List<ReconciliationCandidate>>(
             future: _candidates,
             builder: (context, snapshot) {
               final candidates = snapshot.data ?? const [];
-              if (candidates.isEmpty) {
+              final proposed = candidates.where(
+                (value) =>
+                    value.status == ReconciliationCandidateStatus.proposed,
+              );
+              if (proposed.isEmpty) {
                 return ButlerlyEmptyState(
-                  icon: Icons.copy_all_outlined,
+                  icon: Icons.link_outlined,
                   title: context.l10n.text('reviewEmpty'),
                   message: context.l10n.text('reviewEmptyBody'),
                 );
               }
               return Column(
                 children: [
-                  for (final candidate in candidates.where(
-                    (value) =>
-                        value.status == ReconciliationCandidateStatus.proposed,
-                  ))
+                  for (final candidate in proposed)
                     _ReconciliationCandidateCard(
                       candidate: candidate,
                       finance: _finance!,
@@ -248,7 +378,127 @@ class _ReviewPageState extends State<ReviewPage> {
   }
 }
 
-enum _ReviewView { needsReview, uncategorized, duplicates }
+enum _ReviewView { needsReview, uncategorized, duplicates, reconciliation }
+
+class _DuplicateGroupCard extends StatefulWidget {
+  const _DuplicateGroupCard({
+    required this.group,
+    required this.finance,
+    required this.onKeepBoth,
+    required this.onReviewLater,
+    required this.onConsolidate,
+  });
+
+  final DuplicateCandidateGroup group;
+  final FinanceServices finance;
+  final VoidCallback onKeepBoth;
+  final VoidCallback onReviewLater;
+  final ValueChanged<TransactionId> onConsolidate;
+
+  @override
+  State<_DuplicateGroupCard> createState() => _DuplicateGroupCardState();
+}
+
+class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
+  TransactionId? _selectedTransactionId;
+
+  Future<List<TransactionDto>> _loadTransactions() => Future.wait(
+    widget.group.transactionIds.map(
+      (id) async => switch (await widget.finance.getTransaction(id.value)) {
+        ApplicationSuccess<TransactionDto>(:final value) => value,
+        ApplicationFailure<TransactionDto>() => throw StateError(
+          'Transaction unavailable',
+        ),
+      },
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: ButlerlySpacing.small),
+      child: Padding(
+        padding: const EdgeInsets.all(ButlerlySpacing.standard),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.amber.shade800),
+                const SizedBox(width: ButlerlySpacing.small),
+                Expanded(
+                  child: Text(
+                    context.l10n.text('possibleDuplicateGroup'),
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: ButlerlySpacing.small),
+            Text(
+              '${widget.group.duplicateKey.transactionDate} · '
+              '${widget.group.duplicateKey.amount} '
+              '${widget.group.duplicateKey.currency} · '
+              '${widget.group.duplicateKey.direction}',
+            ),
+            const SizedBox(height: ButlerlySpacing.small),
+            FutureBuilder<List<TransactionDto>>(
+              future: _loadTransactions(),
+              builder: (context, snapshot) {
+                final transactions = snapshot.data ?? const [];
+                return RadioGroup<TransactionId>(
+                  groupValue: _selectedTransactionId,
+                  onChanged: (id) =>
+                      setState(() => _selectedTransactionId = id),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final transaction in transactions)
+                        RadioListTile<TransactionId>(
+                          value: TransactionId(transaction.id),
+                          title: Text(
+                            transaction.description?.trim().isNotEmpty == true
+                                ? transaction.description!
+                                : context.l10n.text('untitledTransaction'),
+                          ),
+                          subtitle: Text(
+                            '${transaction.amount} ${transaction.currency} · '
+                            '${transaction.transactionDate ?? ''}',
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            Wrap(
+              spacing: ButlerlySpacing.small,
+              children: [
+                FilledButton(
+                  onPressed: widget.onKeepBoth,
+                  child: Text(context.l10n.text('keepBoth')),
+                ),
+                OutlinedButton(
+                  onPressed: widget.onReviewLater,
+                  child: Text(context.l10n.text('reviewLater')),
+                ),
+                Tooltip(
+                  message: context.l10n.text('consolidateUseOneHint'),
+                  child: OutlinedButton(
+                    onPressed: _selectedTransactionId == null
+                        ? null
+                        : () => widget.onConsolidate(_selectedTransactionId!),
+                    child: Text(context.l10n.text('consolidateUseOne')),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _NormalizationReviewCard extends StatefulWidget {
   const _NormalizationReviewCard({
