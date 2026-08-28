@@ -1,16 +1,15 @@
 import 'dart:io';
 
-import 'package:butlerly/core/evidence/local_evidence_store.dart';
-import 'package:butlerly/core/evidence/local_ocr_service.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/core/di/finance_services.dart';
+import 'package:butlerly/core/evidence/local_evidence_store.dart';
+import 'package:butlerly/core/evidence/local_ocr_service.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly/features/foundation/presentation/receipt_capture_page.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
-import 'package:butlerly_finance_application/butlerly_finance_application.dart';
-import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
@@ -24,7 +23,6 @@ import '../transactions/transaction_lifecycle_test.dart' show
     MemoryTags,
     MemoryTransactionRepository,
     MemoryUserPreferences;
-import 'package:butlerly/core/di/finance_services.dart';
 
 void main() {
   testWidgets('consumes injected OCR and exposes editable receipt form', (
