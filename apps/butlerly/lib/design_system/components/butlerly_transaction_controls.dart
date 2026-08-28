@@ -1,4 +1,5 @@
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -62,7 +63,7 @@ class _ButlerlyDuplicateTransactionConfirmationState
   );
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
+  Widget build(BuildContext context) => ButlerlySheet(
     title: Semantics(
       liveRegion: true,
       header: true,

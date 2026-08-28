@@ -4,6 +4,7 @@ import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/evidence/local_statement_ocr_support.dart';
 import 'package:butlerly/core/evidence/statement_extractor.dart';
 import 'package:butlerly/core/evidence/statement_source_matcher.dart';
+import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -321,10 +322,10 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
       ).firstMatch(widget.statement.maskedAccountIdentifier ?? '')?.group(1),
     );
     var type = PaymentSourceType.account;
-    final create = await showDialog<bool>(
+    final create = await showButlerlyBottomSheet<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+        builder: (context, setDialogState) => ButlerlySheet(
           title: const Text('Create payment source'),
           content: SingleChildScrollView(
             child: Column(
@@ -423,9 +424,9 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
 
   Future<void> _addRows() async {
     final controller = TextEditingController();
-    final text = await showDialog<String>(
+    final text = await showButlerlyBottomSheet<String>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => ButlerlySheet(
         title: const Text('Add rows from statement'),
         content: TextField(
           controller: controller,
@@ -533,10 +534,10 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
         row.categoryId;
     var merchantId = row.merchantId;
     var tagIds = row.tagIds.toSet();
-    final accepted = await showDialog<bool>(
+    final accepted = await showButlerlyBottomSheet<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+        builder: (context, setDialogState) => ButlerlySheet(
           title: const Text('Correct extracted row'),
           content: SingleChildScrollView(
             child: Column(
@@ -712,20 +713,21 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
           categoryId: row.categoryId,
           tagIds: row.tagIds,
         );
-        final decision = await showDialog<ButlerlyDuplicateConfirmationResult>(
-          context: context,
-          builder: (_) => ButlerlyDuplicateTransactionConfirmation(
-            proposed: proposed,
-            candidates: duplicate.candidates,
-            paymentSourceLabels: {
-              for (final source in _sources)
-                source.id.value: source.lastFour == null
-                    ? (source.displayIdentity ?? source.name)
-                    : '${source.displayIdentity ?? source.name} ••••${source.lastFour}',
-            },
-            onDecision: (value) => Navigator.pop(context, value),
-          ),
-        );
+        final decision =
+            await showButlerlyBottomSheet<ButlerlyDuplicateConfirmationResult>(
+              context: context,
+              builder: (_) => ButlerlyDuplicateTransactionConfirmation(
+                proposed: proposed,
+                candidates: duplicate.candidates,
+                paymentSourceLabels: {
+                  for (final source in _sources)
+                    source.id.value: source.lastFour == null
+                        ? (source.displayIdentity ?? source.name)
+                        : '${source.displayIdentity ?? source.name} ••••${source.lastFour}',
+                },
+                onDecision: (value) => Navigator.pop(context, value),
+              ),
+            );
         if (!mounted || decision == null) return;
         if (decision.decision == ButlerlyDuplicateDecision.useExisting &&
             decision.selectedTransactionId != null) {
@@ -741,9 +743,9 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
       if (matches case ApplicationSuccess<List<ReconciliationMatchCandidate>>(
         value: final values,
       ) when values.isNotEmpty) {
-        final decision = await showDialog<StatementReconciliationDecision>(
+        final decision = await showButlerlyBottomSheet<StatementReconciliationDecision>(
           context: context,
-          builder: (_) => AlertDialog(
+          builder: (_) => ButlerlySheet(
             title: Text(context.l10n.text('statementReconciliationTitle')),
             content: Column(
               mainAxisSize: MainAxisSize.min,
