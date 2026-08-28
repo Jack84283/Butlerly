@@ -740,6 +740,13 @@ void main() {
     expect(result, isA<TransactionEditorSaved>());
     expect(repository.values, hasLength(2));
     expect(repository.values['add-original'], same(original));
+    final created = repository.values.values.singleWhere(
+      (transaction) => transaction.id != original.id,
+    );
+    expect(created.money.amount.toString(), '25');
+    expect(created.money.currency, original.money.currency);
+    expect(created.direction, original.direction);
+    expect(created.transactionDate, original.transactionDate);
   });
 
   testWidgets('add editor Cancel leaves the candidate and creates nothing', (
@@ -799,6 +806,10 @@ void main() {
       expect(result, isA<TransactionEditorSaved>());
       expect(repository.values['edit-a'], isNot(same(a)));
       expect(repository.values['edit-b'], same(b));
+      expect(repository.values['edit-a']?.money.amount.toString(), '25');
+      expect(repository.values['edit-a']?.transactionDate, b.transactionDate);
+      expect(repository.values['edit-a']?.money.currency, b.money.currency);
+      expect(repository.values['edit-a']?.direction, b.direction);
     },
   );
 
