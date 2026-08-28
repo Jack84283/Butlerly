@@ -187,6 +187,7 @@ final class FinanceServices {
                transactions,
                statements as StatementWorkflowRepository,
                const SystemApplicationClock(),
+               evidence: evidence,
              ),
        updateAnalysisFindingLifecycle = analysisFindings == null
            ? null
