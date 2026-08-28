@@ -18,7 +18,20 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 class ReceiptCapturePage extends StatefulWidget {
-  const ReceiptCapturePage({super.key});
+  const ReceiptCapturePage({
+    this.finance,
+    this.evidenceStore,
+    this.ocr,
+    this.pickImage,
+    this.openFile,
+    super.key,
+  });
+
+  final FinanceServices? finance;
+  final LocalEvidenceStore? evidenceStore;
+  final Future<ReceiptOcrResult> Function(String path)? ocr;
+  final Future<XFile?> Function(ImageSource source)? pickImage;
+  final Future<files.XFile?> Function(files.XTypeGroup group)? openFile;
 
   @override
   State<ReceiptCapturePage> createState() => _ReceiptCapturePageState();
@@ -29,8 +42,6 @@ String _paymentSourceLabel(PaymentSource source) => source.lastFour == null
     : '${source.displayIdentity ?? source.name} ••••${source.lastFour}';
 
 class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
-  final _picker = ImagePicker();
-  final _ocr = const LocalOcrService();
   final _formKey = GlobalKey<FormState>();
   final _amount = TextEditingController();
   final _currency = TextEditingController(text: 'USD');
@@ -56,8 +67,10 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   TransactionMasterData get _masterData =>
       _masterDataSnapshot?.presentation ?? const TransactionMasterData();
 
-  FinanceServices get finance => services<FinanceServices>();
-  LocalEvidenceStore get evidenceStore => services<LocalEvidenceStore>();
+  FinanceServices get finance =>
+      widget.finance ?? services<FinanceServices>();
+  LocalEvidenceStore get evidenceStore =>
+      widget.evidenceStore ?? services<LocalEvidenceStore>();
 
   @override
   void initState() {
@@ -97,20 +110,24 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   }
 
   Future<void> _camera() async {
-    final source = await _picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 95,
-      requestFullMetadata: false,
-    );
+    final source = widget.pickImage != null
+        ? await widget.pickImage!(ImageSource.camera)
+        : await ImagePicker().pickImage(
+            source: ImageSource.camera,
+            imageQuality: 95,
+            requestFullMetadata: false,
+          );
     if (source != null) await _process(source);
   }
 
   Future<void> _photo() async {
-    final source = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 100,
-      requestFullMetadata: false,
-    );
+    final source = widget.pickImage != null
+        ? await widget.pickImage!(ImageSource.gallery)
+        : await ImagePicker().pickImage(
+            source: ImageSource.gallery,
+            imageQuality: 100,
+            requestFullMetadata: false,
+          );
     if (source != null) await _process(source);
   }
 
@@ -119,7 +136,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       label: 'Receipt images',
       extensions: ['jpg', 'jpeg', 'png', 'heic', 'webp'],
     );
-    final source = await files.openFile(acceptedTypeGroups: const [group]);
+    final source = widget.openFile != null
+        ? await widget.openFile!(group)
+        : await files.openFile(acceptedTypeGroups: const [group]);
     if (source != null) {
       await _process(XFile(source.path, name: source.name));
     }
@@ -184,7 +203,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     });
 
     try {
-      final result = await _ocr.recognize(stableSource.path);
+      final result = widget.ocr == null
+          ? await const LocalOcrService().recognize(stableSource.path)
+          : await widget.ocr!(stableSource.path);
       if (!mounted) return;
       final paymentSourceId = await _resolvePaymentSource(result.cardLast4);
       if (!mounted) return;
