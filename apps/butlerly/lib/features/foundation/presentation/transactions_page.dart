@@ -89,13 +89,16 @@ class _TransactionsPageState extends State<TransactionsPage> {
   Future<void> _openEditor([TransactionDto? transaction]) async {
     final finance = _finance;
     if (finance == null) return;
-    final changed = await Navigator.of(context).push<bool>(
+    final result = await Navigator.of(context).push<TransactionEditorResult>(
       MaterialPageRoute(
         builder: (_) =>
             TransactionEditorPage(finance: finance, existing: transaction),
       ),
     );
-    if (changed == true) _refresh();
+    if (result is TransactionEditorSaved ||
+        result is TransactionEditorUseExisting) {
+      _refresh();
+    }
   }
 
   Future<void> _openDetail(TransactionDto transaction) async {
@@ -258,6 +261,30 @@ final class _TransactionsData {
   final TransactionMasterData masterData;
 }
 
+sealed class TransactionEditorResult {
+  const TransactionEditorResult();
+  const factory TransactionEditorResult.saved(TransactionDto transaction) =
+      TransactionEditorSaved;
+  const factory TransactionEditorResult.cancelled() =
+      TransactionEditorCancelled;
+  const factory TransactionEditorResult.useExisting(String transactionId) =
+      TransactionEditorUseExisting;
+}
+
+final class TransactionEditorSaved extends TransactionEditorResult {
+  const TransactionEditorSaved(this.transaction);
+  final TransactionDto transaction;
+}
+
+final class TransactionEditorCancelled extends TransactionEditorResult {
+  const TransactionEditorCancelled();
+}
+
+final class TransactionEditorUseExisting extends TransactionEditorResult {
+  const TransactionEditorUseExisting(this.transactionId);
+  final String transactionId;
+}
+
 class TransactionEditorPage extends StatefulWidget {
   const TransactionEditorPage({
     required this.finance,
@@ -338,12 +365,75 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _saving = true);
     final money = Money(
       amount: DecimalValue.parse(_amount.text.trim()),
       currency: CurrencyCode(_currency.text.trim()),
     );
     final existing = widget.existing;
+    final proposed = TransactionDto(
+      id: existing?.id ?? '__proposed__',
+      amount: money.amount.toString(),
+      currency: money.currency.value,
+      direction: _direction.name,
+      status: TransactionStatus.active.name,
+      reviewState: TransactionReviewState.clear.name,
+      transactionDate: _shortDate(_date),
+      createdAt: existing?.createdAt ?? DateTime.now().toUtc(),
+      updatedAt: DateTime.now().toUtc(),
+      description: _description.text.trim().isEmpty
+          ? null
+          : _description.text.trim(),
+      paymentSourceId: _paymentSourceId,
+      merchantId: _merchantId,
+      categoryId: _categoryId,
+      tagIds: _tagIds.toList(growable: false),
+    );
+    final duplicate = await widget.finance.duplicateTransactionChecker.call(
+      DuplicateTransactionCheckCommand(
+        transactionDate: proposed.transactionDate!,
+        amount: proposed.amount,
+        currency: proposed.currency,
+        direction: _direction,
+        excludeTransactionId: existing?.id,
+        paymentSourceId: _paymentSourceId,
+        merchantId: _merchantId,
+      ),
+    );
+    if (!mounted) return;
+    if (duplicate case ApplicationSuccess<DuplicateTransactionCheckResult>(
+      value: final check,
+    ) when check.requiresConfirmation) {
+      final editorData = await _masterData;
+      if (!mounted) return;
+      final decision = await showDialog<ButlerlyDuplicateConfirmationResult>(
+        context: context,
+        builder: (dialogContext) => ButlerlyDuplicateTransactionConfirmation(
+          proposed: proposed,
+          candidates: check.candidates,
+          paymentSourceLabels: {
+            for (final source in editorData.paymentSources)
+              source.id.value: source.lastFour == null
+                  ? (source.displayIdentity ?? source.name)
+                  : '${source.displayIdentity ?? source.name} ••••${source.lastFour}',
+          },
+          onDecision: (value) => Navigator.pop(dialogContext, value),
+        ),
+      );
+      if (!mounted || decision == null) {
+        return;
+      }
+      if (decision.decision == ButlerlyDuplicateDecision.useExisting) {
+        final selectedId = decision.selectedTransactionId;
+        if (selectedId != null) {
+          Navigator.of(
+            context,
+          ).pop(TransactionEditorResult.useExisting(selectedId));
+        }
+        return;
+      }
+      if (decision.decision == ButlerlyDuplicateDecision.cancel) return;
+    }
+    setState(() => _saving = true);
     final timing =
         existing != null && !_dateChanged && existing.occurredAt != null
         ? KnownTransactionTime(existing.occurredAt!)
@@ -397,7 +487,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
       return;
     }
     notifyTransactionChanged();
-    Navigator.of(context).pop(true);
+    if (result case ApplicationSuccess<TransactionDto>(value: final saved)) {
+      Navigator.of(context).pop(TransactionEditorResult.saved(saved));
+    }
   }
 
   @override
@@ -813,15 +905,18 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
         IconButton(
           tooltip: context.l10n.text('editTransaction'),
           onPressed: () async {
-            final changed = await Navigator.of(context).push<bool>(
-              MaterialPageRoute(
-                builder: (_) => TransactionEditorPage(
-                  finance: finance,
-                  existing: transaction,
-                ),
-              ),
-            );
-            if (changed == true && context.mounted) {
+            final changed = await Navigator.of(context)
+                .push<TransactionEditorResult>(
+                  MaterialPageRoute(
+                    builder: (_) => TransactionEditorPage(
+                      finance: finance,
+                      existing: transaction,
+                    ),
+                  ),
+                );
+            if ((changed is TransactionEditorSaved ||
+                    changed is TransactionEditorUseExisting) &&
+                context.mounted) {
               final refreshed = await finance.getTransaction(transaction.id);
               if (!context.mounted) return;
               if (refreshed case ApplicationSuccess<TransactionDto>(

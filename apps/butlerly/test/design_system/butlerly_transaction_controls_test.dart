@@ -1,6 +1,7 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -199,4 +200,118 @@ void main() {
     expect(find.text('+1'), findsOneWidget);
     expect(find.bySemanticsLabel('Tags'), findsOneWidget);
   });
+
+  testWidgets(
+    'duplicate confirmation preselects one candidate and returns it',
+    (tester) async {
+      ButlerlyDuplicateConfirmationResult? result;
+      await pump(
+        tester,
+        ButlerlyDuplicateTransactionConfirmation(
+          proposed: _duplicateDto('proposed', paymentSourceId: 'source-id'),
+          candidates: [
+            DuplicateTransactionCandidate(
+              transaction: _duplicateDto(
+                'candidate',
+                paymentSourceId: 'source-id',
+              ),
+              confidence: 0.75,
+              matchingReasons: const [],
+            ),
+          ],
+          paymentSourceLabels: const {'source-id': 'Visa ••••1234'},
+          onDecision: (value) => result = value,
+        ),
+      );
+      expect(find.text('Possible duplicate'), findsOneWidget);
+      expect(find.textContaining('Visa'), findsWidgets);
+      expect(find.text('source-id'), findsNothing);
+      expect(find.bySemanticsLabel('Possible duplicate'), findsOneWidget);
+      await tester.tap(find.text('Use existing'));
+      expect(result?.decision, ButlerlyDuplicateDecision.useExisting);
+      expect(result?.selectedTransactionId, 'candidate');
+    },
+  );
+
+  testWidgets('multiple candidates require and preserve explicit selection', (
+    tester,
+  ) async {
+    ButlerlyDuplicateConfirmationResult? result;
+    final candidates = [
+      DuplicateTransactionCandidate(
+        transaction: _duplicateDto('first'),
+        confidence: 0.75,
+        matchingReasons: const [],
+      ),
+      DuplicateTransactionCandidate(
+        transaction: _duplicateDto('second'),
+        confidence: 0.75,
+        matchingReasons: const [],
+      ),
+    ];
+    await pump(
+      tester,
+      StatefulBuilder(
+        builder: (context, setState) =>
+            ButlerlyDuplicateTransactionConfirmation(
+              proposed: _duplicateDto('proposed'),
+              candidates: candidates,
+              onDecision: (value) => setState(() => result = value),
+            ),
+      ),
+    );
+    final useExisting = find.text('Use existing');
+    final button = tester.widget<FilledButton>(
+      find.ancestor(of: useExisting, matching: find.byType(FilledButton)),
+    );
+    expect(button.onPressed, isNull);
+    await tester.tap(find.byType(RadioListTile<String>).at(1));
+    await tester.pump();
+    await tester.tap(useExisting);
+    await tester.pump();
+    expect(result?.selectedTransactionId, 'second');
+  });
+
+  testWidgets('continue and cancel carry no selected transaction', (
+    tester,
+  ) async {
+    final results = <ButlerlyDuplicateConfirmationResult>[];
+    await pump(
+      tester,
+      ButlerlyDuplicateTransactionConfirmation(
+        proposed: _duplicateDto('proposed'),
+        candidates: [
+          DuplicateTransactionCandidate(
+            transaction: _duplicateDto('candidate'),
+            confidence: 0.75,
+            matchingReasons: const [],
+          ),
+        ],
+        onDecision: results.add,
+      ),
+    );
+    await tester.tap(find.text('Continue anyway'));
+    expect(results.single.selectedTransactionId, isNull);
+    results.clear();
+    await tester.tap(find.text('Use existing'));
+    await tester.pump();
+    await tester.tap(find.text('Cancel'));
+    expect(results.last.decision, ButlerlyDuplicateDecision.cancel);
+    expect(results.last.selectedTransactionId, isNull);
+  });
 }
+
+TransactionDto _duplicateDto(String id, {String? paymentSourceId}) =>
+    TransactionDto(
+      id: id,
+      amount: '25.00',
+      currency: 'USD',
+      direction: 'expense',
+      status: 'active',
+      reviewState: 'clear',
+      transactionDate: '2026-08-20',
+      createdAt: DateTime.utc(2026),
+      updatedAt: DateTime.utc(2026),
+      paymentSourceId: paymentSourceId,
+      description: id,
+    );

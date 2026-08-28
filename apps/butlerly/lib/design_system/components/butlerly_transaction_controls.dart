@@ -2,12 +2,122 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 
 String _paymentSourceText(PaymentSource source) => source.lastFour == null
     ? (source.displayIdentity ?? source.name)
     : '${source.displayIdentity ?? source.name} ••••${source.lastFour}';
+
+enum ButlerlyDuplicateDecision { useExisting, continueAnyway, cancel }
+
+final class ButlerlyDuplicateConfirmationResult {
+  const ButlerlyDuplicateConfirmationResult({
+    required this.decision,
+    this.selectedTransactionId,
+  });
+  final ButlerlyDuplicateDecision decision;
+  final String? selectedTransactionId;
+}
+
+/// Shared, workflow-neutral confirmation for strict duplicate candidates.
+class ButlerlyDuplicateTransactionConfirmation extends StatefulWidget {
+  const ButlerlyDuplicateTransactionConfirmation({
+    required this.proposed,
+    required this.candidates,
+    required this.onDecision,
+    this.paymentSourceLabels = const {},
+    super.key,
+  });
+  final TransactionDto proposed;
+  final List<DuplicateTransactionCandidate> candidates;
+  final ValueChanged<ButlerlyDuplicateConfirmationResult> onDecision;
+  final Map<String, String> paymentSourceLabels;
+
+  @override
+  State<ButlerlyDuplicateTransactionConfirmation> createState() =>
+      _ButlerlyDuplicateTransactionConfirmationState();
+}
+
+class _ButlerlyDuplicateTransactionConfirmationState
+    extends State<ButlerlyDuplicateTransactionConfirmation> {
+  String? _selectedTransactionId;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.candidates.length == 1) {
+      _selectedTransactionId = widget.candidates.single.transaction.id;
+    }
+  }
+
+  void _choose(ButlerlyDuplicateDecision decision) => widget.onDecision(
+    ButlerlyDuplicateConfirmationResult(
+      decision: decision,
+      selectedTransactionId: decision == ButlerlyDuplicateDecision.useExisting
+          ? _selectedTransactionId
+          : null,
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Semantics(
+      liveRegion: true,
+      header: true,
+      child: Text(context.l10n.text('possibleDuplicate')),
+    ),
+    content: SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(context.l10n.text('proposedTransaction')),
+          _summary(widget.proposed),
+          const SizedBox(height: 16),
+          Text(context.l10n.text('existingTransactions')),
+          for (final candidate in widget.candidates) ...[
+            const Divider(),
+            RadioListTile<String>(
+              contentPadding: EdgeInsets.zero,
+              title: _summary(candidate.transaction),
+              value: candidate.transaction.id,
+              // ignore: deprecated_member_use
+              groupValue: _selectedTransactionId,
+              // ignore: deprecated_member_use
+              onChanged: (value) =>
+                  setState(() => _selectedTransactionId = value),
+            ),
+          ],
+        ],
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => _choose(ButlerlyDuplicateDecision.cancel),
+        child: Text(context.l10n.text('cancel')),
+      ),
+      TextButton(
+        onPressed: () => _choose(ButlerlyDuplicateDecision.continueAnyway),
+        child: Text(context.l10n.text('continueAnyway')),
+      ),
+      FilledButton(
+        onPressed: _selectedTransactionId == null
+            ? null
+            : () => _choose(ButlerlyDuplicateDecision.useExisting),
+        child: Text(context.l10n.text('useExistingTransaction')),
+      ),
+    ],
+  );
+  Widget _summary(TransactionDto transaction) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Text(
+      '${transaction.transactionDate ?? '—'} · ${transaction.amount} ${transaction.currency} · ${transaction.direction}\n'
+      '${transaction.description ?? transaction.rawCounterparty ?? ''}'
+      '${transaction.paymentSourceId == null || widget.paymentSourceLabels[transaction.paymentSourceId] == null ? '' : '\n${widget.paymentSourceLabels[transaction.paymentSourceId]}'}',
+    ),
+  );
+}
 
 class ButlerlyCategorySelector extends StatelessWidget {
   const ButlerlyCategorySelector({

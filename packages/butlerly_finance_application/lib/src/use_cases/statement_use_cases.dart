@@ -11,11 +11,13 @@ final class StatementServices {
     this.transactions,
     this.workflow,
     this.clock,
+    {this.evidence}
   );
   final StatementRepository statements;
   final TransactionRepository transactions;
   final StatementWorkflowRepository workflow;
   final ApplicationClock clock;
+  final EvidenceRepository? evidence;
 
   Future<ApplicationResult<void>> create(
     FinancialStatement statement,
@@ -90,15 +92,37 @@ final class StatementServices {
     String transactionId,
   ) => runApplication(
     'link statement row',
-    () => workflow.linkRow(
-      _copy(
-        row,
-        status: StatementRowStatus.linked,
-        transactionId: transactionId,
-        dispositionReason: 'linkExisting',
-        updatedAt: clock.now(),
-      ),
-    ),
+    () async {
+      final statement = await statements.findStatement(row.statementId);
+      if (statement == null) {
+        throw const RepositoryException(
+          RepositoryFailureCode.notFound,
+          'link statement row: statement',
+        );
+      }
+      await workflow.linkRow(
+        _copy(
+          row,
+          status: StatementRowStatus.linked,
+          transactionId: transactionId,
+          dispositionReason: 'linkExisting',
+          updatedAt: clock.now(),
+        ),
+      );
+      final evidenceRepository = evidence;
+      if (evidenceRepository != null) {
+        await evidenceRepository.link(
+          AttachmentLink(
+            id: AttachmentLinkId(
+              'statement-attachment-${statement.id}-$transactionId',
+            ),
+            transactionId: TransactionId(transactionId),
+            evidenceId: EvidenceId(statement.evidenceId),
+            createdAt: clock.now(),
+          ),
+        );
+      }
+    },
   );
 
   Future<ApplicationResult<TransactionDto>> save(
