@@ -27,6 +27,9 @@ void main() {
     final tables = await database.connection.rawQuery(
       "SELECT name FROM sqlite_master WHERE type = 'table'",
     );
+    final indexes = await database.connection.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'index'",
+    );
 
     expect(version, Schema.version);
     expect(foreignKeys.single.values.single, 1);
@@ -43,9 +46,61 @@ void main() {
         'tag_translations',
         'reference_data',
         'reference_data_translations',
+        'duplicate_candidate_groups',
+        'duplicate_candidate_group_transactions',
       ]),
     );
+    expect(
+      indexes.map((row) => row['name']),
+      contains('idx_transactions_duplicate_group_lookup'),
+    );
     expect(await database.passesIntegrityCheck(), isTrue);
+  });
+
+  test('round-trips possible duplicate group state and memberships', () async {
+    for (final id in ['tx-a', 'tx-b']) {
+      await database.connection.insert('transactions', {
+        'id': id,
+        'unknown_time_reason': 'not supplied',
+        'amount_coefficient': '25',
+        'amount_scale': 0,
+        'currency': 'USD',
+        'direction': TransactionDirection.expense.name,
+        'source_type': TransactionSourceType.manual.name,
+        'status': TransactionStatus.active.name,
+        'created_at': DateTime.utc(2026, 1, 1).toIso8601String(),
+        'updated_at': DateTime.utc(2026, 1, 1).toIso8601String(),
+        'transaction_date': '2026-01-01',
+      });
+    }
+    final repository = SqliteDuplicateCandidateGroupRepository(database);
+    final now = DateTime.utc(2026, 1, 1);
+    final group = DuplicateCandidateGroup(
+      id: 'duplicate:test',
+      transactionIds: [TransactionId('tx-b'), TransactionId('tx-a')],
+      duplicateKey: DuplicateTransactionKey(
+        transactionDate: '2026-01-01',
+        amount: DecimalValue.parse('25.00'),
+        currency: 'usd',
+        direction: TransactionDirection.expense.name,
+      ),
+      status: DuplicateCandidateGroupStatus.unresolved,
+      selectedTransactionId: TransactionId('tx-a'),
+      createdAt: now,
+      updatedAt: now,
+    );
+    await repository.save(group);
+    final loaded = (await repository.list()).single;
+    expect(loaded.transactionIds.map((id) => id.value), ['tx-a', 'tx-b']);
+    expect(loaded.duplicateKey.amount, DecimalValue.parse('25'));
+    expect(loaded.duplicateKey.currency, 'USD');
+    expect(loaded.selectedTransactionId?.value, 'tx-a');
+    final matches = await repository.findActiveDuplicateGroups();
+    expect(matches, hasLength(1));
+    expect(matches.single.transactionIds.map((id) => id.value), [
+      'tx-a',
+      'tx-b',
+    ]);
   });
 
   test('persists the single local user preference record', () async {

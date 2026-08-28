@@ -2,6 +2,7 @@ import '../analysis/analysis.dart';
 import '../entities/account.dart';
 import '../entities/attachment_link.dart';
 import '../entities/category.dart';
+import '../entities/duplicate_candidate_group.dart';
 import '../entities/evidence_item.dart';
 import '../entities/exchange_rate.dart';
 import '../entities/extraction.dart';
@@ -24,6 +25,29 @@ abstract interface class TransactionRepository {
   Future<List<Transaction>> listAll();
   Future<List<Transaction>> query(TransactionRepositoryQuery query);
   Future<void> removePermanently(TransactionId id);
+}
+
+final class DuplicateTransactionGroupMatch {
+  const DuplicateTransactionGroupMatch({
+    required this.duplicateKey,
+    required this.transactionIds,
+  });
+
+  final DuplicateTransactionKey duplicateKey;
+  final List<TransactionId> transactionIds;
+}
+
+abstract interface class DuplicateCandidateGroupRepository {
+  Future<List<DuplicateCandidateGroup>> list({
+    DuplicateCandidateGroupStatus? status,
+  });
+
+  Future<List<DuplicateTransactionGroupMatch>> findActiveDuplicateGroups();
+  Future<List<TransactionId>> findActiveTransactionIdsForKey(
+    DuplicateTransactionKey key,
+  );
+  Future<void> save(DuplicateCandidateGroup group);
+  Future<void> remove(String id);
 }
 
 abstract interface class ExchangeRateRepository {

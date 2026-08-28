@@ -1,5 +1,5 @@
 abstract final class Schema {
-  static const version = 19;
+  static const version = 21;
 
   static const migration1 = <String>[
     '''CREATE TABLE payment_sources (
@@ -369,5 +369,33 @@ abstract final class Schema {
     'ALTER TABLE statement_rows ADD COLUMN source_reference_id TEXT',
     'ALTER TABLE statement_rows ADD COLUMN review_reason TEXT',
     'ALTER TABLE statement_rows ADD COLUMN disposition_reason TEXT',
+  ];
+
+  static const migration20 = <String>[
+    '''CREATE TABLE duplicate_candidate_groups (
+      id TEXT PRIMARY KEY NOT NULL,
+      transaction_date TEXT NOT NULL,
+      amount_coefficient TEXT NOT NULL,
+      amount_scale INTEGER NOT NULL CHECK(amount_scale >= 0),
+      currency TEXT NOT NULL,
+      direction TEXT NOT NULL,
+      status TEXT NOT NULL,
+      selected_transaction_id TEXT REFERENCES transactions(id),
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )''',
+    '''CREATE TABLE duplicate_candidate_group_transactions (
+      group_id TEXT NOT NULL REFERENCES duplicate_candidate_groups(id) ON DELETE CASCADE,
+      transaction_id TEXT NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+      PRIMARY KEY(group_id, transaction_id)
+    )''',
+    'CREATE INDEX idx_duplicate_groups_status ON duplicate_candidate_groups(status)',
+    'CREATE INDEX idx_duplicate_group_transactions_transaction ON duplicate_candidate_group_transactions(transaction_id)',
+    'CREATE INDEX idx_transactions_duplicate_lookup ON transactions(transaction_date, currency, direction, status)',
+  ];
+
+  static const migration21 = <String>[
+    'DROP INDEX IF EXISTS idx_transactions_duplicate_lookup',
+    'CREATE INDEX idx_transactions_duplicate_group_lookup ON transactions(transaction_date, amount_coefficient, amount_scale, currency, direction, status)',
   ];
 }

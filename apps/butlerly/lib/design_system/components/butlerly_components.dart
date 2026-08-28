@@ -224,6 +224,9 @@ class ButlerlyRecordRow extends StatelessWidget {
     this.meta,
     this.isIncome = false,
     this.needsReview = false,
+    this.possibleDuplicate = false,
+    this.possibleDuplicateLabel,
+    this.onPossibleDuplicateTap,
     this.onTap,
     super.key,
   });
@@ -235,12 +238,17 @@ class ButlerlyRecordRow extends StatelessWidget {
   final String currency;
   final bool isIncome;
   final bool needsReview;
+  final bool possibleDuplicate;
+  final String? possibleDuplicateLabel;
+  final VoidCallback? onPossibleDuplicateTap;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) => Semantics(
     button: onTap != null,
-    label: '$title, $amount $currency${needsReview ? ', needs review' : ''}',
+    label:
+        '$title, $amount $currency${needsReview ? ', needs review' : ''}'
+        '${possibleDuplicate && possibleDuplicateLabel != null ? ', $possibleDuplicateLabel' : ''}',
     child: ConstrainedBox(
       constraints: const BoxConstraints(
         minHeight: ButlerlySize.recordRowMinHeight,
@@ -284,6 +292,36 @@ class ButlerlyRecordRow extends StatelessWidget {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      if (possibleDuplicate)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            right: ButlerlySpacing.micro,
+                          ),
+                          child: Tooltip(
+                            message: possibleDuplicateLabel ?? '',
+                            child: InkWell(
+                              onTap: onPossibleDuplicateTap,
+                              borderRadius: BorderRadius.circular(
+                                ButlerlyRadius.small,
+                              ),
+                              child: Semantics(
+                                container: true,
+                                button: onPossibleDuplicateTap != null,
+                                label: possibleDuplicateLabel,
+                                child: const Padding(
+                                  padding: EdgeInsets.all(
+                                    ButlerlySpacing.micro,
+                                  ),
+                                  child: Icon(
+                                    Icons.warning_amber_rounded,
+                                    size: 16,
+                                    color: Colors.amber,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       Icon(
                         isIncome
                             ? Icons.arrow_downward_rounded

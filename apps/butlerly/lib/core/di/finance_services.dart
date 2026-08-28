@@ -19,6 +19,7 @@ final class FinanceServices {
     AnalysisRuleRepository? analysisRules,
     AnalysisFindingRepository? analysisFindings,
     StatementRepository? statements,
+    DuplicateCandidateGroupRepository? duplicateGroups,
   }) : listTransactions = ListTransactions(transactions),
        seedInitialMasterData = SeedInitialMasterData(
          merchants,
@@ -139,6 +140,21 @@ final class FinanceServices {
        ),
        findReceiptPaymentMatch = FindReceiptPaymentMatch(transactions),
        duplicateTransactionChecker = DuplicateTransactionChecker(transactions),
+       scanExistingTransactionsForDuplicates = duplicateGroups == null
+           ? null
+           : ScanExistingTransactionsForDuplicates(
+               duplicateGroups,
+               const SystemApplicationClock(),
+             ),
+       listDuplicateCandidateGroups = duplicateGroups == null
+           ? null
+           : ListDuplicateCandidateGroups(duplicateGroups),
+       resolveDuplicateCandidateGroup = duplicateGroups == null
+           ? null
+           : ResolveDuplicateCandidateGroup(
+               duplicateGroups,
+               const SystemApplicationClock(),
+             ),
        evaluateTransactionNormalization = EvaluateTransactionNormalization(
          transactions,
          preferences,
@@ -244,6 +260,10 @@ final class FinanceServices {
   final ConfirmUserNormalizedAmount confirmUserNormalizedAmount;
   final FindReceiptPaymentMatch findReceiptPaymentMatch;
   final DuplicateTransactionChecker duplicateTransactionChecker;
+  final ScanExistingTransactionsForDuplicates?
+  scanExistingTransactionsForDuplicates;
+  final ListDuplicateCandidateGroups? listDuplicateCandidateGroups;
+  final ResolveDuplicateCandidateGroup? resolveDuplicateCandidateGroup;
   final InstallBuiltInRules? installBuiltInRules;
   final CalculateAnalysisOverview? calculateAnalysisOverview;
   final CalculateAnalysisCalendar? calculateAnalysisCalendar;

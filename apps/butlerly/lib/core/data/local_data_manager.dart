@@ -49,6 +49,8 @@ final class LocalDataManager {
     'tag_translations',
     'reference_data',
     'reference_data_translations',
+    'duplicate_candidate_groups',
+    'duplicate_candidate_group_transactions',
   ];
 
   static const _eraseOrder = <String>[
@@ -72,6 +74,8 @@ final class LocalDataManager {
     'user_preferences',
     'reconciliation_links',
     'reconciliation_candidates',
+    'duplicate_candidate_group_transactions',
+    'duplicate_candidate_groups',
     'reference_data_translations',
     'reference_data',
     'tag_translations',

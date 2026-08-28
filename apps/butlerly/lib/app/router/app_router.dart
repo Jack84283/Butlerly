@@ -47,8 +47,12 @@ final appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/review',
-              pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: ReviewPage()),
+              pageBuilder: (context, state) => NoTransitionPage(
+                child: ReviewPage(
+                  showPossibleDuplicates:
+                      state.uri.queryParameters['view'] == 'duplicates',
+                ),
+              ),
             ),
           ],
         ),

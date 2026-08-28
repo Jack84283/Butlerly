@@ -5,6 +5,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly_database/butlerly_database.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:get_it/get_it.dart';
 
 final services = GetIt.instance;
@@ -22,9 +23,23 @@ void configureDependencies({
   services.registerSingleton<LocalDataManager>(LocalDataManager(database));
 
   if (database.status == DatabaseStatus.ready) {
+    final duplicateGroups = SqliteDuplicateCandidateGroupRepository(
+      database.persistenceDatabase,
+    );
+    final duplicateRefresh = RefreshDuplicateGroupForTransaction(
+      duplicateGroups,
+      const SystemApplicationClock(),
+    );
+    final rawTransactions = SqliteTransactionRepository(
+      database.persistenceDatabase,
+    );
+    final transactions = DuplicateReviewingTransactionRepository(
+      rawTransactions,
+      duplicateRefresh,
+    );
     final statements = SqliteStatementRepository(database.persistenceDatabase);
     final finance = FinanceServices(
-      SqliteTransactionRepository(database.persistenceDatabase),
+      transactions,
       SqlitePaymentSourceRepository(database.persistenceDatabase),
       SqliteMerchantRepository(database.persistenceDatabase),
       SqliteCategoryRepository(database.persistenceDatabase),
@@ -51,6 +66,7 @@ void configureDependencies({
         database.persistenceDatabase,
       ),
       statements: statements,
+      duplicateGroups: duplicateGroups,
     );
     services
       ..registerSingleton<FinanceServices>(finance)

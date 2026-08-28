@@ -72,11 +72,25 @@ class _TransactionsPageState extends State<TransactionsPage> {
     };
     return _TransactionsData(
       values,
-      await TransactionMasterData.load(
+      masterData: await TransactionMasterData.load(
         finance,
         languageCode: languageCode ?? 'en',
       ),
+      possibleDuplicateIds: await _possibleDuplicateIds(finance),
     );
+  }
+
+  Future<Set<String>> _possibleDuplicateIds(FinanceServices finance) async {
+    final list = finance.listDuplicateCandidateGroups;
+    if (list == null) return const {};
+    final result = await list();
+    return switch (result) {
+      ApplicationSuccess<List<DuplicateCandidateGroup>>(:final value) => {
+        for (final group in value)
+          for (final id in group.transactionIds) id.value,
+      },
+      ApplicationFailure<List<DuplicateCandidateGroup>>() => const {},
+    };
   }
 
   void _refresh() {
@@ -235,6 +249,15 @@ class _TransactionsPageState extends State<TransactionsPage> {
                               value.direction ==
                               TransactionDirection.income.name,
                           needsReview: value.reviewState == 'needsReview',
+                          possibleDuplicate: data.possibleDuplicateIds.contains(
+                            value.id,
+                          ),
+                          possibleDuplicateLabel: context.l10n.text(
+                            'possibleDuplicate',
+                          ),
+                          onPossibleDuplicateTap: () => GoRouter.of(
+                            context,
+                          ).go('/review?view=duplicates'),
                           onTap: () => _openDetail(value),
                         ),
                       )
@@ -253,12 +276,14 @@ enum _TransactionFilter { all, income, expense, archived }
 
 final class _TransactionsData {
   const _TransactionsData(
-    this.transactions, [
+    this.transactions, {
     this.masterData = const TransactionMasterData(),
-  ]);
+    this.possibleDuplicateIds = const {},
+  });
 
   final List<TransactionDto> transactions;
   final TransactionMasterData masterData;
+  final Set<String> possibleDuplicateIds;
 }
 
 sealed class TransactionEditorResult {
