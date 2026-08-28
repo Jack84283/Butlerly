@@ -3,6 +3,74 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:test/test.dart';
 
 void main() {
+  Future<DuplicateTransactionCheckResult> check(
+    List<Transaction> values, {
+    String amount = '25',
+    String date = '2026-08-20',
+    String currency = 'USD',
+    TransactionDirection direction = TransactionDirection.expense,
+    String? exclude,
+  }) async {
+    final result = await DuplicateTransactionChecker(_Transactions(values))(
+      DuplicateTransactionCheckCommand(
+        transactionDate: date,
+        amount: amount,
+        currency: currency,
+        direction: direction,
+        excludeTransactionId: exclude,
+      ),
+    );
+    return (result as ApplicationSuccess<DuplicateTransactionCheckResult>)
+        .value;
+  }
+
+  test('canonical decimal spellings compare equally', () async {
+    for (final amount in ['25', '25.0', '25.00']) {
+      expect(
+        (await check([_transaction('one')], amount: amount)).candidates,
+        hasLength(1),
+      );
+    }
+  });
+
+  test('optional context does not affect strict duplicate identity', () async {
+    final paymentSource = _transaction('source', paymentSourceId: 'card-a');
+    final differentSource = _transaction(
+      'different-source',
+      paymentSourceId: 'card-b',
+    );
+    final merchant = _transaction('merchant', merchantId: 'merchant-a');
+    expect((await check([paymentSource])).candidates, hasLength(1));
+    expect((await check([differentSource])).candidates, hasLength(1));
+    expect((await check([merchant])).candidates, hasLength(1));
+  });
+
+  test(
+    'returns every active matching candidate and excludes only self',
+    () async {
+      final result = await check([
+        _transaction('one'),
+        _transaction('two'),
+        _transaction('archived', status: TransactionStatus.archived),
+      ], exclude: 'one');
+      expect(result.candidates.map((value) => value.transaction.id), ['two']);
+    },
+  );
+
+  test('duplicate checking never mutates the repository', () async {
+    final repository = _Transactions([_transaction('one')]);
+    await DuplicateTransactionChecker(repository)(
+      const DuplicateTransactionCheckCommand(
+        transactionDate: '2026-08-20',
+        amount: '25',
+        currency: 'USD',
+        direction: TransactionDirection.expense,
+      ),
+    );
+    expect(repository.saveCalls, 0);
+    expect(repository.removeCalls, 0);
+  });
+
   test(
     'matches exact canonical identity and excludes the edited record',
     () async {
@@ -75,7 +143,12 @@ void main() {
   );
 }
 
-Transaction _transaction(String id) {
+Transaction _transaction(
+  String id, {
+  TransactionStatus status = TransactionStatus.active,
+  String? paymentSourceId,
+  String? merchantId,
+}) {
   final now = DateTime.utc(2026, 8, 20);
   return Transaction(
     id: TransactionId(id),
@@ -86,6 +159,11 @@ Transaction _transaction(String id) {
     ),
     direction: TransactionDirection.expense,
     sourceType: TransactionSourceType.manual,
+    status: status,
+    paymentSourceId: paymentSourceId == null
+        ? null
+        : PaymentSourceId(paymentSourceId),
+    merchantId: merchantId == null ? null : MerchantId(merchantId),
     transactionDate: '2026-08-20',
     provenance: [
       Provenance(
@@ -103,7 +181,13 @@ Transaction _transaction(String id) {
 final class _Transactions implements TransactionRepository {
   _Transactions(this.values);
   final List<Transaction> values;
-  Future<void> save(Transaction value) async => values.add(value);
+  int saveCalls = 0;
+  int removeCalls = 0;
+  Future<void> save(Transaction value) async {
+    saveCalls++;
+    values.add(value);
+  }
+
   Future<Transaction?> findById(TransactionId id) async =>
       values.where((v) => v.id == id).firstOrNull;
   Future<List<Transaction>> listAll() async => values;
@@ -120,8 +204,12 @@ final class _Transactions implements TransactionRepository {
                 (query.status == null || v.status == query.status),
           )
           .toList();
-  Future<void> removePermanently(TransactionId id) async =>
-      values.removeWhere((v) => v.id == id);
+  Future<void> removePermanently(TransactionId id) async => _remove(id);
+
+  void _remove(TransactionId id) {
+    removeCalls++;
+    values.removeWhere((v) => v.id == id);
+  }
 }
 
 String _date(DateTime value) => value.toIso8601String().substring(0, 10);
