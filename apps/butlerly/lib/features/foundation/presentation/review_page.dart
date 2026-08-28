@@ -115,6 +115,7 @@ class _ReviewPageState extends State<ReviewPage> {
       return;
     }
     final groups = _loadDuplicateGroupsWithoutScan();
+    notifyTransactionChanged();
     setState(() {
       _duplicateGroups = groups;
     });
