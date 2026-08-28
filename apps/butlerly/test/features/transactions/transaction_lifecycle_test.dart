@@ -453,6 +453,7 @@ void main() {
     final finance = services<FinanceServices>();
     await finance.scanExistingTransactionsForDuplicates!();
     duplicateGroups.fullScanCalls = 0;
+    final notificationBeforeRescan = transactionChanges.value;
 
     await tester.pumpWidget(
       const MaterialApp(
@@ -467,6 +468,7 @@ void main() {
     await tester.tap(find.text('Rescan possible duplicates'));
     await tester.pumpAndSettle();
     expect(duplicateGroups.fullScanCalls, 1);
+    expect(transactionChanges.value, notificationBeforeRescan + 1);
   });
 
   testWidgets('creates and archives a local payment source', (tester) async {
