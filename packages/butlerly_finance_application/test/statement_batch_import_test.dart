@@ -190,7 +190,7 @@ StatementRow _row(
   String? transactionId,
   StatementRowStatus status = StatementRowStatus.pending,
   String? currency = 'USD',
-  String? direction,
+  String? direction = 'expense',
 }) => StatementRow(
   id: 'row-$id',
   statementId: 'statement',
@@ -200,7 +200,7 @@ StatementRow _row(
   description: 'Merchant $id',
   amount: amount,
   currency: currency,
-  direction: direction ?? TransactionDirection.expense.name,
+  direction: direction,
   confidence: confidence,
   transactionId: transactionId,
   status: status,
