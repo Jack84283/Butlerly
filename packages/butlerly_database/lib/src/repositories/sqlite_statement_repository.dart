@@ -127,6 +127,46 @@ final class SqliteStatementRepository
   }
 
   @override
+  Future<bool> canDeleteStatement(String id) async {
+    return database.transaction((tx) async {
+      final statement = await tx.query(
+        'financial_statements',
+        columns: ['evidence_id'],
+        where: 'id = ?',
+        whereArgs: [id],
+        limit: 1,
+      );
+      if (statement.isEmpty) return false;
+      final evidenceId = statement.single['evidence_id']! as String;
+      final rows = await tx.query(
+        'statement_rows',
+        columns: ['transaction_id'],
+        where: 'statement_id = ? AND transaction_id IS NOT NULL',
+        whereArgs: [id],
+        limit: 1,
+      );
+      if (rows.isNotEmpty) return false;
+      final evidence = await tx.query(
+        'evidence_items',
+        columns: ['provenance_id'],
+        where: 'id = ?',
+        whereArgs: [evidenceId],
+        limit: 1,
+      );
+      if (evidence.isEmpty) return false;
+      final provenanceId = evidence.single['provenance_id']! as String;
+      final dependencies = await tx.rawQuery(
+        '''SELECT 1 FROM attachment_links WHERE evidence_id = ?
+           UNION ALL SELECT 1 FROM transaction_provenances WHERE provenance_id = ?
+           UNION ALL SELECT 1 FROM suggestions WHERE provenance_id = ?
+           LIMIT 1''',
+        [evidenceId, provenanceId, provenanceId],
+      );
+      return dependencies.isEmpty;
+    });
+  }
+
+  @override
   Future<void> removeStatement(String id) async {
     try {
       await database.transaction((tx) async {

@@ -137,9 +137,19 @@ final class LocalEvidenceStore {
   }
 
   Future<bool> removeUnprocessedStatement(String statementId) async {
-    final result = await finance.statementServices?.deleteUnprocessed(
+    final result = await finance.statementServices?.deleteStatement(
       statementId,
     );
+    if (result is! ApplicationSuccess<EvidenceItem?>) return false;
+    final evidence = result.value;
+    if (evidence == null) return true;
+    final file = await fileFor(evidence);
+    if (file != null && await file.exists()) await file.delete();
+    return true;
+  }
+
+  Future<bool> abandonStatementImport(String statementId) async {
+    final result = await finance.statementServices?.abandonImport(statementId);
     if (result is! ApplicationSuccess<EvidenceItem?>) return false;
     final evidence = result.value;
     if (evidence == null) return true;

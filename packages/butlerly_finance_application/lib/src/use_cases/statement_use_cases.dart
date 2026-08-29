@@ -248,7 +248,19 @@ final class StatementServices {
         () => statements.assignPaymentSource(id, sourceId, clock.now()),
       );
 
-  Future<ApplicationResult<EvidenceItem?>> deleteUnprocessed(String id) =>
+  Future<ApplicationResult<bool>> canDeleteStatement(String id) =>
+      runApplication('check statement deletion eligibility', () async {
+        final statement = await statements.findStatement(id);
+        if (statement == null) {
+          throw const RepositoryException(
+            RepositoryFailureCode.notFound,
+            'check statement deletion eligibility',
+          );
+        }
+        return statements.canDeleteStatement(id);
+      });
+
+  Future<ApplicationResult<EvidenceItem?>> deleteStatement(String id) =>
       runApplication('delete unprocessed statement', () async {
         final statement = await statements.findStatement(id);
         if (statement == null) {
@@ -257,8 +269,7 @@ final class StatementServices {
             'delete statement',
           );
         }
-        final rows = await statements.listRows(id);
-        if (rows.any((row) => row.transactionId != null)) {
+        if (!await statements.canDeleteStatement(id)) {
           throw const DomainValidationException(
             code: DomainErrorCode.invalidState,
             field: 'statement',
@@ -274,6 +285,13 @@ final class StatementServices {
         await statements.removeStatement(id);
         return ownedEvidence;
       });
+
+  Future<ApplicationResult<EvidenceItem?>> abandonImport(String id) =>
+      deleteStatement(id);
+
+  @Deprecated('Use deleteStatement for stored statements.')
+  Future<ApplicationResult<EvidenceItem?>> deleteUnprocessed(String id) =>
+      deleteStatement(id);
 
   Future<ApplicationResult<void>> setDisposition(
     StatementRow row,

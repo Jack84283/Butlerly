@@ -121,7 +121,10 @@ void main() {
       expect(statements.rows.single.status, StatementRowStatus.saved);
       final imported = transactions.values['statement-statement-row-one']!;
       expect(imported.provenance.single.sourceId, 'statement');
-      expect(imported.provenance.single.originalRepresentation, contains('Merchant'));
+      expect(
+        imported.provenance.single.originalRepresentation,
+        contains('Merchant'),
+      );
     },
   );
 }
@@ -238,6 +241,10 @@ final class _Statements
     rows.removeWhere((v) => v.id == row.id);
     rows.add(row);
   }
+
+  @override
+  Future<bool> canDeleteStatement(String id) async =>
+      !rows.any((row) => row.transactionId != null);
 
   @override
   Future<void> removeStatement(String id) async {}

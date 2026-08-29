@@ -529,6 +529,7 @@ void main() {
           updatedAt: now,
         ),
       );
+      expect(await statements.canDeleteStatement('statement'), isTrue);
       await statements.removeStatement('statement');
       expect(await statements.findStatement('statement'), isNull);
       expect(
@@ -619,6 +620,56 @@ void main() {
         throwsA(isA<RepositoryException>()),
       );
       expect(await statements.findStatement('protected-statement'), isNotNull);
+    },
+  );
+
+  test(
+    'statement deletion eligibility includes provenance dependencies',
+    () async {
+      final now = DateTime.utc(2026);
+      await statements.saveStatement(
+        FinancialStatement(
+          id: 'provenance-statement',
+          evidenceId: 'evidence',
+          status: StatementStatus.completed,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await transactions.save(
+        Transaction(
+          id: TransactionId('provenance-transaction'),
+          timing: const UnknownTransactionTime(
+            UnknownTransactionTimeReason.unknown,
+          ),
+          money: Money(
+            amount: DecimalValue.parse('10'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+          sourceType: TransactionSourceType.import,
+          transactionDate: '2026-08-12',
+          paymentSourceId: PaymentSourceId('source'),
+          provenance: [
+            Provenance(
+              id: ProvenanceId('provenance-transaction-origin'),
+              sourceType: ProvenanceSourceType.import,
+              capturedAt: now,
+              originalRepresentation: 'source',
+            ),
+          ],
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await database.connection.insert('transaction_provenances', {
+        'transaction_id': 'provenance-transaction',
+        'provenance_id': 'evidence-p',
+      });
+      expect(
+        await statements.canDeleteStatement('provenance-statement'),
+        isFalse,
+      );
     },
   );
 

@@ -239,11 +239,9 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
 
   Future<void> _deleteUnprocessed(FinancialStatement item) async {
     final l10n = context.l10n;
-    final rowsResult = await statement.rows(item.id);
+    final eligibility = await statement.canDeleteStatement(item.id);
     if (!mounted) return;
-    if (rowsResult case ApplicationSuccess<List<StatementRow>>(
-      :final value,
-    ) when value.any((row) => row.transactionId != null)) {
+    if (eligibility is! ApplicationSuccess<bool> || !eligibility.value) {
       _message(context.l10n.text('statementHasTransactions'));
       return;
     }
@@ -469,6 +467,37 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
       _message(
         'The source was created, but could not be linked. Select it to retry.',
       );
+    }
+  }
+
+  Future<void> _abandonImport() async {
+    final l10n = context.l10n;
+    final confirmed = await showButlerlyBottomSheet<bool>(
+      context: context,
+      builder: (context) => ButlerlySheet(
+        title: Text(l10n.text('abandonStatementImportTitle')),
+        content: Text(l10n.text('abandonStatementImportBody')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.text('cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.text('abandonStatementImport')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final removed = await services<LocalEvidenceStore>().abandonStatementImport(
+      widget.statement.id,
+    );
+    if (!mounted) return;
+    if (removed) {
+      Navigator.pop(context);
+    } else {
+      _message(l10n.text('statementDeleteFailed'));
     }
   }
 
@@ -946,7 +975,16 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(context.l10n.text('reviewStatementImport'))),
+    appBar: AppBar(
+      title: Text(context.l10n.text('reviewStatementImport')),
+      actions: [
+        IconButton(
+          onPressed: _abandonImport,
+          tooltip: context.l10n.text('abandonStatementImport'),
+          icon: const Icon(Icons.close),
+        ),
+      ],
+    ),
     body: ListView(
       padding: const EdgeInsets.all(16),
       children: [

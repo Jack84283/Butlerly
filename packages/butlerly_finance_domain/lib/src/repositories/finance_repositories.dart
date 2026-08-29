@@ -192,6 +192,7 @@ abstract interface class StatementRepository {
     DateTime updatedAt,
   );
   Future<void> updateRow(StatementRow row);
+  Future<bool> canDeleteStatement(String id);
   Future<void> removeStatement(String id);
 }
 

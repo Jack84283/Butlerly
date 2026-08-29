@@ -452,6 +452,10 @@ class AppLocalizations {
           'Text was recognized, but no transaction rows could be identified.',
       'statementUnresolvedEvidence': 'Transaction-like evidence needs review.',
       'statementProcessingFailed': 'Statement processing failed.',
+      'abandonStatementImport': 'Abandon import',
+      'abandonStatementImportTitle': 'Abandon this import?',
+      'abandonStatementImportBody':
+          'The scanned statement and its extracted data will be removed. Your original file will not be changed.',
       'rowsNeedCorrection': '{count} row(s) need correction.',
       'importValidRows': 'Import valid rows',
       'debitExpense': 'Debit / expense',
@@ -836,6 +840,9 @@ class AppLocalizations {
       'statementNoRows': '已识别文字，但未找到交易行。',
       'statementUnresolvedEvidence': '发现疑似交易内容，需要审核。',
       'statementProcessingFailed': '账单处理失败。',
+      'abandonStatementImport': '放弃导入',
+      'abandonStatementImportTitle': '放弃此次导入？',
+      'abandonStatementImportBody': '扫描的账单及其提取数据将被删除。不会更改您的原始文件。',
       'rowsNeedCorrection': '有 {count} 行需要修正。',
       'importValidRows': '导入有效记录',
       'debitExpense': '借记 / 支出',
@@ -1276,6 +1283,10 @@ class AppLocalizations {
       'statementUnresolvedEvidence':
           'Hay evidencia similar a una transacción que requiere revisión.',
       'statementProcessingFailed': 'El procesamiento del extracto falló.',
+      'abandonStatementImport': 'Abandonar importación',
+      'abandonStatementImportTitle': '¿Abandonar esta importación?',
+      'abandonStatementImportBody':
+          'Se eliminarán el extracto escaneado y sus datos extraídos. El archivo original no se modificará.',
       'rowsNeedCorrection': '{count} fila(s) necesitan corrección.',
       'importValidRows': 'Importar filas válidas',
       'debitExpense': 'Débito / gasto',
