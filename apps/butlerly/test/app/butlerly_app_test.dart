@@ -23,7 +23,7 @@ void main() {
     );
     expect(
       AppTheme.dark.textTheme.bodyMedium?.color,
-      const Color.fromRGBO(228, 228, 228, 1),
+      const Color.fromRGBO(198, 198, 198, 1),
     );
     expect(
       AppTheme.light.textTheme.bodyMedium?.color,
