@@ -27,11 +27,11 @@ void main() {
     );
     expect(
       AppTheme.light.textTheme.bodyMedium?.color,
-      const Color.fromRGBO(68, 68, 68, 1),
+      const Color.fromRGBO(96, 96, 96, 1),
     );
     expect(
       AppTheme.light.textTheme.bodySmall?.color,
-      const Color.fromRGBO(68, 68, 68, 1),
+      const Color.fromRGBO(96, 96, 96, 1),
     );
     expect(
       AppTheme.light.cardTheme.color,
