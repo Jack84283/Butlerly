@@ -26,13 +26,35 @@ void main() {
       ),
     );
     final second = await scan();
-    expect(
-      (second as ApplicationSuccess<List<DuplicateCandidateGroup>>)
-          .value
-          .single
-          .status,
-      DuplicateCandidateGroupStatus.unresolved,
+    final secondGroups =
+        (second as ApplicationSuccess<List<DuplicateCandidateGroup>>).value;
+    expect(secondGroups.single.status, DuplicateCandidateGroupStatus.unresolved);
+    expect(secondGroups.single.selectedTransactionId, isNull);
+  });
+
+  test('explicit scan reopens consolidated groups', () async {
+    final repository = _Groups([_match('a', '25'), _match('b', '25')]);
+    final clock = _Clock(DateTime.utc(2026, 1, 1));
+    final scan = ScanExistingTransactionsForDuplicates(repository, clock);
+    final first = (await scan() as ApplicationSuccess<List<DuplicateCandidateGroup>>)
+        .value
+        .single;
+    await repository.save(
+      DuplicateCandidateGroup(
+        id: first.id,
+        transactionIds: first.transactionIds,
+        duplicateKey: first.duplicateKey,
+        status: DuplicateCandidateGroupStatus.consolidated,
+        selectedTransactionId: TransactionId('a'),
+        createdAt: first.createdAt,
+        updatedAt: clock.now(),
+      ),
     );
+    final result = (await scan() as ApplicationSuccess<List<DuplicateCandidateGroup>>)
+        .value
+        .single;
+    expect(result.status, DuplicateCandidateGroupStatus.unresolved);
+    expect(result.selectedTransactionId, isNull);
   });
 
   test('scan creates one group for three matching transactions', () async {

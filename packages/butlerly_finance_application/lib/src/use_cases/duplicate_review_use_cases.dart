@@ -21,24 +21,12 @@ final class ScanExistingTransactionsForDuplicates {
           activeIds.add(id);
           final previous = existingById[id];
           final transactionIds = _sortedIds(match.transactionIds);
-          final membershipUnchanged =
-              previous != null &&
-              _sameIds(previous.transactionIds, transactionIds);
-          final status =
-              membershipUnchanged &&
-                  previous.status != DuplicateCandidateGroupStatus.keepBoth
-              ? previous.status
-              : DuplicateCandidateGroupStatus.unresolved;
           final group = DuplicateCandidateGroup(
             id: id,
             transactionIds: transactionIds,
             duplicateKey: match.duplicateKey,
-            status: status,
-            selectedTransactionId:
-                membershipUnchanged &&
-                    previous.status != DuplicateCandidateGroupStatus.keepBoth
-                ? previous.selectedTransactionId
-                : null,
+            status: DuplicateCandidateGroupStatus.unresolved,
+            selectedTransactionId: null,
             createdAt: previous?.createdAt ?? clock.now(),
             updatedAt: clock.now(),
           );
@@ -63,13 +51,6 @@ final class ScanExistingTransactionsForDuplicates {
     ids.toList()..sort((a, b) => a.value.compareTo(b.value)),
   );
 
-  bool _sameIds(List<TransactionId> left, List<TransactionId> right) {
-    if (left.length != right.length) return false;
-    for (var index = 0; index < left.length; index++) {
-      if (left[index] != right[index]) return false;
-    }
-    return true;
-  }
 }
 
 /// Refreshes only the duplicate key(s) affected by one transaction mutation.
