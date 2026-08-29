@@ -128,6 +128,21 @@ void main() {
     },
   );
 
+  test('skip and restore toggle the existing statement row', () async {
+    final row = _row('toggle');
+    statements.rows.add(row);
+    await service.setDisposition(row, StatementRowStatus.skipped);
+    expect(statements.rows, hasLength(1));
+    expect(statements.rows.single.status, StatementRowStatus.skipped);
+    await service.setDisposition(
+      statements.rows.single,
+      StatementRowStatus.pending,
+    );
+    expect(statements.rows, hasLength(1));
+    expect(statements.rows.single.status, StatementRowStatus.pending);
+    expect(statements.rows.single.originalText, row.originalText);
+  });
+
   test('abandon import cannot remove a protected statement', () async {
     statements.rows.add(
       _row('protected', transactionId: 'existing-transaction'),

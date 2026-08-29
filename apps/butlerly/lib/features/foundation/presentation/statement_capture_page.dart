@@ -194,11 +194,13 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
           postingDate: value.postingDate,
           description: value.description,
           amount: value.amount,
-          currency: value.currency,
-          direction: value.direction,
+          currency: value.currency ?? 'USD',
+          direction: value.direction ?? TransactionDirection.expense.name,
           confidence: value.confidence,
           sourceContext:
-              'On-device OCR observations ${value.sourceObservationIndexes.join(', ')}',
+              'On-device OCR observations ${value.sourceObservationIndexes.join(', ')}'
+              '${value.currency == null ? '; currency defaulted to USD' : ''}'
+              '${value.direction == null ? '; direction defaulted to expense' : ''}',
           reviewReason: value.unresolvedReason?.name,
           paymentSourceId: paymentSourceId,
           status: complete
@@ -310,29 +312,35 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
             ),
           )
         : ListView.builder(
+            padding: const EdgeInsets.all(12),
             itemCount: _statements.length,
             itemBuilder: (_, index) {
               final item = _statements[index];
-              return ListTile(
-                leading: const Icon(Icons.description_outlined),
-                title: Text(item.institution ?? context.l10n.text('statement')),
-                subtitle: Text(
-                  item.paymentSourceId == null
-                      ? context.l10n.text('choosePaymentSourceToContinue')
-                      : context.l10n.text('reviewInProgress'),
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: ListTile(
+                  leading: const Icon(Icons.description_outlined),
+                  title: Text(
+                    item.institution ?? context.l10n.text('statement'),
+                  ),
+                  subtitle: Text(
+                    item.paymentSourceId == null
+                        ? context.l10n.text('choosePaymentSourceToContinue')
+                        : context.l10n.text('reviewInProgress'),
+                  ),
+                  trailing: PopupMenuButton<String>(
+                    onSelected: (value) {
+                      if (value == 'delete') _deleteUnprocessed(item);
+                    },
+                    itemBuilder: (_) => [
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Text(context.l10n.text('deleteStatement')),
+                      ),
+                    ],
+                  ),
+                  onTap: () => _open(item),
                 ),
-                trailing: PopupMenuButton<String>(
-                  onSelected: (value) {
-                    if (value == 'delete') _deleteUnprocessed(item);
-                  },
-                  itemBuilder: (_) => [
-                    PopupMenuItem(
-                      value: 'delete',
-                      child: Text(context.l10n.text('deleteStatement')),
-                    ),
-                  ],
-                ),
-                onTap: () => _open(item),
               );
             },
           ),
@@ -593,6 +601,8 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
     }
   }
 
+  // Retained for future recovery tooling; intentionally hidden from V1 review UI.
+  // ignore: unused_element
   Future<void> _addRows() async {
     final controller = TextEditingController();
     final text = await showButlerlyBottomSheet<String>(
@@ -973,6 +983,14 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
     }
   }
 
+  StatementRowStatus _restoredStatus(StatementRow row) =>
+      row.transactionDate != null &&
+          row.amount != null &&
+          row.currency != null &&
+          row.direction != null
+      ? StatementRowStatus.pending
+      : StatementRowStatus.unresolved;
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
@@ -1034,36 +1052,17 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
           ),
         ),
         const SizedBox(height: 8),
-        FilledButton.icon(
-          onPressed: _sourceId == null || _rows.isEmpty ? null : _importBatch,
-          icon: const Icon(Icons.download_done_outlined),
-          label: Text(context.l10n.text('importData')),
-        ),
-        const SizedBox(height: 16),
         if (_rows.isEmpty)
-          Column(
-            children: [
-              const Text(
-                'No readable rows were found. The original remains on this device.',
-              ),
-              FilledButton.icon(
-                onPressed: _addRows,
-                icon: const Icon(Icons.edit_outlined),
-                label: const Text('Add or correct rows'),
-              ),
-            ],
-          ),
-        if (_rows.isNotEmpty)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              onPressed: _addRows,
-              icon: const Icon(Icons.add),
-              label: const Text('Add missing row'),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Text(
+              context.l10n.text('statementNoRows'),
+              textAlign: TextAlign.center,
             ),
           ),
         for (final row in _rows)
           Card(
+            margin: const EdgeInsets.only(bottom: 12),
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
@@ -1085,34 +1084,52 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                   ),
                   if (row.status == StatementRowStatus.pending ||
                       row.status == StatementRowStatus.unresolved ||
-                      row.status == StatementRowStatus.deferred)
+                      row.status == StatementRowStatus.deferred ||
+                      row.status == StatementRowStatus.skipped)
                     Wrap(
                       spacing: 8,
                       children: [
-                        OutlinedButton(
-                          onPressed: () => _edit(row),
-                          child: const Text('Edit'),
-                        ),
-                        FilledButton(
-                          onPressed:
-                              _sourceId != null &&
-                                  row.transactionDate != null &&
-                                  row.amount != null &&
-                                  row.currency != null &&
-                                  row.direction != null
-                              ? () => _act(row, StatementRowStatus.saved)
-                              : null,
-                          child: const Text('Save'),
-                        ),
-                        TextButton(
-                          onPressed: () =>
-                              _act(row, StatementRowStatus.deferred),
-                          child: const Text('Later'),
-                        ),
-                        TextButton(
-                          onPressed: () =>
-                              _act(row, StatementRowStatus.skipped),
-                          child: const Text('Skip'),
+                        if (row.status != StatementRowStatus.skipped)
+                          _StatementActionButton(
+                            onPressed: () => _edit(row),
+                            icon: Icons.edit_outlined,
+                            child: Text(context.l10n.text('edit')),
+                          ),
+                        if (row.status != StatementRowStatus.skipped)
+                          _StatementActionButton(
+                            onPressed:
+                                _sourceId != null &&
+                                    row.transactionDate != null &&
+                                    row.amount != null &&
+                                    row.currency != null &&
+                                    row.direction != null
+                                ? () => _act(row, StatementRowStatus.saved)
+                                : null,
+                            icon: Icons.save_outlined,
+                            child: Text(context.l10n.text('save')),
+                          ),
+                        if (row.status != StatementRowStatus.skipped)
+                          _StatementActionButton(
+                            onPressed: () =>
+                                _act(row, StatementRowStatus.deferred),
+                            icon: Icons.schedule_outlined,
+                            child: Text(context.l10n.text('later')),
+                          ),
+                        _StatementActionButton(
+                          onPressed: () => _act(
+                            row,
+                            row.status == StatementRowStatus.skipped
+                                ? _restoredStatus(row)
+                                : StatementRowStatus.skipped,
+                          ),
+                          icon: row.status == StatementRowStatus.skipped
+                              ? Icons.restore_outlined
+                              : Icons.skip_next_outlined,
+                          child: Text(
+                            row.status == StatementRowStatus.skipped
+                                ? context.l10n.text('restore')
+                                : context.l10n.text('skip'),
+                          ),
                         ),
                       ],
                     ),
@@ -1120,6 +1137,19 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
               ),
             ),
           ),
+        Padding(
+          padding: const EdgeInsets.only(top: 4, bottom: 24),
+          child: SafeArea(
+            top: false,
+            child: FilledButton.icon(
+              onPressed: _sourceId == null || _rows.isEmpty
+                  ? null
+                  : _importBatch,
+              icon: const Icon(Icons.download_done_outlined),
+              label: Text(context.l10n.text('importData')),
+            ),
+          ),
+        ),
       ],
     ),
   );
@@ -1143,4 +1173,22 @@ class _ProgressSummary extends StatelessWidget {
       style: Theme.of(context).textTheme.bodySmall,
     );
   }
+}
+
+class _StatementActionButton extends StatelessWidget {
+  const _StatementActionButton({
+    required this.onPressed,
+    required this.icon,
+    required this.child,
+  });
+  final VoidCallback? onPressed;
+  final IconData icon;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => OutlinedButton.icon(
+    onPressed: onPressed,
+    icon: Icon(icon, size: 18),
+    label: child,
+  );
 }
