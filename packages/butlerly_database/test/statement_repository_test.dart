@@ -14,7 +14,7 @@ void main() {
     database = ButlerlyDatabase(
       factory: databaseFactoryFfi,
       path: inMemoryDatabasePath,
-      legacyCompatibility: true,
+      schemaSql: await File('database/schema/v1.sql').readAsString(),
     );
     await database.open();
     statements = SqliteStatementRepository(database);
@@ -315,7 +315,7 @@ void main() {
     final first = ButlerlyDatabase(
       factory: databaseFactoryFfi,
       path: path,
-      legacyCompatibility: true,
+      schemaSql: await File('database/schema/v1.sql').readAsString(),
     );
     await first.open();
     final txRepo = SqliteTransactionRepository(first);
@@ -405,7 +405,7 @@ void main() {
     final second = ButlerlyDatabase(
       factory: databaseFactoryFfi,
       path: path,
-      legacyCompatibility: true,
+      schemaSql: await File('database/schema/v1.sql').readAsString(),
     );
     await second.open();
     final reopenedTx = SqliteTransactionRepository(second);

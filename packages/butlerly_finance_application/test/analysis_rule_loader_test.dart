@@ -132,7 +132,8 @@ measure:
     final database = ButlerlyDatabase(
       factory: databaseFactoryFfi,
       path: inMemoryDatabasePath,
-      legacyCompatibility: true,
+      schemaSql: File('../../packages/butlerly_database/database/schema/v1.sql')
+          .readAsStringSync(),
     );
     await database.open();
     addTearDown(database.close);

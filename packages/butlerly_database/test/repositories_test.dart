@@ -17,7 +17,7 @@ void main() {
     database = ButlerlyDatabase(
       factory: databaseFactoryFfi,
       path: inMemoryDatabasePath,
-      legacyCompatibility: true,
+      schemaSql: await File('database/schema/v1.sql').readAsString(),
     );
     await database.open();
     transactions = SqliteTransactionRepository(database);
