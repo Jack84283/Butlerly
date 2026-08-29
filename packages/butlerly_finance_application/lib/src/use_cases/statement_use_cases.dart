@@ -72,13 +72,15 @@ final class StatementServices {
       if (row.amount == null ||
           row.currency == null ||
           row.transactionDate == null ||
-          row.direction == null)
+          row.direction == null) {
         continue;
+      }
       final result = await this.duplicates(row);
       if (result case ApplicationSuccess<DuplicateTransactionCheckResult>(
         value: final value,
-      ) when value.candidates.isNotEmpty)
+      ) when value.candidates.isNotEmpty) {
         duplicates++;
+      }
     }
     final valid = rows.where(
       (row) =>
