@@ -3,6 +3,11 @@ description: SQLite infrastructure adapters for Butlerly Version 1.
 version: 0.1.0
 publish_to: none
 
+flutter:
+  assets:
+    - database/schema/v1.sql
+    - database/seed/catalog.sql
+
 environment:
   sdk: ^3.12.0
 
