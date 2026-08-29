@@ -12,7 +12,6 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
-import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -79,16 +78,6 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
         _sources = v.paymentSources;
       }
     });
-  }
-
-  Future<void> _capture() async {
-    const types = XTypeGroup(
-      label: 'Statements',
-      extensions: ['pdf', 'jpg', 'jpeg', 'png', 'heic', 'webp'],
-    );
-    final file = await openFile(acceptedTypeGroups: const [types]);
-    if (file == null || !mounted) return;
-    await _ingest(file);
   }
 
   Future<void> _captureImage(ImageSource source) async {
@@ -251,11 +240,6 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
           onPressed: _busy ? null : () => _captureImage(ImageSource.gallery),
           icon: const Icon(Icons.photo_library_outlined),
           tooltip: context.l10n.text('importData'),
-        ),
-        IconButton(
-          onPressed: _busy ? null : _capture,
-          icon: const Icon(Icons.document_scanner_outlined),
-          tooltip: context.l10n.text('addStatement'),
         ),
       ],
     ),
