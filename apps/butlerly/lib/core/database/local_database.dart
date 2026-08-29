@@ -1,6 +1,7 @@
 import 'package:butlerly/core/database/database_factory_provider.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly_database/butlerly_database.dart' as persistence;
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common/sqlite_api.dart';
@@ -49,9 +50,17 @@ class LocalDatabase {
 
     final directory =
         _databaseDirectory ?? (await getApplicationSupportDirectory()).path;
+    final schemaSql = await rootBundle.loadString(
+      'packages/butlerly_database/database/schema/v1.sql',
+    );
+    final catalogSql = await rootBundle.loadString(
+      'packages/butlerly_database/database/seed/catalog.sql',
+    );
     _database = persistence.ButlerlyDatabase(
       factory: factory,
       path: path.join(directory, 'butlerly.db'),
+      schemaSql: schemaSql,
+      seedSql: [catalogSql],
     );
     await _database!.open();
     status = DatabaseStatus.ready;
