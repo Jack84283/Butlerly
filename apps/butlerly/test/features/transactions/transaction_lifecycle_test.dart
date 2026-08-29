@@ -1,5 +1,6 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/features/foundation/presentation/payment_sources_page.dart';
 import 'package:butlerly/features/foundation/presentation/review_page.dart';
@@ -338,6 +339,94 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('You’re all caught up'), findsOneWidget);
+  });
+
+  testWidgets('Review transaction views use the canonical record list', (
+    tester,
+  ) async {
+    final finance = services<FinanceServices>();
+    await finance.createTransaction(
+      CreateTransactionCommand(
+        id: 'review-canonical',
+        provenanceId: 'manual-review-canonical',
+        timing: KnownTransactionTime(DateTime.utc(2026, 8, 9)),
+        money: Money(
+          amount: DecimalValue.parse('12.50'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        description: 'Canonical review row',
+      ),
+    );
+    final stored = repository.values['review-canonical']!;
+    repository.values['review-canonical'] = stored.addReviewIssue(
+      ReviewIssue(
+        id: ReviewIssueId('review-canonical-issue'),
+        transactionId: TransactionId('review-canonical'),
+        reason: ReviewIssueReason.uncertain,
+        createdAt: stored.updatedAt.add(const Duration(seconds: 1)),
+        detail: 'Needs a category',
+      ),
+      stored.updatedAt.add(const Duration(seconds: 1)),
+    );
+    await tester.pumpWidget(const MaterialApp(home: ReviewPage()));
+    await tester.pumpAndSettle();
+    expect(find.byType(ButlerlyCard), findsOneWidget);
+    expect(find.byType(ButlerlyRecordRow), findsOneWidget);
+    expect(find.text('Needs a category'), findsOneWidget);
+    expect(find.text('Resolve'), findsOneWidget);
+
+    await tester.tap(find.text('Uncategorized'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ButlerlyCard), findsOneWidget);
+    expect(find.byType(ButlerlySeparatedList), findsOneWidget);
+    expect(find.byType(ButlerlyRecordRow), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Review reloads when a transaction change is notified', (
+    tester,
+  ) async {
+    final finance = services<FinanceServices>();
+    await finance.createTransaction(
+      CreateTransactionCommand(
+        id: 'review-refresh',
+        provenanceId: 'manual-review-refresh',
+        timing: KnownTransactionTime(DateTime.utc(2026, 8, 9)),
+        money: Money(
+          amount: DecimalValue.parse('12.50'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        description: 'Refresh me',
+      ),
+    );
+    await tester.pumpWidget(const MaterialApp(home: ReviewPage()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Uncategorized'));
+    await tester.pumpAndSettle();
+    expect(find.text('Refresh me'), findsOneWidget);
+    await finance.createTransaction(
+      CreateTransactionCommand(
+        id: 'review-refresh-added',
+        provenanceId: 'manual-review-refresh-added',
+        timing: KnownTransactionTime(DateTime.utc(2026, 8, 10)),
+        money: Money(
+          amount: DecimalValue.parse('8.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        description: 'Added after refresh',
+      ),
+    );
+    notifyTransactionChanged();
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const MaterialApp(home: ReviewPage()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Uncategorized'));
+    await tester.pumpAndSettle();
+    expect(find.text('Added after refresh'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
   });
 
   testWidgets(
