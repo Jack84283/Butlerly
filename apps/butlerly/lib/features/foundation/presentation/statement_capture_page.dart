@@ -6,6 +6,7 @@ import 'package:butlerly/core/evidence/statement_extractor.dart';
 import 'package:butlerly/core/evidence/statement_source_matcher.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
@@ -13,6 +14,7 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 sealed class StatementReconciliationDecision {
@@ -420,6 +422,92 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
   void _message(String text) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+    }
+  }
+
+  Future<void> _importBatch() async {
+    final sourceId = _sourceId;
+    if (sourceId == null) {
+      _message(context.l10n.text('choosePaymentSourceToContinue'));
+      return;
+    }
+    final candidates = _rows
+        .where(
+          (row) =>
+              row.status == StatementRowStatus.pending ||
+              row.status == StatementRowStatus.unresolved,
+        )
+        .toList(growable: false);
+    final assessmentResult = await widget.service.assessBatch(
+      widget.statement,
+      candidates,
+      sourceId,
+    );
+    if (!mounted) return;
+    if (assessmentResult is! ApplicationSuccess<StatementImportAssessment>) {
+      _message(context.l10n.text('statementAssessmentFailed'));
+      return;
+    }
+    final assessment = assessmentResult.value;
+    final confirmed = await showButlerlyBottomSheet<bool>(
+      context: context,
+      builder: (context) => ButlerlySheet(
+        title: Text(context.l10n.text('reviewStatementImport')),
+        content: Text(
+          [
+            '${context.l10n.text('candidateTransactions')}: ${assessment.candidateCount}',
+            if (assessment.aggregateAmount != null)
+              '${context.l10n.text('aggregateAmount')}: ${assessment.currency} ${assessment.aggregateAmount}',
+            '${context.l10n.text('statementNeedsReview')}: ${assessment.lowConfidenceCount}',
+            '${context.l10n.text('possibleDuplicates')}: ${assessment.possibleDuplicateCount}',
+            '${context.l10n.text('unresolvedRows')}: ${assessment.invalidCount}',
+          ].join('\n'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(context.l10n.text('cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(context.l10n.text('importData')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final result = await widget.service.importBatch(
+      widget.statement,
+      candidates,
+      sourceId,
+    );
+    if (!mounted) return;
+    if (result case ApplicationSuccess<StatementImportSummary>(
+      value: final summary,
+    )) {
+      notifyTransactionChanged();
+      await showButlerlyBottomSheet<void>(
+        context: context,
+        builder: (context) => ButlerlySheet(
+          title: Text(context.l10n.text('importSummary')),
+          content: Text(
+            '${summary.imported} ${context.l10n.text('statementSaved')} · '
+            '${summary.needsReview} ${context.l10n.text('statementNeedsReview')} · '
+            '${summary.possibleDuplicates} ${context.l10n.text('possibleDuplicates')}',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => context.go('/review'),
+              child: Text(context.l10n.text('review')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(context.l10n.text('done')),
+            ),
+          ],
+        ),
+      );
+      if (mounted) context.pop();
     }
   }
 
@@ -853,6 +941,12 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
             icon: const Icon(Icons.add_card_outlined),
             label: const Text('Create new payment source'),
           ),
+        ),
+        const SizedBox(height: 8),
+        FilledButton.icon(
+          onPressed: _sourceId == null || _rows.isEmpty ? null : _importBatch,
+          icon: const Icon(Icons.download_done_outlined),
+          label: Text(context.l10n.text('importData')),
         ),
         const SizedBox(height: 16),
         if (_rows.isEmpty)

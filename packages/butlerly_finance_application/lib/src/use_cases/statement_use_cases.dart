@@ -6,6 +6,36 @@ import 'transaction_use_cases.dart';
 import 'reconciliation_use_cases.dart';
 import 'duplicate_transaction_use_cases.dart';
 
+final class StatementImportSummary {
+  const StatementImportSummary({
+    required this.imported,
+    required this.needsReview,
+    required this.possibleDuplicates,
+    required this.failed,
+  });
+  final int imported;
+  final int needsReview;
+  final int possibleDuplicates;
+  final int failed;
+}
+
+final class StatementImportAssessment {
+  const StatementImportAssessment({
+    required this.candidateCount,
+    required this.aggregateAmount,
+    required this.currency,
+    required this.lowConfidenceCount,
+    required this.possibleDuplicateCount,
+    required this.invalidCount,
+  });
+  final int candidateCount;
+  final String? aggregateAmount;
+  final String? currency;
+  final int lowConfidenceCount;
+  final int possibleDuplicateCount;
+  final int invalidCount;
+}
+
 final class StatementServices {
   const StatementServices(
     this.statements,
@@ -13,6 +43,7 @@ final class StatementServices {
     this.workflow,
     this.clock, {
     this.evidence,
+    required this.duplicateGroups,
     required this.duplicateChecker,
   });
   final StatementRepository statements;
@@ -20,7 +51,155 @@ final class StatementServices {
   final StatementWorkflowRepository workflow;
   final ApplicationClock clock;
   final EvidenceRepository? evidence;
+  final DuplicateCandidateGroupRepository duplicateGroups;
   final DuplicateTransactionChecker duplicateChecker;
+
+  Future<ApplicationResult<StatementImportAssessment>> assessBatch(
+    FinancialStatement statement,
+    List<StatementRow> rows,
+    String paymentSourceId,
+  ) => runApplication('assess statement batch', () async {
+    if (statement.paymentSourceId != null &&
+        statement.paymentSourceId != paymentSourceId) {
+      throw const DomainValidationException(
+        code: DomainErrorCode.invalidState,
+        field: 'paymentSourceId',
+        message: 'The selected payment source does not match the statement.',
+      );
+    }
+    var duplicates = 0;
+    for (final row in rows) {
+      if (row.amount == null ||
+          row.currency == null ||
+          row.transactionDate == null ||
+          row.direction == null) {
+        continue;
+      }
+      final result = await this.duplicates(row);
+      if (result case ApplicationSuccess<DuplicateTransactionCheckResult>(
+        value: final value,
+      ) when value.candidates.isNotEmpty) {
+        duplicates++;
+      }
+    }
+    final valid = rows.where(
+      (row) =>
+          row.amount != null &&
+          row.currency != null &&
+          row.transactionDate != null &&
+          row.direction != null,
+    );
+    final currencies = valid.map((row) => row.currency!).toSet();
+    String? aggregate;
+    String? currency;
+    if (currencies.length == 1) {
+      currency = currencies.single;
+      var coefficient = BigInt.zero;
+      var scale = 0;
+      for (final row in valid) {
+        final amount = DecimalValue.parse(row.amount!);
+        final targetScale = scale > amount.scale ? scale : amount.scale;
+        coefficient =
+            coefficient * BigInt.from(10).pow(targetScale - scale) +
+            amount.coefficient *
+                BigInt.from(10).pow(targetScale - amount.scale);
+        scale = targetScale;
+      }
+      aggregate = DecimalValue.fromParts(
+        coefficient: coefficient,
+        scale: scale,
+      ).toString();
+    }
+    return StatementImportAssessment(
+      candidateCount: rows.length,
+      aggregateAmount: aggregate,
+      currency: currency,
+      lowConfidenceCount: rows
+          .where((row) => (row.confidence ?? 1) <= .5)
+          .length,
+      possibleDuplicateCount: duplicates,
+      invalidCount: rows.length - valid.length,
+    );
+  });
+
+  Future<ApplicationResult<StatementImportSummary>> importBatch(
+    FinancialStatement statement,
+    List<StatementRow> rows,
+    String paymentSourceId,
+  ) => runApplication('import statement batch', () async {
+    if (statement.paymentSourceId != null &&
+        statement.paymentSourceId != paymentSourceId) {
+      throw const DomainValidationException(
+        code: DomainErrorCode.invalidState,
+        field: 'paymentSourceId',
+        message: 'The selected payment source does not match the statement.',
+      );
+    }
+    var imported = 0;
+    var needsReview = 0;
+    var possibleDuplicates = 0;
+    var failed = 0;
+    for (final row in rows) {
+      if (row.amount == null ||
+          row.currency == null ||
+          row.transactionDate == null ||
+          row.direction == null) {
+        failed++;
+        continue;
+      }
+      final duplicate = await duplicates(row);
+      final result = await save(row, paymentSourceId, allowCreateNew: true);
+      if (result is! ApplicationSuccess<TransactionDto>) {
+        failed++;
+        continue;
+      }
+      imported++;
+      if ((row.confidence ?? 1) <= .5) needsReview++;
+      final candidates =
+          duplicate is ApplicationSuccess<DuplicateTransactionCheckResult>
+          ? duplicate.value.candidates
+          : const <DuplicateTransactionCandidate>[];
+      if (candidates.isNotEmpty) {
+        possibleDuplicates++;
+        final transactionIds = [
+          result.value.id,
+          ...candidates.map((candidate) => candidate.transaction.id),
+        ].map(TransactionId.new).toList();
+        final key = DuplicateTransactionKey(
+          transactionDate: row.transactionDate!.toIso8601String().substring(
+            0,
+            10,
+          ),
+          amount: DecimalValue.parse(row.amount!),
+          currency: row.currency!,
+          direction: _directionForRow(row).name,
+        );
+        final now = clock.now();
+        await duplicateGroups.save(
+          DuplicateCandidateGroup(
+            id: 'statement-duplicate-${row.id}',
+            transactionIds: transactionIds,
+            duplicateKey: key,
+            status: DuplicateCandidateGroupStatus.unresolved,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+      }
+    }
+    return StatementImportSummary(
+      imported: imported,
+      needsReview: needsReview,
+      possibleDuplicates: possibleDuplicates,
+      failed: failed,
+    );
+  });
+
+  Future<ApplicationResult<StatementImportSummary>> importRows(
+    FinancialStatement statement,
+    List<StatementRow> rows,
+    String paymentSourceId,
+  ) => importBatch(statement, rows, paymentSourceId);
 
   Future<ApplicationResult<DuplicateTransactionCheckResult>> duplicates(
     StatementRow row,
@@ -215,6 +394,17 @@ final class StatementServices {
           originalRepresentation: row.originalText,
         ),
       ],
+      reviewIssues: row.confidence != null && row.confidence! <= .5
+          ? [
+              ReviewIssue(
+                id: ReviewIssueId('statement-confidence-${row.id}'),
+                transactionId: TransactionId(transactionId),
+                reason: ReviewIssueReason.uncertain,
+                detail: 'We were not confident reading this statement row.',
+                createdAt: now,
+              ),
+            ]
+          : const [],
       createdAt: now,
       updatedAt: now,
     );

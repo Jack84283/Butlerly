@@ -199,7 +199,7 @@ final class FinanceServices {
        queryTransactionsForFinancialDate = QueryTransactionsForFinancialDate(
          transactions,
        ),
-       statementServices = statements == null
+       statementServices = statements == null || duplicateGroups == null
            ? null
            : StatementServices(
                statements,
@@ -207,6 +207,7 @@ final class FinanceServices {
                statements as StatementWorkflowRepository,
                const SystemApplicationClock(),
                evidence: evidence,
+               duplicateGroups: duplicateGroups,
                duplicateChecker: DuplicateTransactionChecker(transactions),
              ),
        updateAnalysisFindingLifecycle = analysisFindings == null
