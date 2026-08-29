@@ -133,6 +133,9 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
             : StatementStatus.ready,
         institution: extraction?.institution,
         maskedAccountIdentifier: extraction?.maskedAccountIdentifier,
+        periodStart: extraction?.context.periodStart,
+        periodEnd: extraction?.context.periodEnd,
+        currency: extraction?.context.defaultCurrency,
         originalFilename: file.name,
         rawTextReference: extraction == null ? null : evidence.id.value,
         createdAt: now,
@@ -174,12 +177,15 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
           position: position,
           originalText: value.originalText,
           transactionDate: value.date,
+          postingDate: value.postingDate,
           description: value.description,
           amount: value.amount,
           currency: value.currency,
           direction: value.direction,
           confidence: value.confidence,
-          sourceContext: 'On-device OCR, line ${position + 1}',
+          sourceContext:
+              'On-device OCR observations ${value.sourceObservationIndexes.join(', ')}',
+          reviewReason: value.unresolvedReason?.name,
           paymentSourceId: paymentSourceId,
           status: complete
               ? StatementRowStatus.pending

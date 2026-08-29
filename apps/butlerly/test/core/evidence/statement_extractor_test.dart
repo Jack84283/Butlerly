@@ -1,3 +1,4 @@
+import 'package:butlerly/core/evidence/local_ocr_service.dart';
 import 'package:butlerly/core/evidence/statement_extractor.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,11 +19,12 @@ Balance forward 100.00
     expect(rows.last.direction, TransactionDirection.income.name);
   });
 
-  test('preserves unsupported lines only in raw source text', () {
+  test('preserves plausible unsupported lines as unresolved evidence', () {
     final rows = LocalStatementExtractor.parse(
       '2026-08-12 unreadable amount USD',
     );
-    expect(rows, isEmpty);
+    expect(rows, hasLength(1));
+    expect(rows.single.isUnresolved, isTrue);
   });
 
   test('leaves an unsigned amount unresolved', () {
@@ -54,4 +56,352 @@ Balance forward 100.00
     expect(rows.single.date, isNull);
     expect(LocalStatementExtractor.parseDate('202-1-1'), isNull);
   });
+
+  test('reconstructs spatial columns delivered out of reading order', () {
+    const observations = [
+      OcrObservation(
+        text: '126.47',
+        confidence: .9,
+        left: .82,
+        top: .30,
+        width: .1,
+        height: .03,
+        order: 0,
+      ),
+      OcrObservation(
+        text: 'COSTCO WHSE #1234',
+        confidence: .9,
+        left: .25,
+        top: .30,
+        width: .3,
+        height: .03,
+        order: 1,
+      ),
+      OcrObservation(
+        text: '08/12',
+        confidence: .9,
+        left: .05,
+        top: .30,
+        width: .1,
+        height: .03,
+        order: 2,
+      ),
+    ];
+    final result = LocalStatementExtractor.fromObservations(
+      'Statement period 08/01/2026 - 08/31/2026\nUSD',
+      observations,
+    );
+    expect(result.rows, hasLength(1));
+    expect(result.rows.single.date, DateTime(2026, 8, 12));
+    expect(result.rows.single.description, contains('COSTCO'));
+    expect(result.rows.single.amount, '126.47');
+  });
+
+  test('reconstructs date, description and amount from separate OCR lines', () {
+    final result = LocalStatementExtractor.fromObservations(
+      'Statement period 08/01/2026 - 08/31/2026',
+      const [
+        OcrObservation(
+          text: '08/12',
+          confidence: .9,
+          left: 0,
+          top: .30,
+          width: .1,
+          height: .03,
+          order: 0,
+        ),
+        OcrObservation(
+          text: 'COSTCO WHSE #1234',
+          confidence: .9,
+          left: 0,
+          top: .34,
+          width: .3,
+          height: .03,
+          order: 1,
+        ),
+        OcrObservation(
+          text: '126.47',
+          confidence: .9,
+          left: .8,
+          top: .38,
+          width: .1,
+          height: .03,
+          order: 2,
+        ),
+      ],
+    );
+    expect(result.rows, hasLength(1));
+    expect(result.rows.single.description, contains('COSTCO'));
+    expect(result.rows.single.amount, '126.47');
+  });
+
+  test('infers MM/DD dates from a period crossing December and January', () {
+    final result = LocalStatementExtractor.fromObservations(
+      'Statement period 12/15/2025 - 01/14/2026\n12/31 Grocery 12.00\n01/02 Grocery 8.00',
+      const [],
+    );
+    expect(result.rows, hasLength(2));
+    expect(result.rows[0].date, DateTime(2025, 12, 31));
+    expect(result.rows[1].date, DateTime(2026, 1, 2));
+  });
+
+  test('supports posting date, credits, grouped amounts and diagnostics', () {
+    final result = LocalStatementExtractor.fromObservations(
+      'Statement period 08/01/2026 - 08/31/2026\n08/12 08/14 Refund (1,234.56) CR',
+      const [],
+    );
+    expect(result.rows.single.postingDate, DateTime(2026, 8, 14));
+    expect(result.rows.single.amount, '1234.56');
+    expect(result.rows.single.direction, TransactionDirection.income.name);
+    expect(result.diagnostics?.candidatesReconstructed, 1);
+  });
+
+  test('retains transaction-like evidence with an ambiguous amount', () {
+    final result = LocalStatementExtractor.fromObservations(
+      'Statement period 08/01/2026 - 08/31/2026\n08/12 UNKNOWN MERCHANT ???',
+      const [],
+    );
+    expect(result.outcome, StatementExtractionOutcome.unresolvedEvidence);
+    expect(result.rows.single.isUnresolved, isTrue);
+  });
+
+  test(
+    'confidence is based on the row observations, including exactly .50',
+    () {
+      final result = LocalStatementExtractor.fromObservations(
+        'Statement period 08/01/2026 - 08/31/2026',
+        const [
+          OcrObservation(
+            text: '08/12',
+            confidence: .5,
+            left: 0,
+            top: .3,
+            width: .1,
+            height: .03,
+            order: 0,
+          ),
+          OcrObservation(
+            text: 'Merchant',
+            confidence: .5,
+            left: .2,
+            top: .3,
+            width: .2,
+            height: .03,
+            order: 1,
+          ),
+          OcrObservation(
+            text: '10.00',
+            confidence: .5,
+            left: .8,
+            top: .3,
+            width: .1,
+            height: .03,
+            order: 2,
+          ),
+        ],
+      );
+      expect(result.rows.single.confidence, lessThanOrEqualTo(.5));
+      expect(result.diagnostics?.lowConfidenceCandidates, 1);
+    },
+  );
+
+  test('headers drive amount selection and activate the generic profile', () {
+    const observations = [
+      OcrObservation(
+        text: 'Transaction Date',
+        confidence: .9,
+        left: .02,
+        top: .1,
+        width: .15,
+        height: .03,
+        order: 0,
+      ),
+      OcrObservation(
+        text: 'Posting Date',
+        confidence: .9,
+        left: .20,
+        top: .1,
+        width: .15,
+        height: .03,
+        order: 1,
+      ),
+      OcrObservation(
+        text: 'Description',
+        confidence: .9,
+        left: .40,
+        top: .1,
+        width: .2,
+        height: .03,
+        order: 2,
+      ),
+      OcrObservation(
+        text: 'Amount',
+        confidence: .9,
+        left: .82,
+        top: .1,
+        width: .1,
+        height: .03,
+        order: 3,
+      ),
+      OcrObservation(
+        text: '08/12',
+        confidence: .9,
+        left: .02,
+        top: .2,
+        width: .1,
+        height: .03,
+        order: 4,
+      ),
+      OcrObservation(
+        text: '08/14',
+        confidence: .9,
+        left: .20,
+        top: .2,
+        width: .1,
+        height: .03,
+        order: 5,
+      ),
+      OcrObservation(
+        text: 'HOTEL 2 NIGHTS',
+        confidence: .9,
+        left: .40,
+        top: .2,
+        width: .3,
+        height: .03,
+        order: 6,
+      ),
+      OcrObservation(
+        text: '420.00',
+        confidence: .9,
+        left: .82,
+        top: .2,
+        width: .1,
+        height: .03,
+        order: 7,
+      ),
+    ];
+    final result = LocalStatementExtractor.fromObservations(
+      'Statement period 08/01/2026 - 08/31/2026 Transaction Date Posting Date Description Amount',
+      observations,
+    );
+    expect(result.context.columns, hasLength(4));
+    expect(result.context.profile?.id, 'generic-date-posting-amount');
+    expect(result.rows.single.amount, '420');
+    expect(result.rows.single.postingDate, DateTime(2026, 8, 14));
+  });
+
+  test('does not merge pages and ignores repeated headers', () {
+    const observations = [
+      OcrObservation(
+        text: '08/31',
+        confidence: .9,
+        left: .02,
+        top: .2,
+        width: .1,
+        height: .03,
+        pageIndex: 0,
+        order: 0,
+      ),
+      OcrObservation(
+        text: 'Store A',
+        confidence: .9,
+        left: .3,
+        top: .2,
+        width: .2,
+        height: .03,
+        pageIndex: 0,
+        order: 1,
+      ),
+      OcrObservation(
+        text: '10.00',
+        confidence: .9,
+        left: .8,
+        top: .2,
+        width: .1,
+        height: .03,
+        pageIndex: 0,
+        order: 2,
+      ),
+      OcrObservation(
+        text: 'Transaction Date Description Amount',
+        confidence: .9,
+        left: .02,
+        top: .1,
+        width: .5,
+        height: .03,
+        pageIndex: 1,
+        order: 3,
+      ),
+      OcrObservation(
+        text: '09/01',
+        confidence: .9,
+        left: .02,
+        top: .2,
+        width: .1,
+        height: .03,
+        pageIndex: 1,
+        order: 4,
+      ),
+      OcrObservation(
+        text: 'Store B',
+        confidence: .9,
+        left: .3,
+        top: .2,
+        width: .2,
+        height: .03,
+        pageIndex: 1,
+        order: 5,
+      ),
+      OcrObservation(
+        text: '20.00',
+        confidence: .9,
+        left: .8,
+        top: .2,
+        width: .1,
+        height: .03,
+        pageIndex: 1,
+        order: 6,
+      ),
+    ];
+    final result = LocalStatementExtractor.fromObservations(
+      '08/01/2026 - 09/30/2026',
+      observations,
+    );
+    expect(result.rows, hasLength(2));
+    expect(
+      result.rows.map((row) => row.description),
+      everyElement(isNot(contains('Transaction Date'))),
+    );
+    expect(result.diagnostics?.pagesProcessed, 2);
+  });
+
+  test(
+    'distinguishes empty, no-candidate, unresolved-only and mixed outcomes',
+    () {
+      expect(
+        LocalStatementExtractor.fromObservations('', const []).outcome,
+        StatementExtractionOutcome.noText,
+      );
+      expect(
+        LocalStatementExtractor.fromObservations(
+          'Welcome to your account',
+          const [],
+        ).outcome,
+        StatementExtractionOutcome.textWithoutCandidates,
+      );
+      expect(
+        LocalStatementExtractor.fromObservations(
+          '08/12 UNKNOWN ???',
+          const [],
+        ).outcome,
+        StatementExtractionOutcome.unresolvedEvidence,
+      );
+      final mixed = LocalStatementExtractor.fromObservations(
+        '08/01/2026 - 08/31/2026\n08/12 Good 10.00\n08/13 Unknown ???',
+        const [],
+      );
+      expect(mixed.outcome, StatementExtractionOutcome.reconstructedCandidates);
+      expect(mixed.diagnostics?.unresolvedCandidates, 1);
+    },
+  );
 }

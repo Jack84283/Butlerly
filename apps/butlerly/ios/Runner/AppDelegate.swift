@@ -30,7 +30,7 @@ import Vision
     let request = VNRecognizeTextRequest { request, error in
       if let error { DispatchQueue.main.async { result(FlutterError(code: "ocr_failed", message: error.localizedDescription, details: nil)) }; return }
       let observations = request.results as? [VNRecognizedTextObservation] ?? []
-      let structured = observations.compactMap { observation -> [String: Any]? in
+      let structured = observations.enumerated().compactMap { index, observation -> [String: Any]? in
         guard let candidate = observation.topCandidates(1).first else { return nil }
         let box = observation.boundingBox
         return [
@@ -40,6 +40,8 @@ import Vision
           "top": Double(1.0 - box.origin.y - box.size.height),
           "width": Double(box.size.width),
           "height": Double(box.size.height),
+          "pageIndex": 0,
+          "order": index,
         ]
       }
       let lines = structured.compactMap { $0["text"] as? String }
@@ -72,12 +74,13 @@ import Vision
             pageRequest.usesLanguageCorrection = true
             pageRequest.recognitionLanguages = ["en-US", "zh-Hans", "es-ES"]
             try VNImageRequestHandler(cgImage: cgImage).perform([pageRequest])
-            let pageRows = (pageRequest.results ?? []).compactMap { observation -> [String: Any]? in
+            let pageRows = (pageRequest.results ?? []).enumerated().compactMap { index, observation -> [String: Any]? in
               guard let candidate = observation.topCandidates(1).first else { return nil }
               let box = observation.boundingBox
               return ["text": candidate.string, "confidence": Double(candidate.confidence),
-                "left": Double(box.origin.x), "top": Double(pageIndex) + Double(1.0 - box.origin.y - box.size.height),
-                "width": Double(box.size.width), "height": Double(box.size.height)]
+                "left": Double(box.origin.x), "top": Double(1.0 - box.origin.y - box.size.height),
+                "width": Double(box.size.width), "height": Double(box.size.height),
+                "pageIndex": pageIndex, "order": index]
             }
             all.append(contentsOf: pageRows)
           }
