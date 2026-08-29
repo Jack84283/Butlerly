@@ -702,7 +702,7 @@ String _transactionEvidenceLabel(
       _reviewProvenanceLabel(context, transaction.provenance.first.sourceType),
   ];
   final details = [
-    '${transaction.amount} ${transaction.currency}',
+    '${localizedTransactionAmount(context, transaction.amount)} ${transaction.currency}',
     transaction.transactionDate ?? '',
     ...supporting,
   ].where((value) => value.isNotEmpty).join(' · ');
@@ -791,7 +791,9 @@ class _NormalizationReviewCardState extends State<_NormalizationReviewCard> {
           widget.item.description ?? context.l10n.text('untitledTransaction'),
           style: Theme.of(context).textTheme.titleMedium,
         ),
-        Text('${widget.item.amount} ${widget.item.currency}'),
+        Text(
+          '${localizedTransactionAmount(context, widget.item.amount)} ${widget.item.currency}',
+        ),
         const SizedBox(height: ButlerlySpacing.small),
         TextField(
           controller: _controller,
