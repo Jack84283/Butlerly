@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:butlerly_database/butlerly_database.dart';
+import 'package:butlerly_database/src/database/legacy_schema.dart';
 import 'package:butlerly_database/src/database/schema.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -10,9 +13,11 @@ void main() {
   setUpAll(sqfliteFfiInit);
 
   setUp(() async {
+    final baseline = await File('database/schema/v1.sql').readAsString();
     database = ButlerlyDatabase(
       factory: databaseFactoryFfi,
       path: inMemoryDatabasePath,
+      schemaSql: baseline,
     );
     await database.open();
   });
@@ -55,6 +60,153 @@ void main() {
       contains('idx_transactions_duplicate_group_lookup'),
     );
     expect(await database.passesIntegrityCheck(), isTrue);
+  });
+
+  test('creates the fresh database directly from the V1 SQL baseline', () async {
+    await database.close();
+    final baseline = await File('database/schema/v1.sql').readAsString();
+    database = ButlerlyDatabase(
+      factory: databaseFactoryFfi,
+      path: inMemoryDatabasePath,
+      schemaSql: baseline,
+    );
+    await database.open();
+
+    expect(await database.connection.getVersion(), Schema.version);
+    expect(await database.passesIntegrityCheck(), isTrue);
+    expect(
+      await database.connection.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'normalized_money_v15'",
+      ),
+      isEmpty,
+    );
+    expect(
+      await database.connection.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_transactions_duplicate_lookup'",
+      ),
+      isEmpty,
+    );
+    expect(
+      await database.connection.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_transactions_duplicate_group_lookup'",
+      ),
+      hasLength(1),
+    );
+  });
+
+  test(
+    'V1 baseline is structurally equivalent to legacy migrations through v21',
+    () async {
+      await database.close();
+      final legacy = ButlerlyDatabase(
+        factory: databaseFactoryFfi,
+        path: 'baseline-legacy-structure.db',
+        legacyCompatibility: true,
+      );
+      final baseline = ButlerlyDatabase(
+        factory: databaseFactoryFfi,
+        path: 'baseline-direct-structure.db',
+        schemaSql: await File('database/schema/v1.sql').readAsString(),
+      );
+      await databaseFactoryFfi.deleteDatabase(legacy.path);
+      await databaseFactoryFfi.deleteDatabase(baseline.path);
+      await legacy.open();
+      await baseline.open();
+
+      Future<Map<String, List<Map<String, Object?>>>> snapshot(
+        ButlerlyDatabase value,
+      ) async {
+        final tables = (await value.connection.rawQuery(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+        )).map((row) => row['name']! as String);
+        final result = <String, List<Map<String, Object?>>>{};
+        for (final table in tables) {
+          final rows = <Map<String, Object?>>[
+            for (final row in await value.connection.rawQuery(
+              'PRAGMA table_info("$table")',
+            ))
+              Map<String, Object?>.from(row)..remove('cid'),
+            ...await value.connection.rawQuery(
+              'PRAGMA foreign_key_list("$table")',
+            ),
+          ];
+          rows.sort((a, b) => a.toString().compareTo(b.toString()));
+          result[table] = rows;
+        }
+        result['__indexes__'] = await value.connection.rawQuery(
+          "SELECT name, tbl_name, sql FROM sqlite_master WHERE type = 'index' AND sql IS NOT NULL ORDER BY name",
+        );
+        for (final index in result['__indexes__']!) {
+          final name = index['name']! as String;
+          result['__index_columns__$name'] = await value.connection.rawQuery(
+            'PRAGMA index_info("$name")',
+          );
+        }
+        return result;
+      }
+
+      expect(await snapshot(baseline), await snapshot(legacy));
+      await legacy.close();
+      await baseline.close();
+      await databaseFactoryFfi.deleteDatabase(legacy.path);
+      await databaseFactoryFfi.deleteDatabase(baseline.path);
+    },
+  );
+
+  test('legacy upgrades require explicit compatibility mode', () async {
+    const path = 'butlerly-legacy-upgrade-rejected.db';
+    await databaseFactoryFfi.deleteDatabase(path);
+    final legacy = await databaseFactoryFfi.openDatabase(
+      path,
+      options: OpenDatabaseOptions(
+        version: 1,
+        onCreate: (db, _) async {
+          for (final statement in LegacySchema.migration1) {
+            await db.execute(statement);
+          }
+        },
+      ),
+    );
+    await legacy.close();
+
+    final rejected = ButlerlyDatabase(factory: databaseFactoryFfi, path: path);
+    await expectLater(rejected.open(), throwsA(isA<RepositoryException>()));
+    expect(() => rejected.connection, throwsA(isA<RepositoryException>()));
+    await databaseFactoryFfi.deleteDatabase(path);
+  });
+
+  test('applies the idempotent database-owned catalog seed', () async {
+    await database.close();
+    final baseline = await File('database/schema/v1.sql').readAsString();
+    final catalog = await File('database/seed/catalog.sql').readAsString();
+    database = ButlerlyDatabase(
+      factory: databaseFactoryFfi,
+      path: inMemoryDatabasePath,
+      schemaSql: baseline,
+      seedSql: [catalog, catalog],
+    );
+    await database.open();
+
+    expect(
+      (await database.connection.query('categories')).length,
+      greaterThan(30),
+    );
+    expect(
+      (await database.connection.query('category_translations')).length,
+      greaterThan(30),
+    );
+    expect(
+      (await database.connection.query('reference_data')).length,
+      greaterThan(30),
+    );
+    expect(
+      await database.connection.query(
+        'categories',
+        where: 'id = ?',
+        whereArgs: ['category.food.restaurants'],
+      ),
+      hasLength(1),
+    );
   });
 
   test('round-trips possible duplicate group state and memberships', () async {
@@ -228,7 +380,7 @@ void main() {
       options: OpenDatabaseOptions(
         version: 1,
         onCreate: (db, _) async {
-          for (final statement in Schema.migration1) {
+          for (final statement in LegacySchema.migration1) {
             await db.execute(statement);
           }
         },
@@ -253,7 +405,11 @@ void main() {
     });
     await legacy.close();
 
-    final migrated = ButlerlyDatabase(factory: databaseFactoryFfi, path: path);
+    final migrated = ButlerlyDatabase(
+      factory: databaseFactoryFfi,
+      path: path,
+      legacyCompatibility: true,
+    );
     await migrated.open();
     final row = (await migrated.connection.query('transactions')).single;
     expect(row['occurred_at_utc'], '2026-08-10T08:30:00.000Z');

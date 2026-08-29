@@ -132,6 +132,7 @@ measure:
     final database = ButlerlyDatabase(
       factory: databaseFactoryFfi,
       path: inMemoryDatabasePath,
+      legacyCompatibility: true,
     );
     await database.open();
     addTearDown(database.close);

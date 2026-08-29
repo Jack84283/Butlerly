@@ -14,6 +14,7 @@ void main() {
     database = ButlerlyDatabase(
       factory: databaseFactoryFfi,
       path: inMemoryDatabasePath,
+      legacyCompatibility: true,
     );
     await database.open();
     statements = SqliteStatementRepository(database);
@@ -311,7 +312,11 @@ void main() {
   test('close and reopen preserves both evidence relationships', () async {
     final directory = await Directory.systemTemp.createTemp('butlerly-reopen-');
     final path = '${directory.path}/finance.sqlite';
-    final first = ButlerlyDatabase(factory: databaseFactoryFfi, path: path);
+    final first = ButlerlyDatabase(
+      factory: databaseFactoryFfi,
+      path: path,
+      legacyCompatibility: true,
+    );
     await first.open();
     final txRepo = SqliteTransactionRepository(first);
     final statementRepo = SqliteStatementRepository(first);
@@ -397,7 +402,11 @@ void main() {
     );
     await first.close();
 
-    final second = ButlerlyDatabase(factory: databaseFactoryFfi, path: path);
+    final second = ButlerlyDatabase(
+      factory: databaseFactoryFfi,
+      path: path,
+      legacyCompatibility: true,
+    );
     await second.open();
     final reopenedTx = SqliteTransactionRepository(second);
     final reopenedStatements = SqliteStatementRepository(second);
