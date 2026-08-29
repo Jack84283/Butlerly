@@ -6,6 +6,7 @@ publish_to: none
 flutter:
   assets:
     - database/schema/v1.sql
+    - database/seed/catalog.sql
 
 environment:
   sdk: ^3.12.0
@@ -13,6 +14,8 @@ environment:
 dependencies:
   butlerly_finance_domain:
     path: ../butlerly_finance_domain
+  flutter:
+    sdk: flutter
   sqflite_common: ^2.5.11
 
 dev_dependencies:
