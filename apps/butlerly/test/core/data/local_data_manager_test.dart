@@ -9,6 +9,7 @@ import 'package:path/path.dart' as path;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(sqfliteFfiInit);
 
   test('exports local records and evidence then erases both', () async {
@@ -58,8 +59,9 @@ void main() {
       ]),
     );
     expect(
-      File(path.join(exported.directory.path, 'evidence', 'receipt.bin'))
-          .existsSync(),
+      File(
+        path.join(exported.directory.path, 'evidence', 'receipt.bin'),
+      ).existsSync(),
       isTrue,
     );
 
