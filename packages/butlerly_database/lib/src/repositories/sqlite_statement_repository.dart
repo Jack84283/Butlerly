@@ -127,14 +127,76 @@ final class SqliteStatementRepository
   }
 
   @override
-  Future<void> removeStatement(String id) => _mapped(
-    'remove statement',
-    () => database.connection.delete(
-      'financial_statements',
-      where: 'id = ?',
-      whereArgs: [id],
-    ),
-  );
+  Future<void> removeStatement(String id) async {
+    try {
+      await database.transaction((tx) async {
+        final statement = await tx.query(
+          'financial_statements',
+          columns: ['evidence_id'],
+          where: 'id = ?',
+          whereArgs: [id],
+          limit: 1,
+        );
+        if (statement.isEmpty) {
+          throw const RepositoryException(
+            RepositoryFailureCode.notFound,
+            'remove statement',
+          );
+        }
+        final savedRows = await tx.query(
+          'statement_rows',
+          columns: ['transaction_id'],
+          where: 'statement_id = ? AND transaction_id IS NOT NULL',
+          whereArgs: [id],
+          limit: 1,
+        );
+        if (savedRows.isNotEmpty) {
+          throw const RepositoryException(
+            RepositoryFailureCode.constraint,
+            'remove statement with financial records',
+          );
+        }
+        final evidenceId = statement.single['evidence_id']! as String;
+        final evidence = await tx.query(
+          'evidence_items',
+          columns: ['provenance_id'],
+          where: 'id = ?',
+          whereArgs: [evidenceId],
+          limit: 1,
+        );
+        await tx.delete(
+          'financial_statements',
+          where: 'id = ?',
+          whereArgs: [id],
+        );
+        await tx.delete(
+          'evidence_items',
+          where: 'id = ?',
+          whereArgs: [evidenceId],
+        );
+        if (evidence.isNotEmpty) {
+          final provenanceId = evidence.single['provenance_id']! as String;
+          final remaining = await tx.rawQuery(
+            '''SELECT 1 FROM evidence_items WHERE provenance_id = ?
+               UNION ALL SELECT 1 FROM extractions WHERE provenance_id = ?
+               UNION ALL SELECT 1 FROM transaction_provenances WHERE provenance_id = ?
+               UNION ALL SELECT 1 FROM suggestions WHERE provenance_id = ?
+               LIMIT 1''',
+            [provenanceId, provenanceId, provenanceId, provenanceId],
+          );
+          if (remaining.isEmpty) {
+            await tx.delete(
+              'provenances',
+              where: 'id = ?',
+              whereArgs: [provenanceId],
+            );
+          }
+        }
+      });
+    } on DatabaseException catch (error) {
+      throw mapDatabaseException(error, 'remove statement');
+    }
+  }
 
   @override
   Future<void> saveRowTransaction(StatementRow row, Transaction transaction) =>

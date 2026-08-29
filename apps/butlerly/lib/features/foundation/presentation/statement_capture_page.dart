@@ -91,6 +91,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
   }
 
   Future<void> _ingest(XFile file) async {
+    final l10n = context.l10n;
     setState(() => _busy = true);
     final store = services<LocalEvidenceStore>();
     final preserved = await store.preserve(file);
@@ -140,11 +141,24 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
         rawTextReference: extraction == null ? null : evidence.id.value,
         createdAt: now,
         updatedAt: now,
-        extractionMessage: rows.isEmpty
-            ? supportsLocalStatementOcr()
-                  ? 'No supported rows were found. Add rows manually.'
-                  : 'Automatic text recognition is not available on this platform. Add rows manually.'
-            : null,
+        extractionMessage: rows.isNotEmpty
+            ? null
+            : extraction == null
+            ? l10n.text('statementProcessingFailed')
+            : switch (extraction.outcome) {
+                StatementExtractionOutcome.noText => l10n.text(
+                  'statementNoText',
+                ),
+                StatementExtractionOutcome.textWithoutCandidates => l10n.text(
+                  'statementNoRows',
+                ),
+                StatementExtractionOutcome.unresolvedEvidence => l10n.text(
+                  'statementUnresolvedEvidence',
+                ),
+                StatementExtractionOutcome.reconstructedCandidates => l10n.text(
+                  'statementNoRows',
+                ),
+              },
       ),
       rows,
     );
@@ -223,6 +237,45 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     await _reload();
   }
 
+  Future<void> _deleteUnprocessed(FinancialStatement item) async {
+    final l10n = context.l10n;
+    final rowsResult = await statement.rows(item.id);
+    if (!mounted) return;
+    if (rowsResult case ApplicationSuccess<List<StatementRow>>(
+      :final value,
+    ) when value.any((row) => row.transactionId != null)) {
+      _message(context.l10n.text('statementHasTransactions'));
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.text('deleteStatementTitle')),
+        content: Text(l10n.text('deleteStatementBody')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(l10n.text('cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(l10n.text('deleteStatement')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final success = await services<LocalEvidenceStore>()
+        .removeUnprocessedStatement(item.id);
+    if (!mounted) return;
+    if (success) {
+      await _reload();
+      _message(l10n.text('statementDeleted'));
+    } else {
+      _message(l10n.text('statementDeleteFailed'));
+    }
+  }
+
   void _message(String value) {
     if (mounted) {
       setState(() => _busy = false);
@@ -270,7 +323,17 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                       ? context.l10n.text('choosePaymentSourceToContinue')
                       : context.l10n.text('reviewInProgress'),
                 ),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: PopupMenuButton<String>(
+                  onSelected: (value) {
+                    if (value == 'delete') _deleteUnprocessed(item);
+                  },
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Text(context.l10n.text('deleteStatement')),
+                    ),
+                  ],
+                ),
                 onTap: () => _open(item),
               );
             },

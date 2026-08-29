@@ -439,6 +439,19 @@ class AppLocalizations {
       'aggregateAmount': 'Aggregate amount',
       'unresolvedRows': 'Unresolved rows',
       'statementAssessmentFailed': 'The statement could not be assessed.',
+      'deleteStatement': 'Delete statement',
+      'deleteStatementTitle': 'Delete this statement?',
+      'deleteStatementBody':
+          'No transactions were created from this statement. The statement file and extracted data will be permanently removed.',
+      'statementDeleted': 'Statement deleted.',
+      'statementDeleteFailed': 'The statement could not be deleted safely.',
+      'statementHasTransactions':
+          'This statement has saved transactions and cannot be deleted here.',
+      'statementNoText': 'No text could be recognized from this statement.',
+      'statementNoRows':
+          'Text was recognized, but no transaction rows could be identified.',
+      'statementUnresolvedEvidence': 'Transaction-like evidence needs review.',
+      'statementProcessingFailed': 'Statement processing failed.',
       'rowsNeedCorrection': '{count} row(s) need correction.',
       'importValidRows': 'Import valid rows',
       'debitExpense': 'Debit / expense',
@@ -813,6 +826,16 @@ class AppLocalizations {
       'aggregateAmount': '合计金额',
       'unresolvedRows': '未解决的行',
       'statementAssessmentFailed': '无法评估账单。',
+      'deleteStatement': '删除账单',
+      'deleteStatementTitle': '删除此账单？',
+      'deleteStatementBody': '此账单尚未创建交易。账单文件和提取数据将被永久删除。',
+      'statementDeleted': '账单已删除。',
+      'statementDeleteFailed': '无法安全删除账单。',
+      'statementHasTransactions': '此账单包含已保存交易，无法在此删除。',
+      'statementNoText': '无法从此账单识别文字。',
+      'statementNoRows': '已识别文字，但未找到交易行。',
+      'statementUnresolvedEvidence': '发现疑似交易内容，需要审核。',
+      'statementProcessingFailed': '账单处理失败。',
       'rowsNeedCorrection': '有 {count} 行需要修正。',
       'importValidRows': '导入有效记录',
       'debitExpense': '借记 / 支出',
@@ -1238,6 +1261,21 @@ class AppLocalizations {
       'aggregateAmount': 'Importe total',
       'unresolvedRows': 'Filas sin resolver',
       'statementAssessmentFailed': 'No se pudo evaluar el extracto.',
+      'deleteStatement': 'Eliminar extracto',
+      'deleteStatementTitle': '¿Eliminar este extracto?',
+      'deleteStatementBody':
+          'No se crearon transacciones desde este extracto. El archivo y los datos extraídos se eliminarán permanentemente.',
+      'statementDeleted': 'Extracto eliminado.',
+      'statementDeleteFailed':
+          'No se pudo eliminar el extracto de forma segura.',
+      'statementHasTransactions':
+          'Este extracto tiene transacciones guardadas y no se puede eliminar aquí.',
+      'statementNoText': 'No se pudo reconocer texto de este extracto.',
+      'statementNoRows':
+          'Se reconoció texto, pero no se identificaron filas de transacciones.',
+      'statementUnresolvedEvidence':
+          'Hay evidencia similar a una transacción que requiere revisión.',
+      'statementProcessingFailed': 'El procesamiento del extracto falló.',
       'rowsNeedCorrection': '{count} fila(s) necesitan corrección.',
       'importValidRows': 'Importar filas válidas',
       'debitExpense': 'Débito / gasto',

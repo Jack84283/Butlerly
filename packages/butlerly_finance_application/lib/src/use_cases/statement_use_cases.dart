@@ -248,6 +248,33 @@ final class StatementServices {
         () => statements.assignPaymentSource(id, sourceId, clock.now()),
       );
 
+  Future<ApplicationResult<EvidenceItem?>> deleteUnprocessed(String id) =>
+      runApplication('delete unprocessed statement', () async {
+        final statement = await statements.findStatement(id);
+        if (statement == null) {
+          throw const RepositoryException(
+            RepositoryFailureCode.notFound,
+            'delete statement',
+          );
+        }
+        final rows = await statements.listRows(id);
+        if (rows.any((row) => row.transactionId != null)) {
+          throw const DomainValidationException(
+            code: DomainErrorCode.invalidState,
+            field: 'statement',
+            message: 'A processed statement cannot be deleted safely.',
+          );
+        }
+        final evidenceRepository = evidence;
+        final ownedEvidence = evidenceRepository == null
+            ? null
+            : await evidenceRepository.findById(
+                EvidenceId(statement.evidenceId),
+              );
+        await statements.removeStatement(id);
+        return ownedEvidence;
+      });
+
   Future<ApplicationResult<void>> setDisposition(
     StatementRow row,
     StatementRowStatus status,
