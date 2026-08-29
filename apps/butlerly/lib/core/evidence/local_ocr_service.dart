@@ -9,6 +9,8 @@ final class OcrObservation {
     required this.top,
     required this.width,
     required this.height,
+    this.pageIndex = 0,
+    this.order = 0,
   });
 
   final String text;
@@ -17,6 +19,8 @@ final class OcrObservation {
   final double top;
   final double width;
   final double height;
+  final int pageIndex;
+  final int order;
 }
 
 final class ReceiptOcrResult {
@@ -47,6 +51,8 @@ final class ReceiptOcrResult {
                top: value.top,
                width: value.width,
                height: value.height,
+               pageIndex: value.pageIndex,
+               order: value.order,
              ),
            )
            .toList(growable: false);
@@ -155,6 +161,23 @@ final class LocalOcrService {
             top: (item['top'] as num?)?.toDouble() ?? 0,
             width: (item['width'] as num?)?.toDouble() ?? 0,
             height: (item['height'] as num?)?.toDouble() ?? 0,
+            pageIndex: (item['pageIndex'] as num?)?.toInt() ?? 0,
+            order: (item['order'] as num?)?.toInt() ?? 0,
+          ),
+        )
+        .toList(growable: false)
+        .asMap()
+        .entries
+        .map(
+          (entry) => OcrObservation(
+            text: entry.value.text,
+            confidence: entry.value.confidence,
+            left: entry.value.left,
+            top: entry.value.top,
+            width: entry.value.width,
+            height: entry.value.height,
+            pageIndex: entry.value.pageIndex,
+            order: entry.value.order == 0 ? entry.key : entry.value.order,
           ),
         )
         .toList(growable: false);
