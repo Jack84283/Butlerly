@@ -129,6 +129,7 @@ final class ListTransactionsQuery {
     this.direction,
     this.status,
     this.needsReview,
+    this.uncategorized = false,
   });
 
   final String? text;
@@ -140,4 +141,5 @@ final class ListTransactionsQuery {
   final TransactionDirection? direction;
   final TransactionStatus? status;
   final bool? needsReview;
+  final bool uncategorized;
 }

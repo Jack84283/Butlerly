@@ -21,6 +21,7 @@ class ReviewPage extends StatefulWidget {
 
 class _ReviewPageState extends State<ReviewPage> {
   late Future<List<ReviewItemDto>> _items;
+  late Future<List<TransactionDto>> _uncategorized;
   late Future<List<DuplicateCandidateGroup>> _duplicateGroups;
   late Future<List<ReconciliationCandidate>> _candidates;
   late Future<TransactionMasterDataSnapshot> _masterData;
@@ -38,6 +39,7 @@ class _ReviewPageState extends State<ReviewPage> {
         ? _ReviewView.duplicates
         : _ReviewView.needsReview;
     _items = _load();
+    _uncategorized = _loadUncategorized();
     _duplicateGroups = _loadDuplicateGroups();
     _candidates = _loadCandidates();
   }
@@ -83,9 +85,27 @@ class _ReviewPageState extends State<ReviewPage> {
 
   void _refresh() => setState(() {
     _items = _load();
+    _uncategorized = _loadUncategorized();
     _duplicateGroups = _loadDuplicateGroups();
     _candidates = _loadCandidates();
   });
+
+  Future<List<TransactionDto>> _loadUncategorized() async {
+    final finance = _finance;
+    if (finance == null) return const [];
+    final result = await finance.listTransactions(
+      const ListTransactionsQuery(
+        uncategorized: true,
+        status: TransactionStatus.active,
+      ),
+    );
+    return switch (result) {
+      ApplicationSuccess<List<TransactionDto>>(:final value) => value,
+      ApplicationFailure<List<TransactionDto>>() => throw StateError(
+        'Uncategorized transactions could not be loaded.',
+      ),
+    };
+  }
 
   Future<List<DuplicateCandidateGroup>> _loadDuplicateGroups() async {
     final finance = _finance;
@@ -351,6 +371,36 @@ class _ReviewPageState extends State<ReviewPage> {
                       finance: _finance!,
                       onConfirm: () => _decideCandidate(candidate, true),
                       onReject: () => _decideCandidate(candidate, false),
+                    ),
+                ],
+              );
+            },
+          )
+        else if (_view == _ReviewView.uncategorized)
+          FutureBuilder<List<TransactionDto>>(
+            future: _uncategorized,
+            builder: (context, snapshot) {
+              final values = snapshot.data ?? const <TransactionDto>[];
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (values.isEmpty) {
+                return ButlerlyEmptyState(
+                  icon: Icons.sell_outlined,
+                  title: context.l10n.text('reviewEmpty'),
+                  message: context.l10n.text('reviewEmptyBody'),
+                );
+              }
+              return Column(
+                children: [
+                  for (final transaction in values)
+                    ButlerlyRecordRow(
+                      title:
+                          transaction.description ??
+                          context.l10n.text('untitledTransaction'),
+                      amount: transaction.amount,
+                      currency: transaction.currency,
+                      subtitle: transaction.transactionDate,
                     ),
                 ],
               );

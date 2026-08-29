@@ -103,6 +103,7 @@ final class TransactionRepositoryQuery {
     this.direction,
     this.status,
     this.needsReview,
+    this.uncategorized = false,
   });
 
   final String? text;
@@ -114,6 +115,7 @@ final class TransactionRepositoryQuery {
   final TransactionDirection? direction;
   final TransactionStatus? status;
   final bool? needsReview;
+  final bool uncategorized;
 }
 
 abstract interface class PaymentSourceRepository {
