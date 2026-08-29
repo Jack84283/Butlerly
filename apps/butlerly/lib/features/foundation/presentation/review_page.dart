@@ -23,7 +23,6 @@ class _ReviewPageState extends State<ReviewPage> {
   late Future<List<ReviewItemDto>> _items;
   late Future<List<TransactionDto>> _uncategorized;
   late Future<List<DuplicateCandidateGroup>> _duplicateGroups;
-  late Future<List<ReconciliationCandidate>> _candidates;
   late Future<TransactionMasterDataSnapshot> _masterData;
   _ReviewView _view = _ReviewView.needsReview;
   String? _loadedLanguageCode;
@@ -41,7 +40,6 @@ class _ReviewPageState extends State<ReviewPage> {
     _items = _load();
     _uncategorized = _loadUncategorized();
     _duplicateGroups = _loadDuplicateGroups();
-    _candidates = _loadCandidates();
   }
 
   @override
@@ -87,7 +85,6 @@ class _ReviewPageState extends State<ReviewPage> {
     _items = _load();
     _uncategorized = _loadUncategorized();
     _duplicateGroups = _loadDuplicateGroups();
-    _candidates = _loadCandidates();
   });
 
   Future<List<TransactionDto>> _loadUncategorized() async {
@@ -178,47 +175,35 @@ class _ReviewPageState extends State<ReviewPage> {
     _refresh();
   }
 
-  Future<List<ReconciliationCandidate>> _loadCandidates() async {
-    final finance = _finance;
-    if (finance == null) return const [];
-    await finance.refreshReconciliationCandidates();
-    final result = await finance.listReconciliationCandidates();
-    return switch (result) {
-      ApplicationSuccess<List<ReconciliationCandidate>>(:final value) => value,
-      ApplicationFailure<List<ReconciliationCandidate>>() => const [],
-    };
-  }
-
-  Future<void> _decideCandidate(
-    ReconciliationCandidate candidate,
-    bool confirm,
-  ) async {
-    final result = confirm
-        ? await _finance!.confirmReconciliation(candidate)
-        : await _finance!.rejectReconciliation(candidate);
-    if (!mounted) return;
-    if (result is ApplicationFailure<void>) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.text('dataPreserved'))),
-      );
-      return;
-    }
-    _refresh();
-  }
-
   Future<void> _close(ReviewItemDto item, {required bool dismiss}) async {
     final finance = _finance;
     if (finance == null) return;
-    final result = dismiss
-        ? await finance.dismissReviewIssue(item.transactionId, item.issueId)
-        : await finance.resolveReviewIssue(item.transactionId, item.issueId);
+    final ApplicationResult<dynamic> result;
+    if (item.issueId.startsWith('reconciliation-')) {
+      final candidates = await finance.listReconciliationCandidates();
+      final candidate =
+          candidates is ApplicationSuccess<List<ReconciliationCandidate>>
+          ? candidates.value
+                .where((value) => 'reconciliation-${value.id}' == item.issueId)
+                .firstOrNull
+          : null;
+      if (candidate == null) return;
+      result = dismiss
+          ? await finance.rejectReconciliation(candidate)
+          : await finance.confirmReconciliation(candidate);
+    } else {
+      result = dismiss
+          ? await finance.dismissReviewIssue(item.transactionId, item.issueId)
+          : await finance.resolveReviewIssue(item.transactionId, item.issueId);
+    }
     if (!mounted) return;
-    if (result is ApplicationFailure<TransactionDto>) {
+    if (result is ApplicationFailure) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.text('dataPreserved'))),
       );
       return;
     }
+    notifyTransactionChanged();
     _refresh();
   }
 
@@ -359,35 +344,6 @@ class _ReviewPageState extends State<ReviewPage> {
               );
             },
           )
-        else if (_view == _ReviewView.reconciliation)
-          FutureBuilder<List<ReconciliationCandidate>>(
-            future: _candidates,
-            builder: (context, snapshot) {
-              final candidates = snapshot.data ?? const [];
-              final proposed = candidates.where(
-                (value) =>
-                    value.status == ReconciliationCandidateStatus.proposed,
-              );
-              if (proposed.isEmpty) {
-                return ButlerlyEmptyState(
-                  icon: Icons.link_outlined,
-                  title: context.l10n.text('reviewEmpty'),
-                  message: context.l10n.text('reviewEmptyBody'),
-                );
-              }
-              return Column(
-                children: [
-                  for (final candidate in proposed)
-                    _ReconciliationCandidateCard(
-                      candidate: candidate,
-                      finance: _finance!,
-                      onConfirm: () => _decideCandidate(candidate, true),
-                      onReject: () => _decideCandidate(candidate, false),
-                    ),
-                ],
-              );
-            },
-          )
         else if (_view == _ReviewView.uncategorized)
           FutureBuilder<List<TransactionDto>>(
             future: _uncategorized,
@@ -507,7 +463,7 @@ class _ReviewPageState extends State<ReviewPage> {
   }
 }
 
-enum _ReviewView { needsReview, uncategorized, duplicates, reconciliation }
+enum _ReviewView { needsReview, uncategorized, duplicates }
 
 class _DuplicateGroupCard extends StatefulWidget {
   const _DuplicateGroupCard({
@@ -781,109 +737,6 @@ class _NormalizationReviewCardState extends State<_NormalizationReviewCard> {
       ],
     ),
   );
-}
-
-class _ReconciliationCandidateCard extends StatelessWidget {
-  const _ReconciliationCandidateCard({
-    required this.candidate,
-    required this.finance,
-    required this.onConfirm,
-    required this.onReject,
-  });
-
-  final ReconciliationCandidate candidate;
-  final FinanceServices finance;
-  final VoidCallback onConfirm;
-  final VoidCallback onReject;
-
-  Future<List<TransactionDto?>> _loadTransactions() => Future.wait([
-    finance
-        .getTransaction(candidate.receiptTransactionId.value)
-        .then(
-          (result) => result is ApplicationSuccess<TransactionDto>
-              ? result.value
-              : null,
-        ),
-    finance
-        .getTransaction(candidate.paymentTransactionId.value)
-        .then(
-          (result) => result is ApplicationSuccess<TransactionDto>
-              ? result.value
-              : null,
-        ),
-  ]);
-
-  @override
-  Widget build(BuildContext context) => FutureBuilder<List<TransactionDto?>>(
-    future: _loadTransactions(),
-    builder: (context, snapshot) {
-      final receipt = snapshot.data?[0];
-      final payment = snapshot.data?[1];
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(ButlerlySpacing.standard),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${(candidate.score * 100).round()}% ${context.l10n.text('matchConfidence')}',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: ButlerlySpacing.small),
-              _CandidateTransactionSummary(
-                label: context.l10n.text('receipt'),
-                transaction: receipt,
-              ),
-              const SizedBox(height: ButlerlySpacing.small),
-              _CandidateTransactionSummary(
-                label: context.l10n.text('payment'),
-                transaction: payment,
-              ),
-              const SizedBox(height: ButlerlySpacing.small),
-              Text(candidate.reasons.join(' · ')),
-              const SizedBox(height: ButlerlySpacing.small),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: onReject,
-                    child: Text(context.l10n.text('dismiss')),
-                  ),
-                  FilledButton(
-                    onPressed: onConfirm,
-                    child: Text(context.l10n.text('resolve')),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      );
-    },
-  );
-}
-
-class _CandidateTransactionSummary extends StatelessWidget {
-  const _CandidateTransactionSummary({required this.label, this.transaction});
-
-  final String label;
-  final TransactionDto? transaction;
-
-  @override
-  Widget build(BuildContext context) {
-    final value = transaction;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: Theme.of(context).textTheme.labelLarge),
-        Text(
-          value == null
-              ? context.l10n.text('unavailableTransaction')
-              : '${value.rawCounterparty ?? value.description ?? context.l10n.text('untitledTransaction')} · ${value.currency} ${value.amount} · ${value.transactionDate ?? '—'}',
-        ),
-      ],
-    );
-  }
 }
 
 String _reason(String value, BuildContext context) => switch (value) {

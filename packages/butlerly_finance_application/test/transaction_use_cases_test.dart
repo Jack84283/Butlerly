@@ -329,6 +329,88 @@ void main() {
     );
   });
 
+  test('needs review is limited to active unresolved issues', () async {
+    final base = transaction(now);
+    final first = base.addReviewIssue(
+      ReviewIssue(
+        id: ReviewIssueId('issue-active'),
+        transactionId: base.id,
+        reason: ReviewIssueReason.uncertain,
+        createdAt: now,
+      ),
+      now,
+    );
+    final second = first.addReviewIssue(
+      ReviewIssue(
+        id: ReviewIssueId('issue-second'),
+        transactionId: base.id,
+        reason: ReviewIssueReason.incomplete,
+        createdAt: now,
+      ),
+      now,
+    );
+    transactions.values[base.id.value] = second;
+
+    final listed = await ListReviewItems(transactions)();
+    expect(listed, isA<ApplicationSuccess<List<ReviewItemDto>>>());
+    expect(
+      (listed as ApplicationSuccess<List<ReviewItemDto>>).value,
+      hasLength(2),
+    );
+
+    await ResolveReviewIssue(transactions, clock)(
+      base.id.value,
+      'issue-active',
+    );
+    final remaining = await ListReviewItems(transactions)();
+    expect(
+      (remaining as ApplicationSuccess<List<ReviewItemDto>>).value,
+      hasLength(1),
+    );
+
+    await DismissReviewIssue(transactions, clock)(
+      base.id.value,
+      'issue-second',
+    );
+    final closed = await ListReviewItems(transactions)();
+    expect((closed as ApplicationSuccess<List<ReviewItemDto>>).value, isEmpty);
+  });
+
+  test(
+    'review issue and uncategorized membership remain independent',
+    () async {
+      final base = transaction(now).addReviewIssue(
+        ReviewIssue(
+          id: ReviewIssueId('issue-independent'),
+          transactionId: TransactionId('transaction-1'),
+          reason: ReviewIssueReason.uncertain,
+          createdAt: now,
+        ),
+        now,
+      );
+      transactions.values[base.id.value] = base;
+
+      final review = await ListReviewItems(transactions)();
+      expect(
+        (review as ApplicationSuccess<List<ReviewItemDto>>).value,
+        hasLength(1),
+      );
+      expect(transactions.values[base.id.value]!.categoryId, isNull);
+
+      await ResolveReviewIssue(transactions, clock)(
+        base.id.value,
+        'issue-independent',
+      );
+      expect(
+        (await ListReviewItems(transactions)()
+                as ApplicationSuccess<List<ReviewItemDto>>)
+            .value,
+        isEmpty,
+      );
+      expect(transactions.values[base.id.value]!.categoryId, isNull);
+    },
+  );
+
   test(
     'maps evidence retrieval failures without exposing stored content',
     () async {

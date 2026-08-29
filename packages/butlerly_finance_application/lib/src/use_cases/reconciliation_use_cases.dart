@@ -340,6 +340,37 @@ final class RefreshReconciliationCandidates {
             existing.status == ReconciliationCandidateStatus.proposed) {
           await candidates.save(candidate);
         }
+        if (candidate.status == ReconciliationCandidateStatus.proposed) {
+          final transaction = await transactions.findById(
+            candidate.receiptTransactionId,
+          );
+          if (transaction != null &&
+              transaction.status == TransactionStatus.active) {
+            final issueId = ReviewIssueId('reconciliation-${candidate.id}');
+            final issue = transaction.reviewIssues
+                .where((value) => value.id == issueId)
+                .firstOrNull;
+            final now = DateTime.now().toUtc();
+            final updated = issue == null
+                ? transaction.addReviewIssue(
+                    ReviewIssue(
+                      id: issueId,
+                      transactionId: transaction.id,
+                      reason: ReviewIssueReason.uncertain,
+                      detail:
+                          'Possible transaction match: ${candidate.paymentTransactionId.value}',
+                      createdAt: now,
+                    ),
+                    now,
+                  )
+                : issue.status == ReviewIssueStatus.active
+                ? transaction
+                : transaction.reopenReviewIssue(issueId, now);
+            if (!identical(updated, transaction)) {
+              await transactions.save(updated);
+            }
+          }
+        }
       }
       return ApplicationSuccess(generated);
     } on Object {
@@ -374,9 +405,10 @@ final class SaveReconciliationLink {
 }
 
 final class ConfirmReconciliation {
-  const ConfirmReconciliation(this.repository);
+  const ConfirmReconciliation(this.repository, [this.transactions]);
 
   final ReconciliationWorkflowRepository repository;
+  final TransactionRepository? transactions;
 
   Future<ApplicationResult<void>> call(ReconciliationCandidate candidate) =>
       runApplication('confirm reconciliation', () async {
@@ -398,13 +430,36 @@ final class ConfirmReconciliation {
             createdAt: DateTime.now().toUtc(),
           ),
         );
+        if (transactions != null) await _resolveIssue(transactions!, candidate);
       });
+
+  static Future<void> _resolveIssue(
+    TransactionRepository transactions,
+    ReconciliationCandidate candidate,
+  ) async {
+    final transaction = await transactions.findById(
+      candidate.receiptTransactionId,
+    );
+    final issue = transaction?.reviewIssues
+        .where(
+          (value) =>
+              value.id.value == 'reconciliation-${candidate.id}' &&
+              value.status == ReviewIssueStatus.active,
+        )
+        .firstOrNull;
+    if (transaction != null && issue != null) {
+      await transactions.save(
+        transaction.resolveReviewIssue(issue.id, DateTime.now().toUtc()),
+      );
+    }
+  }
 }
 
 final class RejectReconciliation {
-  const RejectReconciliation(this.repository);
+  const RejectReconciliation(this.repository, [this.transactions]);
 
   final ReconciliationWorkflowRepository repository;
+  final TransactionRepository? transactions;
 
   Future<ApplicationResult<void>> call(ReconciliationCandidate candidate) =>
       runApplication('reject reconciliation', () async {
@@ -416,6 +471,9 @@ final class RejectReconciliation {
           );
         }
         await repository.reject(candidate);
+        if (transactions != null) {
+          await ConfirmReconciliation._resolveIssue(transactions!, candidate);
+        }
       });
 }
 
