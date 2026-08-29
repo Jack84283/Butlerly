@@ -529,8 +529,147 @@ void main() {
           updatedAt: now,
         ),
       );
+      expect(await statements.canDeleteStatement('statement'), isTrue);
       await statements.removeStatement('statement');
       expect(await statements.findStatement('statement'), isNull);
+      expect(
+        (await database.connection.query(
+          'statement_rows',
+          where: 'statement_id = ?',
+          whereArgs: ['statement'],
+        )),
+        isEmpty,
+      );
+      expect(
+        (await database.connection.query(
+          'evidence_items',
+          where: 'id = ?',
+          whereArgs: ['evidence'],
+        )),
+        isEmpty,
+      );
+      expect(
+        (await database.connection.query(
+          'provenances',
+          where: 'id = ?',
+          whereArgs: ['provenance'],
+        )),
+        isEmpty,
+      );
+    },
+  );
+
+  test(
+    'statement removal refuses rows already linked to a transaction',
+    () async {
+      final now = DateTime.utc(2026);
+      await statements.saveStatement(
+        FinancialStatement(
+          id: 'protected-statement',
+          evidenceId: 'evidence',
+          status: StatementStatus.ready,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await transactions.save(
+        Transaction(
+          id: TransactionId('existing-transaction'),
+          timing: const UnknownTransactionTime(
+            UnknownTransactionTimeReason.unknown,
+          ),
+          money: Money(
+            amount: DecimalValue.parse('10'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+          sourceType: TransactionSourceType.import,
+          transactionDate: '2026-08-12',
+          paymentSourceId: PaymentSourceId('source'),
+          provenance: [
+            Provenance(
+              id: ProvenanceId('existing-transaction-p'),
+              sourceType: ProvenanceSourceType.import,
+              capturedAt: now,
+              sourceId: 'protected-statement',
+              originalRepresentation: '08/12 Store 10.00',
+            ),
+          ],
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await statements.saveRows([
+        StatementRow(
+          id: 'protected-row',
+          statementId: 'protected-statement',
+          position: 0,
+          originalText: '08/12 Store 10.00',
+          amount: '10',
+          currency: 'USD',
+          transactionDate: DateTime.utc(2026, 8, 12),
+          direction: TransactionDirection.expense.name,
+          status: StatementRowStatus.pending,
+          transactionId: 'existing-transaction',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      ]);
+      expect(
+        () => statements.removeStatement('protected-statement'),
+        throwsA(isA<RepositoryException>()),
+      );
+      expect(await statements.findStatement('protected-statement'), isNotNull);
+    },
+  );
+
+  test(
+    'statement deletion eligibility includes provenance dependencies',
+    () async {
+      final now = DateTime.utc(2026);
+      await statements.saveStatement(
+        FinancialStatement(
+          id: 'provenance-statement',
+          evidenceId: 'evidence',
+          status: StatementStatus.completed,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await transactions.save(
+        Transaction(
+          id: TransactionId('provenance-transaction'),
+          timing: const UnknownTransactionTime(
+            UnknownTransactionTimeReason.unknown,
+          ),
+          money: Money(
+            amount: DecimalValue.parse('10'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+          sourceType: TransactionSourceType.import,
+          transactionDate: '2026-08-12',
+          paymentSourceId: PaymentSourceId('source'),
+          provenance: [
+            Provenance(
+              id: ProvenanceId('provenance-transaction-origin'),
+              sourceType: ProvenanceSourceType.import,
+              capturedAt: now,
+              originalRepresentation: 'source',
+            ),
+          ],
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await database.connection.insert('transaction_provenances', {
+        'transaction_id': 'provenance-transaction',
+        'provenance_id': 'evidence-p',
+      });
+      expect(
+        await statements.canDeleteStatement('provenance-statement'),
+        isFalse,
+      );
     },
   );
 

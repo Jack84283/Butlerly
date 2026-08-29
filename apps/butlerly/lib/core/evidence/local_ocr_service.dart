@@ -149,6 +149,18 @@ final class LocalOcrService {
     return ReceiptExtractor.extract(text, _observations(raw?['observations']));
   }
 
+  Future<ReceiptOcrResult> recognizeStatement(String path) async {
+    final raw = await _channel.invokeMapMethod<String, Object?>(
+      'recognizeText',
+      {'path': path},
+    );
+    final text = raw?['text'] as String? ?? '';
+    return ReceiptOcrResult(
+      rawText: text,
+      observations: _observations(raw?['observations']),
+    );
+  }
+
   static List<OcrObservation> _observations(Object? value) {
     if (value is! List) return const [];
     return value

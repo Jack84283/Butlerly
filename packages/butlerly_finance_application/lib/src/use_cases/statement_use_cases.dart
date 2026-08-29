@@ -248,6 +248,54 @@ final class StatementServices {
         () => statements.assignPaymentSource(id, sourceId, clock.now()),
       );
 
+  Future<ApplicationResult<bool>> canDeleteStatement(String id) =>
+      runApplication('check statement deletion eligibility', () async {
+        final statement = await statements.findStatement(id);
+        if (statement == null) {
+          throw const RepositoryException(
+            RepositoryFailureCode.notFound,
+            'check statement deletion eligibility',
+          );
+        }
+        return statements.canDeleteStatement(id);
+      });
+
+  Future<ApplicationResult<EvidenceItem?>> deleteStatement(String id) =>
+      runApplication('delete unprocessed statement', () async {
+        final statement = await statements.findStatement(id);
+        if (statement == null) {
+          throw const RepositoryException(
+            RepositoryFailureCode.notFound,
+            'delete statement',
+          );
+        }
+        if (!await statements.canDeleteStatement(id)) {
+          throw const DomainValidationException(
+            code: DomainErrorCode.invalidState,
+            field: 'statement',
+            message: 'A processed statement cannot be deleted safely.',
+          );
+        }
+        final evidenceRepository = evidence;
+        final ownedEvidence = evidenceRepository == null
+            ? null
+            : await evidenceRepository.findById(
+                EvidenceId(statement.evidenceId),
+              );
+        await statements.removeStatement(id);
+        return ownedEvidence;
+      });
+
+  // Abandonment currently reuses the relationship-safe deletion primitive;
+  // keeping the operation separate at the application boundary preserves the
+  // distinct pre-persistence user intent without duplicating cleanup logic.
+  Future<ApplicationResult<EvidenceItem?>> abandonImport(String id) =>
+      deleteStatement(id);
+
+  @Deprecated('Use deleteStatement for stored statements.')
+  Future<ApplicationResult<EvidenceItem?>> deleteUnprocessed(String id) =>
+      deleteStatement(id);
+
   Future<ApplicationResult<void>> setDisposition(
     StatementRow row,
     StatementRowStatus status,

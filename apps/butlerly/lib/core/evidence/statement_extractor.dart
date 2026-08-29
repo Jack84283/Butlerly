@@ -123,7 +123,7 @@ final class LocalStatementExtractor {
   final LocalOcrService ocr;
 
   Future<StatementExtraction> extract(String path) async {
-    final result = await ocr.recognize(path);
+    final result = await ocr.recognizeStatement(path);
     return fromObservations(result.rawText, result.observations);
   }
 
