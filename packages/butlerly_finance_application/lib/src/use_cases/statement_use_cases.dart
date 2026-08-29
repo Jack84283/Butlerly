@@ -299,12 +299,26 @@ final class StatementServices {
   Future<ApplicationResult<void>> setDisposition(
     StatementRow row,
     StatementRowStatus status,
-  ) => runApplication(
-    'update statement row',
-    () => statements.updateRow(
-      _copy(row, status: status, updatedAt: clock.now()),
-    ),
-  );
+  ) => runApplication('update statement row', () {
+    final previous =
+        status == StatementRowStatus.skipped &&
+            row.status != StatementRowStatus.skipped
+        ? row.status
+        : row.status == StatementRowStatus.skipped
+        ? row.statusBeforeSkip
+        : null;
+    return statements.updateRow(
+      _copy(
+        row,
+        status: status,
+        statusBeforeSkip: previous,
+        clearStatusBeforeSkip:
+            row.status == StatementRowStatus.skipped &&
+            status != StatementRowStatus.skipped,
+        updatedAt: clock.now(),
+      ),
+    );
+  });
 
   Future<ApplicationResult<void>> correct(StatementRow row) =>
       runApplication('correct statement row', () => statements.updateRow(row));
@@ -474,6 +488,8 @@ final class StatementServices {
     required StatementRowStatus status,
     String? transactionId,
     String? dispositionReason,
+    StatementRowStatus? statusBeforeSkip,
+    bool clearStatusBeforeSkip = false,
     required DateTime updatedAt,
   }) => StatementRow(
     id: row.id,
@@ -498,6 +514,9 @@ final class StatementServices {
     sourceReferenceId: row.sourceReferenceId,
     reviewReason: row.reviewReason,
     dispositionReason: dispositionReason ?? row.dispositionReason,
+    statusBeforeSkip: clearStatusBeforeSkip
+        ? null
+        : statusBeforeSkip ?? row.statusBeforeSkip,
     createdAt: row.createdAt,
     updatedAt: updatedAt,
   );

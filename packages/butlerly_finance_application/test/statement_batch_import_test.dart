@@ -129,18 +129,24 @@ void main() {
   );
 
   test('skip and restore toggle the existing statement row', () async {
-    final row = _row('toggle');
-    statements.rows.add(row);
-    await service.setDisposition(row, StatementRowStatus.skipped);
-    expect(statements.rows, hasLength(1));
-    expect(statements.rows.single.status, StatementRowStatus.skipped);
-    await service.setDisposition(
-      statements.rows.single,
+    for (final previous in [
       StatementRowStatus.pending,
-    );
-    expect(statements.rows, hasLength(1));
-    expect(statements.rows.single.status, StatementRowStatus.pending);
-    expect(statements.rows.single.originalText, row.originalText);
+      StatementRowStatus.unresolved,
+      StatementRowStatus.deferred,
+    ]) {
+      final row = _row('toggle-${previous.name}', status: previous);
+      statements.rows
+        ..clear()
+        ..add(row);
+      await service.setDisposition(row, StatementRowStatus.skipped);
+      expect(statements.rows.single.status, StatementRowStatus.skipped);
+      expect(statements.rows.single.statusBeforeSkip, previous);
+      await service.setDisposition(statements.rows.single, previous);
+      expect(statements.rows, hasLength(1));
+      expect(statements.rows.single.status, previous);
+      expect(statements.rows.single.statusBeforeSkip, isNull);
+      expect(statements.rows.single.originalText, row.originalText);
+    }
   });
 
   test('abandon import cannot remove a protected statement', () async {
@@ -169,6 +175,7 @@ StatementRow _row(
   String? amount = '12',
   double confidence = .9,
   String? transactionId,
+  StatementRowStatus status = StatementRowStatus.pending,
 }) => StatementRow(
   id: 'row-$id',
   statementId: 'statement',
@@ -181,9 +188,7 @@ StatementRow _row(
   direction: TransactionDirection.expense.name,
   confidence: confidence,
   transactionId: transactionId,
-  status: amount == null
-      ? StatementRowStatus.unresolved
-      : StatementRowStatus.pending,
+  status: status,
   createdAt: DateTime.utc(2026, 8, 1),
   updatedAt: DateTime.utc(2026, 8, 1),
 );

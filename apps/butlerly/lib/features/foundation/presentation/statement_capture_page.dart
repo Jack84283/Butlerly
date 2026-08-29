@@ -984,12 +984,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
   }
 
   StatementRowStatus _restoredStatus(StatementRow row) =>
-      row.transactionDate != null &&
-          row.amount != null &&
-          row.currency != null &&
-          row.direction != null
-      ? StatementRowStatus.pending
-      : StatementRowStatus.unresolved;
+      row.statusBeforeSkip ?? StatementRowStatus.pending;
 
   @override
   Widget build(BuildContext context) => Scaffold(

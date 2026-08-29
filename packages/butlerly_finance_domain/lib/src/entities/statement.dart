@@ -95,6 +95,7 @@ final class StatementRow {
     this.sourceReferenceId,
     this.reviewReason,
     this.dispositionReason,
+    this.statusBeforeSkip,
   }) {
     if (id.trim().isEmpty ||
         statementId.trim().isEmpty ||
@@ -146,6 +147,7 @@ final class StatementRow {
   final String? sourceReferenceId;
   final String? reviewReason;
   final String? dispositionReason;
+  final StatementRowStatus? statusBeforeSkip;
   final DateTime createdAt;
   final DateTime updatedAt;
 }
