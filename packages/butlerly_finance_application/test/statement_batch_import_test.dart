@@ -127,6 +127,15 @@ void main() {
       );
     },
   );
+
+  test('abandon import cannot remove a protected statement', () async {
+    statements.rows.add(
+      _row('protected', transactionId: 'existing-transaction'),
+    );
+    final result = await service.abandonImport('statement');
+    expect(result, isA<ApplicationFailure<EvidenceItem?>>());
+    expect(statements.rows, hasLength(1));
+  });
 }
 
 FinancialStatement _statement({String? paymentSourceId}) => FinancialStatement(
@@ -140,24 +149,29 @@ FinancialStatement _statement({String? paymentSourceId}) => FinancialStatement(
   periodEnd: DateTime.utc(2026, 8, 31),
 );
 
-StatementRow _row(String id, {String? amount = '12', double confidence = .9}) =>
-    StatementRow(
-      id: 'row-$id',
-      statementId: 'statement',
-      position: 0,
-      originalText: 'Merchant $id',
-      transactionDate: DateTime.utc(2026, 8, 20),
-      description: 'Merchant $id',
-      amount: amount,
-      currency: 'USD',
-      direction: TransactionDirection.expense.name,
-      confidence: confidence,
-      status: amount == null
-          ? StatementRowStatus.unresolved
-          : StatementRowStatus.pending,
-      createdAt: DateTime.utc(2026, 8, 1),
-      updatedAt: DateTime.utc(2026, 8, 1),
-    );
+StatementRow _row(
+  String id, {
+  String? amount = '12',
+  double confidence = .9,
+  String? transactionId,
+}) => StatementRow(
+  id: 'row-$id',
+  statementId: 'statement',
+  position: 0,
+  originalText: 'Merchant $id',
+  transactionDate: DateTime.utc(2026, 8, 20),
+  description: 'Merchant $id',
+  amount: amount,
+  currency: 'USD',
+  direction: TransactionDirection.expense.name,
+  confidence: confidence,
+  transactionId: transactionId,
+  status: amount == null
+      ? StatementRowStatus.unresolved
+      : StatementRowStatus.pending,
+  createdAt: DateTime.utc(2026, 8, 1),
+  updatedAt: DateTime.utc(2026, 8, 1),
+);
 
 Transaction _transaction(String id, {required String amount}) => Transaction(
   id: TransactionId(id),

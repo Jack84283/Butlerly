@@ -447,6 +447,8 @@ class AppLocalizations {
       'statementDeleteFailed': 'The statement could not be deleted safely.',
       'statementHasTransactions':
           'This statement has saved transactions and cannot be deleted here.',
+      'statementDeletionProtected':
+          'This statement is linked to financial records or required evidence and cannot be deleted.',
       'statementNoText': 'No text could be recognized from this statement.',
       'statementNoRows':
           'Text was recognized, but no transaction rows could be identified.',
@@ -836,6 +838,7 @@ class AppLocalizations {
       'statementDeleted': '账单已删除。',
       'statementDeleteFailed': '无法安全删除账单。',
       'statementHasTransactions': '此账单包含已保存交易，无法在此删除。',
+      'statementDeletionProtected': '此账单与财务记录或必要证据相关联，无法删除。',
       'statementNoText': '无法从此账单识别文字。',
       'statementNoRows': '已识别文字，但未找到交易行。',
       'statementUnresolvedEvidence': '发现疑似交易内容，需要审核。',
@@ -1277,6 +1280,8 @@ class AppLocalizations {
           'No se pudo eliminar el extracto de forma segura.',
       'statementHasTransactions':
           'Este extracto tiene transacciones guardadas y no se puede eliminar aquí.',
+      'statementDeletionProtected':
+          'Este extracto está vinculado a registros financieros o evidencia necesaria y no se puede eliminar.',
       'statementNoText': 'No se pudo reconocer texto de este extracto.',
       'statementNoRows':
           'Se reconoció texto, pero no se identificaron filas de transacciones.',

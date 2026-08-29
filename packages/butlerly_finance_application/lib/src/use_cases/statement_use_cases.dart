@@ -286,6 +286,9 @@ final class StatementServices {
         return ownedEvidence;
       });
 
+  // Abandonment currently reuses the relationship-safe deletion primitive;
+  // keeping the operation separate at the application boundary preserves the
+  // distinct pre-persistence user intent without duplicating cleanup logic.
   Future<ApplicationResult<EvidenceItem?>> abandonImport(String id) =>
       deleteStatement(id);
 

@@ -242,7 +242,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     final eligibility = await statement.canDeleteStatement(item.id);
     if (!mounted) return;
     if (eligibility is! ApplicationSuccess<bool> || !eligibility.value) {
-      _message(context.l10n.text('statementHasTransactions'));
+      _message(context.l10n.text('statementDeletionProtected'));
       return;
     }
     final confirmed = await showDialog<bool>(
