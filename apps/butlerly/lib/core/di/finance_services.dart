@@ -199,7 +199,7 @@ final class FinanceServices {
        queryTransactionsForFinancialDate = QueryTransactionsForFinancialDate(
          transactions,
        ),
-       statementServices = statements == null
+       statementServices = statements == null || duplicateGroups == null
            ? null
            : StatementServices(
                statements,
