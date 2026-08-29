@@ -363,9 +363,7 @@ final class RefreshReconciliationCandidates {
                     ),
                     now,
                   )
-                : issue.status == ReviewIssueStatus.active
-                ? transaction
-                : transaction.reopenReviewIssue(issueId, now);
+                : transaction;
             if (!identical(updated, transaction)) {
               await transactions.save(updated);
             }
