@@ -185,7 +185,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
           confidence: value.confidence,
           sourceContext:
               'On-device OCR observations ${value.sourceObservationIndexes.join(', ')}',
-          reviewReason: value.unresolvedReason,
+          reviewReason: value.unresolvedReason?.name,
           paymentSourceId: paymentSourceId,
           status: complete
               ? StatementRowStatus.pending

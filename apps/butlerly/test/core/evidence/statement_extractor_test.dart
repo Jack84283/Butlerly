@@ -204,4 +204,204 @@ Balance forward 100.00
       expect(result.diagnostics?.lowConfidenceCandidates, 1);
     },
   );
+
+  test('headers drive amount selection and activate the generic profile', () {
+    const observations = [
+      OcrObservation(
+        text: 'Transaction Date',
+        confidence: .9,
+        left: .02,
+        top: .1,
+        width: .15,
+        height: .03,
+        order: 0,
+      ),
+      OcrObservation(
+        text: 'Posting Date',
+        confidence: .9,
+        left: .20,
+        top: .1,
+        width: .15,
+        height: .03,
+        order: 1,
+      ),
+      OcrObservation(
+        text: 'Description',
+        confidence: .9,
+        left: .40,
+        top: .1,
+        width: .2,
+        height: .03,
+        order: 2,
+      ),
+      OcrObservation(
+        text: 'Amount',
+        confidence: .9,
+        left: .82,
+        top: .1,
+        width: .1,
+        height: .03,
+        order: 3,
+      ),
+      OcrObservation(
+        text: '08/12',
+        confidence: .9,
+        left: .02,
+        top: .2,
+        width: .1,
+        height: .03,
+        order: 4,
+      ),
+      OcrObservation(
+        text: '08/14',
+        confidence: .9,
+        left: .20,
+        top: .2,
+        width: .1,
+        height: .03,
+        order: 5,
+      ),
+      OcrObservation(
+        text: 'HOTEL 2 NIGHTS',
+        confidence: .9,
+        left: .40,
+        top: .2,
+        width: .3,
+        height: .03,
+        order: 6,
+      ),
+      OcrObservation(
+        text: '420.00',
+        confidence: .9,
+        left: .82,
+        top: .2,
+        width: .1,
+        height: .03,
+        order: 7,
+      ),
+    ];
+    final result = LocalStatementExtractor.fromObservations(
+      'Statement period 08/01/2026 - 08/31/2026 Transaction Date Posting Date Description Amount',
+      observations,
+    );
+    expect(result.context.columns, hasLength(4));
+    expect(result.context.profile?.id, 'generic-date-posting-amount');
+    expect(result.rows.single.amount, '420');
+    expect(result.rows.single.postingDate, DateTime(2026, 8, 14));
+  });
+
+  test('does not merge pages and ignores repeated headers', () {
+    const observations = [
+      OcrObservation(
+        text: '08/31',
+        confidence: .9,
+        left: .02,
+        top: .2,
+        width: .1,
+        height: .03,
+        pageIndex: 0,
+        order: 0,
+      ),
+      OcrObservation(
+        text: 'Store A',
+        confidence: .9,
+        left: .3,
+        top: .2,
+        width: .2,
+        height: .03,
+        pageIndex: 0,
+        order: 1,
+      ),
+      OcrObservation(
+        text: '10.00',
+        confidence: .9,
+        left: .8,
+        top: .2,
+        width: .1,
+        height: .03,
+        pageIndex: 0,
+        order: 2,
+      ),
+      OcrObservation(
+        text: 'Transaction Date Description Amount',
+        confidence: .9,
+        left: .02,
+        top: .1,
+        width: .5,
+        height: .03,
+        pageIndex: 1,
+        order: 3,
+      ),
+      OcrObservation(
+        text: '09/01',
+        confidence: .9,
+        left: .02,
+        top: .2,
+        width: .1,
+        height: .03,
+        pageIndex: 1,
+        order: 4,
+      ),
+      OcrObservation(
+        text: 'Store B',
+        confidence: .9,
+        left: .3,
+        top: .2,
+        width: .2,
+        height: .03,
+        pageIndex: 1,
+        order: 5,
+      ),
+      OcrObservation(
+        text: '20.00',
+        confidence: .9,
+        left: .8,
+        top: .2,
+        width: .1,
+        height: .03,
+        pageIndex: 1,
+        order: 6,
+      ),
+    ];
+    final result = LocalStatementExtractor.fromObservations(
+      '08/01/2026 - 09/30/2026',
+      observations,
+    );
+    expect(result.rows, hasLength(2));
+    expect(
+      result.rows.map((row) => row.description),
+      everyElement(isNot(contains('Transaction Date'))),
+    );
+    expect(result.diagnostics?.pagesProcessed, 2);
+  });
+
+  test(
+    'distinguishes empty, no-candidate, unresolved-only and mixed outcomes',
+    () {
+      expect(
+        LocalStatementExtractor.fromObservations('', const []).outcome,
+        StatementExtractionOutcome.noText,
+      );
+      expect(
+        LocalStatementExtractor.fromObservations(
+          'Welcome to your account',
+          const [],
+        ).outcome,
+        StatementExtractionOutcome.textWithoutCandidates,
+      );
+      expect(
+        LocalStatementExtractor.fromObservations(
+          '08/12 UNKNOWN ???',
+          const [],
+        ).outcome,
+        StatementExtractionOutcome.unresolvedEvidence,
+      );
+      final mixed = LocalStatementExtractor.fromObservations(
+        '08/01/2026 - 08/31/2026\n08/12 Good 10.00\n08/13 Unknown ???',
+        const [],
+      );
+      expect(mixed.outcome, StatementExtractionOutcome.reconstructedCandidates);
+      expect(mixed.diagnostics?.unresolvedCandidates, 1);
+    },
+  );
 }

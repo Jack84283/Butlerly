@@ -8,6 +8,31 @@ enum StatementExtractionOutcome {
   reconstructedCandidates,
 }
 
+enum StatementUnresolvedReason {
+  unresolvedAmount,
+  unresolvedDate,
+  unresolvedDirection,
+  unresolvedCurrency,
+  ambiguousRow,
+  unsupportedLayout,
+  incompleteTransactionEvidence,
+}
+
+enum StatementColumnRole {
+  transactionDate,
+  postingDate,
+  description,
+  amount,
+  debit,
+  credit,
+}
+
+final class StatementColumn {
+  const StatementColumn(this.role, this.left);
+  final StatementColumnRole role;
+  final double left;
+}
+
 final class StatementExtractionDiagnostics {
   const StatementExtractionDiagnostics({
     required this.observationsRecognized,
@@ -36,9 +61,13 @@ final class StatementExtractionContext {
     this.periodStart,
     this.periodEnd,
     this.defaultCurrency,
+    this.columns = const [],
+    this.profile,
   });
   final String? institution, maskedAccountIdentifier, defaultCurrency;
   final DateTime? periodStart, periodEnd;
+  final List<StatementColumn> columns;
+  final StatementLayoutProfile? profile;
 }
 
 final class StatementExtraction {
@@ -74,7 +103,8 @@ final class StatementExtractedRow {
   });
   final String originalText;
   final DateTime? date, postingDate;
-  final String? description, amount, currency, direction, unresolvedReason;
+  final String? description, amount, currency, direction;
+  final StatementUnresolvedReason? unresolvedReason;
   final double? confidence;
   final List<int> sourceObservationIndexes;
   bool get isUnresolved => unresolvedReason != null;
@@ -101,7 +131,7 @@ final class LocalStatementExtractor {
     String text,
     List<OcrObservation> observations,
   ) {
-    final context = _context(text);
+    final context = _context(text, observations);
     final source = observations.isEmpty
         ? _lineObservations(text)
         : observations;
@@ -119,7 +149,8 @@ final class LocalStatementExtractor {
           StatementExtractedRow(
             originalText: row.map((value) => value.text).join(' '),
             confidence: _rowConfidence(row) * .7,
-            unresolvedReason: 'Transaction-like evidence needs review',
+            unresolvedReason:
+                StatementUnresolvedReason.incompleteTransactionEvidence,
             sourceObservationIndexes: row.map((value) => value.order).toList(),
           ),
         );
@@ -211,8 +242,13 @@ final class LocalStatementExtractor {
   ) {
     final output = <List<OcrObservation>>[];
     List<OcrObservation>? pending;
+    var pendingPage = -1;
     for (final group in groups) {
       final text = group.map((value) => value.text).join(' ');
+      if (pending != null && group.first.pageIndex != pendingPage) {
+        output.add(pending);
+        pending = null;
+      }
       if (_isContextLine(text)) {
         continue;
       }
@@ -222,6 +258,7 @@ final class LocalStatementExtractor {
       if (startsRow) {
         if (pending != null) output.add(pending);
         pending = [...group];
+        pendingPage = group.first.pageIndex;
       } else if (pending != null &&
           (RegExp(r'[A-Za-z]{2,}').hasMatch(text) ||
               RegExp(r'\$?\d+[.,]\d{2}').hasMatch(text))) {
@@ -269,7 +306,8 @@ final class LocalStatementExtractor {
     if (amounts.isEmpty) return null;
     final date = _interpretDate(dates.first, context);
     final posting = dates.length > 1 ? _interpretDate(dates[1], context) : null;
-    final amountMatch = amounts.last;
+    final amountMatch = _selectAmount(amounts, row, context);
+    if (amountMatch == null) return null;
     final rawAmount = amountMatch.group(1)!;
     final marker = amountMatch.group(2)?.toUpperCase();
     final explicitPositive = rawAmount.startsWith('+');
@@ -312,11 +350,55 @@ final class LocalStatementExtractor {
       currency: _currency(text) ?? context.defaultCurrency,
       direction: direction,
       confidence: confidence,
-      unresolvedReason: date == null || description.isEmpty
-          ? 'Some transaction fields could not be interpreted'
+      unresolvedReason: date == null
+          ? StatementUnresolvedReason.unresolvedDate
+          : description.isEmpty
+          ? StatementUnresolvedReason.incompleteTransactionEvidence
           : null,
       sourceObservationIndexes: row.map((value) => value.order).toList(),
     );
+  }
+
+  static RegExpMatch? _selectAmount(
+    List<RegExpMatch> matches,
+    List<OcrObservation> row,
+    StatementExtractionContext context,
+  ) {
+    if (matches.length == 1) return matches.single;
+    final amountColumn = context.columns
+        .where(
+          (column) =>
+              column.role == StatementColumnRole.amount ||
+              column.role == StatementColumnRole.debit ||
+              column.role == StatementColumnRole.credit,
+        )
+        .firstOrNull;
+    if (amountColumn == null) {
+      final formatted = matches
+          .where(
+            (match) =>
+                match.group(0)!.contains('.') ||
+                match.group(0)!.contains(',') ||
+                match.group(0)!.contains('\$') ||
+                match.group(0)!.contains('('),
+          )
+          .toList();
+      return formatted.length == 1 ? formatted.single : null;
+    }
+    final positioned = <({RegExpMatch match, double distance})>[];
+    for (final match in matches) {
+      final observation = row
+          .where((value) => value.text.contains(match.group(0)!))
+          .firstOrNull;
+      if (observation != null) {
+        positioned.add((
+          match: match,
+          distance: (observation.left - amountColumn.left).abs(),
+        ));
+      }
+    }
+    positioned.sort((a, b) => a.distance.compareTo(b.distance));
+    return positioned.firstOrNull?.match;
   }
 
   static double _rowConfidence(List<OcrObservation> row) =>
@@ -357,14 +439,60 @@ final class LocalStatementExtractor {
     return null;
   }
 
-  static StatementExtractionContext _context(String text) =>
-      StatementExtractionContext(
-        institution: _institution(text),
-        maskedAccountIdentifier: _maskedAccountIdentifier(text),
-        periodStart: _period(text, true),
-        periodEnd: _period(text, false),
-        defaultCurrency: _currency(text),
-      );
+  static StatementExtractionContext _context(
+    String text,
+    List<OcrObservation> observations,
+  ) {
+    final columns = _columns(observations);
+    return StatementExtractionContext(
+      institution: _institution(text),
+      maskedAccountIdentifier: _maskedAccountIdentifier(text),
+      periodStart: _period(text, true),
+      periodEnd: _period(text, false),
+      defaultCurrency: _currency(text),
+      columns: columns,
+      profile: _profile(text),
+    );
+  }
+
+  static StatementLayoutProfile? _profile(String text) =>
+      RegExp(
+        r'\b(?:transaction\s+date|posting\s+date)\b',
+        caseSensitive: false,
+      ).hasMatch(text)
+      ? const StatementLayoutProfile(
+          id: 'generic-date-posting-amount',
+          version: 1,
+        )
+      : null;
+
+  static List<StatementColumn> _columns(List<OcrObservation> observations) {
+    final output = <StatementColumn>[];
+    for (final observation in observations) {
+      final value = observation.text
+          .toLowerCase()
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
+      final role = value.contains('transaction date')
+          ? StatementColumnRole.transactionDate
+          : value == 'posting date' || value == 'post date'
+          ? StatementColumnRole.postingDate
+          : value == 'date'
+          ? StatementColumnRole.transactionDate
+          : value.contains('description') || value.contains('merchant')
+          ? StatementColumnRole.description
+          : value == 'amount'
+          ? StatementColumnRole.amount
+          : value == 'debit'
+          ? StatementColumnRole.debit
+          : value == 'credit'
+          ? StatementColumnRole.credit
+          : null;
+      if (role != null) output.add(StatementColumn(role, observation.left));
+    }
+    return output;
+  }
+
   static DateTime? _period(String text, bool first) {
     final matches = RegExp(
       r'\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b',
