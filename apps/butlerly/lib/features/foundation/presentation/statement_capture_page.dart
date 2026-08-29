@@ -423,6 +423,48 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
     }
   }
 
+  Future<void> _importBatch() async {
+    final sourceId = _sourceId;
+    if (sourceId == null) {
+      _message(context.l10n.text('choosePaymentSourceToContinue'));
+      return;
+    }
+    final candidates = _rows.where((row) =>
+        row.status == StatementRowStatus.pending ||
+        row.status == StatementRowStatus.unresolved).toList(growable: false);
+    final confirmed = await showButlerlyBottomSheet<bool>(
+      context: context,
+      builder: (context) => ButlerlySheet(
+        title: Text(context.l10n.text('reviewStatementImport')),
+        content: Text('${candidates.length} ${context.l10n.text('statementRows')}'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.l10n.text('cancel'))),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(context.l10n.text('importData'))),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final result = await widget.service.importBatch(widget.statement, candidates, sourceId);
+    if (!mounted) return;
+    if (result case ApplicationSuccess<StatementImportSummary>(value: final summary)) {
+      notifyTransactionChanged();
+      await showButlerlyBottomSheet<void>(
+        context: context,
+        builder: (context) => ButlerlySheet(
+          title: Text(context.l10n.text('importSummary')),
+          content: Text('${summary.imported} ${context.l10n.text('statementSaved')} · '
+              '${summary.needsReview} ${context.l10n.text('statementNeedsReview')} · '
+              '${summary.possibleDuplicates} ${context.l10n.text('possibleDuplicates')}'),
+          actions: [
+            TextButton(onPressed: () => context.go('/review'), child: Text(context.l10n.text('review'))),
+            FilledButton(onPressed: () => Navigator.pop(context), child: Text(context.l10n.text('done'))),
+          ],
+        ),
+      );
+      if (mounted) context.pop();
+    }
+  }
+
   Future<void> _addRows() async {
     final controller = TextEditingController();
     final text = await showButlerlyBottomSheet<String>(
@@ -853,6 +895,12 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
             icon: const Icon(Icons.add_card_outlined),
             label: const Text('Create new payment source'),
           ),
+        ),
+        const SizedBox(height: 8),
+        FilledButton.icon(
+          onPressed: _sourceId == null || _rows.isEmpty ? null : _importBatch,
+          icon: const Icon(Icons.download_done_outlined),
+          label: Text(context.l10n.text('importData')),
         ),
         const SizedBox(height: 16),
         if (_rows.isEmpty)

@@ -6,6 +6,19 @@ import 'transaction_use_cases.dart';
 import 'reconciliation_use_cases.dart';
 import 'duplicate_transaction_use_cases.dart';
 
+final class StatementImportSummary {
+  const StatementImportSummary({
+    required this.imported,
+    required this.needsReview,
+    required this.possibleDuplicates,
+    required this.failed,
+  });
+  final int imported;
+  final int needsReview;
+  final int possibleDuplicates;
+  final int failed;
+}
+
 final class StatementServices {
   const StatementServices(
     this.statements,
@@ -13,6 +26,7 @@ final class StatementServices {
     this.workflow,
     this.clock, {
     this.evidence,
+    this.duplicateGroups,
     required this.duplicateChecker,
   });
   final StatementRepository statements;
@@ -20,7 +34,69 @@ final class StatementServices {
   final StatementWorkflowRepository workflow;
   final ApplicationClock clock;
   final EvidenceRepository? evidence;
+  final DuplicateCandidateGroupRepository? duplicateGroups;
   final DuplicateTransactionChecker duplicateChecker;
+
+  Future<ApplicationResult<StatementImportSummary>> importBatch(
+    FinancialStatement statement,
+    List<StatementRow> rows,
+    String paymentSourceId,
+  ) => runApplication('import statement batch', () async {
+    var imported = 0;
+    var needsReview = 0;
+    var possibleDuplicates = 0;
+    var failed = 0;
+    for (final row in rows) {
+      if (row.amount == null || row.currency == null ||
+          row.transactionDate == null || row.direction == null) {
+        failed++;
+        continue;
+      }
+      final duplicate = await duplicates(row);
+      final result = await save(row, paymentSourceId, allowCreateNew: true);
+      if (result is! ApplicationSuccess<TransactionDto>) {
+        failed++;
+        continue;
+      }
+      imported++;
+      if ((row.confidence ?? 1) < .5) needsReview++;
+      final candidates = duplicate is ApplicationSuccess<DuplicateTransactionCheckResult>
+          ? duplicate.value.candidates : const <DuplicateTransactionCandidate>[];
+      if (candidates.isNotEmpty) {
+        possibleDuplicates++;
+        final repository = duplicateGroups;
+        if (repository != null) {
+          final transactionIds = [
+            result.value.id,
+            ...candidates.map((candidate) => candidate.transaction.id),
+          ].map(TransactionId.new).toList();
+          final key = DuplicateTransactionKey(
+            transactionDate: row.transactionDate!.toIso8601String().substring(0, 10),
+            amount: DecimalValue.parse(row.amount!),
+            currency: row.currency!,
+            direction: _directionForRow(row).name,
+          );
+          final now = clock.now();
+          await repository.save(DuplicateCandidateGroup(
+            id: 'statement-duplicate-${row.id}',
+            transactionIds: transactionIds,
+            duplicateKey: key,
+            status: DuplicateCandidateGroupStatus.unresolved,
+            createdAt: now,
+            updatedAt: now,
+          ));
+        }
+      }
+    }
+    return StatementImportSummary(
+      imported: imported, needsReview: needsReview,
+      possibleDuplicates: possibleDuplicates, failed: failed,
+    );
+  });
+
+  Future<ApplicationResult<StatementImportSummary>> importRows(
+    FinancialStatement statement, List<StatementRow> rows, String paymentSourceId,
+  ) => importBatch(statement, rows, paymentSourceId);
 
   Future<ApplicationResult<DuplicateTransactionCheckResult>> duplicates(
     StatementRow row,
@@ -215,6 +291,17 @@ final class StatementServices {
           originalRepresentation: row.originalText,
         ),
       ],
+      reviewIssues: row.confidence != null && row.confidence! < .5
+          ? [
+              ReviewIssue(
+                id: ReviewIssueId('statement-confidence-${row.id}'),
+                transactionId: TransactionId(transactionId),
+                reason: ReviewIssueReason.uncertain,
+                detail: 'We were not confident reading this statement row.',
+                createdAt: now,
+              ),
+            ]
+          : const [],
       createdAt: now,
       updatedAt: now,
     );

@@ -207,6 +207,7 @@ final class FinanceServices {
                statements as StatementWorkflowRepository,
                const SystemApplicationClock(),
                evidence: evidence,
+               duplicateGroups: duplicateGroups,
                duplicateChecker: DuplicateTransactionChecker(transactions),
              ),
        updateAnalysisFindingLifecycle = analysisFindings == null
