@@ -221,6 +221,7 @@ final class ListTransactions {
         direction: query.direction,
         status: query.status,
         needsReview: query.needsReview,
+        uncategorized: query.uncategorized,
       ),
     );
     return List.unmodifiable(values.map(TransactionDto.fromDomain));
@@ -383,7 +384,10 @@ final class ListReviewItems {
   Future<ApplicationResult<List<ReviewItemDto>>> call() =>
       runApplication('list review items', () async {
         final transactions = await repository.query(
-          const TransactionRepositoryQuery(needsReview: true),
+          const TransactionRepositoryQuery(
+            needsReview: true,
+            status: TransactionStatus.active,
+          ),
         );
         return List.unmodifiable(
           transactions.expand(

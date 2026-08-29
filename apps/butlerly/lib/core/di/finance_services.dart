@@ -134,9 +134,11 @@ final class FinanceServices {
        ),
        confirmReconciliation = ConfirmReconciliation(
          reconciliationWorkflow ?? const _NoReconciliationWorkflowRepository(),
+         transactions,
        ),
        rejectReconciliation = RejectReconciliation(
          reconciliationWorkflow ?? const _NoReconciliationWorkflowRepository(),
+         transactions,
        ),
        findReceiptPaymentMatch = FindReceiptPaymentMatch(transactions),
        duplicateTransactionChecker = DuplicateTransactionChecker(transactions),

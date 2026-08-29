@@ -104,6 +104,9 @@ final class SqliteTransactionRepository implements TransactionRepository {
       conditions.add('t.category_id = ?');
       arguments.add(query.categoryId!.value);
     }
+    if (query.uncategorized) {
+      conditions.add('(t.category_id IS NULL OR c.id IS NULL)');
+    }
     if (query.paymentSourceId != null) {
       conditions.add('t.payment_source_id = ?');
       arguments.add(query.paymentSourceId!.value);

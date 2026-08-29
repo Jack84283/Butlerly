@@ -334,6 +334,59 @@ void main() {
     expect(workflow.rejected, isTrue);
     expect(workflow.confirmedLink, isNull);
   });
+
+  test(
+    'refresh creates one issue and never reopens a decided candidate',
+    () async {
+      final now = DateTime.utc(2026, 8, 20);
+      final receipt = _transaction(
+        id: 'receipt-lifecycle',
+        sourceType: TransactionSourceType.evidenceCapture,
+        date: '2026-08-20',
+        merchant: 'Cafe',
+        provenanceType: ProvenanceSourceType.scan,
+        now: now,
+      );
+      final payment = _transaction(
+        id: 'payment-lifecycle',
+        sourceType: TransactionSourceType.import,
+        date: '2026-08-20',
+        merchant: 'Cafe',
+        provenanceType: ProvenanceSourceType.import,
+        now: now,
+      );
+      final transactions = _MutableTransactions([receipt, payment]);
+      final candidates = _MemoryCandidates();
+      final refresh = RefreshReconciliationCandidates(transactions, candidates);
+
+      await refresh();
+      await refresh();
+      final candidate = (await candidates.listAll()).single;
+      expect(
+        transactions.values.singleWhere((v) => v.id == receipt.id).reviewIssues,
+        hasLength(1),
+      );
+
+      await ConfirmReconciliation(_FakeWorkflow(), transactions)(candidate);
+      expect(
+        transactions.values
+            .singleWhere((v) => v.id == receipt.id)
+            .reviewIssues
+            .single
+            .status,
+        ReviewIssueStatus.resolved,
+      );
+      await refresh();
+      expect(
+        transactions.values
+            .singleWhere((v) => v.id == receipt.id)
+            .reviewIssues
+            .single
+            .status,
+        ReviewIssueStatus.resolved,
+      );
+    },
+  );
 }
 
 final class _FakeWorkflow implements ReconciliationWorkflowRepository {
@@ -371,6 +424,39 @@ final class _FakeTransactions implements TransactionRepository {
       values;
   @override
   Future<void> removePermanently(TransactionId id) async {}
+}
+
+final class _MutableTransactions implements TransactionRepository {
+  _MutableTransactions(this.values);
+  final List<Transaction> values;
+  @override
+  Future<void> save(Transaction transaction) async {
+    final index = values.indexWhere((v) => v.id == transaction.id);
+    if (index >= 0) values[index] = transaction;
+  }
+
+  @override
+  Future<Transaction?> findById(TransactionId id) async =>
+      values.where((v) => v.id == id).firstOrNull;
+  @override
+  Future<List<Transaction>> listAll() async => values;
+  @override
+  Future<List<Transaction>> query(TransactionRepositoryQuery query) async =>
+      values;
+  @override
+  Future<void> removePermanently(TransactionId id) async {}
+}
+
+final class _MemoryCandidates implements ReconciliationCandidateRepository {
+  final values = <String, ReconciliationCandidate>{};
+  @override
+  Future<void> save(ReconciliationCandidate candidate) async =>
+      values[candidate.id] = candidate;
+  @override
+  Future<ReconciliationCandidate?> findById(String id) async => values[id];
+  @override
+  Future<List<ReconciliationCandidate>> listAll() async =>
+      values.values.toList();
 }
 
 Transaction _transaction({
