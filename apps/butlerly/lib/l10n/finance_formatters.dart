@@ -17,7 +17,7 @@ String localizedTransactionAmount(BuildContext context, String canonicalValue) {
   if (value == null) return canonicalValue;
   final locale = Localizations.localeOf(context).toLanguageTag();
   return (NumberFormat.decimalPattern(locale)
-        ..minimumFractionDigits = 0
+        ..minimumFractionDigits = 2
         ..maximumFractionDigits = 2)
       .format(value);
 }

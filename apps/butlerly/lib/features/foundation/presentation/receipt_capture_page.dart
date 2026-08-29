@@ -11,6 +11,7 @@ import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:file_selector/file_selector.dart' as files;
@@ -353,7 +354,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, candidate),
               child: Text(
-                '${candidate.transaction.currency} ${candidate.transaction.amount} · ${candidate.transaction.transactionDate}\n${candidate.transaction.description ?? candidate.transaction.rawCounterparty ?? ''}\n${candidate.assessment.reasons.join('; ')}',
+                '${candidate.transaction.currency} ${localizedTransactionAmount(context, candidate.transaction.amount)} · ${candidate.transaction.transactionDate}\n${candidate.transaction.description ?? candidate.transaction.rawCounterparty ?? ''}\n${candidate.assessment.reasons.join('; ')}',
               ),
             ),
           TextButton(

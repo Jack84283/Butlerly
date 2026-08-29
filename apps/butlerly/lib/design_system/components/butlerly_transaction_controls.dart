@@ -3,6 +3,7 @@ import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
@@ -113,7 +114,7 @@ class _ButlerlyDuplicateTransactionConfirmationState
   Widget _summary(TransactionDto transaction) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 6),
     child: Text(
-      '${transaction.transactionDate ?? '—'} · ${transaction.amount} ${transaction.currency} · ${transaction.direction}\n'
+      '${transaction.transactionDate ?? '—'} · ${localizedTransactionAmount(context, transaction.amount)} ${transaction.currency} · ${transaction.direction}\n'
       '${transaction.description ?? transaction.rawCounterparty ?? ''}'
       '${transaction.paymentSourceId == null || widget.paymentSourceLabels[transaction.paymentSourceId] == null ? '' : '\n${widget.paymentSourceLabels[transaction.paymentSourceId]}'}',
     ),

@@ -447,12 +447,7 @@ class _FinancialCalendar extends StatelessWidget {
                           Text(
                             '${day.transactionCount}',
                             style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant
-                                      .withValues(alpha: 0.65),
-                                ),
+                                ?.copyWith(color: context.colors.secondaryText),
                           ),
                         ],
                       ),

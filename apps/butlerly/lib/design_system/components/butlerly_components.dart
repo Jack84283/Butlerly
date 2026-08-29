@@ -466,7 +466,9 @@ class ButlerlyEmptyState extends StatelessWidget {
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: context.colors.secondaryText,
+                ),
               ),
               if (actionLabel != null) ...[
                 const SizedBox(height: ButlerlySpacing.section),
