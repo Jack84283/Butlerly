@@ -238,6 +238,18 @@ class _ReviewPageState extends State<ReviewPage> {
     }
   }
 
+  Future<void> _openUncategorized(TransactionDto transaction) async {
+    final finance = _finance;
+    if (finance == null || !mounted) return;
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) =>
+            TransactionDetailPage(finance: finance, transaction: transaction),
+      ),
+    );
+    if (changed == true && mounted) _refresh();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_finance == null) {
@@ -384,6 +396,15 @@ class _ReviewPageState extends State<ReviewPage> {
               if (snapshot.connectionState != ConnectionState.done) {
                 return const Center(child: CircularProgressIndicator());
               }
+              if (snapshot.hasError) {
+                return ButlerlyErrorState(
+                  title: context.l10n.text('reviewLoadError'),
+                  message: context.l10n.text('tryAgain'),
+                  preserved: context.l10n.text('dataPreserved'),
+                  actionLabel: context.l10n.text('tryAgain'),
+                  onAction: _refresh,
+                );
+              }
               if (values.isEmpty) {
                 return ButlerlyEmptyState(
                   icon: Icons.sell_outlined,
@@ -401,6 +422,7 @@ class _ReviewPageState extends State<ReviewPage> {
                       amount: transaction.amount,
                       currency: transaction.currency,
                       subtitle: transaction.transactionDate,
+                      onTap: () => _openUncategorized(transaction),
                     ),
                 ],
               );
