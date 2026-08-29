@@ -227,42 +227,14 @@ class _TransactionsPageState extends State<TransactionsPage> {
                     setState(() => _filter = _TransactionFilter.all),
               )
             else
-              ButlerlyCard(
-                padding: const EdgeInsets.symmetric(
-                  vertical: ButlerlySpacing.compact,
-                ),
-                child: ButlerlySeparatedList(
-                  children: visible
-                      .map(
-                        (value) => ButlerlyRecordRow(
-                          title: value.description?.trim().isNotEmpty == true
-                              ? value.description!
-                              : context.l10n.text('untitledTransaction'),
-                          subtitle: data.masterData.summary(value),
-                          meta: _transactionDate(value, context),
-                          amount: localizedTransactionAmount(
-                            context,
-                            value.amount,
-                          ),
-                          currency: value.currency,
-                          isIncome:
-                              value.direction ==
-                              TransactionDirection.income.name,
-                          needsReview: value.reviewState == 'needsReview',
-                          possibleDuplicate: data.possibleDuplicateIds.contains(
-                            value.id,
-                          ),
-                          possibleDuplicateLabel: context.l10n.text(
-                            'possibleDuplicate',
-                          ),
-                          onPossibleDuplicateTap: () => GoRouter.of(
-                            context,
-                          ).go('/review?view=duplicates'),
-                          onTap: () => _openDetail(value),
-                        ),
-                      )
-                      .toList(growable: false),
-                ),
+              TransactionRecordList(
+                transactions: visible,
+                masterData: data.masterData,
+                possibleDuplicateIds: data.possibleDuplicateIds,
+                possibleDuplicateLabel: context.l10n.text('possibleDuplicate'),
+                onPossibleDuplicateTap: () =>
+                    GoRouter.of(context).go('/review?view=duplicates'),
+                onTap: _openDetail,
               ),
             const SizedBox(height: ButlerlySpacing.structural),
           ],
@@ -284,6 +256,52 @@ final class _TransactionsData {
   final List<TransactionDto> transactions;
   final TransactionMasterData masterData;
   final Set<String> possibleDuplicateIds;
+}
+
+/// The canonical transaction list presentation shared by transaction-backed screens.
+class TransactionRecordList extends StatelessWidget {
+  const TransactionRecordList({
+    required this.transactions,
+    required this.onTap,
+    this.masterData,
+    this.possibleDuplicateIds = const {},
+    this.possibleDuplicateLabel,
+    this.onPossibleDuplicateTap,
+    super.key,
+  });
+
+  final List<TransactionDto> transactions;
+  final TransactionMasterData? masterData;
+  final Set<String> possibleDuplicateIds;
+  final String? possibleDuplicateLabel;
+  final VoidCallback? onPossibleDuplicateTap;
+  final ValueChanged<TransactionDto> onTap;
+
+  @override
+  Widget build(BuildContext context) => ButlerlyCard(
+    padding: const EdgeInsets.symmetric(vertical: ButlerlySpacing.compact),
+    child: ButlerlySeparatedList(
+      children: transactions
+          .map(
+            (value) => ButlerlyRecordRow(
+              title: value.description?.trim().isNotEmpty == true
+                  ? value.description!
+                  : context.l10n.text('untitledTransaction'),
+              subtitle: masterData?.summary(value),
+              meta: _transactionDate(value, context),
+              amount: localizedTransactionAmount(context, value.amount),
+              currency: value.currency,
+              isIncome: value.direction == TransactionDirection.income.name,
+              needsReview: value.reviewState == 'needsReview',
+              possibleDuplicate: possibleDuplicateIds.contains(value.id),
+              possibleDuplicateLabel: possibleDuplicateLabel,
+              onPossibleDuplicateTap: onPossibleDuplicateTap,
+              onTap: () => onTap(value),
+            ),
+          )
+          .toList(growable: false),
+    ),
+  );
 }
 
 sealed class TransactionEditorResult {
@@ -872,6 +890,7 @@ class TransactionDetailPage extends StatefulWidget {
 
 class _TransactionDetailPageState extends State<TransactionDetailPage> {
   late TransactionDto transaction;
+  bool _changed = false;
 
   FinanceServices get finance => widget.finance;
 
@@ -924,179 +943,194 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(context.l10n.text('transactionDetail')),
-      actions: [
-        IconButton(
-          tooltip: context.l10n.text('editTransaction'),
-          onPressed: () async {
-            final changed = await Navigator.of(context)
-                .push<TransactionEditorResult>(
-                  MaterialPageRoute(
-                    builder: (_) => TransactionEditorPage(
-                      finance: finance,
-                      existing: transaction,
+  Widget build(BuildContext context) => PopScope<void>(
+    canPop: false,
+    onPopInvokedWithResult: (didPop, _) {
+      if (!didPop && context.mounted) {
+        Navigator.of(context).pop(_changed);
+      }
+    },
+    child: Scaffold(
+      appBar: AppBar(
+        title: Text(context.l10n.text('transactionDetail')),
+        actions: [
+          IconButton(
+            tooltip: context.l10n.text('editTransaction'),
+            onPressed: () async {
+              final changed = await Navigator.of(context)
+                  .push<TransactionEditorResult>(
+                    MaterialPageRoute(
+                      builder: (_) => TransactionEditorPage(
+                        finance: finance,
+                        existing: transaction,
+                      ),
                     ),
-                  ),
-                );
-            if ((changed is TransactionEditorSaved ||
-                    changed is TransactionEditorUseExisting) &&
-                context.mounted) {
-              final refreshed = await finance.getTransaction(transaction.id);
-              if (!context.mounted) return;
-              if (refreshed case ApplicationSuccess<TransactionDto>(
-                :final value,
-              )) {
-                setState(() => transaction = value);
+                  );
+              if ((changed is TransactionEditorSaved ||
+                      changed is TransactionEditorUseExisting) &&
+                  context.mounted) {
+                _changed = true;
+                final refreshed = await finance.getTransaction(transaction.id);
+                if (!context.mounted) return;
+                if (refreshed case ApplicationSuccess<TransactionDto>(
+                  :final value,
+                )) {
+                  setState(() {
+                    transaction = value;
+                    _changed = true;
+                  });
+                }
               }
-            }
-          },
-          icon: const Icon(Icons.edit_outlined),
-        ),
-      ],
-    ),
-    body: ListView(
-      padding: const EdgeInsets.all(24),
-      children: [
-        Text(
-          transaction.description ?? context.l10n.text('untitledTransaction'),
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          '${localizedTransactionAmount(context, transaction.amount)} ${transaction.currency}',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        if (transaction.normalizedMoney.isNotEmpty) ...[
+            },
+            icon: const Icon(Icons.edit_outlined),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          Text(
+            transaction.description ?? context.l10n.text('untitledTransaction'),
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
           const SizedBox(height: 8),
           Text(
-            context.l10n.text('referenceAmounts'),
-            style: Theme.of(context).textTheme.labelLarge,
+            '${localizedTransactionAmount(context, transaction.amount)} ${transaction.currency}',
+            style: Theme.of(context).textTheme.titleLarge,
           ),
-          ...transaction.normalizedMoney.map(
-            (value) => _DetailRow(
-              label: context.l10n.text('referenceCurrency', {
-                'currency': value.currency,
-              }),
-              value:
-                  '${localizedTransactionAmount(context, value.amount)} ${value.currency}',
+          if (transaction.normalizedMoney.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              context.l10n.text('referenceAmounts'),
+              style: Theme.of(context).textTheme.labelLarge,
             ),
-          ),
-        ],
-        const SizedBox(height: 24),
-        _DetailRow(
-          label: context.l10n.text('direction'),
-          value: context.l10n.text(transaction.direction),
-        ),
-        _DetailRow(
-          label: context.l10n.text('date'),
-          value: _transactionDate(transaction, context),
-        ),
-        _DetailRow(
-          label: context.l10n.text('status'),
-          value: context.l10n.text(transaction.status),
-        ),
-        _DetailRow(
-          label: context.l10n.text('reviewState'),
-          value: transaction.reviewState == 'needsReview'
-              ? context.l10n.text('needsReview')
-              : context.l10n.text('clear'),
-        ),
-        if (transaction.notes?.trim().isNotEmpty == true)
+            ...transaction.normalizedMoney.map(
+              (value) => _DetailRow(
+                label: context.l10n.text('referenceCurrency', {
+                  'currency': value.currency,
+                }),
+                value:
+                    '${localizedTransactionAmount(context, value.amount)} ${value.currency}',
+              ),
+            ),
+          ],
+          const SizedBox(height: 24),
           _DetailRow(
-            label: context.l10n.text('notes'),
-            value: transaction.notes!,
+            label: context.l10n.text('direction'),
+            value: context.l10n.text(transaction.direction),
           ),
-        if (transaction.provenance.isNotEmpty) ...[
+          _DetailRow(
+            label: context.l10n.text('date'),
+            value: _transactionDate(transaction, context),
+          ),
+          _DetailRow(
+            label: context.l10n.text('status'),
+            value: context.l10n.text(transaction.status),
+          ),
+          _DetailRow(
+            label: context.l10n.text('reviewState'),
+            value: transaction.reviewState == 'needsReview'
+                ? context.l10n.text('needsReview')
+                : context.l10n.text('clear'),
+          ),
+          if (transaction.notes?.trim().isNotEmpty == true)
+            _DetailRow(
+              label: context.l10n.text('notes'),
+              value: transaction.notes!,
+            ),
+          if (transaction.provenance.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              context.l10n.text('recordHistory'),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            ...transaction.provenance.map(
+              (value) => _DetailRow(
+                label: context.l10n.text('origin'),
+                value: _provenanceLabel(context, value.sourceType),
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
-          Text(
-            context.l10n.text('recordHistory'),
-            style: Theme.of(context).textTheme.titleMedium,
+          _EvidenceSection(finance: finance, transactionId: transaction.id),
+          _TransactionMasterDataRows(
+            key: ValueKey(
+              '${transaction.updatedAt.microsecondsSinceEpoch}-${transaction.tagIds.join(',')}',
+            ),
+            finance: finance,
+            transaction: transaction,
           ),
-          ...transaction.provenance.map(
-            (value) => _DetailRow(
-              label: context.l10n.text('origin'),
-              value: _provenanceLabel(context, value.sourceType),
+          if (transaction.paymentSourceId != null)
+            _PaymentSourceRow(
+              finance: finance,
+              paymentSourceId: transaction.paymentSourceId!,
+            ),
+          const SizedBox(height: 24),
+          OutlinedButton.icon(
+            onPressed: () async {
+              final changed = await _organizeTransaction(
+                context,
+                finance,
+                transaction,
+              );
+              if (changed == true && context.mounted) {
+                final refreshed = await finance.getTransaction(transaction.id);
+                if (!context.mounted) return;
+                if (refreshed case ApplicationSuccess<TransactionDto>(
+                  :final value,
+                )) {
+                  setState(() {
+                    transaction = value;
+                    _changed = true;
+                  });
+                }
+              }
+            },
+            icon: const Icon(Icons.sell_outlined),
+            label: Text(context.l10n.text('organizeTransaction')),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () async {
+              final assigned = await _assignPaymentSource(
+                context,
+                finance,
+                transaction,
+              );
+              if (assigned != null && context.mounted) {
+                setState(() => transaction = assigned);
+              }
+            },
+            icon: const Icon(Icons.account_balance_wallet_outlined),
+            label: Text(context.l10n.text('assignPaymentSource')),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: transaction.status == TransactionStatus.archived.name
+                ? () async {
+                    await finance.restoreTransaction(transaction.id);
+                    if (context.mounted) Navigator.of(context).pop(true);
+                  }
+                : () => _archive(context),
+            icon: Icon(
+              transaction.status == TransactionStatus.archived.name
+                  ? Icons.unarchive_outlined
+                  : Icons.archive_outlined,
+            ),
+            label: Text(
+              transaction.status == TransactionStatus.archived.name
+                  ? context.l10n.text('restoreTransaction')
+                  : context.l10n.text('archiveTransaction'),
             ),
           ),
+          const SizedBox(height: 12),
+          TextButton.icon(
+            onPressed: () => _delete(context),
+            icon: const Icon(Icons.delete_forever_outlined),
+            label: Text(context.l10n.text('deletePermanently')),
+          ),
         ],
-        const SizedBox(height: 16),
-        _EvidenceSection(finance: finance, transactionId: transaction.id),
-        _TransactionMasterDataRows(
-          key: ValueKey(
-            '${transaction.updatedAt.microsecondsSinceEpoch}-${transaction.tagIds.join(',')}',
-          ),
-          finance: finance,
-          transaction: transaction,
-        ),
-        if (transaction.paymentSourceId != null)
-          _PaymentSourceRow(
-            finance: finance,
-            paymentSourceId: transaction.paymentSourceId!,
-          ),
-        const SizedBox(height: 24),
-        OutlinedButton.icon(
-          onPressed: () async {
-            final changed = await _organizeTransaction(
-              context,
-              finance,
-              transaction,
-            );
-            if (changed == true && context.mounted) {
-              final refreshed = await finance.getTransaction(transaction.id);
-              if (!context.mounted) return;
-              if (refreshed case ApplicationSuccess<TransactionDto>(
-                :final value,
-              )) {
-                setState(() => transaction = value);
-              }
-            }
-          },
-          icon: const Icon(Icons.sell_outlined),
-          label: Text(context.l10n.text('organizeTransaction')),
-        ),
-        const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: () async {
-            final assigned = await _assignPaymentSource(
-              context,
-              finance,
-              transaction,
-            );
-            if (assigned != null && context.mounted) {
-              setState(() => transaction = assigned);
-            }
-          },
-          icon: const Icon(Icons.account_balance_wallet_outlined),
-          label: Text(context.l10n.text('assignPaymentSource')),
-        ),
-        const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: transaction.status == TransactionStatus.archived.name
-              ? () async {
-                  await finance.restoreTransaction(transaction.id);
-                  if (context.mounted) Navigator.of(context).pop(true);
-                }
-              : () => _archive(context),
-          icon: Icon(
-            transaction.status == TransactionStatus.archived.name
-                ? Icons.unarchive_outlined
-                : Icons.archive_outlined,
-          ),
-          label: Text(
-            transaction.status == TransactionStatus.archived.name
-                ? context.l10n.text('restoreTransaction')
-                : context.l10n.text('archiveTransaction'),
-          ),
-        ),
-        const SizedBox(height: 12),
-        TextButton.icon(
-          onPressed: () => _delete(context),
-          icon: const Icon(Icons.delete_forever_outlined),
-          label: Text(context.l10n.text('deletePermanently')),
-        ),
-      ],
+      ),
     ),
   );
 }
@@ -1652,17 +1686,39 @@ Future<bool?> _organizeTransaction(
           ),
           FilledButton(
             onPressed: () async {
-              await finance.assignMerchant(transaction.id, merchantId);
-              await finance.assignCategory(transaction.id, categoryId);
-              for (final id in transaction.tagIds) {
-                if (!selectedTagIds.contains(id)) {
-                  await finance.removeTag(transaction.id, id);
-                }
-              }
-              for (final id in selectedTagIds) {
-                if (!transaction.tagIds.contains(id)) {
-                  await finance.addTag(transaction.id, id);
-                }
+              final result = await finance.updateTransaction(
+                UpdateTransactionCommand(
+                  id: transaction.id,
+                  timing: transaction.occurredAt == null
+                      ? const UnknownTransactionTime(
+                          UnknownTransactionTimeReason.unknown,
+                        )
+                      : KnownTransactionTime(transaction.occurredAt!),
+                  money: Money(
+                    amount: DecimalValue.parse(transaction.amount),
+                    currency: CurrencyCode(transaction.currency),
+                  ),
+                  direction: TransactionDirection.values.byName(
+                    transaction.direction,
+                  ),
+                  transactionDate: transaction.transactionDate,
+                  timeZoneId: transaction.timeZoneId,
+                  description: transaction.description,
+                  notes: transaction.notes,
+                  externalReference: transaction.externalReference,
+                  paymentSourceId: transaction.paymentSourceId,
+                  merchantId: merchantId,
+                  categoryId: categoryId,
+                  tagIds: selectedTagIds.toList(growable: false),
+                  replaceMerchant: true,
+                  replaceCategory: true,
+                  replaceTags: true,
+                ),
+              );
+              if (!dialogContext.mounted) return;
+              if (result is ApplicationFailure) {
+                _organizationFailed(dialogContext);
+                return;
               }
               notifyTransactionChanged();
               if (dialogContext.mounted) Navigator.pop(dialogContext, true);
@@ -1673,6 +1729,13 @@ Future<bool?> _organizeTransaction(
       ),
     ),
   );
+}
+
+void _organizationFailed(BuildContext context) {
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(context.l10n.text('dataPreserved'))));
 }
 
 Future<TransactionDto?> _assignPaymentSource(

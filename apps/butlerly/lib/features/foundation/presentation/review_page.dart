@@ -6,6 +6,7 @@ import 'package:butlerly/features/foundation/presentation/transaction_change_not
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
@@ -40,6 +41,17 @@ class _ReviewPageState extends State<ReviewPage> {
     _items = _load();
     _uncategorized = _loadUncategorized();
     _duplicateGroups = _loadDuplicateGroups();
+    transactionChanges.addListener(_handleTransactionChange);
+  }
+
+  @override
+  void dispose() {
+    transactionChanges.removeListener(_handleTransactionChange);
+    super.dispose();
+  }
+
+  void _handleTransactionChange() {
+    if (mounted) _refresh();
   }
 
   @override
@@ -368,19 +380,13 @@ class _ReviewPageState extends State<ReviewPage> {
                   message: context.l10n.text('reviewEmptyBody'),
                 );
               }
-              return Column(
-                children: [
-                  for (final transaction in values)
-                    ButlerlyRecordRow(
-                      title:
-                          transaction.description ??
-                          context.l10n.text('untitledTransaction'),
-                      amount: transaction.amount,
-                      currency: transaction.currency,
-                      subtitle: transaction.transactionDate,
-                      onTap: () => _openUncategorized(transaction),
-                    ),
-                ],
+              return FutureBuilder<TransactionMasterDataSnapshot>(
+                future: _masterData,
+                builder: (context, masterSnapshot) => TransactionRecordList(
+                  transactions: values,
+                  masterData: masterSnapshot.data?.presentation,
+                  onTap: _openUncategorized,
+                ),
               );
             },
           )
@@ -434,7 +440,9 @@ class _ReviewPageState extends State<ReviewPage> {
                                 finance: _finance!,
                                 onDone: _refresh,
                               )
-                            : ButlerlyReviewCard(
+                            : _ReviewTransactionCard(
+                                amount: item.amount,
+                                currency: item.currency,
                                 title:
                                     item.description ??
                                     context.l10n.text('untitledTransaction'),
@@ -461,6 +469,69 @@ class _ReviewPageState extends State<ReviewPage> {
       ],
     );
   }
+}
+
+class _ReviewTransactionCard extends StatelessWidget {
+  const _ReviewTransactionCard({
+    required this.title,
+    required this.amount,
+    required this.currency,
+    required this.reason,
+    required this.recommendation,
+    required this.primaryLabel,
+    required this.onPrimary,
+    required this.editLabel,
+    required this.dismissLabel,
+    required this.onEdit,
+    required this.onDismiss,
+  });
+
+  final String title;
+  final String amount;
+  final String currency;
+  final String reason;
+  final String recommendation;
+  final String primaryLabel;
+  final VoidCallback onPrimary;
+  final String editLabel;
+  final String dismissLabel;
+  final VoidCallback onEdit;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) => ButlerlyCard(
+    padding: const EdgeInsets.symmetric(vertical: ButlerlySpacing.compact),
+    child: Column(
+      children: [
+        ButlerlyRecordRow(
+          title: title,
+          amount: localizedTransactionAmount(context, amount),
+          currency: currency,
+          needsReview: true,
+        ),
+        Padding(
+          padding: const EdgeInsets.all(ButlerlySpacing.standard),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(reason),
+              const SizedBox(height: ButlerlySpacing.small),
+              Text(recommendation),
+              const SizedBox(height: ButlerlySpacing.standard),
+              Wrap(
+                spacing: ButlerlySpacing.compact,
+                children: [
+                  FilledButton(onPressed: onPrimary, child: Text(primaryLabel)),
+                  OutlinedButton(onPressed: onEdit, child: Text(editLabel)),
+                  TextButton(onPressed: onDismiss, child: Text(dismissLabel)),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 enum _ReviewView { needsReview, uncategorized, duplicates }
