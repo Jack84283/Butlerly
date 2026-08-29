@@ -86,7 +86,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
     final result = await list();
     return switch (result) {
       ApplicationSuccess<List<DuplicateCandidateGroup>>(:final value) => {
-        for (final group in value)
+        for (final group in value.where((group) => group.isUnresolved))
           for (final id in group.transactionIds) id.value,
       },
       ApplicationFailure<List<DuplicateCandidateGroup>>() => const {},
