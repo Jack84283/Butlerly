@@ -194,13 +194,11 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
           postingDate: value.postingDate,
           description: value.description,
           amount: value.amount,
-          currency: value.currency ?? 'USD',
-          direction: value.direction ?? TransactionDirection.expense.name,
+          currency: value.currency,
+          direction: value.direction,
           confidence: value.confidence,
           sourceContext:
-              'On-device OCR observations ${value.sourceObservationIndexes.join(', ')}'
-              '${value.currency == null ? '; currency defaulted to USD' : ''}'
-              '${value.direction == null ? '; direction defaulted to expense' : ''}',
+              'On-device OCR observations ${value.sourceObservationIndexes.join(', ')}',
           reviewReason: value.unresolvedReason?.name,
           paymentSourceId: paymentSourceId,
           status: complete
@@ -983,8 +981,14 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
     }
   }
 
-  StatementRowStatus _restoredStatus(StatementRow row) =>
-      row.statusBeforeSkip ?? StatementRowStatus.pending;
+  Future<void> _toggleSkipRestore(StatementRow row) async {
+    await widget.service.toggleSkipRestore(row);
+    final refreshed = await widget.service.rows(widget.statement.id);
+    if (!mounted) return;
+    if (refreshed case ApplicationSuccess<List<StatementRow>>(:final value)) {
+      setState(() => _rows = value);
+    }
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -1111,12 +1115,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                             child: Text(context.l10n.text('later')),
                           ),
                         _StatementActionButton(
-                          onPressed: () => _act(
-                            row,
-                            row.status == StatementRowStatus.skipped
-                                ? _restoredStatus(row)
-                                : StatementRowStatus.skipped,
-                          ),
+                          onPressed: () => _toggleSkipRestore(row),
                           icon: row.status == StatementRowStatus.skipped
                               ? Icons.restore_outlined
                               : Icons.skip_next_outlined,

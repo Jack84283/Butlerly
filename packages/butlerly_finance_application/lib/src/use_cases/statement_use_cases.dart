@@ -230,7 +230,8 @@ final class StatementServices {
     List<StatementRow> rows,
   ) => runApplication('create statement', () async {
     await statements.saveStatement(statement);
-    if (rows.isNotEmpty) await statements.saveRows(rows);
+    final intakeRows = _applyStatementIntakeDefaults(rows);
+    if (intakeRows.isNotEmpty) await statements.saveRows(intakeRows);
   });
 
   Future<ApplicationResult<List<FinancialStatement>>> list() =>
@@ -240,7 +241,10 @@ final class StatementServices {
       runApplication('list statement rows', () => statements.listRows(id));
 
   Future<ApplicationResult<void>> addRows(List<StatementRow> rows) =>
-      runApplication('add statement rows', () => statements.saveRows(rows));
+      runApplication(
+        'add statement rows',
+        () => statements.saveRows(_applyStatementIntakeDefaults(rows)),
+      );
 
   Future<ApplicationResult<void>> assignSource(String id, String sourceId) =>
       runApplication(
@@ -319,6 +323,13 @@ final class StatementServices {
       ),
     );
   });
+
+  Future<ApplicationResult<void>> toggleSkipRestore(StatementRow row) {
+    final target = row.status == StatementRowStatus.skipped
+        ? row.statusBeforeSkip ?? StatementRowStatus.unresolved
+        : StatementRowStatus.skipped;
+    return setDisposition(row, target);
+  }
 
   Future<ApplicationResult<void>> correct(StatementRow row) =>
       runApplication('correct statement row', () => statements.updateRow(row));
@@ -531,4 +542,40 @@ final class StatementServices {
     }
     return TransactionDirection.expense;
   }
+
+  static List<StatementRow> _applyStatementIntakeDefaults(
+    List<StatementRow> rows,
+  ) => rows
+      .map(
+        (row) => StatementRow(
+          id: row.id,
+          statementId: row.statementId,
+          position: row.position,
+          originalText: row.originalText,
+          transactionDate: row.transactionDate,
+          postingDate: row.postingDate,
+          description: row.description,
+          amount: row.amount,
+          currency: row.currency ?? 'USD',
+          direction: row.direction ?? TransactionDirection.expense.name,
+          kind: row.kind,
+          confidence: row.confidence,
+          sourceContext: row.currency == null || row.direction == null
+              ? '${row.sourceContext ?? ''}${row.sourceContext == null ? '' : '; '}statement intake default applied'
+              : row.sourceContext,
+          status: row.status,
+          transactionId: row.transactionId,
+          merchantId: row.merchantId,
+          categoryId: row.categoryId,
+          tagIds: row.tagIds,
+          paymentSourceId: row.paymentSourceId,
+          sourceReferenceId: row.sourceReferenceId,
+          reviewReason: row.reviewReason,
+          dispositionReason: row.dispositionReason,
+          statusBeforeSkip: row.statusBeforeSkip,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+        ),
+      )
+      .toList(growable: false);
 }

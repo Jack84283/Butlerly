@@ -11,7 +11,7 @@ final class ButlerlyDatabase {
     this.seedSql = const [],
   });
 
-  static const databaseVersion = 2;
+  static const databaseVersion = 1;
 
   final DatabaseFactory factory;
   final String path;
@@ -39,13 +39,6 @@ final class ButlerlyDatabase {
           onConfigure: (database) =>
               database.execute('PRAGMA foreign_keys = ON'),
           onCreate: (database, _) => _executeSql(database, schemaSql),
-          onUpgrade: (database, oldVersion, newVersion) async {
-            if (oldVersion < 2) {
-              await database.execute(
-                'ALTER TABLE statement_rows ADD COLUMN status_before_skip TEXT',
-              );
-            }
-          },
         ),
       );
       if (seedSql.isNotEmpty) {

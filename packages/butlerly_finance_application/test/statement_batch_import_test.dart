@@ -149,6 +149,19 @@ void main() {
     }
   });
 
+  test('statement intake defaults missing currency and direction', () async {
+    final row = _row('defaults', currency: null, direction: null);
+    final result = await service.create(_statement(), [row]);
+    expect(result, isA<ApplicationSuccess<void>>());
+    expect(statements.rows.single.currency, 'USD');
+    expect(statements.rows.single.direction, TransactionDirection.expense.name);
+    expect(statements.rows.single.originalText, row.originalText);
+    expect(
+      statements.rows.single.sourceContext,
+      contains('statement intake default applied'),
+    );
+  });
+
   test('abandon import cannot remove a protected statement', () async {
     statements.rows.add(
       _row('protected', transactionId: 'existing-transaction'),
@@ -176,6 +189,8 @@ StatementRow _row(
   double confidence = .9,
   String? transactionId,
   StatementRowStatus status = StatementRowStatus.pending,
+  String? currency = 'USD',
+  String? direction,
 }) => StatementRow(
   id: 'row-$id',
   statementId: 'statement',
@@ -184,8 +199,8 @@ StatementRow _row(
   transactionDate: DateTime.utc(2026, 8, 20),
   description: 'Merchant $id',
   amount: amount,
-  currency: 'USD',
-  direction: TransactionDirection.expense.name,
+  currency: currency,
+  direction: direction ?? TransactionDirection.expense.name,
   confidence: confidence,
   transactionId: transactionId,
   status: status,
