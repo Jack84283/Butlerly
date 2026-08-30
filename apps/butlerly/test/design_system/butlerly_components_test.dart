@@ -72,7 +72,7 @@ void main() {
     );
   });
 
-  testWidgets('button bar owns responsive end-aligned action layout', (
+  testWidgets('button bar owns responsive start-aligned action layout', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -80,7 +80,7 @@ void main() {
         theme: AppTheme.light,
         home: Scaffold(
           body: ButlerlyButtonBar(
-            alignment: ButlerlyButtonBarAlignment.end,
+            alignment: ButlerlyButtonBarAlignment.start,
             children: [
               OutlinedButton(onPressed: () {}, child: const Text('Edit')),
               FilledButton(onPressed: () {}, child: const Text('Save')),
@@ -91,7 +91,7 @@ void main() {
     );
 
     final wrap = tester.widget<Wrap>(find.byType(Wrap));
-    expect(wrap.alignment, WrapAlignment.end);
+    expect(wrap.alignment, WrapAlignment.start);
     expect(wrap.spacing, ButlerlySpacing.compact);
     expect(wrap.runSpacing, ButlerlySpacing.compact);
     expect(find.byType(OutlinedButton), findsOneWidget);

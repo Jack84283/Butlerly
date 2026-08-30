@@ -505,6 +505,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ButlerlyTransactionList), findsOneWidget);
       expect(find.byType(Divider), findsOneWidget);
+      expect(find.byType(ButlerlyButtonBar), findsOneWidget);
       expect(find.widgetWithText(OutlinedButton, 'Keep both'), findsOneWidget);
       expect(
         find.widgetWithText(FilledButton, 'Consolidate / use one'),

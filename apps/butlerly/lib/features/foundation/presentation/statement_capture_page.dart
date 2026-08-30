@@ -1216,7 +1216,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                       row.status == StatementRowStatus.deferred ||
                       row.status == StatementRowStatus.skipped)
                     ButlerlyButtonBar(
-                      alignment: ButlerlyButtonBarAlignment.end,
+                      alignment: ButlerlyButtonBarAlignment.start,
                       children: [
                         if (row.status != StatementRowStatus.skipped)
                           ButlerlyCompactActionButton(
