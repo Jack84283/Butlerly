@@ -661,9 +661,10 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                               isIncome:
                                   transaction.direction ==
                                   TransactionDirection.income.name,
-                              selectionControl: Radio<TransactionId>(
-                                value: TransactionId(transaction.id),
-                              ),
+                              selectionControl:
+                                  ButlerlyTransactionSelectionControl<
+                                    TransactionId
+                                  >(value: TransactionId(transaction.id)),
                               onTap: () => setState(
                                 () => _selectedTransactionId = TransactionId(
                                   transaction.id,
