@@ -1,5 +1,6 @@
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
@@ -248,10 +249,10 @@ class ButlerlyTransactionList extends StatelessWidget {
         if (index < children.length - 1)
           Divider(
             height: 1,
-            thickness: 1,
-            indent: ButlerlySpacing.small,
-            endIndent: ButlerlySpacing.small,
-            color: context.colors.cardDivider,
+            indent: ButlerlyTransactionItemTokens.dividerInset,
+            endIndent: ButlerlyTransactionItemTokens.dividerInset,
+            thickness: ButlerlyTransactionItemTokens.dividerThickness,
+            color: context.transactionItemDivider,
           ),
       ],
     ],
@@ -294,7 +295,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
         '${possibleDuplicate && possibleDuplicateLabel != null ? ', $possibleDuplicateLabel' : ''}',
     child: ConstrainedBox(
       constraints: const BoxConstraints(
-        minHeight: ButlerlySize.recordRowMinHeight,
+        minHeight: ButlerlyTransactionItemTokens.minTouchHeight,
       ),
       child: Material(
         type: MaterialType.transparency,
@@ -302,8 +303,8 @@ class ButlerlyTransactionListItem extends StatelessWidget {
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.symmetric(
-              horizontal: ButlerlySpacing.small,
-              vertical: ButlerlySpacing.compact,
+              horizontal: ButlerlyTransactionItemTokens.horizontalInset,
+              vertical: ButlerlyTransactionItemTokens.verticalPadding,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -316,27 +317,24 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                           ? Icons.arrow_upward_rounded
                           : Icons.arrow_downward_rounded,
                       semanticLabel: isIncome ? 'Income' : 'Expense',
-                      size: 18,
-                      color: isIncome
-                          ? context.colors.success
-                          : context.colors.primaryText,
+                      size: ButlerlyTransactionItemTokens.directionIconSize,
+                      color: context.transactionItemDirectionIcon(isIncome),
                     ),
-                    const SizedBox(width: ButlerlySpacing.micro),
+                    const SizedBox(
+                      width: ButlerlyTransactionItemTokens.headerSpacing,
+                    ),
                     Expanded(
                       child: Row(
                         children: [
                           Text(
                             '$amount $currency',
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(
-                                  fontFeatures: const [
-                                    FontFeature.tabularFigures(),
-                                  ],
-                                  fontWeight: FontWeight.w700,
-                                ),
+                            style: context.transactionItemAmount,
                           ),
                           if (needsReview || possibleDuplicate) ...[
-                            const SizedBox(width: ButlerlySpacing.micro),
+                            const SizedBox(
+                              width:
+                                  ButlerlyTransactionItemTokens.headerSpacing,
+                            ),
                             Tooltip(
                               message: possibleDuplicateLabel ?? 'Needs review',
                               child: Semantics(
@@ -345,13 +343,15 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                                 label: possibleDuplicateLabel ?? 'Needs review',
                                 child: InkWell(
                                   onTap: onPossibleDuplicateTap,
-                                  child: const Padding(
+                                  child: Padding(
                                     padding: EdgeInsets.all(
                                       ButlerlySpacing.micro,
                                     ),
                                     child: Icon(
                                       Icons.warning_amber_rounded,
-                                      size: 18,
+                                      size: ButlerlyTransactionItemTokens
+                                          .warningIconSize,
+                                      color: context.transactionItemWarningIcon,
                                     ),
                                   ),
                                 ),
@@ -368,7 +368,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.end,
-                          style: Theme.of(context).textTheme.bodySmall,
+                          style: context.transactionItemDate,
                         ),
                       ),
                   ],
@@ -377,14 +377,14 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  style: context.transactionItemDescription,
                 ),
                 if (subtitle != null && subtitle!.trim().isNotEmpty)
                   Text(
                     subtitle!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: context.transactionItemMetadata,
                   ),
               ],
             ),
