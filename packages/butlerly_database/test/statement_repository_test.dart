@@ -285,6 +285,7 @@ void main() {
         currency: 'USD',
         direction: TransactionDirection.expense.name,
         status: StatementRowStatus.skipped,
+        statusBeforeSkip: StatementRowStatus.deferred,
         tagIds: const ['tag-1', 'tag-2'],
         paymentSourceId: 'source',
         sourceReferenceId: 'row-ref',
@@ -307,6 +308,7 @@ void main() {
     );
     expect(savedRow.tagIds, ['tag-1', 'tag-2']);
     expect(savedRow.dispositionReason, 'user skipped');
+    expect(savedRow.statusBeforeSkip, StatementRowStatus.deferred);
   });
 
   test('close and reopen preserves both evidence relationships', () async {

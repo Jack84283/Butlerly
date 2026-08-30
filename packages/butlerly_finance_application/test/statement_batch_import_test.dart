@@ -128,6 +128,40 @@ void main() {
     },
   );
 
+  test('skip and restore toggle the existing statement row', () async {
+    for (final previous in [
+      StatementRowStatus.pending,
+      StatementRowStatus.unresolved,
+      StatementRowStatus.deferred,
+    ]) {
+      final row = _row('toggle-${previous.name}', status: previous);
+      statements.rows
+        ..clear()
+        ..add(row);
+      await service.setDisposition(row, StatementRowStatus.skipped);
+      expect(statements.rows.single.status, StatementRowStatus.skipped);
+      expect(statements.rows.single.statusBeforeSkip, previous);
+      await service.setDisposition(statements.rows.single, previous);
+      expect(statements.rows, hasLength(1));
+      expect(statements.rows.single.status, previous);
+      expect(statements.rows.single.statusBeforeSkip, isNull);
+      expect(statements.rows.single.originalText, row.originalText);
+    }
+  });
+
+  test('statement intake defaults missing currency and direction', () async {
+    final row = _row('defaults', currency: null, direction: null);
+    final result = await service.create(_statement(), [row]);
+    expect(result, isA<ApplicationSuccess<void>>());
+    expect(statements.rows.single.currency, 'USD');
+    expect(statements.rows.single.direction, TransactionDirection.expense.name);
+    expect(statements.rows.single.originalText, row.originalText);
+    expect(
+      statements.rows.single.sourceContext,
+      contains('statement intake default applied'),
+    );
+  });
+
   test('abandon import cannot remove a protected statement', () async {
     statements.rows.add(
       _row('protected', transactionId: 'existing-transaction'),
@@ -154,6 +188,9 @@ StatementRow _row(
   String? amount = '12',
   double confidence = .9,
   String? transactionId,
+  StatementRowStatus status = StatementRowStatus.pending,
+  String? currency = 'USD',
+  String? direction = 'expense',
 }) => StatementRow(
   id: 'row-$id',
   statementId: 'statement',
@@ -162,13 +199,11 @@ StatementRow _row(
   transactionDate: DateTime.utc(2026, 8, 20),
   description: 'Merchant $id',
   amount: amount,
-  currency: 'USD',
-  direction: TransactionDirection.expense.name,
+  currency: currency,
+  direction: direction,
   confidence: confidence,
   transactionId: transactionId,
-  status: amount == null
-      ? StatementRowStatus.unresolved
-      : StatementRowStatus.pending,
+  status: status,
   createdAt: DateTime.utc(2026, 8, 1),
   updatedAt: DateTime.utc(2026, 8, 1),
 );

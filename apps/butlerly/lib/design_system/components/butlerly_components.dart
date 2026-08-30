@@ -215,6 +215,26 @@ class ButlerlyFilterButton extends StatelessWidget {
   );
 }
 
+class ButlerlyCompactActionButton extends StatelessWidget {
+  const ButlerlyCompactActionButton({
+    required this.onPressed,
+    required this.icon,
+    required this.child,
+    super.key,
+  });
+
+  final VoidCallback? onPressed;
+  final IconData icon;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => OutlinedButton.icon(
+    onPressed: onPressed,
+    icon: Icon(icon, size: ButlerlySize.compactActionIconSize),
+    label: child,
+  );
+}
+
 class ButlerlyRecordRow extends StatelessWidget {
   const ButlerlyRecordRow({
     required this.title,

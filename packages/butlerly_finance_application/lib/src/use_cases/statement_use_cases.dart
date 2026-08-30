@@ -230,7 +230,8 @@ final class StatementServices {
     List<StatementRow> rows,
   ) => runApplication('create statement', () async {
     await statements.saveStatement(statement);
-    if (rows.isNotEmpty) await statements.saveRows(rows);
+    final intakeRows = _applyStatementIntakeDefaults(rows);
+    if (intakeRows.isNotEmpty) await statements.saveRows(intakeRows);
   });
 
   Future<ApplicationResult<List<FinancialStatement>>> list() =>
@@ -240,7 +241,10 @@ final class StatementServices {
       runApplication('list statement rows', () => statements.listRows(id));
 
   Future<ApplicationResult<void>> addRows(List<StatementRow> rows) =>
-      runApplication('add statement rows', () => statements.saveRows(rows));
+      runApplication(
+        'add statement rows',
+        () => statements.saveRows(_applyStatementIntakeDefaults(rows)),
+      );
 
   Future<ApplicationResult<void>> assignSource(String id, String sourceId) =>
       runApplication(
@@ -299,12 +303,33 @@ final class StatementServices {
   Future<ApplicationResult<void>> setDisposition(
     StatementRow row,
     StatementRowStatus status,
-  ) => runApplication(
-    'update statement row',
-    () => statements.updateRow(
-      _copy(row, status: status, updatedAt: clock.now()),
-    ),
-  );
+  ) => runApplication('update statement row', () {
+    final previous =
+        status == StatementRowStatus.skipped &&
+            row.status != StatementRowStatus.skipped
+        ? row.status
+        : row.status == StatementRowStatus.skipped
+        ? row.statusBeforeSkip
+        : null;
+    return statements.updateRow(
+      _copy(
+        row,
+        status: status,
+        statusBeforeSkip: previous,
+        clearStatusBeforeSkip:
+            row.status == StatementRowStatus.skipped &&
+            status != StatementRowStatus.skipped,
+        updatedAt: clock.now(),
+      ),
+    );
+  });
+
+  Future<ApplicationResult<void>> toggleSkipRestore(StatementRow row) {
+    final target = row.status == StatementRowStatus.skipped
+        ? row.statusBeforeSkip ?? StatementRowStatus.unresolved
+        : StatementRowStatus.skipped;
+    return setDisposition(row, target);
+  }
 
   Future<ApplicationResult<void>> correct(StatementRow row) =>
       runApplication('correct statement row', () => statements.updateRow(row));
@@ -474,6 +499,8 @@ final class StatementServices {
     required StatementRowStatus status,
     String? transactionId,
     String? dispositionReason,
+    StatementRowStatus? statusBeforeSkip,
+    bool clearStatusBeforeSkip = false,
     required DateTime updatedAt,
   }) => StatementRow(
     id: row.id,
@@ -498,6 +525,9 @@ final class StatementServices {
     sourceReferenceId: row.sourceReferenceId,
     reviewReason: row.reviewReason,
     dispositionReason: dispositionReason ?? row.dispositionReason,
+    statusBeforeSkip: clearStatusBeforeSkip
+        ? null
+        : statusBeforeSkip ?? row.statusBeforeSkip,
     createdAt: row.createdAt,
     updatedAt: updatedAt,
   );
@@ -512,4 +542,40 @@ final class StatementServices {
     }
     return TransactionDirection.expense;
   }
+
+  static List<StatementRow> _applyStatementIntakeDefaults(
+    List<StatementRow> rows,
+  ) => rows
+      .map(
+        (row) => StatementRow(
+          id: row.id,
+          statementId: row.statementId,
+          position: row.position,
+          originalText: row.originalText,
+          transactionDate: row.transactionDate,
+          postingDate: row.postingDate,
+          description: row.description,
+          amount: row.amount,
+          currency: row.currency ?? 'USD',
+          direction: row.direction ?? TransactionDirection.expense.name,
+          kind: row.kind,
+          confidence: row.confidence,
+          sourceContext: row.currency == null || row.direction == null
+              ? '${row.sourceContext ?? ''}${row.sourceContext == null ? '' : '; '}statement intake default applied'
+              : row.sourceContext,
+          status: row.status,
+          transactionId: row.transactionId,
+          merchantId: row.merchantId,
+          categoryId: row.categoryId,
+          tagIds: row.tagIds,
+          paymentSourceId: row.paymentSourceId,
+          sourceReferenceId: row.sourceReferenceId,
+          reviewReason: row.reviewReason,
+          dispositionReason: row.dispositionReason,
+          statusBeforeSkip: row.statusBeforeSkip,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+        ),
+      )
+      .toList(growable: false);
 }

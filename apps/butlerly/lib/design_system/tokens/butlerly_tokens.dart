@@ -12,6 +12,16 @@ abstract final class ButlerlySpacing {
   static const modalHorizontal = standard;
   static const modalBottom = standard;
   static const modalItem = standard;
+
+  // Semantic aliases keep feature layouts declarative while preserving the
+  // shared spacing scale above.
+  static const pagePadding = standard;
+  static const contentPadding = standard;
+  static const cardPadding = small;
+  static const cardGap = small;
+  static const sectionSpacing = section;
+  static const compactActionSpacing = compact;
+  static const bottomActionSpacing = section;
 }
 
 abstract final class ButlerlyRadius {
@@ -32,6 +42,7 @@ abstract final class ButlerlySize {
   static const readableWidth = 760.0;
   static const stateContentWidth = 520.0;
   static const recordRowMinHeight = 72.0;
+  static const compactActionIconSize = 18.0;
   static const sourcePreviewWidth = 64.0;
   static const sourcePreviewHeight = 80.0;
 }

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
+import 'package:butlerly_database/butlerly_database.dart' as persistence;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -34,7 +35,10 @@ void main() {
     );
 
     expect(database.status, DatabaseStatus.ready);
-    expect(await database.database.getVersion(), 1);
+    expect(
+      await database.database.getVersion(),
+      persistence.ButlerlyDatabase.databaseVersion,
+    );
     expect(tables.map((row) => row['name']), contains('transactions'));
 
     await database.close();

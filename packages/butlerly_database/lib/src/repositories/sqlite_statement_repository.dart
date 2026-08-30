@@ -401,6 +401,7 @@ final class SqliteStatementRepository
     'source_reference_id': v.sourceReferenceId,
     'review_reason': v.reviewReason,
     'disposition_reason': v.dispositionReason,
+    'status_before_skip': v.statusBeforeSkip?.name,
     'created_at': v.createdAt.toUtc().toIso8601String(),
     'updated_at': v.updatedAt.toUtc().toIso8601String(),
   };
@@ -429,6 +430,11 @@ final class SqliteStatementRepository
         sourceReferenceId: r['source_reference_id'] as String?,
         reviewReason: r['review_reason'] as String?,
         dispositionReason: r['disposition_reason'] as String?,
+        statusBeforeSkip: r['status_before_skip'] == null
+            ? null
+            : StatementRowStatus.values.byName(
+                r['status_before_skip']! as String,
+              ),
         createdAt: DateTime.parse(r['created_at']! as String),
         updatedAt: DateTime.parse(r['updated_at']! as String),
       );
