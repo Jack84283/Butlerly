@@ -421,20 +421,19 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                           ),
                     style: context.transactionItemMetadata,
                   ),
-                  trailing: PopupMenuButton<String>(
-                    onSelected: (value) {
-                      if (value == 'delete') _deleteUnprocessed(item);
-                      if (value == 'diagnostics') _showDiagnostics(item.id);
-                    },
-                    itemBuilder: (_) => [
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       if (kDebugMode && _debugDiagnostics.containsKey(item.id))
-                        const PopupMenuItem(
-                          value: 'diagnostics',
-                          child: Text('Extraction diagnostics'),
+                        IconButton(
+                          tooltip: context.l10n.text('extractionDiagnostics'),
+                          onPressed: () => _showDiagnostics(item.id),
+                          icon: const Icon(Icons.bug_report_outlined),
                         ),
-                      PopupMenuItem(
-                        value: 'delete',
-                        child: Text(context.l10n.text('deleteStatement')),
+                      IconButton(
+                        tooltip: context.l10n.text('deleteStatement'),
+                        onPressed: () => _deleteUnprocessed(item),
+                        icon: const Icon(Icons.delete_outline_rounded),
                       ),
                     ],
                   ),
