@@ -15,11 +15,12 @@ void main() {
     expect(AppLocalizations.missingKeysFor('zh'), isEmpty);
   });
 
-  test('dark card surfaces use the approved RGB value', () {
-    expect(AppTheme.dark.cardTheme.color, const Color.fromRGBO(58, 58, 58, 1));
+  test('theme surfaces use the approved palette', () {
+    expect(AppTheme.dark.scaffoldBackgroundColor, const Color(0xFF000000));
+    expect(AppTheme.dark.cardTheme.color, const Color(0xFF1C1C1E));
     expect(
       AppTheme.dark.colorScheme.surfaceContainerHighest,
-      const Color.fromRGBO(58, 58, 58, 1),
+      const Color(0xFF2C2C2E),
     );
     expect(
       AppTheme.dark.textTheme.bodyMedium?.color,
