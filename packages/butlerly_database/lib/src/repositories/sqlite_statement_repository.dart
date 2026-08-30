@@ -37,6 +37,28 @@ final class SqliteStatementRepository
   );
 
   @override
+  Future<void> saveStatementWithRows(
+    FinancialStatement statement,
+    List<StatementRow> rows,
+  ) => _mapped(
+    'save statement with rows',
+    () => database.transaction((tx) async {
+      await tx.insert(
+        'financial_statements',
+        _statementRow(statement),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      for (final row in rows) {
+        await tx.insert(
+          'statement_rows',
+          _row(row),
+          conflictAlgorithm: ConflictAlgorithm.abort,
+        );
+      }
+    }),
+  );
+
+  @override
   Future<FinancialStatement?> findStatement(String id) async {
     return _mapped('find statement', () async {
       final rows = await database.connection.query(
@@ -456,7 +478,28 @@ final class SqliteStatementRepository
     try {
       return await action();
     } on DatabaseException catch (error) {
-      throw mapDatabaseException(error, operation);
+      final mapped = mapDatabaseException(error, operation);
+      try {
+        final version = await database.connection.getVersion();
+        final columns = await database.connection.rawQuery(
+          'PRAGMA table_info(statement_rows)',
+        );
+        final hasDispositionColumn = columns.any(
+          (row) => row['name'] == 'status_before_skip',
+        );
+        throw RepositoryException(
+          mapped.code,
+          mapped.operation,
+          detail:
+              '${mapped.detail ?? 'sqlite error'}; '
+              'db_version=$version; '
+              'statement_rows.status_before_skip=$hasDispositionColumn',
+        );
+      } on RepositoryException {
+        rethrow;
+      } catch (_) {
+        throw mapped;
+      }
     }
   }
 }

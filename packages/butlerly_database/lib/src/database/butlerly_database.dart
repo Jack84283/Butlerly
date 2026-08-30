@@ -11,7 +11,7 @@ final class ButlerlyDatabase {
     this.seedSql = const [],
   });
 
-  static const databaseVersion = 1;
+  static const databaseVersion = 2;
 
   final DatabaseFactory factory;
   final String path;
@@ -39,6 +39,13 @@ final class ButlerlyDatabase {
           onConfigure: (database) =>
               database.execute('PRAGMA foreign_keys = ON'),
           onCreate: (database, _) => _executeSql(database, schemaSql),
+          onUpgrade: (database, oldVersion, newVersion) async {
+            if (oldVersion < 2) {
+              await database.execute(
+                'ALTER TABLE statement_rows ADD COLUMN status_before_skip TEXT',
+              );
+            }
+          },
         ),
       );
       if (seedSql.isNotEmpty) {
@@ -143,11 +150,28 @@ RepositoryException mapDatabaseException(
   DatabaseException error,
   String operation,
 ) {
+  final raw = error.toString().split(" sql '").first;
+  final code = error.getResultCode();
+  final detail =
+      'sqlite${code == null ? '' : ' code=$code'}: '
+      '${raw.replaceAll(RegExp(r'\s+'), ' ').trim()}';
   if (error.isUniqueConstraintError() || error.isNotNullConstraintError()) {
-    return RepositoryException(RepositoryFailureCode.constraint, operation);
+    return RepositoryException(
+      RepositoryFailureCode.constraint,
+      operation,
+      detail: detail,
+    );
   }
   if (error.isDatabaseClosedError()) {
-    return RepositoryException(RepositoryFailureCode.unavailable, operation);
+    return RepositoryException(
+      RepositoryFailureCode.unavailable,
+      operation,
+      detail: detail,
+    );
   }
-  return RepositoryException(RepositoryFailureCode.unknown, operation);
+  return RepositoryException(
+    RepositoryFailureCode.unknown,
+    operation,
+    detail: detail,
+  );
 }

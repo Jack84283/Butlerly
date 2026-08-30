@@ -212,6 +212,13 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     );
     if (result is! ApplicationSuccess<void>) {
       await store.remove(evidence);
+      if (kDebugMode && result is ApplicationFailure<void>) {
+        debugPrint(
+          'Butlerly statement create failed: operation='
+          '${result.failure.operation}; code=${result.failure.code}; '
+          'detail=${result.failure.detail ?? 'none'}; rows=${rows.length}',
+        );
+      }
       _message('The statement could not be created.');
       return;
     }

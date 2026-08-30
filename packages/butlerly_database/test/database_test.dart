@@ -95,6 +95,48 @@ void main() {
     );
   });
 
+  test('upgrades an installed pre-disposition V1 database', () async {
+    final directory = await Directory.systemTemp.createTemp('butlerly-db-');
+    final path = '${directory.path}/legacy.db';
+    final current = await File('database/schema/v1.sql').readAsString();
+    final legacy = current.replaceFirst(', status_before_skip TEXT', '');
+    final legacyDb = await databaseFactoryFfi.openDatabase(
+      path,
+      options: OpenDatabaseOptions(
+        version: 1,
+        onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
+        onCreate: (db, _) async {
+          for (final sql in splitSqlStatements(legacy)) {
+            await db.execute(sql);
+          }
+        },
+      ),
+    );
+    expect(
+      await legacyDb.rawQuery('PRAGMA table_info(statement_rows)'),
+      isNot(
+        contains(predicate<Map>((row) => row['name'] == 'status_before_skip')),
+      ),
+    );
+    await legacyDb.close();
+
+    database = ButlerlyDatabase(
+      factory: databaseFactoryFfi,
+      path: path,
+      schemaSql: current,
+    );
+    await database.open();
+    expect(await database.connection.getVersion(), 2);
+    expect(
+      (await database.connection.rawQuery(
+        'PRAGMA table_info(statement_rows)',
+      )).any((row) => row['name'] == 'status_before_skip'),
+      isTrue,
+    );
+    await database.close();
+    await directory.delete(recursive: true);
+  });
+
   test('applies the idempotent database-owned catalog seed', () async {
     await database.close();
     final baseline = await File('database/schema/v1.sql').readAsString();

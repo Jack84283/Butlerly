@@ -31,11 +31,13 @@ final class ApplicationFailureDetail {
     required this.code,
     required this.operation,
     this.field,
+    this.detail,
   });
 
   final ApplicationFailureCode code;
   final String operation;
   final String? field;
+  final String? detail;
 }
 
 Future<ApplicationResult<T>> runApplication<T>(
@@ -50,6 +52,7 @@ Future<ApplicationResult<T>> runApplication<T>(
         code: ApplicationFailureCode.validation,
         operation: operation,
         field: error.field,
+        detail: error.message,
       ),
     );
   } on RepositoryException catch (error) {
@@ -57,6 +60,7 @@ Future<ApplicationResult<T>> runApplication<T>(
       ApplicationFailureDetail(
         code: _mapRepositoryCode(error.code),
         operation: operation,
+        detail: error.detail,
       ),
     );
   }

@@ -121,7 +121,7 @@ Extraction confidence remains separate from duplicate confidence; `.49` and
 
 ## Validation and review evidence
 
-- Toolchain: Flutter 3.47.1 / Dart 3.13.1 on macOS arm64, matching the repository pin.
+- Toolchain: pinned Flutter/Dart SDK on macOS arm64, matching the repository configuration.
 - Focused extractor, MethodChannel, receipt OCR regression, platform-support,
   and capture/reload tests: **72 passed**.
 - `./tool/validate.sh`: domain **28 passed**, database **28 passed**,
@@ -205,3 +205,27 @@ Extraction confidence remains separate from duplicate confidence; `.49` and
   may produce unresolved candidates or no candidates; the UI now states which.
 - Native image tests use generated non-sensitive statement-like text. They do
   not claim device-camera validation or access to personal financial evidence.
+
+## Real-device persistence diagnosis
+
+The first physical-iPhone run produced the safe UI message “The statement
+could not be created.” The failure was downstream of image acquisition and
+evidence preservation. Git history and a compatibility test confirmed that
+the baseline SQL had gained `statement_rows.status_before_skip` while the
+database version was later reset to the original baseline and its upgrade
+callback removed.
+An existing installed database therefore had no column that current row
+inserts referenced. The fix restores the database-owned next-schema upgrade and
+keeps the current SQL baseline for clean installations.
+
+Statement creation now inserts the statement and initial rows in one SQLite
+transaction. A row-write failure rolls back the statement, while zero,
+unresolved, or no-candidate OCR rows remain valid statement records. Debug
+failures include only operation, application/repository code, sanitized
+SQLite detail, row count, database version, and expected-column presence.
+
+Added verification covers legacy-schema upgrade, disposition-column detection,
+atomic rollback, and the existing OCR/capture persistence paths. The safe
+development reset remains: delete the app’s local database only when testing
+against a build that intentionally does not include the migration; normal
+installed databases now upgrade automatically.

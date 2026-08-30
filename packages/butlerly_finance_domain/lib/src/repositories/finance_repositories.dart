@@ -181,6 +181,10 @@ abstract interface class EvidenceRepository {
 abstract interface class StatementRepository {
   Future<void> saveStatement(FinancialStatement statement);
   Future<void> saveRows(List<StatementRow> rows);
+  Future<void> saveStatementWithRows(
+    FinancialStatement statement,
+    List<StatementRow> rows,
+  );
   Future<FinancialStatement?> findStatement(String id);
   Future<List<FinancialStatement>> listStatements({
     bool includeArchived = false,

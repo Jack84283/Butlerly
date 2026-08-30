@@ -272,6 +272,11 @@ final class _Statements
   @override
   Future<void> saveRows(List<StatementRow> value) async => rows.addAll(value);
   @override
+  Future<void> saveStatementWithRows(
+    FinancialStatement value,
+    List<StatementRow> valueRows,
+  ) async => rows.addAll(valueRows);
+  @override
   Future<FinancialStatement?> findStatement(String id) async => _statement();
   @override
   Future<List<FinancialStatement>> listStatements({
