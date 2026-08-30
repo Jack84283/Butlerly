@@ -1,5 +1,6 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -81,6 +82,7 @@ void main() {
         home: Scaffold(
           body: ButlerlyButtonBar(
             alignment: ButlerlyButtonBarAlignment.start,
+            density: ButlerlyButtonBarDensity.compact,
             children: [
               OutlinedButton(onPressed: () {}, child: const Text('Edit')),
               FilledButton(onPressed: () {}, child: const Text('Save')),
@@ -96,6 +98,23 @@ void main() {
     expect(wrap.runSpacing, ButlerlySpacing.compact);
     expect(find.byType(OutlinedButton), findsOneWidget);
     expect(find.byType(FilledButton), findsOneWidget);
+    final buttonContext = tester.element(find.byType(OutlinedButton));
+    final compactStyle = Theme.of(buttonContext).outlinedButtonTheme.style!;
+    expect(
+      compactStyle.padding?.resolve({}),
+      const EdgeInsets.symmetric(
+        horizontal: ButlerlyButtonTokens.compactHorizontalPadding,
+        vertical: ButlerlyButtonTokens.compactVerticalPadding,
+      ),
+    );
+    expect(
+      compactStyle.minimumSize?.resolve({}),
+      const Size(
+        ButlerlyButtonTokens.compactMinimumHeight,
+        ButlerlyButtonTokens.compactVisualHeight,
+      ),
+    );
+    expect(compactStyle.tapTargetSize, MaterialTapTargetSize.padded);
   });
 
   testWidgets('destructive action uses the centralized error treatment', (

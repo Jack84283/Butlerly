@@ -680,6 +680,7 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
             ),
             ButlerlyButtonBar(
               alignment: ButlerlyButtonBarAlignment.start,
+              density: ButlerlyButtonBarDensity.compact,
               children: [
                 OutlinedButton(
                   onPressed: widget.onKeepBoth,

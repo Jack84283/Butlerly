@@ -1,4 +1,5 @@
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -238,15 +239,19 @@ class ButlerlyCompactActionButton extends StatelessWidget {
 
 enum ButlerlyButtonBarAlignment { start, center, end }
 
+enum ButlerlyButtonBarDensity { standard, compact }
+
 class ButlerlyButtonBar extends StatelessWidget {
   const ButlerlyButtonBar({
     required this.children,
     this.alignment = ButlerlyButtonBarAlignment.start,
+    this.density = ButlerlyButtonBarDensity.standard,
     super.key,
   });
 
   final List<Widget> children;
   final ButlerlyButtonBarAlignment alignment;
+  final ButlerlyButtonBarDensity density;
 
   WrapAlignment get _wrapAlignment => switch (alignment) {
     ButlerlyButtonBarAlignment.start => WrapAlignment.start,
@@ -255,15 +260,65 @@ class ButlerlyButtonBar extends StatelessWidget {
   };
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: ButlerlySpacing.standard),
-    child: Wrap(
-      alignment: _wrapAlignment,
-      spacing: ButlerlySpacing.compact,
-      runSpacing: ButlerlySpacing.compact,
-      children: children,
-    ),
-  );
+  Widget build(BuildContext context) {
+    final bar = Padding(
+      padding: const EdgeInsets.symmetric(vertical: ButlerlySpacing.standard),
+      child: Wrap(
+        alignment: _wrapAlignment,
+        spacing: ButlerlySpacing.compact,
+        runSpacing: ButlerlySpacing.compact,
+        children: children,
+      ),
+    );
+    if (density == ButlerlyButtonBarDensity.standard) return bar;
+
+    final theme = Theme.of(context);
+    final compactPadding = const EdgeInsets.symmetric(
+      horizontal: ButlerlyButtonTokens.compactHorizontalPadding,
+      vertical: ButlerlyButtonTokens.compactVerticalPadding,
+    );
+    return Theme(
+      data: theme.copyWith(
+        filledButtonTheme: FilledButtonThemeData(
+          style: theme.filledButtonTheme.style?.copyWith(
+            padding: WidgetStatePropertyAll(compactPadding),
+            minimumSize: const WidgetStatePropertyAll(
+              Size(
+                ButlerlyButtonTokens.compactMinimumHeight,
+                ButlerlyButtonTokens.compactVisualHeight,
+              ),
+            ),
+            tapTargetSize: MaterialTapTargetSize.padded,
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: theme.outlinedButtonTheme.style?.copyWith(
+            padding: WidgetStatePropertyAll(compactPadding),
+            minimumSize: const WidgetStatePropertyAll(
+              Size(
+                ButlerlyButtonTokens.compactMinimumHeight,
+                ButlerlyButtonTokens.compactVisualHeight,
+              ),
+            ),
+            tapTargetSize: MaterialTapTargetSize.padded,
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: theme.textButtonTheme.style?.copyWith(
+            padding: WidgetStatePropertyAll(compactPadding),
+            minimumSize: const WidgetStatePropertyAll(
+              Size(
+                ButlerlyButtonTokens.compactMinimumHeight,
+                ButlerlyButtonTokens.compactVisualHeight,
+              ),
+            ),
+            tapTargetSize: MaterialTapTargetSize.padded,
+          ),
+        ),
+      ),
+      child: bar,
+    );
+  }
 }
 
 /// Semantic destructive action with the same geometry as the primary button.
