@@ -44,24 +44,22 @@ final class ButlerlyDatabase {
               database.execute('PRAGMA foreign_keys = ON'),
           onCreate: (database, _) => _executeSql(database, schemaSql),
           onUpgrade: (database, oldVersion, newVersion) async {
-            await database.transaction((tx) async {
-              for (
-                var version = oldVersion + 1;
-                version <= newVersion;
-                version++
-              ) {
-                final sql = migrations[version];
-                if (sql == null) {
-                  throw const RepositoryException(
-                    RepositoryFailureCode.migration,
-                    'apply database migration',
-                  );
-                }
-                for (final statement in splitSqlStatements(sql)) {
-                  await tx.execute(statement);
-                }
+            for (
+              var version = oldVersion + 1;
+              version <= newVersion;
+              version++
+            ) {
+              final sql = migrations[version];
+              if (sql == null) {
+                throw const RepositoryException(
+                  RepositoryFailureCode.migration,
+                  'apply database migration',
+                );
               }
-            });
+              for (final statement in splitSqlStatements(sql)) {
+                await database.execute(statement);
+              }
+            }
             if (newVersion != databaseVersion) {
               throw const RepositoryException(
                 RepositoryFailureCode.migration,
