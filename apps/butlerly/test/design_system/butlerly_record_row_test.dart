@@ -1,5 +1,6 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -133,6 +134,11 @@ void main() {
     expect(tester.widget<Text>(find.text('1.00 USD')).style?.fontSize, 31);
     expect(tester.widget<Text>(find.text('Description')).style?.fontSize, 23);
     expect(tester.widget<Text>(find.text('Metadata')).style?.fontSize, 17);
+    expect(
+      ButlerlyTransactionItemTokens.horizontalInset,
+      ButlerlySpacing.micro,
+    );
+    expect(ButlerlyTransactionItemTokens.dividerInset, ButlerlySpacing.micro);
     expect(ButlerlyTransactionItemTokens.minTouchHeight, 72);
   });
 }
