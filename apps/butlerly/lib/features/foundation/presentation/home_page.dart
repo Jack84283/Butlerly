@@ -185,6 +185,7 @@ class _HomePageState extends State<HomePage> {
                                 TransactionDirection.income.name,
                             needsReview: value.reviewState == 'needsReview',
                             onTap: () => _open(value),
+                            showNavigationIndicator: true,
                           ),
                         )
                         .toList(growable: false),

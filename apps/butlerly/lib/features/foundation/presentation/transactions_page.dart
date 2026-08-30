@@ -239,6 +239,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                 onPossibleDuplicateTap: () =>
                     GoRouter.of(context).go('/review?view=duplicates'),
                 onTap: _openDetail,
+                navigates: true,
               ),
             const SizedBox(height: ButlerlySpacing.structural),
           ],
@@ -271,6 +272,7 @@ class TransactionRecordList extends StatelessWidget {
     this.possibleDuplicateIds = const {},
     this.possibleDuplicateLabel,
     this.onPossibleDuplicateTap,
+    this.navigates = false,
     super.key,
   });
 
@@ -280,6 +282,7 @@ class TransactionRecordList extends StatelessWidget {
   final String? possibleDuplicateLabel;
   final VoidCallback? onPossibleDuplicateTap;
   final ValueChanged<TransactionDto> onTap;
+  final bool navigates;
 
   @override
   Widget build(BuildContext context) => ButlerlyTransactionList(
@@ -299,6 +302,7 @@ class TransactionRecordList extends StatelessWidget {
             possibleDuplicateLabel: possibleDuplicateLabel,
             onPossibleDuplicateTap: onPossibleDuplicateTap,
             onTap: () => onTap(value),
+            showNavigationIndicator: navigates,
           ),
         )
         .toList(growable: false),

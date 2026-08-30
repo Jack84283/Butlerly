@@ -90,6 +90,7 @@ void main() {
             currency: 'USD',
             meta: 'Aug 14, 2026',
             onTap: () => tapped = true,
+            showNavigationIndicator: true,
           ),
         ),
       ),
@@ -114,6 +115,26 @@ void main() {
             amount: '4.00',
             currency: 'USD',
             meta: 'Aug 14, 2026',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
+  });
+
+  testWidgets('non-navigation tap does not imply a trailing chevron', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: ButlerlyTransactionListItem(
+            title: 'Select me',
+            amount: '4.00',
+            currency: 'USD',
+            onTap: () {},
           ),
         ),
       ),

@@ -428,6 +428,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     this.onPossibleDuplicateTap,
     this.selectionControl,
     this.onTap,
+    this.showNavigationIndicator = false,
     super.key,
   });
 
@@ -443,6 +444,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
   final VoidCallback? onPossibleDuplicateTap;
   final Widget? selectionControl;
   final VoidCallback? onTap;
+  final bool showNavigationIndicator;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -541,7 +543,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                           ),
                         ),
                       ),
-                    if (onTap != null) ...[
+                    if (showNavigationIndicator) ...[
                       const SizedBox(
                         width: ButlerlyTransactionItemTokens.headerSpacing,
                       ),
@@ -615,6 +617,7 @@ class ButlerlyRecordRow extends ButlerlyTransactionListItem {
     super.onPossibleDuplicateTap,
     super.selectionControl,
     super.onTap,
+    super.showNavigationIndicator,
     super.key,
   });
 }

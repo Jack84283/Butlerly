@@ -363,6 +363,7 @@ class _SearchPageState extends State<SearchPage>
                             value.direction == TransactionDirection.income.name,
                         needsReview: value.reviewState == 'needsReview',
                         onTap: () => _openDetail(value),
+                        showNavigationIndicator: true,
                       ),
                     )
                     .toList(growable: false),

@@ -539,6 +539,7 @@ class _CalendarTransactions extends StatelessWidget {
                                 ),
                               ),
                             ),
+                      showNavigationIndicator: finance != null,
                     ),
                   )
                   .toList(growable: false),
