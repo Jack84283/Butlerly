@@ -1563,12 +1563,15 @@ Future<bool?> _confirm(
         onPressed: () => Navigator.pop(context, false),
         child: Text(context.l10n.text('cancel')),
       ),
-      FilledButton(
-        onPressed: () => Navigator.pop(context, true),
-        child: Text(
-          context.l10n.text(destructive ? 'deletePermanently' : 'archive'),
-        ),
-      ),
+      destructive
+          ? ButlerlyDestructiveButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(context.l10n.text('deletePermanently')),
+            )
+          : FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(context.l10n.text('archive')),
+            ),
     ],
   ),
 );

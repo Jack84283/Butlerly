@@ -64,7 +64,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
             onPressed: () => Navigator.pop(context, false),
             child: Text(context.l10n.text('cancel')),
           ),
-          FilledButton(
+          ButlerlyDestructiveButton(
             onPressed: () => Navigator.pop(context, true),
             child: Text(context.l10n.text('eraseAllConfirm')),
           ),
