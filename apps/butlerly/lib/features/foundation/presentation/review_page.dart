@@ -678,8 +678,8 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                 );
               },
             ),
-            Wrap(
-              spacing: ButlerlySpacing.small,
+            ButlerlyButtonBar(
+              alignment: ButlerlyButtonBarAlignment.end,
               children: [
                 OutlinedButton(
                   onPressed: widget.onKeepBoth,

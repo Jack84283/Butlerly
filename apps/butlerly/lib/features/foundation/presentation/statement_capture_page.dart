@@ -1215,8 +1215,8 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                       row.status == StatementRowStatus.unresolved ||
                       row.status == StatementRowStatus.deferred ||
                       row.status == StatementRowStatus.skipped)
-                    Wrap(
-                      spacing: ButlerlySpacing.compactActionSpacing,
+                    ButlerlyButtonBar(
+                      alignment: ButlerlyButtonBarAlignment.end,
                       children: [
                         if (row.status != StatementRowStatus.skipped)
                           ButlerlyCompactActionButton(

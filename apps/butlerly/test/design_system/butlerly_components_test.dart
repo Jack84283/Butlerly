@@ -72,6 +72,32 @@ void main() {
     );
   });
 
+  testWidgets('button bar owns responsive end-aligned action layout', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: ButlerlyButtonBar(
+            alignment: ButlerlyButtonBarAlignment.end,
+            children: [
+              OutlinedButton(onPressed: () {}, child: const Text('Edit')),
+              FilledButton(onPressed: () {}, child: const Text('Save')),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final wrap = tester.widget<Wrap>(find.byType(Wrap));
+    expect(wrap.alignment, WrapAlignment.end);
+    expect(wrap.spacing, ButlerlySpacing.compact);
+    expect(wrap.runSpacing, ButlerlySpacing.compact);
+    expect(find.byType(OutlinedButton), findsOneWidget);
+    expect(find.byType(FilledButton), findsOneWidget);
+  });
+
   testWidgets('destructive action uses the centralized error treatment', (
     tester,
   ) async {

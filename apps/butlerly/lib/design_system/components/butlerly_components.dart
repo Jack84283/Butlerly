@@ -236,6 +236,36 @@ class ButlerlyCompactActionButton extends StatelessWidget {
   );
 }
 
+enum ButlerlyButtonBarAlignment { start, center, end }
+
+class ButlerlyButtonBar extends StatelessWidget {
+  const ButlerlyButtonBar({
+    required this.children,
+    this.alignment = ButlerlyButtonBarAlignment.start,
+    super.key,
+  });
+
+  final List<Widget> children;
+  final ButlerlyButtonBarAlignment alignment;
+
+  WrapAlignment get _wrapAlignment => switch (alignment) {
+    ButlerlyButtonBarAlignment.start => WrapAlignment.start,
+    ButlerlyButtonBarAlignment.center => WrapAlignment.center,
+    ButlerlyButtonBarAlignment.end => WrapAlignment.end,
+  };
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: ButlerlySpacing.standard),
+    child: Wrap(
+      alignment: _wrapAlignment,
+      spacing: ButlerlySpacing.compact,
+      runSpacing: ButlerlySpacing.compact,
+      children: children,
+    ),
+  );
+}
+
 /// Semantic destructive action with the same geometry as the primary button.
 /// The visual distinction is centralized here so screens provide only intent,
 /// labels, icons, and callbacks.
