@@ -512,7 +512,8 @@ class _ReviewTransactionCard extends StatelessWidget {
         ),
         Padding(
           padding: const EdgeInsets.all(ButlerlySpacing.standard),
-          child: ButlerlyTransactionList(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(reason),
               const SizedBox(height: ButlerlySpacing.small),
