@@ -4,8 +4,10 @@ import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/evidence/local_statement_ocr_support.dart';
 import 'package:butlerly/core/evidence/statement_extractor.dart';
 import 'package:butlerly/core/evidence/statement_source_matcher.dart';
+import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -305,17 +307,17 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
         : _statements.isEmpty
         ? Center(
             child: Padding(
-              padding: EdgeInsets.all(32),
+              padding: const EdgeInsets.all(ButlerlySpacing.large),
               child: Text(context.l10n.text('statementsEmptyBody')),
             ),
           )
         : ListView.builder(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(ButlerlySpacing.pagePadding),
             itemCount: _statements.length,
             itemBuilder: (_, index) {
               final item = _statements[index];
               return Card(
-                margin: const EdgeInsets.only(bottom: 12),
+                margin: const EdgeInsets.only(bottom: ButlerlySpacing.cardGap),
                 child: ListTile(
                   leading: const Icon(Icons.description_outlined),
                   title: Text(
@@ -1003,7 +1005,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
       ],
     ),
     body: ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(ButlerlySpacing.pagePadding),
       children: [
         if (widget.statement.institution != null ||
             widget.statement.maskedAccountIdentifier != null ||
@@ -1025,9 +1027,9 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
               ),
             ),
           ),
-        const SizedBox(height: 8),
+        const SizedBox(height: ButlerlySpacing.compact),
         _ProgressSummary(rows: _rows),
-        const SizedBox(height: 16),
+        const SizedBox(height: ButlerlySpacing.sectionSpacing),
         ButlerlyPaymentSourceSelector(
           value: _sourceId,
           label: '${context.l10n.text('paymentSource')} *',
@@ -1050,10 +1052,12 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
             label: const Text('Create new payment source'),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: ButlerlySpacing.compact),
         if (_rows.isEmpty)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24),
+            padding: const EdgeInsets.symmetric(
+              vertical: ButlerlySpacing.sectionSpacing,
+            ),
             child: Text(
               context.l10n.text('statementNoRows'),
               textAlign: TextAlign.center,
@@ -1061,9 +1065,9 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
           ),
         for (final row in _rows)
           Card(
-            margin: const EdgeInsets.only(bottom: 12),
+            margin: const EdgeInsets.only(bottom: ButlerlySpacing.cardGap),
             child: Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(ButlerlySpacing.cardPadding),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1086,16 +1090,16 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                       row.status == StatementRowStatus.deferred ||
                       row.status == StatementRowStatus.skipped)
                     Wrap(
-                      spacing: 8,
+                      spacing: ButlerlySpacing.compactActionSpacing,
                       children: [
                         if (row.status != StatementRowStatus.skipped)
-                          _StatementActionButton(
+                          ButlerlyCompactActionButton(
                             onPressed: () => _edit(row),
                             icon: Icons.edit_outlined,
                             child: Text(context.l10n.text('edit')),
                           ),
                         if (row.status != StatementRowStatus.skipped)
-                          _StatementActionButton(
+                          ButlerlyCompactActionButton(
                             onPressed:
                                 _sourceId != null &&
                                     row.transactionDate != null &&
@@ -1108,13 +1112,13 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                             child: Text(context.l10n.text('save')),
                           ),
                         if (row.status != StatementRowStatus.skipped)
-                          _StatementActionButton(
+                          ButlerlyCompactActionButton(
                             onPressed: () =>
                                 _act(row, StatementRowStatus.deferred),
                             icon: Icons.schedule_outlined,
                             child: Text(context.l10n.text('later')),
                           ),
-                        _StatementActionButton(
+                        ButlerlyCompactActionButton(
                           onPressed: () => _toggleSkipRestore(row),
                           icon: row.status == StatementRowStatus.skipped
                               ? Icons.restore_outlined
@@ -1132,7 +1136,10 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
             ),
           ),
         Padding(
-          padding: const EdgeInsets.only(top: 4, bottom: 24),
+          padding: const EdgeInsets.only(
+            top: ButlerlySpacing.micro,
+            bottom: ButlerlySpacing.bottomActionSpacing,
+          ),
           child: SafeArea(
             top: false,
             child: FilledButton.icon(
@@ -1167,22 +1174,4 @@ class _ProgressSummary extends StatelessWidget {
       style: Theme.of(context).textTheme.bodySmall,
     );
   }
-}
-
-class _StatementActionButton extends StatelessWidget {
-  const _StatementActionButton({
-    required this.onPressed,
-    required this.icon,
-    required this.child,
-  });
-  final VoidCallback? onPressed;
-  final IconData icon;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => OutlinedButton.icon(
-    onPressed: onPressed,
-    icon: Icon(icon, size: 18),
-    label: child,
-  );
 }

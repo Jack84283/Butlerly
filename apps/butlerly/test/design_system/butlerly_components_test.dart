@@ -1,5 +1,6 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -42,5 +43,27 @@ void main() {
 
     expect(find.text('Edit'), findsOneWidget);
     expect(find.text('Dismiss'), findsOneWidget);
+  });
+
+  testWidgets('compact action button uses the shared icon-size token', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: ButlerlyCompactActionButton(
+            onPressed: () {},
+            icon: Icons.save_outlined,
+            child: const Text('Save'),
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      tester.widget<Icon>(find.byIcon(Icons.save_outlined)).size,
+      ButlerlySize.compactActionIconSize,
+    );
   });
 }
