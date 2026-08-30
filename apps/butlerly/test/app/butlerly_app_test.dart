@@ -26,21 +26,12 @@ void main() {
       AppTheme.dark.textTheme.bodyMedium?.color,
       const Color.fromRGBO(198, 198, 198, 1),
     );
-    expect(
-      AppTheme.light.textTheme.bodyMedium?.color,
-      const Color.fromRGBO(96, 96, 96, 1),
-    );
-    expect(
-      AppTheme.light.textTheme.bodySmall?.color,
-      const Color.fromRGBO(96, 96, 96, 1),
-    );
-    expect(
-      AppTheme.light.cardTheme.color,
-      const Color.fromRGBO(218, 218, 218, 1),
-    );
+    expect(AppTheme.light.textTheme.bodyMedium?.color, const Color(0xFF6E6E73));
+    expect(AppTheme.light.textTheme.bodySmall?.color, const Color(0xFF6E6E73));
+    expect(AppTheme.light.cardTheme.color, const Color(0xFFFFFFFF));
     expect(
       AppTheme.light.extension<ButlerlySemanticColors>()?.cardDivider,
-      const Color.fromRGBO(198, 198, 198, 1),
+      const Color.fromRGBO(198, 198, 200, 0.6),
     );
     expect(
       AppTheme.dark.extension<ButlerlySemanticColors>()?.cardDivider,
