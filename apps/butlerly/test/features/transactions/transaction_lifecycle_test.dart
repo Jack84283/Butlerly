@@ -76,6 +76,54 @@ void main() {
     expect(evidenceRepository.listCalls, 2);
   });
 
+  testWidgets('image evidence uses a localized view action label', (
+    tester,
+  ) async {
+    final capturedAt = DateTime.utc(2026, 8, 21);
+    evidenceRepository.items = [
+      EvidenceItem(
+        id: EvidenceId('image-evidence'),
+        type: EvidenceType.receiptImage,
+        originalName: 'IMG_4837.jpg',
+        mediaType: 'image/jpeg',
+        localFileName: 'stored-image.jpg',
+        provenance: Provenance(
+          id: ProvenanceId('image-provenance'),
+          sourceType: ProvenanceSourceType.scan,
+          capturedAt: capturedAt,
+          originalRepresentation: 'IMG_4837.jpg',
+        ),
+        createdAt: capturedAt,
+      ),
+    ];
+    final transaction = TransactionDto(
+      id: 'image-transaction',
+      amount: '12.50',
+      currency: 'USD',
+      direction: 'expense',
+      status: 'active',
+      reviewState: 'clear',
+      transactionDate: '2026-08-21',
+      createdAt: capturedAt,
+      updatedAt: capturedAt,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TransactionDetailPage(
+          finance: services<FinanceServices>(),
+          transaction: transaction,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('View image'), findsOneWidget);
+    expect(find.text('IMG_4837.jpg'), findsNothing);
+    final tile = tester.widget<ListTile>(find.byType(ListTile));
+    expect(tile.onTap, isNotNull);
+    expect(evidenceRepository.items.single.originalName, 'IMG_4837.jpg');
+  });
+
   testWidgets('transaction detail centers the financial header', (
     tester,
   ) async {
@@ -1425,6 +1473,7 @@ final class MemoryTags implements TagRepository {
 
 final class MemoryEvidence implements EvidenceRepository {
   int listCalls = 0;
+  List<EvidenceItem> items = const [];
   @override
   Future<EvidenceItem?> findById(EvidenceId id) async => null;
   @override
@@ -1432,7 +1481,7 @@ final class MemoryEvidence implements EvidenceRepository {
   @override
   Future<List<EvidenceItem>> listForTransaction(TransactionId id) async {
     listCalls++;
-    return const [];
+    return items;
   }
 
   @override

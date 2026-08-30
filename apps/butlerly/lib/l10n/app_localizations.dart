@@ -139,6 +139,7 @@ class AppLocalizations {
       'evidenceCleanupFailed':
           'The transaction was not deleted because linked evidence could not be removed safely.',
       'evidencePreview': 'Evidence preview',
+      'viewImage': 'View image',
       'evidenceFileMissing': 'The local evidence file could not be found.',
       'evidenceStoredLocally':
           'This file is stored privately on this device. Its local path is not displayed.',
@@ -572,6 +573,7 @@ class AppLocalizations {
       'evidenceAttachFailed': '无法存储凭证。',
       'evidenceCleanupFailed': '无法安全删除关联凭证，因此未删除该交易。',
       'evidencePreview': '凭证预览',
+      'viewImage': '查看图片',
       'evidenceFileMissing': '找不到本地凭证文件。',
       'evidenceStoredLocally': '此文件仅私密存储在本设备上，不显示本地路径。',
       'removeEvidenceTitle': '移除此凭证？',
@@ -972,6 +974,7 @@ class AppLocalizations {
       'evidenceCleanupFailed':
           'La transacción no se eliminó porque la evidencia vinculada no pudo borrarse de forma segura.',
       'evidencePreview': 'Vista previa de evidencia',
+      'viewImage': 'Ver imagen',
       'evidenceFileMissing':
           'No se pudo encontrar el archivo local de evidencia.',
       'evidenceStoredLocally':

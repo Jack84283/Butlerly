@@ -1356,7 +1356,11 @@ class _EvidenceSectionState extends State<_EvidenceSection> {
               (value) => ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.attach_file_outlined),
-                title: Text(value.originalName),
+                title: Text(
+                  value.mediaType.startsWith('image/')
+                      ? context.l10n.text('viewImage')
+                      : value.originalName,
+                ),
                 subtitle: Text(value.mediaType),
                 onTap: () => _preview(value),
                 trailing: IconButton(
