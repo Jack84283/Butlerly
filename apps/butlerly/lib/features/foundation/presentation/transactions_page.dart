@@ -1323,11 +1323,12 @@ class _EvidenceSectionState extends State<_EvidenceSection> {
               (value) => ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.attach_file_outlined),
-                title: Text(
-                  value.mediaType.startsWith('image/')
-                      ? context.l10n.text('viewImage')
-                      : value.originalName,
-                ),
+                title: value.mediaType.startsWith('image/')
+                    ? ButlerlySecondaryTextAction(
+                        onPressed: () => _preview(value),
+                        child: Text(context.l10n.text('viewImage')),
+                      )
+                    : Text(value.originalName),
                 onTap: () => _preview(value),
                 trailing: IconButton(
                   tooltip: context.l10n.text('remove'),

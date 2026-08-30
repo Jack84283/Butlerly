@@ -237,6 +237,27 @@ class ButlerlyCompactActionButton extends StatelessWidget {
   );
 }
 
+/// Lightweight secondary text action for presentation-only affordances.
+class ButlerlySecondaryTextAction extends StatelessWidget {
+  const ButlerlySecondaryTextAction({
+    required this.onPressed,
+    required this.child,
+    super.key,
+  });
+
+  final VoidCallback? onPressed;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => TextButton(
+    onPressed: onPressed,
+    style: Theme.of(context).textButtonTheme.style?.copyWith(
+      foregroundColor: WidgetStatePropertyAll(context.colors.secondaryText),
+    ),
+    child: child,
+  );
+}
+
 enum ButlerlyButtonBarAlignment { start, center, end }
 
 enum ButlerlyButtonBarDensity { standard, compact }
