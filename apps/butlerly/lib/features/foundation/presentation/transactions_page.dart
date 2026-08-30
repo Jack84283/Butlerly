@@ -278,29 +278,26 @@ class TransactionRecordList extends StatelessWidget {
   final ValueChanged<TransactionDto> onTap;
 
   @override
-  Widget build(BuildContext context) => ButlerlyCard(
-    padding: const EdgeInsets.symmetric(vertical: ButlerlySpacing.compact),
-    child: ButlerlySeparatedList(
-      children: transactions
-          .map(
-            (value) => ButlerlyRecordRow(
-              title: value.description?.trim().isNotEmpty == true
-                  ? value.description!
-                  : context.l10n.text('untitledTransaction'),
-              subtitle: masterData?.summary(value),
-              meta: _transactionDate(value, context),
-              amount: localizedTransactionAmount(context, value.amount),
-              currency: value.currency,
-              isIncome: value.direction == TransactionDirection.income.name,
-              needsReview: value.reviewState == 'needsReview',
-              possibleDuplicate: possibleDuplicateIds.contains(value.id),
-              possibleDuplicateLabel: possibleDuplicateLabel,
-              onPossibleDuplicateTap: onPossibleDuplicateTap,
-              onTap: () => onTap(value),
-            ),
-          )
-          .toList(growable: false),
-    ),
+  Widget build(BuildContext context) => ButlerlyTransactionList(
+    children: transactions
+        .map(
+          (value) => ButlerlyRecordRow(
+            title: value.description?.trim().isNotEmpty == true
+                ? value.description!
+                : context.l10n.text('untitledTransaction'),
+            subtitle: masterData?.summary(value),
+            meta: _transactionDate(value, context),
+            amount: localizedTransactionAmount(context, value.amount),
+            currency: value.currency,
+            isIncome: value.direction == TransactionDirection.income.name,
+            needsReview: value.reviewState == 'needsReview',
+            possibleDuplicate: possibleDuplicateIds.contains(value.id),
+            possibleDuplicateLabel: possibleDuplicateLabel,
+            onPossibleDuplicateTap: onPossibleDuplicateTap,
+            onTap: () => onTap(value),
+          ),
+        )
+        .toList(growable: false),
   );
 }
 

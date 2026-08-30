@@ -378,8 +378,7 @@ void main() {
 
     await tester.tap(find.text('Uncategorized'));
     await tester.pumpAndSettle();
-    expect(find.byType(ButlerlyCard), findsOneWidget);
-    expect(find.byType(ButlerlySeparatedList), findsOneWidget);
+    expect(find.byType(ButlerlyTransactionList), findsOneWidget);
     expect(find.byType(ButlerlyRecordRow), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });

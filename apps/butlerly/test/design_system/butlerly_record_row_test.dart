@@ -47,4 +47,60 @@ void main() {
 
     expect(find.byIcon(Icons.warning_amber_rounded), findsNothing);
   });
+
+  testWidgets('common item renders compact three-line expense metadata', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: ButlerlyTransactionListItem(
+            title: 'Safeway Store',
+            subtitle: 'Food & Dining · Groceries · Personal',
+            meta: 'Aug 14, 2026',
+            amount: '42.19',
+            currency: 'USD',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(Icons.arrow_downward_rounded), findsOneWidget);
+    expect(find.text('42.19 USD'), findsOneWidget);
+    expect(find.text('Safeway Store'), findsOneWidget);
+    expect(find.text('Food & Dining · Groceries · Personal'), findsOneWidget);
+    expect(find.text('Aug 14, 2026'), findsOneWidget);
+    expect(find.byType(Card), findsNothing);
+  });
+
+  testWidgets('income uses upward direction and list dividers omit the last', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: ButlerlyTransactionList(
+            children: const [
+              ButlerlyTransactionListItem(
+                title: 'Salary',
+                amount: '100.00',
+                currency: 'USD',
+                isIncome: true,
+              ),
+              ButlerlyTransactionListItem(
+                title: 'Coffee',
+                amount: '4.00',
+                currency: 'USD',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(Icons.arrow_upward_rounded), findsOneWidget);
+    expect(find.byType(Divider), findsOneWidget);
+  });
 }

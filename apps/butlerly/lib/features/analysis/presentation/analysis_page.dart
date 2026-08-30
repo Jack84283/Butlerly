@@ -504,10 +504,10 @@ class _CalendarTransactions extends StatelessWidget {
           future: masterData,
           builder: (context, masterSnapshot) {
             final data = masterSnapshot.data ?? const TransactionMasterData();
-            return ButlerlySeparatedList(
+            return ButlerlyTransactionList(
               children: value.value
                   .map(
-                    (transaction) => ButlerlyRecordRow(
+                    (transaction) => ButlerlyTransactionListItem(
                       key: ValueKey(
                         'analysis-calendar-transaction-${transaction.id}',
                       ),
@@ -518,7 +518,7 @@ class _CalendarTransactions extends StatelessWidget {
                       meta: transactionDateLabel(
                         transaction,
                         pendingLabel: context.l10n.text('pending'),
-                        locale: Localizations.localeOf(context).languageCode,
+                        locale: Localizations.localeOf(context).toLanguageTag(),
                       ),
                       amount: localizedTransactionAmount(
                         context,
