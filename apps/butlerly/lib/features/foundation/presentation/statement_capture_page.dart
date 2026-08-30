@@ -302,18 +302,18 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
       _message(context.l10n.text('statementDeletionProtected'));
       return;
     }
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showButlerlyBottomSheet<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.text('deleteStatementTitle')),
+      builder: (sheetContext) => ButlerlySheet(
+        title: Text(l10n.text('deleteStatement')),
         content: Text(l10n.text('deleteStatementBody')),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
+            onPressed: () => Navigator.pop(sheetContext, false),
             child: Text(l10n.text('cancel')),
           ),
           ButlerlyDestructiveButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
+            onPressed: () => Navigator.pop(sheetContext, true),
             child: Text(l10n.text('deleteStatement')),
           ),
         ],
