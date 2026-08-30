@@ -1,4 +1,5 @@
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -236,6 +237,123 @@ class ButlerlyCompactActionButton extends StatelessWidget {
   );
 }
 
+/// Lightweight secondary text action for presentation-only affordances.
+class ButlerlySecondaryTextAction extends StatelessWidget {
+  const ButlerlySecondaryTextAction({
+    required this.onPressed,
+    required this.child,
+    super.key,
+  });
+
+  final VoidCallback? onPressed;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => TextButton(
+    onPressed: onPressed,
+    style: Theme.of(context).textButtonTheme.style?.copyWith(
+      alignment: Alignment.centerLeft,
+      foregroundColor: WidgetStatePropertyAll(context.colors.secondaryText),
+    ),
+    child: child,
+  );
+}
+
+enum ButlerlyButtonBarAlignment { start, center, end }
+
+enum ButlerlyButtonBarDensity { standard, compact }
+
+enum ButlerlyButtonBarSpacing { standard, none }
+
+class ButlerlyButtonBar extends StatelessWidget {
+  const ButlerlyButtonBar({
+    required this.children,
+    this.alignment = ButlerlyButtonBarAlignment.start,
+    this.density = ButlerlyButtonBarDensity.standard,
+    this.spacing = ButlerlyButtonBarSpacing.standard,
+    super.key,
+  });
+
+  final List<Widget> children;
+  final ButlerlyButtonBarAlignment alignment;
+  final ButlerlyButtonBarDensity density;
+  final ButlerlyButtonBarSpacing spacing;
+
+  WrapAlignment get _wrapAlignment => switch (alignment) {
+    ButlerlyButtonBarAlignment.start => WrapAlignment.start,
+    ButlerlyButtonBarAlignment.center => WrapAlignment.center,
+    ButlerlyButtonBarAlignment.end => WrapAlignment.end,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final bar = Padding(
+      padding: EdgeInsets.only(
+        top: spacing == ButlerlyButtonBarSpacing.standard
+            ? ButlerlySpacing.standard
+            : 0,
+        bottom: spacing == ButlerlyButtonBarSpacing.standard
+            ? ButlerlySpacing.standard
+            : 0,
+      ),
+      child: Wrap(
+        alignment: _wrapAlignment,
+        spacing: ButlerlySpacing.compact,
+        runSpacing: ButlerlySpacing.compact,
+        children: children,
+      ),
+    );
+    if (density == ButlerlyButtonBarDensity.standard) return bar;
+
+    final theme = Theme.of(context);
+    final compactPadding = const EdgeInsets.symmetric(
+      horizontal: ButlerlyButtonTokens.compactHorizontalPadding,
+      vertical: ButlerlyButtonTokens.compactVerticalPadding,
+    );
+    return Theme(
+      data: theme.copyWith(
+        filledButtonTheme: FilledButtonThemeData(
+          style: theme.filledButtonTheme.style?.copyWith(
+            padding: WidgetStatePropertyAll(compactPadding),
+            minimumSize: const WidgetStatePropertyAll(
+              Size(
+                ButlerlyButtonTokens.compactMinimumHeight,
+                ButlerlyButtonTokens.compactVisualHeight,
+              ),
+            ),
+            tapTargetSize: MaterialTapTargetSize.padded,
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: theme.outlinedButtonTheme.style?.copyWith(
+            padding: WidgetStatePropertyAll(compactPadding),
+            minimumSize: const WidgetStatePropertyAll(
+              Size(
+                ButlerlyButtonTokens.compactMinimumHeight,
+                ButlerlyButtonTokens.compactVisualHeight,
+              ),
+            ),
+            tapTargetSize: MaterialTapTargetSize.padded,
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: theme.textButtonTheme.style?.copyWith(
+            padding: WidgetStatePropertyAll(compactPadding),
+            minimumSize: const WidgetStatePropertyAll(
+              Size(
+                ButlerlyButtonTokens.compactMinimumHeight,
+                ButlerlyButtonTokens.compactVisualHeight,
+              ),
+            ),
+            tapTargetSize: MaterialTapTargetSize.padded,
+          ),
+        ),
+      ),
+      child: bar,
+    );
+  }
+}
+
 /// Semantic destructive action with the same geometry as the primary button.
 /// The visual distinction is centralized here so screens provide only intent,
 /// labels, icons, and callbacks.
@@ -310,6 +428,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     this.onPossibleDuplicateTap,
     this.selectionControl,
     this.onTap,
+    this.showNavigationIndicator = false,
     super.key,
   });
 
@@ -325,6 +444,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
   final VoidCallback? onPossibleDuplicateTap;
   final Widget? selectionControl;
   final VoidCallback? onTap;
+  final bool showNavigationIndicator;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -341,9 +461,11 @@ class ButlerlyTransactionListItem extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: ButlerlyTransactionItemTokens.horizontalInset,
-              vertical: ButlerlyTransactionItemTokens.verticalPadding,
+            padding: const EdgeInsets.fromLTRB(
+              ButlerlyTransactionItemTokens.horizontalInset,
+              ButlerlyTransactionItemTokens.topPadding,
+              ButlerlyTransactionItemTokens.horizontalInset,
+              ButlerlyTransactionItemTokens.bottomPadding,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -421,6 +543,19 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                           ),
                         ),
                       ),
+                    if (showNavigationIndicator) ...[
+                      const SizedBox(
+                        width: ButlerlyTransactionItemTokens.headerSpacing,
+                      ),
+                      ExcludeSemantics(
+                        child: Icon(
+                          Icons.chevron_right_rounded,
+                          size:
+                              ButlerlyTransactionItemTokens.navigationIconSize,
+                          color: context.transactionItemNavigationIcon,
+                        ),
+                      ),
+                    ],
                     ?selectionControl,
                   ],
                 ),
@@ -482,6 +617,7 @@ class ButlerlyRecordRow extends ButlerlyTransactionListItem {
     super.onPossibleDuplicateTap,
     super.selectionControl,
     super.onTap,
+    super.showNavigationIndicator,
     super.key,
   });
 }

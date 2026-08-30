@@ -139,6 +139,7 @@ class AppLocalizations {
       'evidenceCleanupFailed':
           'The transaction was not deleted because linked evidence could not be removed safely.',
       'evidencePreview': 'Evidence preview',
+      'viewImage': 'View image',
       'evidenceFileMissing': 'The local evidence file could not be found.',
       'evidenceStoredLocally':
           'This file is stored privately on this device. Its local path is not displayed.',
@@ -443,6 +444,7 @@ class AppLocalizations {
       'unresolvedRows': 'Unresolved rows',
       'statementAssessmentFailed': 'The statement could not be assessed.',
       'deleteStatement': 'Delete statement',
+      'extractionDiagnostics': 'Extraction diagnostics',
       'deleteStatementTitle': 'Delete this statement?',
       'deleteStatementBody':
           'No transactions were created from this statement. The statement file and extracted data will be permanently removed.',
@@ -572,6 +574,7 @@ class AppLocalizations {
       'evidenceAttachFailed': '无法存储凭证。',
       'evidenceCleanupFailed': '无法安全删除关联凭证，因此未删除该交易。',
       'evidencePreview': '凭证预览',
+      'viewImage': '查看图片',
       'evidenceFileMissing': '找不到本地凭证文件。',
       'evidenceStoredLocally': '此文件仅私密存储在本设备上，不显示本地路径。',
       'removeEvidenceTitle': '移除此凭证？',
@@ -841,6 +844,7 @@ class AppLocalizations {
       'unresolvedRows': '未解决的行',
       'statementAssessmentFailed': '无法评估账单。',
       'deleteStatement': '删除账单',
+      'extractionDiagnostics': '提取诊断',
       'deleteStatementTitle': '删除此账单？',
       'deleteStatementBody': '此账单尚未创建交易。账单文件和提取数据将被永久删除。',
       'statementDeleted': '账单已删除。',
@@ -972,6 +976,7 @@ class AppLocalizations {
       'evidenceCleanupFailed':
           'La transacción no se eliminó porque la evidencia vinculada no pudo borrarse de forma segura.',
       'evidencePreview': 'Vista previa de evidencia',
+      'viewImage': 'Ver imagen',
       'evidenceFileMissing':
           'No se pudo encontrar el archivo local de evidencia.',
       'evidenceStoredLocally':
@@ -1283,6 +1288,7 @@ class AppLocalizations {
       'unresolvedRows': 'Filas sin resolver',
       'statementAssessmentFailed': 'No se pudo evaluar el extracto.',
       'deleteStatement': 'Eliminar extracto',
+      'extractionDiagnostics': 'Diagnóstico de extracción',
       'deleteStatementTitle': '¿Eliminar este extracto?',
       'deleteStatementBody':
           'No se crearon transacciones desde este extracto. El archivo y los datos extraídos se eliminarán permanentemente.',

@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 /// Layout values shared by every transaction-record list presentation.
 abstract final class ButlerlyTransactionItemTokens {
   static const horizontalInset = ButlerlySpacing.micro;
-  static const verticalPadding = ButlerlySpacing.micro;
+  static const topPadding = ButlerlySpacing.compact;
+  static const bottomPadding = ButlerlySpacing.micro;
   static const directionIconSize = 18.0;
   static const warningIconSize = 18.0;
+  static const navigationIconSize = 18.0;
   static const headerSpacing = ButlerlySpacing.micro;
   static const dividerThickness = 1.0;
   static const dividerInset = ButlerlySpacing.micro;
@@ -40,5 +42,19 @@ extension ButlerlyTransactionItemStyles on BuildContext {
 
   Color get transactionItemWarningIcon => colors.warning;
 
+  Color get transactionItemNavigationIcon => colors.secondaryText;
+
   Color get transactionItemDivider => colors.cardDivider;
+}
+
+extension ButlerlyTransactionDetailStyles on BuildContext {
+  TextStyle get transactionDetailAmount =>
+      Theme.of(this).textTheme.titleLarge!.copyWith(
+        fontSize: 32,
+        fontWeight: FontWeight.w700,
+        fontFeatures: const [FontFeature.tabularFigures()],
+      );
+
+  TextStyle get transactionDetailDescription =>
+      Theme.of(this).textTheme.bodyMedium!;
 }

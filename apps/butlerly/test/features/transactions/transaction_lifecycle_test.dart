@@ -69,11 +69,98 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('No evidence is attached locally.'), findsOneWidget);
+    expect(find.text('Attach receipt'), findsNothing);
+    expect(find.text('Attach file'), findsNothing);
+    expect(find.text('Attach receipt or file'), findsNothing);
+    expect(find.byIcon(Icons.add_photo_alternate_outlined), findsNothing);
 
     notifyTransactionChanged();
     await tester.pumpAndSettle();
     expect(find.text('No evidence is attached locally.'), findsOneWidget);
     expect(evidenceRepository.listCalls, 2);
+  });
+
+  testWidgets('image evidence uses a localized view action label', (
+    tester,
+  ) async {
+    final capturedAt = DateTime.utc(2026, 8, 21);
+    evidenceRepository.items = [
+      EvidenceItem(
+        id: EvidenceId('image-evidence'),
+        type: EvidenceType.receiptImage,
+        originalName: 'IMG_4837.jpg',
+        mediaType: 'image/jpeg',
+        localFileName: 'stored-image.jpg',
+        provenance: Provenance(
+          id: ProvenanceId('image-provenance'),
+          sourceType: ProvenanceSourceType.scan,
+          capturedAt: capturedAt,
+          originalRepresentation: 'IMG_4837.jpg',
+        ),
+        createdAt: capturedAt,
+      ),
+    ];
+    final transaction = TransactionDto(
+      id: 'image-transaction',
+      amount: '12.50',
+      currency: 'USD',
+      direction: 'expense',
+      status: 'active',
+      reviewState: 'clear',
+      transactionDate: '2026-08-21',
+      createdAt: capturedAt,
+      updatedAt: capturedAt,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TransactionDetailPage(
+          finance: services<FinanceServices>(),
+          transaction: transaction,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('View image'), findsOneWidget);
+    expect(find.text('IMG_4837.jpg'), findsNothing);
+    expect(find.text('image/jpeg'), findsNothing);
+    expect(find.byType(ButlerlySecondaryTextAction), findsOneWidget);
+    final tile = tester.widget<ListTile>(find.byType(ListTile));
+    expect(tile.onTap, isNotNull);
+    expect(evidenceRepository.items.single.originalName, 'IMG_4837.jpg');
+  });
+
+  testWidgets('transaction detail centers the financial header', (
+    tester,
+  ) async {
+    final transaction = TransactionDto(
+      id: 'centered-header',
+      amount: '128.45',
+      currency: 'USD',
+      direction: 'expense',
+      status: 'active',
+      reviewState: 'clear',
+      description: 'Whole Foods Market',
+      transactionDate: '2026-08-21',
+      createdAt: DateTime.utc(2026, 8, 21),
+      updatedAt: DateTime.utc(2026, 8, 21),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TransactionDetailPage(
+          finance: services<FinanceServices>(),
+          transaction: transaction,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final amount = tester.widget<Text>(find.text('128.45 USD'));
+    final description = tester.widget<Text>(find.text('Whole Foods Market'));
+    expect(amount.textAlign, TextAlign.center);
+    expect(amount.style?.fontSize, 32);
+    expect(amount.style?.fontWeight, FontWeight.w700);
+    expect(description.textAlign, TextAlign.center);
   });
 
   testWidgets('creates, edits, archives, and permanently deletes locally', (
@@ -210,7 +297,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Filters'));
+    await tester.tap(find.byIcon(Icons.tune_rounded).first);
     await tester.pumpAndSettle();
     final categoryFilter = find.byKey(const ValueKey('search-category-filter'));
     await tester.scrollUntilVisible(
@@ -505,6 +592,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ButlerlyTransactionList), findsOneWidget);
       expect(find.byType(Divider), findsOneWidget);
+      expect(find.byType(ButlerlyButtonBar), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, 'Keep both'), findsOneWidget);
+      expect(
+        find.widgetWithText(FilledButton, 'Consolidate / use one'),
+        findsOneWidget,
+      );
       final candidate = find.byType(ButlerlyTransactionListItem).last;
       await tester.ensureVisible(candidate);
       await tester.tap(candidate);
@@ -513,8 +606,8 @@ void main() {
       await tester.ensureVisible(consolidate);
       expect(
         tester
-            .widget<OutlinedButton>(
-              find.widgetWithText(OutlinedButton, 'Consolidate / use one'),
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, 'Consolidate / use one'),
             )
             .onPressed,
         isNotNull,
@@ -1386,6 +1479,7 @@ final class MemoryTags implements TagRepository {
 
 final class MemoryEvidence implements EvidenceRepository {
   int listCalls = 0;
+  List<EvidenceItem> items = const [];
   @override
   Future<EvidenceItem?> findById(EvidenceId id) async => null;
   @override
@@ -1393,7 +1487,7 @@ final class MemoryEvidence implements EvidenceRepository {
   @override
   Future<List<EvidenceItem>> listForTransaction(TransactionId id) async {
     listCalls++;
-    return const [];
+    return items;
   }
 
   @override

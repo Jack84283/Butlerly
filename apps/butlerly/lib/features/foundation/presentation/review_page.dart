@@ -259,7 +259,6 @@ class _ReviewPageState extends State<ReviewPage> {
     }
     return ButlerlyPage(
       title: context.l10n.text('review'),
-      subtitle: context.l10n.text('reviewSubtitle'),
       children: [
         SegmentedButton<_ReviewView>(
           showSelectedIcon: false,
@@ -678,16 +677,18 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                 );
               },
             ),
-            Wrap(
-              spacing: ButlerlySpacing.small,
+            ButlerlyButtonBar(
+              alignment: ButlerlyButtonBarAlignment.start,
+              density: ButlerlyButtonBarDensity.compact,
+              spacing: ButlerlyButtonBarSpacing.none,
               children: [
-                FilledButton(
+                OutlinedButton(
                   onPressed: widget.onKeepBoth,
                   child: Text(context.l10n.text('keepBoth')),
                 ),
                 Tooltip(
                   message: context.l10n.text('consolidateUseOneHint'),
-                  child: OutlinedButton(
+                  child: FilledButton(
                     onPressed: _selectedTransactionId == null
                         ? null
                         : () => widget.onConsolidate(_selectedTransactionId!),

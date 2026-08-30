@@ -5,6 +5,7 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -12,7 +13,6 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
-import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -239,6 +239,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                 onPossibleDuplicateTap: () =>
                     GoRouter.of(context).go('/review?view=duplicates'),
                 onTap: _openDetail,
+                navigates: true,
               ),
             const SizedBox(height: ButlerlySpacing.structural),
           ],
@@ -271,6 +272,7 @@ class TransactionRecordList extends StatelessWidget {
     this.possibleDuplicateIds = const {},
     this.possibleDuplicateLabel,
     this.onPossibleDuplicateTap,
+    this.navigates = false,
     super.key,
   });
 
@@ -280,6 +282,7 @@ class TransactionRecordList extends StatelessWidget {
   final String? possibleDuplicateLabel;
   final VoidCallback? onPossibleDuplicateTap;
   final ValueChanged<TransactionDto> onTap;
+  final bool navigates;
 
   @override
   Widget build(BuildContext context) => ButlerlyTransactionList(
@@ -299,6 +302,7 @@ class TransactionRecordList extends StatelessWidget {
             possibleDuplicateLabel: possibleDuplicateLabel,
             onPossibleDuplicateTap: onPossibleDuplicateTap,
             onTap: () => onTap(value),
+            showNavigationIndicator: navigates,
           ),
         )
         .toList(growable: false),
@@ -990,14 +994,25 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          Text(
-            transaction.description ?? context.l10n.text('untitledTransaction'),
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${localizedTransactionAmount(context, transaction.amount)} ${transaction.currency}',
-            style: Theme.of(context).textTheme.titleLarge,
+          SizedBox(
+            width: double.infinity,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  '${localizedTransactionAmount(context, transaction.amount)} ${transaction.currency}',
+                  textAlign: TextAlign.center,
+                  style: context.transactionDetailAmount,
+                ),
+                const SizedBox(height: ButlerlySpacing.micro),
+                Text(
+                  transaction.description ??
+                      context.l10n.text('untitledTransaction'),
+                  textAlign: TextAlign.center,
+                  style: context.transactionDetailDescription,
+                ),
+              ],
+            ),
           ),
           if (transaction.normalizedMoney.isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -1179,30 +1194,6 @@ class _EvidenceSectionState extends State<_EvidenceSection> {
         },
       );
 
-  Future<void> _attach() async {
-    const types = XTypeGroup(
-      label: 'Receipts and documents',
-      extensions: ['jpg', 'jpeg', 'png', 'heic', 'webp', 'pdf'],
-    );
-    final source = await openFile(acceptedTypeGroups: const [types]);
-    if (source == null || !mounted) return;
-    final stored = await services<LocalEvidenceStore>().attach(
-      transactionId: widget.transactionId,
-      source: source,
-    );
-    if (!mounted) return;
-    if (stored) setState(() => _evidence = _load());
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          context.l10n.text(
-            stored ? 'evidenceAttached' : 'evidenceAttachFailed',
-          ),
-        ),
-      ),
-    );
-  }
-
   Future<void> _remove(EvidenceItem evidence) async {
     final confirmed = await showButlerlyBottomSheet<bool>(
       context: context,
@@ -1326,14 +1317,6 @@ class _EvidenceSectionState extends State<_EvidenceSection> {
             context.l10n.text('evidence'),
             style: Theme.of(context).textTheme.titleMedium,
           ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: _attach,
-              icon: const Icon(Icons.add_photo_alternate_outlined),
-              label: Text(context.l10n.text('attachEvidence')),
-            ),
-          ),
           if (evidence.isEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -1344,8 +1327,12 @@ class _EvidenceSectionState extends State<_EvidenceSection> {
               (value) => ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.attach_file_outlined),
-                title: Text(value.originalName),
-                subtitle: Text(value.mediaType),
+                title: value.mediaType.startsWith('image/')
+                    ? ButlerlySecondaryTextAction(
+                        onPressed: () => _preview(value),
+                        child: Text(context.l10n.text('viewImage')),
+                      )
+                    : Text(value.originalName),
                 onTap: () => _preview(value),
                 trailing: IconButton(
                   tooltip: context.l10n.text('remove'),
@@ -1374,7 +1361,6 @@ class _EvidenceFileSummary extends StatelessWidget {
         const Icon(Icons.description_outlined, size: 64),
         const SizedBox(height: ButlerlySpacing.small),
         Text(evidence.originalName, textAlign: TextAlign.center),
-        Text(evidence.mediaType, style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: ButlerlySpacing.small),
         Text(
           context.l10n.text('evidenceStoredLocally'),

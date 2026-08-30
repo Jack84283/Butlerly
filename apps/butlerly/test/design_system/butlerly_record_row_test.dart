@@ -76,6 +76,73 @@ void main() {
     expect(find.byType(Card), findsNothing);
   });
 
+  testWidgets('navigable item shows a decorative trailing chevron', (
+    tester,
+  ) async {
+    var tapped = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: ButlerlyTransactionListItem(
+            title: 'Coffee',
+            amount: '4.00',
+            currency: 'USD',
+            meta: 'Aug 14, 2026',
+            onTap: () => tapped = true,
+            showNavigationIndicator: true,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
+    final chevron = tester.widget<Icon>(
+      find.byIcon(Icons.chevron_right_rounded),
+    );
+    expect(chevron.semanticLabel, isNull);
+    await tester.tap(find.text('Coffee'));
+    expect(tapped, isTrue);
+  });
+
+  testWidgets('non-navigable item omits the trailing chevron', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: const Scaffold(
+          body: ButlerlyTransactionListItem(
+            title: 'Coffee',
+            amount: '4.00',
+            currency: 'USD',
+            meta: 'Aug 14, 2026',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
+  });
+
+  testWidgets('non-navigation tap does not imply a trailing chevron', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: ButlerlyTransactionListItem(
+            title: 'Select me',
+            amount: '4.00',
+            currency: 'USD',
+            onTap: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
+  });
+
   testWidgets('income uses upward direction and list dividers omit the last', (
     tester,
   ) async {
@@ -138,10 +205,8 @@ void main() {
       ButlerlyTransactionItemTokens.horizontalInset,
       ButlerlySpacing.micro,
     );
-    expect(
-      ButlerlyTransactionItemTokens.verticalPadding,
-      ButlerlySpacing.micro,
-    );
+    expect(ButlerlyTransactionItemTokens.topPadding, ButlerlySpacing.compact);
+    expect(ButlerlyTransactionItemTokens.bottomPadding, ButlerlySpacing.micro);
     expect(ButlerlyTransactionItemTokens.dividerInset, ButlerlySpacing.micro);
     expect(ButlerlyTransactionItemTokens.minTouchHeight, 72);
   });

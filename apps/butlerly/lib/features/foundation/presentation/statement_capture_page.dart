@@ -8,6 +8,7 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/features/foundation/presentation/statement_labels.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -46,6 +47,21 @@ class StatementCapturePage extends StatefulWidget {
   final Future<XFile?> Function(ImageSource source)? pickImage;
   @override
   State<StatementCapturePage> createState() => _StatementCapturePageState();
+}
+
+String _statementStatusLabel(BuildContext context, String? statusKey) {
+  if (statusKey == null || statusKey.trim().isEmpty) return '';
+  return switch (statusKey) {
+    'statementNoText' => context.l10n.text('statementNoText'),
+    'statementNoRows' => context.l10n.text('statementNoRows'),
+    'statementUnresolvedEvidence' => context.l10n.text(
+      'statementUnresolvedEvidence',
+    ),
+    'statementProcessingFailed' => context.l10n.text(
+      'statementProcessingFailed',
+    ),
+    _ => statusKey,
+  };
 }
 
 class _StatementCapturePageState extends State<StatementCapturePage> {
@@ -101,7 +117,6 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
   }
 
   Future<void> _ingest(XFile file) async {
-    final l10n = context.l10n;
     setState(() => _busy = true);
     final store = services<LocalEvidenceStore>();
     final preserved = await store.preserve(file);
@@ -187,26 +202,20 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
         updatedAt: now,
         extractionMessage: rows.isNotEmpty
             ? extraction!.rows.any((row) => row.isUnresolved)
-                  ? l10n.text('statementUnresolvedEvidence')
+                  ? 'statementUnresolvedEvidence'
                   : null
             : extraction == null
-            ? l10n.text('statementProcessingFailed')
+            ? 'statementProcessingFailed'
             : switch (extraction.outcome) {
-                StatementExtractionOutcome.noText => l10n.text(
-                  'statementNoText',
-                ),
-                StatementExtractionOutcome.textWithoutCandidates => l10n.text(
+                StatementExtractionOutcome.noText => 'statementNoText',
+                StatementExtractionOutcome.textWithoutCandidates =>
                   'statementNoRows',
-                ),
-                StatementExtractionOutcome.unresolvedEvidence => l10n.text(
+                StatementExtractionOutcome.unresolvedEvidence =>
                   'statementUnresolvedEvidence',
-                ),
-                StatementExtractionOutcome.reconstructedCandidates => l10n.text(
+                StatementExtractionOutcome.reconstructedCandidates =>
                   'statementNoRows',
-                ),
-                StatementExtractionOutcome.technicalOcrFailure => l10n.text(
+                StatementExtractionOutcome.technicalOcrFailure =>
                   'statementProcessingFailed',
-                ),
               },
       ),
       rows,
@@ -302,18 +311,18 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
       _message(context.l10n.text('statementDeletionProtected'));
       return;
     }
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showButlerlyBottomSheet<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.text('deleteStatementTitle')),
+      builder: (sheetContext) => ButlerlySheet(
+        title: Text(l10n.text('deleteStatement')),
         content: Text(l10n.text('deleteStatementBody')),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
+            onPressed: () => Navigator.pop(sheetContext, false),
             child: Text(l10n.text('cancel')),
           ),
           ButlerlyDestructiveButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
+            onPressed: () => Navigator.pop(sheetContext, true),
             child: Text(l10n.text('deleteStatement')),
           ),
         ],
@@ -400,25 +409,31 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                   leading: const Icon(Icons.description_outlined),
                   title: Text(statementDisplayTitle(context, item, _sources)),
                   subtitle: Text(
-                    item.extractionMessage ??
-                        (item.paymentSourceId == null
-                            ? context.l10n.text('choosePaymentSourceToContinue')
-                            : context.l10n.text('reviewInProgress')),
+                    item.extractionMessage == null
+                        ? (item.paymentSourceId == null
+                              ? context.l10n.text(
+                                  'choosePaymentSourceToContinue',
+                                )
+                              : context.l10n.text('reviewInProgress'))
+                        : _statementStatusLabel(
+                            context,
+                            item.extractionMessage,
+                          ),
+                    style: context.transactionItemMetadata,
                   ),
-                  trailing: PopupMenuButton<String>(
-                    onSelected: (value) {
-                      if (value == 'delete') _deleteUnprocessed(item);
-                      if (value == 'diagnostics') _showDiagnostics(item.id);
-                    },
-                    itemBuilder: (_) => [
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       if (kDebugMode && _debugDiagnostics.containsKey(item.id))
-                        const PopupMenuItem(
-                          value: 'diagnostics',
-                          child: Text('Extraction diagnostics'),
+                        IconButton(
+                          tooltip: context.l10n.text('extractionDiagnostics'),
+                          onPressed: () => _showDiagnostics(item.id),
+                          icon: const Icon(Icons.bug_report_outlined),
                         ),
-                      PopupMenuItem(
-                        value: 'delete',
-                        child: Text(context.l10n.text('deleteStatement')),
+                      IconButton(
+                        tooltip: context.l10n.text('deleteStatement'),
+                        onPressed: () => _deleteUnprocessed(item),
+                        icon: const Icon(Icons.delete_outline_rounded),
                       ),
                     ],
                   ),
@@ -1184,8 +1199,13 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
               vertical: ButlerlySpacing.sectionSpacing,
             ),
             child: Text(
-              widget.statement.extractionMessage ??
-                  context.l10n.text('statementNoRows'),
+              widget.statement.extractionMessage == null
+                  ? context.l10n.text('statementNoRows')
+                  : _statementStatusLabel(
+                      context,
+                      widget.statement.extractionMessage,
+                    ),
+              style: context.transactionItemMetadata,
               textAlign: TextAlign.center,
             ),
           ),
@@ -1215,8 +1235,10 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                       row.status == StatementRowStatus.unresolved ||
                       row.status == StatementRowStatus.deferred ||
                       row.status == StatementRowStatus.skipped)
-                    Wrap(
-                      spacing: ButlerlySpacing.compactActionSpacing,
+                    ButlerlyButtonBar(
+                      alignment: ButlerlyButtonBarAlignment.start,
+                      density: ButlerlyButtonBarDensity.compact,
+                      spacing: ButlerlyButtonBarSpacing.none,
                       children: [
                         if (row.status != StatementRowStatus.skipped)
                           ButlerlyCompactActionButton(

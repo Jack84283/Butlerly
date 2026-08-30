@@ -182,10 +182,19 @@ void main() {
     await tester.tap(find.text('Review'));
     await tester.pumpAndSettle();
     expect(find.text('You’re all caught up'), findsOneWidget);
+    expect(
+      find.text('Resolve only the records that genuinely need attention.'),
+      findsNothing,
+    );
 
     await tester.tap(find.text('Search'));
     await tester.pumpAndSettle();
     expect(find.byType(SearchBar), findsOneWidget);
+    expect(find.byIcon(Icons.tune_rounded), findsOneWidget);
+    expect(
+      find.text('Search by merchant, date, amount, category, or notes.'),
+      findsNothing,
+    );
   });
 
   testWidgets('uses adaptive navigation at tablet widths', (tester) async {

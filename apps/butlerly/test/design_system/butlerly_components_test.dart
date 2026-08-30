@@ -1,5 +1,6 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -65,6 +66,96 @@ void main() {
       tester.widget<Icon>(find.byIcon(Icons.save_outlined)).size,
       ButlerlySize.compactActionIconSize,
     );
+    expect(find.byType(OutlinedButton), findsOneWidget);
+    expect(
+      tester.widget<OutlinedButton>(find.byType(OutlinedButton)).style,
+      isNull,
+    );
+  });
+
+  testWidgets('secondary text action aligns its label to the leading edge', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: ButlerlySecondaryTextAction(
+            onPressed: () {},
+            child: const Text('View image'),
+          ),
+        ),
+      ),
+    );
+
+    final button = tester.widget<TextButton>(find.byType(TextButton));
+    expect(button.style?.alignment, Alignment.centerLeft);
+    expect(find.text('View image'), findsOneWidget);
+  });
+
+  testWidgets('button bar owns responsive start-aligned action layout', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: ButlerlyButtonBar(
+            alignment: ButlerlyButtonBarAlignment.start,
+            density: ButlerlyButtonBarDensity.compact,
+            children: [
+              OutlinedButton(onPressed: () {}, child: const Text('Edit')),
+              FilledButton(onPressed: () {}, child: const Text('Save')),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final wrap = tester.widget<Wrap>(find.byType(Wrap));
+    expect(wrap.alignment, WrapAlignment.start);
+    expect(wrap.spacing, ButlerlySpacing.compact);
+    expect(wrap.runSpacing, ButlerlySpacing.compact);
+    expect(find.byType(OutlinedButton), findsOneWidget);
+    expect(find.byType(FilledButton), findsOneWidget);
+    final buttonContext = tester.element(find.byType(OutlinedButton));
+    final compactStyle = Theme.of(buttonContext).outlinedButtonTheme.style!;
+    expect(
+      compactStyle.padding?.resolve({}),
+      const EdgeInsets.symmetric(
+        horizontal: ButlerlyButtonTokens.compactHorizontalPadding,
+        vertical: ButlerlyButtonTokens.compactVerticalPadding,
+      ),
+    );
+    expect(
+      compactStyle.minimumSize?.resolve({}),
+      const Size(
+        ButlerlyButtonTokens.compactMinimumHeight,
+        ButlerlyButtonTokens.compactVisualHeight,
+      ),
+    );
+    expect(compactStyle.tapTargetSize, MaterialTapTargetSize.padded);
+  });
+
+  testWidgets('button bar supports zero vertical spacing', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: ButlerlyButtonBar(
+            alignment: ButlerlyButtonBarAlignment.start,
+            density: ButlerlyButtonBarDensity.compact,
+            spacing: ButlerlyButtonBarSpacing.none,
+            children: [
+              OutlinedButton(onPressed: () {}, child: const Text('Edit')),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final padding = tester.widget<Padding>(find.byType(Padding).first);
+    expect(padding.padding, EdgeInsets.zero);
   });
 
   testWidgets('destructive action uses the centralized error treatment', (

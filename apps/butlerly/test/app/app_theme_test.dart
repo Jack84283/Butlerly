@@ -33,4 +33,14 @@ void main() {
     expect(red.interactive, isNot(green.interactive));
     expect(blue.interactive, isNot(green.interactive));
   });
+
+  test('search hints use the centralized secondary text style', () {
+    for (final theme in [AppTheme.light, AppTheme.dark]) {
+      final colors = theme.extension<ButlerlySemanticColors>()!;
+      expect(
+        theme.searchBarTheme.hintStyle?.resolve({})?.color,
+        colors.secondaryText,
+      );
+    }
+  });
 }
