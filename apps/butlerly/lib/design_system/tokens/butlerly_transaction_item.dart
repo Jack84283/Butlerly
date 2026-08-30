@@ -9,6 +9,7 @@ abstract final class ButlerlyTransactionItemTokens {
   static const bottomPadding = ButlerlySpacing.micro;
   static const directionIconSize = 18.0;
   static const warningIconSize = 18.0;
+  static const navigationIconSize = 18.0;
   static const headerSpacing = ButlerlySpacing.micro;
   static const dividerThickness = 1.0;
   static const dividerInset = ButlerlySpacing.micro;
@@ -40,6 +41,8 @@ extension ButlerlyTransactionItemStyles on BuildContext {
       isIncome ? colors.success : colors.primaryText;
 
   Color get transactionItemWarningIcon => colors.warning;
+
+  Color get transactionItemNavigationIcon => colors.secondaryText;
 
   Color get transactionItemDivider => colors.cardDivider;
 }

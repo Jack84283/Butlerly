@@ -540,6 +540,19 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                           ),
                         ),
                       ),
+                    if (onTap != null) ...[
+                      const SizedBox(
+                        width: ButlerlyTransactionItemTokens.headerSpacing,
+                      ),
+                      ExcludeSemantics(
+                        child: Icon(
+                          Icons.chevron_right_rounded,
+                          size:
+                              ButlerlyTransactionItemTokens.navigationIconSize,
+                          color: context.transactionItemNavigationIcon,
+                        ),
+                      ),
+                    ],
                     ?selectionControl,
                   ],
                 ),
