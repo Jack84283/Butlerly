@@ -252,6 +252,7 @@ class ButlerlySecondaryTextAction extends StatelessWidget {
   Widget build(BuildContext context) => TextButton(
     onPressed: onPressed,
     style: Theme.of(context).textButtonTheme.style?.copyWith(
+      alignment: Alignment.centerLeft,
       foregroundColor: WidgetStatePropertyAll(context.colors.secondaryText),
     ),
     child: child,

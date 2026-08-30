@@ -73,6 +73,26 @@ void main() {
     );
   });
 
+  testWidgets('secondary text action aligns its label to the leading edge', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: ButlerlySecondaryTextAction(
+            onPressed: () {},
+            child: const Text('View image'),
+          ),
+        ),
+      ),
+    );
+
+    final button = tester.widget<TextButton>(find.byType(TextButton));
+    expect(button.style?.alignment, Alignment.centerLeft);
+    expect(find.text('View image'), findsOneWidget);
+  });
+
   testWidgets('button bar owns responsive start-aligned action layout', (
     tester,
   ) async {
