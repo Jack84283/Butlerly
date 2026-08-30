@@ -1218,6 +1218,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                     ButlerlyButtonBar(
                       alignment: ButlerlyButtonBarAlignment.start,
                       density: ButlerlyButtonBarDensity.compact,
+                      spacing: ButlerlyButtonBarSpacing.none,
                       children: [
                         if (row.status != StatementRowStatus.skipped)
                           ButlerlyCompactActionButton(

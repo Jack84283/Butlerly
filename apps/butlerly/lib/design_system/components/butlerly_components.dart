@@ -241,17 +241,21 @@ enum ButlerlyButtonBarAlignment { start, center, end }
 
 enum ButlerlyButtonBarDensity { standard, compact }
 
+enum ButlerlyButtonBarSpacing { standard, none }
+
 class ButlerlyButtonBar extends StatelessWidget {
   const ButlerlyButtonBar({
     required this.children,
     this.alignment = ButlerlyButtonBarAlignment.start,
     this.density = ButlerlyButtonBarDensity.standard,
+    this.spacing = ButlerlyButtonBarSpacing.standard,
     super.key,
   });
 
   final List<Widget> children;
   final ButlerlyButtonBarAlignment alignment;
   final ButlerlyButtonBarDensity density;
+  final ButlerlyButtonBarSpacing spacing;
 
   WrapAlignment get _wrapAlignment => switch (alignment) {
     ButlerlyButtonBarAlignment.start => WrapAlignment.start,
@@ -262,7 +266,14 @@ class ButlerlyButtonBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bar = Padding(
-      padding: const EdgeInsets.symmetric(vertical: ButlerlySpacing.standard),
+      padding: EdgeInsets.only(
+        top: spacing == ButlerlyButtonBarSpacing.standard
+            ? ButlerlySpacing.standard
+            : 0,
+        bottom: spacing == ButlerlyButtonBarSpacing.standard
+            ? ButlerlySpacing.standard
+            : 0,
+      ),
       child: Wrap(
         alignment: _wrapAlignment,
         spacing: ButlerlySpacing.compact,

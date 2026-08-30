@@ -117,6 +117,27 @@ void main() {
     expect(compactStyle.tapTargetSize, MaterialTapTargetSize.padded);
   });
 
+  testWidgets('button bar supports zero vertical spacing', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: ButlerlyButtonBar(
+            alignment: ButlerlyButtonBarAlignment.start,
+            density: ButlerlyButtonBarDensity.compact,
+            spacing: ButlerlyButtonBarSpacing.none,
+            children: [
+              OutlinedButton(onPressed: () {}, child: const Text('Edit')),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final padding = tester.widget<Padding>(find.byType(Padding).first);
+    expect(padding.padding, EdgeInsets.zero);
+  });
+
   testWidgets('destructive action uses the centralized error treatment', (
     tester,
   ) async {
