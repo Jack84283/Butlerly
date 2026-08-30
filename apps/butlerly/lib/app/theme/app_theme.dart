@@ -118,7 +118,7 @@ abstract final class AppTheme {
       textTheme: textTheme,
       extensions: [colors],
       visualDensity: VisualDensity.standard,
-      dividerColor: colors.border,
+      dividerColor: colors.cardDivider,
       splashFactory: InkSparkle.splashFactory,
       appBarTheme: AppBarTheme(
         elevation: 0,
@@ -131,7 +131,7 @@ abstract final class AppTheme {
       cardTheme: CardThemeData(
         elevation: ButlerlyElevation.raised,
         margin: EdgeInsets.zero,
-        color: colors.elevatedSurface,
+        color: colors.surface,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(ButlerlyRadius.standard),

@@ -45,10 +45,10 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
   final Color selection;
 
   static const dark = ButlerlySemanticColors(
-    background: Color(0xFF0B0B0D),
-    surface: Color(0xFF141418),
-    elevatedSurface: Color.fromRGBO(58, 58, 58, 1),
-    subtleSurface: Color(0xFF111114),
+    background: Color(0xFF000000),
+    surface: Color(0xFF1C1C1E),
+    elevatedSurface: Color(0xFF2C2C2E),
+    subtleSurface: Color(0xFF1C1C1E),
     primaryText: Color(0xFFFFFFFF),
     secondaryText: Color.fromRGBO(198, 198, 198, 1),
     tertiaryText: Color.fromRGBO(198, 198, 198, 1),
@@ -66,14 +66,14 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
   );
 
   static const light = ButlerlySemanticColors(
-    background: Color(0xFFF7F7F8),
+    background: Color(0xFFF2F2F7),
     surface: Color(0xFFFFFFFF),
-    elevatedSurface: Color.fromRGBO(218, 218, 218, 1),
-    subtleSurface: Color(0xFFF2F2F4),
-    primaryText: Color(0xFF171719),
-    secondaryText: Color.fromRGBO(96, 96, 96, 1),
-    tertiaryText: Color.fromRGBO(96, 96, 96, 1),
-    cardDivider: Color.fromRGBO(198, 198, 198, 1),
+    elevatedSurface: Color(0xFFF9F9FB),
+    subtleSurface: Color(0xFFF9F9FB),
+    primaryText: Color(0xFF000000),
+    secondaryText: Color(0xFF6E6E73),
+    tertiaryText: Color(0xFF6E6E73),
+    cardDivider: Color.fromRGBO(198, 198, 200, 0.6),
     border: Color(0xFFDDDDE2),
     brand: Color(0xFFA51F2E),
     brandStrong: Color(0xFF741722),
