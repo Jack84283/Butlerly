@@ -14,7 +14,9 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -38,7 +40,9 @@ final class CancelStatementReconciliation
 }
 
 class StatementCapturePage extends StatefulWidget {
-  const StatementCapturePage({super.key});
+  const StatementCapturePage({this.pickImage, super.key});
+
+  final Future<XFile?> Function(ImageSource source)? pickImage;
   @override
   State<StatementCapturePage> createState() => _StatementCapturePageState();
 }
@@ -49,6 +53,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
   List<PaymentSource> _sources = const [];
   bool _busy = false;
   final _imagePicker = ImagePicker();
+  final _debugDiagnostics = <String, String>{};
   StatementServices get statement =>
       services<FinanceServices>().statementServices!;
 
@@ -83,11 +88,13 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
   }
 
   Future<void> _captureImage(ImageSource source) async {
-    final file = await _imagePicker.pickImage(
-      source: source,
-      imageQuality: 100,
-      requestFullMetadata: false,
-    );
+    final file =
+        await (widget.pickImage?.call(source) ??
+            _imagePicker.pickImage(
+              source: source,
+              imageQuality: 100,
+              requestFullMetadata: false,
+            ));
     if (file == null || !mounted) return;
     await _ingest(file);
   }
@@ -107,6 +114,12 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
       }
     } on Object {
       // The original is still retained so unreadable statements can be fixed.
+      if (kDebugMode) {
+        debugPrint(
+          'Butlerly statement OCR: Outcome: technicalOcrFailure; '
+          'Failure stage: capturePipeline',
+        );
+      }
     }
     final evidence = await store.storePreservedStatement(preserved);
     if (evidence == null) {
@@ -116,6 +129,34 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     }
     final now = DateTime.now().toUtc();
     final id = 'statement-${now.microsecondsSinceEpoch}';
+    if (kDebugMode) {
+      final summary =
+          extraction?.debugSummary ??
+          'Outcome: technicalOcrFailure\nFailure stage: capturePipeline';
+      _debugDiagnostics[id] = summary;
+      debugPrint('Butlerly statement OCR\n$summary');
+    }
+    String? rawTextReference;
+    if (extraction != null && extraction.rawText.isNotEmpty) {
+      final storedText = await services<FinanceServices>().saveExtraction(
+        Extraction(
+          id: ExtractionId('$id-ocr'),
+          evidenceId: evidence.id,
+          values: {'rawText': extraction.rawText},
+          provenance: Provenance(
+            id: ProvenanceId('$id-ocr-provenance'),
+            sourceType: ProvenanceSourceType.scan,
+            capturedAt: now,
+            sourceId: evidence.id.value,
+            originalRepresentation: 'On-device statement OCR',
+          ),
+          createdAt: now,
+        ),
+      );
+      if (storedText is ApplicationSuccess<Extraction>) {
+        rawTextReference = evidence.id.value;
+      }
+    }
     final matchedSource = extraction == null
         ? null
         : confidentlyMatchStatementSource(
@@ -140,11 +181,13 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
         periodEnd: extraction?.context.periodEnd,
         currency: extraction?.context.defaultCurrency,
         originalFilename: file.name,
-        rawTextReference: extraction == null ? null : evidence.id.value,
+        rawTextReference: rawTextReference,
         createdAt: now,
         updatedAt: now,
         extractionMessage: rows.isNotEmpty
-            ? null
+            ? extraction!.rows.any((row) => row.isUnresolved)
+                  ? l10n.text('statementUnresolvedEvidence')
+                  : null
             : extraction == null
             ? l10n.text('statementProcessingFailed')
             : switch (extraction.outcome) {
@@ -159,6 +202,9 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                 ),
                 StatementExtractionOutcome.reconstructedCandidates => l10n.text(
                   'statementNoRows',
+                ),
+                StatementExtractionOutcome.technicalOcrFailure => l10n.text(
+                  'statementProcessingFailed',
                 ),
               },
       ),
@@ -183,6 +229,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
       .map((entry) {
         final (position, value) = entry;
         final complete =
+            !value.isUnresolved &&
             value.date != null &&
             value.amount != null &&
             value.currency != null &&
@@ -285,6 +332,29 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     }
   }
 
+  Future<void> _showDiagnostics(String id) async {
+    if (!kDebugMode) return;
+    final summary = _debugDiagnostics[id];
+    if (summary == null) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Statement extraction diagnostics'),
+        content: SingleChildScrollView(child: SelectableText(summary)),
+        actions: [
+          TextButton(
+            onPressed: () => Clipboard.setData(ClipboardData(text: summary)),
+            child: const Text('Copy'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(context.l10n.text('done')),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
@@ -324,15 +394,22 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                     item.institution ?? context.l10n.text('statement'),
                   ),
                   subtitle: Text(
-                    item.paymentSourceId == null
-                        ? context.l10n.text('choosePaymentSourceToContinue')
-                        : context.l10n.text('reviewInProgress'),
+                    item.extractionMessage ??
+                        (item.paymentSourceId == null
+                            ? context.l10n.text('choosePaymentSourceToContinue')
+                            : context.l10n.text('reviewInProgress')),
                   ),
                   trailing: PopupMenuButton<String>(
                     onSelected: (value) {
                       if (value == 'delete') _deleteUnprocessed(item);
+                      if (value == 'diagnostics') _showDiagnostics(item.id);
                     },
                     itemBuilder: (_) => [
+                      if (kDebugMode && _debugDiagnostics.containsKey(item.id))
+                        const PopupMenuItem(
+                          value: 'diagnostics',
+                          child: Text('Extraction diagnostics'),
+                        ),
                       PopupMenuItem(
                         value: 'delete',
                         child: Text(context.l10n.text('deleteStatement')),
@@ -583,12 +660,21 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
           content: Text(
             '${summary.imported} ${context.l10n.text('statementSaved')} · '
             '${summary.needsReview} ${context.l10n.text('statementNeedsReview')} · '
-            '${summary.possibleDuplicates} ${context.l10n.text('possibleDuplicates')}',
+            '${summary.possibleDuplicates} ${context.l10n.text('possibleDuplicates')} · '
+            '${summary.failed} ${context.l10n.text('statementFailed')}',
           ),
           actions: [
             TextButton(
-              onPressed: () => context.go('/review'),
-              child: Text(context.l10n.text('review')),
+              onPressed: () {
+                if (summary.failed > 0) {
+                  Navigator.pop(context);
+                } else {
+                  context.go('/review');
+                }
+              },
+              child: Text(
+                context.l10n.text(summary.failed > 0 ? 'done' : 'review'),
+              ),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context),
@@ -1059,7 +1145,8 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
               vertical: ButlerlySpacing.sectionSpacing,
             ),
             child: Text(
-              context.l10n.text('statementNoRows'),
+              widget.statement.extractionMessage ??
+                  context.l10n.text('statementNoRows'),
               textAlign: TextAlign.center,
             ),
           ),

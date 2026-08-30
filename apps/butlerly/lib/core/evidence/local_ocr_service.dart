@@ -23,6 +23,66 @@ final class OcrObservation {
   final int order;
 }
 
+final class NativeOcrDiagnostics {
+  const NativeOcrDiagnostics({
+    required this.sourceKind,
+    required this.sourceOpened,
+    required this.observationsRecognized,
+    required this.recognizedLineCount,
+    required this.observationsWithBounds,
+    this.pixelWidth,
+    this.pixelHeight,
+    this.orientation,
+    this.confidenceMinimum,
+    this.confidenceAverage,
+    this.confidenceMaximum,
+    this.visionObservationsRecognized,
+  });
+
+  final String sourceKind;
+  final bool sourceOpened;
+  final int observationsRecognized;
+  final int recognizedLineCount;
+  final int observationsWithBounds;
+  final int? visionObservationsRecognized;
+  final int? pixelWidth, pixelHeight;
+  final String? orientation;
+  final double? confidenceMinimum, confidenceAverage, confidenceMaximum;
+
+  bool matchesChannelPayload(int observationCount) =>
+      observationsRecognized == observationCount;
+
+  static NativeOcrDiagnostics? fromMap(Object? value) {
+    if (value is! Map) return null;
+    return NativeOcrDiagnostics(
+      sourceKind: value['sourceKind'] as String? ?? 'unknown',
+      sourceOpened: value['sourceOpened'] as bool? ?? false,
+      observationsRecognized: (value['observationCount'] as num?)?.toInt() ?? 0,
+      visionObservationsRecognized: (value['visionObservationCount'] as num?)
+          ?.toInt(),
+      recognizedLineCount: (value['recognizedLineCount'] as num?)?.toInt() ?? 0,
+      observationsWithBounds:
+          (value['observationsWithBounds'] as num?)?.toInt() ?? 0,
+      pixelWidth: (value['pixelWidth'] as num?)?.toInt(),
+      pixelHeight: (value['pixelHeight'] as num?)?.toInt(),
+      orientation: value['orientation'] as String?,
+      confidenceMinimum: (value['confidenceMinimum'] as num?)?.toDouble(),
+      confidenceAverage: (value['confidenceAverage'] as num?)?.toDouble(),
+      confidenceMaximum: (value['confidenceMaximum'] as num?)?.toDouble(),
+    );
+  }
+}
+
+final class LocalOcrException implements Exception {
+  const LocalOcrException({required this.code, required this.stage});
+
+  final String code;
+  final String stage;
+
+  @override
+  String toString() => 'LocalOcrException(code: $code, stage: $stage)';
+}
+
 final class ReceiptOcrResult {
   ReceiptOcrResult({
     required String rawText,
@@ -41,6 +101,7 @@ final class ReceiptOcrResult {
     this.cardNetwork,
     this.cardType,
     this.cardExpiry,
+    this.nativeDiagnostics,
   }) : rawText = redactPanLikeText(rawText),
        observations = observations
            .map(
@@ -74,6 +135,7 @@ final class ReceiptOcrResult {
   final String? cardNetwork;
   final String? cardType;
   final String? cardExpiry;
+  final NativeOcrDiagnostics? nativeDiagnostics;
 
   Map<String, String> toExtractionValues() {
     final values = <String, String>{'rawText': rawText};
@@ -138,26 +200,81 @@ final class LocalOcrService {
   static const _channel = MethodChannel('butlerly/local_ocr');
 
   Future<ReceiptOcrResult> recognize(String path) async {
-    final raw = await _channel.invokeMapMethod<String, Object?>(
-      'recognizeText',
-      {'path': path},
-    );
-    final text = raw?['text'] as String? ?? '';
+    final payload = await _recognizeText(path);
+    final text = payload.text;
     if (text.trim().isEmpty) {
       throw const FormatException('No readable receipt text was found.');
     }
-    return ReceiptExtractor.extract(text, _observations(raw?['observations']));
+    final extracted = ReceiptExtractor.extract(text, payload.observations);
+    return ReceiptOcrResult(
+      rawText: extracted.rawText,
+      observations: extracted.observations,
+      ocrConfidence: extracted.ocrConfidence,
+      extractionConfidence: extracted.extractionConfidence,
+      fieldConfidence: extracted.fieldConfidence,
+      fieldEvidence: extracted.fieldEvidence,
+      merchant: extracted.merchant,
+      amount: extracted.amount,
+      currency: extracted.currency,
+      date: extracted.date,
+      tax: extracted.tax,
+      tip: extracted.tip,
+      cardLast4: extracted.cardLast4,
+      cardNetwork: extracted.cardNetwork,
+      cardType: extracted.cardType,
+      cardExpiry: extracted.cardExpiry,
+      nativeDiagnostics: payload.diagnostics,
+    );
   }
 
   Future<ReceiptOcrResult> recognizeStatement(String path) async {
-    final raw = await _channel.invokeMapMethod<String, Object?>(
-      'recognizeText',
-      {'path': path},
-    );
-    final text = raw?['text'] as String? ?? '';
+    final payload = await _recognizeText(path);
     return ReceiptOcrResult(
-      rawText: text,
-      observations: _observations(raw?['observations']),
+      rawText: payload.text,
+      observations: payload.observations,
+      nativeDiagnostics: payload.diagnostics,
+    );
+  }
+
+  static Future<_NativeOcrPayload> _recognizeText(String path) async {
+    Map<String, Object?>? raw;
+    try {
+      raw = await _channel.invokeMapMethod<String, Object?>('recognizeText', {
+        'path': path,
+      });
+    } on PlatformException catch (error) {
+      final details = error.details;
+      throw LocalOcrException(
+        code: error.code,
+        stage: details is Map
+            ? details['stage'] as String? ?? 'nativeOcr'
+            : 'nativeOcr',
+      );
+    } on MissingPluginException {
+      throw const LocalOcrException(
+        code: 'native_ocr_unavailable',
+        stage: 'methodChannel',
+      );
+    }
+    if (raw == null) {
+      throw const LocalOcrException(
+        code: 'empty_native_response',
+        stage: 'methodChannel',
+      );
+    }
+    final observations = _observations(raw['observations']);
+    final diagnostics = NativeOcrDiagnostics.fromMap(raw['diagnostics']);
+    if (diagnostics != null &&
+        !diagnostics.matchesChannelPayload(observations.length)) {
+      throw const LocalOcrException(
+        code: 'observation_count_mismatch',
+        stage: 'methodChannel',
+      );
+    }
+    return _NativeOcrPayload(
+      text: raw['text'] as String? ?? '',
+      observations: observations,
+      diagnostics: diagnostics,
     );
   }
 
@@ -165,8 +282,10 @@ final class LocalOcrService {
     if (value is! List) return const [];
     return value
         .whereType<Map>()
-        .map(
-          (item) => OcrObservation(
+        .indexed
+        .map((entry) {
+          final (index, item) = entry;
+          return OcrObservation(
             text: item['text'] as String? ?? '',
             confidence: (item['confidence'] as num?)?.toDouble() ?? 0,
             left: (item['left'] as num?)?.toDouble() ?? 0,
@@ -174,38 +293,32 @@ final class LocalOcrService {
             width: (item['width'] as num?)?.toDouble() ?? 0,
             height: (item['height'] as num?)?.toDouble() ?? 0,
             pageIndex: (item['pageIndex'] as num?)?.toInt() ?? 0,
-            order: (item['order'] as num?)?.toInt() ?? 0,
-          ),
-        )
-        .toList(growable: false)
-        .asMap()
-        .entries
-        .map(
-          (entry) => OcrObservation(
-            text: entry.value.text,
-            confidence: entry.value.confidence,
-            left: entry.value.left,
-            top: entry.value.top,
-            width: entry.value.width,
-            height: entry.value.height,
-            pageIndex: entry.value.pageIndex,
-            order: entry.value.order == 0 ? entry.key : entry.value.order,
-          ),
-        )
+            order: (item['order'] as num?)?.toInt() ?? index,
+          );
+        })
         .toList(growable: false);
   }
 
   Future<CardScanResult> recognizeCard(String path) async {
-    final raw = await _channel.invokeMapMethod<String, Object?>(
-      'recognizeText',
-      {'path': path},
-    );
-    final text = raw?['text'] as String? ?? '';
+    final payload = await _recognizeText(path);
+    final text = payload.text;
     if (text.trim().isEmpty) {
       throw const FormatException('No readable card details were found.');
     }
-    return CardTextParser.parse(text, _observations(raw?['observations']));
+    return CardTextParser.parse(text, payload.observations);
   }
+}
+
+final class _NativeOcrPayload {
+  const _NativeOcrPayload({
+    required this.text,
+    required this.observations,
+    required this.diagnostics,
+  });
+
+  final String text;
+  final List<OcrObservation> observations;
+  final NativeOcrDiagnostics? diagnostics;
 }
 
 final class CardScanResult {
