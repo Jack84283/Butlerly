@@ -236,6 +236,41 @@ class ButlerlyCompactActionButton extends StatelessWidget {
   );
 }
 
+/// Semantic destructive action with the same geometry as the primary button.
+/// The visual distinction is centralized here so screens provide only intent,
+/// labels, icons, and callbacks.
+class ButlerlyDestructiveButton extends StatelessWidget {
+  const ButlerlyDestructiveButton({
+    required this.onPressed,
+    required this.child,
+    this.icon,
+    super.key,
+  });
+
+  final VoidCallback? onPressed;
+  final Widget child;
+  final Widget? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final style = FilledButton.styleFrom(
+      backgroundColor: colors.error,
+      foregroundColor: Colors.white,
+      disabledBackgroundColor: colors.error.withValues(alpha: 0.35),
+      disabledForegroundColor: Colors.white.withValues(alpha: 0.7),
+    );
+    return icon == null
+        ? FilledButton(onPressed: onPressed, style: style, child: child)
+        : FilledButton.icon(
+            onPressed: onPressed,
+            style: style,
+            icon: icon!,
+            label: child,
+          );
+  }
+}
+
 class ButlerlyTransactionList extends StatelessWidget {
   const ButlerlyTransactionList({required this.children, super.key});
 
