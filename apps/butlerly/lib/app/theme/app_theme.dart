@@ -168,6 +168,11 @@ abstract final class AppTheme {
         labelStyle: TextStyle(color: colors.secondaryText),
         hintStyle: TextStyle(color: colors.tertiaryText),
       ),
+      searchBarTheme: SearchBarThemeData(
+        hintStyle: WidgetStatePropertyAll(
+          TextStyle(color: colors.secondaryText),
+        ),
+      ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           padding: const EdgeInsets.symmetric(
