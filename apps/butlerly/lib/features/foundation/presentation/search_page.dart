@@ -262,45 +262,48 @@ class _SearchPageState extends State<SearchPage>
     super.build(context);
     return ButlerlyPage(
       title: context.l10n.text('search'),
-      subtitle: context.l10n.text('searchIntro'),
       children: [
-        SearchBar(
-          controller: _text,
-          hintText: context.l10n.text('searchHint'),
-          leading: const Icon(Icons.search_rounded),
-          trailing: [
-            if (_text.text.isNotEmpty)
-              IconButton(
-                tooltip: context.l10n.text('clear'),
-                onPressed: () {
-                  _text.clear();
-                  _submit();
-                },
-                icon: const Icon(Icons.close_rounded),
-              ),
-          ],
-          onChanged: (_) => setState(() {}),
-          onSubmitted: (_) => _submit(),
-        ),
-        const SizedBox(height: ButlerlySpacing.small),
         Row(
           children: [
-            ButlerlyFilterButton(
-              selected: _activeFilterCount > 0,
-              label: _activeFilterCount > 0
+            Expanded(
+              child: SearchBar(
+                controller: _text,
+                hintText: context.l10n.text('searchHint'),
+                leading: const Icon(Icons.search_rounded),
+                trailing: [
+                  if (_text.text.isNotEmpty)
+                    IconButton(
+                      tooltip: context.l10n.text('clear'),
+                      onPressed: () {
+                        _text.clear();
+                        _submit();
+                      },
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                ],
+                onChanged: (_) => setState(() {}),
+                onSubmitted: (_) => _submit(),
+              ),
+            ),
+            const SizedBox(width: ButlerlySpacing.compact),
+            IconButton(
+              isSelected: _activeFilterCount > 0,
+              tooltip: _activeFilterCount > 0
                   ? '${context.l10n.text('filters')} ($_activeFilterCount)'
                   : context.l10n.text('filters'),
               onPressed: _openFilters,
+              icon: const Icon(Icons.tune_rounded),
             ),
-            if (_activeFilterCount > 0) ...[
-              const SizedBox(width: ButlerlySpacing.compact),
-              TextButton(
-                onPressed: _clear,
-                child: Text(context.l10n.text('clearFilters')),
-              ),
-            ],
           ],
         ),
+        if (_activeFilterCount > 0)
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: TextButton(
+              onPressed: _clear,
+              child: Text(context.l10n.text('clearFilters')),
+            ),
+          ),
         const SizedBox(height: ButlerlySpacing.section),
         if (_results == null)
           ButlerlyEmptyState(

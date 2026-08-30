@@ -259,7 +259,6 @@ class _ReviewPageState extends State<ReviewPage> {
     }
     return ButlerlyPage(
       title: context.l10n.text('review'),
-      subtitle: context.l10n.text('reviewSubtitle'),
       children: [
         SegmentedButton<_ReviewView>(
           showSelectedIcon: false,

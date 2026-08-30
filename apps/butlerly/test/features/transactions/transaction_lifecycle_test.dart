@@ -297,7 +297,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Filters'));
+    await tester.tap(find.byIcon(Icons.tune_rounded).first);
     await tester.pumpAndSettle();
     final categoryFilter = find.byKey(const ValueKey('search-category-filter'));
     await tester.scrollUntilVisible(
