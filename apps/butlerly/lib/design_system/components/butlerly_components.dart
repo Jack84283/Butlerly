@@ -413,6 +413,23 @@ class ButlerlyTransactionListItem extends StatelessWidget {
   );
 }
 
+/// Compact selection control for selectable transaction rows. The row itself
+/// owns the accessible touch target, so the control does not inflate the
+/// transaction header layout.
+class ButlerlyTransactionSelectionControl<T> extends StatelessWidget {
+  const ButlerlyTransactionSelectionControl({required this.value, super.key});
+
+  final T value;
+
+  @override
+  Widget build(BuildContext context) => Radio<T>(
+    value: value,
+    materialTapTargetSize:
+        ButlerlyTransactionItemTokens.selectionControlTapTargetSize,
+    visualDensity: ButlerlyTransactionItemTokens.selectionControlDensity,
+  );
+}
+
 /// Backwards-compatible name for callers not yet migrated to the common item.
 class ButlerlyRecordRow extends ButlerlyTransactionListItem {
   const ButlerlyRecordRow({

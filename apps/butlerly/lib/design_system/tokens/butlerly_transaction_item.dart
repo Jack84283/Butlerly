@@ -12,6 +12,8 @@ abstract final class ButlerlyTransactionItemTokens {
   static const dividerThickness = 1.0;
   static const dividerInset = ButlerlySpacing.micro;
   static const minTouchHeight = ButlerlySize.recordRowMinHeight;
+  static const selectionControlTapTargetSize = MaterialTapTargetSize.shrinkWrap;
+  static const selectionControlDensity = VisualDensity.compact;
   static const textHeightBehavior = TextHeightBehavior(
     applyHeightToFirstAscent: false,
     applyHeightToLastDescent: false,
