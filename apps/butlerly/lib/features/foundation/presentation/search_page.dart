@@ -337,41 +337,35 @@ class _SearchPageState extends State<SearchPage>
                   onAction: _clear,
                 );
               }
-              return ButlerlyCard(
-                padding: const EdgeInsets.symmetric(
-                  vertical: ButlerlySpacing.compact,
-                ),
-                child: ButlerlySeparatedList(
-                  children: values
-                      .map(
-                        (value) => ButlerlyRecordRow(
-                          title:
-                              value.description ??
-                              context.l10n.text('untitledTransaction'),
-                          subtitle: value.categoryId == null
-                              ? null
-                              : _presentation.categoryName(value.categoryId),
-                          meta: transactionDateLabel(
-                            value,
-                            pendingLabel: context.l10n.text('datePending'),
-                            locale: Localizations.localeOf(
-                              context,
-                            ).toLanguageTag(),
-                          ),
-                          amount: localizedTransactionAmount(
+              return ButlerlyTransactionList(
+                children: values
+                    .map(
+                      (value) => ButlerlyTransactionListItem(
+                        title:
+                            value.description ??
+                            context.l10n.text('untitledTransaction'),
+                        subtitle: value.categoryId == null
+                            ? null
+                            : _presentation.categoryName(value.categoryId),
+                        meta: transactionDateLabel(
+                          value,
+                          pendingLabel: context.l10n.text('datePending'),
+                          locale: Localizations.localeOf(
                             context,
-                            value.amount,
-                          ),
-                          currency: value.currency,
-                          isIncome:
-                              value.direction ==
-                              TransactionDirection.income.name,
-                          needsReview: value.reviewState == 'needsReview',
-                          onTap: () => _openDetail(value),
+                          ).toLanguageTag(),
                         ),
-                      )
-                      .toList(growable: false),
-                ),
+                        amount: localizedTransactionAmount(
+                          context,
+                          value.amount,
+                        ),
+                        currency: value.currency,
+                        isIncome:
+                            value.direction == TransactionDirection.income.name,
+                        needsReview: value.reviewState == 'needsReview',
+                        onTap: () => _openDetail(value),
+                      ),
+                    )
+                    .toList(growable: false),
               );
             },
           ),

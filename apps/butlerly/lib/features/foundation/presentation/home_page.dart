@@ -162,33 +162,28 @@ class _HomePageState extends State<HomePage> {
                 if (data.transactions.isEmpty)
                   const _HomeEmptyTransactions()
                 else
-                  ButlerlyCard(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: ButlerlySpacing.compact,
-                    ),
-                    child: ButlerlySeparatedList(
-                      children: data.transactions
-                          .map(
-                            (value) => ButlerlyRecordRow(
-                              title:
-                                  value.description ??
-                                  context.l10n.text('untitledTransaction'),
-                              subtitle: data.masterData.summary(value),
-                              meta: _date(value, context),
-                              amount: localizedTransactionAmount(
-                                context,
-                                value.amount,
-                              ),
-                              currency: value.currency,
-                              isIncome:
-                                  value.direction ==
-                                  TransactionDirection.income.name,
-                              needsReview: value.reviewState == 'needsReview',
-                              onTap: () => _open(value),
+                  ButlerlyTransactionList(
+                    children: data.transactions
+                        .map(
+                          (value) => ButlerlyTransactionListItem(
+                            title:
+                                value.description ??
+                                context.l10n.text('untitledTransaction'),
+                            subtitle: data.masterData.summary(value),
+                            meta: _date(value, context),
+                            amount: localizedTransactionAmount(
+                              context,
+                              value.amount,
                             ),
-                          )
-                          .toList(growable: false),
-                    ),
+                            currency: value.currency,
+                            isIncome:
+                                value.direction ==
+                                TransactionDirection.income.name,
+                            needsReview: value.reviewState == 'needsReview',
+                            onTap: () => _open(value),
+                          ),
+                        )
+                        .toList(growable: false),
                   ),
                 const SizedBox(height: ButlerlySpacing.structural),
               ],
