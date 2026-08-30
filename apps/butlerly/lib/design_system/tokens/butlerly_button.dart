@@ -6,6 +6,5 @@ abstract final class ButlerlyButtonTokens {
   static const compactHeight = ButlerlySize.minimumTarget;
   static const horizontalPadding = ButlerlySpacing.standard;
   static const verticalPadding = ButlerlySpacing.small;
-  static const iconGap = ButlerlySpacing.compact;
   static const radius = ButlerlyRadius.standard;
 }
