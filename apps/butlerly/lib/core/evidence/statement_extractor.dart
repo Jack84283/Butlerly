@@ -817,7 +817,7 @@ final class LocalStatementExtractor {
 
   static StatementLayoutProfile? _profile(String text) =>
       RegExp(
-        r'\b(?:transaction\s+date|posting\s+date)\b',
+        r'\b(?:purchase|transaction|posting|post)\s+date\b',
         caseSensitive: false,
       ).hasMatch(text)
       ? const StatementLayoutProfile(
@@ -833,9 +833,10 @@ final class LocalStatementExtractor {
           .toLowerCase()
           .replaceAll(RegExp(r'\s+'), ' ')
           .trim();
-      final role = value.contains('transaction date')
+      final role =
+          value.contains('transaction date') || value.contains('purchase date')
           ? StatementColumnRole.transactionDate
-          : value == 'posting date' || value == 'post date'
+          : RegExp(r'^post(?:ing)?\s+date$').hasMatch(value)
           ? StatementColumnRole.postingDate
           : value == 'date'
           ? StatementColumnRole.transactionDate
@@ -862,7 +863,24 @@ final class LocalStatementExtractor {
           date,
       caseSensitive: false,
     ).firstMatch(text);
-    if (match == null) return null;
+    if (match == null) {
+      if (!RegExp(
+        r'\b(?:statement|billing|period|cycle|from|through)\b',
+        caseSensitive: false,
+      ).hasMatch(text)) {
+        return null;
+      }
+      final fallback = RegExp(
+        r'\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\s*(?:-|–|to|through)\s*'
+        r'(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b',
+        caseSensitive: false,
+      ).firstMatch(text);
+      if (fallback == null) return null;
+      final start = parseDate(fallback.group(1)!);
+      final end = parseDate(fallback.group(2)!);
+      if (start == null || end == null || end.isBefore(start)) return null;
+      return first ? start : end;
+    }
     final start = parseDate(match.group(1)!);
     final end = parseDate(match.group(2)!);
     if (start == null || end == null || end.isBefore(start)) return null;

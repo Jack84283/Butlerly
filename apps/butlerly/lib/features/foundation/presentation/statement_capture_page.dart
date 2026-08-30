@@ -793,6 +793,9 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
     final date = TextEditingController(
       text: row.transactionDate?.toIso8601String().substring(0, 10),
     );
+    final postingDate = TextEditingController(
+      text: row.postingDate?.toIso8601String().substring(0, 10),
+    );
     final description = TextEditingController(text: row.description);
     final amount = TextEditingController(text: row.amount);
     final currency = TextEditingController(text: row.currency);
@@ -814,75 +817,102 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
         builder: (context, setDialogState) => ButlerlySheet(
           title: const Text('Correct extracted row'),
           content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(row.originalText),
-                TextField(
-                  controller: date,
-                  decoration: const InputDecoration(
-                    labelText: 'Date (YYYY-MM-DD)',
-                  ),
-                ),
-                TextField(
-                  controller: description,
-                  decoration: const InputDecoration(labelText: 'Description'),
-                ),
-                ButlerlyMerchantSelector(
-                  merchants: widget.masterData.merchants,
-                  value: merchantId,
-                  label: context.l10n.text('merchant'),
-                  clearLabel: context.l10n.text('clear'),
-                  createTooltip: context.l10n.text('create'),
-                  onChanged: (value) =>
-                      setDialogState(() => merchantId = value),
-                ),
-                ButlerlyCategorySelector(
-                  categories: widget.masterData.categories,
-                  masterData: widget.masterData.presentation,
-                  value: categoryId,
-                  label: context.l10n.text('category'),
-                  clearLabel: context.l10n.text('clear'),
-                  onChanged: (value) => setDialogState(() {
-                    categoryId = value;
-                    subcategoryId = null;
-                  }),
-                ),
-                ButlerlySubcategorySelector(
-                  categories: widget.masterData.categories,
-                  masterData: widget.masterData.presentation,
-                  parentId: categoryId,
-                  value: subcategoryId,
-                  label: context.l10n.text('subcategory'),
-                  clearLabel: context.l10n.text('clear'),
-                  onChanged: (value) =>
-                      setDialogState(() => subcategoryId = value),
-                ),
-                ButlerlyTagPicker(
-                  tags: widget.masterData.tags,
-                  masterData: widget.masterData.presentation,
-                  selected: tagIds,
-                  searchLabel: context.l10n.text('search'),
-                  createLabel: context.l10n.text('create'),
-                  onChanged: (value) => setDialogState(() => tagIds = value),
-                ),
-                TextField(
-                  controller: amount,
-                  decoration: const InputDecoration(labelText: 'Amount'),
-                ),
-                TextField(
-                  controller: currency,
-                  decoration: const InputDecoration(labelText: 'Currency'),
-                ),
-                ButlerlyDirectionFilter(
-                  value: direction == null
-                      ? null
-                      : TransactionDirection.values.byName(direction!),
-                  label: context.l10n.text('direction'),
-                  anyLabel: context.l10n.text('clear'),
-                  onChanged: (v) => setDialogState(() => direction = v?.name),
-                ),
-              ],
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                vertical: ButlerlySpacing.small,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children:
+                    [
+                          Text(row.originalText),
+                          TextField(
+                            controller: date,
+                            decoration: const InputDecoration(
+                              labelText: 'Date (YYYY-MM-DD)',
+                            ),
+                          ),
+                          TextField(
+                            controller: postingDate,
+                            decoration: const InputDecoration(
+                              labelText: 'Posting date (YYYY-MM-DD)',
+                            ),
+                          ),
+                          TextField(
+                            controller: description,
+                            decoration: const InputDecoration(
+                              labelText: 'Description',
+                            ),
+                          ),
+                          ButlerlyMerchantSelector(
+                            merchants: widget.masterData.merchants,
+                            value: merchantId,
+                            label: context.l10n.text('merchant'),
+                            clearLabel: context.l10n.text('clear'),
+                            createTooltip: context.l10n.text('create'),
+                            onChanged: (value) =>
+                                setDialogState(() => merchantId = value),
+                          ),
+                          ButlerlyCategorySelector(
+                            categories: widget.masterData.categories,
+                            masterData: widget.masterData.presentation,
+                            value: categoryId,
+                            label: context.l10n.text('category'),
+                            clearLabel: context.l10n.text('clear'),
+                            onChanged: (value) => setDialogState(() {
+                              categoryId = value;
+                              subcategoryId = null;
+                            }),
+                          ),
+                          ButlerlySubcategorySelector(
+                            categories: widget.masterData.categories,
+                            masterData: widget.masterData.presentation,
+                            parentId: categoryId,
+                            value: subcategoryId,
+                            label: context.l10n.text('subcategory'),
+                            clearLabel: context.l10n.text('clear'),
+                            onChanged: (value) =>
+                                setDialogState(() => subcategoryId = value),
+                          ),
+                          ButlerlyTagPicker(
+                            tags: widget.masterData.tags,
+                            masterData: widget.masterData.presentation,
+                            selected: tagIds,
+                            searchLabel: context.l10n.text('search'),
+                            createLabel: context.l10n.text('create'),
+                            onChanged: (value) =>
+                                setDialogState(() => tagIds = value),
+                          ),
+                          TextField(
+                            controller: amount,
+                            decoration: const InputDecoration(
+                              labelText: 'Amount',
+                            ),
+                          ),
+                          TextField(
+                            controller: currency,
+                            decoration: const InputDecoration(
+                              labelText: 'Currency',
+                            ),
+                          ),
+                          ButlerlyDirectionFilter(
+                            value: direction == null
+                                ? null
+                                : TransactionDirection.values.byName(
+                                    direction!,
+                                  ),
+                            label: context.l10n.text('direction'),
+                            anyLabel: context.l10n.text('clear'),
+                            onChanged: (v) =>
+                                setDialogState(() => direction = v?.name),
+                          ),
+                        ]
+                        .expand((child) sync* {
+                          yield child;
+                          yield const SizedBox(height: ButlerlySpacing.small);
+                        })
+                        .toList(growable: false),
+              ),
             ),
           ),
           actions: [
@@ -912,6 +942,9 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
       normalizedAmount = null;
     }
     final correctedDate = LocalStatementExtractor.parseDate(date.text.trim());
+    final correctedPostingDate = LocalStatementExtractor.parseDate(
+      postingDate.text.trim(),
+    );
     final correctedCurrency =
         RegExp(r'^[A-Za-z]{3}$').hasMatch(currency.text.trim())
         ? currency.text.trim().toUpperCase()
@@ -922,7 +955,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
       position: row.position,
       originalText: row.originalText,
       transactionDate: correctedDate,
-      postingDate: row.postingDate,
+      postingDate: correctedPostingDate,
       description: description.text.trim(),
       amount: normalizedAmount,
       currency: correctedCurrency,

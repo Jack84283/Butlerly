@@ -4,6 +4,84 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('parses short transaction dates and infers their year from context', () {
+    for (final value in ['8/15', '08/15', '8-15', '08-15']) {
+      final result = LocalStatementExtractor.fromObservations(
+        'Statement period: 2026-08-01 - 2026-08-31',
+        [_observation('$value SHOP 42.19', .1, .3, order: 0)],
+      );
+      expect(result.rows, hasLength(1), reason: value);
+      expect(result.rows.single.date, DateTime(2026, 8, 15), reason: value);
+      expect(result.rows.single.amount, '42.19', reason: value);
+    }
+  });
+
+  test('short dates resolve across a statement year boundary', () {
+    final result = LocalStatementExtractor.fromObservations(
+      'Statement period 12/20/2025 - 1/19/2026',
+      [
+        _observation('12/28 SHOP 10.00', .1, .3, order: 0),
+        _observation('1/05 CAFE 8.00', .1, .4, order: 1),
+      ],
+    );
+    expect(result.rows, hasLength(2));
+    expect(result.rows[0].date, DateTime(2025, 12, 28));
+    expect(result.rows[1].date, DateTime(2026, 1, 5));
+  });
+
+  test('short date without safe year remains unresolved evidence', () {
+    final result = LocalStatementExtractor.fromObservations('SHOP 42.19', [
+      _observation('8/15 SHOP 42.19', .1, .3, order: 0),
+    ]);
+    expect(result.rows, hasLength(1));
+    expect(result.rows.single.date, isNull);
+    expect(result.rows.single.amount, '42.19');
+    expect(result.rows.single.isUnresolved, isTrue);
+  });
+
+  test('purchase and posting date columns map independently with geometry', () {
+    final result = LocalStatementExtractor.fromObservations(
+      'Statement period: 2026-08-01 - 2026-08-31\n'
+      'Purchase Date Post Date Description Amount',
+      [
+        _observation('8/15', .05, .3, order: 0),
+        _observation('8/17', .25, .305, order: 1),
+        _observation('SAFEWAY STORE', .45, .31, order: 2),
+        _observation('\$42.19', .82, .315, order: 3),
+      ],
+    );
+    expect(result.rows, hasLength(1));
+    expect(result.rows.single.date, DateTime(2026, 8, 15));
+    expect(result.rows.single.postingDate, DateTime(2026, 8, 17));
+    expect(result.rows.single.amount, '42.19');
+    expect(result.rows.single.description, 'SAFEWAY STORE');
+  });
+
+  test(
+    'supports combined and incomplete purchase-date rows without dropping evidence',
+    () {
+      final combined = LocalStatementExtractor.parse(
+        'Statement period: 2026-08-01 - 2026-08-31\n'
+        '8/15 8/17 SAFEWAY STORE 42.19',
+      ).single;
+      expect(combined.date, DateTime(2026, 8, 15));
+      expect(combined.postingDate, DateTime(2026, 8, 17));
+      expect(combined.amount, '42.19');
+
+      final missingPosting = LocalStatementExtractor.parse(
+        'Statement period: 2026-08-01 - 2026-08-31\n8/15 SAFEWAY STORE 42.19',
+      ).single;
+      expect(missingPosting.date, DateTime(2026, 8, 15));
+      expect(missingPosting.postingDate, isNull);
+      expect(missingPosting.amount, '42.19');
+
+      final missingAmount = LocalStatementExtractor.parse(
+        'Statement period: 2026-08-01 - 2026-08-31\n8/15 8/17 SAFEWAY STORE',
+      ).single;
+      expect(missingAmount.amount, isNull);
+      expect(missingAmount.isUnresolved, isTrue);
+    },
+  );
   test(
     'complementary incomplete rows stay separate in text and Vision paths',
     () {
