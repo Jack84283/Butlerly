@@ -461,7 +461,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Possible duplicate group'), findsOneWidget);
-      expect(find.byType(RadioListTile<TransactionId>), findsNWidgets(2));
+      expect(find.byType(Radio<TransactionId>), findsNWidgets(2));
       expect(find.text('Keep both'), findsOneWidget);
       expect(
         find.textContaining('Travel card', skipOffstage: false),
@@ -503,7 +503,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      final candidate = find.byType(RadioListTile<TransactionId>).last;
+      final candidate = find.byType(ButlerlyTransactionListItem).last;
       await tester.ensureVisible(candidate);
       await tester.tap(candidate);
       await tester.pump();

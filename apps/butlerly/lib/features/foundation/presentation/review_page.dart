@@ -3,6 +3,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -511,8 +512,7 @@ class _ReviewTransactionCard extends StatelessWidget {
         ),
         Padding(
           padding: const EdgeInsets.all(ButlerlySpacing.standard),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: ButlerlyTransactionList(
             children: [
               Text(reason),
               const SizedBox(height: ButlerlySpacing.small),
@@ -632,18 +632,37 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       for (final transaction in transactions)
-                        RadioListTile<TransactionId>(
-                          value: TransactionId(transaction.id),
-                          title: Text(
-                            transaction.description?.trim().isNotEmpty == true
-                                ? transaction.description!
-                                : context.l10n.text('untitledTransaction'),
+                        ButlerlyTransactionListItem(
+                          title:
+                              transaction.description?.trim().isNotEmpty == true
+                              ? transaction.description!
+                              : context.l10n.text('untitledTransaction'),
+                          amount: localizedTransactionAmount(
+                            context,
+                            transaction.amount,
                           ),
-                          subtitle: Text(
-                            _transactionEvidenceLabel(
+                          currency: transaction.currency,
+                          meta: transactionDateLabel(
+                            transaction,
+                            pendingLabel: context.l10n.text('datePending'),
+                            locale: Localizations.localeOf(
                               context,
-                              transaction,
-                              masterData,
+                            ).toLanguageTag(),
+                          ),
+                          subtitle: _transactionEvidenceLabel(
+                            context,
+                            transaction,
+                            masterData,
+                          ),
+                          isIncome:
+                              transaction.direction ==
+                              TransactionDirection.income.name,
+                          selectionControl: Radio<TransactionId>(
+                            value: TransactionId(transaction.id),
+                          ),
+                          onTap: () => setState(
+                            () => _selectedTransactionId = TransactionId(
+                              transaction.id,
                             ),
                           ),
                         ),
@@ -701,12 +720,7 @@ String _transactionEvidenceLabel(
     if (transaction.provenance.isNotEmpty)
       _reviewProvenanceLabel(context, transaction.provenance.first.sourceType),
   ];
-  final details = [
-    '${localizedTransactionAmount(context, transaction.amount)} ${transaction.currency}',
-    transaction.transactionDate ?? '',
-    ...supporting,
-  ].where((value) => value.isNotEmpty).join(' · ');
-  return details;
+  return supporting.where((value) => value.isNotEmpty).join(' · ');
 }
 
 String _directionLabel(BuildContext context, String direction) =>

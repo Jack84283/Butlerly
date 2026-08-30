@@ -271,6 +271,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     this.possibleDuplicate = false,
     this.possibleDuplicateLabel,
     this.onPossibleDuplicateTap,
+    this.selectionControl,
     this.onTap,
     super.key,
   });
@@ -285,6 +286,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
   final bool possibleDuplicate;
   final String? possibleDuplicateLabel;
   final VoidCallback? onPossibleDuplicateTap;
+  final Widget? selectionControl;
   final VoidCallback? onTap;
 
   @override
@@ -378,6 +380,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                           ),
                         ),
                       ),
+                    ?selectionControl,
                   ],
                 ),
                 Text(
@@ -415,6 +418,7 @@ class ButlerlyRecordRow extends ButlerlyTransactionListItem {
     super.possibleDuplicate,
     super.possibleDuplicateLabel,
     super.onPossibleDuplicateTap,
+    super.selectionControl,
     super.onTap,
     super.key,
   });
