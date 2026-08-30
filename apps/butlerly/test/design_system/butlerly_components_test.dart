@@ -65,6 +65,11 @@ void main() {
       tester.widget<Icon>(find.byIcon(Icons.save_outlined)).size,
       ButlerlySize.compactActionIconSize,
     );
+    expect(find.byType(OutlinedButton), findsOneWidget);
+    expect(
+      tester.widget<OutlinedButton>(find.byType(OutlinedButton)).style,
+      isNull,
+    );
   });
 
   testWidgets('destructive action uses the centralized error treatment', (
