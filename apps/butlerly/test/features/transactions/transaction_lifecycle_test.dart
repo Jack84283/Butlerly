@@ -503,6 +503,8 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      expect(find.byType(ButlerlyTransactionList), findsOneWidget);
+      expect(find.byType(Divider), findsOneWidget);
       final candidate = find.byType(ButlerlyTransactionListItem).last;
       await tester.ensureVisible(candidate);
       await tester.tap(candidate);
