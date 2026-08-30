@@ -69,6 +69,10 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('No evidence is attached locally.'), findsOneWidget);
+    expect(find.text('Attach receipt'), findsNothing);
+    expect(find.text('Attach file'), findsNothing);
+    expect(find.text('Attach receipt or file'), findsNothing);
+    expect(find.byIcon(Icons.add_photo_alternate_outlined), findsNothing);
 
     notifyTransactionChanged();
     await tester.pumpAndSettle();

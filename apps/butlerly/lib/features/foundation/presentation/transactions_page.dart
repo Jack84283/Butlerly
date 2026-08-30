@@ -13,7 +13,6 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
-import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -1191,30 +1190,6 @@ class _EvidenceSectionState extends State<_EvidenceSection> {
         },
       );
 
-  Future<void> _attach() async {
-    const types = XTypeGroup(
-      label: 'Receipts and documents',
-      extensions: ['jpg', 'jpeg', 'png', 'heic', 'webp', 'pdf'],
-    );
-    final source = await openFile(acceptedTypeGroups: const [types]);
-    if (source == null || !mounted) return;
-    final stored = await services<LocalEvidenceStore>().attach(
-      transactionId: widget.transactionId,
-      source: source,
-    );
-    if (!mounted) return;
-    if (stored) setState(() => _evidence = _load());
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          context.l10n.text(
-            stored ? 'evidenceAttached' : 'evidenceAttachFailed',
-          ),
-        ),
-      ),
-    );
-  }
-
   Future<void> _remove(EvidenceItem evidence) async {
     final confirmed = await showButlerlyBottomSheet<bool>(
       context: context,
@@ -1337,14 +1312,6 @@ class _EvidenceSectionState extends State<_EvidenceSection> {
           Text(
             context.l10n.text('evidence'),
             style: Theme.of(context).textTheme.titleMedium,
-          ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: _attach,
-              icon: const Icon(Icons.add_photo_alternate_outlined),
-              label: Text(context.l10n.text('attachEvidence')),
-            ),
           ),
           if (evidence.isEmpty)
             Padding(
