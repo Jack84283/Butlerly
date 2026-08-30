@@ -16,11 +16,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(sqfliteFfiInit);
+  setUpAll(() async {
+    await initializeDateFormatting('en');
+  });
   const channel = MethodChannel('butlerly/local_ocr');
   final messenger =
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
@@ -132,7 +136,7 @@ void main() {
       await tester.tap(find.text('Done'));
       await tester.pumpAndSettle();
       await tester.runAsync(() async {
-        await tester.tap(find.text('Statement').last);
+        await tester.tap(find.textContaining('Statement ·').last);
         await Future<void>.delayed(const Duration(milliseconds: 30));
       });
       await tester.pumpAndSettle();

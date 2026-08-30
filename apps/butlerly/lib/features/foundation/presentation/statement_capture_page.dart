@@ -8,6 +8,7 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/statement_labels.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -397,9 +398,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                 margin: const EdgeInsets.only(bottom: ButlerlySpacing.cardGap),
                 child: ListTile(
                   leading: const Icon(Icons.description_outlined),
-                  title: Text(
-                    item.institution ?? context.l10n.text('statement'),
-                  ),
+                  title: Text(statementDisplayTitle(context, item, _sources)),
                   subtitle: Text(
                     item.extractionMessage ??
                         (item.paymentSourceId == null
@@ -1139,7 +1138,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
           Card(
             child: ListTile(
               title: Text(
-                widget.statement.institution ?? context.l10n.text('statement'),
+                statementDisplayTitle(context, widget.statement, _sources),
               ),
               subtitle: Text(
                 [
