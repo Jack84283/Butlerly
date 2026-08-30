@@ -632,41 +632,46 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      for (final transaction in transactions)
-                        ButlerlyTransactionListItem(
-                          title:
-                              transaction.description?.trim().isNotEmpty == true
-                              ? transaction.description!
-                              : context.l10n.text('untitledTransaction'),
-                          amount: localizedTransactionAmount(
-                            context,
-                            transaction.amount,
-                          ),
-                          currency: transaction.currency,
-                          meta: transactionDateLabel(
-                            transaction,
-                            pendingLabel: context.l10n.text('datePending'),
-                            locale: Localizations.localeOf(
-                              context,
-                            ).toLanguageTag(),
-                          ),
-                          subtitle: _transactionEvidenceLabel(
-                            context,
-                            transaction,
-                            masterData,
-                          ),
-                          isIncome:
-                              transaction.direction ==
-                              TransactionDirection.income.name,
-                          selectionControl: Radio<TransactionId>(
-                            value: TransactionId(transaction.id),
-                          ),
-                          onTap: () => setState(
-                            () => _selectedTransactionId = TransactionId(
-                              transaction.id,
+                      ButlerlyTransactionList(
+                        children: [
+                          for (final transaction in transactions)
+                            ButlerlyTransactionListItem(
+                              title:
+                                  transaction.description?.trim().isNotEmpty ==
+                                      true
+                                  ? transaction.description!
+                                  : context.l10n.text('untitledTransaction'),
+                              amount: localizedTransactionAmount(
+                                context,
+                                transaction.amount,
+                              ),
+                              currency: transaction.currency,
+                              meta: transactionDateLabel(
+                                transaction,
+                                pendingLabel: context.l10n.text('datePending'),
+                                locale: Localizations.localeOf(
+                                  context,
+                                ).toLanguageTag(),
+                              ),
+                              subtitle: _transactionEvidenceLabel(
+                                context,
+                                transaction,
+                                masterData,
+                              ),
+                              isIncome:
+                                  transaction.direction ==
+                                  TransactionDirection.income.name,
+                              selectionControl: Radio<TransactionId>(
+                                value: TransactionId(transaction.id),
+                              ),
+                              onTap: () => setState(
+                                () => _selectedTransactionId = TransactionId(
+                                  transaction.id,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
+                        ],
+                      ),
                     ],
                   ),
                 );
