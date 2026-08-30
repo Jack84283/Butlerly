@@ -4,6 +4,7 @@ import 'package:butlerly/app/butlerly_app.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -58,7 +59,42 @@ void main() {
     );
     expect(
       theme.textButtonTheme.style?.minimumSize?.resolve({}),
-      const Size.square(ButlerlyButtonTokens.compactHeight),
+      const Size(
+        ButlerlyButtonTokens.compactHeight,
+        ButlerlyButtonTokens.height,
+      ),
+    );
+    expect(
+      theme.textButtonTheme.style?.padding?.resolve({}),
+      const EdgeInsets.symmetric(
+        horizontal: ButlerlyButtonTokens.horizontalPadding,
+        vertical: ButlerlyButtonTokens.verticalPadding,
+      ),
+    );
+    expect(
+      theme.iconButtonTheme.style?.minimumSize?.resolve({}),
+      const Size.square(ButlerlySize.minimumTarget),
+    );
+    expect(
+      theme.iconButtonTheme.style?.iconSize?.resolve({}),
+      ButlerlyButtonTokens.iconSize,
+    );
+    expect(
+      theme.iconButtonTheme.style?.foregroundColor?.resolve({}),
+      theme.colorScheme.onSurface,
+    );
+
+    final dark = AppTheme.dark;
+    expect(
+      dark.textButtonTheme.style?.padding?.resolve({}),
+      const EdgeInsets.symmetric(
+        horizontal: ButlerlyButtonTokens.horizontalPadding,
+        vertical: ButlerlyButtonTokens.verticalPadding,
+      ),
+    );
+    expect(
+      dark.iconButtonTheme.style?.foregroundColor?.resolve({}),
+      dark.colorScheme.onSurface,
     );
   });
 

@@ -204,7 +204,14 @@ abstract final class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          minimumSize: const Size.square(ButlerlyButtonTokens.compactHeight),
+          minimumSize: const Size(
+            ButlerlyButtonTokens.compactHeight,
+            ButlerlyButtonTokens.height,
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: ButlerlyButtonTokens.horizontalPadding,
+            vertical: ButlerlyButtonTokens.verticalPadding,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(ButlerlyButtonTokens.radius),
           ),
@@ -214,6 +221,10 @@ abstract final class AppTheme {
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(
           minimumSize: const Size.square(ButlerlySize.minimumTarget),
+          iconSize: ButlerlyButtonTokens.iconSize,
+          padding: const EdgeInsets.all(ButlerlySpacing.compact),
+          foregroundColor: colors.primaryText,
+          disabledForegroundColor: colors.tertiaryText,
         ),
       ),
       dialogTheme: DialogThemeData(
