@@ -7,6 +7,8 @@ void main() {
   setUpAll(() async {
     await initializeDateFormatting('en');
     await initializeDateFormatting('zh');
+    await initializeDateFormatting('en_US');
+    await initializeDateFormatting('en_GB');
   });
   final source = PaymentSource(
     id: PaymentSourceId('source'),
@@ -82,5 +84,24 @@ void main() {
       ),
       startsWith('Issuer fallback ·'),
     );
+  });
+
+  test('preserves regional date conventions for English locales', () {
+    final value = makeStatement(statementDate: DateTime(2026, 8, 15));
+    final us = statementDisplayTitleForLocale(
+      value,
+      [source],
+      locale: 'en-US',
+      fallback: 'Statement',
+    );
+    final gb = statementDisplayTitleForLocale(
+      value,
+      [source],
+      locale: 'en-GB',
+      fallback: 'Statement',
+    );
+    expect(us, 'Chase Sapphire · Aug 15, 2026');
+    expect(gb, 'Chase Sapphire · 15 Aug 2026');
+    expect(us, isNot(gb));
   });
 }

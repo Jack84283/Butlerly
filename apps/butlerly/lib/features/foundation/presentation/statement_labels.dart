@@ -16,7 +16,7 @@ String statementDisplayTitle(
   return statementDisplayTitleForLocale(
     statement,
     sources,
-    locale: Localizations.localeOf(context).languageCode,
+    locale: Localizations.localeOf(context).toLanguageTag(),
     fallback: context.l10n.text('statement'),
   );
 }
