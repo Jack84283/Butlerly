@@ -331,6 +331,8 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                           Text(
                             '$amount $currency',
                             style: context.transactionItemAmount,
+                            textHeightBehavior: ButlerlyTransactionItemTokens
+                                .textHeightBehavior,
                           ),
                           if (needsReview || possibleDuplicate) ...[
                             const SizedBox(
@@ -377,6 +379,8 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             textAlign: TextAlign.end,
                             style: context.transactionItemDate,
+                            textHeightBehavior: ButlerlyTransactionItemTokens
+                                .textHeightBehavior,
                           ),
                         ),
                       ),
@@ -388,6 +392,8 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: context.transactionItemDescription,
+                  textHeightBehavior:
+                      ButlerlyTransactionItemTokens.textHeightBehavior,
                 ),
                 if (subtitle != null && subtitle!.trim().isNotEmpty)
                   Text(
@@ -395,6 +401,8 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: context.transactionItemMetadata,
+                    textHeightBehavior:
+                        ButlerlyTransactionItemTokens.textHeightBehavior,
                   ),
               ],
             ),
