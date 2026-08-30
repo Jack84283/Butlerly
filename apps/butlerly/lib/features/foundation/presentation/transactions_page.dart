@@ -1328,7 +1328,6 @@ class _EvidenceSectionState extends State<_EvidenceSection> {
                       ? context.l10n.text('viewImage')
                       : value.originalName,
                 ),
-                subtitle: Text(value.mediaType),
                 onTap: () => _preview(value),
                 trailing: IconButton(
                   tooltip: context.l10n.text('remove'),
@@ -1357,7 +1356,6 @@ class _EvidenceFileSummary extends StatelessWidget {
         const Icon(Icons.description_outlined, size: 64),
         const SizedBox(height: ButlerlySpacing.small),
         Text(evidence.originalName, textAlign: TextAlign.center),
-        Text(evidence.mediaType, style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: ButlerlySpacing.small),
         Text(
           context.l10n.text('evidenceStoredLocally'),
