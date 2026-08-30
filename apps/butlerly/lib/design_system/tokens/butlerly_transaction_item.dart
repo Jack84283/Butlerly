@@ -1,16 +1,17 @@
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter/material.dart';
 
 /// Layout values shared by every transaction-record list presentation.
 abstract final class ButlerlyTransactionItemTokens {
-  static const horizontalInset = 12.0;
-  static const verticalPadding = 8.0;
+  static const horizontalInset = ButlerlySpacing.compact;
+  static const verticalPadding = ButlerlySpacing.compact;
   static const directionIconSize = 18.0;
   static const warningIconSize = 18.0;
-  static const headerSpacing = 4.0;
+  static const headerSpacing = ButlerlySpacing.micro;
   static const dividerThickness = 1.0;
-  static const dividerInset = 12.0;
-  static const minTouchHeight = 72.0;
+  static const dividerInset = ButlerlySpacing.compact;
+  static const minTouchHeight = ButlerlySize.recordRowMinHeight;
 }
 
 /// Semantic styles for the three lines and indicators in a transaction row.
