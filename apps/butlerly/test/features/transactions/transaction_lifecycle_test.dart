@@ -76,6 +76,39 @@ void main() {
     expect(evidenceRepository.listCalls, 2);
   });
 
+  testWidgets('transaction detail centers the financial header', (
+    tester,
+  ) async {
+    final transaction = TransactionDto(
+      id: 'centered-header',
+      amount: '128.45',
+      currency: 'USD',
+      direction: 'expense',
+      status: 'active',
+      reviewState: 'clear',
+      description: 'Whole Foods Market',
+      transactionDate: '2026-08-21',
+      createdAt: DateTime.utc(2026, 8, 21),
+      updatedAt: DateTime.utc(2026, 8, 21),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TransactionDetailPage(
+          finance: services<FinanceServices>(),
+          transaction: transaction,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final amount = tester.widget<Text>(find.text('128.45 USD'));
+    final description = tester.widget<Text>(find.text('Whole Foods Market'));
+    expect(amount.textAlign, TextAlign.center);
+    expect(amount.style?.fontSize, 32);
+    expect(amount.style?.fontWeight, FontWeight.w700);
+    expect(description.textAlign, TextAlign.center);
+  });
+
   testWidgets('creates, edits, archives, and permanently deletes locally', (
     tester,
   ) async {

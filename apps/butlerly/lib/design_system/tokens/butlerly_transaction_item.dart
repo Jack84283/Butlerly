@@ -43,3 +43,15 @@ extension ButlerlyTransactionItemStyles on BuildContext {
 
   Color get transactionItemDivider => colors.cardDivider;
 }
+
+extension ButlerlyTransactionDetailStyles on BuildContext {
+  TextStyle get transactionDetailAmount =>
+      Theme.of(this).textTheme.titleLarge!.copyWith(
+        fontSize: 32,
+        fontWeight: FontWeight.w700,
+        fontFeatures: const [FontFeature.tabularFigures()],
+      );
+
+  TextStyle get transactionDetailDescription =>
+      Theme.of(this).textTheme.bodyMedium!;
+}

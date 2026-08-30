@@ -5,6 +5,7 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -990,14 +991,25 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          Text(
-            transaction.description ?? context.l10n.text('untitledTransaction'),
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${localizedTransactionAmount(context, transaction.amount)} ${transaction.currency}',
-            style: Theme.of(context).textTheme.titleLarge,
+          SizedBox(
+            width: double.infinity,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  '${localizedTransactionAmount(context, transaction.amount)} ${transaction.currency}',
+                  textAlign: TextAlign.center,
+                  style: context.transactionDetailAmount,
+                ),
+                const SizedBox(height: ButlerlySpacing.micro),
+                Text(
+                  transaction.description ??
+                      context.l10n.text('untitledTransaction'),
+                  textAlign: TextAlign.center,
+                  style: context.transactionDetailDescription,
+                ),
+              ],
+            ),
           ),
           if (transaction.normalizedMoney.isNotEmpty) ...[
             const SizedBox(height: 8),
