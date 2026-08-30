@@ -681,13 +681,13 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
             Wrap(
               spacing: ButlerlySpacing.small,
               children: [
-                FilledButton(
+                OutlinedButton(
                   onPressed: widget.onKeepBoth,
                   child: Text(context.l10n.text('keepBoth')),
                 ),
                 Tooltip(
                   message: context.l10n.text('consolidateUseOneHint'),
-                  child: OutlinedButton(
+                  child: FilledButton(
                     onPressed: _selectedTransactionId == null
                         ? null
                         : () => widget.onConsolidate(_selectedTransactionId!),

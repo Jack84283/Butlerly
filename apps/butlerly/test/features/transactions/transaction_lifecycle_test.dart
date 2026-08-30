@@ -505,6 +505,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ButlerlyTransactionList), findsOneWidget);
       expect(find.byType(Divider), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, 'Keep both'), findsOneWidget);
+      expect(
+        find.widgetWithText(FilledButton, 'Consolidate / use one'),
+        findsOneWidget,
+      );
       final candidate = find.byType(ButlerlyTransactionListItem).last;
       await tester.ensureVisible(candidate);
       await tester.tap(candidate);
@@ -513,8 +518,8 @@ void main() {
       await tester.ensureVisible(consolidate);
       expect(
         tester
-            .widget<OutlinedButton>(
-              find.widgetWithText(OutlinedButton, 'Consolidate / use one'),
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, 'Consolidate / use one'),
             )
             .onPressed,
         isNotNull,
