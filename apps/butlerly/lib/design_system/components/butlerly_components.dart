@@ -362,13 +362,20 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                       ),
                     ),
                     if (meta != null)
+                      const SizedBox(
+                        width: ButlerlyTransactionItemTokens.headerSpacing,
+                      ),
+                    if (meta != null)
                       Flexible(
-                        child: Text(
-                          meta!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.end,
-                          style: context.transactionItemDate,
+                        child: Align(
+                          alignment: AlignmentDirectional.centerEnd,
+                          child: Text(
+                            meta!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.end,
+                            style: context.transactionItemDate,
+                          ),
                         ),
                       ),
                   ],
