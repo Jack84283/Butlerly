@@ -2,8 +2,6 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
-import 'master_data_labels.dart';
-
 /// Presentation-only lookup data for transaction master-data references.
 ///
 /// Transaction DTOs intentionally carry stable foreign keys. Screens use this
@@ -52,6 +50,8 @@ final class TransactionMasterData {
     required List<Tag> tags,
     required Map<String, String> categoryLabels,
     required Map<String, String> tagLabels,
+    Map<String, String> englishCategoryLabels = const {},
+    Map<String, String> englishTagLabels = const {},
     required String languageCode,
   }) => TransactionMasterData(
     merchantNames: {for (final value in merchants) value.id.value: value.name},
@@ -59,7 +59,8 @@ final class TransactionMasterData {
       for (final value in categories)
         value.id.value:
             categoryLabels[value.id.value] ??
-            categoryDisplayLabel(value, languageCode),
+            englishCategoryLabels[value.id.value] ??
+            value.name,
     },
     categoryParentIds: {
       for (final value in categories) value.id.value: value.parentId?.value,
@@ -67,7 +68,9 @@ final class TransactionMasterData {
     tagNames: {
       for (final value in tags)
         value.id.value:
-            tagLabels[value.id.value] ?? tagDisplayLabel(value, languageCode),
+            tagLabels[value.id.value] ??
+            englishTagLabels[value.id.value] ??
+            value.name,
     },
   );
 
@@ -91,17 +94,19 @@ final class TransactionMasterData {
       ApplicationSuccess<List<Tag>>(:final value) => value,
       _ => const <Tag>[],
     };
-    final categoryLabels = switch (await finance.loadMasterTranslations(
-      masterType: 'category',
-      locale: languageCode == 'zh' ? 'zh-Hans' : languageCode,
-    )) {
-      ApplicationSuccess<Map<String, String>>(:final value) => value,
-      _ => const <String, String>{},
-    };
-    final tagLabels = switch (await finance.loadMasterTranslations(
-      masterType: 'tag',
-      locale: languageCode == 'zh' ? 'zh-Hans' : languageCode,
-    )) {
+    final translations = await Future.wait([
+      finance.loadMasterTranslations(
+        masterType: 'category',
+        locale: languageCode == 'zh' ? 'zh-Hans' : languageCode,
+      ),
+      finance.loadMasterTranslations(masterType: 'category', locale: 'en'),
+      finance.loadMasterTranslations(
+        masterType: 'tag',
+        locale: languageCode == 'zh' ? 'zh-Hans' : languageCode,
+      ),
+      finance.loadMasterTranslations(masterType: 'tag', locale: 'en'),
+    ]);
+    Map<String, String> labelsAt(int index) => switch (translations[index]) {
       ApplicationSuccess<Map<String, String>>(:final value) => value,
       _ => const <String, String>{},
     };
@@ -110,8 +115,10 @@ final class TransactionMasterData {
       merchants: merchants,
       categories: categories,
       tags: tags,
-      categoryLabels: categoryLabels,
-      tagLabels: tagLabels,
+      categoryLabels: labelsAt(0),
+      tagLabels: labelsAt(2),
+      englishCategoryLabels: labelsAt(1),
+      englishTagLabels: labelsAt(3),
       languageCode: languageCode,
     );
   }

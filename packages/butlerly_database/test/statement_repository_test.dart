@@ -740,4 +740,29 @@ void main() {
       isNull,
     );
   });
+
+  test('statement and rows roll back together when a row fails', () async {
+    final now = DateTime.utc(2026);
+    final statement = FinancialStatement(
+      id: 'atomic-statement',
+      evidenceId: 'evidence',
+      status: StatementStatus.needsSource,
+      createdAt: now,
+      updatedAt: now,
+    );
+    final invalidRow = StatementRow(
+      id: 'atomic-row',
+      statementId: 'missing-statement',
+      position: 0,
+      originalText: 'invalid',
+      status: StatementRowStatus.pending,
+      createdAt: now,
+      updatedAt: now,
+    );
+    await expectLater(
+      statements.saveStatementWithRows(statement, [invalidRow]),
+      throwsA(isA<RepositoryException>()),
+    );
+    expect(await statements.findStatement(statement.id), isNull);
+  });
 }

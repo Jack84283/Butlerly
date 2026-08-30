@@ -9,14 +9,18 @@ final class ButlerlyDatabase {
     required this.path,
     required this.schemaSql,
     this.seedSql = const [],
+    this.migrations = const {},
   });
 
-  static const databaseVersion = 1;
+  static const databaseVersion = 2;
 
   final DatabaseFactory factory;
   final String path;
   final String schemaSql;
   final List<String> seedSql;
+
+  /// Database-owned migration SQL keyed by its target schema version.
+  final Map<int, String> migrations;
   Database? _database;
 
   Database get connection {
@@ -39,6 +43,30 @@ final class ButlerlyDatabase {
           onConfigure: (database) =>
               database.execute('PRAGMA foreign_keys = ON'),
           onCreate: (database, _) => _executeSql(database, schemaSql),
+          onUpgrade: (database, oldVersion, newVersion) async {
+            for (
+              var version = oldVersion + 1;
+              version <= newVersion;
+              version++
+            ) {
+              final sql = migrations[version];
+              if (sql == null) {
+                throw const RepositoryException(
+                  RepositoryFailureCode.migration,
+                  'apply database migration',
+                );
+              }
+              for (final statement in splitSqlStatements(sql)) {
+                await database.execute(statement);
+              }
+            }
+            if (newVersion != databaseVersion) {
+              throw const RepositoryException(
+                RepositoryFailureCode.migration,
+                'unsupported database version',
+              );
+            }
+          },
         ),
       );
       if (seedSql.isNotEmpty) {
@@ -143,11 +171,28 @@ RepositoryException mapDatabaseException(
   DatabaseException error,
   String operation,
 ) {
+  final raw = error.toString().split(" sql '").first;
+  final code = error.getResultCode();
+  final detail =
+      'sqlite${code == null ? '' : ' code=$code'}: '
+      '${raw.replaceAll(RegExp(r'\s+'), ' ').trim()}';
   if (error.isUniqueConstraintError() || error.isNotNullConstraintError()) {
-    return RepositoryException(RepositoryFailureCode.constraint, operation);
+    return RepositoryException(
+      RepositoryFailureCode.constraint,
+      operation,
+      detail: detail,
+    );
   }
   if (error.isDatabaseClosedError()) {
-    return RepositoryException(RepositoryFailureCode.unavailable, operation);
+    return RepositoryException(
+      RepositoryFailureCode.unavailable,
+      operation,
+      detail: detail,
+    );
   }
-  return RepositoryException(RepositoryFailureCode.unknown, operation);
+  return RepositoryException(
+    RepositoryFailureCode.unknown,
+    operation,
+    detail: detail,
+  );
 }

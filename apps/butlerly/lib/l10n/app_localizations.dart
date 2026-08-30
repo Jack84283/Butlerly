@@ -50,6 +50,7 @@ class AppLocalizations {
       'statementSaved': 'Saved',
       'statementLinked': 'Linked',
       'statementNeedsReview': 'Needs review',
+      'statementFailed': 'Failed',
       'statementSkipped': 'Skipped',
       'review': 'Review',
       'search': 'Search',
@@ -451,11 +452,13 @@ class AppLocalizations {
           'This statement has saved transactions and cannot be deleted here.',
       'statementDeletionProtected':
           'This statement is linked to financial records or required evidence and cannot be deleted.',
-      'statementNoText': 'No text could be recognized from this statement.',
+      'statementNoText': 'No readable text was found in this image.',
       'statementNoRows':
           'Text was recognized, but no transaction rows could be identified.',
-      'statementUnresolvedEvidence': 'Transaction-like evidence needs review.',
-      'statementProcessingFailed': 'Statement processing failed.',
+      'statementUnresolvedEvidence':
+          'Some transaction-like rows were found but need review.',
+      'statementProcessingFailed':
+          'Statement processing failed because of a technical OCR error.',
       'abandonStatementImport': 'Abandon import',
       'abandonStatementImportTitle': 'Abandon this import?',
       'abandonStatementImportBody':
@@ -484,6 +487,7 @@ class AppLocalizations {
       'statementSaved': '已保存',
       'statementLinked': '已关联',
       'statementNeedsReview': '待审核',
+      'statementFailed': '失败',
       'statementSkipped': '已跳过',
       'review': '审核',
       'search': '搜索',
@@ -843,10 +847,10 @@ class AppLocalizations {
       'statementDeleteFailed': '无法安全删除账单。',
       'statementHasTransactions': '此账单包含已保存交易，无法在此删除。',
       'statementDeletionProtected': '此账单与财务记录或必要证据相关联，无法删除。',
-      'statementNoText': '无法从此账单识别文字。',
+      'statementNoText': '未在此图片中找到可读文字。',
       'statementNoRows': '已识别文字，但未找到交易行。',
       'statementUnresolvedEvidence': '发现疑似交易内容，需要审核。',
-      'statementProcessingFailed': '账单处理失败。',
+      'statementProcessingFailed': '由于本地文字识别技术错误，账单处理失败。',
       'abandonStatementImport': '放弃导入',
       'abandonStatementImportTitle': '放弃此次导入？',
       'abandonStatementImportBody': '扫描的账单及其提取数据将被删除。不会更改您的原始文件。',
@@ -876,6 +880,7 @@ class AppLocalizations {
       'statementSaved': 'Guardadas',
       'statementLinked': 'Vinculadas',
       'statementNeedsReview': 'Requieren revisión',
+      'statementFailed': 'Fallidas',
       'statementSkipped': 'Omitidas',
       'review': 'Revisar',
       'search': 'Buscar',
@@ -1288,12 +1293,13 @@ class AppLocalizations {
           'Este extracto tiene transacciones guardadas y no se puede eliminar aquí.',
       'statementDeletionProtected':
           'Este extracto está vinculado a registros financieros o evidencia necesaria y no se puede eliminar.',
-      'statementNoText': 'No se pudo reconocer texto de este extracto.',
+      'statementNoText': 'No se encontró texto legible en esta imagen.',
       'statementNoRows':
           'Se reconoció texto, pero no se identificaron filas de transacciones.',
       'statementUnresolvedEvidence':
           'Hay evidencia similar a una transacción que requiere revisión.',
-      'statementProcessingFailed': 'El procesamiento del extracto falló.',
+      'statementProcessingFailed':
+          'El procesamiento del extracto falló por un error técnico de OCR.',
       'abandonStatementImport': 'Abandonar importación',
       'abandonStatementImportTitle': '¿Abandonar esta importación?',
       'abandonStatementImportBody':

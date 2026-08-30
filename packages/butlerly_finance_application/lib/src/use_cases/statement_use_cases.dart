@@ -229,9 +229,8 @@ final class StatementServices {
     FinancialStatement statement,
     List<StatementRow> rows,
   ) => runApplication('create statement', () async {
-    await statements.saveStatement(statement);
     final intakeRows = _applyStatementIntakeDefaults(rows);
-    if (intakeRows.isNotEmpty) await statements.saveRows(intakeRows);
+    await statements.saveStatementWithRows(statement, intakeRows);
   });
 
   Future<ApplicationResult<List<FinancialStatement>>> list() =>
