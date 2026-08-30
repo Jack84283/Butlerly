@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 /// Layout values shared by every transaction-record list presentation.
 abstract final class ButlerlyTransactionItemTokens {
   static const horizontalInset = ButlerlySpacing.micro;
-  static const verticalPadding = ButlerlySpacing.compact;
+  static const verticalPadding = ButlerlySpacing.micro;
   static const directionIconSize = 18.0;
   static const warningIconSize = 18.0;
   static const headerSpacing = ButlerlySpacing.micro;
