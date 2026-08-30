@@ -34,7 +34,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _data = _load();
+    _data = Future.value(const _HomeData([], 0, 0));
     transactionChanges.addListener(_handleTransactionChange);
   }
 
@@ -60,10 +60,14 @@ class _HomePageState extends State<HomePage> {
   Future<_HomeData> _load({String? languageCode}) async {
     final finance = _finance;
     if (finance == null) return const _HomeData([], 0, 0);
+    final activeLanguageCode =
+        languageCode ??
+        _loadedLanguageCode ??
+        Localizations.localeOf(context).languageCode;
     final results = await Future.wait([
       finance.listTransactions(const ListTransactionsQuery()),
       finance.listReviewItems(),
-      TransactionMasterData.load(finance, languageCode: languageCode ?? 'en'),
+      TransactionMasterData.load(finance, languageCode: activeLanguageCode),
     ]);
     final transactions = switch (results[0]) {
       ApplicationSuccess<List<TransactionDto>>(:final value) => value,
