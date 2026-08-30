@@ -9,6 +9,7 @@ final class ButlerlyDatabase {
     required this.path,
     required this.schemaSql,
     this.seedSql = const [],
+    this.migrations = const {},
   });
 
   static const databaseVersion = 2;
@@ -17,6 +18,9 @@ final class ButlerlyDatabase {
   final String path;
   final String schemaSql;
   final List<String> seedSql;
+
+  /// Database-owned migration SQL keyed by its target schema version.
+  final Map<int, String> migrations;
   Database? _database;
 
   Database get connection {
@@ -40,9 +44,28 @@ final class ButlerlyDatabase {
               database.execute('PRAGMA foreign_keys = ON'),
           onCreate: (database, _) => _executeSql(database, schemaSql),
           onUpgrade: (database, oldVersion, newVersion) async {
-            if (oldVersion < 2) {
-              await database.execute(
-                'ALTER TABLE statement_rows ADD COLUMN status_before_skip TEXT',
+            await database.transaction((tx) async {
+              for (
+                var version = oldVersion + 1;
+                version <= newVersion;
+                version++
+              ) {
+                final sql = migrations[version];
+                if (sql == null) {
+                  throw const RepositoryException(
+                    RepositoryFailureCode.migration,
+                    'apply database migration',
+                  );
+                }
+                for (final statement in splitSqlStatements(sql)) {
+                  await tx.execute(statement);
+                }
+              }
+            });
+            if (newVersion != databaseVersion) {
+              throw const RepositoryException(
+                RepositoryFailureCode.migration,
+                'unsupported database version',
               );
             }
           },

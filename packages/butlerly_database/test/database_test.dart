@@ -99,6 +99,9 @@ void main() {
     final directory = await Directory.systemTemp.createTemp('butlerly-db-');
     final path = '${directory.path}/legacy.db';
     final current = await File('database/schema/v1.sql').readAsString();
+    final migration = await File(
+      'database/migrations/v1_to_v2.sql',
+    ).readAsString();
     final legacy = current.replaceFirst(', status_before_skip TEXT', '');
     final legacyDb = await databaseFactoryFfi.openDatabase(
       path,
@@ -124,6 +127,7 @@ void main() {
       factory: databaseFactoryFfi,
       path: path,
       schemaSql: current,
+      migrations: {2: migration},
     );
     await database.open();
     expect(await database.connection.getVersion(), 2);
