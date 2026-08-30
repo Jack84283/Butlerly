@@ -35,7 +35,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
   @override
   void initState() {
     super.initState();
-    _transactions = _load();
+    _transactions = Future.value(const _TransactionsData([]));
     transactionChanges.addListener(_handleTransactionChange);
   }
 
@@ -61,6 +61,10 @@ class _TransactionsPageState extends State<TransactionsPage> {
   Future<_TransactionsData> _load({String? languageCode}) async {
     final finance = _finance;
     if (finance == null) return const _TransactionsData([]);
+    final activeLanguageCode =
+        languageCode ??
+        _loadedLanguageCode ??
+        Localizations.localeOf(context).languageCode;
     final result = await finance.listTransactions(
       const ListTransactionsQuery(),
     );
@@ -74,7 +78,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
       values,
       masterData: await TransactionMasterData.load(
         finance,
-        languageCode: languageCode ?? 'en',
+        languageCode: activeLanguageCode,
       ),
       possibleDuplicateIds: await _possibleDuplicateIds(finance),
     );
