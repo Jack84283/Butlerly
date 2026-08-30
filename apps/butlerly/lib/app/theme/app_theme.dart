@@ -1,4 +1,5 @@
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter/material.dart';
 
@@ -169,40 +170,44 @@ abstract final class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size(
-            ButlerlySize.minimumTarget,
-            ButlerlySize.preferredTarget,
-          ),
           padding: const EdgeInsets.symmetric(
-            horizontal: ButlerlySpacing.section,
-            vertical: ButlerlySpacing.small,
+            horizontal: ButlerlyButtonTokens.horizontalPadding,
+            vertical: ButlerlyButtonTokens.verticalPadding,
           ),
-          shape: standardShape,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(ButlerlyButtonTokens.radius),
+          ),
+          minimumSize: const Size(
+            ButlerlyButtonTokens.compactHeight,
+            ButlerlyButtonTokens.height,
+          ),
+          elevation: ButlerlyElevation.base,
           textStyle: textTheme.labelLarge,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(
-            ButlerlySize.minimumTarget,
-            ButlerlySize.preferredTarget,
+            ButlerlyButtonTokens.compactHeight,
+            ButlerlyButtonTokens.height,
           ),
           padding: const EdgeInsets.symmetric(
-            horizontal: ButlerlySpacing.section,
-            vertical: ButlerlySpacing.small,
+            horizontal: ButlerlyButtonTokens.horizontalPadding,
+            vertical: ButlerlyButtonTokens.verticalPadding,
           ),
-          shape: standardShape,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(ButlerlyButtonTokens.radius),
+          ),
           side: BorderSide(color: colors.border),
           textStyle: textTheme.labelLarge,
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          minimumSize: const Size(
-            ButlerlySize.minimumTarget,
-            ButlerlySize.minimumTarget,
+          minimumSize: const Size.square(ButlerlyButtonTokens.compactHeight),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(ButlerlyButtonTokens.radius),
           ),
-          shape: standardShape,
           textStyle: textTheme.labelLarge,
         ),
       ),

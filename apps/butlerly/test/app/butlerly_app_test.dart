@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:butlerly/app/butlerly_app.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -36,6 +37,28 @@ void main() {
     expect(
       AppTheme.dark.extension<ButlerlySemanticColors>()?.cardDivider,
       const Color.fromRGBO(78, 78, 78, 1),
+    );
+  });
+
+  test('button themes use centralized Butlerly geometry', () {
+    final theme = AppTheme.light;
+    expect(
+      theme.filledButtonTheme.style?.padding?.resolve({}),
+      const EdgeInsets.symmetric(
+        horizontal: ButlerlyButtonTokens.horizontalPadding,
+        vertical: ButlerlyButtonTokens.verticalPadding,
+      ),
+    );
+    expect(
+      theme.outlinedButtonTheme.style?.minimumSize?.resolve({}),
+      const Size(
+        ButlerlyButtonTokens.compactHeight,
+        ButlerlyButtonTokens.height,
+      ),
+    );
+    expect(
+      theme.textButtonTheme.style?.minimumSize?.resolve({}),
+      const Size.square(ButlerlyButtonTokens.compactHeight),
     );
   });
 
