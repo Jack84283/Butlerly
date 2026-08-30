@@ -256,9 +256,11 @@ class ButlerlyDestructiveButton extends StatelessWidget {
     final colors = context.colors;
     final style = FilledButton.styleFrom(
       backgroundColor: colors.error,
-      foregroundColor: Colors.white,
+      foregroundColor: Theme.of(context).colorScheme.onError,
       disabledBackgroundColor: colors.error.withValues(alpha: 0.35),
-      disabledForegroundColor: Colors.white.withValues(alpha: 0.7),
+      disabledForegroundColor: Theme.of(
+        context,
+      ).colorScheme.onError.withValues(alpha: 0.7),
     );
     return icon == null
         ? FilledButton(onPressed: onPressed, style: style, child: child)

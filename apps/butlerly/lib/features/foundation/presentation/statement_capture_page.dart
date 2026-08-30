@@ -312,7 +312,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
             onPressed: () => Navigator.pop(dialogContext, false),
             child: Text(l10n.text('cancel')),
           ),
-          FilledButton(
+          ButlerlyDestructiveButton(
             onPressed: () => Navigator.pop(dialogContext, true),
             child: Text(l10n.text('deleteStatement')),
           ),
