@@ -138,10 +138,8 @@ void main() {
       ButlerlyTransactionItemTokens.horizontalInset,
       ButlerlySpacing.micro,
     );
-    expect(
-      ButlerlyTransactionItemTokens.verticalPadding,
-      ButlerlySpacing.micro,
-    );
+    expect(ButlerlyTransactionItemTokens.topPadding, ButlerlySpacing.compact);
+    expect(ButlerlyTransactionItemTokens.bottomPadding, ButlerlySpacing.micro);
     expect(ButlerlyTransactionItemTokens.dividerInset, ButlerlySpacing.micro);
     expect(ButlerlyTransactionItemTokens.minTouchHeight, 72);
   });

@@ -437,9 +437,11 @@ class ButlerlyTransactionListItem extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: ButlerlyTransactionItemTokens.horizontalInset,
-              vertical: ButlerlyTransactionItemTokens.verticalPadding,
+            padding: const EdgeInsets.fromLTRB(
+              ButlerlyTransactionItemTokens.horizontalInset,
+              ButlerlyTransactionItemTokens.topPadding,
+              ButlerlyTransactionItemTokens.horizontalInset,
+              ButlerlyTransactionItemTokens.bottomPadding,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
