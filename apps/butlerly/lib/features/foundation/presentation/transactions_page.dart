@@ -1593,26 +1593,14 @@ Future<bool?> _organizeTransaction(
     _ => const <Tag>[],
   };
   final languageCode = Localizations.localeOf(context).languageCode;
-  final categoryLabels = switch (await finance.loadMasterTranslations(
-    masterType: 'category',
-    locale: languageCode == 'zh' ? 'zh-Hans' : languageCode,
-  )) {
-    ApplicationSuccess<Map<String, String>>(:final value) => value,
-    _ => const <String, String>{},
-  };
+  final presentation = await TransactionMasterData.load(
+    finance,
+    languageCode: languageCode,
+  );
   if (!context.mounted) return false;
   final activeCategories = categories
       .where((value) => value.status == CategoryStatus.active)
       .toList(growable: false);
-  final presentation = TransactionMasterData.fromEntities(
-    merchants: merchants,
-    categories: categories,
-    tags: tags,
-    categoryLabels: categoryLabels,
-    tagLabels: const {},
-    languageCode: languageCode,
-  );
-
   String? merchantId = transaction.merchantId;
   String? categoryId = transaction.categoryId;
   final selectedTagIds = transaction.tagIds.toSet();

@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 
 /// Layout values shared by every transaction-record list presentation.
 abstract final class ButlerlyTransactionItemTokens {
-  static const horizontalInset = ButlerlySpacing.compact;
+  static const horizontalInset = ButlerlySpacing.micro;
   static const verticalPadding = ButlerlySpacing.compact;
   static const directionIconSize = 18.0;
   static const warningIconSize = 18.0;
   static const headerSpacing = ButlerlySpacing.micro;
   static const dividerThickness = 1.0;
-  static const dividerInset = ButlerlySpacing.compact;
+  static const dividerInset = ButlerlySpacing.micro;
   static const minTouchHeight = ButlerlySize.recordRowMinHeight;
 }
 
