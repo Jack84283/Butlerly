@@ -1,6 +1,7 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/features/foundation/presentation/add_page.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/features/foundation/presentation/payment_sources_page.dart';
 import 'package:butlerly/features/foundation/presentation/review_page.dart';
@@ -14,6 +15,7 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 void main() {
@@ -166,10 +168,21 @@ void main() {
   testWidgets('creates, edits, archives, and permanently deletes locally', (
     tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: TransactionsPage()));
+    final router = GoRouter(
+      initialLocation: '/add',
+      routes: [
+        GoRoute(path: '/add', builder: (_, _) => const AddPage()),
+        GoRoute(
+          path: '/transactions/add',
+          builder: (_, _) =>
+              TransactionEditorPage(finance: services<FinanceServices>()),
+        ),
+      ],
+    );
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Add transaction').first);
+    await tester.tap(find.text('Add transaction manually'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).at(0), '12.50');
     await tester.enterText(find.byType(TextFormField).at(2), 'Lunch');
@@ -180,6 +193,9 @@ void main() {
       scrollable: find.byType(Scrollable).last,
     );
     await tester.tap(find.text('Save locally'));
+    await tester.pumpAndSettle();
+
+    await tester.pumpWidget(const MaterialApp(home: TransactionsPage()));
     await tester.pumpAndSettle();
 
     expect(find.text('Lunch'), findsOneWidget);
