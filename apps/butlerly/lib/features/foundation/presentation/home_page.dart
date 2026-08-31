@@ -308,26 +308,26 @@ class _QuickActions extends StatelessWidget {
       final actions = [
         _QuickAction(
           icon: Icons.add_rounded,
-          label: context.l10n.text('addTransaction'),
+          label: context.l10n.text('addData'),
           onTap: () async {
-            await context.push('/transactions/add');
+            await context.push('/add');
             await onRefresh();
           },
-        ),
-        _QuickAction(
-          icon: Icons.file_open_outlined,
-          label: context.l10n.text('importData'),
-          onTap: () => context.push('/import-export'),
-        ),
-        _QuickAction(
-          icon: Icons.search_rounded,
-          label: context.l10n.text('searchRecords'),
-          onTap: () => context.go('/search'),
         ),
         _QuickAction(
           icon: Icons.insights_outlined,
           label: context.l10n.text('analysis'),
           onTap: () => context.push('/analysis'),
+        ),
+        _QuickAction(
+          icon: Icons.insights_outlined,
+          label: context.l10n.text('insights'),
+          onTap: () => context.push('/insights'),
+        ),
+        _QuickAction(
+          icon: Icons.notifications_none_rounded,
+          label: context.l10n.text('notifications'),
+          onTap: () => context.push('/notifications'),
         ),
       ];
       return Wrap(
@@ -427,7 +427,7 @@ class _HomeEmptyTransactions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ButlerlyCard(
-    onTap: () => context.push('/transactions/add'),
+    onTap: () => context.push('/add'),
     child: Row(
       children: [
         Icon(Icons.receipt_long_outlined, color: context.colors.secondaryText),

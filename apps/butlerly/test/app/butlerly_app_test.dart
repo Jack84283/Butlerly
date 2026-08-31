@@ -116,12 +116,99 @@ void main() {
     expect(find.text('Transactions'), findsOneWidget);
     expect(find.text('Review'), findsOneWidget);
     expect(find.text('Search'), findsOneWidget);
+      expect(find.text('More'), findsAtLeastNWidgets(1));
+    expect(find.text('More...'), findsNothing);
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.text('Local records'), findsOneWidget);
-    expect(find.text('Add transaction'), findsOneWidget);
+    expect(find.text('Add data'), findsOneWidget);
+    expect(find.text('Analysis'), findsOneWidget);
+    expect(find.text('Insights'), findsOneWidget);
+    expect(find.text('Notifications'), findsOneWidget);
     expect(find.text('Scan receipt'), findsNothing);
-    expect(find.text('Import data'), findsOneWidget);
-    expect(find.text('Search records'), findsOneWidget);
+    expect(find.text('Import data'), findsNothing);
+    expect(find.text('Search records'), findsNothing);
+  });
+
+  testWidgets('Home Add data opens the centralized Add hub', (tester) async {
+    setPhoneViewport(tester);
+    await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Add data'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add'), findsOneWidget);
+    expect(find.text('Add transaction manually'), findsOneWidget);
+    expect(find.text('Add transaction from receipt'), findsOneWidget);
+    expect(find.text('Add transaction from statement'), findsOneWidget);
+    expect(find.text('Add transaction from local file'), findsOneWidget);
+    expect(find.text('Payment sources'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('More opens More without optional Insights or Notifications', (
+    tester,
+  ) async {
+    setPhoneViewport(tester);
+    await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('More').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('More'), findsAtLeastNWidgets(1));
+    expect(find.text('Add Transaction'), findsOneWidget);
+    expect(
+      find.text(
+        'Add transaction yourself, from receipt, from statement and local file',
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Add Transaction'));
+    await tester.pumpAndSettle();
+    expect(find.text('Add'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Optional features'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Optional features'), findsOneWidget);
+      expect(find.text('Insights'), findsNothing);
+    expect(find.text('Notifications'), findsNothing);
+
+    await tester.tap(find.text('Home').last);
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('Home Quick Actions open Analysis, Insights, and Notifications', (
+    tester,
+  ) async {
+    setPhoneViewport(tester);
+    await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Analysis'));
+    await tester.pumpAndSettle();
+    expect(find.text('Analysis'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Insights'));
+    await tester.pumpAndSettle();
+    expect(find.text('Not enough data for insights'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Notifications'));
+    await tester.pumpAndSettle();
+    expect(find.text('No notifications'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
   });
 
   testWidgets(
@@ -215,7 +302,7 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Settings').last);
+    await tester.tap(find.text('More').last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('System'));
     await tester.pumpAndSettle();
@@ -233,14 +320,14 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Settings').last);
+    await tester.tap(find.text('More').last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('English'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Chinese (Simplified)').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('设置'), findsAtLeastNWidgets(1));
+    expect(find.text('更多'), findsAtLeastNWidgets(1));
     expect(find.text('首页'), findsOneWidget);
     expect(find.text('交易'), findsAtLeastNWidgets(1));
     expect(find.text('简体中文'), findsOneWidget);
@@ -251,7 +338,7 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Settings').last);
+    await tester.tap(find.text('More').last);
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text('Legal & licenses'),

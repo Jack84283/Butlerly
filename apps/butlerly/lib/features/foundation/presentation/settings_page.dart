@@ -4,7 +4,6 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/legal_licenses_page.dart';
-import 'package:butlerly/features/foundation/presentation/payment_sources_page.dart';
 import 'package:butlerly/features/foundation/presentation/time_zone_catalog.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -23,7 +22,7 @@ class SettingsPage extends ConsumerWidget {
         ? Localizations.localeOf(context)
         : Locale(preference.locale);
     return ButlerlyPage(
-      title: context.l10n.text('settings'),
+      title: context.l10n.text('more'),
       children: [
         ButlerlyCard(
           color: context.colors.brand.withValues(alpha: 0.1),
@@ -209,17 +208,9 @@ class SettingsPage extends ConsumerWidget {
           children: [
             _SettingsRow(
               icon: Icons.document_scanner_outlined,
-              title: context.l10n.text('reviewStatementImport'),
-              subtitle: context.l10n.text('reviewStatementImportBody'),
-              onTap: () => context.push('/statements'),
-            ),
-            _SettingsRow(
-              icon: Icons.account_balance_wallet_outlined,
-              title: context.l10n.text('paymentSources'),
-              subtitle: context.l10n.text('paymentSourcesBody'),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const PaymentSourcesPage()),
-              ),
+              title: context.l10n.text('addTransactionAction'),
+              subtitle: context.l10n.text('addTransactionActionSubtitle'),
+              onTap: () => context.push('/add'),
             ),
           ],
         ),
@@ -258,22 +249,10 @@ class SettingsPage extends ConsumerWidget {
                         .saveChanges(externalAiEnabled: value),
             ),
             _SettingsRow(
-              icon: Icons.insights_outlined,
-              title: context.l10n.text('insights'),
-              subtitle: context.l10n.text('insightsBody'),
-              onTap: () => context.push('/insights'),
-            ),
-            _SettingsRow(
               icon: Icons.auto_awesome_outlined,
               title: context.l10n.text('assistant'),
               subtitle: context.l10n.text('assistantUnavailableBody'),
               onTap: () => context.push('/assistant'),
-            ),
-            _SettingsRow(
-              icon: Icons.notifications_none_rounded,
-              title: context.l10n.text('notifications'),
-              subtitle: context.l10n.text('notificationsBody'),
-              onTap: () => context.push('/notifications'),
             ),
           ],
         ),

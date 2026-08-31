@@ -14,6 +14,99 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+Future<void> startLocalFileImport(
+  BuildContext context, {
+  ValueChanged<bool>? onImportingChanged,
+}) async {
+  Future<void> showImportMessage(String title, String message) async {
+    await showButlerlyBottomSheet<void>(
+      context: context,
+      builder: (context) => ButlerlySheet(
+        title: Text(title),
+        content: Text(
+          message.isEmpty ? context.l10n.text('noResults') : message,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(context.l10n.text('done')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  try {
+    final sourceLanguage = Localizations.localeOf(context).languageCode;
+    const group = XTypeGroup(
+      label: 'CSV',
+      extensions: ['csv'],
+      mimeTypes: ['text/csv'],
+      uniformTypeIdentifiers: ['public.comma-separated-values-text'],
+    );
+    final file = await openFile(acceptedTypeGroups: const [group]);
+    if (file == null || !context.mounted) return;
+    onImportingChanged?.call(true);
+    final importer = LocalCsvImporter(services<FinanceServices>());
+    final preview = await importer.preview(file);
+    if (!context.mounted) return;
+    onImportingChanged?.call(false);
+    if (preview.rows.isEmpty || preview.validCount == 0) {
+      await showImportMessage('Import validation', preview.errors.join('\n'));
+      return;
+    }
+    final sources = await services<FinanceServices>().listPaymentSources();
+    if (!context.mounted) return;
+    final activeSources = sources is ApplicationSuccess<List<PaymentSource>>
+        ? sources.value
+              .where((value) => value.status == PaymentSourceStatus.active)
+              .toList()
+        : const <PaymentSource>[];
+    final paymentSourceId = await showButlerlyBottomSheet<String>(
+      context: context,
+      builder: (context) =>
+          _StatementPreviewDialog(preview: preview, sources: activeSources),
+    );
+    if (!context.mounted || paymentSourceId == null) return;
+    onImportingChanged?.call(true);
+    final summary = await importer.commitPreview(
+      preview,
+      sourceId: file.name,
+      sourceLanguage: sourceLanguage,
+      paymentSourceId: paymentSourceId.isEmpty ? null : paymentSourceId,
+    );
+    if (!context.mounted) return;
+    onImportingChanged?.call(false);
+    if (summary.imported > 0) notifyTransactionChanged();
+    await showButlerlyBottomSheet<void>(
+      context: context,
+      builder: (context) => ButlerlySheet(
+        title: Text(context.l10n.text('importSummary')),
+        content: Text(
+          context.l10n.text('importSummaryBody', {
+            'imported': '${summary.imported}',
+            'duplicates': '${summary.duplicates}',
+            'failed': '${summary.failed}',
+          }),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(context.l10n.text('done')),
+          ),
+        ],
+      ),
+    );
+  } catch (_) {
+    onImportingChanged?.call(false);
+    if (!context.mounted) return;
+    await showImportMessage(
+      context.l10n.text('importFromFile'),
+      context.l10n.text('importFailed'),
+    );
+  }
+}
+
 class LaunchPage extends StatefulWidget {
   const LaunchPage({super.key});
 
@@ -189,78 +282,12 @@ class _ImportExportPageState extends State<ImportExportPage> {
   bool _importing = false;
 
   Future<void> _importCsv() async {
-    try {
-      final sourceLanguage = Localizations.localeOf(context).languageCode;
-      const group = XTypeGroup(
-        label: 'CSV',
-        extensions: ['csv'],
-        mimeTypes: ['text/csv'],
-        uniformTypeIdentifiers: ['public.comma-separated-values-text'],
-      );
-      final file = await openFile(acceptedTypeGroups: const [group]);
-      if (file == null || !mounted) return;
-      setState(() => _importing = true);
-      final importer = LocalCsvImporter(services<FinanceServices>());
-      final preview = await importer.preview(file);
-      if (!mounted) return;
-      setState(() => _importing = false);
-      if (preview.rows.isEmpty || preview.validCount == 0) {
-        await _showImportMessage(
-          'Import validation',
-          preview.errors.join('\n'),
-        );
-        return;
-      }
-      final sources = await services<FinanceServices>().listPaymentSources();
-      if (!mounted) return;
-      final activeSources = sources is ApplicationSuccess<List<PaymentSource>>
-          ? sources.value
-                .where((value) => value.status == PaymentSourceStatus.active)
-                .toList()
-          : const <PaymentSource>[];
-      final paymentSourceId = await showButlerlyBottomSheet<String>(
-        context: context,
-        builder: (context) =>
-            _StatementPreviewDialog(preview: preview, sources: activeSources),
-      );
-      if (!mounted || paymentSourceId == null) return;
-      setState(() => _importing = true);
-      final summary = await importer.commitPreview(
-        preview,
-        sourceId: file.name,
-        sourceLanguage: sourceLanguage,
-        paymentSourceId: paymentSourceId.isEmpty ? null : paymentSourceId,
-      );
-      if (!mounted) return;
-      setState(() => _importing = false);
-      if (summary.imported > 0) notifyTransactionChanged();
-      await showButlerlyBottomSheet<void>(
-        context: context,
-        builder: (context) => ButlerlySheet(
-          title: Text(context.l10n.text('importSummary')),
-          content: Text(
-            context.l10n.text('importSummaryBody', {
-              'imported': '${summary.imported}',
-              'duplicates': '${summary.duplicates}',
-              'failed': '${summary.failed}',
-            }),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(context.l10n.text('done')),
-            ),
-          ],
-        ),
-      );
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _importing = false);
-      await _showImportMessage(
-        context.l10n.text('importFromFile'),
-        context.l10n.text('importFailed'),
-      );
-    }
+    await startLocalFileImport(
+      context,
+      onImportingChanged: (value) {
+        if (mounted) setState(() => _importing = value);
+      },
+    );
   }
 
   Future<void> _showImportMessage(String title, String message) async {
@@ -314,7 +341,7 @@ class _ImportExportPageState extends State<ImportExportPage> {
   }
 
   void _openReceiptFlow(BuildContext context) {
-    context.push('/receipts/capture');
+    context.push('/add');
   }
 
   @override
@@ -344,7 +371,7 @@ class _ImportExportPageState extends State<ImportExportPage> {
           icon: Icons.credit_card_outlined,
           title: context.l10n.text('addPaymentTransaction'),
           subtitle: context.l10n.text('addPaymentTransactionBody'),
-          onTap: () => context.push('/transactions/add'),
+          onTap: () => context.push('/add'),
         ),
         _ActionRow(
           icon: Icons.notifications_none_outlined,
@@ -643,8 +670,8 @@ class InsightsPage extends StatelessWidget {
       icon: Icons.insights_outlined,
       title: context.l10n.text('notEnoughInsightData'),
       message: context.l10n.text('notEnoughInsightDataBody'),
-      actionLabel: context.l10n.text('addTransaction'),
-      onAction: () => context.push('/transactions/add'),
+      actionLabel: context.l10n.text('addData'),
+      onAction: () => context.push('/add'),
     ),
   );
 }

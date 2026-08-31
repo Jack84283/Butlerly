@@ -104,21 +104,6 @@ class _TransactionsPageState extends State<TransactionsPage> {
     });
   }
 
-  Future<void> _openEditor([TransactionDto? transaction]) async {
-    final finance = _finance;
-    if (finance == null) return;
-    final result = await Navigator.of(context).push<TransactionEditorResult>(
-      MaterialPageRoute(
-        builder: (_) =>
-            TransactionEditorPage(finance: finance, existing: transaction),
-      ),
-    );
-    if (result is TransactionEditorSaved ||
-        result is TransactionEditorUseExisting) {
-      _refresh();
-    }
-  }
-
   Future<void> _openDetail(TransactionDto transaction) async {
     final finance = _finance;
     if (finance == null) return;
@@ -174,11 +159,6 @@ class _TransactionsPageState extends State<TransactionsPage> {
           title: context.l10n.text('transactions'),
           actions: [
             IconButton(
-              tooltip: context.l10n.text('addTransaction'),
-              onPressed: _openEditor,
-              icon: const Icon(Icons.add_rounded),
-            ),
-            IconButton(
               tooltip: context.l10n.text('search'),
               onPressed: () => GoRouter.of(context).go('/search'),
               icon: const Icon(Icons.search_rounded),
@@ -218,8 +198,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
                 icon: Icons.receipt_long_outlined,
                 title: context.l10n.text('noTransactions'),
                 message: context.l10n.text('noTransactionsBody'),
-                actionLabel: context.l10n.text('addTransaction'),
-                onAction: _openEditor,
+                actionLabel: context.l10n.text('addData'),
+                onAction: () => GoRouter.of(context).push('/add'),
               )
             else if (visible.isEmpty)
               ButlerlyEmptyState(
