@@ -194,7 +194,10 @@ class _ImportExportPageState extends State<ImportExportPage> {
   void initState() {
     super.initState();
     if (widget.startWithFileImport) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _importCsv());
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await _importCsv();
+        if (mounted) context.pop();
+      });
     }
   }
 
