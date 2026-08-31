@@ -97,7 +97,9 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/import-export',
-      builder: (_, _) => const ImportExportPage(),
+      builder: (context, state) => ImportExportPage(
+        startWithFileImport: state.uri.queryParameters['start'] == 'file',
+      ),
     ),
     GoRoute(
       path: '/receipts/capture',

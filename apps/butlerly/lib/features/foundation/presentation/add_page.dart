@@ -34,7 +34,7 @@ class AddPage extends StatelessWidget {
         icon: Icons.file_open_outlined,
         title: context.l10n.text('addTransactionFromLocalFile'),
         subtitle: context.l10n.text('addTransactionFromLocalFileSubtitle'),
-        onTap: () => context.push('/import-export'),
+        onTap: () => context.push('/import-export?start=file'),
       ),
       _AddActionCard(
         icon: Icons.account_balance_wallet_outlined,

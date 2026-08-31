@@ -179,7 +179,9 @@ class _WelcomeValue extends StatelessWidget {
 }
 
 class ImportExportPage extends StatefulWidget {
-  const ImportExportPage({super.key});
+  const ImportExportPage({this.startWithFileImport = false, super.key});
+
+  final bool startWithFileImport;
 
   @override
   State<ImportExportPage> createState() => _ImportExportPageState();
@@ -187,6 +189,14 @@ class ImportExportPage extends StatefulWidget {
 
 class _ImportExportPageState extends State<ImportExportPage> {
   bool _importing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.startWithFileImport) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _importCsv());
+    }
+  }
 
   Future<void> _importCsv() async {
     try {
