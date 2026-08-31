@@ -98,9 +98,9 @@ final class InvalidateAnalysis {
     bool uses(AnalysisRuleDefinition rule, Set<String> fields) =>
         rule.grouping.name != 'none' && fields.contains(rule.grouping.name) ||
         rule.filters.any((filter) => fields.contains(filter.kind.name)) ||
-        rule.measures.any((measure) => fields.contains(measure.field)) ||
+        _effectiveMeasures(rule).any((measure) => fields.contains(measure.field)) ||
         (fields.contains('baseCurrency') &&
-            rule.measures.any(
+            _effectiveMeasures(rule).any(
               (measure) => measure.currencyBasis == CurrencyBasis.baseCurrency,
             )) ||
         fields.contains('all');
@@ -122,6 +122,9 @@ final class InvalidateAnalysis {
         if (uses(rule, fields) || fields.contains('all')) rule.identity.value,
     };
   }
+
+  Iterable<RuleMeasure> _effectiveMeasures(AnalysisRuleDefinition rule) =>
+      rule.measures.isEmpty ? [rule.measure] : rule.measures;
 
   Set<String> _dependentsOf(
     Set<String> roots,
