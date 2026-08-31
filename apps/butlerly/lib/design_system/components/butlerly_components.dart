@@ -24,37 +24,40 @@ class ButlerlyPage extends StatelessWidget {
   final ScrollController? controller;
 
   @override
-  Widget build(BuildContext context) => CustomScrollView(
-    controller: controller,
-    physics: const AlwaysScrollableScrollPhysics(),
-    slivers: [
-      if (title != null)
-        SliverAppBar(
-          pinned: true,
-          title: Text(title!),
-          actions: actions,
-          backgroundColor: context.colors.background.withValues(alpha: 0.96),
-        ),
-      SliverPadding(
-        padding:
-            padding ??
-            const EdgeInsets.fromLTRB(
-              ButlerlySize.phoneGutter,
-              ButlerlySpacing.standard,
-              ButlerlySize.phoneGutter,
-              ButlerlySpacing.large,
-            ),
-        sliver: SliverList.list(
-          children: [
-            if (subtitle != null) ...[
-              Text(subtitle!, style: Theme.of(context).textTheme.bodyMedium),
-              const SizedBox(height: ButlerlySpacing.section),
+  Widget build(BuildContext context) => ColoredBox(
+    color: context.colors.background,
+    child: CustomScrollView(
+      controller: controller,
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        if (title != null)
+          SliverAppBar(
+            pinned: true,
+            title: Text(title!),
+            actions: actions,
+            backgroundColor: context.colors.background.withValues(alpha: 0.96),
+          ),
+        SliverPadding(
+          padding:
+              padding ??
+              const EdgeInsets.fromLTRB(
+                ButlerlySize.phoneGutter,
+                ButlerlySpacing.standard,
+                ButlerlySize.phoneGutter,
+                ButlerlySpacing.large,
+              ),
+          sliver: SliverList.list(
+            children: [
+              if (subtitle != null) ...[
+                Text(subtitle!, style: Theme.of(context).textTheme.bodyMedium),
+                const SizedBox(height: ButlerlySpacing.section),
+              ],
+              ...children,
             ],
-            ...children,
-          ],
+          ),
         ),
-      ),
-    ],
+      ],
+    ),
   );
 }
 
