@@ -9,6 +9,7 @@ import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
+import 'package:butlerly/features/foundation/presentation/reconciliation_labels.dart';
 import 'package:butlerly/features/foundation/presentation/statement_labels.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -60,9 +61,45 @@ String _statementStatusLabel(BuildContext context, String? statusKey) {
     'statementProcessingFailed' => context.l10n.text(
       'statementProcessingFailed',
     ),
-    _ => statusKey,
+    _ => context.l10n.text('needsReview'),
   };
 }
+
+String _statementRowStatusLabel(
+  BuildContext context,
+  StatementRowStatus status,
+) => switch (status) {
+  StatementRowStatus.pending => context.l10n.text('statementInProgress'),
+  StatementRowStatus.unresolved => context.l10n.text('statementNeedsReview'),
+  StatementRowStatus.deferred => context.l10n.text('reviewLater'),
+  StatementRowStatus.skipped => context.l10n.text('statementSkipped'),
+  StatementRowStatus.saved => context.l10n.text('statementSaved'),
+  StatementRowStatus.linked => context.l10n.text('statementLinked'),
+};
+
+String _paymentSourceTypeLabel(BuildContext context, PaymentSourceType type) =>
+    switch (type) {
+      PaymentSourceType.account => context.l10n.text(
+        'paymentSourceTypeAccount',
+      ),
+      PaymentSourceType.card => context.l10n.text('paymentSourceTypeCard'),
+      PaymentSourceType.debitCard => context.l10n.text(
+        'paymentSourceTypeDebitCard',
+      ),
+      PaymentSourceType.cash => context.l10n.text('paymentSourceTypeCash'),
+      PaymentSourceType.wallet => context.l10n.text('paymentSourceTypeWallet'),
+      PaymentSourceType.other => context.l10n.text('paymentSourceTypeOther'),
+    };
+
+String _statementDirectionLabel(BuildContext context, String? direction) =>
+    switch (direction) {
+      'income' => context.l10n.text('income'),
+      'expense' => context.l10n.text('expense'),
+      'transfer' => context.l10n.text('transfer'),
+      'refund' => context.l10n.text('refund'),
+      'adjustment' => context.l10n.text('adjustment'),
+      _ => context.l10n.text('directionNeedsReview'),
+    };
 
 class _StatementCapturePageState extends State<StatementCapturePage> {
   final _rowsText = TextEditingController();
@@ -117,6 +154,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
   }
 
   Future<void> _ingest(XFile file) async {
+    final l10n = context.l10n;
     setState(() => _busy = true);
     final store = services<LocalEvidenceStore>();
     final preserved = await store.preserve(file);
@@ -140,7 +178,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     final evidence = await store.storePreservedStatement(preserved);
     if (evidence == null) {
       await store.discardPreserved(preserved);
-      _message('The statement could not be stored.');
+      _message(l10n.text('statementCouldNotBeStored'));
       return;
     }
     final now = DateTime.now().toUtc();
@@ -229,7 +267,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
           'detail=${result.failure.detail ?? 'none'}; rows=${rows.length}',
         );
       }
-      _message('The statement could not be created.');
+      _message(l10n.text('statementCouldNotBeCreated'));
       return;
     }
     _rowsText.clear();
@@ -356,12 +394,12 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Statement extraction diagnostics'),
+        title: Text(context.l10n.text('statementExtractionDiagnostics')),
         content: SingleChildScrollView(child: SelectableText(summary)),
         actions: [
           TextButton(
             onPressed: () => Clipboard.setData(ClipboardData(text: summary)),
-            child: const Text('Copy'),
+            child: Text(context.l10n.text('copy')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -475,6 +513,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
   }
 
   Future<void> _createSource() async {
+    final l10n = context.l10n;
     final name = TextEditingController(text: widget.statement.institution);
     final lastFour = TextEditingController(
       text: RegExp(
@@ -486,23 +525,27 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => ButlerlySheet(
-          title: const Text('Create payment source'),
+          title: Text(context.l10n.text('createPaymentSource')),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: name,
-                  decoration: const InputDecoration(labelText: 'Name'),
+                  decoration: InputDecoration(
+                    labelText: context.l10n.text('name'),
+                  ),
                 ),
                 DropdownButtonFormField<PaymentSourceType>(
                   initialValue: type,
-                  decoration: const InputDecoration(labelText: 'Type'),
+                  decoration: InputDecoration(
+                    labelText: context.l10n.text('type'),
+                  ),
                   items: PaymentSourceType.values
                       .map(
                         (value) => DropdownMenuItem(
                           value: value,
-                          child: Text(value.name),
+                          child: Text(_paymentSourceTypeLabel(context, value)),
                         ),
                       )
                       .toList(),
@@ -512,8 +555,8 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                 TextField(
                   controller: lastFour,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Last four digits (optional)',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.text('lastFourOptional'),
                   ),
                 ),
               ],
@@ -522,11 +565,11 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
+              child: Text(context.l10n.text('cancel')),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Create and use'),
+              child: Text(context.l10n.text('createAndUse')),
             ),
           ],
         ),
@@ -539,7 +582,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
     }
     final digits = lastFour.text.trim();
     if (digits.isNotEmpty && !RegExp(r'^\d{4}$').hasMatch(digits)) {
-      _message('Enter exactly four digits, or leave the field empty.');
+      _message(l10n.text('fourDigitsOrEmpty'));
       name.dispose();
       lastFour.dispose();
       return;
@@ -556,7 +599,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
     lastFour.dispose();
     final saved = await services<FinanceServices>().savePaymentSource(source);
     if (saved is! ApplicationSuccess<PaymentSource>) {
-      _message('The payment source could not be created.');
+      _message(l10n.text('paymentSourceCouldNotBeCreated'));
       return;
     }
     final assigned = await widget.service.assignSource(
@@ -570,9 +613,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
         _sourceId = source.id.value;
       });
     } else {
-      _message(
-        'The source was created, but could not be linked. Select it to retry.',
-      );
+      _message(context.l10n.text('sourceCreatedCouldNotBeLinked'));
     }
   }
 
@@ -715,24 +756,23 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
     final text = await showButlerlyBottomSheet<String>(
       context: context,
       builder: (context) => ButlerlySheet(
-        title: const Text('Add rows from statement'),
+        title: Text(context.l10n.text('addRowsFromStatement')),
         content: TextField(
           controller: controller,
           minLines: 6,
           maxLines: 12,
-          decoration: const InputDecoration(
-            helperText:
-                'One per line: YYYY-MM-DD | description | signed amount | currency',
+          decoration: InputDecoration(
+            helperText: context.l10n.text('rowsFormatHint'),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.text('cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('Add for review'),
+            child: Text(context.l10n.text('addForReview')),
           ),
         ],
       ),
@@ -829,7 +869,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => ButlerlySheet(
-          title: const Text('Correct extracted row'),
+          title: Text(context.l10n.text('correctExtractedRow')),
           content: SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.symmetric(
@@ -842,20 +882,20 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                           Text(row.originalText),
                           TextField(
                             controller: date,
-                            decoration: const InputDecoration(
-                              labelText: 'Date (YYYY-MM-DD)',
+                            decoration: InputDecoration(
+                              labelText: context.l10n.text('dateFormat'),
                             ),
                           ),
                           TextField(
                             controller: postingDate,
-                            decoration: const InputDecoration(
-                              labelText: 'Posting date (YYYY-MM-DD)',
+                            decoration: InputDecoration(
+                              labelText: context.l10n.text('postingDateFormat'),
                             ),
                           ),
                           TextField(
                             controller: description,
-                            decoration: const InputDecoration(
-                              labelText: 'Description',
+                            decoration: InputDecoration(
+                              labelText: context.l10n.text('description'),
                             ),
                           ),
                           ButlerlyMerchantSelector(
@@ -899,14 +939,14 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                           ),
                           TextField(
                             controller: amount,
-                            decoration: const InputDecoration(
-                              labelText: 'Amount',
+                            decoration: InputDecoration(
+                              labelText: context.l10n.text('amount'),
                             ),
                           ),
                           TextField(
                             controller: currency,
-                            decoration: const InputDecoration(
-                              labelText: 'Currency',
+                            decoration: InputDecoration(
+                              labelText: context.l10n.text('currency'),
                             ),
                           ),
                           ButlerlyDirectionFilter(
@@ -932,13 +972,13 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
+              child: Text(context.l10n.text('cancel')),
             ),
             FilledButton(
               onPressed: direction == null
                   ? null
                   : () => Navigator.pop(context, true),
-              child: const Text('Save corrections'),
+              child: Text(context.l10n.text('saveCorrections')),
             ),
           ],
         ),
@@ -1078,7 +1118,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                       '${candidate.transaction.currency} ${localizedTransactionAmount(context, candidate.transaction.amount)} · ${candidate.transaction.transactionDate}',
                     ),
                     subtitle: Text(
-                      '${context.l10n.text('reconciliationScore', {'score': candidate.assessment.score.toStringAsFixed(2)})}\n${candidate.assessment.reasons.join('; ')}${candidate.assessment.conflicts.isEmpty ? '' : '\n${candidate.assessment.conflicts.join('; ')}'}',
+                      '${context.l10n.text('reconciliationScore', {'score': candidate.assessment.score.toStringAsFixed(2)})}\n${localizedReconciliationReasons(context, candidate.assessment.reasons)}${candidate.assessment.conflicts.isEmpty ? '' : '\n${localizedReconciliationConflicts(context, candidate.assessment.conflicts)}'}',
                     ),
                     onTap: () => Navigator.pop(
                       context,
@@ -1189,7 +1229,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
           child: TextButton.icon(
             onPressed: _createSource,
             icon: const Icon(Icons.add_card_outlined),
-            label: const Text('Create new payment source'),
+            label: Text(context.l10n.text('createNewPaymentSource')),
           ),
         ),
         const SizedBox(height: ButlerlySpacing.compact),
@@ -1224,11 +1264,11 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                   Text(
                     [
                       row.transactionDate?.toIso8601String().substring(0, 10) ??
-                          'Date needs review',
-                      row.currency ?? 'Currency needs review',
-                      row.amount ?? 'Amount needs review',
-                      row.direction ?? 'Direction needs review',
-                      row.status.name,
+                          context.l10n.text('dateNeedsReview'),
+                      row.currency ?? context.l10n.text('currencyNeedsReview'),
+                      row.amount ?? context.l10n.text('amountNeedsReview'),
+                      _statementDirectionLabel(context, row.direction),
+                      _statementRowStatusLabel(context, row.status),
                     ].join(' · '),
                   ),
                   if (row.status == StatementRowStatus.pending ||

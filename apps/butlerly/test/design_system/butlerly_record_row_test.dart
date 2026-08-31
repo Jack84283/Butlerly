@@ -2,7 +2,9 @@ import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
+import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -141,6 +143,40 @@ void main() {
     );
 
     expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
+  });
+
+  testWidgets('transaction direction and review semantics are localized', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('es'),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: Scaffold(
+          body: ButlerlyTransactionListItem(
+            title: 'Compra',
+            amount: '4.00',
+            currency: 'EUR',
+            isIncome: true,
+            needsReview: true,
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      tester
+          .widget<Icon>(find.byIcon(Icons.arrow_upward_rounded))
+          .semanticLabel,
+      'Ingresos',
+    );
+    expect(find.byTooltip('Necesita revisión'), findsOneWidget);
   });
 
   testWidgets('income uses upward direction and list dividers omit the last', (

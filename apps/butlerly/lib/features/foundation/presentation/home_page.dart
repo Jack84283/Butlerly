@@ -360,8 +360,10 @@ class _QuickAction extends StatelessWidget {
       horizontal: ButlerlySpacing.micro,
       vertical: ButlerlySpacing.small,
     ),
-    child: SizedBox(
-      height: 72,
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(
+        minHeight: ButlerlySize.recordRowMinHeight,
+      ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [

@@ -56,6 +56,19 @@ class _ReviewPageState extends State<ReviewPage> {
   }
 
   @override
+  void didUpdateWidget(covariant ReviewPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.showPossibleDuplicates == widget.showPossibleDuplicates) {
+      return;
+    }
+    setState(() {
+      _view = widget.showPossibleDuplicates
+          ? _ReviewView.duplicates
+          : _ReviewView.uncategorized;
+    });
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final languageCode = Localizations.localeOf(context).languageCode;

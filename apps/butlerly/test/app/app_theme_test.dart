@@ -43,4 +43,61 @@ void main() {
       );
     }
   });
+
+  test('dark and light semantic interactive colors meet text contrast', () {
+    for (final colorTheme in ButlerlyColorTheme.values) {
+      for (final theme in [
+        AppTheme.lightFor(colorTheme),
+        AppTheme.darkFor(colorTheme),
+      ]) {
+        final colors = theme.extension<ButlerlySemanticColors>()!;
+        expect(
+          _contrast(theme.colorScheme.primary, theme.colorScheme.onPrimary),
+          greaterThanOrEqualTo(4.5),
+          reason: '$colorTheme ${theme.brightness} filled control',
+        );
+        expect(
+          _contrast(colors.interactive, colors.surface),
+          greaterThanOrEqualTo(4.5),
+          reason: '$colorTheme ${theme.brightness} navigation label',
+        );
+        final chipSurface = Color.alphaBlend(
+          colors.review.withValues(alpha: .14),
+          colors.surface,
+        );
+        expect(
+          _contrast(colors.review, chipSurface),
+          greaterThanOrEqualTo(4.5),
+          reason: '$colorTheme ${theme.brightness} review chip',
+        );
+        expect(
+          _contrast(theme.colorScheme.secondary, theme.colorScheme.onSecondary),
+          greaterThanOrEqualTo(4.5),
+          reason: '$colorTheme ${theme.brightness} secondary control',
+        );
+        expect(
+          _contrast(theme.colorScheme.tertiary, theme.colorScheme.onTertiary),
+          greaterThanOrEqualTo(4.5),
+          reason: '$colorTheme ${theme.brightness} tertiary control',
+        );
+        expect(
+          _contrast(theme.colorScheme.error, theme.colorScheme.onError),
+          greaterThanOrEqualTo(4.5),
+          reason: '$colorTheme ${theme.brightness} error control',
+        );
+      }
+    }
+  });
+}
+
+double _contrast(Color first, Color second) {
+  final firstLuminance = first.computeLuminance();
+  final secondLuminance = second.computeLuminance();
+  final lighter = firstLuminance > secondLuminance
+      ? firstLuminance
+      : secondLuminance;
+  final darker = firstLuminance > secondLuminance
+      ? secondLuminance
+      : firstLuminance;
+  return (lighter + .05) / (darker + .05);
 }

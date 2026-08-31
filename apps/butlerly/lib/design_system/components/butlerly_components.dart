@@ -157,7 +157,7 @@ class ButlerlyStatusChip extends StatelessWidget {
     ButlerlyStatus.warning => context.colors.warning,
     ButlerlyStatus.error => context.colors.error,
     ButlerlyStatus.info => context.colors.info,
-    ButlerlyStatus.review => context.colors.brandStrong,
+    ButlerlyStatus.review => context.colors.review,
     ButlerlyStatus.neutral => context.colors.secondaryText,
   };
 
@@ -453,7 +453,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
     button: onTap != null,
     label:
-        '$title, $amount $currency${needsReview ? ', needs review' : ''}'
+        '$title, $amount $currency${needsReview ? ', ${context.l10n.text('needsReview')}' : ''}'
         '${possibleDuplicate && possibleDuplicateLabel != null ? ', $possibleDuplicateLabel' : ''}',
     child: ConstrainedBox(
       constraints: const BoxConstraints(
@@ -480,7 +480,9 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                       isIncome
                           ? Icons.arrow_upward_rounded
                           : Icons.arrow_downward_rounded,
-                      semanticLabel: isIncome ? 'Income' : 'Expense',
+                      semanticLabel: context.l10n.text(
+                        isIncome ? 'income' : 'expense',
+                      ),
                       size: ButlerlyTransactionItemTokens.directionIconSize,
                       color: context.transactionItemDirectionIcon(isIncome),
                     ),
@@ -502,11 +504,15 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                                   ButlerlyTransactionItemTokens.headerSpacing,
                             ),
                             Tooltip(
-                              message: possibleDuplicateLabel ?? 'Needs review',
+                              message:
+                                  possibleDuplicateLabel ??
+                                  context.l10n.text('needsReview'),
                               child: Semantics(
                                 container: true,
                                 button: onPossibleDuplicateTap != null,
-                                label: possibleDuplicateLabel ?? 'Needs review',
+                                label:
+                                    possibleDuplicateLabel ??
+                                    context.l10n.text('needsReview'),
                                 child: InkWell(
                                   onTap: onPossibleDuplicateTap,
                                   child: Padding(

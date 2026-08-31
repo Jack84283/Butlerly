@@ -384,7 +384,7 @@ class _FinancialCalendar extends StatelessWidget {
               children: [
                 IconButton(
                   key: const ValueKey('analysis-calendar-previous'),
-                  tooltip: 'Previous month',
+                  tooltip: context.l10n.text('previousMonth'),
                   onPressed: onPreviousMonth,
                   icon: const Icon(Icons.chevron_left),
                 ),
@@ -397,7 +397,7 @@ class _FinancialCalendar extends StatelessWidget {
                 ),
                 IconButton(
                   key: const ValueKey('analysis-calendar-next'),
-                  tooltip: 'Next month',
+                  tooltip: context.l10n.text('nextMonth'),
                   onPressed: onNextMonth,
                   icon: const Icon(Icons.chevron_right),
                 ),
