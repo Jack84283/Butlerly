@@ -38,7 +38,7 @@ class _ReviewPageState extends State<ReviewPage> {
     super.initState();
     _view = widget.showPossibleDuplicates
         ? _ReviewView.duplicates
-        : _ReviewView.needsReview;
+        : _ReviewView.uncategorized;
     _items = _load();
     _uncategorized = _loadUncategorized();
     _duplicateGroups = _loadDuplicateGroups();
@@ -264,10 +264,6 @@ class _ReviewPageState extends State<ReviewPage> {
           showSelectedIcon: false,
           segments: [
             ButtonSegment(
-              value: _ReviewView.needsReview,
-              label: Text(context.l10n.text('needsReview')),
-            ),
-            ButtonSegment(
               value: _ReviewView.uncategorized,
               label: Text(context.l10n.text('uncategorized')),
             ),
@@ -281,6 +277,10 @@ class _ReviewPageState extends State<ReviewPage> {
                   return Text(count == null ? label : '$label ($count)');
                 },
               ),
+            ),
+            ButtonSegment(
+              value: _ReviewView.needsReview,
+              label: Text(context.l10n.text('needsReview')),
             ),
           ],
           selected: {_view},

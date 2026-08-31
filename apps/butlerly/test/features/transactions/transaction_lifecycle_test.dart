@@ -437,6 +437,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.tap(find.text('Needs review'));
+    await tester.pumpAndSettle();
     expect(find.text('Lunch'), findsOneWidget);
     await tester.tap(find.text('Resolve'));
     await tester.pumpAndSettle();
@@ -473,6 +475,18 @@ void main() {
       stored.updatedAt.add(const Duration(seconds: 1)),
     );
     await tester.pumpWidget(const MaterialApp(home: ReviewPage()));
+    await tester.pumpAndSettle();
+    final uncategorizedPosition = tester.getTopLeft(
+      find.text('Uncategorized'),
+    );
+    final duplicatesPosition = tester.getTopLeft(
+      find.textContaining('Possible duplicates'),
+    );
+    final needsReviewPosition = tester.getTopLeft(find.text('Needs review'));
+    expect(uncategorizedPosition.dx, lessThan(duplicatesPosition.dx));
+    expect(duplicatesPosition.dx, lessThan(needsReviewPosition.dx));
+    expect(find.text('Canonical review row'), findsOneWidget);
+    await tester.tap(find.text('Needs review'));
     await tester.pumpAndSettle();
     expect(find.byType(ButlerlyCard), findsOneWidget);
     expect(find.byType(ButlerlyRecordRow), findsOneWidget);
