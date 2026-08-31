@@ -1,6 +1,7 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/add_page.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/features/foundation/presentation/payment_sources_page.dart';
@@ -403,6 +404,16 @@ void main() {
 
     expect(find.text('Organized row'), findsOneWidget);
     expect(find.text('Corner Market • Groceries • Weekly'), findsOneWidget);
+    final filterBottom = tester.getBottomLeft(
+      find.byWidgetPredicate(
+        (widget) => widget.runtimeType.toString().startsWith('SegmentedButton'),
+      ),
+    );
+    final firstRowTop = tester.getTopLeft(find.byType(ButlerlyRecordRow));
+    expect(
+      firstRowTop.dy - filterBottom.dy,
+      greaterThanOrEqualTo(ButlerlySpacing.section),
+    );
   });
 
   testWidgets('resolves an active local review issue', (tester) async {
@@ -494,6 +505,14 @@ void main() {
       TextAlign.center,
     );
     expect(find.text('Canonical review row'), findsOneWidget);
+    expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
+    await tester.tap(find.text('Canonical review row'));
+    await tester.pumpAndSettle();
+    expect(find.byType(TransactionDetailPage), findsOneWidget);
+    expect(repository.values['review-canonical']?.categoryId, isNull);
+    expect(repository.values['review-canonical']?.reviewIssues, hasLength(1));
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Needs review'));
     await tester.pumpAndSettle();
     expect(find.byType(ButlerlyCard), findsOneWidget);
@@ -618,6 +637,19 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Possible duplicate group'), findsOneWidget);
+      final modeControlBottom = tester.getBottomLeft(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget.runtimeType.toString().startsWith('SegmentedButton'),
+        ),
+      );
+      final rescanTop = tester.getTopLeft(
+        find.text('Rescan possible duplicates'),
+      );
+      expect(
+        rescanTop.dy - modeControlBottom.dy,
+        lessThan(ButlerlySpacing.section),
+      );
       expect(find.byType(Radio<TransactionId>), findsNWidgets(2));
       expect(find.text('Keep both'), findsOneWidget);
       expect(

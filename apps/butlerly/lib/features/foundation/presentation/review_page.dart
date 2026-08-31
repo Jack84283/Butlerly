@@ -301,7 +301,8 @@ class _ReviewPageState extends State<ReviewPage> {
           selected: {_view},
           onSelectionChanged: (value) => setState(() => _view = value.single),
         ),
-        const SizedBox(height: ButlerlySpacing.section),
+        if (_view != _ReviewView.duplicates)
+          const SizedBox(height: ButlerlySpacing.section),
         if (_view == _ReviewView.duplicates)
           FutureBuilder<List<DuplicateCandidateGroup>>(
             future: _duplicateGroups,
@@ -401,6 +402,7 @@ class _ReviewPageState extends State<ReviewPage> {
                   transactions: values,
                   masterData: masterSnapshot.data?.presentation,
                   onTap: _openUncategorized,
+                  navigates: true,
                 ),
               );
             },
