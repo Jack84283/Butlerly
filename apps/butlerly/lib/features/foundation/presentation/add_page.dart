@@ -12,54 +12,75 @@ class AddPage extends StatelessWidget {
   Widget build(BuildContext context) => ButlerlyPage(
     title: context.l10n.text('add'),
     children: [
-      ButlerlyCard(
-        padding: EdgeInsets.zero,
-        child: ButlerlySeparatedList(
-          children: [
-            _AddAction(
-              icon: Icons.add_card_outlined,
-              label: context.l10n.text('addTransaction'),
-              onTap: () => context.push('/transactions/add'),
-            ),
-            _AddAction(
-              icon: Icons.receipt_long_outlined,
-              label: context.l10n.text('scanReceipt'),
-              onTap: () => context.push('/receipts/capture'),
-            ),
-            _AddAction(
-              icon: Icons.document_scanner_outlined,
-              label: context.l10n.text('scanStatement'),
-              onTap: () => context.push('/statements'),
-            ),
-            _AddAction(
-              icon: Icons.account_balance_wallet_outlined,
-              label: context.l10n.text('paymentSources'),
-              onTap: () => context.push('/payment-sources'),
-            ),
-          ],
-        ),
+      _AddActionCard(
+        icon: Icons.add_card_outlined,
+        title: context.l10n.text('addTransaction'),
+        subtitle: context.l10n.text('addTransactionSubtitle'),
+        onTap: () => context.push('/transactions/add'),
+      ),
+      _AddActionCard(
+        icon: Icons.receipt_long_outlined,
+        title: context.l10n.text('scanReceipt'),
+        subtitle: context.l10n.text('scanReceiptSubtitle'),
+        onTap: () => context.push('/receipts/capture'),
+      ),
+      _AddActionCard(
+        icon: Icons.document_scanner_outlined,
+        title: context.l10n.text('scanStatement'),
+        subtitle: context.l10n.text('scanStatementSubtitle'),
+        onTap: () => context.push('/statements'),
+      ),
+      _AddActionCard(
+        icon: Icons.account_balance_wallet_outlined,
+        title: context.l10n.text('paymentSources'),
+        subtitle: context.l10n.text('paymentSourcesSubtitle'),
+        onTap: () => context.push('/payment-sources'),
       ),
     ],
   );
 }
 
-class _AddAction extends StatelessWidget {
-  const _AddAction({
+class _AddActionCard extends StatelessWidget {
+  const _AddActionCard({
     required this.icon,
-    required this.label,
+    required this.title,
+    required this.subtitle,
     required this.onTap,
   });
 
   final IconData icon;
-  final String label;
+  final String title;
+  final String subtitle;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    minTileHeight: ButlerlySize.preferredTarget,
-    leading: Icon(icon, color: context.colors.interactive),
-    title: Text(label),
-    trailing: const Icon(Icons.chevron_right_rounded),
-    onTap: onTap,
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: ButlerlySpacing.small),
+    child: ButlerlyCard(
+      onTap: onTap,
+      semanticLabel: '$title, $subtitle',
+      child: Row(
+        children: [
+          Icon(icon, color: context.colors.interactive),
+          const SizedBox(width: ButlerlySpacing.standard),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: Theme.of(context).textTheme.bodyLarge),
+                Text(
+                  subtitle,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: context.colors.secondaryText,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: ButlerlySpacing.small),
+          const Icon(Icons.chevron_right_rounded),
+        ],
+      ),
+    ),
   );
 }
