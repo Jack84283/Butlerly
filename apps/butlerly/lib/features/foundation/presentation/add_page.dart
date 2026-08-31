@@ -14,20 +14,20 @@ class AddPage extends StatelessWidget {
     children: [
       _AddActionCard(
         icon: Icons.add_card_outlined,
-        title: context.l10n.text('addTransaction'),
-        subtitle: context.l10n.text('addTransactionSubtitle'),
+        title: context.l10n.text('addTransactionManually'),
+        subtitle: context.l10n.text('addTransactionManuallySubtitle'),
         onTap: () => context.push('/transactions/add'),
       ),
       _AddActionCard(
         icon: Icons.receipt_long_outlined,
-        title: context.l10n.text('scanReceipt'),
-        subtitle: context.l10n.text('scanReceiptSubtitle'),
+        title: context.l10n.text('addTransactionFromReceipt'),
+        subtitle: context.l10n.text('addTransactionFromReceiptSubtitle'),
         onTap: () => context.push('/receipts/capture'),
       ),
       _AddActionCard(
         icon: Icons.document_scanner_outlined,
-        title: context.l10n.text('scanStatement'),
-        subtitle: context.l10n.text('scanStatementSubtitle'),
+        title: context.l10n.text('addTransactionFromStatement'),
+        subtitle: context.l10n.text('addTransactionFromStatementSubtitle'),
         onTap: () => context.push('/statements'),
       ),
       _AddActionCard(
@@ -68,12 +68,7 @@ class _AddActionCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: Theme.of(context).textTheme.bodyLarge),
-                Text(
-                  subtitle,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: context.colors.secondaryText,
-                  ),
-                ),
+                Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
               ],
             ),
           ),

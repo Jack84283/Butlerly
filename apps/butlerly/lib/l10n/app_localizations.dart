@@ -85,6 +85,14 @@ class AppLocalizations {
       'addData': 'Add data',
       'addTransaction': 'Add transaction',
       'addTransactionSubtitle': 'Enter a transaction manually',
+      'addTransactionManually': 'Add transaction manually',
+      'addTransactionManuallySubtitle': 'Enter transaction details yourself',
+      'addTransactionFromReceipt': 'Add transaction from receipt',
+      'addTransactionFromReceiptSubtitle':
+          'Scan a receipt to extract transaction details',
+      'addTransactionFromStatement': 'Add transaction from statement',
+      'addTransactionFromStatementSubtitle':
+          'Scan a statement to review and add transactions',
       'scanReceipt': 'Scan receipt',
       'scanReceiptSubtitle':
           'Capture a receipt and extract transaction details',
@@ -531,6 +539,12 @@ class AppLocalizations {
       'addData': '添加数据',
       'addTransaction': '添加交易',
       'addTransactionSubtitle': '手动输入交易',
+      'addTransactionManually': '手动添加交易',
+      'addTransactionManuallySubtitle': '自行输入交易详情',
+      'addTransactionFromReceipt': '从收据添加交易',
+      'addTransactionFromReceiptSubtitle': '扫描收据以提取交易详情',
+      'addTransactionFromStatement': '从账单添加交易',
+      'addTransactionFromStatementSubtitle': '扫描账单以审核并添加交易',
       'scanReceipt': '扫描收据',
       'scanReceiptSubtitle': '拍摄收据并提取交易详情',
       'scanStatement': '扫描账单',
@@ -938,6 +952,15 @@ class AppLocalizations {
       'addData': 'Añadir datos',
       'addTransaction': 'Añadir transacción',
       'addTransactionSubtitle': 'Introduce una transacción manualmente',
+      'addTransactionManually': 'Añadir transacción manualmente',
+      'addTransactionManuallySubtitle':
+          'Introduce los detalles de la transacción',
+      'addTransactionFromReceipt': 'Añadir transacción desde un recibo',
+      'addTransactionFromReceiptSubtitle':
+          'Escanea un recibo para extraer los detalles de la transacción',
+      'addTransactionFromStatement': 'Añadir transacción desde un extracto',
+      'addTransactionFromStatementSubtitle':
+          'Escanea un extracto para revisar y añadir transacciones',
       'scanReceipt': 'Escanear recibo',
       'scanReceiptSubtitle':
           'Captura un recibo y extrae los detalles de la transacción',

@@ -133,9 +133,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Add'), findsOneWidget);
-    expect(find.text('Add transaction'), findsOneWidget);
-    expect(find.text('Scan receipt'), findsOneWidget);
-    expect(find.text('Scan statement'), findsOneWidget);
+    expect(find.text('Add transaction manually'), findsOneWidget);
+    expect(find.text('Add transaction from receipt'), findsOneWidget);
+    expect(find.text('Add transaction from statement'), findsOneWidget);
     expect(find.text('Payment sources'), findsOneWidget);
 
     await tester.pageBack();

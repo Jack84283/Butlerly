@@ -34,18 +34,24 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(ButlerlyCard), findsNWidgets(4));
-    expect(find.text('Enter a transaction manually'), findsOneWidget);
+    expect(find.text('Add transaction manually'), findsOneWidget);
+    expect(find.text('Enter transaction details yourself'), findsOneWidget);
+    expect(find.text('Add transaction from receipt'), findsOneWidget);
     expect(
-      find.text('Capture a receipt and extract transaction details'),
+      find.text('Scan a receipt to extract transaction details'),
       findsOneWidget,
     );
-    expect(find.text('Import transactions from a statement'), findsOneWidget);
+    expect(find.text('Add transaction from statement'), findsOneWidget);
+    expect(
+      find.text('Scan a statement to review and add transactions'),
+      findsOneWidget,
+    );
     expect(
       find.text('Add and manage cards, accounts, and other payment sources'),
       findsOneWidget,
     );
 
-    await tester.tap(find.byIcon(Icons.add_card_outlined));
+    await tester.tap(find.text('Add transaction manually'));
     await tester.pumpAndSettle();
     expect(find.text('transaction destination'), findsOneWidget);
     router.pop();
