@@ -249,22 +249,10 @@ class SettingsPage extends ConsumerWidget {
                         .saveChanges(externalAiEnabled: value),
             ),
             _SettingsRow(
-              icon: Icons.insights_outlined,
-              title: context.l10n.text('insights'),
-              subtitle: context.l10n.text('insightsBody'),
-              onTap: () => context.push('/insights'),
-            ),
-            _SettingsRow(
               icon: Icons.auto_awesome_outlined,
               title: context.l10n.text('assistant'),
               subtitle: context.l10n.text('assistantUnavailableBody'),
               onTap: () => context.push('/assistant'),
-            ),
-            _SettingsRow(
-              icon: Icons.notifications_none_rounded,
-              title: context.l10n.text('notifications'),
-              subtitle: context.l10n.text('notificationsBody'),
-              onTap: () => context.push('/notifications'),
             ),
           ],
         ),

@@ -116,6 +116,8 @@ void main() {
     expect(find.text('Transactions'), findsOneWidget);
     expect(find.text('Review'), findsOneWidget);
     expect(find.text('Search'), findsOneWidget);
+    expect(find.text('More'), findsOneWidget);
+    expect(find.text('More...'), findsNothing);
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.text('Local records'), findsOneWidget);
     expect(find.text('Add data'), findsOneWidget);
@@ -145,6 +147,32 @@ void main() {
     await tester.pageBack();
     await tester.pumpAndSettle();
   });
+
+  testWidgets(
+    'More opens Settings without optional Insights or Notifications',
+    (tester) async {
+      setPhoneViewport(tester);
+      await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('More').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Settings'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('Optional features'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('Optional features'), findsOneWidget);
+      expect(find.text('Assistant'), findsOneWidget);
+      expect(find.text('Insights'), findsNothing);
+      expect(find.text('Notifications'), findsNothing);
+
+      await tester.tap(find.text('Home').last);
+      await tester.pumpAndSettle();
+    },
+  );
 
   testWidgets('Home Quick Actions open Analysis, Insights, and Notifications', (
     tester,
@@ -263,7 +291,7 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Settings').last);
+    await tester.tap(find.text('More').last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('System'));
     await tester.pumpAndSettle();
@@ -281,7 +309,7 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Settings').last);
+    await tester.tap(find.text('More').last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('English'));
     await tester.pumpAndSettle();
@@ -299,7 +327,7 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Settings').last);
+    await tester.tap(find.text('More').last);
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text('Legal & licenses'),
