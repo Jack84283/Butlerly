@@ -97,6 +97,7 @@ abstract interface class AnalysisRuleResultRepository {
     required AnalysisRuleDefinition rule,
     required AnalysisContext context,
     String? dimension,
+    int? sourceRevision,
   });
 
   Future<void> save(AnalysisRuleResult result);

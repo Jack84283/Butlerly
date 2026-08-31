@@ -239,6 +239,7 @@ final class SqliteAnalysisRuleResultRepository
     required AnalysisRuleDefinition rule,
     required AnalysisContext context,
     String? dimension,
+    int? sourceRevision,
   }) async {
     final where = <String>[
       'rule_id = ?',
@@ -273,6 +274,10 @@ final class SqliteAnalysisRuleResultRepository
     } else {
       where.add('dimension = ?');
       args.add(dimension);
+    }
+    if (sourceRevision != null) {
+      where.add('source_revision = ?');
+      args.add(sourceRevision);
     }
     final rows = await database.connection.query(
       'analysis_rule_results',

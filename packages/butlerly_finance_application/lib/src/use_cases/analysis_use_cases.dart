@@ -67,7 +67,11 @@ final class CalculateAnalysisOverview {
     if (!forceRefresh && results != null && materializedRules.isNotEmpty) {
       final cached = <RuleExecutionResult>[];
       for (final rule in materializedRules) {
-        final persisted = await results!.find(rule: rule, context: context);
+        final persisted = await results!.find(
+          rule: rule,
+          context: context,
+          sourceRevision: sourceRevision,
+        );
         if (persisted == null) {
           cached.clear();
           break;
