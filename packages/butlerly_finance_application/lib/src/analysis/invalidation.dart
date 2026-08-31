@@ -24,9 +24,10 @@ enum AnalysisInvalidationReason {
 }
 
 final class InvalidateAnalysis {
-  const InvalidateAnalysis(this.findings, {this.results});
+  const InvalidateAnalysis(this.findings, {this.results, this.rules});
   final AnalysisFindingRepository findings;
   final AnalysisRuleResultRepository? results;
+  final AnalysisRuleRepository? rules;
 
   Future<ApplicationResult<void>> call(
     AnalysisInvalidationReason reason,
@@ -35,6 +36,12 @@ final class InvalidateAnalysis {
     String? periodEnd,
     Set<String>? ruleIds,
   }) => runApplication('invalidate analysis', () async {
+    final definitions = rules == null
+        ? const <AnalysisRuleDefinition>[]
+        : await rules!.listActive();
+    final scoped = rules != null;
+    final directlyAffected = _affectedRules(reason, definitions, ruleIds);
+    final affected = _dependentsOf(directlyAffected, definitions);
     switch (reason) {
       case AnalysisInvalidationReason.transactionChanged:
       case AnalysisInvalidationReason.transactionCreated:
@@ -59,7 +66,7 @@ final class InvalidateAnalysis {
     await results?.markStale(
       periodStart: periodStart,
       periodEnd: periodEnd,
-      ruleIds: ruleIds,
+      ruleIds: scoped ? affected : null,
     );
     final active = await findings.list(lifecycle: FindingLifecycle.active);
     for (final finding in active) {
@@ -71,7 +78,7 @@ final class InvalidateAnalysis {
           finding.context.period.startDate.compareTo(periodEnd) > 0) {
         continue;
       }
-      if (ruleIds != null && !ruleIds.contains(finding.rule.identity.value)) {
+      if (scoped && !affected.contains(finding.rule.identity.value)) {
         continue;
       }
       await findings.updateLifecycle(
@@ -81,4 +88,58 @@ final class InvalidateAnalysis {
       );
     }
   });
+
+  Set<String> _affectedRules(
+    AnalysisInvalidationReason reason,
+    List<AnalysisRuleDefinition> definitions,
+    Set<String>? requested,
+  ) {
+    if (requested != null && requested.isNotEmpty) return requested;
+    bool uses(AnalysisRuleDefinition rule, Set<String> fields) =>
+        rule.grouping.name != 'none' && fields.contains(rule.grouping.name) ||
+        rule.filters.any((filter) => fields.contains(filter.kind.name)) ||
+        rule.measures.any((measure) => fields.contains(measure.field)) ||
+        (fields.contains('baseCurrency') &&
+            rule.measures.any(
+              (measure) => measure.currencyBasis == CurrencyBasis.baseCurrency,
+            )) ||
+        fields.contains('all');
+    final fields = switch (reason) {
+      AnalysisInvalidationReason.categoryChanged => {'category'},
+      AnalysisInvalidationReason.merchantChanged => {'merchant'},
+      AnalysisInvalidationReason.paymentSourceChanged => {'paymentSource'},
+      AnalysisInvalidationReason.tagsChanged => {'tag'},
+      AnalysisInvalidationReason.transactionDirectionChanged => {'direction'},
+      AnalysisInvalidationReason.transactionAmountChanged => {'amount'},
+      AnalysisInvalidationReason.exchangeRateChanged ||
+      AnalysisInvalidationReason.baseCurrencyChanged => {'baseCurrency'},
+      AnalysisInvalidationReason.timeZoneChanged => {'all'},
+      AnalysisInvalidationReason.ruleChanged => {'all'},
+      _ => {'all'},
+    };
+    return {
+      for (final rule in definitions)
+        if (uses(rule, fields) || fields.contains('all')) rule.identity.value,
+    };
+  }
+
+  Set<String> _dependentsOf(
+    Set<String> roots,
+    List<AnalysisRuleDefinition> definitions,
+  ) {
+    final affected = {...roots};
+    var changed = true;
+    while (changed) {
+      changed = false;
+      for (final rule in definitions) {
+        if (!affected.contains(rule.identity.value) &&
+            rule.dependencies.any(
+              (dependency) => affected.contains(dependency.ruleId.value),
+            )) {
+          changed = affected.add(rule.identity.value) || changed;
+        }
+      }
+    }
+    return affected;
+  }
 }

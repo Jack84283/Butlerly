@@ -254,6 +254,44 @@ void main() {
     expect(result.single.finding, isNull);
   });
 
+  test(
+    'uses a cached metric as a declared dependency without recomputing it',
+    () {
+      final cached = const AnalysisRuleEngine()
+          .execute(
+            dataset: dataset(),
+            definitions: [rule('ANL-R001', RuleOperation.sum)],
+          )
+          .single;
+      final dependent = rule(
+        'ANL-R003',
+        RuleOperation.difference,
+        dependencies: [
+          RuleDependency(ruleId: RuleIdentity('ANL-R001')),
+          RuleDependency(ruleId: RuleIdentity('ANL-R002')),
+        ],
+      );
+      final income = rule('ANL-R002', RuleOperation.sum);
+      final results = const AnalysisRuleEngine().execute(
+        dataset: dataset(),
+        definitions: [dependent, income, cached.rule],
+        availableResults: {
+          'ANL-R001': [cached],
+        },
+      );
+      expect(
+        results.where((value) => value.rule.identity.value == 'ANL-R001'),
+        hasLength(1),
+      );
+      expect(
+        results
+            .singleWhere((value) => value.rule.identity.value == 'ANL-R003')
+            .failure,
+        isNull,
+      );
+    },
+  );
+
   test('count measures are dimensionless and retain drill-down evidence', () {
     final count = rule('ANL-R004', RuleOperation.count);
     final metric = const AnalysisRuleEngine()

@@ -7,6 +7,7 @@ final class AnalysisRuleEngine {
     required AnalysisDataset dataset,
     required List<AnalysisRuleDefinition> definitions,
     DateTime? calculatedAt,
+    Map<String, List<RuleExecutionResult>> availableResults = const {},
   }) {
     final ordering = _order(definitions);
     final ordered = ordering.ordered;
@@ -17,6 +18,21 @@ final class AnalysisRuleEngine {
     for (final rule in ordered) {
       if (!rule.enabled || rule.status != AnalysisRuleStatus.active) continue;
       try {
+        final cached = availableResults[rule.identity.value];
+        if (cached != null && cached.isNotEmpty) {
+          results.addAll(cached);
+          final first = cached.first;
+          resultById[rule.identity.value] = first;
+          for (final cachedResult in cached) {
+            final metric = cachedResult.metric;
+            if (metric != null) {
+              metrics[rule.identity.value] ??= metric;
+              metrics['${rule.identity.value}:${metric.dimension ?? ''}'] =
+                  metric;
+            }
+          }
+          continue;
+        }
         if (ordering.cyclicIds.contains(rule.identity.value)) {
           final result = RuleExecutionResult(
             rule: rule,

@@ -93,6 +93,12 @@ abstract interface class AnalysisFindingRepository {
 }
 
 abstract interface class AnalysisRuleResultRepository {
+  Future<List<AnalysisRuleResult>> findAll({
+    required AnalysisRuleDefinition rule,
+    required AnalysisContext context,
+    int? sourceRevision,
+  });
+
   Future<AnalysisRuleResult?> find({
     required AnalysisRuleDefinition rule,
     required AnalysisContext context,

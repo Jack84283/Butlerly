@@ -423,6 +423,8 @@ final class AnalysisRuleResult {
     required this.createdAt,
     required this.updatedAt,
     this.dimension,
+    this.resultSetKey,
+    this.resultSetSize = 1,
   });
 
   final String id;
@@ -439,6 +441,12 @@ final class AnalysisRuleResult {
   final AnalysisResultFreshness freshness;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  /// Identifies all outputs produced by one rule/context execution.
+  final String? resultSetKey;
+
+  /// The number of rows that must be present before the set is reusable.
+  final int resultSetSize;
 }
 
 final class AnalysisFailure {

@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS analysis_rule_results (
       currency_basis TEXT NOT NULL,
       base_currency TEXT,
       dimension TEXT,
+      result_set_key TEXT,
+      result_set_size INTEGER NOT NULL DEFAULT 1,
       payload TEXT NOT NULL,
       calculated_at TEXT NOT NULL,
       source_revision INTEGER NOT NULL,

@@ -217,7 +217,11 @@ final class FinanceServices {
            : UpdateFindingLifecycle(analysisFindings),
        invalidateAnalysis = analysisFindings == null
            ? null
-           : InvalidateAnalysis(analysisFindings, results: analysisResults);
+           : InvalidateAnalysis(
+               analysisFindings,
+               results: analysisResults,
+               rules: analysisRules,
+             );
 
   final ListTransactions listTransactions;
   final SeedInitialMasterData seedInitialMasterData;

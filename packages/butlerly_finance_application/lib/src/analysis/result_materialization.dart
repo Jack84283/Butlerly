@@ -10,6 +10,8 @@ AnalysisRuleResult materializeResult(
   required AnalysisContext context,
   required DateTime at,
   int sourceRevision = 0,
+  String? resultSetKey,
+  int resultSetSize = 1,
 }) {
   final metric = result.metric;
   final finding = result.finding;
@@ -34,6 +36,9 @@ AnalysisRuleResult materializeResult(
             },
           )
           .toList(growable: false),
+      'qualityIssues': metric.qualityIssues
+          .map(_qualityIssue)
+          .toList(growable: false),
     },
     if (finding != null) ...{
       'kind': 'finding',
@@ -46,6 +51,10 @@ AnalysisRuleResult materializeResult(
       'percentageChange': finding.percentageChange?.toString(),
       'dimension': finding.dimension,
       'supportingMetrics': finding.supportingMetrics,
+      'evidence': finding.evidence.map(_evidence).toList(growable: false),
+      'qualityIssues': finding.qualityIssues
+          .map(_qualityIssue)
+          .toList(growable: false),
     },
     if (metric == null && finding == null) 'kind': 'failure',
   });
@@ -65,7 +74,35 @@ AnalysisRuleResult materializeResult(
     freshness: AnalysisResultFreshness.fresh,
     createdAt: at,
     updatedAt: at,
+    resultSetKey: resultSetKey,
+    resultSetSize: resultSetSize,
   );
+}
+
+List<AnalysisRuleResult> materializeResults(
+  List<RuleExecutionResult> results, {
+  required AnalysisContext context,
+  required DateTime at,
+  int sourceRevision = 0,
+}) {
+  final groups = <String, List<RuleExecutionResult>>{};
+  for (final result in results) {
+    if (result.metric == null && result.finding == null) continue;
+    groups.putIfAbsent(result.rule.identity.value, () => []).add(result);
+  }
+  return [
+    for (final entry in groups.entries)
+      for (final result in entry.value)
+        materializeResult(
+          result,
+          context: context,
+          at: at,
+          sourceRevision: sourceRevision,
+          resultSetKey:
+              '${entry.key}:${context.period.startDate}:${context.period.endDate}',
+          resultSetSize: entry.value.length,
+        ),
+  ];
 }
 
 RuleExecutionResult restoreResult(
@@ -92,6 +129,8 @@ RuleExecutionResult restoreResult(
                 ?.map((value) => value.toString())
                 .toList(growable: false) ??
             const [],
+        evidence: _evidenceList(json['evidence']),
+        qualityIssues: _qualityIssues(json['qualityIssues']),
         generatedAt: persisted.calculatedAt,
       ),
     );
@@ -109,6 +148,8 @@ RuleExecutionResult restoreResult(
           : CurrencyCode(json['currency'] as String),
       dimension: json['dimension'] as String?,
       transactionCount: json['transactionCount'] as int? ?? 0,
+      evidence: _evidenceList(json['evidence']),
+      qualityIssues: _qualityIssues(json['qualityIssues']),
       calculatedAt: persisted.calculatedAt,
     ),
   );
@@ -116,3 +157,43 @@ RuleExecutionResult restoreResult(
 
 DecimalValue? _decimal(Object? value) =>
     value == null ? null : DecimalValue.parse(value as String);
+
+Map<String, Object?> _evidence(EvidenceReference value) => {
+  'transactionId': value.transactionId.value,
+  'evidenceId': value.evidenceId?.value,
+};
+
+List<EvidenceReference> _evidenceList(Object? value) => value is! List
+    ? const []
+    : value
+          .whereType<Map<Object?, Object?>>()
+          .map(
+            (item) => EvidenceReference(
+              transactionId: TransactionId(item['transactionId'].toString()),
+              evidenceId: item['evidenceId'] == null
+                  ? null
+                  : EvidenceId(item['evidenceId'].toString()),
+            ),
+          )
+          .toList(growable: false);
+
+Map<String, Object?> _qualityIssue(DataQualityIssue value) => {
+  'code': value.code,
+  'detail': value.detail,
+  'transactionId': value.transactionId?.value,
+};
+
+List<DataQualityIssue> _qualityIssues(Object? value) => value is! List
+    ? const []
+    : value
+          .whereType<Map<Object?, Object?>>()
+          .map(
+            (item) => DataQualityIssue(
+              code: item['code'].toString(),
+              detail: item['detail'].toString(),
+              transactionId: item['transactionId'] == null
+                  ? null
+                  : TransactionId(item['transactionId'].toString()),
+            ),
+          )
+          .toList(growable: false);

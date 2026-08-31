@@ -51,13 +51,6 @@ final class CalculateAnalysisOverview {
     bool forceRefresh = false,
     int sourceRevision = 0,
   }) => runApplication('calculate analysis overview', () async {
-    final dataset = await datasetBuilder.build(context);
-    if (dataset case ApplicationDatasetFailure()) {
-      throw const RepositoryException(
-        RepositoryFailureCode.unavailable,
-        'analysis dataset unavailable',
-      );
-    }
     final definitions = await rules.listActive();
     final materializedRules = definitions
         .where(
@@ -65,58 +58,64 @@ final class CalculateAnalysisOverview {
               rule.resultPersistence == ResultPersistencePolicy.materialized,
         )
         .toList(growable: false);
+    final available = <String, List<RuleExecutionResult>>{};
     if (!forceRefresh && results != null && materializedRules.isNotEmpty) {
-      final cached = <RuleExecutionResult>[];
       for (final rule in materializedRules) {
-        final persisted = await results!.find(
+        final persisted = await results!.findAll(
           rule: rule,
           context: context,
           sourceRevision: sourceRevision,
         );
-        if (persisted == null) {
-          cached.clear();
-          break;
+        if (persisted.isEmpty) continue;
+        final expected = persisted.first.resultSetSize;
+        final setKey = persisted.first.resultSetKey;
+        final complete =
+            persisted.length == expected &&
+            (setKey == null ||
+                persisted.every((value) => value.resultSetKey == setKey));
+        if (complete) {
+          available[rule.identity.value] = persisted
+              .map((value) => restoreResult(value, rule))
+              .toList(growable: false);
         }
-        cached.add(restoreResult(persisted, rule));
       }
-      if (cached.length == materializedRules.length) {
-        final transientDefinitions = definitions
-            .where(
-              (rule) =>
-                  rule.resultPersistence !=
-                  ResultPersistencePolicy.materialized,
-            )
-            .toList(growable: false);
-        if (transientDefinitions.isEmpty) return cached;
-        return [
-          ...cached,
-          ...engine.execute(
-            dataset: (dataset as ApplicationDatasetSuccess).dataset,
-            definitions: transientDefinitions,
-          ),
-        ];
-      }
+    }
+    final allMaterializedFresh =
+        materializedRules.length == definitions.length &&
+        available.length == materializedRules.length;
+    if (allMaterializedFresh) {
+      return available.values.expand((value) => value).toList(growable: false);
+    }
+    final dataset = await datasetBuilder.build(context);
+    if (dataset case ApplicationDatasetFailure()) {
+      throw const RepositoryException(
+        RepositoryFailureCode.unavailable,
+        'analysis dataset unavailable',
+      );
     }
     final executionResults = engine.execute(
       dataset: (dataset as ApplicationDatasetSuccess).dataset,
       definitions: definitions,
+      availableResults: available,
     );
     if (findings != null || results != null) {
       for (final result in executionResults) {
         final finding = result.finding;
         if (finding != null && findings != null) await findings!.save(finding);
-        if (results != null &&
-            result.rule.resultPersistence !=
-                ResultPersistencePolicy.transient &&
-            (result.metric != null || result.finding != null)) {
-          await results!.save(
-            materializeResult(
-              result,
-              context: context,
-              at: DateTime.now().toUtc(),
-              sourceRevision: sourceRevision,
-            ),
-          );
+      }
+      if (results != null) {
+        final materialized = executionResults.where(
+          (result) =>
+              result.rule.resultPersistence !=
+              ResultPersistencePolicy.transient,
+        );
+        for (final result in materializeResults(
+          materialized.toList(growable: false),
+          context: context,
+          at: DateTime.now().toUtc(),
+          sourceRevision: sourceRevision,
+        )) {
+          await results!.save(result);
         }
       }
     }

@@ -235,6 +235,53 @@ final class SqliteAnalysisRuleResultRepository
   final ButlerlyDatabase database;
 
   @override
+  Future<List<AnalysisRuleResult>> findAll({
+    required AnalysisRuleDefinition rule,
+    required AnalysisContext context,
+    int? sourceRevision,
+  }) async {
+    final where = <String>[
+      'rule_id = ?',
+      'rule_version = ?',
+      'definition_hash = ?',
+      'period_start = ?',
+      'period_end = ?',
+      'time_zone_id = ?',
+      'dataset_mode = ?',
+      'currency_basis = ?',
+      'freshness = ?',
+    ];
+    final args = <Object?>[
+      rule.identity.value,
+      rule.version.value,
+      rule.definitionHash.value,
+      context.period.startDate,
+      context.period.endDate,
+      context.period.timeZoneId,
+      context.datasetMode.name,
+      context.currencyBasis.name,
+      AnalysisResultFreshness.fresh.name,
+    ];
+    if (context.baseCurrency == null) {
+      where.add('base_currency IS NULL');
+    } else {
+      where.add('base_currency = ?');
+      args.add(context.baseCurrency!.value);
+    }
+    if (sourceRevision != null) {
+      where.add('source_revision = ?');
+      args.add(sourceRevision);
+    }
+    final rows = await database.connection.query(
+      'analysis_rule_results',
+      where: where.join(' AND '),
+      whereArgs: args,
+      orderBy: 'dimension, updated_at DESC',
+    );
+    return rows.map(_result).toList(growable: false);
+  }
+
+  @override
   Future<AnalysisRuleResult?> find({
     required AnalysisRuleDefinition rule,
     required AnalysisContext context,
@@ -299,12 +346,15 @@ final class SqliteAnalysisRuleResultRepository
         (id, rule_id, rule_version, definition_hash, result_type, surface,
          period_start, period_end, time_zone_id, dataset_mode, currency_basis,
          base_currency, dimension, payload, calculated_at, source_revision,
+         result_set_key, result_set_size,
          freshness, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         payload = excluded.payload,
         calculated_at = excluded.calculated_at,
         source_revision = excluded.source_revision,
+        result_set_key = excluded.result_set_key,
+        result_set_size = excluded.result_set_size,
         freshness = excluded.freshness,
         updated_at = excluded.updated_at
       ''',
@@ -325,6 +375,8 @@ final class SqliteAnalysisRuleResultRepository
         result.payload,
         result.calculatedAt.toUtc().toIso8601String(),
         result.sourceRevision,
+        result.resultSetKey,
+        result.resultSetSize,
         result.freshness.name,
         result.createdAt.toUtc().toIso8601String(),
         now,
@@ -351,6 +403,8 @@ final class SqliteAnalysisRuleResultRepository
     if (ruleIds != null && ruleIds.isNotEmpty) {
       clauses.add('rule_id IN (${List.filled(ruleIds.length, '?').join(',')})');
       args.addAll(ruleIds);
+    } else if (ruleIds != null) {
+      return;
     }
     await database.connection.update(
       'analysis_rule_results',
@@ -382,6 +436,8 @@ final class SqliteAnalysisRuleResultRepository
           : CurrencyCode(row['base_currency']! as String),
     ),
     dimension: row['dimension'] as String?,
+    resultSetKey: row['result_set_key'] as String?,
+    resultSetSize: row['result_set_size'] as int? ?? 1,
     payload: row['payload']! as String,
     calculatedAt: DateTime.parse(row['calculated_at']! as String),
     sourceRevision: row['source_revision']! as int,
@@ -411,6 +467,31 @@ final class SqliteAnalysisFindingRepository
       'payload': jsonEncode({
         'dimension': finding.dimension,
         'severity': finding.severity.name,
+        'currentValue': finding.currentValue?.toString(),
+        'baselineValue': finding.baselineValue?.toString(),
+        'absoluteChange': finding.absoluteChange?.toString(),
+        'percentageChange': finding.percentageChange?.toString(),
+        'supportingMetrics': finding.supportingMetrics,
+        'evidence': finding.evidence
+            .map(
+              (value) => {
+                'transactionId': value.transactionId.value,
+                'evidenceId': value.evidenceId?.value,
+              },
+            )
+            .toList(growable: false),
+        'qualityIssues': finding.qualityIssues
+            .map(
+              (value) => {
+                'code': value.code,
+                'detail': value.detail,
+                'transactionId': value.transactionId?.value,
+              },
+            )
+            .toList(growable: false),
+        'datasetMode': finding.context.datasetMode.name,
+        'currencyBasis': finding.context.currencyBasis.name,
+        'baseCurrency': finding.context.baseCurrency?.value,
       }),
       'lifecycle': finding.lifecycle.name,
       'generated_at': finding.generatedAt.toUtc().toIso8601String(),
@@ -485,8 +566,17 @@ final class SqliteAnalysisFindingRepository
                 endDate: row['period_end']! as String,
                 timeZoneId: row['time_zone_id']! as String,
               ),
-              datasetMode: DatasetMode.allEligible,
-              currencyBasis: CurrencyBasis.original,
+              datasetMode: DatasetMode.values.byName(
+                payload['datasetMode'] as String? ??
+                    DatasetMode.allEligible.name,
+              ),
+              currencyBasis: CurrencyBasis.values.byName(
+                payload['currencyBasis'] as String? ??
+                    CurrencyBasis.original.name,
+              ),
+              baseCurrency: payload['baseCurrency'] == null
+                  ? null
+                  : CurrencyCode(payload['baseCurrency'] as String),
             ),
             severity: RuleSeverity.values.byName(
               payload['severity'] as String? ?? 'info',
@@ -495,6 +585,25 @@ final class SqliteAnalysisFindingRepository
               row['lifecycle']! as String,
             ),
             dimension: payload['dimension'] as String?,
+            currentValue: payload['currentValue'] == null
+                ? null
+                : DecimalValue.parse(payload['currentValue'] as String),
+            baselineValue: payload['baselineValue'] == null
+                ? null
+                : DecimalValue.parse(payload['baselineValue'] as String),
+            absoluteChange: payload['absoluteChange'] == null
+                ? null
+                : DecimalValue.parse(payload['absoluteChange'] as String),
+            percentageChange: payload['percentageChange'] == null
+                ? null
+                : DecimalValue.parse(payload['percentageChange'] as String),
+            supportingMetrics:
+                (payload['supportingMetrics'] as List?)
+                    ?.map((value) => value.toString())
+                    .toList(growable: false) ??
+                const [],
+            evidence: _evidenceList(payload['evidence']),
+            qualityIssues: _qualityIssues(payload['qualityIssues']),
             generatedAt: DateTime.parse(row['generated_at']! as String),
           );
         })
@@ -515,3 +624,32 @@ final class SqliteAnalysisFindingRepository
     );
   }
 }
+
+List<EvidenceReference> _evidenceList(Object? value) => value is! List
+    ? const []
+    : value
+          .whereType<Map>()
+          .map(
+            (item) => EvidenceReference(
+              transactionId: TransactionId(item['transactionId'].toString()),
+              evidenceId: item['evidenceId'] == null
+                  ? null
+                  : EvidenceId(item['evidenceId'].toString()),
+            ),
+          )
+          .toList(growable: false);
+
+List<DataQualityIssue> _qualityIssues(Object? value) => value is! List
+    ? const []
+    : value
+          .whereType<Map>()
+          .map(
+            (item) => DataQualityIssue(
+              code: item['code'].toString(),
+              detail: item['detail'].toString(),
+              transactionId: item['transactionId'] == null
+                  ? null
+                  : TransactionId(item['transactionId'].toString()),
+            ),
+          )
+          .toList(growable: false);
