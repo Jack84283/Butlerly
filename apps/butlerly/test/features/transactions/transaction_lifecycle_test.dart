@@ -1,6 +1,7 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/features/foundation/presentation/add_page.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/features/foundation/presentation/payment_sources_page.dart';
 import 'package:butlerly/features/foundation/presentation/review_page.dart';
@@ -14,6 +15,7 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 void main() {
@@ -166,10 +168,21 @@ void main() {
   testWidgets('creates, edits, archives, and permanently deletes locally', (
     tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: TransactionsPage()));
+    final router = GoRouter(
+      initialLocation: '/add',
+      routes: [
+        GoRoute(path: '/add', builder: (_, _) => const AddPage()),
+        GoRoute(
+          path: '/transactions/add',
+          builder: (_, _) =>
+              TransactionEditorPage(finance: services<FinanceServices>()),
+        ),
+      ],
+    );
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Add transaction').first);
+    await tester.tap(find.text('Add transaction manually'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).at(0), '12.50');
     await tester.enterText(find.byType(TextFormField).at(2), 'Lunch');
@@ -180,6 +193,9 @@ void main() {
       scrollable: find.byType(Scrollable).last,
     );
     await tester.tap(find.text('Save locally'));
+    await tester.pumpAndSettle();
+
+    await tester.pumpWidget(const MaterialApp(home: TransactionsPage()));
     await tester.pumpAndSettle();
 
     expect(find.text('Lunch'), findsOneWidget);
@@ -421,6 +437,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.tap(find.text('Needs review'));
+    await tester.pumpAndSettle();
     expect(find.text('Lunch'), findsOneWidget);
     await tester.tap(find.text('Resolve'));
     await tester.pumpAndSettle();
@@ -458,16 +476,68 @@ void main() {
     );
     await tester.pumpWidget(const MaterialApp(home: ReviewPage()));
     await tester.pumpAndSettle();
+    final uncategorizedPosition = tester.getTopLeft(
+      find.text('Not Categorized'),
+    );
+    final duplicatesPosition = tester.getTopLeft(
+      find.textContaining('Possible duplicates'),
+    );
+    final needsReviewPosition = tester.getTopLeft(find.text('Needs review'));
+    expect(uncategorizedPosition.dx, lessThan(duplicatesPosition.dx));
+    expect(duplicatesPosition.dx, lessThan(needsReviewPosition.dx));
+    expect(
+      tester.widget<Text>(find.text('Not Categorized')).textAlign,
+      TextAlign.center,
+    );
+    expect(
+      tester.widget<Text>(find.text('Needs review')).textAlign,
+      TextAlign.center,
+    );
+    expect(find.text('Canonical review row'), findsOneWidget);
+    await tester.tap(find.text('Needs review'));
+    await tester.pumpAndSettle();
     expect(find.byType(ButlerlyCard), findsOneWidget);
     expect(find.byType(ButlerlyRecordRow), findsOneWidget);
     expect(find.text('Needs a category'), findsOneWidget);
     expect(find.text('Resolve'), findsOneWidget);
 
-    await tester.tap(find.text('Uncategorized'));
+    await tester.tap(find.text('Not Categorized'));
     await tester.pumpAndSettle();
     expect(find.byType(ButlerlyTransactionList), findsOneWidget);
     expect(find.byType(ButlerlyRecordRow), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Review mode labels stay centered at narrow text scale', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: MediaQuery(
+          data: MediaQueryData(
+            size: Size(320, 568),
+            textScaler: TextScaler.linear(1.5),
+          ),
+          child: ReviewPage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<Text>(find.text('Not Categorized')).textAlign,
+      TextAlign.center,
+    );
+    expect(
+      tester.widget<Text>(find.text('Needs review')).textAlign,
+      TextAlign.center,
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Review reloads when a transaction change is notified', (
@@ -489,7 +559,7 @@ void main() {
     );
     await tester.pumpWidget(const MaterialApp(home: ReviewPage()));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Uncategorized'));
+    await tester.tap(find.text('Not Categorized'));
     await tester.pumpAndSettle();
     expect(find.text('Refresh me'), findsOneWidget);
     await finance.createTransaction(
@@ -509,7 +579,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.pumpWidget(const MaterialApp(home: ReviewPage()));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Uncategorized'));
+    await tester.tap(find.text('Not Categorized'));
     await tester.pumpAndSettle();
     expect(find.text('Added after refresh'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());

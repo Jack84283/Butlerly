@@ -1,11 +1,37 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/add_page.dart';
+import 'package:butlerly/features/foundation/presentation/payment_sources_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('data-entry pages use semantic theme backgrounds and surfaces', (
+    tester,
+  ) async {
+    for (final theme in [AppTheme.light, AppTheme.dark]) {
+      for (final page in [const AddPage(), const PaymentSourcesPage()]) {
+        await tester.pumpWidget(MaterialApp(theme: theme, home: page));
+        await tester.pumpAndSettle();
+
+        final colors = theme.extension<ButlerlySemanticColors>()!;
+        expect(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget is ColoredBox && widget.color == colors.background,
+          ),
+          findsOneWidget,
+        );
+        for (final card in tester.widgetList<Card>(find.byType(Card))) {
+          expect(card.color ?? theme.cardTheme.color, colors.surface);
+        }
+      }
+    }
+  });
+
   testWidgets('shared loading state is available in both themes', (
     tester,
   ) async {
