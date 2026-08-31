@@ -133,8 +133,17 @@ void main() {
       (await repository.find(
         rule: rule,
         context: context('2026-08'),
+        sourceRevision: 1,
       ))?.freshness,
       AnalysisResultFreshness.fresh,
+    );
+    expect(
+      await repository.find(
+        rule: rule,
+        context: context('2026-08'),
+        sourceRevision: 2,
+      ),
+      isNull,
     );
     await repository.markStale(
       periodStart: '2026-08-01',
