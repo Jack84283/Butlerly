@@ -82,6 +82,86 @@ void main() {
     ]);
   });
 
+  test('persists materialized results and scopes stale invalidation', () async {
+    final repository = SqliteAnalysisRuleResultRepository(database);
+    final rule = AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R001'),
+      version: RuleVersion('1.0.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.metric,
+      nameKey: 'test.name',
+      descriptionKey: 'test.description',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
+      grouping: RuleGrouping.none,
+      baseline: RuleBaseline.none,
+      condition: const RuleCondition(operator: 'none'),
+      severity: RuleSeverity.info,
+      definitionHash: RuleDefinitionHash('c' * 64),
+      resultPersistence: ResultPersistencePolicy.materialized,
+    );
+    AnalysisContext context(String month) => AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '$month-01',
+        endDate: '$month-31',
+        timeZoneId: 'UTC',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+      baseCurrency: CurrencyCode('USD'),
+    );
+    AnalysisRuleResult result(String month) => AnalysisRuleResult(
+      id: 'result-$month',
+      ruleId: rule.identity,
+      ruleVersion: rule.version,
+      definitionHash: rule.definitionHash,
+      resultType: AnalysisResultType.metric,
+      surface: AnalysisSurface.overview,
+      context: context(month),
+      payload: '{"value":"10"}',
+      calculatedAt: now,
+      sourceRevision: 1,
+      freshness: AnalysisResultFreshness.fresh,
+      createdAt: now,
+      updatedAt: now,
+    );
+    await repository.save(result('2026-07'));
+    await repository.save(result('2026-08'));
+    expect(
+      (await repository.find(
+        rule: rule,
+        context: context('2026-08'),
+      ))?.freshness,
+      AnalysisResultFreshness.fresh,
+    );
+    await repository.markStale(
+      periodStart: '2026-08-01',
+      periodEnd: '2026-08-31',
+    );
+    expect(
+      (await repository.find(rule: rule, context: context('2026-08'))),
+      isNull,
+    );
+    expect(
+      await database.connection.query(
+        'analysis_rule_results',
+        where: 'id = ?',
+        whereArgs: ['result-2026-07'],
+      ),
+      hasLength(1),
+    );
+    expect(
+      (await database.connection.query(
+        'analysis_rule_results',
+        where: 'id = ?',
+        whereArgs: ['result-2026-07'],
+      )).single['freshness'],
+      'fresh',
+    );
+  });
+
   test(
     'round-trips the bundled multi-measure R016 definition through SQLite',
     () async {

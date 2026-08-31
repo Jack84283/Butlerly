@@ -6,6 +6,7 @@ import '../result/application_result.dart';
 import '../dto/transaction_dto.dart';
 import '../analysis/dataset_builder.dart';
 import '../analysis/rule_engine.dart';
+import '../analysis/result_materialization.dart';
 
 final class CalculateAnalysisOverview {
   const CalculateAnalysisOverview(
@@ -13,11 +14,13 @@ final class CalculateAnalysisOverview {
     this.datasetBuilder,
     this.engine, {
     this.findings,
+    this.results,
   });
   final AnalysisRuleRepository rules;
   final AnalysisDatasetBuilder datasetBuilder;
   final AnalysisRuleEngine engine;
   final AnalysisFindingRepository? findings;
+  final AnalysisRuleResultRepository? results;
 
   /// Resolves the default month in the application layer so presentation never
   /// invents financial windows or timezone policy.
@@ -44,8 +47,10 @@ final class CalculateAnalysisOverview {
   }
 
   Future<ApplicationResult<List<RuleExecutionResult>>> call(
-    AnalysisContext context,
-  ) => runApplication('calculate analysis overview', () async {
+    AnalysisContext context, {
+    bool forceRefresh = false,
+    int sourceRevision = 0,
+  }) => runApplication('calculate analysis overview', () async {
     final dataset = await datasetBuilder.build(context);
     if (dataset case ApplicationDatasetFailure()) {
       throw const RepositoryException(
@@ -54,18 +59,77 @@ final class CalculateAnalysisOverview {
       );
     }
     final definitions = await rules.listActive();
-    final results = engine.execute(
+    final materializedRules = definitions
+        .where(
+          (rule) => rule.resultPersistence != ResultPersistencePolicy.transient,
+        )
+        .toList(growable: false);
+    if (!forceRefresh && results != null && materializedRules.isNotEmpty) {
+      final cached = <RuleExecutionResult>[];
+      for (final rule in materializedRules) {
+        final persisted = await results!.find(rule: rule, context: context);
+        if (persisted == null) {
+          cached.clear();
+          break;
+        }
+        cached.add(restoreResult(persisted, rule));
+      }
+      if (cached.length == materializedRules.length) {
+        final transientDefinitions = definitions
+            .where(
+              (rule) =>
+                  rule.resultPersistence == ResultPersistencePolicy.transient,
+            )
+            .toList(growable: false);
+        if (transientDefinitions.isEmpty) return cached;
+        return [
+          ...cached,
+          ...engine.execute(
+            dataset: (dataset as ApplicationDatasetSuccess).dataset,
+            definitions: transientDefinitions,
+          ),
+        ];
+      }
+    }
+    final executionResults = engine.execute(
       dataset: (dataset as ApplicationDatasetSuccess).dataset,
       definitions: definitions,
     );
-    if (findings != null) {
-      for (final result in results) {
+    if (findings != null || results != null) {
+      for (final result in executionResults) {
         final finding = result.finding;
-        if (finding != null) await findings!.save(finding);
+        if (finding != null && findings != null) await findings!.save(finding);
+        if (results != null &&
+            result.rule.resultPersistence !=
+                ResultPersistencePolicy.transient &&
+            (result.metric != null || result.finding != null)) {
+          await results!.save(
+            materializeResult(
+              result,
+              context: context,
+              at: DateTime.now().toUtc(),
+              sourceRevision: sourceRevision,
+            ),
+          );
+        }
       }
     }
-    return results;
+    return executionResults;
   });
+}
+
+final class RerunAnalysis {
+  const RerunAnalysis(this.calculate);
+  final CalculateAnalysisOverview calculate;
+
+  Future<ApplicationResult<List<RuleExecutionResult>>> call(
+    AnalysisContext context, {
+    int sourceRevision = 0,
+  }) => calculate.call(
+    context,
+    forceRefresh: true,
+    sourceRevision: sourceRevision,
+  );
 }
 
 /// Converts an instant to the calendar date in the persisted financial zone.

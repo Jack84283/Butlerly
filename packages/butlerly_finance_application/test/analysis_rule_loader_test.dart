@@ -59,6 +59,64 @@ other: *bad
     expect(canonicalize(first.values), canonicalize(second.values));
   });
 
+  test(
+    'round-trips conditions, dependency versions, and result policy',
+    () async {
+      final source = '''
+schemaVersion: "1.0.0"
+ruleId: ANL-R020
+ruleVersion: "1.1.0"
+enabled: true
+type: insight
+nameKey: analysis.rule.r020.name
+descriptionKey: analysis.rule.r020.description
+period: selected_period
+baseline: previousEquivalentPeriod
+severity: attention
+measure:
+  operation: sum
+  field: amount
+dependencies:
+  - ruleId: ANL-R001
+    minimumVersion: "1.1.0"
+condition:
+  operator: gte
+  left: percentageChange
+  value: "20"
+result:
+  persistence: finding
+  refresh: onInvalidation
+''';
+      final parsed = parser.parse(source);
+      final validated = validator.validate(parsed.document!);
+      expect(validated.diagnostics, isEmpty);
+      final definition = validated.definition!;
+      final database = ButlerlyDatabase(
+        factory: databaseFactoryFfi,
+        path: inMemoryDatabasePath,
+        schemaSql: File(
+          '../../packages/butlerly_database/database/schema/v1.sql',
+        ).readAsStringSync(),
+      );
+      await database.open();
+      addTearDown(database.close);
+      final repository = SqliteAnalysisRuleRepository(database);
+      await repository.install(
+        definition,
+        sourceType: 'test',
+        canonicalDefinition: canonicalize(parsed.document!.values),
+      );
+      final restored = (await repository.listDefinitions()).single;
+      expect(restored.condition.operator, 'gte');
+      expect(restored.condition.left, 'percentageChange');
+      expect(restored.condition.value, DecimalValue.parse('20'));
+      expect(restored.dependencies.single.minimumVersion!.value, '1.1.0');
+      expect(restored.resultPersistence, ResultPersistencePolicy.finding);
+      expect(restored.refreshPolicy, RefreshPolicy.onInvalidation);
+      expect(restored.definitionHash, definition.definitionHash);
+    },
+  );
+
   test('rejects unknown fields', () {
     final parsed = parser.parse('$valid\nnotAllowed: true\n');
     final result = validator.validate(parsed.document!);
@@ -132,8 +190,9 @@ measure:
     final database = ButlerlyDatabase(
       factory: databaseFactoryFfi,
       path: inMemoryDatabasePath,
-      schemaSql: File('../../packages/butlerly_database/database/schema/v1.sql')
-          .readAsStringSync(),
+      schemaSql: File(
+        '../../packages/butlerly_database/database/schema/v1.sql',
+      ).readAsStringSync(),
     );
     await database.open();
     addTearDown(database.close);

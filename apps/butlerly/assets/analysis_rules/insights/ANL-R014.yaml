@@ -3,7 +3,7 @@ ruleId: ANL-R014
 ruleVersion: "1.1.0"
 enabled: true
 surface: trends
-type: insight
+type: metric
 nameKey: analysis.rule.r014.name
 descriptionKey: analysis.rule.r014.description
 period: selected_period
@@ -12,3 +12,6 @@ measure:
   operation: sum
   field: amount
   currencyBasis: baseCurrency
+result:
+  persistence: transient
+  refresh: onInvalidation

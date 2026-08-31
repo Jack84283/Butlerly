@@ -143,12 +143,19 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
       baseline: RuleBaseline.values.byName(
         json['baseline'] as String? ?? 'none',
       ),
-      condition: const RuleCondition(operator: 'none'),
+      condition: _condition(json['condition']),
       severity: RuleSeverity.values.byName(
         json['severity'] as String? ?? 'info',
       ),
       filters: _filters(json['filters']),
       dependencies: _dependencies(json['dependencies']),
+      resultPersistence: ResultPersistencePolicy.values.byName(
+        (json['result'] as Map?)?['persistence']?.toString() ??
+            (json['type'] == 'insight' ? 'finding' : 'transient'),
+      ),
+      refreshPolicy: RefreshPolicy.values.byName(
+        (json['result'] as Map?)?['refresh']?.toString() ?? 'onInvalidation',
+      ),
       definitionHash: RuleDefinitionHash(hash),
     );
   }
@@ -194,9 +201,191 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
       ? const []
       : raw
             .map(
-              (value) => RuleDependency(ruleId: RuleIdentity(value.toString())),
+              (value) => value is Map
+                  ? RuleDependency(
+                      ruleId: RuleIdentity(value['ruleId'].toString()),
+                      minimumVersion: value['minimumVersion'] == null
+                          ? null
+                          : RuleVersion(value['minimumVersion'].toString()),
+                    )
+                  : RuleDependency(ruleId: RuleIdentity(value.toString())),
             )
             .toList(growable: false);
+
+  RuleCondition _condition(Object? raw) {
+    if (raw is! Map) return const RuleCondition(operator: 'none');
+    final children = raw['children'] is List
+        ? (raw['children'] as List).map(_condition).toList(growable: false)
+        : const <RuleCondition>[];
+    return RuleCondition(
+      operator: raw['operator']?.toString() ?? 'none',
+      value: raw['value'] == null
+          ? null
+          : DecimalValue.parse(raw['value'].toString()),
+      left: raw['left']?.toString(),
+      right: raw['right']?.toString(),
+      children: children,
+    );
+  }
+}
+
+final class SqliteAnalysisRuleResultRepository
+    implements AnalysisRuleResultRepository {
+  const SqliteAnalysisRuleResultRepository(this.database);
+  final ButlerlyDatabase database;
+
+  @override
+  Future<AnalysisRuleResult?> find({
+    required AnalysisRuleDefinition rule,
+    required AnalysisContext context,
+    String? dimension,
+  }) async {
+    final where = <String>[
+      'rule_id = ?',
+      'rule_version = ?',
+      'definition_hash = ?',
+      'period_start = ?',
+      'period_end = ?',
+      'time_zone_id = ?',
+      'dataset_mode = ?',
+      'currency_basis = ?',
+      'freshness = ?',
+    ];
+    final args = <Object?>[
+      rule.identity.value,
+      rule.version.value,
+      rule.definitionHash.value,
+      context.period.startDate,
+      context.period.endDate,
+      context.period.timeZoneId,
+      context.datasetMode.name,
+      context.currencyBasis.name,
+      AnalysisResultFreshness.fresh.name,
+    ];
+    if (context.baseCurrency == null) {
+      where.add('base_currency IS NULL');
+    } else {
+      where.add('base_currency = ?');
+      args.add(context.baseCurrency!.value);
+    }
+    if (dimension == null) {
+      where.add('dimension IS NULL');
+    } else {
+      where.add('dimension = ?');
+      args.add(dimension);
+    }
+    final rows = await database.connection.query(
+      'analysis_rule_results',
+      where: where.join(' AND '),
+      whereArgs: args,
+      orderBy: 'updated_at DESC',
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return _result(rows.single);
+  }
+
+  @override
+  Future<void> save(AnalysisRuleResult result) async {
+    final now = result.updatedAt.toUtc().toIso8601String();
+    await database.connection.rawInsert(
+      '''
+      INSERT INTO analysis_rule_results
+        (id, rule_id, rule_version, definition_hash, result_type, surface,
+         period_start, period_end, time_zone_id, dataset_mode, currency_basis,
+         base_currency, dimension, payload, calculated_at, source_revision,
+         freshness, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        payload = excluded.payload,
+        calculated_at = excluded.calculated_at,
+        source_revision = excluded.source_revision,
+        freshness = excluded.freshness,
+        updated_at = excluded.updated_at
+      ''',
+      [
+        result.id,
+        result.ruleId.value,
+        result.ruleVersion.value,
+        result.definitionHash.value,
+        result.resultType.name,
+        result.surface.name,
+        result.context.period.startDate,
+        result.context.period.endDate,
+        result.context.period.timeZoneId,
+        result.context.datasetMode.name,
+        result.context.currencyBasis.name,
+        result.context.baseCurrency?.value,
+        result.dimension,
+        result.payload,
+        result.calculatedAt.toUtc().toIso8601String(),
+        result.sourceRevision,
+        result.freshness.name,
+        result.createdAt.toUtc().toIso8601String(),
+        now,
+      ],
+    );
+  }
+
+  @override
+  Future<void> markStale({
+    String? periodStart,
+    String? periodEnd,
+    Set<String>? ruleIds,
+  }) async {
+    final clauses = <String>['freshness = ?'];
+    final args = <Object?>[AnalysisResultFreshness.fresh.name];
+    if (periodStart != null) {
+      clauses.add('period_end >= ?');
+      args.add(periodStart);
+    }
+    if (periodEnd != null) {
+      clauses.add('period_start <= ?');
+      args.add(periodEnd);
+    }
+    if (ruleIds != null && ruleIds.isNotEmpty) {
+      clauses.add('rule_id IN (${List.filled(ruleIds.length, '?').join(',')})');
+      args.addAll(ruleIds);
+    }
+    await database.connection.update(
+      'analysis_rule_results',
+      {'freshness': AnalysisResultFreshness.stale.name},
+      where: clauses.join(' AND '),
+      whereArgs: args,
+    );
+  }
+
+  AnalysisRuleResult _result(Map<String, Object?> row) => AnalysisRuleResult(
+    id: row['id']! as String,
+    ruleId: RuleIdentity(row['rule_id']! as String),
+    ruleVersion: RuleVersion(row['rule_version']! as String),
+    definitionHash: RuleDefinitionHash(row['definition_hash']! as String),
+    resultType: AnalysisResultType.values.byName(row['result_type']! as String),
+    surface: AnalysisSurface.values.byName(row['surface']! as String),
+    context: AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: row['period_start']! as String,
+        endDate: row['period_end']! as String,
+        timeZoneId: row['time_zone_id']! as String,
+      ),
+      datasetMode: DatasetMode.values.byName(row['dataset_mode']! as String),
+      currencyBasis: CurrencyBasis.values.byName(
+        row['currency_basis']! as String,
+      ),
+      baseCurrency: row['base_currency'] == null
+          ? null
+          : CurrencyCode(row['base_currency']! as String),
+    ),
+    dimension: row['dimension'] as String?,
+    payload: row['payload']! as String,
+    calculatedAt: DateTime.parse(row['calculated_at']! as String),
+    sourceRevision: row['source_revision']! as int,
+    freshness: AnalysisResultFreshness.values.byName(
+      row['freshness']! as String,
+    ),
+    createdAt: DateTime.parse(row['created_at']! as String),
+    updatedAt: DateTime.parse(row['updated_at']! as String),
+  );
 }
 
 final class SqliteAnalysisFindingRepository

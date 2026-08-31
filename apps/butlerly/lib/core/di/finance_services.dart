@@ -18,6 +18,7 @@ final class FinanceServices {
     ExchangeRateRepository? exchangeRates,
     AnalysisRuleRepository? analysisRules,
     AnalysisFindingRepository? analysisFindings,
+    AnalysisRuleResultRepository? analysisResults,
     StatementRepository? statements,
     DuplicateCandidateGroupRepository? duplicateGroups,
   }) : listTransactions = ListTransactions(transactions),
@@ -183,6 +184,7 @@ final class FinanceServices {
                ),
                const AnalysisRuleEngine(),
                findings: analysisFindings,
+               results: analysisResults,
              ),
        calculateAnalysisCalendar = analysisRules == null
            ? null
@@ -212,7 +214,10 @@ final class FinanceServices {
              ),
        updateAnalysisFindingLifecycle = analysisFindings == null
            ? null
-           : UpdateFindingLifecycle(analysisFindings);
+           : UpdateFindingLifecycle(analysisFindings),
+       invalidateAnalysis = analysisFindings == null
+           ? null
+           : InvalidateAnalysis(analysisFindings, results: analysisResults);
 
   final ListTransactions listTransactions;
   final SeedInitialMasterData seedInitialMasterData;
@@ -272,6 +277,7 @@ final class FinanceServices {
   final CalculateAnalysisCalendar? calculateAnalysisCalendar;
   final QueryTransactionsForFinancialDate queryTransactionsForFinancialDate;
   final UpdateFindingLifecycle? updateAnalysisFindingLifecycle;
+  final InvalidateAnalysis? invalidateAnalysis;
   final StatementServices? statementServices;
 }
 

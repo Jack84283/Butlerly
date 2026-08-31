@@ -58,6 +58,14 @@ enum RuleSeverity { info, attention, warning, critical }
 
 enum FindingLifecycle { active, acknowledged, dismissed, superseded }
 
+enum ResultPersistencePolicy { transient, materialized, finding }
+
+enum RefreshPolicy { manual, onInvalidation, scheduled }
+
+enum AnalysisResultType { metric, finding, dataQuality }
+
+enum AnalysisResultFreshness { fresh, stale }
+
 enum AnalysisFilterKind {
   direction,
   category,
@@ -283,6 +291,8 @@ final class AnalysisRuleDefinition {
     this.measures = const [],
     this.dependencies = const [],
     this.filters = const [],
+    this.resultPersistence = ResultPersistencePolicy.transient,
+    this.refreshPolicy = RefreshPolicy.onInvalidation,
   });
   final RuleIdentity identity;
   final RuleVersion version;
@@ -302,6 +312,8 @@ final class AnalysisRuleDefinition {
   final RuleSeverity severity;
   final List<RuleDependency> dependencies;
   final List<AnalysisFilter> filters;
+  final ResultPersistencePolicy resultPersistence;
+  final RefreshPolicy refreshPolicy;
   final RuleDefinitionHash definitionHash;
 }
 
@@ -393,6 +405,40 @@ final class RuleExecutionResult {
   final AnalysisFinding? finding;
   final List<DataQualityIssue> issues;
   final AnalysisFailure? failure;
+}
+
+final class AnalysisRuleResult {
+  const AnalysisRuleResult({
+    required this.id,
+    required this.ruleId,
+    required this.ruleVersion,
+    required this.definitionHash,
+    required this.resultType,
+    required this.surface,
+    required this.context,
+    required this.payload,
+    required this.calculatedAt,
+    required this.sourceRevision,
+    required this.freshness,
+    required this.createdAt,
+    required this.updatedAt,
+    this.dimension,
+  });
+
+  final String id;
+  final RuleIdentity ruleId;
+  final RuleVersion ruleVersion;
+  final RuleDefinitionHash definitionHash;
+  final AnalysisResultType resultType;
+  final AnalysisSurface surface;
+  final AnalysisContext context;
+  final String? dimension;
+  final String payload;
+  final DateTime calculatedAt;
+  final int sourceRevision;
+  final AnalysisResultFreshness freshness;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 }
 
 final class AnalysisFailure {

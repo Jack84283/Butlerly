@@ -10,3 +10,6 @@ period: selected_period
 measure:
   operation: count
   field: transaction
+result:
+  persistence: materialized
+  refresh: onInvalidation

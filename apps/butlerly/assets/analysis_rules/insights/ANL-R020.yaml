@@ -14,3 +14,10 @@ measure:
   currencyBasis: baseCurrency
 filters:
   direction: expense
+condition:
+  operator: gte
+  left: percentageChange
+  value: "20"
+result:
+  persistence: finding
+  refresh: onInvalidation

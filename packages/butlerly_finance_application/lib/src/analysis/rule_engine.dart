@@ -63,6 +63,29 @@ final class AnalysisRuleEngine {
           resultById[rule.identity.value] = result;
           continue;
         }
+        final incompatibleDependency = rule.dependencies.where((value) {
+          if (value.minimumVersion == null) return false;
+          final dependency = definitions.firstWhere(
+            (candidate) => candidate.identity == value.ruleId,
+          );
+          return _compareVersions(dependency.version, value.minimumVersion!) <
+              0;
+        });
+        if (incompatibleDependency.isNotEmpty) {
+          final dependency = incompatibleDependency.first;
+          final result = RuleExecutionResult(
+            rule: rule,
+            failure: AnalysisFailure(
+              code: 'dependencyVersion',
+              message:
+                  'Dependency ${dependency.ruleId.value} does not meet its minimum version.',
+              ruleId: rule.identity,
+            ),
+          );
+          results.add(result);
+          resultById[rule.identity.value] = result;
+          continue;
+        }
         final primaryValues =
             dataset.primaryTransactionsByPeriod[rule.period] ??
             dataset.transactions;
@@ -90,18 +113,25 @@ final class AnalysisRuleEngine {
                   metric;
               metrics[rule.identity.value] = metric;
             }
-            final finding =
-                rule.type == AnalysisRuleType.insight &&
-                    metric != null &&
-                    _conditionMatches(rule.condition, metric.value)
-                ? _finding(
-                    rule,
-                    dataset,
-                    entry.key,
-                    metric,
-                    calculatedAt ?? DateTime.now().toUtc(),
-                  )
-                : null;
+            AnalysisFinding? finding;
+            if (rule.type == AnalysisRuleType.insight &&
+                metric != null &&
+                rule.condition.operator != 'none') {
+              final candidate = _finding(
+                rule,
+                dataset,
+                entry.key,
+                metric,
+                calculatedAt ?? DateTime.now().toUtc(),
+              );
+              if (_conditionMatches(
+                rule.condition,
+                metric.value,
+                candidate.percentageChange,
+              )) {
+                finding = candidate;
+              }
+            }
             final result = RuleExecutionResult(
               rule: rule,
               metric:
@@ -204,11 +234,15 @@ final class AnalysisRuleEngine {
     );
   }
 
-  bool _conditionMatches(RuleCondition condition, DecimalValue value) {
+  bool _conditionMatches(
+    RuleCondition condition,
+    DecimalValue value, [
+    DecimalValue? percentageChange,
+  ]) {
     if (condition.operator == 'none') return true;
     if (condition.children.isNotEmpty) {
       final matches = condition.children
-          .map((child) => _conditionMatches(child, value))
+          .map((child) => _conditionMatches(child, value, percentageChange))
           .toList(growable: false);
       return switch (condition.operator) {
         'all' => matches.every((item) => item),
@@ -217,16 +251,29 @@ final class AnalysisRuleEngine {
         _ => false,
       };
     }
+    final targetValue = condition.left == 'percentageChange'
+        ? percentageChange
+        : value;
     final target = condition.value;
-    if (target == null) return false;
+    if (target == null || targetValue == null) return false;
     return switch (condition.operator) {
-      'gt' => value.compareTo(target) > 0,
-      'gte' => value.compareTo(target) >= 0,
-      'lt' => value.compareTo(target) < 0,
-      'lte' => value.compareTo(target) <= 0,
-      'eq' => value == target,
+      'gt' => targetValue.compareTo(target) > 0,
+      'gte' => targetValue.compareTo(target) >= 0,
+      'lt' => targetValue.compareTo(target) < 0,
+      'lte' => targetValue.compareTo(target) <= 0,
+      'eq' => targetValue == target,
       _ => false,
     };
+  }
+
+  int _compareVersions(RuleVersion left, RuleVersion right) {
+    final a = left.value.split('.').map(int.parse).toList(growable: false);
+    final b = right.value.split('.').map(int.parse).toList(growable: false);
+    for (var i = 0; i < 3; i++) {
+      final comparison = a[i].compareTo(b[i]);
+      if (comparison != 0) return comparison;
+    }
+    return 0;
   }
 
   Map<String, List<AnalysisEconomicTransaction>> _group(
