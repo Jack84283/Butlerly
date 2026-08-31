@@ -83,18 +83,18 @@ abstract final class AppTheme {
 
     final scheme = ColorScheme(
       brightness: brightness,
-      primary: colors.interactive,
+      primary: colors.controlPrimary,
       onPrimary: Colors.white,
       primaryContainer: colors.selection,
       onPrimaryContainer: colors.primaryText,
       secondary: colors.brand,
-      onSecondary: Colors.white,
+      onSecondary: _onColor(colors.brand),
       secondaryContainer: colors.brand.withValues(alpha: 0.18),
       onSecondaryContainer: colors.primaryText,
       tertiary: colors.info,
-      onTertiary: Colors.white,
+      onTertiary: _onColor(colors.info),
       error: colors.error,
-      onError: Colors.white,
+      onError: _onColor(colors.error),
       surface: colors.surface,
       onSurface: colors.primaryText,
       surfaceContainerHighest: colors.elevatedSurface,
@@ -295,4 +295,21 @@ abstract final class AppTheme {
       ),
     );
   }
+}
+
+Color _onColor(Color background) {
+  final whiteContrast = _contrast(background, Colors.white);
+  return whiteContrast >= 4.5 ? Colors.white : Colors.black;
+}
+
+double _contrast(Color first, Color second) {
+  final firstLuminance = first.computeLuminance();
+  final secondLuminance = second.computeLuminance();
+  final lighter = firstLuminance > secondLuminance
+      ? firstLuminance
+      : secondLuminance;
+  final darker = firstLuminance > secondLuminance
+      ? secondLuminance
+      : firstLuminance;
+  return (lighter + .05) / (darker + .05);
 }

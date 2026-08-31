@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/core/config/app_configuration.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/database/local_database.dart';
@@ -7,6 +8,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/features/foundation/presentation/statement_capture_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -14,6 +16,7 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -70,14 +73,35 @@ void main() {
     await root.delete(recursive: true);
   });
 
-  Future<void> capture(WidgetTester tester) async {
+  Future<void> capture(
+    WidgetTester tester, {
+    Size? viewport,
+    double textScale = 1,
+    Locale locale = const Locale('en'),
+    ThemeData? theme,
+  }) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: const [AppLocalizations.delegate],
-        supportedLocales: const [Locale('en')],
-        home: StatementCapturePage(
-          pickImage: (_) async => XFile(original.path),
+        theme: theme ?? AppTheme.light,
+        locale: locale,
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: MediaQuery(
+          data: MediaQueryData(
+            size:
+                viewport ??
+                tester.view.physicalSize / tester.view.devicePixelRatio,
+            textScaler: TextScaler.linear(textScale),
+          ),
+          child: StatementCapturePage(
+            pickImage: (_) async => XFile(original.path),
+          ),
         ),
       ),
     );
@@ -98,6 +122,70 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   }
+
+  testWidgets(
+    'statement review and correction remain operable at narrow 2x text scale',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      const rawText = '2026-08-12 MERCHANT -123.45 USD';
+      messenger.setMockMethodCallHandler(
+        channel,
+        (_) async => {
+          'text': rawText,
+          'observations': [
+            {
+              'text': rawText,
+              'confidence': .9,
+              'left': .1,
+              'top': .3,
+              'width': .8,
+              'height': .03,
+              'pageIndex': 0,
+              'order': 0,
+            },
+          ],
+        },
+      );
+      await capture(
+        tester,
+        viewport: const Size(320, 568),
+        textScale: 2,
+        locale: const Locale('zh', 'CN'),
+        theme: AppTheme.darkFor(ButlerlyColorTheme.skyBlue),
+      );
+      await tester.runAsync(() async {
+        await tester.tap(find.byType(Card).first);
+        await Future<void>.delayed(const Duration(milliseconds: 30));
+      });
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byIcon(Icons.edit_outlined),
+        240,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.byIcon(Icons.edit_outlined));
+      await tester.pumpAndSettle();
+      expect(find.text('更正提取的行'), findsOneWidget);
+      expect(find.text('保存更正'), findsOneWidget);
+      expect(find.text('取消'), findsOneWidget);
+      expect(find.byType(Scrollable), findsWidgets);
+      await tester.scrollUntilVisible(
+        find.text('保存更正'),
+        240,
+        scrollable: find.byType(Scrollable).last,
+      );
+      final saveButton = find.ancestor(
+        of: find.text('保存更正'),
+        matching: find.byType(FilledButton),
+      );
+      expect(tester.getRect(saveButton).height, greaterThanOrEqualTo(44));
+      expect(tester.getRect(saveButton).bottom, lessThanOrEqualTo(568));
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   for (final entry in <(String, String, String)>[
     ('', 'No readable text was found in this image.', 'noText'),

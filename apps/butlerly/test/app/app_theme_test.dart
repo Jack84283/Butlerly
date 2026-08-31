@@ -52,6 +52,11 @@ void main() {
       ]) {
         final colors = theme.extension<ButlerlySemanticColors>()!;
         expect(
+          _contrast(theme.colorScheme.primary, theme.colorScheme.onPrimary),
+          greaterThanOrEqualTo(4.5),
+          reason: '$colorTheme ${theme.brightness} filled control',
+        );
+        expect(
           _contrast(colors.interactive, colors.surface),
           greaterThanOrEqualTo(4.5),
           reason: '$colorTheme ${theme.brightness} navigation label',
@@ -64,6 +69,21 @@ void main() {
           _contrast(colors.review, chipSurface),
           greaterThanOrEqualTo(4.5),
           reason: '$colorTheme ${theme.brightness} review chip',
+        );
+        expect(
+          _contrast(theme.colorScheme.secondary, theme.colorScheme.onSecondary),
+          greaterThanOrEqualTo(4.5),
+          reason: '$colorTheme ${theme.brightness} secondary control',
+        );
+        expect(
+          _contrast(theme.colorScheme.tertiary, theme.colorScheme.onTertiary),
+          greaterThanOrEqualTo(4.5),
+          reason: '$colorTheme ${theme.brightness} tertiary control',
+        );
+        expect(
+          _contrast(theme.colorScheme.error, theme.colorScheme.onError),
+          greaterThanOrEqualTo(4.5),
+          reason: '$colorTheme ${theme.brightness} error control',
         );
       }
     }
