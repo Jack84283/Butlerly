@@ -97,9 +97,7 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/import-export',
-      builder: (context, state) => ImportExportPage(
-        startWithFileImport: state.uri.queryParameters['start'] == 'file',
-      ),
+      builder: (_, _) => const ImportExportPage(),
     ),
     GoRoute(
       path: '/receipts/capture',
@@ -123,7 +121,7 @@ final appRouter = GoRouter(
       builder: (_, _) => const NotificationsPage(),
     ),
     GoRoute(path: '/analysis', builder: (_, _) => const AnalysisPage()),
-    GoRoute(path: '/insights', redirect: (_, _) => '/analysis'),
+    GoRoute(path: '/insights', builder: (_, _) => const InsightsPage()),
     GoRoute(
       path: '/assistant',
       builder: (_, _) => const AssistantUnavailablePage(),

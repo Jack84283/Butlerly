@@ -1,12 +1,15 @@
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class AddPage extends StatelessWidget {
-  const AddPage({super.key});
+  const AddPage({this.onLocalFileImport, super.key});
+
+  final Future<void> Function(BuildContext context)? onLocalFileImport;
 
   @override
   Widget build(BuildContext context) => ButlerlyPage(
@@ -34,7 +37,7 @@ class AddPage extends StatelessWidget {
         icon: Icons.file_open_outlined,
         title: context.l10n.text('addTransactionFromLocalFile'),
         subtitle: context.l10n.text('addTransactionFromLocalFileSubtitle'),
-        onTap: () => context.push('/import-export?start=file'),
+        onTap: () => (onLocalFileImport ?? startLocalFileImport)(context),
       ),
       _AddActionCard(
         icon: Icons.account_balance_wallet_outlined,

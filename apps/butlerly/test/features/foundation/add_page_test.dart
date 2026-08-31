@@ -11,7 +11,12 @@ void main() {
     final router = GoRouter(
       initialLocation: '/',
       routes: [
-        GoRoute(path: '/', builder: (_, _) => const AddPage()),
+        GoRoute(
+          path: '/',
+          builder: (context, _) => AddPage(
+            onLocalFileImport: (context) => context.push('/import-export'),
+          ),
+        ),
         GoRoute(
           path: '/transactions/add',
           builder: (_, _) => const Text('transaction destination'),
@@ -26,11 +31,7 @@ void main() {
         ),
         GoRoute(
           path: '/import-export',
-          builder: (context, state) => Text(
-            state.uri.queryParameters['start'] == 'file'
-                ? 'import from file destination'
-                : 'import-export destination',
-          ),
+          builder: (_, _) => const Text('import from file destination'),
         ),
         GoRoute(
           path: '/payment-sources',

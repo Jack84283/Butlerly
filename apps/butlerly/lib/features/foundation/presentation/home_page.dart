@@ -319,6 +319,16 @@ class _QuickActions extends StatelessWidget {
           label: context.l10n.text('analysis'),
           onTap: () => context.push('/analysis'),
         ),
+        _QuickAction(
+          icon: Icons.insights_outlined,
+          label: context.l10n.text('insights'),
+          onTap: () => context.push('/insights'),
+        ),
+        _QuickAction(
+          icon: Icons.notifications_none_rounded,
+          label: context.l10n.text('notifications'),
+          onTap: () => context.push('/notifications'),
+        ),
       ];
       return Wrap(
         spacing: spacing,

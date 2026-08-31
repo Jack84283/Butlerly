@@ -119,6 +119,9 @@ void main() {
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.text('Local records'), findsOneWidget);
     expect(find.text('Add data'), findsOneWidget);
+    expect(find.text('Analysis'), findsOneWidget);
+    expect(find.text('Insights'), findsOneWidget);
+    expect(find.text('Notifications'), findsOneWidget);
     expect(find.text('Scan receipt'), findsNothing);
     expect(find.text('Import data'), findsNothing);
     expect(find.text('Search records'), findsNothing);
@@ -139,6 +142,32 @@ void main() {
     expect(find.text('Add transaction from local file'), findsOneWidget);
     expect(find.text('Payment sources'), findsOneWidget);
 
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('Home Quick Actions open Analysis, Insights, and Notifications', (
+    tester,
+  ) async {
+    setPhoneViewport(tester);
+    await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Analysis'));
+    await tester.pumpAndSettle();
+    expect(find.text('Analysis'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Insights'));
+    await tester.pumpAndSettle();
+    expect(find.text('Not enough data for insights'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Notifications'));
+    await tester.pumpAndSettle();
+    expect(find.text('No notifications'), findsOneWidget);
     await tester.pageBack();
     await tester.pumpAndSettle();
   });
