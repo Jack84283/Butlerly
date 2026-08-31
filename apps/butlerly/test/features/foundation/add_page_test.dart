@@ -1,5 +1,6 @@
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/features/foundation/presentation/add_page.dart';
+import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -26,7 +27,7 @@ void main() {
         ),
         GoRoute(
           path: '/import-export',
-          builder: (_, _) => const Text('import-export destination'),
+          builder: (_, _) => const ImportExportPage(),
         ),
         GoRoute(
           path: '/payment-sources',
@@ -80,7 +81,7 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.file_open_outlined));
     await tester.pumpAndSettle();
-    expect(find.text('import-export destination'), findsOneWidget);
+    expect(find.text('Import from file'), findsOneWidget);
     router.pop();
     await tester.pumpAndSettle();
 
