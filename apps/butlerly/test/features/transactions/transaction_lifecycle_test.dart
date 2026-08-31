@@ -485,7 +485,19 @@ void main() {
       ),
       stored.updatedAt.add(const Duration(seconds: 1)),
     );
-    await tester.pumpWidget(const MaterialApp(home: ReviewPage()));
+    final router = GoRouter(
+      initialLocation: '/review',
+      routes: [
+        GoRoute(
+          path: '/review',
+          builder: (context, state) => ReviewPage(
+            showPossibleDuplicates:
+                state.uri.queryParameters['view'] == 'duplicates',
+          ),
+        ),
+      ],
+    );
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await tester.pumpAndSettle();
     final uncategorizedPosition = tester.getTopLeft(
       find.text('Not Categorized'),
@@ -513,6 +525,13 @@ void main() {
     expect(repository.values['review-canonical']?.reviewIssues, hasLength(1));
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
+    router.go('/review?view=duplicates');
+    await tester.pumpAndSettle();
+    expect(find.text('Rescan possible duplicates'), findsOneWidget);
+    expect(find.text('Canonical review row'), findsNothing);
+    router.go('/review');
+    await tester.pumpAndSettle();
+    expect(find.text('Canonical review row'), findsOneWidget);
     await tester.tap(find.text('Needs review'));
     await tester.pumpAndSettle();
     expect(find.byType(ButlerlyCard), findsOneWidget);
@@ -525,6 +544,31 @@ void main() {
     expect(find.byType(ButlerlyTransactionList), findsOneWidget);
     expect(find.byType(ButlerlyRecordRow), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Review duplicates query selects the duplicate mode on entry', (
+    tester,
+  ) async {
+    final router = GoRouter(
+      initialLocation: '/review?view=duplicates',
+      routes: [
+        GoRoute(
+          path: '/review',
+          builder: (context, state) => ReviewPage(
+            showPossibleDuplicates:
+                state.uri.queryParameters['view'] == 'duplicates',
+          ),
+        ),
+      ],
+    );
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Rescan possible duplicates'), findsOneWidget);
+    router.go('/review');
+    await tester.pumpAndSettle();
+    expect(find.text('Rescan possible duplicates'), findsNothing);
+    expect(find.text('You’re all caught up'), findsOneWidget);
   });
 
   testWidgets('Review mode labels stay centered at narrow text scale', (

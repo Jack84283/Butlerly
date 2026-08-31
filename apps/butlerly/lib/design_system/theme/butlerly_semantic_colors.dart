@@ -23,6 +23,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
     required this.error,
     required this.info,
     required this.selection,
+    required this.review,
   });
 
   final Color background;
@@ -43,6 +44,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
   final Color error;
   final Color info;
   final Color selection;
+  final Color review;
 
   static const dark = ButlerlySemanticColors(
     background: Color(0xFF000000),
@@ -56,13 +58,14 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
     border: Color(0xFF2A2A31),
     brand: Color(0xFFB42333),
     brandStrong: Color(0xFF7A1825),
-    interactive: Color(0xFFE03A3E),
+    interactive: Color(0xFFFF6B70),
     interactiveStrong: Color(0xFFB42333),
     success: Color(0xFF2E9D64),
     warning: Color(0xFFD6A84B),
     error: Color(0xFFE06464),
     info: Color(0xFF5A9BD5),
     selection: Color(0xFF3A151B),
+    review: Color(0xFFFF6B70),
   );
 
   static const light = ButlerlySemanticColors(
@@ -84,6 +87,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
     error: Color(0xFFB83A3A),
     info: Color(0xFF3278A8),
     selection: Color(0xFFF5E1E4),
+    review: Color(0xFF741722),
   );
 
   static ButlerlySemanticColors palette(
@@ -109,6 +113,9 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
         selection: brightness == Brightness.dark
             ? const Color(0xFF142B3D)
             : const Color(0xFFE0F0FA),
+        review: brightness == Brightness.dark
+            ? const Color(0xFF69B4F0)
+            : const Color(0xFF1D5C8C),
       ),
       ButlerlyColorTheme.green => base.copyWith(
         brand: brightness == Brightness.dark
@@ -126,6 +133,9 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
         selection: brightness == Brightness.dark
             ? const Color(0xFF153326)
             : const Color(0xFFE1F2E8),
+        review: brightness == Brightness.dark
+            ? const Color(0xFF65C58D)
+            : const Color(0xFF1D5F3E),
       ),
     };
   }
@@ -150,6 +160,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
     Color? error,
     Color? info,
     Color? selection,
+    Color? review,
   }) => ButlerlySemanticColors(
     background: background ?? this.background,
     surface: surface ?? this.surface,
@@ -169,6 +180,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
     error: error ?? this.error,
     info: info ?? this.info,
     selection: selection ?? this.selection,
+    review: review ?? this.review,
   );
 
   @override
@@ -200,6 +212,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
       error: Color.lerp(error, other.error, t)!,
       info: Color.lerp(info, other.info, t)!,
       selection: Color.lerp(selection, other.selection, t)!,
+      review: Color.lerp(review, other.review, t)!,
     );
   }
 }

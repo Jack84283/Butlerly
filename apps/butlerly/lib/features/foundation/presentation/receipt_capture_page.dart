@@ -8,6 +8,7 @@ import 'package:butlerly/core/evidence/local_ocr_service.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/reconciliation_labels.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -172,13 +173,13 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   }
 
   Future<void> _file() async {
-    const group = files.XTypeGroup(
-      label: 'Receipt images',
+    final group = files.XTypeGroup(
+      label: context.l10n.text('receiptImages'),
       extensions: ['jpg', 'jpeg', 'png', 'heic', 'webp'],
     );
     final source = widget.openFile != null
         ? await widget.openFile!(group)
-        : await files.openFile(acceptedTypeGroups: const [group]);
+        : await files.openFile(acceptedTypeGroups: [group]);
     if (source != null) {
       await _process(XFile(source.path, name: source.name));
     }
@@ -267,11 +268,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       if (!mounted) return;
       setState(() => _processing = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Receipt was saved locally, but its text could not be read. You can retry or enter the fields manually.',
-          ),
-        ),
+        SnackBar(content: Text(context.l10n.text('receiptTextReadFailed'))),
       );
     }
   }
@@ -354,7 +351,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, candidate),
               child: Text(
-                '${candidate.transaction.currency} ${localizedTransactionAmount(context, candidate.transaction.amount)} · ${candidate.transaction.transactionDate}\n${candidate.transaction.description ?? candidate.transaction.rawCounterparty ?? ''}\n${candidate.assessment.reasons.join('; ')}',
+                '${candidate.transaction.currency} ${localizedTransactionAmount(context, candidate.transaction.amount)} · ${candidate.transaction.transactionDate}\n${candidate.transaction.description ?? candidate.transaction.rawCounterparty ?? ''}\n${localizedReconciliationReasons(context, candidate.assessment.reasons)}',
               ),
             ),
           TextButton(
