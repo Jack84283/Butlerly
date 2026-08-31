@@ -4,7 +4,6 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/legal_licenses_page.dart';
-import 'package:butlerly/features/foundation/presentation/payment_sources_page.dart';
 import 'package:butlerly/features/foundation/presentation/time_zone_catalog.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -211,15 +210,7 @@ class SettingsPage extends ConsumerWidget {
               icon: Icons.document_scanner_outlined,
               title: context.l10n.text('reviewStatementImport'),
               subtitle: context.l10n.text('reviewStatementImportBody'),
-              onTap: () => context.push('/statements'),
-            ),
-            _SettingsRow(
-              icon: Icons.account_balance_wallet_outlined,
-              title: context.l10n.text('paymentSources'),
-              subtitle: context.l10n.text('paymentSourcesBody'),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const PaymentSourcesPage()),
-              ),
+              onTap: () => context.push('/add'),
             ),
           ],
         ),

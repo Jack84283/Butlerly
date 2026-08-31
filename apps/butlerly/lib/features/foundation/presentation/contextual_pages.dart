@@ -314,7 +314,7 @@ class _ImportExportPageState extends State<ImportExportPage> {
   }
 
   void _openReceiptFlow(BuildContext context) {
-    context.push('/receipts/capture');
+    context.push('/add');
   }
 
   @override
@@ -344,7 +344,7 @@ class _ImportExportPageState extends State<ImportExportPage> {
           icon: Icons.credit_card_outlined,
           title: context.l10n.text('addPaymentTransaction'),
           subtitle: context.l10n.text('addPaymentTransactionBody'),
-          onTap: () => context.push('/transactions/add'),
+          onTap: () => context.push('/add'),
         ),
         _ActionRow(
           icon: Icons.notifications_none_outlined,
@@ -643,8 +643,8 @@ class InsightsPage extends StatelessWidget {
       icon: Icons.insights_outlined,
       title: context.l10n.text('notEnoughInsightData'),
       message: context.l10n.text('notEnoughInsightDataBody'),
-      actionLabel: context.l10n.text('addTransaction'),
-      onAction: () => context.push('/transactions/add'),
+      actionLabel: context.l10n.text('addData'),
+      onAction: () => context.push('/add'),
     ),
   );
 }

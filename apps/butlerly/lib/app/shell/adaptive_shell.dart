@@ -87,10 +87,10 @@ class AdaptiveShell extends StatelessWidget {
                         ),
                       const SizedBox(height: ButlerlySpacing.standard),
                       FilledButton.icon(
-                        onPressed: () => context.push('/transactions/add'),
+                        onPressed: () => context.push('/add'),
                         icon: const Icon(Icons.add_rounded),
                         label: extended
-                            ? Text(context.l10n.text('addTransaction'))
+                            ? Text(context.l10n.text('addData'))
                             : const SizedBox.shrink(),
                       ),
                     ],

@@ -308,9 +308,9 @@ class _QuickActions extends StatelessWidget {
       final actions = [
         _QuickAction(
           icon: Icons.add_rounded,
-          label: context.l10n.text('addTransaction'),
+          label: context.l10n.text('addData'),
           onTap: () async {
-            await context.push('/transactions/add');
+            await context.push('/add');
             await onRefresh();
           },
         ),
@@ -427,7 +427,7 @@ class _HomeEmptyTransactions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ButlerlyCard(
-    onTap: () => context.push('/transactions/add'),
+    onTap: () => context.push('/add'),
     child: Row(
       children: [
         Icon(Icons.receipt_long_outlined, color: context.colors.secondaryText),

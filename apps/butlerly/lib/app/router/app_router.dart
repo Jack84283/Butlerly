@@ -3,8 +3,10 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
+import 'package:butlerly/features/foundation/presentation/add_page.dart';
 import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
+import 'package:butlerly/features/foundation/presentation/payment_sources_page.dart';
 import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart';
 import 'package:butlerly/features/foundation/presentation/receipt_capture_page.dart';
 import 'package:butlerly/features/foundation/presentation/review_page.dart';
@@ -87,6 +89,11 @@ final appRouter = GoRouter(
                 message: context.l10n.text('dataPreserved'),
               ),
             ),
+    ),
+    GoRoute(path: '/add', builder: (_, _) => const AddPage()),
+    GoRoute(
+      path: '/payment-sources',
+      builder: (_, _) => const PaymentSourcesPage(),
     ),
     GoRoute(
       path: '/import-export',

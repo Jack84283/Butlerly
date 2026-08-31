@@ -118,10 +118,28 @@ void main() {
     expect(find.text('Search'), findsOneWidget);
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.text('Local records'), findsOneWidget);
-    expect(find.text('Add transaction'), findsOneWidget);
+    expect(find.text('Add data'), findsOneWidget);
     expect(find.text('Scan receipt'), findsNothing);
     expect(find.text('Import data'), findsOneWidget);
     expect(find.text('Search records'), findsOneWidget);
+  });
+
+  testWidgets('Home Add data opens the centralized Add hub', (tester) async {
+    setPhoneViewport(tester);
+    await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Add data'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add'), findsOneWidget);
+    expect(find.text('Add transaction'), findsOneWidget);
+    expect(find.text('Scan receipt'), findsOneWidget);
+    expect(find.text('Scan statement'), findsOneWidget);
+    expect(find.text('Payment sources'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
   });
 
   testWidgets(
