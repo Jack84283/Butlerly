@@ -265,7 +265,12 @@ class _ReviewPageState extends State<ReviewPage> {
           segments: [
             ButtonSegment(
               value: _ReviewView.uncategorized,
-              label: Text(context.l10n.text('uncategorized')),
+              label: Center(
+                child: Text(
+                  context.l10n.text('uncategorized'),
+                  textAlign: TextAlign.center,
+                ),
+              ),
             ),
             ButtonSegment(
               value: _ReviewView.duplicates,
@@ -274,13 +279,23 @@ class _ReviewPageState extends State<ReviewPage> {
                 builder: (context, snapshot) {
                   final count = snapshot.data?.length;
                   final label = context.l10n.text('possibleDuplicates');
-                  return Text(count == null ? label : '$label ($count)');
+                  return Center(
+                    child: Text(
+                      count == null ? label : '$label ($count)',
+                      textAlign: TextAlign.center,
+                    ),
+                  );
                 },
               ),
             ),
             ButtonSegment(
               value: _ReviewView.needsReview,
-              label: Text(context.l10n.text('needsReview')),
+              label: Center(
+                child: Text(
+                  context.l10n.text('needsReview'),
+                  textAlign: TextAlign.center,
+                ),
+              ),
             ),
           ],
           selected: {_view},

@@ -241,7 +241,7 @@ class AppLocalizations {
       'resolve': 'Resolve',
       'dismiss': 'Dismiss',
       'edit': 'Edit',
-      'uncategorized': 'Uncategorized',
+      'uncategorized': 'Not Categorized',
       'possibleDuplicates': 'Possible duplicates',
       'reconciliationCandidates': 'Reconciliation candidates',
       'possibleDuplicateGroup': 'Possible duplicate group',
