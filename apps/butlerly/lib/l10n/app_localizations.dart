@@ -56,6 +56,9 @@ class AppLocalizations {
       'search': 'Search',
       'settings': 'Settings',
       'more': 'More',
+      'addTransactionAction': 'Add Transaction',
+      'addTransactionActionSubtitle':
+          'Add transaction yourself, from receipt, from statement and local file',
       'welcomeTitle': 'Welcome to Butlerly',
       'welcomeSubtitle': 'Your private financial record, under your control.',
       'privateByDefault': 'Private by default',
@@ -513,6 +516,8 @@ class AppLocalizations {
       'search': '搜索',
       'settings': '设置',
       'more': '更多',
+      'addTransactionAction': '添加交易',
+      'addTransactionActionSubtitle': '自行添加交易、从收据添加、从账单添加和从本地文件添加',
       'welcomeTitle': '欢迎使用 Butlerly',
       'welcomeSubtitle': '由您掌控的私密财务记录。',
       'privateByDefault': '默认保护隐私',
@@ -922,6 +927,9 @@ class AppLocalizations {
       'search': 'Buscar',
       'settings': 'Ajustes',
       'more': 'Más',
+      'addTransactionAction': 'Añadir transacción',
+      'addTransactionActionSubtitle':
+          'Añade una transacción tú mismo, desde un recibo, un extracto o un archivo local',
       'welcomeTitle': 'Te damos la bienvenida a Butlerly',
       'welcomeSubtitle': 'Tu registro financiero privado, bajo tu control.',
       'privateByDefault': 'Privado de forma predeterminada',

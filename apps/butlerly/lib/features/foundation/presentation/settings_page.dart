@@ -22,7 +22,7 @@ class SettingsPage extends ConsumerWidget {
         ? Localizations.localeOf(context)
         : Locale(preference.locale);
     return ButlerlyPage(
-      title: context.l10n.text('settings'),
+      title: context.l10n.text('more'),
       children: [
         ButlerlyCard(
           color: context.colors.brand.withValues(alpha: 0.1),
@@ -208,8 +208,8 @@ class SettingsPage extends ConsumerWidget {
           children: [
             _SettingsRow(
               icon: Icons.document_scanner_outlined,
-              title: context.l10n.text('reviewStatementImport'),
-              subtitle: context.l10n.text('reviewStatementImportBody'),
+              title: context.l10n.text('addTransactionAction'),
+              subtitle: context.l10n.text('addTransactionActionSubtitle'),
               onTap: () => context.push('/add'),
             ),
           ],
