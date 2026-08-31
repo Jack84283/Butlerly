@@ -61,7 +61,8 @@ final class CalculateAnalysisOverview {
     final definitions = await rules.listActive();
     final materializedRules = definitions
         .where(
-          (rule) => rule.resultPersistence != ResultPersistencePolicy.transient,
+          (rule) =>
+              rule.resultPersistence == ResultPersistencePolicy.materialized,
         )
         .toList(growable: false);
     if (!forceRefresh && results != null && materializedRules.isNotEmpty) {
@@ -82,7 +83,8 @@ final class CalculateAnalysisOverview {
         final transientDefinitions = definitions
             .where(
               (rule) =>
-                  rule.resultPersistence == ResultPersistencePolicy.transient,
+                  rule.resultPersistence !=
+                  ResultPersistencePolicy.materialized,
             )
             .toList(growable: false);
         if (transientDefinitions.isEmpty) return cached;
