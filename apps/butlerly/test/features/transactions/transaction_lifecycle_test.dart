@@ -505,6 +505,14 @@ void main() {
       TextAlign.center,
     );
     expect(find.text('Canonical review row'), findsOneWidget);
+    expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
+    await tester.tap(find.text('Canonical review row'));
+    await tester.pumpAndSettle();
+    expect(find.byType(TransactionDetailPage), findsOneWidget);
+    expect(repository.values['review-canonical']?.categoryId, isNull);
+    expect(repository.values['review-canonical']?.reviewIssues, hasLength(1));
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Needs review'));
     await tester.pumpAndSettle();
     expect(find.byType(ButlerlyCard), findsOneWidget);

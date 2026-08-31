@@ -402,6 +402,7 @@ class _ReviewPageState extends State<ReviewPage> {
                   transactions: values,
                   masterData: masterSnapshot.data?.presentation,
                   onTap: _openUncategorized,
+                  navigates: true,
                 ),
               );
             },
