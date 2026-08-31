@@ -31,6 +31,12 @@ class AddPage extends StatelessWidget {
         onTap: () => context.push('/statements'),
       ),
       _AddActionCard(
+        icon: Icons.file_open_outlined,
+        title: context.l10n.text('addTransactionFromLocalFile'),
+        subtitle: context.l10n.text('addTransactionFromLocalFileSubtitle'),
+        onTap: () => context.push('/import-export'),
+      ),
+      _AddActionCard(
         icon: Icons.account_balance_wallet_outlined,
         title: context.l10n.text('paymentSources'),
         subtitle: context.l10n.text('paymentSourcesSubtitle'),

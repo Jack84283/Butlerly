@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 void main() {
-  testWidgets('shows four localized action cards and preserves navigation', (
+  testWidgets('shows five localized action cards and preserves navigation', (
     tester,
   ) async {
     final router = GoRouter(
@@ -25,6 +25,10 @@ void main() {
           builder: (_, _) => const Text('statement destination'),
         ),
         GoRoute(
+          path: '/import-export',
+          builder: (_, _) => const Text('import-export destination'),
+        ),
+        GoRoute(
           path: '/payment-sources',
           builder: (_, _) => const Text('payment source destination'),
         ),
@@ -33,7 +37,7 @@ void main() {
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await tester.pumpAndSettle();
 
-    expect(find.byType(ButlerlyCard), findsNWidgets(4));
+    expect(find.byType(ButlerlyCard), findsNWidgets(5));
     expect(find.text('Add transaction manually'), findsOneWidget);
     expect(find.text('Enter transaction details yourself'), findsOneWidget);
     expect(find.text('Add transaction from receipt'), findsOneWidget);
@@ -44,6 +48,11 @@ void main() {
     expect(find.text('Add transaction from statement'), findsOneWidget);
     expect(
       find.text('Scan a statement to review and add transactions'),
+      findsOneWidget,
+    );
+    expect(find.text('Add transaction from local file'), findsOneWidget);
+    expect(
+      find.text('Import transaction from a supported transaction file'),
       findsOneWidget,
     );
     expect(
@@ -66,6 +75,12 @@ void main() {
     await tester.tap(find.byIcon(Icons.document_scanner_outlined));
     await tester.pumpAndSettle();
     expect(find.text('statement destination'), findsOneWidget);
+    router.pop();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.file_open_outlined));
+    await tester.pumpAndSettle();
+    expect(find.text('import-export destination'), findsOneWidget);
     router.pop();
     await tester.pumpAndSettle();
 

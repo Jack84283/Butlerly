@@ -120,8 +120,8 @@ void main() {
     expect(find.text('Local records'), findsOneWidget);
     expect(find.text('Add data'), findsOneWidget);
     expect(find.text('Scan receipt'), findsNothing);
-    expect(find.text('Import data'), findsOneWidget);
-    expect(find.text('Search records'), findsOneWidget);
+    expect(find.text('Import data'), findsNothing);
+    expect(find.text('Search records'), findsNothing);
   });
 
   testWidgets('Home Add data opens the centralized Add hub', (tester) async {
@@ -136,6 +136,7 @@ void main() {
     expect(find.text('Add transaction manually'), findsOneWidget);
     expect(find.text('Add transaction from receipt'), findsOneWidget);
     expect(find.text('Add transaction from statement'), findsOneWidget);
+    expect(find.text('Add transaction from local file'), findsOneWidget);
     expect(find.text('Payment sources'), findsOneWidget);
 
     await tester.pageBack();

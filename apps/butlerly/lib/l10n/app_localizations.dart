@@ -93,6 +93,9 @@ class AppLocalizations {
       'addTransactionFromStatement': 'Add transaction from statement',
       'addTransactionFromStatementSubtitle':
           'Scan a statement to review and add transactions',
+      'addTransactionFromLocalFile': 'Add transaction from local file',
+      'addTransactionFromLocalFileSubtitle':
+          'Import transaction from a supported transaction file',
       'scanReceipt': 'Scan receipt',
       'scanReceiptSubtitle':
           'Capture a receipt and extract transaction details',
@@ -545,6 +548,8 @@ class AppLocalizations {
       'addTransactionFromReceiptSubtitle': '扫描收据以提取交易详情',
       'addTransactionFromStatement': '从账单添加交易',
       'addTransactionFromStatementSubtitle': '扫描账单以审核并添加交易',
+      'addTransactionFromLocalFile': '从本地文件添加交易',
+      'addTransactionFromLocalFileSubtitle': '从支持的交易文件导入交易',
       'scanReceipt': '扫描收据',
       'scanReceiptSubtitle': '拍摄收据并提取交易详情',
       'scanStatement': '扫描账单',
@@ -961,6 +966,10 @@ class AppLocalizations {
       'addTransactionFromStatement': 'Añadir transacción desde un extracto',
       'addTransactionFromStatementSubtitle':
           'Escanea un extracto para revisar y añadir transacciones',
+      'addTransactionFromLocalFile':
+          'Añadir transacción desde un archivo local',
+      'addTransactionFromLocalFileSubtitle':
+          'Importa transacciones desde un archivo compatible',
       'scanReceipt': 'Escanear recibo',
       'scanReceiptSubtitle':
           'Captura un recibo y extrae los detalles de la transacción',

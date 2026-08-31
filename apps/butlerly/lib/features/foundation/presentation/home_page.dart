@@ -315,16 +315,6 @@ class _QuickActions extends StatelessWidget {
           },
         ),
         _QuickAction(
-          icon: Icons.file_open_outlined,
-          label: context.l10n.text('importData'),
-          onTap: () => context.push('/import-export'),
-        ),
-        _QuickAction(
-          icon: Icons.search_rounded,
-          label: context.l10n.text('searchRecords'),
-          onTap: () => context.go('/search'),
-        ),
-        _QuickAction(
           icon: Icons.insights_outlined,
           label: context.l10n.text('analysis'),
           onTap: () => context.push('/analysis'),
