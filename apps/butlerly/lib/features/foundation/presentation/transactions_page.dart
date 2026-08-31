@@ -192,7 +192,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                     setState(() => _filter = selection.single),
               ),
             ),
-            const SizedBox(height: ButlerlySpacing.compact),
+            const SizedBox(height: ButlerlySpacing.section),
             if (values.isEmpty)
               ButlerlyEmptyState(
                 icon: Icons.receipt_long_outlined,
