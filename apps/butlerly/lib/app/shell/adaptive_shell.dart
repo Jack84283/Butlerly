@@ -8,6 +8,7 @@ const primaryShellRouteNamePrefix = 'primary-shell:';
 
 class PrimaryShellVisibilityController extends ChangeNotifier {
   final Map<int, bool> _secondaryRouteVisible = <int, bool>{};
+  bool _notificationScheduled = false;
 
   bool secondaryRouteVisibleFor(int branchIndex) =>
       _secondaryRouteVisible[branchIndex] ?? false;
@@ -18,7 +19,16 @@ class PrimaryShellVisibilityController extends ChangeNotifier {
     final next = route != null && !isPrimaryShellRoute;
     if (_secondaryRouteVisible[branchIndex] == next) return;
     _secondaryRouteVisible[branchIndex] = next;
-    notifyListeners();
+    _scheduleNotification();
+  }
+
+  void _scheduleNotification() {
+    if (_notificationScheduled) return;
+    _notificationScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _notificationScheduled = false;
+      notifyListeners();
+    });
   }
 }
 
