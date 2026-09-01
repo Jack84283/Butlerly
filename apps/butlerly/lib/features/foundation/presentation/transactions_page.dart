@@ -210,7 +210,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                 possibleDuplicateIds: data.possibleDuplicateIds,
                 possibleDuplicateLabel: context.l10n.text('possibleDuplicate'),
                 onPossibleDuplicateTap: () =>
-                    GoRouter.of(context).go('/review?view=duplicates'),
+                    GoRouter.of(context).push('/review?view=duplicates'),
                 onTap: _openDetail,
                 navigates: true,
               ),
