@@ -9,6 +9,8 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   Widget app(
     Future<ApplicationResult<List<RuleExecutionResult>>> Function() load, {
+    Future<ApplicationResult<List<RuleExecutionResult>>> Function(String)?
+    loadForPeriod,
     Future<ApplicationResult<AnalysisCalendarResult>> Function(int, int)?
     loadCalendar,
     Future<ApplicationResult<List<TransactionDto>>> Function(String)?
@@ -23,10 +25,37 @@ void main() {
     supportedLocales: AppLocalizations.supportedLocales,
     home: AnalysisPage(
       load: load,
+      loadForPeriod: loadForPeriod,
       loadCalendar: loadCalendar,
       loadTransactionsForDate: loadTransactionsForDate,
     ),
   );
+
+  testWidgets('uses one shared period selector and reloads its result', (
+    tester,
+  ) async {
+    final periods = <String>[];
+    await tester.pumpWidget(
+      app(
+        () async => const ApplicationSuccess(<RuleExecutionResult>[]),
+        loadForPeriod: (period) async {
+          periods.add(period);
+          return const ApplicationSuccess(<RuleExecutionResult>[]);
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('analysis-period-selector')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Last Month').last);
+    await tester.pumpAndSettle();
+    expect(periods, contains('current_month'));
+    expect(periods, contains('previous_month'));
+    expect(
+      find.byKey(const ValueKey('analysis-period-selector')),
+      findsOneWidget,
+    );
+  });
 
   testWidgets('renders an offline all-clear state from application results', (
     tester,
@@ -39,13 +68,13 @@ void main() {
       app(() async => const ApplicationSuccess(<RuleExecutionResult>[])),
     );
     await tester.pumpAndSettle();
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -2000));
+    await tester.pumpAndSettle();
     expect(find.text('Analysis'), findsOneWidget);
-    expect(find.text('No findings'), findsOneWidget);
+    expect(find.text('Good'), findsOneWidget);
     expect(
-      find.bySemanticsLabel(
-        'Calculated privately on this device and available offline.',
-      ),
-      findsAtLeastNWidgets(1),
+      find.text('Calculated privately on this device and available offline.'),
+      findsNothing,
     );
   });
 
@@ -100,6 +129,8 @@ void main() {
         ]),
       ),
     );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -2000));
     await tester.pumpAndSettle();
     expect(find.text('No findings'), findsNothing);
     expect(find.text('Insights are unavailable'), findsOneWidget);
@@ -192,14 +223,7 @@ void main() {
         ),
         findsOneWidget,
       );
-      await tester.ensureVisible(
-        find.byKey(const ValueKey('analysis-calendar-previous')),
-      );
-      await tester.tap(
-        find.byKey(const ValueKey('analysis-calendar-previous')),
-      );
-      await tester.pumpAndSettle();
-      expect(requestedMonths, hasLength(2));
+      expect(requestedMonths, hasLength(1));
     },
   );
 
@@ -256,11 +280,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Data quality issues'), findsOneWidget);
-    expect(find.text('1 supporting transactions'), findsOneWidget);
+    expect(find.text('1 items need attention'), findsOneWidget);
+    expect(find.text('Data quality issues'), findsNothing);
     expect(find.textContaining('1'), findsWidgets);
-    await tester.tap(find.text('Data quality issues'));
-    await tester.pumpAndSettle();
-    expect(find.text('t1'), findsOneWidget);
+    expect(find.text('t1'), findsNothing);
   });
 }
