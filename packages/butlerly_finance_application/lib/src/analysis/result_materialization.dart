@@ -157,6 +157,7 @@ RuleExecutionResult restoreResult(
         qualityIssues: _qualityIssues(json['qualityIssues']),
         generatedAt: persisted.calculatedAt,
       ),
+      comparison: _restoreComparison(json['comparison']),
     );
   }
   if (json['kind'] == 'comparison') {

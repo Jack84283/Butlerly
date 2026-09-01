@@ -984,6 +984,7 @@ class _AnalysisModel {
       comparison: results
           .map((result) => result.comparison)
           .whereType<AnalysisComparison>()
+          .where(_isUsableComparison)
           .firstOrNull,
       insightUnavailable: results.any(
         (r) => r.rule.surface == AnalysisSurface.insights && r.failure != null,
@@ -1093,11 +1094,17 @@ String _moneyValue(BuildContext context, Money money) =>
     '${localizedDecimal(context, money.amount.toString())} ${money.currency.value}';
 
 String _comparisonText(BuildContext context, AnalysisComparison comparison) {
-  final change = comparison.percentageChange!;
+  final change = comparison.percentageChange;
+  if (!_isUsableComparison(comparison) || change == null) return '';
   final direction = change.isNegative ? '↓' : '↑';
   final magnitude = change.toString().replaceFirst('-', '');
   return '$direction ${localizedDecimal(context, magnitude)}% ${context.l10n.text('vsPreviousPeriod')}';
 }
+
+bool _isUsableComparison(AnalysisComparison comparison) =>
+    comparison.availability == AnalysisDataAvailability.sufficient &&
+    comparison.baselineValue != null &&
+    comparison.percentageChange != null;
 
 double _number(AnalysisMetric metric) =>
     double.tryParse(metric.value.toString()) ?? 0;

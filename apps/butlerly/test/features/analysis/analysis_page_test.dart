@@ -250,6 +250,43 @@ void main() {
     expect(find.text('Notable'), findsNothing);
   });
 
+  testWidgets('does not render an insufficient comparison', (tester) async {
+    final rule = AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R020'),
+      version: RuleVersion('1.2.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.insight,
+      nameKey: 'analysis.rule.r020.name',
+      descriptionKey: 'analysis.rule.r020.description',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
+      grouping: RuleGrouping.none,
+      baseline: RuleBaseline.previousEquivalentPeriod,
+      condition: const RuleCondition(operator: 'none'),
+      severity: RuleSeverity.info,
+      definitionHash: RuleDefinitionHash('c' * 64),
+      surface: AnalysisSurface.insights,
+    );
+    await tester.pumpWidget(
+      app(
+        () async => ApplicationSuccess([
+          RuleExecutionResult(
+            rule: rule,
+            comparison: AnalysisComparison(
+              currentValue: DecimalValue.parse('4820'),
+              availability: AnalysisDataAvailability.insufficient,
+            ),
+          ),
+        ]),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('previous period'), findsNothing);
+    expect(find.textContaining('0%'), findsNothing);
+  });
+
   testWidgets('localizes a bundled rule name', (tester) async {
     const localizations = AppLocalizations(Locale('es'));
     expect(localizations.text('analysis.rule.r001.name'), 'Gastos');
