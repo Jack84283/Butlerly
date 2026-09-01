@@ -66,6 +66,8 @@ enum AnalysisResultType { metric, finding, dataQuality }
 
 enum AnalysisResultFreshness { fresh, stale }
 
+enum AnalysisDataAvailability { sufficient, empty, insufficient }
+
 enum AnalysisFilterKind {
   direction,
   category,
@@ -189,6 +191,40 @@ final class AnalysisContext {
   final CurrencyCode? baseCurrency;
 }
 
+/// Canonical identity for every materialized analysis calculation.
+///
+/// Length-prefixing each component keeps the key unambiguous without using
+/// localized or display-facing values. Metrics and findings deliberately use
+/// the same identity space so lifecycle state cannot collide with another
+/// calculation context.
+final class AnalysisResultIdentity {
+  const AnalysisResultIdentity._(this.value);
+
+  factory AnalysisResultIdentity.forRule({
+    required AnalysisRuleDefinition rule,
+    required AnalysisContext context,
+    String? dimension,
+  }) => AnalysisResultIdentity._(
+    [
+      rule.identity.value,
+      rule.version.value,
+      rule.definitionHash.value,
+      context.period.startDate,
+      context.period.endDate,
+      context.period.timeZoneId,
+      context.datasetMode.name,
+      context.currencyBasis.name,
+      context.baseCurrency?.value,
+      dimension,
+    ].map(_encodePart).join('|'),
+  );
+
+  final String value;
+}
+
+String _encodePart(String? value) =>
+    value == null ? '-' : '${value.length}:$value';
+
 final class AnalysisEconomicTransaction {
   const AnalysisEconomicTransaction({
     required this.id,
@@ -224,6 +260,7 @@ final class AnalysisDataset {
     required this.context,
     this.baselineTransactions = const [],
     this.primaryTransactionsByPeriod = const {},
+    this.baselineTransactionsByPeriod = const {},
     this.qualityIssues = const [],
   });
   final List<AnalysisEconomicTransaction> transactions;
@@ -231,6 +268,8 @@ final class AnalysisDataset {
   final List<AnalysisEconomicTransaction> baselineTransactions;
   final Map<String, List<AnalysisEconomicTransaction>>
   primaryTransactionsByPeriod;
+  final Map<String, List<AnalysisEconomicTransaction>>
+  baselineTransactionsByPeriod;
   final List<DataQualityIssue> qualityIssues;
 }
 
@@ -332,6 +371,7 @@ final class AnalysisMetric {
     this.currency,
     this.dimension,
     this.transactionCount = 0,
+    this.availability = AnalysisDataAvailability.sufficient,
     this.evidence = const [],
     this.qualityIssues = const [],
     required this.calculatedAt,
@@ -343,9 +383,30 @@ final class AnalysisMetric {
   final CurrencyCode? currency;
   final String? dimension;
   final int transactionCount;
+  final AnalysisDataAvailability availability;
   final List<EvidenceReference> evidence;
   final List<DataQualityIssue> qualityIssues;
   final DateTime calculatedAt;
+}
+
+/// A backend-owned comparison for a metric. A comparison may exist even when
+/// a condition-triggered insight is not emitted.
+final class AnalysisComparison {
+  const AnalysisComparison({
+    required this.currentValue,
+    this.baselineValue,
+    this.absoluteChange,
+    this.percentageChange,
+    this.baselineMetricId,
+    required this.availability,
+  });
+
+  final DecimalValue currentValue;
+  final DecimalValue? baselineValue;
+  final DecimalValue? absoluteChange;
+  final DecimalValue? percentageChange;
+  final String? baselineMetricId;
+  final AnalysisDataAvailability availability;
 }
 
 final class AnalysisFinding {
@@ -397,12 +458,14 @@ final class RuleExecutionResult {
     required this.rule,
     this.metric,
     this.finding,
+    this.comparison,
     this.issues = const [],
     this.failure,
   });
   final AnalysisRuleDefinition rule;
   final AnalysisMetric? metric;
   final AnalysisFinding? finding;
+  final AnalysisComparison? comparison;
   final List<DataQualityIssue> issues;
   final AnalysisFailure? failure;
 }

@@ -1,4 +1,6 @@
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -9,10 +11,14 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   Widget app(
     Future<ApplicationResult<List<RuleExecutionResult>>> Function() load, {
+    Future<ApplicationResult<List<RuleExecutionResult>>> Function(String)?
+    loadForPeriod,
     Future<ApplicationResult<AnalysisCalendarResult>> Function(int, int)?
     loadCalendar,
     Future<ApplicationResult<List<TransactionDto>>> Function(String)?
     loadTransactionsForDate,
+    Future<TransactionMasterData> Function()? loadMasterData,
+    ValueChanged<String>? onNavigationRequested,
   }) => MaterialApp(
     localizationsDelegates: const [
       AppLocalizations.delegate,
@@ -22,10 +28,101 @@ void main() {
     ],
     supportedLocales: AppLocalizations.supportedLocales,
     home: AnalysisPage(
+      key: UniqueKey(),
       load: load,
+      loadForPeriod: loadForPeriod,
       loadCalendar: loadCalendar,
       loadTransactionsForDate: loadTransactionsForDate,
+      loadMasterData: loadMasterData,
+      onNavigationRequested: onNavigationRequested,
     ),
+  );
+
+  testWidgets('uses one shared period selector and reloads its result', (
+    tester,
+  ) async {
+    final periods = <String>[];
+    await tester.pumpWidget(
+      app(
+        () async => const ApplicationSuccess(<RuleExecutionResult>[]),
+        loadForPeriod: (period) async {
+          periods.add(period);
+          return const ApplicationSuccess(<RuleExecutionResult>[]);
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('analysis-period-selector')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Last Month').last);
+    await tester.pumpAndSettle();
+    expect(periods, contains('current_month'));
+    expect(periods, contains('previous_month'));
+    expect(
+      find.byKey(const ValueKey('analysis-period-selector')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+    'refresh reloads analysis, calendar, and selected-day transactions',
+    (tester) async {
+      var analysisLoads = 0;
+      var calendarLoads = 0;
+      var selectedDayLoads = 0;
+      final now = DateTime.now();
+      final date = '${now.year}-${now.month.toString().padLeft(2, '0')}-01';
+
+      await tester.pumpWidget(
+        app(
+          () async {
+            analysisLoads++;
+            return const ApplicationSuccess(<RuleExecutionResult>[]);
+          },
+          loadCalendar: (year, month) async {
+            calendarLoads++;
+            return ApplicationSuccess(
+              AnalysisCalendarResult(
+                year: year,
+                month: month,
+                timeZoneId: 'America/Los_Angeles',
+                days: [
+                  AnalysisCalendarDay(
+                    financialDate: date,
+                    transactionCount: 1,
+                    expenseTotal: null,
+                    incomeTotal: null,
+                    currencyBasis: CurrencyBasis.baseCurrency,
+                  ),
+                ],
+              ),
+            );
+          },
+          loadTransactionsForDate: (_) async {
+            selectedDayLoads++;
+            return const ApplicationSuccess(<TransactionDto>[]);
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, -1200));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(
+        find.byKey(ValueKey('analysis-calendar-$date')),
+      );
+      await tester.tap(find.byKey(ValueKey('analysis-calendar-$date')));
+      await tester.pumpAndSettle();
+      final beforeAnalysis = analysisLoads;
+      final beforeCalendar = calendarLoads;
+      final beforeSelectedDay = selectedDayLoads;
+
+      notifyTransactionChanged();
+      await tester.pumpAndSettle();
+
+      expect(analysisLoads, greaterThan(beforeAnalysis));
+      expect(calendarLoads, greaterThan(beforeCalendar));
+      expect(selectedDayLoads, greaterThan(beforeSelectedDay));
+    },
   );
 
   testWidgets('renders an offline all-clear state from application results', (
@@ -39,13 +136,13 @@ void main() {
       app(() async => const ApplicationSuccess(<RuleExecutionResult>[])),
     );
     await tester.pumpAndSettle();
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -2000));
+    await tester.pumpAndSettle();
     expect(find.text('Analysis'), findsOneWidget);
-    expect(find.text('No findings'), findsOneWidget);
+    expect(find.text('Not evaluated'), findsOneWidget);
     expect(
-      find.bySemanticsLabel(
-        'Calculated privately on this device and available offline.',
-      ),
-      findsAtLeastNWidgets(1),
+      find.text('Calculated privately on this device and available offline.'),
+      findsNothing,
     );
   });
 
@@ -86,6 +183,7 @@ void main() {
       condition: const RuleCondition(operator: 'none'),
       severity: RuleSeverity.info,
       definitionHash: RuleDefinitionHash('a' * 64),
+      surface: AnalysisSurface.insights,
     );
     await tester.pumpWidget(
       app(
@@ -101,8 +199,92 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -2000));
+    await tester.pumpAndSettle();
     expect(find.text('No findings'), findsNothing);
     expect(find.text('Insights are unavailable'), findsOneWidget);
+  });
+
+  testWidgets('renders a valid comparison without an emitted insight', (
+    tester,
+  ) async {
+    final rule = AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R020'),
+      version: RuleVersion('1.2.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.insight,
+      nameKey: 'analysis.rule.r020.name',
+      descriptionKey: 'analysis.rule.r020.description',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
+      grouping: RuleGrouping.none,
+      baseline: RuleBaseline.previousEquivalentPeriod,
+      condition: RuleCondition(
+        operator: 'gte',
+        value: DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0),
+      ),
+      severity: RuleSeverity.info,
+      definitionHash: RuleDefinitionHash('b' * 64),
+      surface: AnalysisSurface.insights,
+    );
+    await tester.pumpWidget(
+      app(
+        () async => ApplicationSuccess([
+          RuleExecutionResult(
+            rule: rule,
+            comparison: AnalysisComparison(
+              currentValue: DecimalValue.parse('4820'),
+              baselineValue: DecimalValue.parse('5239.13'),
+              absoluteChange: DecimalValue.parse('-419.13'),
+              percentageChange: DecimalValue.parse('-8'),
+              availability: AnalysisDataAvailability.sufficient,
+            ),
+          ),
+        ]),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('previous period'), findsOneWidget);
+    expect(find.text('Notable'), findsNothing);
+  });
+
+  testWidgets('does not render an insufficient comparison', (tester) async {
+    final rule = AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R020'),
+      version: RuleVersion('1.2.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.insight,
+      nameKey: 'analysis.rule.r020.name',
+      descriptionKey: 'analysis.rule.r020.description',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
+      grouping: RuleGrouping.none,
+      baseline: RuleBaseline.previousEquivalentPeriod,
+      condition: const RuleCondition(operator: 'none'),
+      severity: RuleSeverity.info,
+      definitionHash: RuleDefinitionHash('c' * 64),
+      surface: AnalysisSurface.insights,
+    );
+    await tester.pumpWidget(
+      app(
+        () async => ApplicationSuccess([
+          RuleExecutionResult(
+            rule: rule,
+            comparison: AnalysisComparison(
+              currentValue: DecimalValue.parse('4820'),
+              availability: AnalysisDataAvailability.insufficient,
+            ),
+          ),
+        ]),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('previous period'), findsNothing);
+    expect(find.textContaining('0%'), findsNothing);
   });
 
   testWidgets('localizes a bundled rule name', (tester) async {
@@ -114,6 +296,142 @@ void main() {
     );
   });
 
+  testWidgets('category rows use localized labels and stable filter IDs', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1000, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-08-01',
+        endDate: '2026-08-31',
+        timeZoneId: 'America/Los_Angeles',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+    );
+    final rule = AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R010'),
+      version: RuleVersion('1.0.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.metric,
+      nameKey: 'analysis.rule.r010.name',
+      descriptionKey: 'analysis.rule.r010.description',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
+      grouping: RuleGrouping.category,
+      baseline: RuleBaseline.none,
+      condition: const RuleCondition(operator: 'none'),
+      severity: RuleSeverity.info,
+      definitionHash: RuleDefinitionHash('c' * 64),
+    );
+    final metric = AnalysisMetric(
+      id: 'category-result',
+      rule: rule,
+      context: context,
+      value: DecimalValue.parse('100'),
+      dimension: 'category-id:value',
+      currency: CurrencyCode('USD'),
+      calculatedAt: DateTime.utc(2026, 8, 31),
+    );
+    String? requestedNavigation;
+    await tester.pumpWidget(
+      app(
+        () async => ApplicationSuccess([
+          RuleExecutionResult(rule: rule, metric: metric),
+        ]),
+        loadMasterData: () async => const TransactionMasterData(
+          categoryNames: {'category-id': 'Dining'},
+        ),
+        onNavigationRequested: (path) => requestedNavigation = path,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Dining'), findsOneWidget);
+    expect(find.text('category-id'), findsNothing);
+    expect(find.text('View all categories'), findsNothing);
+    await tester.ensureVisible(find.text('Dining'));
+    await tester.tap(find.text('Dining'));
+    expect(requestedNavigation, contains('from=2026-08-01'));
+    expect(requestedNavigation, contains('to=2026-08-31'));
+    expect(requestedNavigation, contains('category=category-id'));
+  });
+
+  testWidgets('View all categories appears only when more than five exist', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1000, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-08-01',
+        endDate: '2026-08-31',
+        timeZoneId: 'America/Los_Angeles',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+    );
+    final rule = AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R010'),
+      version: RuleVersion('1.0.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.metric,
+      nameKey: 'analysis.rule.r010.name',
+      descriptionKey: 'analysis.rule.r010.description',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
+      grouping: RuleGrouping.category,
+      baseline: RuleBaseline.none,
+      condition: const RuleCondition(operator: 'none'),
+      severity: RuleSeverity.info,
+      definitionHash: RuleDefinitionHash('d' * 64),
+    );
+    final results = [
+      for (var i = 1; i <= 6; i++)
+        RuleExecutionResult(
+          rule: rule,
+          metric: AnalysisMetric(
+            id: 'category-$i',
+            rule: rule,
+            context: context,
+            value: DecimalValue.parse('$i'),
+            dimension: 'category-$i:value',
+            currency: CurrencyCode('USD'),
+            calculatedAt: DateTime.utc(2026, 8, 31),
+          ),
+        ),
+    ];
+    String? requestedNavigation;
+    await tester.pumpWidget(
+      app(
+        () async => ApplicationSuccess(results),
+        loadMasterData: () async => const TransactionMasterData(
+          categoryNames: {
+            'category-1': 'One',
+            'category-2': 'Two',
+            'category-3': 'Three',
+            'category-4': 'Four',
+            'category-5': 'Five',
+            'category-6': 'Six',
+          },
+        ),
+        onNavigationRequested: (path) => requestedNavigation = path,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('View all categories'));
+    await tester.tap(find.text('View all categories'));
+    expect(requestedNavigation, '/transactions?from=2026-08-01&to=2026-08-31');
+  });
+
   testWidgets(
     'calendar navigates months, selects empty dates, and lists drill-down rows',
     (tester) async {
@@ -122,6 +440,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       final requestedMonths = <String>[];
+      String? requestedNavigation;
       ApplicationResult<AnalysisCalendarResult> calendar(int year, int month) {
         requestedMonths.add('$year-$month');
         final last = DateTime.utc(year, month + 1, 0).day;
@@ -167,6 +486,7 @@ void main() {
                   ]
                 : const [],
           ),
+          onNavigationRequested: (path) => requestedNavigation = path,
         ),
       );
       await tester.pumpAndSettle();
@@ -192,14 +512,9 @@ void main() {
         ),
         findsOneWidget,
       );
-      await tester.ensureVisible(
-        find.byKey(const ValueKey('analysis-calendar-previous')),
-      );
-      await tester.tap(
-        find.byKey(const ValueKey('analysis-calendar-previous')),
-      );
-      await tester.pumpAndSettle();
-      expect(requestedMonths, hasLength(2));
+      await tester.tap(find.text('View transactions'));
+      expect(requestedNavigation, contains('from=$date2&to=$date2'));
+      expect(requestedMonths, hasLength(1));
     },
   );
 
@@ -256,11 +571,93 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Data quality issues'), findsOneWidget);
-    expect(find.text('1 supporting transactions'), findsOneWidget);
+    expect(find.text('1 items need attention'), findsOneWidget);
+    expect(find.text('Data quality issues'), findsNothing);
     expect(find.textContaining('1'), findsWidgets);
-    await tester.tap(find.text('Data quality issues'));
+    expect(find.text('t1'), findsNothing);
+  });
+
+  testWidgets('data-quality visual semantics distinguish all three states', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1000, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final rule = AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R091'),
+      version: RuleVersion('1.0.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.metric,
+      nameKey: 'analysis.rule.r091.name',
+      descriptionKey: 'analysis.rule.r091.description',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(
+        operation: RuleOperation.count,
+        field: 'amount',
+      ),
+      grouping: RuleGrouping.none,
+      baseline: RuleBaseline.none,
+      condition: const RuleCondition(operator: 'none'),
+      severity: RuleSeverity.info,
+      definitionHash: RuleDefinitionHash('e' * 64),
+    );
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-08-01',
+        endDate: '2026-08-31',
+        timeZoneId: 'America/Los_Angeles',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+    );
+    final metric = AnalysisMetric(
+      id: 'quality-good',
+      rule: rule,
+      context: context,
+      value: DecimalValue.parse('0'),
+      calculatedAt: DateTime.utc(2026, 8, 31),
+    );
+
+    await tester.pumpWidget(
+      app(() async => const ApplicationSuccess(<RuleExecutionResult>[])),
+    );
     await tester.pumpAndSettle();
-    expect(find.text('t1'), findsOneWidget);
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -2000));
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.help_outline), findsOneWidget);
+    expect(find.byIcon(Icons.check_circle_outline), findsNothing);
+
+    await tester.pumpWidget(
+      app(
+        () async => ApplicationSuccess([
+          RuleExecutionResult(
+            rule: rule,
+            failure: const AnalysisFailure(
+              code: 'execution',
+              message: 'failed',
+            ),
+          ),
+        ]),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Limited'));
+    expect(find.byIcon(Icons.info_outline), findsOneWidget);
+    expect(find.byIcon(Icons.check_circle_outline), findsNothing);
+
+    await tester.pumpWidget(
+      app(
+        () async => ApplicationSuccess([
+          RuleExecutionResult(rule: rule, metric: metric),
+        ]),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byIcon(Icons.check_circle_outline));
+    expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
   });
 }

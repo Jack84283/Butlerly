@@ -69,4 +69,157 @@ void main() {
     expect(restored.qualityIssues.single.detail, issue.detail);
     expect(restored.qualityIssues.single.transactionId!.value, 't1');
   });
+
+  test('comparison materialization restores results without a finding', () {
+    final comparison = AnalysisComparison(
+      currentValue: DecimalValue.parse('92'),
+      baselineValue: DecimalValue.parse('100'),
+      absoluteChange: DecimalValue.parse('-8'),
+      percentageChange: DecimalValue.parse('-8'),
+      availability: AnalysisDataAvailability.sufficient,
+    );
+    final restored = restoreResult(
+      materializeResult(
+        RuleExecutionResult(rule: rule, comparison: comparison),
+        context: context,
+        at: DateTime.utc(2026, 1, 2),
+      ),
+      rule,
+    ).comparison!;
+    expect(restored.currentValue, comparison.currentValue);
+    expect(restored.baselineValue, comparison.baselineValue);
+    expect(restored.absoluteChange, comparison.absoluteChange);
+    expect(restored.percentageChange, comparison.percentageChange);
+    expect(restored.availability, AnalysisDataAvailability.sufficient);
+  });
+
+  test('finding materialization restores its comparison', () {
+    final finding = AnalysisFinding(
+      id: 'finding',
+      rule: rule,
+      context: context,
+      severity: RuleSeverity.info,
+      lifecycle: FindingLifecycle.active,
+      currentValue: DecimalValue.parse('92'),
+      baselineValue: DecimalValue.parse('100'),
+      absoluteChange: DecimalValue.parse('-8'),
+      percentageChange: DecimalValue.parse('-8'),
+      generatedAt: DateTime.utc(2026, 1, 2),
+    );
+    final comparison = AnalysisComparison(
+      currentValue: DecimalValue.parse('92'),
+      baselineValue: DecimalValue.parse('100'),
+      absoluteChange: DecimalValue.parse('-8'),
+      percentageChange: DecimalValue.parse('-8'),
+      availability: AnalysisDataAvailability.sufficient,
+    );
+    final restored = restoreResult(
+      materializeResult(
+        RuleExecutionResult(
+          rule: rule,
+          finding: finding,
+          comparison: comparison,
+        ),
+        context: context,
+        at: DateTime.utc(2026, 1, 2),
+      ),
+      rule,
+    );
+    expect(restored.finding, isNotNull);
+    expect(restored.comparison, isNotNull);
+    expect(restored.comparison!.baselineValue, comparison.baselineValue);
+    expect(restored.comparison!.absoluteChange, comparison.absoluteChange);
+    expect(restored.comparison!.percentageChange, comparison.percentageChange);
+    expect(restored.comparison!.availability, comparison.availability);
+  });
+
+  test('insufficient comparison survives materialization', () {
+    final comparison = AnalysisComparison(
+      currentValue: DecimalValue.parse('92'),
+      availability: AnalysisDataAvailability.insufficient,
+    );
+    final restored = restoreResult(
+      materializeResult(
+        RuleExecutionResult(rule: rule, comparison: comparison),
+        context: context,
+        at: DateTime.utc(2026, 1, 2),
+      ),
+      rule,
+    ).comparison!;
+    expect(restored.availability, AnalysisDataAvailability.insufficient);
+    expect(restored.baselineValue, isNull);
+    expect(restored.percentageChange, isNull);
+  });
+
+  test('legacy result without comparison restores safely', () {
+    final metric = AnalysisMetric(
+      id: 'metric',
+      rule: rule,
+      context: context,
+      value: DecimalValue.parse('12.50'),
+      calculatedAt: DateTime.utc(2026, 1, 2),
+    );
+    final restored = restoreResult(
+      materializeResult(
+        RuleExecutionResult(rule: rule, metric: metric),
+        context: context,
+        at: DateTime.utc(2026, 1, 2),
+      ),
+      rule,
+    );
+    expect(restored.comparison, isNull);
+  });
+
+  test(
+    'analysis identity changes with every calculation context component',
+    () {
+      final contexts = [
+        context,
+        AnalysisContext(
+          period: AnalysisPeriod(
+            startDate: '2026-01-02',
+            endDate: '2026-01-31',
+            timeZoneId: 'UTC',
+          ),
+          datasetMode: DatasetMode.allEligible,
+          currencyBasis: CurrencyBasis.original,
+        ),
+        AnalysisContext(
+          period: context.period,
+          datasetMode: DatasetMode.verifiedOnly,
+          currencyBasis: CurrencyBasis.original,
+        ),
+        AnalysisContext(
+          period: context.period,
+          datasetMode: DatasetMode.allEligible,
+          currencyBasis: CurrencyBasis.baseCurrency,
+          baseCurrency: CurrencyCode('USD'),
+        ),
+      ];
+      final identities = contexts
+          .map(
+            (value) => AnalysisResultIdentity.forRule(
+              rule: rule,
+              context: value,
+              dimension: 'dining',
+            ).value,
+          )
+          .toSet();
+      expect(identities, hasLength(contexts.length));
+      expect(
+        AnalysisResultIdentity.forRule(
+          rule: rule,
+          context: context,
+          dimension: 'dining',
+        ).value,
+        isNot(
+          AnalysisResultIdentity.forRule(
+            rule: rule,
+            context: context,
+            dimension: 'travel',
+          ).value,
+        ),
+      );
+    },
+  );
 }

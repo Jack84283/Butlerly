@@ -16,17 +16,23 @@ final class InstallBuiltInRules {
     this.repository, {
     this.parser = const RestrictedRuleParser(),
     this.validator = const RuleDefinitionValidator(),
+    this.catalogValidator = const RuleCatalogValidator(),
   });
   final AnalysisRuleRepository repository;
   final RestrictedRuleParser parser;
   final RuleDefinitionValidator validator;
+  final RuleCatalogValidator catalogValidator;
 
-  Future<RuleInstallationResult> call(Map<String, String> sourceByPath) async {
+  Future<RuleInstallationResult> call(
+    Map<String, String> sourceByPath, {
+    String? catalogSource,
+  }) async {
     final installed = <AnalysisRuleDefinition>[];
     final diagnostics = <String, List<RuleDiagnostic>>{};
     final parsedDefinitions = <AnalysisRuleDefinition>[];
     final canonicalById = <String, String>{};
     final pathsById = <String, String>{};
+    final definitionsByPath = <String, AnalysisRuleDefinition>{};
     for (final entry in sourceByPath.entries) {
       final parsed = parser.parse(entry.value);
       if (!parsed.isValid) {
@@ -51,7 +57,21 @@ final class InstallBuiltInRules {
       }
       parsedDefinitions.add(result.definition!);
       pathsById[id] = entry.key;
+      definitionsByPath[entry.key] = result.definition!;
       canonicalById[id] = canonicalize(parsed.document!.values);
+    }
+    if (catalogSource != null) {
+      final catalogDiagnostics = catalogValidator.validate(
+        source: catalogSource,
+        definitionsByPath: definitionsByPath,
+      );
+      if (catalogDiagnostics.isNotEmpty) {
+        diagnostics['catalog.yaml'] = catalogDiagnostics;
+        return RuleInstallationResult(
+          installed: const [],
+          diagnostics: diagnostics,
+        );
+      }
     }
     final ids = parsedDefinitions.map((value) => value.identity.value).toSet();
     final byId = {

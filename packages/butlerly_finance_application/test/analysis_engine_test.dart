@@ -128,16 +128,59 @@ void main() {
         ),
         definitions: [insight.copyWith(type: AnalysisRuleType.insight)],
       );
-      expect(result.single.finding, isNotNull);
-      expect(result.single.finding!.baselineValue, isNull);
-      expect(result.single.finding!.absoluteChange, isNull);
-      expect(result.single.finding!.percentageChange, isNull);
-      expect(
-        result.single.finding!.qualityIssues.single.code,
-        'missingBaseline',
-      );
+      expect(result.single.finding, isNull);
+      expect(result.single.metric, isNull);
+      expect(result.single.comparison, isNotNull);
+      expect(result.single.comparison!.percentageChange, isNull);
     },
   );
+
+  test('exposes comparison even when the insight condition is not met', () {
+    final insight =
+        rule(
+              'ANL-R020',
+              RuleOperation.sum,
+              filters: [
+                AnalysisFilter(
+                  kind: AnalysisFilterKind.direction,
+                  values: ['expense'],
+                ),
+              ],
+            )
+            .copyWithPeriod('selected_period')
+            .copyWithBaseline(RuleBaseline.previousEquivalentPeriod)
+            .copyWithCondition(
+              RuleCondition(
+                operator: 'gte',
+                left: 'percentageChange',
+                value: DecimalValue.parse('20'),
+              ),
+            )
+            .copyWithType(AnalysisRuleType.insight);
+    final result = const AnalysisRuleEngine()
+        .execute(
+          dataset: AnalysisDataset(
+            context: context,
+            transactions: dataset().transactions,
+            baselineTransactions: [
+              AnalysisEconomicTransaction(
+                id: TransactionId('baseline-expense'),
+                money: Money(
+                  amount: DecimalValue.parse('20'),
+                  currency: CurrencyCode('USD'),
+                ),
+                direction: TransactionDirection.expense,
+                transactionDate: '2025-12-10',
+              ),
+            ],
+          ),
+          definitions: [insight],
+        )
+        .single;
+    expect(result.finding, isNull);
+    expect(result.comparison, isNotNull);
+    expect(result.comparison!.percentageChange, isNotNull);
+  });
 
   test(
     'period selects the primary dataset while baseline remains independent',
@@ -576,6 +619,180 @@ void main() {
       expect(metric('2026-01-02:expenseTotal').value, DecimalValue.parse('15'));
       expect(metric('2026-01-03:incomeTotal').value, DecimalValue.parse('25'));
       expect(metric('2026-01-02:incomeTotal').value, DecimalValue.parse('0'));
+    },
+  );
+
+  test('grouped insight baselines match the current dimension', () {
+    AnalysisEconomicTransaction transaction(
+      String id,
+      String amount, {
+      String? category,
+      String? merchant,
+    }) => AnalysisEconomicTransaction(
+      id: TransactionId(id),
+      money: Money(
+        amount: DecimalValue.parse(amount),
+        currency: CurrencyCode('USD'),
+      ),
+      direction: TransactionDirection.expense,
+      transactionDate: '2026-01-10',
+      categoryId: category == null ? null : CategoryId(category),
+      merchantId: merchant == null ? null : MerchantId(merchant),
+    );
+
+    AnalysisRuleDefinition insight(
+      RuleGrouping grouping,
+    ) => AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R020'),
+      version: RuleVersion('1.2.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.insight,
+      nameKey: 'insight',
+      descriptionKey: 'insight.description',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
+      grouping: grouping,
+      baseline: RuleBaseline.previousEquivalentPeriod,
+      condition: RuleCondition(operator: 'gt', value: DecimalValue.parse('0')),
+      severity: RuleSeverity.info,
+      definitionHash: RuleDefinitionHash('d' * 64),
+    );
+
+    final current = [
+      transaction('dining-current', '600', category: 'dining'),
+      transaction('travel-current', '100', category: 'travel'),
+      transaction('groceries-current', '50', category: 'groceries'),
+    ];
+    final baseline = [
+      transaction('dining-baseline', '400', category: 'dining'),
+      transaction('travel-baseline', '300', category: 'travel'),
+      transaction('unrelated-baseline', '3000', category: 'rent'),
+    ];
+    final dataset = AnalysisDataset(
+      context: context,
+      transactions: current,
+      baselineTransactions: baseline,
+    );
+    final categoryResults = const AnalysisRuleEngine().execute(
+      dataset: dataset,
+      definitions: [insight(RuleGrouping.category)],
+    );
+    final dining = categoryResults
+        .map((result) => result.finding)
+        .whereType<AnalysisFinding>()
+        .singleWhere((finding) => finding.dimension == 'dining');
+    expect(dining.currentValue, DecimalValue.parse('600'));
+    expect(dining.baselineValue, DecimalValue.parse('400'));
+    expect(dining.absoluteChange, DecimalValue.parse('200'));
+    expect(dining.supportingMetrics, hasLength(2));
+    expect(dining.supportingMetrics[0], isNot(dining.supportingMetrics[1]));
+    expect(
+      categoryResults.map((result) => result.finding),
+      isNot(
+        contains(
+          isA<AnalysisFinding>().having(
+            (finding) => finding.dimension,
+            'dimension',
+            'groceries',
+          ),
+        ),
+      ),
+    );
+
+    final merchantCurrent = [
+      transaction('merchant-current', '200', merchant: 'merchant-a'),
+    ];
+    final merchantBaseline = [
+      transaction('merchant-baseline', '100', merchant: 'merchant-a'),
+      transaction('merchant-unrelated', '900', merchant: 'merchant-b'),
+    ];
+    final merchantFinding = const AnalysisRuleEngine()
+        .execute(
+          dataset: AnalysisDataset(
+            context: context,
+            transactions: merchantCurrent,
+            baselineTransactions: merchantBaseline,
+          ),
+          definitions: [insight(RuleGrouping.merchant)],
+        )
+        .single
+        .finding!;
+    expect(merchantFinding.dimension, 'merchant-a');
+    expect(merchantFinding.baselineValue, DecimalValue.parse('100'));
+  });
+
+  test('insights require sufficient current and baseline data', () {
+    final insight = AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R020'),
+      version: RuleVersion('1.2.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.insight,
+      nameKey: 'insight',
+      descriptionKey: 'insight.description',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(
+        operation: RuleOperation.average,
+        field: 'amount',
+      ),
+      grouping: RuleGrouping.none,
+      baseline: RuleBaseline.previousEquivalentPeriod,
+      condition: RuleCondition(
+        operator: 'gte',
+        left: 'percentageChange',
+        value: DecimalValue.parse('0'),
+      ),
+      severity: RuleSeverity.info,
+      definitionHash: RuleDefinitionHash('e' * 64),
+    );
+    final empty = const AnalysisRuleEngine().execute(
+      dataset: AnalysisDataset(context: context, transactions: const []),
+      definitions: [insight],
+    );
+    expect(empty.single.finding, isNull);
+    expect(empty.single.metric, isNull);
+  });
+
+  test(
+    'empty operations expose deterministic values and data availability',
+    () {
+      for (final operation in [
+        RuleOperation.sum,
+        RuleOperation.count,
+        RuleOperation.distinctCount,
+        RuleOperation.average,
+        RuleOperation.median,
+        RuleOperation.minimum,
+        RuleOperation.maximum,
+        RuleOperation.frequency,
+      ]) {
+        final result = const AnalysisRuleEngine()
+            .execute(
+              dataset: AnalysisDataset(
+                context: context,
+                transactions: const [],
+              ),
+              definitions: [rule('ANL-R001', operation)],
+            )
+            .single;
+        expect(result.metric, isNotNull, reason: operation.name);
+        expect(
+          result.metric!.value,
+          DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0),
+        );
+        expect(
+          result.metric!.availability,
+          AnalysisDataAvailability.empty,
+          reason: operation.name,
+        );
+        expect(
+          result.metric!.qualityIssues.map((issue) => issue.code),
+          contains('insufficientData'),
+        );
+      }
     },
   );
 }

@@ -16,6 +16,7 @@ import 'package:butlerly/features/foundation/presentation/statement_capture_page
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/features/tools/presentation/tools_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -73,8 +74,16 @@ final appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/transactions',
-              pageBuilder: (context, state) =>
-                  _primaryPage('transactions', const TransactionsPage()),
+              pageBuilder: (context, state) => _primaryPage(
+                'transactions',
+                TransactionsPage(
+                  query: ListTransactionsQuery(
+                    from: _queryDate(state.uri.queryParameters['from']),
+                    to: _queryDate(state.uri.queryParameters['to']),
+                    categoryId: state.uri.queryParameters['category'],
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -169,3 +178,6 @@ final appRouter = GoRouter(
     ),
   ),
 );
+
+DateTime? _queryDate(String? value) =>
+    value == null ? null : DateTime.tryParse(value);

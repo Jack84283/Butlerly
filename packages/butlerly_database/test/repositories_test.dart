@@ -82,6 +82,83 @@ void main() {
     ]);
   });
 
+  test(
+    'finding lifecycle is isolated by the canonical analysis context',
+    () async {
+      final repository = SqliteAnalysisFindingRepository(database);
+      final rule = AnalysisRuleDefinition(
+        identity: RuleIdentity('ANL-R099'),
+        version: RuleVersion('1.0.0'),
+        schemaVersion: '1.0.0',
+        type: AnalysisRuleType.insight,
+        nameKey: 'test.name',
+        descriptionKey: 'test.description',
+        enabled: true,
+        status: AnalysisRuleStatus.active,
+        period: 'selected_period',
+        measure: const RuleMeasure(
+          operation: RuleOperation.sum,
+          field: 'amount',
+        ),
+        grouping: RuleGrouping.category,
+        baseline: RuleBaseline.previousEquivalentPeriod,
+        condition: const RuleCondition(operator: 'none'),
+        severity: RuleSeverity.info,
+        definitionHash: RuleDefinitionHash('f' * 64),
+      );
+      AnalysisContext context(String start) => AnalysisContext(
+        period: AnalysisPeriod(
+          startDate: start,
+          endDate: '${start.substring(0, 7)}-28',
+          timeZoneId: 'UTC',
+        ),
+        datasetMode: DatasetMode.allEligible,
+        currencyBasis: CurrencyBasis.original,
+      );
+      AnalysisFinding finding(AnalysisContext value) {
+        final id = AnalysisResultIdentity.forRule(
+          rule: rule,
+          context: value,
+          dimension: 'dining',
+        ).value;
+        return AnalysisFinding(
+          id: id,
+          rule: rule,
+          context: value,
+          severity: RuleSeverity.info,
+          lifecycle: FindingLifecycle.active,
+          dimension: 'dining',
+          generatedAt: now,
+        );
+      }
+
+      final january = finding(context('2026-01-01'));
+      final february = finding(context('2026-02-01'));
+      expect(january.id, isNot(february.id));
+      await repository.save(january);
+      await repository.save(february);
+      await repository.updateLifecycle(
+        january.id,
+        FindingLifecycle.acknowledged,
+        now,
+      );
+      final stored = await database.connection.query(
+        'analysis_findings',
+        columns: ['id', 'lifecycle'],
+        orderBy: 'id',
+      );
+      expect(stored, hasLength(2));
+      expect(
+        stored.singleWhere((value) => value['id'] == january.id)['lifecycle'],
+        FindingLifecycle.acknowledged.name,
+      );
+      expect(
+        stored.singleWhere((value) => value['id'] == february.id)['lifecycle'],
+        FindingLifecycle.active.name,
+      );
+    },
+  );
+
   test('persists materialized results and scopes stale invalidation', () async {
     final repository = SqliteAnalysisRuleResultRepository(database);
     final rule = AnalysisRuleDefinition(

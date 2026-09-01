@@ -181,6 +181,50 @@ measure:
     expect(definitions['ANL-R090'].surface, AnalysisSurface.dataQuality);
   });
 
+  test('bundled catalog matches every installed rule definition', () {
+    final root = Directory.current.path;
+    final assets = Directory('$root/../../apps/butlerly/assets/analysis_rules');
+    final definitionsByPath = <String, AnalysisRuleDefinition>{};
+    for (final file
+        in assets
+            .listSync(recursive: true)
+            .whereType<File>()
+            .where((file) => file.path.endsWith('.yaml'))
+            .where((file) => !file.path.endsWith('catalog.yaml'))) {
+      final parsed = parser.parse(file.readAsStringSync());
+      final validated = validator.validate(parsed.document!);
+      definitionsByPath[file.path] = validated.definition!;
+    }
+    expect(
+      const RuleCatalogValidator().validate(
+        source: File(
+          '$root/../../apps/butlerly/assets/analysis_rules/catalog.yaml',
+        ).readAsStringSync(),
+        definitionsByPath: definitionsByPath,
+      ),
+      isEmpty,
+    );
+  });
+
+  test('catalog version mismatches are rejected', () {
+    final definition = validator
+        .validate(parser.parse(valid).document!)
+        .definition!;
+    final diagnostics = const RuleCatalogValidator().validate(
+      source: '''
+schemaVersion: "1.0.0"
+rules:
+  - ruleId: ANL-R001
+    ruleVersion: "9.9.9"
+    file: metrics/ANL-R001.yaml
+''',
+      definitionsByPath: {
+        '/tmp/analysis_rules/metrics/ANL-R001.yaml': definition,
+      },
+    );
+    expect(diagnostics.map((value) => value.code), contains('catalogMismatch'));
+  });
+
   test('bundled R016 installs and reloads through SQLite', () async {
     final source = File(
       '${Directory.current.path}/../../apps/butlerly/assets/analysis_rules/metrics/ANL-R016.yaml',

@@ -5,6 +5,7 @@ import 'package:timezone/timezone.dart' as time_zone;
 import '../result/application_result.dart';
 import '../dto/transaction_dto.dart';
 import '../analysis/dataset_builder.dart';
+import '../analysis/period_resolver.dart';
 import '../analysis/rule_engine.dart';
 import '../analysis/result_materialization.dart';
 
@@ -15,35 +16,94 @@ final class CalculateAnalysisOverview {
     this.engine, {
     this.findings,
     this.results,
+    this.periodResolver = const AnalysisPeriodResolver(),
   });
   final AnalysisRuleRepository rules;
   final AnalysisDatasetBuilder datasetBuilder;
   final AnalysisRuleEngine engine;
+  final AnalysisPeriodResolver periodResolver;
   final AnalysisFindingRepository? findings;
   final AnalysisRuleResultRepository? results;
+
+  /// Resolves a user-facing period choice into the authoritative analysis
+  /// context. Presentation code may display this context, but must not derive
+  /// its date boundaries.
+  Future<ApplicationResult<AnalysisContext>> contextFor(
+    String type, {
+    DateTime? instant,
+    AnalysisPeriod? customPeriod,
+  }) => runApplication('resolve analysis period', () async {
+    final timeZoneId = await datasetBuilder.timeZoneId();
+    final baseCurrency = await datasetBuilder.baseCurrency();
+    final placeholder = AnalysisContext(
+      period:
+          customPeriod ??
+          AnalysisPeriod(
+            startDate: '2000-01-01',
+            endDate: '2000-01-01',
+            timeZoneId: timeZoneId,
+          ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+      baseCurrency: baseCurrency,
+    );
+    final resolution = periodResolver.resolvePrimary(
+      type: type,
+      context: placeholder,
+      now: instant,
+    );
+    if (resolution is AnalysisPeriodResolutionFailure) {
+      throw const DomainValidationException(
+        code: DomainErrorCode.invalidState,
+        field: 'period',
+        message: 'Analysis period could not be resolved.',
+      );
+    }
+    final window = (resolution as AnalysisPeriodResolved).window;
+    return AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: _date(window.start),
+        endDate: _date(window.endExclusive.subtract(const Duration(days: 1))),
+        timeZoneId: timeZoneId,
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+      baseCurrency: baseCurrency,
+    );
+  });
+
+  /// Creates a selected-period context from date-only UI input while retaining
+  /// the configured financial timezone and base currency in this layer.
+  Future<ApplicationResult<AnalysisContext>> contextForDates({
+    required String startDate,
+    required String endDate,
+  }) async {
+    final timeZoneId = await datasetBuilder.timeZoneId();
+    return contextFor(
+      'selected_period',
+      customPeriod: AnalysisPeriod(
+        startDate: startDate,
+        endDate: endDate,
+        timeZoneId: timeZoneId,
+      ),
+    );
+  }
 
   /// Resolves the default month in the application layer so presentation never
   /// invents financial windows or timezone policy.
   Future<ApplicationResult<List<RuleExecutionResult>>> currentMonth(
     DateTime instant,
   ) async {
-    final timeZoneId = await datasetBuilder.timeZoneId();
-    final baseCurrency = await datasetBuilder.baseCurrency();
-    final financialDate = financialDateAt(instant, timeZoneId);
-    final first = DateTime.utc(financialDate.year, financialDate.month, 1);
-    final last = DateTime.utc(financialDate.year, financialDate.month + 1, 0);
-    return call(
-      AnalysisContext(
-        period: AnalysisPeriod(
-          startDate: _date(first),
-          endDate: _date(last),
-          timeZoneId: timeZoneId,
+    final context = await contextFor('current_month', instant: instant);
+    return switch (context) {
+      ApplicationSuccess<AnalysisContext>(:final value) => call(value),
+      ApplicationFailure<AnalysisContext>() => ApplicationFailure(
+        const ApplicationFailureDetail(
+          code: ApplicationFailureCode.validation,
+          operation: 'resolve current analysis month',
         ),
-        datasetMode: DatasetMode.allEligible,
-        currencyBasis: CurrencyBasis.baseCurrency,
-        baseCurrency: baseCurrency,
       ),
-    );
+    };
   }
 
   Future<ApplicationResult<List<RuleExecutionResult>>> call(
