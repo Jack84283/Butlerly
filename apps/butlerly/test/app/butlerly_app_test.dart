@@ -248,6 +248,7 @@ void main() {
         case 'Insights':
           expect(find.text('Not enough data for insights'), findsOneWidget);
       }
+      expect(find.bySemanticsLabel('Add Transaction'), findsNothing);
       appRouter.go('/tools');
       await tester.pumpAndSettle();
     }
@@ -271,17 +272,7 @@ void main() {
         case '/insights':
           expect(find.text('Not enough data for insights'), findsOneWidget);
       }
-      if (route == '/search' || route.startsWith('/review')) {
-        expect(find.bySemanticsLabel('Add Transaction'), findsOneWidget);
-        expect(
-          tester
-                  .getSemantics(find.text('Tools').last)
-                  .flagsCollection
-                  .isSelected ==
-              Tristate.isTrue,
-          isTrue,
-        );
-      }
+      expect(find.bySemanticsLabel('Add Transaction'), findsNothing);
       appRouter.go('/tools');
       await tester.pumpAndSettle();
     }
