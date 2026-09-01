@@ -78,4 +78,35 @@ void main() {
     expect(find.text('Tools'), findsOneWidget);
     expect(find.text('More'), findsOneWidget);
   });
+
+  testWidgets('all Tools destinations stay inside the primary shell', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+    await tester.pumpAndSettle();
+
+    for (final route in const ['/review', '/search', '/analysis', '/insights']) {
+      appRouter.go(route);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Home'), findsOneWidget);
+      expect(find.bySemanticsLabel('Add Transaction'), findsOneWidget);
+      expect(find.text('Transactions'), findsOneWidget);
+      expect(find.text('Tools'), findsAtLeastNWidgets(1));
+      expect(find.text('More'), findsOneWidget);
+      expect(
+        tester
+                .getSemantics(find.text('Tools').last)
+                .flagsCollection
+                .isSelected ==
+            Tristate.isTrue,
+        isTrue,
+      );
+    }
+  });
 }
