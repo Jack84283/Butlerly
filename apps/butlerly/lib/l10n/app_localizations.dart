@@ -57,6 +57,15 @@ class AppLocalizations {
       'search': 'Search',
       'settings': 'Settings',
       'more': 'More',
+      'tools': 'Tools',
+      'toolsSubtitle': 'Useful ways to explore and understand your records.',
+      'toolsSearchDescription': 'Find transactions using keywords and filters.',
+      'toolsReviewDescription':
+          'Resolve incomplete, uncertain, or conflicting records.',
+      'toolsAnalysisDescription':
+          'Explore local calculations and financial patterns.',
+      'toolsInsightsDescription':
+          'See useful observations from your confirmed records.',
       'addTransactionAction': 'Add Transaction',
       'addTransactionActionSubtitle':
           'Add transaction yourself, from receipt, from statement and local file',
@@ -567,6 +576,12 @@ class AppLocalizations {
       'search': '搜索',
       'settings': '设置',
       'more': '更多',
+      'tools': '工具',
+      'toolsSubtitle': '探索和了解您记录的实用工具。',
+      'toolsSearchDescription': '使用关键词和筛选条件查找交易。',
+      'toolsReviewDescription': '处理不完整、不确定或冲突的记录。',
+      'toolsAnalysisDescription': '查看本地计算结果和财务模式。',
+      'toolsInsightsDescription': '查看已确认记录中的实用洞察。',
       'addTransactionAction': '添加交易',
       'addTransactionActionSubtitle': '自行添加交易、从收据添加、从账单添加和从本地文件添加',
       'welcomeTitle': '欢迎使用 Butlerly',
@@ -1022,6 +1037,16 @@ class AppLocalizations {
       'search': 'Buscar',
       'settings': 'Ajustes',
       'more': 'Más',
+      'tools': 'Herramientas',
+      'toolsSubtitle': 'Formas útiles de explorar y comprender tus registros.',
+      'toolsSearchDescription':
+          'Busca transacciones con palabras clave y filtros.',
+      'toolsReviewDescription':
+          'Resuelve registros incompletos, inciertos o en conflicto.',
+      'toolsAnalysisDescription':
+          'Explora cálculos locales y patrones financieros.',
+      'toolsInsightsDescription':
+          'Consulta observaciones útiles de tus registros confirmados.',
       'addTransactionAction': 'Añadir transacción',
       'addTransactionActionSubtitle':
           'Añade una transacción tú mismo, desde un recibo, un extracto o un archivo local',

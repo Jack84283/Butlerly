@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:butlerly/app/butlerly_app.dart';
+import 'package:butlerly/app/router/app_router.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
@@ -12,6 +13,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  setUp(() => appRouter.go('/'));
+
   test('supported translations cover every English UI key', () {
     expect(AppLocalizations.missingKeysFor('es'), isEmpty);
     expect(AppLocalizations.missingKeysFor('zh'), isEmpty);
@@ -114,11 +117,10 @@ void main() {
     expect(find.text('Home'), findsAtLeastNWidgets(1));
     expect(find.text('No transactions yet'), findsOneWidget);
     expect(find.text('Transactions'), findsOneWidget);
-    expect(find.text('Review'), findsOneWidget);
-    expect(find.text('Search'), findsOneWidget);
-      expect(find.text('More'), findsAtLeastNWidgets(1));
+    expect(find.text('Tools'), findsOneWidget);
+    expect(find.bySemanticsLabel('Add Transaction'), findsOneWidget);
+    expect(find.text('More'), findsAtLeastNWidgets(1));
     expect(find.text('More...'), findsNothing);
-    expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.text('Local records'), findsOneWidget);
     expect(find.text('Add data'), findsOneWidget);
     expect(find.text('Analysis'), findsOneWidget);
@@ -147,6 +149,23 @@ void main() {
     await tester.pageBack();
     await tester.pumpAndSettle();
   });
+
+  testWidgets(
+    'center Add action opens the existing Add hub without selecting a tab',
+    (tester) async {
+      setPhoneViewport(tester);
+      await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.bySemanticsLabel('Add Transaction'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Add'), findsOneWidget);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.text('No transactions yet'), findsOneWidget);
+    },
+  );
 
   testWidgets('More opens More without optional Insights or Notifications', (
     tester,
@@ -178,7 +197,7 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('Optional features'), findsOneWidget);
-      expect(find.text('Insights'), findsNothing);
+    expect(find.text('Insights'), findsNothing);
     expect(find.text('Notifications'), findsNothing);
 
     await tester.tap(find.text('Home').last);
@@ -261,10 +280,23 @@ void main() {
     });
   }
 
-  testWidgets('opens the Review and Search destinations', (tester) async {
+  testWidgets('opens Tools and its Review and Search destinations', (
+    tester,
+  ) async {
     setPhoneViewport(tester);
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Tools'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Useful ways to explore and understand your records.'),
+      findsOneWidget,
+    );
+    expect(find.text('Search'), findsOneWidget);
+    expect(find.text('Review'), findsOneWidget);
+    expect(find.text('Analysis'), findsOneWidget);
+    expect(find.text('Insights'), findsOneWidget);
 
     await tester.tap(find.text('Review'));
     await tester.pumpAndSettle();
@@ -274,6 +306,8 @@ void main() {
       findsNothing,
     );
 
+    appRouter.go('/tools');
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Search'));
     await tester.pumpAndSettle();
     expect(find.byType(SearchBar), findsOneWidget);

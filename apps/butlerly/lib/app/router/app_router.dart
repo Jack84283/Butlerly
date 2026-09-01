@@ -14,6 +14,7 @@ import 'package:butlerly/features/foundation/presentation/search_page.dart';
 import 'package:butlerly/features/foundation/presentation/settings_page.dart';
 import 'package:butlerly/features/foundation/presentation/statement_capture_page.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
+import 'package:butlerly/features/tools/presentation/tools_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -48,22 +49,9 @@ final appRouter = GoRouter(
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/review',
-              pageBuilder: (context, state) => NoTransitionPage(
-                child: ReviewPage(
-                  showPossibleDuplicates:
-                      state.uri.queryParameters['view'] == 'duplicates',
-                ),
-              ),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/search',
+              path: '/tools',
               pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: SearchPage()),
+                  const NoTransitionPage(child: ToolsPage()),
             ),
           ],
         ),
@@ -91,6 +79,14 @@ final appRouter = GoRouter(
             ),
     ),
     GoRoute(path: '/add', builder: (_, _) => const AddPage()),
+    GoRoute(
+      path: '/review',
+      builder: (context, state) => ReviewPage(
+        showPossibleDuplicates:
+            state.uri.queryParameters['view'] == 'duplicates',
+      ),
+    ),
+    GoRoute(path: '/search', builder: (_, _) => const SearchPage()),
     GoRoute(
       path: '/payment-sources',
       builder: (_, _) => const PaymentSourcesPage(),

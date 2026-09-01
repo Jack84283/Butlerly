@@ -9,12 +9,10 @@ class AdaptiveShell extends StatelessWidget {
 
   final StatefulNavigationShell navigationShell;
 
-  void _selectDestination(int index) {
-    navigationShell.goBranch(
-      index,
-      initialLocation: index == navigationShell.currentIndex,
-    );
-  }
+  void _selectDestination(int index) => navigationShell.goBranch(
+    index,
+    initialLocation: index == navigationShell.currentIndex,
+  );
 
   List<NavigationDestination> _destinations(BuildContext context) => [
     NavigationDestination(
@@ -28,14 +26,9 @@ class AdaptiveShell extends StatelessWidget {
       label: context.l10n.text('transactions'),
     ),
     NavigationDestination(
-      icon: const Icon(Icons.fact_check_outlined),
-      selectedIcon: const Icon(Icons.fact_check_rounded),
-      label: context.l10n.text('review'),
-    ),
-    NavigationDestination(
-      icon: const Icon(Icons.search_outlined),
-      selectedIcon: const Icon(Icons.search_rounded),
-      label: context.l10n.text('search'),
+      icon: const Icon(Icons.build_outlined),
+      selectedIcon: const Icon(Icons.build_rounded),
+      label: context.l10n.text('tools'),
     ),
     NavigationDestination(
       icon: const Icon(Icons.settings_outlined),
@@ -44,22 +37,97 @@ class AdaptiveShell extends StatelessWidget {
     ),
   ];
 
+  Widget _addButton(BuildContext context) => Tooltip(
+    message: context.l10n.text('addTransactionAction'),
+    child: Semantics(
+      button: true,
+      label: context.l10n.text('addTransactionAction'),
+      child: IconButton.filled(
+        onPressed: () => context.push('/add'),
+        icon: const Icon(Icons.add_rounded),
+        iconSize: 30,
+        style: IconButton.styleFrom(
+          minimumSize: const Size.square(ButlerlySize.preferredTarget),
+          backgroundColor: context.colors.interactive,
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+        ),
+      ),
+    ),
+  );
+
+  Widget _destination(
+    BuildContext context,
+    NavigationDestination destination,
+    int index,
+  ) {
+    final selected = navigationShell.currentIndex == index;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: destination.label,
+      child: InkWell(
+        onTap: () => _selectDestination(index),
+        child: SizedBox(
+          height: double.infinity,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              selected
+                  ? (destination.selectedIcon ?? destination.icon)
+                  : destination.icon,
+              const SizedBox(height: 2),
+              Text(
+                destination.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: selected
+                      ? context.colors.interactive
+                      : context.colors.secondaryText,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _phoneNavigation(BuildContext context) {
+    final destinations = _destinations(context);
+    return Material(
+      color: Theme.of(context).navigationBarTheme.backgroundColor,
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 80,
+          child: Row(
+            children: [
+              Expanded(child: _destination(context, destinations[0], 0)),
+              Expanded(child: _destination(context, destinations[1], 1)),
+              Expanded(child: _addButton(context)),
+              Expanded(child: _destination(context, destinations[2], 2)),
+              Expanded(child: _destination(context, destinations[3], 3)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      final destinations = _destinations(context);
       if (constraints.maxWidth < ButlerlySize.phoneBreakpoint) {
         return Scaffold(
           body: SafeArea(bottom: false, child: navigationShell),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: navigationShell.currentIndex,
-            onDestinationSelected: _selectDestination,
-            destinations: destinations,
-          ),
+          bottomNavigationBar: _phoneNavigation(context),
         );
       }
 
       final extended = constraints.maxWidth >= ButlerlySize.desktopBreakpoint;
+      final destinations = _destinations(context);
       return Scaffold(
         body: SafeArea(
           child: Row(
@@ -86,13 +154,7 @@ class AdaptiveShell extends StatelessWidget {
                           color: context.colors.brandStrong,
                         ),
                       const SizedBox(height: ButlerlySpacing.standard),
-                      FilledButton.icon(
-                        onPressed: () => context.push('/add'),
-                        icon: const Icon(Icons.add_rounded),
-                        label: extended
-                            ? Text(context.l10n.text('addData'))
-                            : const SizedBox.shrink(),
-                      ),
+                      _addButton(context),
                     ],
                   ),
                 ),
