@@ -3,6 +3,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
@@ -46,6 +47,13 @@ class _AnalysisPageState extends State<AnalysisPage> {
     _calendarMonth = DateTime(DateTime.now().year, DateTime.now().month);
     _result = _load();
     _calendarResult = _loadCalendar();
+    transactionChanges.addListener(_handleTransactionChange);
+  }
+
+  @override
+  void dispose() {
+    transactionChanges.removeListener(_handleTransactionChange);
+    super.dispose();
   }
 
   Future<ApplicationResult<List<RuleExecutionResult>>> _load() {
@@ -96,6 +104,30 @@ class _AnalysisPageState extends State<AnalysisPage> {
     });
   }
 
+  Future<ApplicationResult<List<TransactionDto>>>? _loadTransactions(
+    String date,
+  ) {
+    if (widget.loadTransactionsForDate != null) {
+      return widget.loadTransactionsForDate!(date);
+    }
+    if (!services.isRegistered<FinanceServices>()) return null;
+    return services<FinanceServices>().queryTransactionsForFinancialDate(date);
+  }
+
+  void _handleTransactionChange() {
+    if (!mounted) return;
+    final value = _load();
+    final calendar = _loadCalendar();
+    final transactions = _selectedDate == null
+        ? null
+        : _loadTransactions(_selectedDate!);
+    setState(() {
+      _result = value;
+      _calendarResult = calendar;
+      _transactions = transactions;
+    });
+  }
+
   void _moveMonth(int delta) {
     setState(() {
       _calendarMonth = DateTime(
@@ -109,29 +141,27 @@ class _AnalysisPageState extends State<AnalysisPage> {
   }
 
   void _selectDate(String date) {
-    Future<ApplicationResult<List<TransactionDto>>>? transactions;
-    if (widget.loadTransactionsForDate != null) {
-      transactions = widget.loadTransactionsForDate!(date);
-    } else if (services.isRegistered<FinanceServices>()) {
-      transactions = services<FinanceServices>()
-          .queryTransactionsForFinancialDate(date);
-    }
     setState(() {
       _selectedDate = date;
-      _transactions = transactions;
+      _transactions = _loadTransactions(date);
     });
   }
 
   Future<void> _refresh() async {
     final value = _load();
     final calendar = _loadCalendar();
+    final transactions = _selectedDate == null
+        ? null
+        : _loadTransactions(_selectedDate!);
     setState(() {
       _result = value;
       _calendarResult = calendar;
+      _transactions = transactions;
     });
     await Future.wait([
       value,
       ...?calendar == null ? null : [calendar],
+      ...?transactions == null ? null : [transactions],
     ]);
   }
 
