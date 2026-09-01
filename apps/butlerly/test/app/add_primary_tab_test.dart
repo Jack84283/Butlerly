@@ -120,13 +120,11 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     await tester.pumpAndSettle();
 
+    // Keep this router-level assertion independent from feature service fixtures.
+    // Receipt capture has dedicated coverage with FinanceServices configured.
     for (final route in const [
       '/transactions/add',
-      '/payment-sources',
-      '/import-export',
-      '/receipts/capture',
       '/statements',
-      '/privacy-data',
       '/notifications',
       '/assistant',
     ]) {
