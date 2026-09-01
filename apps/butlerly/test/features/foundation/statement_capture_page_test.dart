@@ -125,7 +125,8 @@ void main() {
         () => Future<void>.delayed(const Duration(milliseconds: 20)),
       );
       await tester.pump(const Duration(milliseconds: 20));
-      if (find.textContaining('Statement ·').evaluate().isNotEmpty) {
+      if (find.byType(CircularProgressIndicator).evaluate().isEmpty &&
+          find.byType(Card).evaluate().isNotEmpty) {
         completed = true;
         break;
       }
