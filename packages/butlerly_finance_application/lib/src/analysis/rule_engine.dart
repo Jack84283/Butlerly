@@ -155,6 +155,16 @@ final class AnalysisRuleEngine {
               metrics[rule.identity.value] = metric;
             }
             AnalysisFinding? finding;
+            final comparison =
+                metric == null || rule.baseline == RuleBaseline.none
+                ? null
+                : _comparison(
+                    rule,
+                    dataset,
+                    entry.key,
+                    metric,
+                    calculatedAt ?? DateTime.now().toUtc(),
+                  );
             var resultIssues =
                 metric?.qualityIssues ?? const <DataQualityIssue>[];
             if (rule.type == AnalysisRuleType.insight &&
@@ -189,6 +199,7 @@ final class AnalysisRuleEngine {
                   ? metric
                   : null,
               finding: finding,
+              comparison: comparison,
               issues: resultIssues,
             );
             results.add(result);
@@ -212,6 +223,43 @@ final class AnalysisRuleEngine {
   }
 
   AnalysisFinding _finding(
+    AnalysisRuleDefinition rule,
+    AnalysisDataset dataset,
+    String dimension,
+    AnalysisMetric current,
+    DateTime at,
+  ) {
+    final comparison = _comparison(rule, dataset, dimension, current, at);
+    return AnalysisFinding(
+      id: AnalysisResultIdentity.forRule(
+        rule: rule,
+        context: dataset.context,
+        dimension: dimension,
+      ).value,
+      rule: rule,
+      context: dataset.context,
+      severity: rule.severity,
+      lifecycle: FindingLifecycle.active,
+      currentValue: comparison.currentValue,
+      baselineValue: comparison.baselineValue,
+      absoluteChange: comparison.absoluteChange,
+      percentageChange: comparison.percentageChange,
+      dimension: dimension.isEmpty ? null : dimension,
+      supportingMetrics: [current.id, ?comparison.baselineMetricId],
+      evidence: current.evidence,
+      qualityIssues: [
+        ...dataset.qualityIssues,
+        if (comparison.baselineValue == null)
+          const DataQualityIssue(
+            code: 'missingBaseline',
+            detail: 'No comparable baseline was available.',
+          ),
+      ],
+      generatedAt: at,
+    );
+  }
+
+  AnalysisComparison _comparison(
     AnalysisRuleDefinition rule,
     AnalysisDataset dataset,
     String dimension,
@@ -270,34 +318,15 @@ final class AnalysisRuleEngine {
             coefficient: absolute!.coefficient * BigInt.from(100),
             scale: absolute.scale,
           ).divideBy(baselineValue.coefficient.abs().toInt());
-    return AnalysisFinding(
-      id: AnalysisResultIdentity.forRule(
-        rule: rule,
-        context: dataset.context,
-        dimension: dimension,
-      ).value,
-      rule: rule,
-      context: dataset.context,
-      severity: rule.severity,
-      lifecycle: FindingLifecycle.active,
+    return AnalysisComparison(
       currentValue: current.value,
       baselineValue: baselineValue,
       absoluteChange: absolute,
       percentageChange: percentage,
-      dimension: dimension.isEmpty ? null : dimension,
-      supportingMetrics: usableBaseline == null
-          ? [current.id]
-          : [current.id, usableBaseline.id],
-      evidence: current.evidence,
-      qualityIssues: [
-        ...dataset.qualityIssues,
-        if (usableBaseline == null)
-          const DataQualityIssue(
-            code: 'missingBaseline',
-            detail: 'No comparable baseline was available.',
-          ),
-      ],
-      generatedAt: at,
+      baselineMetricId: usableBaseline?.id,
+      availability: usableBaseline == null
+          ? AnalysisDataAvailability.insufficient
+          : AnalysisDataAvailability.sufficient,
     );
   }
 

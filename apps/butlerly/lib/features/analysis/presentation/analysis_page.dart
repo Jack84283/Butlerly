@@ -5,6 +5,7 @@ import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -19,6 +20,8 @@ class AnalysisPage extends StatefulWidget {
     this.loadForPeriod,
     this.loadCalendar,
     this.loadTransactionsForDate,
+    this.loadMasterData,
+    this.onNavigationRequested,
   });
   final Future<ApplicationResult<List<RuleExecutionResult>>> Function()? load;
   final Future<ApplicationResult<List<RuleExecutionResult>>> Function(
@@ -32,6 +35,8 @@ class AnalysisPage extends StatefulWidget {
   loadCalendar;
   final Future<ApplicationResult<List<TransactionDto>>> Function(String date)?
   loadTransactionsForDate;
+  final Future<TransactionMasterData> Function()? loadMasterData;
+  final ValueChanged<String>? onNavigationRequested;
   @override
   State<AnalysisPage> createState() => _AnalysisPageState();
 }
@@ -45,12 +50,35 @@ class _AnalysisPageState extends State<AnalysisPage> {
   Future<ApplicationResult<AnalysisCalendarResult>>? _calendar;
   String? _selectedDate;
   Future<ApplicationResult<List<TransactionDto>>>? _transactions;
+  TransactionMasterData? _masterData;
+  String? _masterDataLocale;
 
   @override
   void initState() {
     super.initState();
     _result = _load(_period);
     transactionChanges.addListener(_reload);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locale = Localizations.localeOf(context).languageCode;
+    if (_masterDataLocale == locale) return;
+    _masterDataLocale = locale;
+    final future = widget.loadMasterData != null
+        ? widget.loadMasterData!()
+        : services.isRegistered<FinanceServices>()
+        ? TransactionMasterData.load(
+            services<FinanceServices>(),
+            languageCode: locale,
+          )
+        : null;
+    if (future != null) {
+      future.then((value) {
+        if (mounted) setState(() => _masterData = value);
+      });
+    }
   }
 
   @override
@@ -239,6 +267,8 @@ class _AnalysisPageState extends State<AnalysisPage> {
             results: result.value,
             analysisContext: analysisContext,
             period: _period,
+            masterData: _masterData,
+            onNavigationRequested: widget.onNavigationRequested,
             calendar: _calendar,
             selectedDate: _selectedDate,
             transactions: _transactions,
@@ -263,6 +293,8 @@ class _AnalysisContent extends StatelessWidget {
     required this.results,
     required this.analysisContext,
     required this.period,
+    required this.masterData,
+    required this.onNavigationRequested,
     required this.calendar,
     required this.selectedDate,
     required this.transactions,
@@ -272,6 +304,8 @@ class _AnalysisContent extends StatelessWidget {
   final List<RuleExecutionResult> results;
   final AnalysisContext? analysisContext;
   final String period;
+  final TransactionMasterData? masterData;
+  final ValueChanged<String>? onNavigationRequested;
   final Future<ApplicationResult<AnalysisCalendarResult>>? calendar;
   final String? selectedDate;
   final Future<ApplicationResult<List<TransactionDto>>>? transactions;
@@ -288,20 +322,25 @@ class _AnalysisContent extends StatelessWidget {
         const SizedBox(height: ButlerlySpacing.standard),
         _AnalysisSummary(model: model),
         _SectionHeader(title: context.l10n.text('trends')),
-        _AnalysisTrend(model: model),
+        _AnalysisTrend(model: model, masterData: masterData),
         _SectionHeader(title: context.l10n.text('spending')),
         _AnalysisBreakdown(
           model: model,
+          masterData: masterData,
           onCategoryTap: analysisContext == null
               ? null
               : (metric) => _openTransactions(
                   context,
                   period: analysisContext!.period,
-                  category: _dimension(metric),
+                  category: _categoryId(metric),
+                  onNavigationRequested: onNavigationRequested,
                 ),
           onViewAll: analysisContext != null && model.categories.length > 5
-              ? () =>
-                    _openTransactions(context, period: analysisContext!.period)
+              ? () => _openTransactions(
+                  context,
+                  period: analysisContext!.period,
+                  onNavigationRequested: onNavigationRequested,
+                )
               : null,
         ),
         _SectionHeader(title: context.l10n.text('financialCalendar')),
@@ -314,24 +353,24 @@ class _AnalysisContent extends StatelessWidget {
                 onSelectDate: onSelectDate,
                 onViewTransactions: () => _openTransactions(
                   context,
-                  period: analysisContext!.period,
+                  period: analysisContext?.period,
                   date: selectedDate,
+                  onNavigationRequested: onNavigationRequested,
                 ),
               ),
         if (model.insight != null) ...[
           _SectionHeader(title: context.l10n.text('insights')),
           _AnalysisInsight(
             finding: model.insight!,
-            onTap: () => context.push(
-              Uri(
-                path: '/insights',
-                queryParameters: {
-                  'finding': model.insight!.id,
-                  'from': model.insight!.context.period.startDate,
-                  'to': model.insight!.context.period.endDate,
-                },
-              ).toString(),
-            ),
+            // V1 Insights is a general destination; do not imply that it
+            // currently focuses a finding it cannot consume.
+            onTap: () {
+              if (onNavigationRequested case final callback?) {
+                callback('/insights');
+              } else {
+                context.push('/insights');
+              }
+            },
           ),
         ] else if (model.insightUnavailable) ...[
           _SectionHeader(title: context.l10n.text('insights')),
@@ -345,16 +384,22 @@ class _AnalysisContent extends StatelessWidget {
 
   void _openTransactions(
     BuildContext context, {
-    required AnalysisPeriod period,
+    AnalysisPeriod? period,
     String? category,
     String? date,
+    ValueChanged<String>? onNavigationRequested,
   }) {
     final query = <String, String>{
-      'from': date ?? period.startDate,
-      'to': date ?? period.endDate,
+      'from': date ?? period!.startDate,
+      'to': date ?? period!.endDate,
       'category': ?category,
     };
-    context.push(Uri(path: '/transactions', queryParameters: query).toString());
+    final path = Uri(path: '/transactions', queryParameters: query).toString();
+    if (onNavigationRequested case final callback?) {
+      callback(path);
+    } else {
+      context.push(path);
+    }
   }
 }
 
@@ -455,8 +500,9 @@ class _SupportingMetric extends StatelessWidget {
 }
 
 class _AnalysisTrend extends StatelessWidget {
-  const _AnalysisTrend({required this.model});
+  const _AnalysisTrend({required this.model, required this.masterData});
   final _AnalysisModel model;
+  final TransactionMasterData? masterData;
   @override
   Widget build(BuildContext context) {
     if (model.trend.isEmpty) {
@@ -471,7 +517,10 @@ class _AnalysisTrend extends StatelessWidget {
       semanticLabel: context.l10n.text('spendingTrend'),
       child: Semantics(
         label: model.trend
-            .map((m) => '${_dimension(m)} ${_money(context, m)}')
+            .map(
+              (m) =>
+                  '${_dimension(context, m, masterData)} ${_money(context, m)}',
+            )
             .join(', '),
         child: SizedBox(
           height: 150,
@@ -524,10 +573,12 @@ class _TrendPainter extends CustomPainter {
 class _AnalysisBreakdown extends StatelessWidget {
   const _AnalysisBreakdown({
     required this.model,
+    required this.masterData,
     this.onCategoryTap,
     this.onViewAll,
   });
   final _AnalysisModel model;
+  final TransactionMasterData? masterData;
   final ValueChanged<AnalysisMetric>? onCategoryTap;
   final VoidCallback? onViewAll;
   @override
@@ -545,7 +596,8 @@ class _AnalysisBreakdown extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: ButlerlySpacing.small),
               child: Semantics(
-                label: '${_dimension(metric)}, ${_money(context, metric)}',
+                label:
+                    '${_dimension(context, metric, masterData)}, ${_money(context, metric)}',
                 button: onCategoryTap != null,
                 child: InkWell(
                   onTap: onCategoryTap == null
@@ -556,7 +608,11 @@ class _AnalysisBreakdown extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Expanded(child: Text(_dimension(metric))),
+                          Expanded(
+                            child: Text(
+                              _dimension(context, metric, masterData),
+                            ),
+                          ),
                           Text(_money(context, metric)),
                         ],
                       ),
@@ -826,24 +882,30 @@ class _AnalysisQuality extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final count = model.qualityCount;
-    final status = !model.qualityEvaluated
+    final notEvaluated = !model.qualityEvaluated;
+    final limited = model.qualityLimited;
+    final needsAttention = count > 0 && !limited && !notEvaluated;
+    final status = notEvaluated
         ? context.l10n.text('dataQualityNotEvaluated')
-        : model.qualityLimited
+        : limited
         ? context.l10n.text('dataQualityLimited')
-        : count == 0
-        ? context.l10n.text('dataQualityGood')
-        : context.l10n.text('dataQualityNeedsAttention', {
+        : needsAttention
+        ? context.l10n.text('dataQualityNeedsAttention', {
             'count': localizedCount(context, count.toString()),
-          });
+          })
+        : context.l10n.text('dataQualityGood');
+    final (icon, color) = notEvaluated
+        ? (Icons.help_outline, context.colors.info)
+        : limited
+        ? (Icons.info_outline, context.colors.warning)
+        : needsAttention
+        ? (Icons.warning_amber_outlined, context.colors.warning)
+        : (Icons.check_circle_outline, context.colors.success);
     return ButlerlyCard(
+      semanticLabel: '${context.l10n.text('dataQuality')}: $status',
       child: Row(
         children: [
-          Icon(
-            count == 0
-                ? Icons.check_circle_outline
-                : Icons.warning_amber_outlined,
-            color: count == 0 ? context.colors.success : context.colors.warning,
-          ),
+          Icon(icon, color: color),
           const SizedBox(width: ButlerlySpacing.small),
           Expanded(child: Text(status)),
         ],
@@ -904,7 +966,7 @@ class _AnalysisModel {
             )
             .map((r) => r.metric!)
             .toList()
-          ..sort((a, b) => _dimension(a).compareTo(_dimension(b)));
+          ..sort((a, b) => _rawDimension(a).compareTo(_rawDimension(b)));
     final finding = results
         .where(
           (r) =>
@@ -919,10 +981,10 @@ class _AnalysisModel {
       net: metric(_AnalysisRuleRoles.netCashFlow),
       transactionCount: metric(_AnalysisRuleRoles.transactionCount),
       insight: finding,
-      comparison:
-          finding?.percentageChange == null || finding?.baselineValue == null
-          ? null
-          : finding,
+      comparison: results
+          .map((result) => result.comparison)
+          .whereType<AnalysisComparison>()
+          .firstOrNull,
       insightUnavailable: results.any(
         (r) => r.rule.surface == AnalysisSurface.insights && r.failure != null,
       ),
@@ -958,7 +1020,7 @@ class _AnalysisModel {
   final int qualityCount;
   final bool qualityEvaluated;
   final bool qualityLimited;
-  final AnalysisFinding? comparison;
+  final AnalysisComparison? comparison;
 }
 
 class _QualitySummary {
@@ -1030,8 +1092,8 @@ String _money(BuildContext context, AnalysisMetric metric) =>
 String _moneyValue(BuildContext context, Money money) =>
     '${localizedDecimal(context, money.amount.toString())} ${money.currency.value}';
 
-String _comparisonText(BuildContext context, AnalysisFinding finding) {
-  final change = finding.percentageChange!;
+String _comparisonText(BuildContext context, AnalysisComparison comparison) {
+  final change = comparison.percentageChange!;
   final direction = change.isNegative ? '↓' : '↑';
   final magnitude = change.toString().replaceFirst('-', '');
   return '$direction ${localizedDecimal(context, magnitude)}% ${context.l10n.text('vsPreviousPeriod')}';
@@ -1039,8 +1101,24 @@ String _comparisonText(BuildContext context, AnalysisFinding finding) {
 
 double _number(AnalysisMetric metric) =>
     double.tryParse(metric.value.toString()) ?? 0;
-String _dimension(AnalysisMetric metric) =>
+String _categoryId(AnalysisMetric metric) =>
+    metric.dimension?.split(':').firstOrNull ?? '';
+
+String _rawDimension(AnalysisMetric metric) =>
     metric.dimension?.split(':').firstOrNull ?? metric.rule.nameKey;
+
+String _dimension(
+  BuildContext context,
+  AnalysisMetric metric,
+  TransactionMasterData? masterData,
+) {
+  final raw = _rawDimension(metric);
+  if (metric.rule.grouping == RuleGrouping.category) {
+    return masterData?.categoryName(raw) ??
+        context.l10n.text('unavailableCategory');
+  }
+  return raw;
+}
 
 String _date(DateTime value) =>
     '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';

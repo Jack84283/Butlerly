@@ -130,8 +130,57 @@ void main() {
       );
       expect(result.single.finding, isNull);
       expect(result.single.metric, isNull);
+      expect(result.single.comparison, isNotNull);
+      expect(result.single.comparison!.percentageChange, isNull);
     },
   );
+
+  test('exposes comparison even when the insight condition is not met', () {
+    final insight =
+        rule(
+              'ANL-R020',
+              RuleOperation.sum,
+              filters: [
+                AnalysisFilter(
+                  kind: AnalysisFilterKind.direction,
+                  values: ['expense'],
+                ),
+              ],
+            )
+            .copyWithPeriod('selected_period')
+            .copyWithBaseline(RuleBaseline.previousEquivalentPeriod)
+            .copyWithCondition(
+              RuleCondition(
+                operator: 'gte',
+                left: 'percentageChange',
+                value: DecimalValue.parse('20'),
+              ),
+            )
+            .copyWithType(AnalysisRuleType.insight);
+    final result = const AnalysisRuleEngine()
+        .execute(
+          dataset: AnalysisDataset(
+            context: context,
+            transactions: dataset().transactions,
+            baselineTransactions: [
+              AnalysisEconomicTransaction(
+                id: TransactionId('baseline-expense'),
+                money: Money(
+                  amount: DecimalValue.parse('20'),
+                  currency: CurrencyCode('USD'),
+                ),
+                direction: TransactionDirection.expense,
+                transactionDate: '2025-12-10',
+              ),
+            ],
+          ),
+          definitions: [insight],
+        )
+        .single;
+    expect(result.finding, isNull);
+    expect(result.comparison, isNotNull);
+    expect(result.comparison!.percentageChange, isNotNull);
+  });
 
   test(
     'period selects the primary dataset while baseline remains independent',

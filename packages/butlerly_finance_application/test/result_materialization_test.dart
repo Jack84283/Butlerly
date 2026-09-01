@@ -70,6 +70,29 @@ void main() {
     expect(restored.qualityIssues.single.transactionId!.value, 't1');
   });
 
+  test('comparison materialization restores results without a finding', () {
+    final comparison = AnalysisComparison(
+      currentValue: DecimalValue.parse('92'),
+      baselineValue: DecimalValue.parse('100'),
+      absoluteChange: DecimalValue.parse('-8'),
+      percentageChange: DecimalValue.parse('-8'),
+      availability: AnalysisDataAvailability.sufficient,
+    );
+    final restored = restoreResult(
+      materializeResult(
+        RuleExecutionResult(rule: rule, comparison: comparison),
+        context: context,
+        at: DateTime.utc(2026, 1, 2),
+      ),
+      rule,
+    ).comparison!;
+    expect(restored.currentValue, comparison.currentValue);
+    expect(restored.baselineValue, comparison.baselineValue);
+    expect(restored.absoluteChange, comparison.absoluteChange);
+    expect(restored.percentageChange, comparison.percentageChange);
+    expect(restored.availability, AnalysisDataAvailability.sufficient);
+  });
+
   test(
     'analysis identity changes with every calculation context component',
     () {

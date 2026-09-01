@@ -389,6 +389,26 @@ final class AnalysisMetric {
   final DateTime calculatedAt;
 }
 
+/// A backend-owned comparison for a metric. A comparison may exist even when
+/// a condition-triggered insight is not emitted.
+final class AnalysisComparison {
+  const AnalysisComparison({
+    required this.currentValue,
+    this.baselineValue,
+    this.absoluteChange,
+    this.percentageChange,
+    this.baselineMetricId,
+    required this.availability,
+  });
+
+  final DecimalValue currentValue;
+  final DecimalValue? baselineValue;
+  final DecimalValue? absoluteChange;
+  final DecimalValue? percentageChange;
+  final String? baselineMetricId;
+  final AnalysisDataAvailability availability;
+}
+
 final class AnalysisFinding {
   const AnalysisFinding({
     required this.id,
@@ -438,12 +458,14 @@ final class RuleExecutionResult {
     required this.rule,
     this.metric,
     this.finding,
+    this.comparison,
     this.issues = const [],
     this.failure,
   });
   final AnalysisRuleDefinition rule;
   final AnalysisMetric? metric;
   final AnalysisFinding? finding;
+  final AnalysisComparison? comparison;
   final List<DataQualityIssue> issues;
   final AnalysisFailure? failure;
 }

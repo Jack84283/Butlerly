@@ -57,7 +57,19 @@ AnalysisRuleResult materializeResult(
           .map(_qualityIssue)
           .toList(growable: false),
     },
-    if (metric == null && finding == null) 'kind': 'failure',
+    if (result.comparison != null) ...{
+      if (metric == null && finding == null) 'kind': 'comparison',
+      'comparison': {
+        'currentValue': result.comparison!.currentValue.toString(),
+        'baselineValue': result.comparison!.baselineValue?.toString(),
+        'absoluteChange': result.comparison!.absoluteChange?.toString(),
+        'percentageChange': result.comparison!.percentageChange?.toString(),
+        'baselineMetricId': result.comparison!.baselineMetricId,
+        'availability': result.comparison!.availability.name,
+      },
+    },
+    if (metric == null && finding == null && result.comparison == null)
+      'kind': 'failure',
   });
   final dimension = metric?.dimension ?? finding?.dimension;
   return AnalysisRuleResult(
@@ -92,7 +104,11 @@ List<AnalysisRuleResult> materializeResults(
 }) {
   final groups = <String, List<RuleExecutionResult>>{};
   for (final result in results) {
-    if (result.metric == null && result.finding == null) continue;
+    if (result.metric == null &&
+        result.finding == null &&
+        result.comparison == null) {
+      continue;
+    }
     groups.putIfAbsent(result.rule.identity.value, () => []).add(result);
   }
   return [
@@ -143,6 +159,22 @@ RuleExecutionResult restoreResult(
       ),
     );
   }
+  if (json['kind'] == 'comparison') {
+    final comparison = json['comparison'] as Map<String, dynamic>;
+    return RuleExecutionResult(
+      rule: rule,
+      comparison: AnalysisComparison(
+        currentValue: DecimalValue.parse(comparison['currentValue'] as String),
+        baselineValue: _decimal(comparison['baselineValue']),
+        absoluteChange: _decimal(comparison['absoluteChange']),
+        percentageChange: _decimal(comparison['percentageChange']),
+        baselineMetricId: comparison['baselineMetricId'] as String?,
+        availability: AnalysisDataAvailability.values.byName(
+          comparison['availability'] as String,
+        ),
+      ),
+    );
+  }
   if (json['kind'] != 'metric') return RuleExecutionResult(rule: rule);
   return RuleExecutionResult(
     rule: rule,
@@ -163,6 +195,21 @@ RuleExecutionResult restoreResult(
       evidence: _evidenceList(json['evidence']),
       qualityIssues: _qualityIssues(json['qualityIssues']),
       calculatedAt: persisted.calculatedAt,
+    ),
+    comparison: _restoreComparison(json['comparison']),
+  );
+}
+
+AnalysisComparison? _restoreComparison(Object? value) {
+  if (value is! Map) return null;
+  return AnalysisComparison(
+    currentValue: DecimalValue.parse(value['currentValue'] as String),
+    baselineValue: _decimal(value['baselineValue']),
+    absoluteChange: _decimal(value['absoluteChange']),
+    percentageChange: _decimal(value['percentageChange']),
+    baselineMetricId: value['baselineMetricId'] as String?,
+    availability: AnalysisDataAvailability.values.byName(
+      value['availability'] as String,
     ),
   );
 }
