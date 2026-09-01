@@ -1,6 +1,6 @@
 schemaVersion: "1.0.0"
 ruleId: ANL-R004
-ruleVersion: "1.1.0"
+ruleVersion: "1.2.0"
 enabled: true
 surface: overview
 type: metric
