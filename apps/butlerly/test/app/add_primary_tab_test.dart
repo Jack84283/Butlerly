@@ -2,6 +2,7 @@ import 'dart:ui' show Tristate;
 
 import 'package:butlerly/app/butlerly_app.dart';
 import 'package:butlerly/app/router/app_router.dart';
+import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -108,5 +109,56 @@ void main() {
         isTrue,
       );
     }
+  });
+
+  testWidgets('secondary routes do not render the primary footer', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+    await tester.pumpAndSettle();
+
+    // Keep this router-level assertion independent from feature service fixtures.
+    // Receipt capture has dedicated coverage with FinanceServices configured.
+    for (final route in const [
+      '/transactions/add',
+      '/statements',
+      '/notifications',
+      '/assistant',
+    ]) {
+      appRouter.go(route);
+      await tester.pumpAndSettle();
+      expect(
+        find.bySemanticsLabel('Add Transaction'),
+        findsNothing,
+        reason: '$route must stay outside the primary app shell.',
+      );
+    }
+  });
+
+  test('nested secondary pages temporarily hide primary navigation', () {
+    final controller = PrimaryShellVisibilityController();
+    final observer = PrimaryShellNavigatorObserver(
+      branchIndex: 0,
+      controller: controller,
+    );
+    final primaryRoute = MaterialPageRoute<void>(
+      settings: const RouteSettings(name: '${primaryShellRouteNamePrefix}home'),
+      builder: (_) => const SizedBox.shrink(),
+    );
+    final secondaryRoute = MaterialPageRoute<void>(
+      builder: (_) => const SizedBox.shrink(),
+    );
+
+    observer.didPush(primaryRoute, null);
+    expect(controller.secondaryRouteVisibleFor(0), isFalse);
+
+    observer.didPush(secondaryRoute, primaryRoute);
+    expect(controller.secondaryRouteVisibleFor(0), isTrue);
+
+    observer.didPop(secondaryRoute, primaryRoute);
+    expect(controller.secondaryRouteVisibleFor(0), isFalse);
   });
 }
