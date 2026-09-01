@@ -147,12 +147,12 @@ void main() {
     expect(find.text('Add transaction from local file'), findsOneWidget);
     expect(find.text('Payment sources'), findsOneWidget);
 
-    await tester.pageBack();
+    await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
   });
 
   testWidgets(
-    'center Add action opens the existing Add hub without selecting a tab',
+    'Add primary tab opens the existing Add hub and system back returns Home',
     (tester) async {
       setPhoneViewport(tester);
       await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
@@ -162,13 +162,21 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Add'), findsOneWidget);
-      await tester.pageBack();
+      expect(
+        tester
+                .getSemantics(find.bySemanticsLabel('Add Transaction'))
+                .flagsCollection
+                .isSelected ==
+            Tristate.isTrue,
+        isTrue,
+      );
+      await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
       expect(find.text('No transactions yet'), findsOneWidget);
     },
   );
 
-  testWidgets('primary navigation preserves every selected tab around Add', (
+  testWidgets('primary navigation restores every selected tab after Add', (
     tester,
   ) async {
     setPhoneViewport(tester);
@@ -181,7 +189,7 @@ void main() {
       await tester.tap(find.bySemanticsLabel('Add Transaction'));
       await tester.pumpAndSettle();
       expect(find.text('Add'), findsOneWidget);
-      await tester.pageBack();
+      await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
       expect(
         tester
@@ -300,7 +308,7 @@ void main() {
     await tester.tap(find.text('Add Transaction'));
     await tester.pumpAndSettle();
     expect(find.text('Add'), findsOneWidget);
-    await tester.pageBack();
+    await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(
