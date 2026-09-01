@@ -80,7 +80,7 @@ void main() {
     expect(find.text('More'), findsOneWidget);
   });
 
-  testWidgets('all Tools destinations stay inside the primary shell', (
+  testWidgets('Tools destinations are secondary and hide the primary footer', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -95,18 +95,10 @@ void main() {
       appRouter.go(route);
       await tester.pumpAndSettle();
 
-      expect(find.text('Home'), findsOneWidget);
-      expect(find.bySemanticsLabel('Add Transaction'), findsOneWidget);
-      expect(find.text('Transactions'), findsOneWidget);
-      expect(find.text('Tools'), findsAtLeastNWidgets(1));
-      expect(find.text('More'), findsOneWidget);
       expect(
-        tester
-                .getSemantics(find.text('Tools').last)
-                .flagsCollection
-                .isSelected ==
-            Tristate.isTrue,
-        isTrue,
+        find.bySemanticsLabel('Add Transaction'),
+        findsNothing,
+        reason: '$route is a secondary Tools destination.',
       );
     }
   });
