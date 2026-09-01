@@ -69,6 +69,12 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     int index,
   ) {
     final selected = navigationShell.currentIndex == index;
+    final labelStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
+      color: selected
+          ? context.colors.interactive
+          : context.colors.secondaryText,
+      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+    );
     return Semantics(
       button: true,
       selected: selected,
@@ -87,17 +93,20 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
                   ? (destination.selectedIcon ?? destination.icon)
                   : destination.icon,
               const SizedBox(height: 2),
-              Text(
-                destination.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: selected
-                      ? context.colors.interactive
-                      : context.colors.secondaryText,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              if (index == 1)
+                Text.rich(
+                  TextSpan(text: destination.label),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: labelStyle,
+                )
+              else
+                Text(
+                  destination.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: labelStyle,
                 ),
-              ),
             ],
           ),
         ),
