@@ -51,17 +51,24 @@ class _SearchPageState extends State<SearchPage>
     _loadedLanguageCode = languageCode;
     _masterData = _loadMasterData(languageCode);
     _currencies = _loadCurrencies();
-    _masterData.then((value) {
-      if (mounted && _loadedLanguageCode == languageCode) {
-        setState(() => _presentation = value.presentation);
-      }
-    });
+    _updatePresentation(_masterData, languageCode);
   }
 
   @override
   void dispose() {
     _text.dispose();
     super.dispose();
+  }
+
+  void _updatePresentation(
+    Future<TransactionMasterDataSnapshot> masterData,
+    String languageCode,
+  ) {
+    masterData.then((value) {
+      if (mounted && _loadedLanguageCode == languageCode) {
+        setState(() => _presentation = value.presentation);
+      }
+    });
   }
 
   Future<List<TransactionDto>> _search() async {
@@ -122,6 +129,21 @@ class _SearchPageState extends State<SearchPage>
   void _submit() => setState(() {
     _results = _search();
   });
+
+  Future<void> _refreshAfterTransactionChange() async {
+    final languageCode =
+        _loadedLanguageCode ?? Localizations.localeOf(context).languageCode;
+    final results = _search();
+    final masterData = _loadMasterData(languageCode);
+    final currencies = _loadCurrencies();
+    setState(() {
+      _results = results;
+      _masterData = masterData;
+      _currencies = currencies;
+    });
+    _updatePresentation(masterData, languageCode);
+    await Future.wait([results, masterData, currencies]);
+  }
 
   void _clear() {
     setState(() {
@@ -254,7 +276,9 @@ class _SearchPageState extends State<SearchPage>
             TransactionDetailPage(finance: finance, transaction: transaction),
       ),
     );
-    if (changed == true) _submit();
+    if (changed == true && mounted) {
+      await _refreshAfterTransactionChange();
+    }
   }
 
   @override
@@ -347,9 +371,7 @@ class _SearchPageState extends State<SearchPage>
                         title:
                             value.description ??
                             context.l10n.text('untitledTransaction'),
-                        subtitle: value.categoryId == null
-                            ? null
-                            : _presentation.categoryName(value.categoryId),
+                        subtitle: _presentation.summary(value),
                         meta: transactionDateLabel(
                           value,
                           pendingLabel: context.l10n.text('datePending'),
