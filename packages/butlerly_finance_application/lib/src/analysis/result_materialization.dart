@@ -28,6 +28,7 @@ AnalysisRuleResult materializeResult(
       'currency': metric.currency?.value,
       'dimension': metric.dimension,
       'transactionCount': metric.transactionCount,
+      'availability': metric.availability.name,
       'evidence': metric.evidence
           .map(
             (value) => {
@@ -60,7 +61,11 @@ AnalysisRuleResult materializeResult(
   });
   final dimension = metric?.dimension ?? finding?.dimension;
   return AnalysisRuleResult(
-    id: '${result.rule.identity.value}:${result.rule.version.value}:${result.rule.definitionHash.value}:${context.period.startDate}:${context.period.endDate}:${context.period.timeZoneId}:${context.datasetMode.name}:${context.currencyBasis.name}:${context.baseCurrency?.value}:$dimension',
+    id: AnalysisResultIdentity.forRule(
+      rule: result.rule,
+      context: context,
+      dimension: dimension,
+    ).value,
     ruleId: result.rule.identity,
     ruleVersion: result.rule.version,
     definitionHash: result.rule.definitionHash,
@@ -98,8 +103,11 @@ List<AnalysisRuleResult> materializeResults(
           context: context,
           at: at,
           sourceRevision: sourceRevision,
-          resultSetKey:
-              '${entry.key}:${context.period.startDate}:${context.period.endDate}',
+          resultSetKey: AnalysisResultIdentity.forRule(
+            rule: result.rule,
+            context: context,
+            dimension: null,
+          ).value,
           resultSetSize: entry.value.length,
         ),
   ];
@@ -148,6 +156,10 @@ RuleExecutionResult restoreResult(
           : CurrencyCode(json['currency'] as String),
       dimension: json['dimension'] as String?,
       transactionCount: json['transactionCount'] as int? ?? 0,
+      availability: AnalysisDataAvailability.values.byName(
+        json['availability'] as String? ??
+            AnalysisDataAvailability.sufficient.name,
+      ),
       evidence: _evidenceList(json['evidence']),
       qualityIssues: _qualityIssues(json['qualityIssues']),
       calculatedAt: persisted.calculatedAt,

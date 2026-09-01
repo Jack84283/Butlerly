@@ -69,4 +69,57 @@ void main() {
     expect(restored.qualityIssues.single.detail, issue.detail);
     expect(restored.qualityIssues.single.transactionId!.value, 't1');
   });
+
+  test(
+    'analysis identity changes with every calculation context component',
+    () {
+      final contexts = [
+        context,
+        AnalysisContext(
+          period: AnalysisPeriod(
+            startDate: '2026-01-02',
+            endDate: '2026-01-31',
+            timeZoneId: 'UTC',
+          ),
+          datasetMode: DatasetMode.allEligible,
+          currencyBasis: CurrencyBasis.original,
+        ),
+        AnalysisContext(
+          period: context.period,
+          datasetMode: DatasetMode.verifiedOnly,
+          currencyBasis: CurrencyBasis.original,
+        ),
+        AnalysisContext(
+          period: context.period,
+          datasetMode: DatasetMode.allEligible,
+          currencyBasis: CurrencyBasis.baseCurrency,
+          baseCurrency: CurrencyCode('USD'),
+        ),
+      ];
+      final identities = contexts
+          .map(
+            (value) => AnalysisResultIdentity.forRule(
+              rule: rule,
+              context: value,
+              dimension: 'dining',
+            ).value,
+          )
+          .toSet();
+      expect(identities, hasLength(contexts.length));
+      expect(
+        AnalysisResultIdentity.forRule(
+          rule: rule,
+          context: context,
+          dimension: 'dining',
+        ).value,
+        isNot(
+          AnalysisResultIdentity.forRule(
+            rule: rule,
+            context: context,
+            dimension: 'travel',
+          ).value,
+        ),
+      );
+    },
+  );
 }

@@ -36,8 +36,11 @@ Future<void> bootstrap() async {
     for (final path in _analysisRulePaths) {
       sources[path] = await rootBundle.loadString(path);
     }
+    final catalog = await rootBundle.loadString(
+      'assets/analysis_rules/catalog.yaml',
+    );
     final installation = await services<FinanceServices>().installBuiltInRules
-        ?.call(sources);
+        ?.call(sources, catalogSource: catalog);
     if (installation != null && installation.diagnostics.isNotEmpty) {
       logger.warning(
         'Some bundled analysis rules were rejected: '

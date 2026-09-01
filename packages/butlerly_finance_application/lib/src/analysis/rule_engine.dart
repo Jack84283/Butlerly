@@ -1,7 +1,13 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
+import 'period_resolver.dart';
+
 final class AnalysisRuleEngine {
-  const AnalysisRuleEngine();
+  const AnalysisRuleEngine({
+    this.periodResolver = const AnalysisPeriodResolver(),
+  });
+
+  final AnalysisPeriodResolver periodResolver;
 
   List<RuleExecutionResult> execute({
     required AnalysisDataset dataset,
@@ -102,13 +108,32 @@ final class AnalysisRuleEngine {
           resultById[rule.identity.value] = result;
           continue;
         }
-        final primaryValues =
-            dataset.primaryTransactionsByPeriod[rule.period] ??
-            dataset.transactions;
+        final primaryResolution = periodResolver.resolvePrimary(
+          type: rule.period,
+          context: dataset.context,
+        );
+        if (primaryResolution case AnalysisPeriodResolutionFailure(
+          :final code,
+        )) {
+          throw StateError('Unable to resolve ${rule.period}: $code.');
+        }
+        final primaryWindow =
+            (primaryResolution as AnalysisPeriodResolved).window;
+        final primaryValues = rule.type == AnalysisRuleType.dataQuality
+            ? dataset.transactions
+            : dataset.primaryTransactionsByPeriod[rule.period] ??
+                  dataset.transactions;
         final values = primaryValues
             .where(
               (value) =>
-                  _eligible(value, dataset.context, rule) &&
+                  _eligible(
+                    value,
+                    dataset.context,
+                    rule,
+                    window: rule.type == AnalysisRuleType.dataQuality
+                        ? null
+                        : primaryWindow,
+                  ) &&
                   _matchesQualityField(value, rule),
             )
             .toList(growable: false);
@@ -130,8 +155,11 @@ final class AnalysisRuleEngine {
               metrics[rule.identity.value] = metric;
             }
             AnalysisFinding? finding;
+            var resultIssues =
+                metric?.qualityIssues ?? const <DataQualityIssue>[];
             if (rule.type == AnalysisRuleType.insight &&
                 metric != null &&
+                metric.availability == AnalysisDataAvailability.sufficient &&
                 rule.condition.operator != 'none') {
               final candidate = _finding(
                 rule,
@@ -140,11 +168,16 @@ final class AnalysisRuleEngine {
                 metric,
                 calculatedAt ?? DateTime.now().toUtc(),
               );
-              if (_conditionMatches(
-                rule.condition,
-                metric.value,
-                candidate.percentageChange,
-              )) {
+              resultIssues = candidate.qualityIssues;
+              final baselineIsUsable =
+                  rule.baseline == RuleBaseline.none ||
+                  candidate.baselineValue != null;
+              if (baselineIsUsable &&
+                  _conditionMatches(
+                    rule.condition,
+                    metric.value,
+                    candidate.percentageChange,
+                  )) {
                 finding = candidate;
               }
             }
@@ -156,6 +189,7 @@ final class AnalysisRuleEngine {
                   ? metric
                   : null,
               finding: finding,
+              issues: resultIssues,
             );
             results.add(result);
             resultById[rule.identity.value] = result;
@@ -184,26 +218,49 @@ final class AnalysisRuleEngine {
     AnalysisMetric current,
     DateTime at,
   ) {
-    final baseline =
-        rule.baseline == RuleBaseline.none ||
-            dataset.baselineTransactions.isEmpty
+    final baselineValues =
+        dataset.baselineTransactionsByPeriod[rule.period] ??
+        dataset.baselineTransactions;
+    final baselineResolution = periodResolver.resolvePrimary(
+      type: rule.period,
+      context: dataset.context,
+    );
+    final baselineWindow = baselineResolution is AnalysisPeriodResolved
+        ? periodResolver.resolvePreviousEquivalent(
+            primary: baselineResolution.window,
+          )
+        : null;
+    final baselineContext = baselineWindow is AnalysisPeriodResolved
+        ? _contextForWindow(dataset.context, baselineWindow.window)
+        : null;
+    final baselineEligible = baselineValues
+        .where(
+          (value) =>
+              _eligible(value, dataset.context, rule) &&
+              _matchesQualityField(value, rule),
+        )
+        .toList(growable: false);
+    final baselineGroup = rule.grouping == RuleGrouping.none
+        ? baselineEligible
+        : _group(baselineEligible, rule.grouping)[dimension] ??
+              const <AnalysisEconomicTransaction>[];
+    final baseline = rule.baseline == RuleBaseline.none || baselineGroup.isEmpty
         ? null
         : _metric(
             rule,
             rule.measure,
             dataset,
-            dataset.baselineTransactions
-                .where(
-                  (value) =>
-                      _eligible(value, dataset.context, rule) &&
-                      _matchesQualityField(value, rule),
-                )
-                .toList(growable: false),
+            baselineGroup,
             const <String, AnalysisMetric>{},
             dimension,
             at,
+            contextOverride: baselineContext,
           );
-    final baselineValue = baseline?.value;
+    final usableBaseline =
+        baseline?.availability == AnalysisDataAvailability.sufficient
+        ? baseline
+        : null;
+    final baselineValue = usableBaseline?.value;
     final absolute = baselineValue == null
         ? null
         : _subtract(current.value, baselineValue);
@@ -214,7 +271,11 @@ final class AnalysisRuleEngine {
             scale: absolute.scale,
           ).divideBy(baselineValue.coefficient.abs().toInt());
     return AnalysisFinding(
-      id: '${rule.identity.value}:${dataset.context.period.startDate}:$dimension',
+      id: AnalysisResultIdentity.forRule(
+        rule: rule,
+        context: dataset.context,
+        dimension: dimension,
+      ).value,
       rule: rule,
       context: dataset.context,
       severity: rule.severity,
@@ -224,13 +285,13 @@ final class AnalysisRuleEngine {
       absoluteChange: absolute,
       percentageChange: percentage,
       dimension: dimension.isEmpty ? null : dimension,
-      supportingMetrics: baseline == null
+      supportingMetrics: usableBaseline == null
           ? [current.id]
-          : [current.id, baseline.id],
+          : [current.id, usableBaseline.id],
       evidence: current.evidence,
       qualityIssues: [
         ...dataset.qualityIssues,
-        if (baseline == null)
+        if (usableBaseline == null)
           const DataQualityIssue(
             code: 'missingBaseline',
             detail: 'No comparable baseline was available.',
@@ -366,15 +427,20 @@ final class AnalysisRuleEngine {
   bool _eligible(
     AnalysisEconomicTransaction value,
     AnalysisContext context,
-    AnalysisRuleDefinition rule,
-  ) {
+    AnalysisRuleDefinition rule, {
+    ResolvedAnalysisWindow? window,
+  }) {
     final date = value.transactionDate;
     if (date == null) {
       return rule.type == AnalysisRuleType.dataQuality;
     }
-    if (date.compareTo(context.period.startDate) < 0 ||
-        date.compareTo(context.period.endDate) > 0) {
-      return false;
+    if (window != null) {
+      final parsed = DateTime.tryParse(date);
+      if (parsed == null ||
+          parsed.isBefore(window.start) ||
+          !parsed.isBefore(window.endExclusive)) {
+        return false;
+      }
     }
     if (context.datasetMode == DatasetMode.verifiedOnly && !value.verified) {
       return false;
@@ -399,14 +465,16 @@ final class AnalysisRuleEngine {
     List<AnalysisEconomicTransaction> values,
     Map<String, AnalysisMetric> dependencies,
     String dimension,
-    DateTime at,
-  ) {
+    DateTime at, {
+    AnalysisContext? contextOverride,
+  }) {
+    final metricContext = contextOverride ?? dataset.context;
     final selected = values
         .where((value) => _matchesFilters(value, measure.filters))
         .where(
           (value) => measure.currencyBasis == CurrencyBasis.baseCurrency
               ? value.normalizedMoney != null ||
-                    value.money.currency == dataset.context.baseCurrency
+                    value.money.currency == metricContext.baseCurrency
               : true,
         )
         .toList(growable: false);
@@ -423,7 +491,10 @@ final class AnalysisRuleEngine {
         scale: 0,
       ),
       RuleOperation.sum => _sum(amountValues),
-      RuleOperation.average => _sum(amountValues).divideBy(selected.length),
+      RuleOperation.average =>
+        selected.isEmpty
+            ? DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0)
+            : _sum(amountValues).divideBy(selected.length),
       RuleOperation.median => _median(amountValues),
       RuleOperation.minimum =>
         amountValues.isEmpty
@@ -454,20 +525,44 @@ final class AnalysisRuleEngine {
     final currency = !monetary
         ? null
         : measure.currencyBasis == CurrencyBasis.baseCurrency
-        ? dataset.context.baseCurrency
+        ? metricContext.baseCurrency
         : (amountValues.isEmpty ? null : selected.first.money.currency);
+    final availability = selected.isNotEmpty
+        ? AnalysisDataAvailability.sufficient
+        : values.isEmpty
+        ? AnalysisDataAvailability.empty
+        : measure.currencyBasis == CurrencyBasis.baseCurrency
+        ? AnalysisDataAvailability.insufficient
+        : AnalysisDataAvailability.empty;
+    final qualityIssues = [
+      ...dataset.qualityIssues,
+      if (availability != AnalysisDataAvailability.sufficient)
+        DataQualityIssue(
+          code: 'insufficientData',
+          detail: availability == AnalysisDataAvailability.empty
+              ? 'No eligible data was available for ${measure.operation.name}.'
+              : 'Required currency normalization was unavailable for ${measure.operation.name}.',
+        ),
+    ];
     return AnalysisMetric(
-      id: '${rule.identity.value}:${dataset.context.period.startDate}:$dimension:${measure.key}',
+      id: AnalysisResultIdentity.forRule(
+        rule: rule,
+        context: metricContext,
+        dimension: dimension.isEmpty
+            ? measure.key
+            : '$dimension:${measure.key}',
+      ).value,
       rule: rule,
-      context: dataset.context,
+      context: metricContext,
       value: result,
       currency: currency,
       transactionCount: selected.length,
+      availability: availability,
       dimension: dimension.isEmpty ? measure.key : '$dimension:${measure.key}',
       evidence: selected
           .map((value) => EvidenceReference(transactionId: value.id))
           .toList(growable: false),
-      qualityIssues: dataset.qualityIssues,
+      qualityIssues: qualityIssues,
       calculatedAt: at,
     );
   }
@@ -589,6 +684,23 @@ final class AnalysisRuleEngine {
     return DecimalValue.fromParts(coefficient: coefficient, scale: scale);
   }
 }
+
+AnalysisContext _contextForWindow(
+  AnalysisContext context,
+  ResolvedAnalysisWindow window,
+) => AnalysisContext(
+  period: AnalysisPeriod(
+    startDate: _dateOnly(window.start),
+    endDate: _dateOnly(window.endExclusive.subtract(const Duration(days: 1))),
+    timeZoneId: window.timeZoneId,
+  ),
+  datasetMode: context.datasetMode,
+  currencyBasis: context.currencyBasis,
+  baseCurrency: context.baseCurrency,
+);
+
+String _dateOnly(DateTime value) =>
+    '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 
 final class _RuleOrdering {
   const _RuleOrdering(this.ordered, this.cyclicIds);

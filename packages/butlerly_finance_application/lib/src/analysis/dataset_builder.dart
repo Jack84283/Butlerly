@@ -8,11 +8,13 @@ final class AnalysisDatasetBuilder {
     this.preferences,
     this.links, {
     this.candidates,
+    this.periodResolver = const AnalysisPeriodResolver(),
   });
   final TransactionRepository transactions;
   final UserPreferenceRepository preferences;
   final ReconciliationLinkRepository? links;
   final ReconciliationCandidateRepository? candidates;
+  final AnalysisPeriodResolver periodResolver;
 
   Future<String> timeZoneId() async {
     final preference = await preferences.load();
@@ -101,34 +103,57 @@ final class AnalysisDatasetBuilder {
         ),
       );
     }
-    final primary = const AnalysisPeriodResolver().resolvePrimary(
+    final primary = periodResolver.resolvePrimary(
       type: 'selected_period',
       context: context,
     );
     if (primary case AnalysisPeriodResolutionFailure(:final code)) {
       return ApplicationDatasetResult.failure(code);
     }
-    final baselineResolution = const AnalysisPeriodResolver()
-        .resolvePreviousEquivalent(
-          primary: (primary as AnalysisPeriodResolved).window,
+    final supportedPeriods = [
+      'selected_period',
+      'selected_month',
+      'current_month',
+      'previous_month',
+      'year_to_date',
+      'previous_year',
+      'rolling_30_days',
+      'rolling_90_days',
+    ];
+    final primaryByPeriod = <String, List<AnalysisEconomicTransaction>>{};
+    final baselineByPeriod = <String, List<AnalysisEconomicTransaction>>{};
+    for (final type in supportedPeriods) {
+      final resolution = periodResolver.resolvePrimary(
+        type: type,
+        context: context,
+      );
+      if (resolution case AnalysisPeriodResolved(:final window)) {
+        primaryByPeriod[type] = _buildTransactions(
+          source,
+          reconciliationLinks,
+          preference.baseCurrency,
+          window,
         );
-    final baselineWindow =
-        (baselineResolution as AnalysisPeriodResolved).window;
-    final baseline = _buildTransactions(
-      source,
-      reconciliationLinks,
-      preference.baseCurrency,
-      baselineWindow.start,
-      baselineWindow.endExclusive.subtract(const Duration(days: 1)),
-    );
+        final baselineResolution = periodResolver.resolvePreviousEquivalent(
+          primary: window,
+        );
+        if (baselineResolution case AnalysisPeriodResolved(:final window)) {
+          baselineByPeriod[type] = _buildTransactions(
+            source,
+            reconciliationLinks,
+            preference.baseCurrency,
+            window,
+          );
+        }
+      }
+    }
+    final baseline = baselineByPeriod['selected_period'] ?? const [];
     return ApplicationDatasetResult.success(
       AnalysisDataset(
         transactions: result,
-        primaryTransactionsByPeriod: {
-          'selected_period': result,
-          'selected_month': result,
-        },
+        primaryTransactionsByPeriod: {...primaryByPeriod},
         baselineTransactions: baseline,
+        baselineTransactionsByPeriod: baselineByPeriod,
         context: context,
         qualityIssues: quality,
       ),
@@ -139,8 +164,7 @@ final class AnalysisDatasetBuilder {
     List<Transaction> source,
     List<ReconciliationLink> links,
     CurrencyCode baseCurrency,
-    DateTime start,
-    DateTime end,
+    ResolvedAnalysisWindow window,
   ) {
     final receiptIds = links.map((value) => value.receiptTransactionId).toSet();
     return source
@@ -149,8 +173,8 @@ final class AnalysisDatasetBuilder {
           return transaction.status == TransactionStatus.active &&
               !receiptIds.contains(transaction.id) &&
               date != null &&
-              !date.isBefore(start) &&
-              !date.isAfter(end);
+              !date.isBefore(window.start) &&
+              date.isBefore(window.endExclusive);
         })
         .map((transaction) {
           final normalized = transaction.normalizedMoney

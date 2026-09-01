@@ -4,6 +4,8 @@ import 'package:crypto/crypto.dart';
 import 'package:yaml/yaml.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
+import 'period_resolver.dart';
+
 final class RuleDiagnostic {
   const RuleDiagnostic({required this.code, required this.message, this.field});
   final String code;
@@ -211,8 +213,7 @@ final class RuleDefinitionValidator {
       );
     }
     if (period != null &&
-        period != 'selected_period' &&
-        period != 'selected_month') {
+        !AnalysisPeriodResolver.supportedTypes.contains(period)) {
       diagnostics.add(
         RuleDiagnostic(
           code: 'unsupportedPeriodType',
@@ -361,6 +362,118 @@ final class RuleDefinitionValidator {
       definition: diagnostics.isEmpty ? definition : null,
       diagnostics: diagnostics,
     );
+  }
+}
+
+final class RuleCatalogValidator {
+  const RuleCatalogValidator();
+
+  List<RuleDiagnostic> validate({
+    required String source,
+    required Map<String, AnalysisRuleDefinition> definitionsByPath,
+  }) {
+    final diagnostics = <RuleDiagnostic>[];
+    try {
+      final catalog = loadYaml(source);
+      if (catalog is! YamlMap || catalog['rules'] is! YamlList) {
+        return const [
+          RuleDiagnostic(
+            code: 'catalogType',
+            message: 'Rule catalog must contain a rules list.',
+          ),
+        ];
+      }
+      final catalogPaths = <String>{};
+      final catalogIds = <String>{};
+      for (final raw in catalog['rules'] as YamlList) {
+        if (raw is! YamlMap) {
+          diagnostics.add(
+            const RuleDiagnostic(
+              code: 'catalogType',
+              message: 'Each catalog rule must be a mapping.',
+            ),
+          );
+          continue;
+        }
+        final id = raw['ruleId']?.toString();
+        final version = raw['ruleVersion']?.toString();
+        final file = raw['file']?.toString();
+        if (id == null || version == null || file == null) {
+          diagnostics.add(
+            const RuleDiagnostic(
+              code: 'catalogRequired',
+              message: 'Catalog entries require ruleId, ruleVersion, and file.',
+            ),
+          );
+          continue;
+        }
+        if (!catalogPaths.add(file)) {
+          diagnostics.add(
+            RuleDiagnostic(
+              code: 'catalogDuplicateFile',
+              message: 'Catalog file is listed more than once: $file.',
+              field: file,
+            ),
+          );
+        }
+        if (!catalogIds.add(id)) {
+          diagnostics.add(
+            RuleDiagnostic(
+              code: 'catalogDuplicateRuleId',
+              message: 'Catalog rule ID is listed more than once: $id.',
+              field: id,
+            ),
+          );
+        }
+        final actualPath = definitionsByPath.keys.firstWhere(
+          (path) => _relativeRulePath(path) == file,
+          orElse: () => '',
+        );
+        final definition = definitionsByPath[actualPath];
+        if (definition == null) {
+          diagnostics.add(
+            RuleDiagnostic(
+              code: 'catalogMissingFile',
+              message: 'Catalog references unavailable rule file: $file.',
+              field: file,
+            ),
+          );
+          continue;
+        }
+        if (definition.identity.value != id ||
+            definition.version.value != version) {
+          diagnostics.add(
+            RuleDiagnostic(
+              code: 'catalogMismatch',
+              message:
+                  'Catalog entry $file does not match ${definition.identity.value}@${definition.version.value}.',
+              field: file,
+            ),
+          );
+        }
+      }
+      for (final path in definitionsByPath.keys) {
+        if (!catalogPaths.contains(_relativeRulePath(path))) {
+          diagnostics.add(
+            RuleDiagnostic(
+              code: 'catalogUnlistedFile',
+              message:
+                  'Installed rule file is missing from the catalog: ${_relativeRulePath(path)}.',
+              field: path,
+            ),
+          );
+        }
+      }
+    } on Object catch (error) {
+      diagnostics.add(RuleDiagnostic(code: 'catalogSyntax', message: '$error'));
+    }
+    return diagnostics;
+  }
+
+  String _relativeRulePath(String path) {
+    final marker = 'analysis_rules/';
+    final index = path.lastIndexOf(marker);
+    return index == -1 ? path : path.substring(index + marker.length);
   }
 }
 
