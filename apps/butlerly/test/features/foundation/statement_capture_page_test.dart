@@ -111,7 +111,6 @@ void main() {
         if ((await database.database.query(
           'financial_statements',
         )).isNotEmpty) {
-          await Future<void>.delayed(const Duration(milliseconds: 20));
           return;
         }
         await Future<void>.delayed(const Duration(milliseconds: 10));
@@ -119,7 +118,21 @@ void main() {
       fail('Statement capture did not complete.');
     });
     debugDefaultTargetPlatformOverride = null;
-    await tester.pumpAndSettle();
+
+    var completed = false;
+    for (var attempt = 0; attempt < 50; attempt++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 20)),
+      );
+      await tester.pump(const Duration(milliseconds: 20));
+      if (find.textContaining('Statement ·').evaluate().isNotEmpty) {
+        completed = true;
+        break;
+      }
+    }
+    if (!completed) {
+      fail('Statement capture UI did not finish reloading.');
+    }
     expect(tester.takeException(), isNull);
   }
 
