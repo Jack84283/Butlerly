@@ -49,6 +49,15 @@ final appRouter = GoRouter(
         StatefulShellBranch(
           routes: [
             GoRoute(
+              path: '/add',
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: AddPage()),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
               path: '/tools',
               pageBuilder: (context, state) =>
                   const NoTransitionPage(child: ToolsPage()),
@@ -92,7 +101,6 @@ final appRouter = GoRouter(
               ),
             ),
     ),
-    GoRoute(path: '/add', builder: (_, _) => const AddPage()),
     GoRoute(
       path: '/payment-sources',
       builder: (_, _) => const PaymentSourcesPage(),
