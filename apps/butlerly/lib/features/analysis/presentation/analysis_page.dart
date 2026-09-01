@@ -66,7 +66,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
         ? services<FinanceServices>()
         : null;
     final useCase = finance?.calculateAnalysisOverview;
-    if (useCase == null)
+    if (useCase == null) {
       return Future.value(
         const ApplicationFailure(
           ApplicationFailureDetail(
@@ -75,6 +75,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
           ),
         ),
       );
+    }
     final contextFuture = period == 'selected_period' && _customRange != null
         ? useCase.contextForDates(
             startDate: _date(_customRange!.start),
@@ -82,13 +83,14 @@ class _AnalysisPageState extends State<AnalysisPage> {
           )
         : useCase.contextFor(period, instant: DateTime.now());
     return contextFuture.then((resolved) {
-      if (resolved is! ApplicationSuccess<AnalysisContext>)
+      if (resolved is! ApplicationSuccess<AnalysisContext>) {
         return const ApplicationFailure(
           ApplicationFailureDetail(
             operation: 'resolve analysis period',
             code: ApplicationFailureCode.unavailable,
           ),
         );
+      }
       _context = resolved.value;
       return useCase.call(resolved.value);
     });
@@ -99,8 +101,9 @@ class _AnalysisPageState extends State<AnalysisPage> {
   ) {
     if (widget.loadCalendar == null &&
         context.period.startDate.substring(0, 7) !=
-            context.period.endDate.substring(0, 7))
+            context.period.endDate.substring(0, 7)) {
       return null;
+    }
     final start = context.period.startDate == '2000-01-01'
         ? DateTime(DateTime.now().year, DateTime.now().month)
         : DateTime.parse(context.period.startDate);
@@ -108,10 +111,12 @@ class _AnalysisPageState extends State<AnalysisPage> {
         ? DateTime(start.year, start.month + 1, 0)
         : DateTime.parse(context.period.endDate);
     if (widget.loadCalendar == null &&
-        end.day != DateTime(start.year, start.month + 1, 0).day)
+        end.day != DateTime(start.year, start.month + 1, 0).day) {
       return null;
-    if (widget.loadCalendar != null)
+    }
+    if (widget.loadCalendar != null) {
       return widget.loadCalendar!(start.year, start.month);
+    }
     final useCase = services.isRegistered<FinanceServices>()
         ? services<FinanceServices>().calculateAnalysisCalendar
         : null;
@@ -127,8 +132,9 @@ class _AnalysisPageState extends State<AnalysisPage> {
   Future<ApplicationResult<List<TransactionDto>>>? _loadTransactions(
     String date,
   ) {
-    if (widget.loadTransactionsForDate != null)
+    if (widget.loadTransactionsForDate != null) {
       return widget.loadTransactionsForDate!(date);
+    }
     if (!services.isRegistered<FinanceServices>()) return null;
     return services<FinanceServices>().queryTransactionsForFinancialDate(date);
   }
@@ -200,13 +206,14 @@ class _AnalysisPageState extends State<AnalysisPage> {
       child: FutureBuilder<ApplicationResult<List<RuleExecutionResult>>>(
         future: _result,
         builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done)
+          if (snapshot.connectionState != ConnectionState.done) {
             return ListView(
               padding: const EdgeInsets.all(ButlerlySpacing.standard),
               children: const [_AnalysisSkeleton()],
             );
+          }
           final result = snapshot.data;
-          if (result is! ApplicationSuccess<List<RuleExecutionResult>>)
+          if (result is! ApplicationSuccess<List<RuleExecutionResult>>) {
             return ListView(
               children: [
                 ButlerlyErrorState(
@@ -218,6 +225,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
                 ),
               ],
             );
+          }
           final analysisContext =
               _context ??
               result.value
@@ -344,7 +352,7 @@ class _AnalysisContent extends StatelessWidget {
     final query = <String, String>{
       'from': date ?? period.startDate,
       'to': date ?? period.endDate,
-      if (category != null) 'category': category,
+      'category': ?category,
     };
     context.push(Uri(path: '/transactions', queryParameters: query).toString());
   }
@@ -451,10 +459,11 @@ class _AnalysisTrend extends StatelessWidget {
   final _AnalysisModel model;
   @override
   Widget build(BuildContext context) {
-    if (model.trend.isEmpty)
+    if (model.trend.isEmpty) {
       return ButlerlyCard(
         child: Text(context.l10n.text('insufficientTrendData')),
       );
+    }
     final max = model.trend
         .map(_number)
         .fold<double>(0, (a, b) => a > b ? a : b);
@@ -498,10 +507,11 @@ class _TrendPainter extends CustomPainter {
           : size.width * i / (values.length - 1);
       final y =
           size.height - (size.height * values[i]).clamp(8, size.height - 8);
-      if (i == 0)
+      if (i == 0) {
         path.moveTo(x, y);
-      else
+      } else {
         path.lineTo(x, y);
+      }
     }
     canvas.drawPath(path, paint);
   }
@@ -522,8 +532,9 @@ class _AnalysisBreakdown extends StatelessWidget {
   final VoidCallback? onViewAll;
   @override
   Widget build(BuildContext context) {
-    if (model.categories.isEmpty)
+    if (model.categories.isEmpty) {
       return ButlerlyCard(child: Text(context.l10n.text('noSpendingInPeriod')));
+    }
     final max = model.categories
         .map(_number)
         .fold<double>(0, (a, b) => a > b ? a : b);
@@ -605,12 +616,14 @@ class _AnalysisActivity extends StatelessWidget {
     future: result,
     builder: (context, snapshot) {
       final value = snapshot.data;
-      if (snapshot.connectionState != ConnectionState.done)
+      if (snapshot.connectionState != ConnectionState.done) {
         return const ButlerlyCard(child: LinearProgressIndicator());
-      if (value is! ApplicationSuccess<AnalysisCalendarResult>)
+      }
+      if (value is! ApplicationSuccess<AnalysisCalendarResult>) {
         return ButlerlyCard(
           child: Text(context.l10n.text('analysisUnavailable')),
         );
+      }
       final calendar = value.value;
       final first = DateTime(calendar.year, calendar.month);
       final materialLocalizations = MaterialLocalizations.of(context);
@@ -737,11 +750,12 @@ class _DaySummary extends StatelessWidget {
     future: result,
     builder: (context, snapshot) {
       final value = snapshot.data;
-      if (value is! ApplicationSuccess<List<TransactionDto>>)
+      if (value is! ApplicationSuccess<List<TransactionDto>>) {
         return const Padding(
           padding: EdgeInsets.only(top: ButlerlySpacing.small),
           child: LinearProgressIndicator(),
         );
+      }
       return Padding(
         padding: const EdgeInsets.only(top: ButlerlySpacing.small),
         child: Column(
@@ -866,32 +880,6 @@ class _AnalysisSkeleton extends StatelessWidget {
 }
 
 class _AnalysisModel {
-  const _AnalysisModel({
-    this.spending,
-    this.income,
-    this.net,
-    this.transactionCount,
-    this.insight,
-    required this.insightUnavailable,
-    required this.trend,
-    required this.categories,
-    required this.qualityCount,
-    required this.qualityEvaluated,
-    required this.qualityLimited,
-    this.comparison,
-  });
-  final AnalysisMetric? spending;
-  final AnalysisMetric? income;
-  final AnalysisMetric? net;
-  final AnalysisMetric? transactionCount;
-  final AnalysisFinding? insight;
-  final bool insightUnavailable;
-  final List<AnalysisMetric> trend;
-  final List<AnalysisMetric> categories;
-  final int qualityCount;
-  final bool qualityEvaluated;
-  final bool qualityLimited;
-  final AnalysisFinding? comparison;
   factory _AnalysisModel.fromResults(List<RuleExecutionResult> results) {
     AnalysisMetric? metric(String id) => results
         .where((r) => r.metric != null && r.rule.identity.value == id)
@@ -945,6 +933,32 @@ class _AnalysisModel {
       qualityLimited: _qualitySummary(results).limited,
     );
   }
+  const _AnalysisModel({
+    this.spending,
+    this.income,
+    this.net,
+    this.transactionCount,
+    this.insight,
+    required this.insightUnavailable,
+    required this.trend,
+    required this.categories,
+    required this.qualityCount,
+    required this.qualityEvaluated,
+    required this.qualityLimited,
+    this.comparison,
+  });
+  final AnalysisMetric? spending;
+  final AnalysisMetric? income;
+  final AnalysisMetric? net;
+  final AnalysisMetric? transactionCount;
+  final AnalysisFinding? insight;
+  final bool insightUnavailable;
+  final List<AnalysisMetric> trend;
+  final List<AnalysisMetric> categories;
+  final int qualityCount;
+  final bool qualityEvaluated;
+  final bool qualityLimited;
+  final AnalysisFinding? comparison;
 }
 
 class _QualitySummary {
