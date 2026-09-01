@@ -1,13 +1,20 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
-import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
+import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
+import 'package:butlerly/features/analysis/presentation/widgets/analysis_activity.dart';
+import 'package:butlerly/features/analysis/presentation/widgets/analysis_data_quality.dart';
+import 'package:butlerly/features/analysis/presentation/widgets/analysis_insight_preview.dart';
+import 'package:butlerly/features/analysis/presentation/widgets/analysis_period_selector.dart';
+import 'package:butlerly/features/analysis/presentation/widgets/analysis_skeleton.dart';
+import 'package:butlerly/features/analysis/presentation/widgets/analysis_spending_breakdown.dart';
+import 'package:butlerly/features/analysis/presentation/widgets/analysis_summary.dart';
+import 'package:butlerly/features/analysis/presentation/widgets/analysis_trend.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
-import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
-import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
@@ -74,11 +81,9 @@ class _AnalysisPageState extends State<AnalysisPage> {
             languageCode: locale,
           )
         : null;
-    if (future != null) {
-      future.then((value) {
-        if (mounted) setState(() => _masterData = value);
-      });
-    }
+    future?.then((value) {
+      if (mounted) setState(() => _masterData = value);
+    });
   }
 
   @override
@@ -106,8 +111,8 @@ class _AnalysisPageState extends State<AnalysisPage> {
     }
     final contextFuture = period == 'selected_period' && _customRange != null
         ? useCase.contextForDates(
-            startDate: _date(_customRange!.start),
-            endDate: _date(_customRange!.end),
+            startDate: analysisDate(_customRange!.start),
+            endDate: analysisDate(_customRange!.end),
           )
         : useCase.contextFor(period, instant: DateTime.now());
     return contextFuture.then((resolved) {
@@ -235,14 +240,15 @@ class _AnalysisPageState extends State<AnalysisPage> {
         future: _result,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return ListView(
-              padding: const EdgeInsets.all(ButlerlySpacing.standard),
-              children: const [_AnalysisSkeleton()],
+            return ButlerlyPage(
+              title: context.l10n.text('analysis'),
+              children: const [AnalysisSkeleton()],
             );
           }
           final result = snapshot.data;
           if (result is! ApplicationSuccess<List<RuleExecutionResult>>) {
-            return ListView(
+            return ButlerlyPage(
+              title: context.l10n.text('analysis'),
               children: [
                 ButlerlyErrorState(
                   title: context.l10n.text('analysisUnavailable'),
@@ -279,7 +285,6 @@ class _AnalysisPageState extends State<AnalysisPage> {
       ),
     ),
   );
-
   Future<ApplicationResult<AnalysisCalendarResult>>?
   _loadCalendarForTestOnly() {
     if (widget.loadCalendar == null) return null;
@@ -313,18 +318,22 @@ class _AnalysisContent extends StatelessWidget {
   final ValueChanged<String> onSelectDate;
   @override
   Widget build(BuildContext context) {
-    final model = _AnalysisModel.fromResults(results);
+    final model = AnalysisModel.fromResults(results);
     return ButlerlyPage(
       title: context.l10n.text('analysis'),
-      subtitle: _periodDescription(context, period, analysisContext?.period),
+      subtitle: analysisPeriodDescription(
+        context,
+        period,
+        analysisContext?.period,
+      ),
       children: [
-        _AnalysisPeriodSelector(value: period, onChanged: onPeriodChanged),
+        AnalysisPeriodSelector(value: period, onChanged: onPeriodChanged),
         const SizedBox(height: ButlerlySpacing.standard),
-        _AnalysisSummary(model: model),
+        AnalysisSummary(model: model),
         _SectionHeader(title: context.l10n.text('trends')),
-        _AnalysisTrend(model: model, masterData: masterData),
+        AnalysisTrend(model: model, masterData: masterData),
         _SectionHeader(title: context.l10n.text('spending')),
-        _AnalysisBreakdown(
+        AnalysisSpendingBreakdown(
           model: model,
           masterData: masterData,
           onCategoryTap: analysisContext == null
@@ -332,21 +341,17 @@ class _AnalysisContent extends StatelessWidget {
               : (metric) => _openTransactions(
                   context,
                   period: analysisContext!.period,
-                  category: _categoryId(metric),
-                  onNavigationRequested: onNavigationRequested,
+                  category: analysisCategoryId(metric),
                 ),
           onViewAll: analysisContext != null && model.categories.length > 5
-              ? () => _openTransactions(
-                  context,
-                  period: analysisContext!.period,
-                  onNavigationRequested: onNavigationRequested,
-                )
+              ? () =>
+                    _openTransactions(context, period: analysisContext!.period)
               : null,
         ),
         _SectionHeader(title: context.l10n.text('financialCalendar')),
         calendar == null
-            ? _ActivitySummary(metric: model.transactionCount)
-            : _AnalysisActivity(
+            ? AnalysisActivitySummary(metric: model.transactionCount)
+            : AnalysisActivity(
                 result: calendar!,
                 selectedDate: selectedDate,
                 transactions: transactions,
@@ -355,31 +360,30 @@ class _AnalysisContent extends StatelessWidget {
                   context,
                   period: analysisContext?.period,
                   date: selectedDate,
-                  onNavigationRequested: onNavigationRequested,
                 ),
               ),
         if (model.insight != null) ...[
           _SectionHeader(title: context.l10n.text('insights')),
-          _AnalysisInsight(
+          AnalysisInsightPreview(
             finding: model.insight!,
-            // V1 Insights is a general destination; do not imply that it
-            // currently focuses a finding it cannot consume.
-            onTap: () {
-              if (onNavigationRequested case final callback?) {
-                callback('/insights');
-              } else {
-                context.push('/insights');
-              }
-            },
+            onTap: () => _navigate(context, '/insights'),
           ),
         ] else if (model.insightUnavailable) ...[
           _SectionHeader(title: context.l10n.text('insights')),
           ButlerlyCard(child: Text(context.l10n.text('insightsUnavailable'))),
         ],
         _SectionHeader(title: context.l10n.text('dataQuality')),
-        _AnalysisQuality(model: model),
+        AnalysisDataQuality(model: model),
       ],
     );
+  }
+
+  void _navigate(BuildContext context, String path) {
+    if (onNavigationRequested case final callback?) {
+      callback(path);
+    } else {
+      context.push(path);
+    }
   }
 
   void _openTransactions(
@@ -387,529 +391,15 @@ class _AnalysisContent extends StatelessWidget {
     AnalysisPeriod? period,
     String? category,
     String? date,
-    ValueChanged<String>? onNavigationRequested,
   }) {
     final query = <String, String>{
       'from': date ?? period!.startDate,
       'to': date ?? period!.endDate,
       'category': ?category,
     };
-    final path = Uri(path: '/transactions', queryParameters: query).toString();
-    if (onNavigationRequested case final callback?) {
-      callback(path);
-    } else {
-      context.push(path);
-    }
-  }
-}
-
-class _AnalysisPeriodSelector extends StatelessWidget {
-  const _AnalysisPeriodSelector({required this.value, required this.onChanged});
-  final String value;
-  final ValueChanged<String> onChanged;
-  @override
-  Widget build(BuildContext context) => DropdownButtonFormField<String>(
-    key: const ValueKey('analysis-period-selector'),
-    initialValue: value,
-    decoration: InputDecoration(labelText: context.l10n.text('analysisPeriod')),
-    items: [
-      for (final item in const [
-        ('current_month', 'thisMonth'),
-        ('previous_month', 'lastMonth'),
-        ('year_to_date', 'yearToDate'),
-        ('rolling_30_days', 'last30Days'),
-        ('rolling_90_days', 'last90Days'),
-        ('selected_period', 'custom'),
-      ])
-        DropdownMenuItem(
-          value: item.$1,
-          child: Text(context.l10n.text(item.$2)),
-        ),
-    ],
-    onChanged: (value) {
-      if (value != null) onChanged(value);
-    },
-  );
-}
-
-class _AnalysisSummary extends StatelessWidget {
-  const _AnalysisSummary({required this.model});
-  final _AnalysisModel model;
-  @override
-  Widget build(BuildContext context) => Semantics(
-    container: true,
-    label: context.l10n.text('analysisSummary'),
-    child: ButlerlyCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            model.spending == null
-                ? context.l10n.text('noSpendingInPeriod')
-                : _money(context, model.spending!),
-            style: Theme.of(context).textTheme.displaySmall,
-          ),
-          Text(context.l10n.text('totalSpending')),
-          if (model.comparison != null)
-            Text(
-              _comparisonText(context, model.comparison!),
-              semanticsLabel: _comparisonText(context, model.comparison!),
-            ),
-          const SizedBox(height: ButlerlySpacing.standard),
-          Row(
-            children: [
-              Expanded(
-                child: _SupportingMetric(
-                  metric: model.income,
-                  label: context.l10n.text('income'),
-                ),
-              ),
-              Expanded(
-                child: _SupportingMetric(
-                  metric: model.net,
-                  label: context.l10n.text('netCashFlow'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-class _SupportingMetric extends StatelessWidget {
-  const _SupportingMetric({required this.metric, required this.label});
-  final AnalysisMetric? metric;
-  final String label;
-  @override
-  Widget build(BuildContext context) => Semantics(
-    label:
-        '$label, ${metric == null ? context.l10n.text('notAvailable') : _money(context, metric!)}',
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label),
-        Text(
-          metric == null ? '—' : _money(context, metric!),
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-      ],
-    ),
-  );
-}
-
-class _AnalysisTrend extends StatelessWidget {
-  const _AnalysisTrend({required this.model, required this.masterData});
-  final _AnalysisModel model;
-  final TransactionMasterData? masterData;
-  @override
-  Widget build(BuildContext context) {
-    if (model.trend.isEmpty) {
-      return ButlerlyCard(
-        child: Text(context.l10n.text('insufficientTrendData')),
-      );
-    }
-    final max = model.trend
-        .map(_number)
-        .fold<double>(0, (a, b) => a > b ? a : b);
-    return ButlerlyCard(
-      semanticLabel: context.l10n.text('spendingTrend'),
-      child: Semantics(
-        label: model.trend
-            .map(
-              (m) =>
-                  '${_dimension(context, m, masterData)} ${_money(context, m)}',
-            )
-            .join(', '),
-        child: SizedBox(
-          height: 150,
-          child: CustomPaint(
-            painter: _TrendPainter(
-              values: model.trend
-                  .map<double>((m) => max == 0 ? 0 : _number(m) / max)
-                  .toList(),
-              color: context.colors.interactive,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TrendPainter extends CustomPainter {
-  const _TrendPainter({required this.values, required this.color});
-  final List<double> values;
-  final Color color;
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (values.isEmpty) return;
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke;
-    final path = Path();
-    for (var i = 0; i < values.length; i++) {
-      final x = values.length == 1
-          ? size.width / 2
-          : size.width * i / (values.length - 1);
-      final y =
-          size.height - (size.height * values[i]).clamp(8, size.height - 8);
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _TrendPainter old) =>
-      old.values != values || old.color != color;
-}
-
-class _AnalysisBreakdown extends StatelessWidget {
-  const _AnalysisBreakdown({
-    required this.model,
-    required this.masterData,
-    this.onCategoryTap,
-    this.onViewAll,
-  });
-  final _AnalysisModel model;
-  final TransactionMasterData? masterData;
-  final ValueChanged<AnalysisMetric>? onCategoryTap;
-  final VoidCallback? onViewAll;
-  @override
-  Widget build(BuildContext context) {
-    if (model.categories.isEmpty) {
-      return ButlerlyCard(child: Text(context.l10n.text('noSpendingInPeriod')));
-    }
-    final max = model.categories
-        .map(_number)
-        .fold<double>(0, (a, b) => a > b ? a : b);
-    return ButlerlyCard(
-      child: Column(
-        children: [
-          for (final metric in model.categories.take(5))
-            Padding(
-              padding: const EdgeInsets.only(bottom: ButlerlySpacing.small),
-              child: Semantics(
-                label:
-                    '${_dimension(context, metric, masterData)}, ${_money(context, metric)}',
-                button: onCategoryTap != null,
-                child: InkWell(
-                  onTap: onCategoryTap == null
-                      ? null
-                      : () => onCategoryTap!(metric),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              _dimension(context, metric, masterData),
-                            ),
-                          ),
-                          Text(_money(context, metric)),
-                        ],
-                      ),
-                      const SizedBox(height: ButlerlySpacing.micro),
-                      LinearProgressIndicator(
-                        value: max == 0 ? 0 : _number(metric) / max,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          if (onViewAll != null)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(
-                onPressed: onViewAll,
-                child: Text(context.l10n.text('viewAllCategories')),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActivitySummary extends StatelessWidget {
-  const _ActivitySummary({required this.metric});
-  final AnalysisMetric? metric;
-  @override
-  Widget build(BuildContext context) => ButlerlyCard(
-    child: Text(
-      metric == null
-          ? context.l10n.text('noActivityInPeriod')
-          : '${_number(metric!).round()} ${context.l10n.text('transactions')}',
-    ),
-  );
-}
-
-class _AnalysisActivity extends StatelessWidget {
-  const _AnalysisActivity({
-    required this.result,
-    required this.selectedDate,
-    required this.transactions,
-    required this.onSelectDate,
-    required this.onViewTransactions,
-  });
-  final Future<ApplicationResult<AnalysisCalendarResult>> result;
-  final String? selectedDate;
-  final Future<ApplicationResult<List<TransactionDto>>>? transactions;
-  final ValueChanged<String> onSelectDate;
-  final VoidCallback onViewTransactions;
-  @override
-  Widget build(
-    BuildContext context,
-  ) => FutureBuilder<ApplicationResult<AnalysisCalendarResult>>(
-    future: result,
-    builder: (context, snapshot) {
-      final value = snapshot.data;
-      if (snapshot.connectionState != ConnectionState.done) {
-        return const ButlerlyCard(child: LinearProgressIndicator());
-      }
-      if (value is! ApplicationSuccess<AnalysisCalendarResult>) {
-        return ButlerlyCard(
-          child: Text(context.l10n.text('analysisUnavailable')),
-        );
-      }
-      final calendar = value.value;
-      final first = DateTime(calendar.year, calendar.month);
-      final materialLocalizations = MaterialLocalizations.of(context);
-      final firstDayOfWeek = materialLocalizations.firstDayOfWeekIndex;
-      final leading = (first.weekday % 7 - firstDayOfWeek + 7) % 7;
-      final today = financialDateAt(DateTime.now(), calendar.timeZoneId);
-      final todayDate = _date(today);
-      return ButlerlyCard(
-        child: Column(
-          children: [
-            Text(
-              materialLocalizations.formatMonthYear(first),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: ButlerlySpacing.small),
-            Row(
-              children: [
-                for (var weekday = 0; weekday < 7; weekday++)
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        materialLocalizations.narrowWeekdays[(firstDayOfWeek +
-                                weekday) %
-                            7],
-                        style: Theme.of(context).textTheme.labelSmall,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: leading + calendar.days.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 7,
-                mainAxisSpacing: 4,
-                crossAxisSpacing: 4,
-              ),
-              itemBuilder: (context, index) {
-                if (index < leading) return const SizedBox.shrink();
-                final day = calendar.days[index - leading];
-                final selected = day.financialDate == selectedDate;
-                final isToday = day.financialDate == todayDate;
-                return Semantics(
-                  label:
-                      '${day.financialDate}, ${day.transactionCount} ${context.l10n.text('transactions')}${isToday ? ', ${context.l10n.text('today')}' : ''}',
-                  selected: selected,
-                  button: true,
-                  child: InkWell(
-                    key: ValueKey('analysis-calendar-${day.financialDate}'),
-                    onTap: () => onSelectDate(day.financialDate),
-                    child: Container(
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: day.transactionCount == 0
-                            ? null
-                            : context.colors.selection,
-                        border: selected
-                            ? Border.all(
-                                color: context.colors.interactive,
-                                width: 2,
-                              )
-                            : null,
-                        borderRadius: BorderRadius.circular(
-                          ButlerlyRadius.small,
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(day.financialDate.substring(8)),
-                          if (day.transactionCount > 0)
-                            Icon(
-                              Icons.circle,
-                              size: 5,
-                              semanticLabel: context.l10n.text('activity'),
-                              color: context.colors.interactive,
-                            ),
-                          if (isToday)
-                            Text(
-                              context.l10n.text('today'),
-                              style: Theme.of(context).textTheme.labelSmall,
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-            if (selectedDate != null)
-              _DaySummary(
-                date: selectedDate!,
-                result: transactions,
-                expense: calendar.days
-                    .where((day) => day.financialDate == selectedDate)
-                    .firstOrNull
-                    ?.expenseTotal,
-                onViewTransactions: onViewTransactions,
-              ),
-          ],
-        ),
-      );
-    },
-  );
-}
-
-class _DaySummary extends StatelessWidget {
-  const _DaySummary({
-    required this.date,
-    required this.result,
-    required this.expense,
-    required this.onViewTransactions,
-  });
-  final String date;
-  final Future<ApplicationResult<List<TransactionDto>>>? result;
-  final Money? expense;
-  final VoidCallback onViewTransactions;
-  @override
-  Widget build(
-    BuildContext context,
-  ) => FutureBuilder<ApplicationResult<List<TransactionDto>>>(
-    future: result,
-    builder: (context, snapshot) {
-      final value = snapshot.data;
-      if (value is! ApplicationSuccess<List<TransactionDto>>) {
-        return const Padding(
-          padding: EdgeInsets.only(top: ButlerlySpacing.small),
-          child: LinearProgressIndicator(),
-        );
-      }
-      return Padding(
-        padding: const EdgeInsets.only(top: ButlerlySpacing.small),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '$date · ${localizedCount(context, value.value.length.toString())} ${context.l10n.text('transactions')}${expense == null ? '' : ' · ${_moneyValue(context, expense!)} ${context.l10n.text('spent')}'}',
-            ),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(
-                onPressed: onViewTransactions,
-                child: Text(context.l10n.text('viewTransactions')),
-              ),
-            ),
-            if (value.value.isEmpty) Text(context.l10n.text('noTransactions')),
-            for (final transaction in value.value.take(3))
-              ListTile(
-                key: ValueKey(
-                  'analysis-calendar-transaction-${transaction.id}',
-                ),
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  transaction.description?.trim().isNotEmpty == true
-                      ? transaction.description!
-                      : context.l10n.text('untitledTransaction'),
-                ),
-                subtitle: Text(
-                  transactionDateLabel(
-                    transaction,
-                    pendingLabel: context.l10n.text('pending'),
-                    locale: Localizations.localeOf(context).toLanguageTag(),
-                  ),
-                ),
-                trailing: Text(
-                  '${localizedTransactionAmount(context, transaction.amount)} ${transaction.currency}',
-                ),
-              ),
-          ],
-        ),
-      );
-    },
-  );
-}
-
-class _AnalysisInsight extends StatelessWidget {
-  const _AnalysisInsight({required this.finding, required this.onTap});
-  final AnalysisFinding finding;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => ButlerlyCard(
-    semanticLabel: context.l10n.text('notable'),
-    child: ListTile(
-      onTap: onTap,
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(Icons.info_outline, color: context.colors.info),
-      title: Text(context.l10n.text('notable')),
-      subtitle: Text(context.l10n.text(finding.rule.nameKey)),
-      trailing: const Icon(Icons.chevron_right),
-    ),
-  );
-}
-
-class _AnalysisQuality extends StatelessWidget {
-  const _AnalysisQuality({required this.model});
-  final _AnalysisModel model;
-  @override
-  Widget build(BuildContext context) {
-    final count = model.qualityCount;
-    final notEvaluated = !model.qualityEvaluated;
-    final limited = model.qualityLimited;
-    final needsAttention = count > 0 && !limited && !notEvaluated;
-    final status = notEvaluated
-        ? context.l10n.text('dataQualityNotEvaluated')
-        : limited
-        ? context.l10n.text('dataQualityLimited')
-        : needsAttention
-        ? context.l10n.text('dataQualityNeedsAttention', {
-            'count': localizedCount(context, count.toString()),
-          })
-        : context.l10n.text('dataQualityGood');
-    final (icon, color) = notEvaluated
-        ? (Icons.help_outline, context.colors.info)
-        : limited
-        ? (Icons.info_outline, context.colors.warning)
-        : needsAttention
-        ? (Icons.warning_amber_outlined, context.colors.warning)
-        : (Icons.check_circle_outline, context.colors.success);
-    return ButlerlyCard(
-      semanticLabel: '${context.l10n.text('dataQuality')}: $status',
-      child: Row(
-        children: [
-          Icon(icon, color: color),
-          const SizedBox(width: ButlerlySpacing.small),
-          Expanded(child: Text(status)),
-        ],
-      ),
+    _navigate(
+      context,
+      Uri(path: '/transactions', queryParameters: query).toString(),
     );
   }
 }
@@ -919,217 +409,4 @@ class _SectionHeader extends StatelessWidget {
   final String title;
   @override
   Widget build(BuildContext context) => ButlerlySectionHeader(title: title);
-}
-
-class _AnalysisSkeleton extends StatelessWidget {
-  const _AnalysisSkeleton();
-  @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      const SizedBox(height: 48),
-      for (var i = 0; i < 4; i++)
-        Padding(
-          padding: const EdgeInsets.only(bottom: ButlerlySpacing.standard),
-          child: ButlerlyCard(
-            child: SizedBox(
-              height: i == 0 ? 120 : 160,
-              child: const LinearProgressIndicator(),
-            ),
-          ),
-        ),
-    ],
-  );
-}
-
-class _AnalysisModel {
-  factory _AnalysisModel.fromResults(List<RuleExecutionResult> results) {
-    AnalysisMetric? metric(String id) => results
-        .where((r) => r.metric != null && r.rule.identity.value == id)
-        .map((r) => r.metric!)
-        .firstOrNull;
-    final categories =
-        results
-            .where(
-              (r) =>
-                  r.metric != null &&
-                  r.rule.identity.value == _AnalysisRuleRoles.categoryBreakdown,
-            )
-            .map((r) => r.metric!)
-            .toList()
-          ..sort((a, b) => _number(b).compareTo(_number(a)));
-    final trend =
-        results
-            .where(
-              (r) =>
-                  r.metric != null &&
-                  r.rule.identity.value == _AnalysisRuleRoles.spendingTrend,
-            )
-            .map((r) => r.metric!)
-            .toList()
-          ..sort((a, b) => _rawDimension(a).compareTo(_rawDimension(b)));
-    final finding = results
-        .where(
-          (r) =>
-              r.finding != null &&
-              r.rule.identity.value == _AnalysisRuleRoles.notableInsight,
-        )
-        .map((r) => r.finding!)
-        .firstOrNull;
-    return _AnalysisModel(
-      spending: metric(_AnalysisRuleRoles.spending),
-      income: metric(_AnalysisRuleRoles.income),
-      net: metric(_AnalysisRuleRoles.netCashFlow),
-      transactionCount: metric(_AnalysisRuleRoles.transactionCount),
-      insight: finding,
-      comparison: results
-          .map((result) => result.comparison)
-          .whereType<AnalysisComparison>()
-          .where(_isUsableComparison)
-          .firstOrNull,
-      insightUnavailable: results.any(
-        (r) => r.rule.surface == AnalysisSurface.insights && r.failure != null,
-      ),
-      trend: trend,
-      categories: categories,
-      qualityCount: _qualitySummary(results).count,
-      qualityEvaluated: results.isNotEmpty,
-      qualityLimited: _qualitySummary(results).limited,
-    );
-  }
-  const _AnalysisModel({
-    this.spending,
-    this.income,
-    this.net,
-    this.transactionCount,
-    this.insight,
-    required this.insightUnavailable,
-    required this.trend,
-    required this.categories,
-    required this.qualityCount,
-    required this.qualityEvaluated,
-    required this.qualityLimited,
-    this.comparison,
-  });
-  final AnalysisMetric? spending;
-  final AnalysisMetric? income;
-  final AnalysisMetric? net;
-  final AnalysisMetric? transactionCount;
-  final AnalysisFinding? insight;
-  final bool insightUnavailable;
-  final List<AnalysisMetric> trend;
-  final List<AnalysisMetric> categories;
-  final int qualityCount;
-  final bool qualityEvaluated;
-  final bool qualityLimited;
-  final AnalysisComparison? comparison;
-}
-
-class _QualitySummary {
-  const _QualitySummary(this.count, this.limited);
-  final int count;
-  final bool limited;
-}
-
-_QualitySummary _qualitySummary(List<RuleExecutionResult> results) {
-  final keys = <String>{};
-  var failures = 0;
-  var limited = false;
-  for (final result in results) {
-    if (result.failure != null) {
-      failures++;
-      limited = true;
-    }
-    final issues = [
-      ...result.issues,
-      ...?result.metric?.qualityIssues,
-      ...?result.finding?.qualityIssues,
-    ];
-    for (final issue in issues) {
-      keys.add('${issue.code}|${issue.detail}|${issue.transactionId?.value}');
-    }
-    final qualityMetric =
-        result.metric != null &&
-        result.rule.surface == AnalysisSurface.dataQuality;
-    if (qualityMetric) {
-      final value = int.tryParse(result.metric!.value.toString()) ?? 0;
-      if (value > 0) keys.add('metric|${result.rule.identity.value}|$value');
-    }
-  }
-  return _QualitySummary(keys.length + failures, limited);
-}
-
-abstract final class _AnalysisRuleRoles {
-  static const spending = 'ANL-R001';
-  static const income = 'ANL-R002';
-  static const netCashFlow = 'ANL-R003';
-  static const transactionCount = 'ANL-R004';
-  static const categoryBreakdown = 'ANL-R010';
-  static const spendingTrend = 'ANL-R014';
-  static const notableInsight = 'ANL-R020';
-}
-
-String _periodDescription(
-  BuildContext context,
-  String period,
-  AnalysisPeriod? value,
-) {
-  final label = context.l10n.text(switch (period) {
-    'current_month' => 'thisMonth',
-    'previous_month' => 'lastMonth',
-    'year_to_date' => 'yearToDate',
-    'rolling_30_days' => 'last30Days',
-    'rolling_90_days' => 'last90Days',
-    _ => 'custom',
-  });
-  return value == null
-      ? label
-      : '$label · ${value.startDate} – ${value.endDate}';
-}
-
-String _money(BuildContext context, AnalysisMetric metric) =>
-    '${localizedDecimal(context, metric.value.toString())} ${metric.currency?.value ?? ''}'
-        .trim();
-
-String _moneyValue(BuildContext context, Money money) =>
-    '${localizedDecimal(context, money.amount.toString())} ${money.currency.value}';
-
-String _comparisonText(BuildContext context, AnalysisComparison comparison) {
-  final change = comparison.percentageChange;
-  if (!_isUsableComparison(comparison) || change == null) return '';
-  final direction = change.isNegative ? '↓' : '↑';
-  final magnitude = change.toString().replaceFirst('-', '');
-  return '$direction ${localizedDecimal(context, magnitude)}% ${context.l10n.text('vsPreviousPeriod')}';
-}
-
-bool _isUsableComparison(AnalysisComparison comparison) =>
-    comparison.availability == AnalysisDataAvailability.sufficient &&
-    comparison.baselineValue != null &&
-    comparison.percentageChange != null;
-
-double _number(AnalysisMetric metric) =>
-    double.tryParse(metric.value.toString()) ?? 0;
-String _categoryId(AnalysisMetric metric) =>
-    metric.dimension?.split(':').firstOrNull ?? '';
-
-String _rawDimension(AnalysisMetric metric) =>
-    metric.dimension?.split(':').firstOrNull ?? metric.rule.nameKey;
-
-String _dimension(
-  BuildContext context,
-  AnalysisMetric metric,
-  TransactionMasterData? masterData,
-) {
-  final raw = _rawDimension(metric);
-  if (metric.rule.grouping == RuleGrouping.category) {
-    return masterData?.categoryName(raw) ??
-        context.l10n.text('unavailableCategory');
-  }
-  return raw;
-}
-
-String _date(DateTime value) =>
-    '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
-
-extension _FirstOrNull<T> on Iterable<T> {
-  T? get firstOrNull => isEmpty ? null : first;
 }
