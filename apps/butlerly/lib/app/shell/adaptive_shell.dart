@@ -29,9 +29,10 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     );
   }
 
-  void _handleBlockedPop(bool didPop, Object? result) {
-    if (didPop || navigationShell.currentIndex != 1) return;
-    navigationShell.goBranch(_previousPrimaryIndex);
+  void _handleSystemBack(bool didPop, Object? result) {
+    if (!didPop && navigationShell.currentIndex == 1) {
+      navigationShell.goBranch(_previousPrimaryIndex);
+    }
   }
 
   List<NavigationDestination> _destinations(BuildContext context) => [
@@ -74,6 +75,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
       label: index == 1
           ? context.l10n.text('addTransactionAction')
           : destination.label,
+      excludeSemantics: true,
       child: InkWell(
         onTap: () => _selectDestination(index),
         child: SizedBox(
@@ -127,7 +129,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
   @override
   Widget build(BuildContext context) => PopScope(
     canPop: navigationShell.currentIndex != 1,
-    onPopInvokedWithResult: _handleBlockedPop,
+    onPopInvokedWithResult: _handleSystemBack,
     child: LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth < ButlerlySize.phoneBreakpoint) {
