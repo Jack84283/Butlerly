@@ -438,6 +438,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('View all categories'));
+    expect(find.text('Other'), findsOneWidget);
     await tester.tap(find.text('View all categories'));
     expect(requestedNavigation, '/transactions?from=2026-08-01&to=2026-08-31');
   });
@@ -481,18 +482,19 @@ void main() {
           loadTransactionsForDate: (date) async => ApplicationSuccess(
             date.endsWith('-02')
                 ? [
-                    TransactionDto(
-                      id: 'transaction-1',
-                      amount: '12.00',
-                      currency: 'USD',
-                      direction: 'expense',
-                      status: 'active',
-                      reviewState: 'clear',
-                      transactionDate: date,
-                      description: 'Groceries',
-                      createdAt: DateTime.utc(2026),
-                      updatedAt: DateTime.utc(2026),
-                    ),
+                    for (var index = 1; index <= 4; index++)
+                      TransactionDto(
+                        id: 'transaction-$index',
+                        amount: '12.00',
+                        currency: 'USD',
+                        direction: 'expense',
+                        status: 'active',
+                        reviewState: 'clear',
+                        transactionDate: date,
+                        description: index == 1 ? 'Groceries' : 'Item $index',
+                        createdAt: DateTime.utc(2026),
+                        updatedAt: DateTime.utc(2026),
+                      ),
                   ]
                 : const [],
           ),
@@ -520,6 +522,12 @@ void main() {
       expect(
         find.byKey(
           const ValueKey('analysis-calendar-transaction-transaction-1'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(
+          const ValueKey('analysis-calendar-transaction-transaction-4'),
         ),
         findsOneWidget,
       );

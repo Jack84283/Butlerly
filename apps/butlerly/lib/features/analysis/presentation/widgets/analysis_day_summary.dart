@@ -42,7 +42,7 @@ class AnalysisDaySummary extends StatelessWidget {
               '$date · ${localizedCount(context, value.value.length.toString())} ${context.l10n.text('transactions')}${expense == null ? '' : ' · ${analysisMoneyValue(context, expense!)} ${context.l10n.text('spent')}'}',
             ),
             if (value.value.isEmpty) Text(context.l10n.text('noTransactions')),
-            for (final transaction in value.value.take(3))
+            for (final transaction in value.value)
               ListTile(
                 key: ValueKey(
                   'analysis-calendar-transaction-${transaction.id}',
