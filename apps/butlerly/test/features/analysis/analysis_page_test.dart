@@ -19,6 +19,7 @@ void main() {
     loadTransactionsForDate,
     Future<TransactionMasterData> Function()? loadMasterData,
     ValueChanged<String>? onNavigationRequested,
+    ValueChanged<TransactionDto>? onTransactionRequested,
   }) => MaterialApp(
     localizationsDelegates: const [
       AppLocalizations.delegate,
@@ -35,6 +36,7 @@ void main() {
       loadTransactionsForDate: loadTransactionsForDate,
       loadMasterData: loadMasterData,
       onNavigationRequested: onNavigationRequested,
+      onTransactionRequested: onTransactionRequested,
     ),
   );
 
@@ -139,6 +141,14 @@ void main() {
     await tester.drag(find.byType(Scrollable).first, const Offset(0, -2000));
     await tester.pumpAndSettle();
     expect(find.text('Analysis'), findsOneWidget);
+    expect(
+      find.text('See how spending changes across the selected period.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('More activity is needed to show a trend.'),
+      findsOneWidget,
+    );
     expect(find.text('Not evaluated'), findsOneWidget);
     expect(
       find.text('Calculated privately on this device and available offline.'),
@@ -351,11 +361,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Dining'), findsOneWidget);
+    expect(find.text('Dining'), findsNWidgets(2));
     expect(find.text('category-id'), findsNothing);
     expect(find.text('View all categories'), findsNothing);
-    await tester.ensureVisible(find.text('Dining'));
-    await tester.tap(find.text('Dining'));
+    await tester.ensureVisible(find.text('Dining').last);
+    await tester.tap(find.text('Dining').last);
     expect(requestedNavigation, contains('from=2026-08-01'));
     expect(requestedNavigation, contains('to=2026-08-31'));
     expect(requestedNavigation, contains('category=category-id'));
@@ -440,7 +450,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       final requestedMonths = <String>[];
-      String? requestedNavigation;
+      TransactionDto? selectedTransaction;
       ApplicationResult<AnalysisCalendarResult> calendar(int year, int month) {
         requestedMonths.add('$year-$month');
         final last = DateTime.utc(year, month + 1, 0).day;
@@ -486,7 +496,8 @@ void main() {
                   ]
                 : const [],
           ),
-          onNavigationRequested: (path) => requestedNavigation = path,
+          onTransactionRequested: (transaction) =>
+              selectedTransaction = transaction,
         ),
       );
       await tester.pumpAndSettle();
@@ -512,8 +523,15 @@ void main() {
         ),
         findsOneWidget,
       );
-      await tester.tap(find.text('View transactions'));
-      expect(requestedNavigation, contains('from=$date2&to=$date2'));
+      // The row is the primary drill-down control; the former View
+      // transactions link is intentionally absent.
+      await tester.tap(
+        find.byKey(
+          const ValueKey('analysis-calendar-transaction-transaction-1'),
+        ),
+      );
+      expect(find.text('View transactions'), findsNothing);
+      expect(selectedTransaction?.id, 'transaction-1');
       expect(requestedMonths, hasLength(1));
     },
   );

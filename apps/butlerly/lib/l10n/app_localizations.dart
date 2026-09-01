@@ -420,6 +420,9 @@ class AppLocalizations {
       'overview': 'Overview',
       'spending': 'Spending',
       'trends': 'Trends',
+      'trendsDescription':
+          'See how spending changes across the selected period.',
+      'spendingDistribution': 'Spending distribution',
       'financialCalendar': 'Financial calendar',
       'previousMonth': 'Previous month',
       'nextMonth': 'Next month',
@@ -931,6 +934,8 @@ class AppLocalizations {
       'overview': '概览',
       'spending': '支出',
       'trends': '趋势',
+      'trendsDescription': '查看所选期间支出的变化情况。',
+      'spendingDistribution': '支出分布',
       'financialCalendar': '财务日历',
       'previousMonth': '上个月',
       'nextMonth': '下个月',
@@ -1464,6 +1469,9 @@ class AppLocalizations {
       'overview': 'Resumen',
       'spending': 'Gastos',
       'trends': 'Tendencias',
+      'trendsDescription':
+          'Consulta cómo cambian tus gastos durante el período seleccionado.',
+      'spendingDistribution': 'Distribución de gastos',
       'financialCalendar': 'Calendario financiero',
       'previousMonth': 'Mes anterior',
       'nextMonth': 'Mes siguiente',
