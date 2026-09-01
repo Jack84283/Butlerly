@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' show Tristate;
 
 import 'package:butlerly/app/butlerly_app.dart';
 import 'package:butlerly/app/router/app_router.dart';
@@ -166,6 +167,104 @@ void main() {
       expect(find.text('No transactions yet'), findsOneWidget);
     },
   );
+
+  testWidgets('primary navigation preserves every selected tab around Add', (
+    tester,
+  ) async {
+    setPhoneViewport(tester);
+    await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+    await tester.pumpAndSettle();
+
+    for (final destination in const ['Transactions', 'Tools', 'More']) {
+      await tester.tap(find.text(destination).last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.bySemanticsLabel('Add Transaction'));
+      await tester.pumpAndSettle();
+      expect(find.text('Add'), findsOneWidget);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(
+        tester
+                .getSemantics(find.text(destination).last)
+                .flagsCollection
+                .isSelected ==
+            Tristate.isTrue,
+        isTrue,
+      );
+      expect(
+        tester
+                .getSemantics(find.bySemanticsLabel('Add Transaction'))
+                .flagsCollection
+                .isSelected ==
+            Tristate.isTrue,
+        isFalse,
+      );
+      final selectedCount = const ['Home', 'Transactions', 'Tools', 'More']
+          .where(
+            (label) =>
+                tester
+                    .getSemantics(find.text(label).last)
+                    .flagsCollection
+                    .isSelected ==
+                Tristate.isTrue,
+          )
+          .length;
+      expect(selectedCount, 1);
+    }
+  });
+
+  testWidgets('Tools cards preserve order and all direct routes', (
+    tester,
+  ) async {
+    setPhoneViewport(tester);
+    await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+    await tester.pumpAndSettle();
+
+    appRouter.go('/tools');
+    await tester.pumpAndSettle();
+    final labels = ['Search', 'Review', 'Analysis', 'Insights'];
+    final positions = labels
+        .map((label) => tester.getTopLeft(find.text(label).last).dy)
+        .toList();
+    expect(positions, orderedEquals([...positions]..sort()));
+    for (final label in labels) {
+      await tester.tap(find.text(label).last);
+      await tester.pumpAndSettle();
+      switch (label) {
+        case 'Search':
+          expect(find.byType(SearchBar), findsOneWidget);
+        case 'Review':
+          expect(find.text('You’re all caught up'), findsOneWidget);
+        case 'Analysis':
+          expect(find.text('Analysis'), findsOneWidget);
+        case 'Insights':
+          expect(find.text('Not enough data for insights'), findsOneWidget);
+      }
+      appRouter.go('/tools');
+      await tester.pumpAndSettle();
+    }
+    for (final route in const [
+      '/search',
+      '/review',
+      '/analysis',
+      '/insights',
+    ]) {
+      appRouter.go(route);
+      await tester.pumpAndSettle();
+      switch (route) {
+        case '/search':
+          expect(find.byType(SearchBar), findsOneWidget);
+        case '/review':
+          expect(find.text('You’re all caught up'), findsOneWidget);
+        case '/analysis':
+          expect(find.text('Analysis'), findsOneWidget);
+        case '/insights':
+          expect(find.text('Not enough data for insights'), findsOneWidget);
+      }
+      appRouter.go('/tools');
+      await tester.pumpAndSettle();
+    }
+  });
 
   testWidgets('More opens More without optional Insights or Notifications', (
     tester,

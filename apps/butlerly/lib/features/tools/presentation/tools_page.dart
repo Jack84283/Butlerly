@@ -44,17 +44,19 @@ class ToolsPage extends StatelessWidget {
         builder: (context, constraints) {
           final columns = constraints.maxWidth >= 640 ? 2 : 1;
           final tools = _tools(context);
-          return GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: columns,
-              crossAxisSpacing: ButlerlySpacing.cardGap,
-              mainAxisSpacing: ButlerlySpacing.cardGap,
-              mainAxisExtent: 144,
-            ),
-            itemCount: tools.length,
-            itemBuilder: (context, index) => _ToolCard(tool: tools[index]),
+          final cardWidth = columns == 1
+              ? constraints.maxWidth
+              : (constraints.maxWidth - ButlerlySpacing.cardGap) / 2;
+          return Wrap(
+            spacing: ButlerlySpacing.cardGap,
+            runSpacing: ButlerlySpacing.cardGap,
+            children: [
+              for (final tool in tools)
+                SizedBox(
+                  width: cardWidth,
+                  child: _ToolCard(tool: tool),
+                ),
+            ],
           );
         },
       ),
@@ -89,11 +91,9 @@ class _ToolCard extends StatelessWidget {
             children: [
               Text(tool.title, style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: ButlerlySpacing.compact),
-              Expanded(
-                child: Text(
-                  tool.description,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+              Text(
+                tool.description,
+                style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
           ),

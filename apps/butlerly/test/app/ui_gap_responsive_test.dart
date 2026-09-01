@@ -8,6 +8,7 @@ import 'package:butlerly/features/foundation/presentation/search_page.dart';
 import 'package:butlerly/features/foundation/presentation/settings_page.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
+import 'package:butlerly/features/tools/presentation/tools_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -27,6 +28,7 @@ void main() {
     'Review': () => const ReviewPage(),
     'Search': () => const SearchPage(),
     'More': () => const SettingsPage(),
+    'Tools': () => const ToolsPage(),
     'Add': () => const AddPage(),
     'Payment Sources': () => const PaymentSourcesPage(),
     'Receipt Capture': () => ReceiptCapturePage(
