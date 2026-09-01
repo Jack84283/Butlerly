@@ -31,6 +31,9 @@ class AnalysisActivity extends StatelessWidget {
     required this.onSelectDate,
     required this.onTransactionTap,
     this.masterData,
+    required this.canPreviousMonth,
+    required this.canNextMonth,
+    required this.onMonthChanged,
   });
   final Future<ApplicationResult<AnalysisCalendarResult>> result;
   final String? selectedDate;
@@ -38,6 +41,9 @@ class AnalysisActivity extends StatelessWidget {
   final ValueChanged<String> onSelectDate;
   final ValueChanged<TransactionDto> onTransactionTap;
   final TransactionMasterData? masterData;
+  final bool canPreviousMonth;
+  final bool canNextMonth;
+  final void Function(int year, int month) onMonthChanged;
 
   @override
   Widget build(
@@ -63,9 +69,28 @@ class AnalysisActivity extends StatelessWidget {
       return ButlerlyCard(
         child: Column(
           children: [
-            Text(
-              materialLocalizations.formatMonthYear(first),
-              style: Theme.of(context).textTheme.titleMedium,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  tooltip: context.l10n.text('previousMonth'),
+                  onPressed: canPreviousMonth
+                      ? () => onMonthChanged(calendar.year, calendar.month - 1)
+                      : null,
+                  icon: const Icon(Icons.chevron_left),
+                ),
+                Text(
+                  materialLocalizations.formatMonthYear(first),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                IconButton(
+                  tooltip: context.l10n.text('nextMonth'),
+                  onPressed: canNextMonth
+                      ? () => onMonthChanged(calendar.year, calendar.month + 1)
+                      : null,
+                  icon: const Icon(Icons.chevron_right),
+                ),
+              ],
             ),
             const SizedBox(height: ButlerlySpacing.small),
             Row(

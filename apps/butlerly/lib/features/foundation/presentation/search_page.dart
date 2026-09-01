@@ -14,7 +14,10 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 
 class SearchPage extends StatefulWidget {
-  const SearchPage({super.key});
+  const SearchPage({this.initialFrom, this.initialTo, super.key});
+
+  final DateTime? initialFrom;
+  final DateTime? initialTo;
 
   @override
   State<SearchPage> createState() => _SearchPageState();
@@ -39,6 +42,14 @@ class _SearchPageState extends State<SearchPage>
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
       : null;
+
+  @override
+  void initState() {
+    super.initState();
+    _from = widget.initialFrom;
+    _to = widget.initialTo;
+    if (_from != null || _to != null) _results = _search();
+  }
 
   @override
   bool get wantKeepAlive => true;

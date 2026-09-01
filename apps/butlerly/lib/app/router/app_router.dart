@@ -119,7 +119,13 @@ final appRouter = GoRouter(
             state.uri.queryParameters['view'] == 'duplicates',
       ),
     ),
-    GoRoute(path: '/search', builder: (_, _) => const SearchPage()),
+    GoRoute(
+      path: '/search',
+      builder: (_, state) => SearchPage(
+        initialFrom: _queryDate(state.uri.queryParameters['from']),
+        initialTo: _queryDate(state.uri.queryParameters['to']),
+      ),
+    ),
     GoRoute(path: '/analysis', builder: (_, _) => const AnalysisPage()),
     GoRoute(path: '/insights', builder: (_, _) => const InsightsPage()),
     GoRoute(

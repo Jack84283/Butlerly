@@ -795,6 +795,23 @@ void main() {
       }
     },
   );
+
+  test('trend grouping emits ordered financial time buckets', () {
+    final results = const AnalysisRuleEngine().execute(
+      dataset: dataset(),
+      definitions: [
+        rule('ANL-R014', RuleOperation.sum, grouping: RuleGrouping.day),
+      ],
+    );
+    expect(results.map((result) => result.metric!.dimension), [
+      '2026-01-02:value',
+      '2026-01-03:value',
+    ]);
+    expect(results.map((result) => result.metric!.value), [
+      DecimalValue.parse('10'),
+      DecimalValue.parse('25'),
+    ]);
+  });
 }
 
 extension on AnalysisRuleDefinition {

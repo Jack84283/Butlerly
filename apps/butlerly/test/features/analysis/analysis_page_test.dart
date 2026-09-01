@@ -441,7 +441,7 @@ void main() {
     await tester.ensureVisible(find.text('View all categories'));
     expect(find.text('Other'), findsOneWidget);
     await tester.tap(find.text('View all categories'));
-    expect(requestedNavigation, '/transactions?from=2026-08-01&to=2026-08-31');
+    expect(requestedNavigation, '/search?from=2026-08-01&to=2026-08-31');
   });
 
   testWidgets(
