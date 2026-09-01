@@ -1,3 +1,4 @@
+import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -519,27 +520,12 @@ void main() {
       await tester.tap(find.byKey(ValueKey('analysis-calendar-$date2')));
       await tester.pumpAndSettle();
       expect(find.text('Groceries'), findsOneWidget);
-      expect(
-        find.byKey(
-          const ValueKey('analysis-calendar-transaction-transaction-1'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(
-          const ValueKey('analysis-calendar-transaction-transaction-4'),
-        ),
-        findsOneWidget,
-      );
+      expect(find.byType(ButlerlyRecordRow), findsNWidgets(4));
       // The row is the primary drill-down control; the former View
       // transactions link is intentionally absent.
-      await tester.tap(
-        find.byKey(
-          const ValueKey('analysis-calendar-transaction-transaction-1'),
-        ),
-      );
+      await tester.tap(find.text('Item 4'));
       expect(find.text('View transactions'), findsNothing);
-      expect(selectedTransaction?.id, 'transaction-1');
+      expect(selectedTransaction?.id, 'transaction-4');
       expect(requestedMonths, hasLength(1));
     },
   );
