@@ -75,7 +75,18 @@ class _TrendPainter extends CustomPainter {
         path.lineTo(x, y);
       }
     }
-    canvas.drawPath(path, paint);
+    if (values.length > 1) canvas.drawPath(path, paint);
+    final pointPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    for (var i = 0; i < values.length; i++) {
+      final x = values.length == 1
+          ? size.width / 2
+          : size.width * i / (values.length - 1);
+      final y =
+          size.height - (size.height * values[i]).clamp(8, size.height - 8);
+      canvas.drawCircle(Offset(x, y), 5, pointPaint);
+    }
   }
 
   @override

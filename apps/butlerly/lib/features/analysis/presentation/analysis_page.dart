@@ -58,6 +58,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
   AnalysisContext? _context;
   DateTimeRange? _customRange;
   Future<ApplicationResult<AnalysisCalendarResult>>? _calendar;
+  DateTime? _calendarMonth;
   String? _selectedDate;
   Future<ApplicationResult<List<TransactionDto>>>? _transactions;
   TransactionMasterData? _masterData;
@@ -133,32 +134,23 @@ class _AnalysisPageState extends State<AnalysisPage> {
   }
 
   Future<ApplicationResult<AnalysisCalendarResult>>? _loadCalendar(
-    AnalysisContext context,
-  ) {
-    if (widget.loadCalendar == null &&
-        context.period.startDate.substring(0, 7) !=
-            context.period.endDate.substring(0, 7)) {
-      return null;
-    }
-    final start = context.period.startDate == '2000-01-01'
-        ? DateTime(DateTime.now().year, DateTime.now().month)
-        : DateTime.parse(context.period.startDate);
+    AnalysisContext context, {
+    DateTime? month,
+  }) {
     final end = context.period.endDate == '2000-01-01'
-        ? DateTime(start.year, start.month + 1, 0)
+        ? DateTime(DateTime.now().year, DateTime.now().month)
         : DateTime.parse(context.period.endDate);
-    if (widget.loadCalendar == null &&
-        end.day != DateTime(start.year, start.month + 1, 0).day) {
-      return null;
-    }
+    final displayedMonth = month ?? _calendarMonth ?? end;
+    _calendarMonth ??= DateTime(displayedMonth.year, displayedMonth.month);
     if (widget.loadCalendar != null) {
-      return widget.loadCalendar!(start.year, start.month);
+      return widget.loadCalendar!(displayedMonth.year, displayedMonth.month);
     }
     final useCase = services.isRegistered<FinanceServices>()
         ? services<FinanceServices>().calculateAnalysisCalendar
         : null;
     return useCase?.call(
-      year: start.year,
-      month: start.month,
+      year: displayedMonth.year,
+      month: displayedMonth.month,
       datasetMode: context.datasetMode,
       currencyBasis: context.currencyBasis,
       baseCurrency: context.baseCurrency,
@@ -198,6 +190,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
       _selectedDate = null;
       _transactions = null;
       _calendar = null;
+      _calendarMonth = null;
       _result = _load(period);
     });
   }
@@ -216,6 +209,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
       _selectedDate = null;
       _transactions = null;
       _calendar = null;
+      _calendarMonth = null;
       _result = _load(_period);
     });
   }
@@ -224,6 +218,40 @@ class _AnalysisPageState extends State<AnalysisPage> {
     _selectedDate = date;
     _transactions = _loadTransactions(date);
   });
+
+  void _selectCalendarMonth(int year, int month) {
+    final context = _context;
+    if (context == null) return;
+    final target = DateTime(year, month);
+    final start = DateTime.parse(context.period.startDate);
+    final end = DateTime.parse(context.period.endDate);
+    final firstMonth = DateTime(start.year, start.month);
+    final lastMonth = DateTime(end.year, end.month);
+    if (target.isBefore(firstMonth) || target.isAfter(lastMonth)) return;
+    setState(() {
+      _calendarMonth = target;
+      _selectedDate = null;
+      _transactions = null;
+      _calendar = _loadCalendar(context, month: target);
+    });
+  }
+
+  bool _canChangeCalendarMonth(
+    AnalysisContext context, {
+    required bool previous,
+  }) {
+    final displayed = _calendarMonth;
+    if (displayed == null) return false;
+    final target = DateTime(
+      displayed.year,
+      displayed.month + (previous ? -1 : 1),
+    );
+    final start = DateTime.parse(context.period.startDate);
+    final end = DateTime.parse(context.period.endDate);
+    final firstMonth = DateTime(start.year, start.month);
+    final lastMonth = DateTime(end.year, end.month);
+    return !target.isBefore(firstMonth) && !target.isAfter(lastMonth);
+  }
 
   Future<void> _openTransactionDetail(TransactionDto transaction) async {
     if (widget.onTransactionRequested case final callback?) {
@@ -299,6 +327,13 @@ class _AnalysisPageState extends State<AnalysisPage> {
             calendar: _calendar,
             selectedDate: _selectedDate,
             transactions: _transactions,
+            canPreviousMonth: analysisContext == null
+                ? false
+                : _canChangeCalendarMonth(analysisContext, previous: true),
+            canNextMonth: analysisContext == null
+                ? false
+                : _canChangeCalendarMonth(analysisContext, previous: false),
+            onMonthChanged: _selectCalendarMonth,
             onTransactionRequested:
                 widget.onTransactionRequested ?? _openTransactionDetail,
             onPeriodChanged: _selectPeriod,
@@ -329,6 +364,9 @@ class _AnalysisContent extends StatelessWidget {
     required this.transactions,
     required this.onPeriodChanged,
     required this.onSelectDate,
+    required this.canPreviousMonth,
+    required this.canNextMonth,
+    required this.onMonthChanged,
   });
   final List<RuleExecutionResult> results;
   final AnalysisContext? analysisContext;
@@ -341,6 +379,9 @@ class _AnalysisContent extends StatelessWidget {
   final Future<ApplicationResult<List<TransactionDto>>>? transactions;
   final ValueChanged<String> onPeriodChanged;
   final ValueChanged<String> onSelectDate;
+  final bool canPreviousMonth;
+  final bool canNextMonth;
+  final void Function(int year, int month) onMonthChanged;
   @override
   Widget build(BuildContext context) {
     final model = AnalysisModel.fromResults(results);
@@ -370,8 +411,7 @@ class _AnalysisContent extends StatelessWidget {
                   category: analysisCategoryId(metric),
                 ),
           onViewAll: analysisContext != null && model.categories.length > 5
-              ? () =>
-                    _openTransactions(context, period: analysisContext!.period)
+              ? () => _openSearch(context, analysisContext!.period)
               : null,
         ),
         _SectionHeader(title: context.l10n.text('financialCalendar')),
@@ -382,6 +422,9 @@ class _AnalysisContent extends StatelessWidget {
                 selectedDate: selectedDate,
                 transactions: transactions,
                 onSelectDate: onSelectDate,
+                canPreviousMonth: canPreviousMonth,
+                canNextMonth: canNextMonth,
+                onMonthChanged: onMonthChanged,
                 onTransactionTap: onTransactionRequested,
                 masterData: masterData,
               ),
@@ -423,6 +466,16 @@ class _AnalysisContent extends StatelessWidget {
     _navigate(
       context,
       Uri(path: '/transactions', queryParameters: query).toString(),
+    );
+  }
+
+  void _openSearch(BuildContext context, AnalysisPeriod period) {
+    _navigate(
+      context,
+      Uri(
+        path: '/search',
+        queryParameters: {'from': period.startDate, 'to': period.endDate},
+      ).toString(),
     );
   }
 }
