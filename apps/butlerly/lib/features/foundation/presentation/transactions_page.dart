@@ -157,13 +157,6 @@ class _TransactionsPageState extends State<TransactionsPage> {
             .toList(growable: false);
         return ButlerlyPage(
           title: context.l10n.text('transactions'),
-          actions: [
-            IconButton(
-              tooltip: context.l10n.text('search'),
-              onPressed: () => GoRouter.of(context).go('/search'),
-              icon: const Icon(Icons.search_rounded),
-            ),
-          ],
           children: [
             SizedBox(
               height: ButlerlySize.preferredTarget,
