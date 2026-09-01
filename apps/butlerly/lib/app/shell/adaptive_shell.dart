@@ -15,13 +15,26 @@ class AdaptiveShell extends StatefulWidget {
 
 class _AdaptiveShellState extends State<AdaptiveShell> {
   int _previousPrimaryIndex = 0;
+  int _lastPrimaryIndex = 0;
 
   StatefulNavigationShell get navigationShell => widget.navigationShell;
+
+  @override
+  void didUpdateWidget(covariant AdaptiveShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final current = navigationShell.currentIndex;
+    if (current == _lastPrimaryIndex) return;
+    if (current == 1 && _lastPrimaryIndex != 1) {
+      _previousPrimaryIndex = _lastPrimaryIndex;
+    }
+    _lastPrimaryIndex = current;
+  }
 
   void _selectDestination(int index) {
     final current = navigationShell.currentIndex;
     if (index != current) {
       _previousPrimaryIndex = current;
+      _lastPrimaryIndex = index;
     }
     navigationShell.goBranch(
       index,
@@ -94,11 +107,11 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
                   : destination.icon,
               const SizedBox(height: 2),
               if (index == 1)
-                Text.rich(
-                  TextSpan(text: destination.label),
+                RichText(
+                  text: TextSpan(text: destination.label, style: labelStyle),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: labelStyle,
+                  textScaler: MediaQuery.textScalerOf(context),
                 )
               else
                 Text(
