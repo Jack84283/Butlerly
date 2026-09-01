@@ -65,6 +65,9 @@ void configureDependencies({
       analysisFindings: SqliteAnalysisFindingRepository(
         database.persistenceDatabase,
       ),
+      analysisResults: SqliteAnalysisRuleResultRepository(
+        database.persistenceDatabase,
+      ),
       statements: statements,
       duplicateGroups: duplicateGroups,
     );

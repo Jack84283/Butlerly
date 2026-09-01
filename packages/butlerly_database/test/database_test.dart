@@ -102,6 +102,9 @@ void main() {
     final migration = await File(
       'database/migrations/v1_to_v2.sql',
     ).readAsString();
+    final resultsMigration = await File(
+      'database/migrations/v2_to_v3.sql',
+    ).readAsString();
     final legacy = current.replaceFirst(', status_before_skip TEXT', '');
     final legacyDb = await databaseFactoryFfi.openDatabase(
       path,
@@ -127,10 +130,10 @@ void main() {
       factory: databaseFactoryFfi,
       path: path,
       schemaSql: current,
-      migrations: {2: migration},
+      migrations: {2: migration, 3: resultsMigration},
     );
     await database.open();
-    expect(await database.connection.getVersion(), 2);
+    expect(await database.connection.getVersion(), 3);
     expect(
       (await database.connection.rawQuery(
         'PRAGMA table_info(statement_rows)',

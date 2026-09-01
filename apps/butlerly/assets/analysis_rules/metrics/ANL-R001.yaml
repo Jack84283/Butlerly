@@ -13,3 +13,6 @@ measure:
   currencyBasis: baseCurrency
 filters:
   direction: expense
+result:
+  persistence: materialized
+  refresh: onInvalidation

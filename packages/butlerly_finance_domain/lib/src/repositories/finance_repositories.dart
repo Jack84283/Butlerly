@@ -92,6 +92,29 @@ abstract interface class AnalysisFindingRepository {
   );
 }
 
+abstract interface class AnalysisRuleResultRepository {
+  Future<List<AnalysisRuleResult>> findAll({
+    required AnalysisRuleDefinition rule,
+    required AnalysisContext context,
+    int? sourceRevision,
+  });
+
+  Future<AnalysisRuleResult?> find({
+    required AnalysisRuleDefinition rule,
+    required AnalysisContext context,
+    String? dimension,
+    int? sourceRevision,
+  });
+
+  Future<void> save(AnalysisRuleResult result);
+
+  Future<void> markStale({
+    String? periodStart,
+    String? periodEnd,
+    Set<String>? ruleIds,
+  });
+}
+
 final class TransactionRepositoryQuery {
   const TransactionRepositoryQuery({
     this.text,

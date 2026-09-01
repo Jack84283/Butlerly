@@ -81,12 +81,36 @@ final class InstallBuiltInRules {
       final missing = definition.dependencies
           .where((value) => !ids.contains(value.ruleId.value))
           .toList(growable: false);
-      if (missing.isNotEmpty || cyclic.contains(definition.identity.value)) {
+      final versions = <String, RuleVersion>{
+        for (final value in parsedDefinitions)
+          value.identity.value: value.version,
+      };
+      final incompatible = definition.dependencies
+          .where(
+            (value) =>
+                value.minimumVersion != null &&
+                versions[value.ruleId.value] != null &&
+                _compareVersions(
+                      versions[value.ruleId.value]!,
+                      value.minimumVersion!,
+                    ) <
+                    0,
+          )
+          .toList(growable: false);
+      if (missing.isNotEmpty ||
+          incompatible.isNotEmpty ||
+          cyclic.contains(definition.identity.value)) {
         diagnostics[definition.identity.value] = [
           RuleDiagnostic(
-            code: missing.isNotEmpty ? 'missingDependency' : 'dependencyCycle',
+            code: missing.isNotEmpty
+                ? 'missingDependency'
+                : incompatible.isNotEmpty
+                ? 'dependencyVersion'
+                : 'dependencyCycle',
             message: missing.isNotEmpty
                 ? 'Rule depends on an unavailable definition: ${missing.first.ruleId.value}.'
+                : incompatible.isNotEmpty
+                ? 'Rule requires ${incompatible.first.ruleId.value}@${incompatible.first.minimumVersion!.value}.'
                 : 'Rule participates in a dependency cycle.',
           ),
         ];
@@ -113,4 +137,14 @@ final class InstallBuiltInRules {
       diagnostics: diagnostics,
     );
   }
+}
+
+int _compareVersions(RuleVersion left, RuleVersion right) {
+  final a = left.value.split('.').map(int.parse).toList(growable: false);
+  final b = right.value.split('.').map(int.parse).toList(growable: false);
+  for (var i = 0; i < 3; i++) {
+    final comparison = a[i].compareTo(b[i]);
+    if (comparison != 0) return comparison;
+  }
+  return 0;
 }

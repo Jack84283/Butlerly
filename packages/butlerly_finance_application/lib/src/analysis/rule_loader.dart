@@ -136,6 +136,7 @@ final class RuleDefinitionValidator {
       'filters',
       'surface',
       'measures',
+      'result',
     };
     for (final key in values.keys) {
       if (!supported.contains(key)) {
@@ -294,12 +295,38 @@ final class RuleDefinitionValidator {
       final rawDependencies = values['dependencies'];
       if (rawDependencies is List) {
         for (final value in rawDependencies) {
-          dependencies.add(
-            RuleDependency(ruleId: RuleIdentity(value.toString())),
-          );
+          if (value is Map) {
+            dependencies.add(
+              RuleDependency(
+                ruleId: RuleIdentity(value['ruleId'].toString()),
+                minimumVersion: value['minimumVersion'] == null
+                    ? null
+                    : RuleVersion(value['minimumVersion'].toString()),
+              ),
+            );
+          } else {
+            dependencies.add(
+              RuleDependency(ruleId: RuleIdentity(value.toString())),
+            );
+          }
         }
       }
+      final result = values['result'];
+      final resultMap = result is Map ? result : const <Object?, Object?>{};
+      final persistence = ResultPersistencePolicy.values.byName(
+        resultMap['persistence']?.toString() ??
+            (typeValue == AnalysisRuleType.insight ? 'finding' : 'transient'),
+      );
+      final refresh = RefreshPolicy.values.byName(
+        resultMap['refresh']?.toString() ?? 'onInvalidation',
+      );
       final condition = _condition(values['condition']);
+      if (typeValue == AnalysisRuleType.insight &&
+          condition.operator == 'none') {
+        throw const FormatException(
+          'Insight rules require a meaningful condition.',
+        );
+      }
       definition = AnalysisRuleDefinition(
         identity: RuleIdentity(id ?? ''),
         version: RuleVersion(version ?? ''),
@@ -321,6 +348,8 @@ final class RuleDefinitionValidator {
         severity: severity,
         dependencies: dependencies,
         filters: filters,
+        resultPersistence: persistence,
+        refreshPolicy: refresh,
         definitionHash: hash,
       );
     } on Object catch (error) {

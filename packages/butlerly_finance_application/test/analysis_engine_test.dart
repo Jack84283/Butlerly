@@ -115,10 +115,11 @@ void main() {
   test(
     'produces structured insight change and leaves zero baseline percentage undefined',
     () {
-      final insight = rule(
-        'ANL-R020',
-        RuleOperation.sum,
-      ).copyWithBaseline(RuleBaseline.previousEquivalentPeriod);
+      final insight = rule('ANL-R020', RuleOperation.sum)
+          .copyWithBaseline(RuleBaseline.previousEquivalentPeriod)
+          .copyWithCondition(
+            RuleCondition(operator: 'gte', value: DecimalValue.parse('0')),
+          );
       final result = const AnalysisRuleEngine().execute(
         dataset: AnalysisDataset(
           context: context,
@@ -164,7 +165,10 @@ void main() {
       final insight = periodRule
           .copyWithPeriod('selected_period')
           .copyWithType(AnalysisRuleType.insight)
-          .copyWithBaseline(RuleBaseline.previousEquivalentPeriod);
+          .copyWithBaseline(RuleBaseline.previousEquivalentPeriod)
+          .copyWithCondition(
+            RuleCondition(operator: 'gt', value: DecimalValue.parse('0')),
+          );
       final finding = const AnalysisRuleEngine()
           .execute(
             dataset: AnalysisDataset(
@@ -212,6 +216,81 @@ void main() {
       isNotNull,
     );
   });
+
+  test('isolates dependencies that do not meet their minimum version', () {
+    final dependency = rule('ANL-R001', RuleOperation.sum);
+    final dependent = rule(
+      'ANL-R003',
+      RuleOperation.difference,
+      dependencies: [
+        RuleDependency(
+          ruleId: RuleIdentity('ANL-R001'),
+          minimumVersion: RuleVersion('2.0.0'),
+        ),
+      ],
+    );
+    final results = const AnalysisRuleEngine().execute(
+      dataset: dataset(),
+      definitions: [dependent, dependency],
+    );
+    expect(
+      results
+          .singleWhere((value) => value.rule.identity.value == 'ANL-R003')
+          .failure
+          ?.code,
+      'dependencyVersion',
+    );
+  });
+
+  test('does not emit an insight without a meaningful condition', () {
+    final unconditional = rule(
+      'ANL-R020',
+      RuleOperation.sum,
+    ).copyWith(type: AnalysisRuleType.insight);
+    final result = const AnalysisRuleEngine().execute(
+      dataset: dataset(),
+      definitions: [unconditional],
+    );
+    expect(result.single.finding, isNull);
+  });
+
+  test(
+    'uses a cached metric as a declared dependency without recomputing it',
+    () {
+      final cached = const AnalysisRuleEngine()
+          .execute(
+            dataset: dataset(),
+            definitions: [rule('ANL-R001', RuleOperation.sum)],
+          )
+          .single;
+      final dependent = rule(
+        'ANL-R003',
+        RuleOperation.difference,
+        dependencies: [
+          RuleDependency(ruleId: RuleIdentity('ANL-R001')),
+          RuleDependency(ruleId: RuleIdentity('ANL-R002')),
+        ],
+      );
+      final income = rule('ANL-R002', RuleOperation.sum);
+      final results = const AnalysisRuleEngine().execute(
+        dataset: dataset(),
+        definitions: [dependent, income, cached.rule],
+        availableResults: {
+          'ANL-R001': [cached],
+        },
+      );
+      expect(
+        results.where((value) => value.rule.identity.value == 'ANL-R001'),
+        hasLength(1),
+      );
+      expect(
+        results
+            .singleWhere((value) => value.rule.identity.value == 'ANL-R003')
+            .failure,
+        isNull,
+      );
+    },
+  );
 
   test('count measures are dimensionless and retain drill-down evidence', () {
     final count = rule('ANL-R004', RuleOperation.count);
@@ -524,6 +603,27 @@ extension on AnalysisRuleDefinition {
       );
 
   AnalysisRuleDefinition copyWithBaseline(RuleBaseline baseline) =>
+      AnalysisRuleDefinition(
+        identity: identity,
+        version: version,
+        schemaVersion: schemaVersion,
+        type: type,
+        nameKey: nameKey,
+        descriptionKey: descriptionKey,
+        enabled: enabled,
+        status: status,
+        period: period,
+        measure: measure,
+        grouping: grouping,
+        baseline: baseline,
+        condition: condition,
+        severity: severity,
+        dependencies: dependencies,
+        filters: filters,
+        definitionHash: definitionHash,
+      );
+
+  AnalysisRuleDefinition copyWithCondition(RuleCondition condition) =>
       AnalysisRuleDefinition(
         identity: identity,
         version: version,
