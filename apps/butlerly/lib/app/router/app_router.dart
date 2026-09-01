@@ -76,6 +76,16 @@ final appRouter = GoRouter(
               pageBuilder: (context, state) =>
                   const NoTransitionPage(child: SearchPage()),
             ),
+            GoRoute(
+              path: '/analysis',
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: AnalysisPage()),
+            ),
+            GoRoute(
+              path: '/insights',
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: InsightsPage()),
+            ),
           ],
         ),
         StatefulShellBranch(
@@ -130,8 +140,6 @@ final appRouter = GoRouter(
       path: '/notifications',
       builder: (_, _) => const NotificationsPage(),
     ),
-    GoRoute(path: '/analysis', builder: (_, _) => const AnalysisPage()),
-    GoRoute(path: '/insights', builder: (_, _) => const InsightsPage()),
     GoRoute(
       path: '/assistant',
       builder: (_, _) => const AssistantUnavailablePage(),
