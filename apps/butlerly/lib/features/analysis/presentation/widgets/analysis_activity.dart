@@ -2,7 +2,6 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_day_summary.dart';
-import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -30,14 +29,12 @@ class AnalysisActivity extends StatelessWidget {
     required this.transactions,
     required this.onSelectDate,
     required this.onTransactionTap,
-    this.masterData,
   });
   final Future<ApplicationResult<AnalysisCalendarResult>> result;
   final String? selectedDate;
   final Future<ApplicationResult<List<TransactionDto>>>? transactions;
   final ValueChanged<String> onSelectDate;
   final ValueChanged<TransactionDto> onTransactionTap;
-  final TransactionMasterData? masterData;
 
   @override
   Widget build(
@@ -153,7 +150,6 @@ class AnalysisActivity extends StatelessWidget {
                     .firstOrNull
                     ?.expenseTotal,
                 onTransactionTap: onTransactionTap,
-                masterData: masterData,
               ),
           ],
         ),

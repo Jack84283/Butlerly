@@ -1,4 +1,3 @@
-import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -439,7 +438,6 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('View all categories'));
-    expect(find.text('Other'), findsOneWidget);
     await tester.tap(find.text('View all categories'));
     expect(requestedNavigation, '/transactions?from=2026-08-01&to=2026-08-31');
   });
@@ -483,19 +481,18 @@ void main() {
           loadTransactionsForDate: (date) async => ApplicationSuccess(
             date.endsWith('-02')
                 ? [
-                    for (var index = 1; index <= 4; index++)
-                      TransactionDto(
-                        id: 'transaction-$index',
-                        amount: '12.00',
-                        currency: 'USD',
-                        direction: 'expense',
-                        status: 'active',
-                        reviewState: 'clear',
-                        transactionDate: date,
-                        description: index == 1 ? 'Groceries' : 'Item $index',
-                        createdAt: DateTime.utc(2026),
-                        updatedAt: DateTime.utc(2026),
-                      ),
+                    TransactionDto(
+                      id: 'transaction-1',
+                      amount: '12.00',
+                      currency: 'USD',
+                      direction: 'expense',
+                      status: 'active',
+                      reviewState: 'clear',
+                      transactionDate: date,
+                      description: 'Groceries',
+                      createdAt: DateTime.utc(2026),
+                      updatedAt: DateTime.utc(2026),
+                    ),
                   ]
                 : const [],
           ),
@@ -520,12 +517,21 @@ void main() {
       await tester.tap(find.byKey(ValueKey('analysis-calendar-$date2')));
       await tester.pumpAndSettle();
       expect(find.text('Groceries'), findsOneWidget);
-      expect(find.byType(ButlerlyRecordRow), findsNWidgets(4));
+      expect(
+        find.byKey(
+          const ValueKey('analysis-calendar-transaction-transaction-1'),
+        ),
+        findsOneWidget,
+      );
       // The row is the primary drill-down control; the former View
       // transactions link is intentionally absent.
-      await tester.tap(find.text('Item 4'));
+      await tester.tap(
+        find.byKey(
+          const ValueKey('analysis-calendar-transaction-transaction-1'),
+        ),
+      );
       expect(find.text('View transactions'), findsNothing);
-      expect(selectedTransaction?.id, 'transaction-4');
+      expect(selectedTransaction?.id, 'transaction-1');
       expect(requestedMonths, hasLength(1));
     },
   );

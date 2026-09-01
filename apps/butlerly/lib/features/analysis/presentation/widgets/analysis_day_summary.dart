@@ -1,7 +1,6 @@
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
-import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
-import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -15,13 +14,11 @@ class AnalysisDaySummary extends StatelessWidget {
     required this.result,
     required this.expense,
     required this.onTransactionTap,
-    this.masterData,
   });
   final String date;
   final Future<ApplicationResult<List<TransactionDto>>>? result;
   final Money? expense;
   final ValueChanged<TransactionDto> onTransactionTap;
-  final TransactionMasterData? masterData;
 
   @override
   Widget build(
@@ -45,12 +42,29 @@ class AnalysisDaySummary extends StatelessWidget {
               '$date · ${localizedCount(context, value.value.length.toString())} ${context.l10n.text('transactions')}${expense == null ? '' : ' · ${analysisMoneyValue(context, expense!)} ${context.l10n.text('spent')}'}',
             ),
             if (value.value.isEmpty) Text(context.l10n.text('noTransactions')),
-            if (value.value.isNotEmpty)
-              TransactionRecordList(
-                transactions: value.value,
-                masterData: masterData,
-                onTap: onTransactionTap,
-                navigates: true,
+            for (final transaction in value.value.take(3))
+              ListTile(
+                key: ValueKey(
+                  'analysis-calendar-transaction-${transaction.id}',
+                ),
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                onTap: () => onTransactionTap(transaction),
+                title: Text(
+                  transaction.description?.trim().isNotEmpty == true
+                      ? transaction.description!
+                      : context.l10n.text('untitledTransaction'),
+                ),
+                subtitle: Text(
+                  transactionDateLabel(
+                    transaction,
+                    pendingLabel: context.l10n.text('pending'),
+                    locale: Localizations.localeOf(context).toLanguageTag(),
+                  ),
+                ),
+                trailing: Text(
+                  '${localizedTransactionAmount(context, transaction.amount)} ${transaction.currency}',
+                ),
               ),
           ],
         ),
