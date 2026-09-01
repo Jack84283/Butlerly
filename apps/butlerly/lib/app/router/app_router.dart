@@ -39,9 +39,9 @@ final appRouter = GoRouter(
     GoRoute(path: '/launch', builder: (_, _) => const LaunchPage()),
     GoRoute(path: '/welcome', builder: (_, _) => const WelcomePage()),
 
-    // Primary app shell. Every section-level destination below keeps the
-    // footer/navigation rail visible. Detail and workflow routes stay outside
-    // this StatefulShellRoute.
+    // Primary app shell. Only the five primary destinations keep the
+    // footer/navigation rail visible. Tools destinations and focused workflows
+    // are secondary routes outside this StatefulShellRoute.
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) => AdaptiveShell(
         navigationShell: navigationShell,
@@ -86,31 +86,6 @@ final appRouter = GoRouter(
               pageBuilder: (context, state) =>
                   _primaryPage('tools', const ToolsPage()),
             ),
-            GoRoute(
-              path: '/review',
-              pageBuilder: (context, state) => _primaryPage(
-                'review',
-                ReviewPage(
-                  showPossibleDuplicates:
-                      state.uri.queryParameters['view'] == 'duplicates',
-                ),
-              ),
-            ),
-            GoRoute(
-              path: '/search',
-              pageBuilder: (context, state) =>
-                  _primaryPage('search', const SearchPage()),
-            ),
-            GoRoute(
-              path: '/analysis',
-              pageBuilder: (context, state) =>
-                  _primaryPage('analysis', const AnalysisPage()),
-            ),
-            GoRoute(
-              path: '/insights',
-              pageBuilder: (context, state) =>
-                  _primaryPage('insights', const InsightsPage()),
-            ),
           ],
         ),
         StatefulShellBranch(
@@ -128,6 +103,16 @@ final appRouter = GoRouter(
 
     // Secondary navigation. These pages intentionally render outside the
     // primary shell and therefore never show the footer/navigation rail.
+    GoRoute(
+      path: '/review',
+      builder: (context, state) => ReviewPage(
+        showPossibleDuplicates:
+            state.uri.queryParameters['view'] == 'duplicates',
+      ),
+    ),
+    GoRoute(path: '/search', builder: (_, _) => const SearchPage()),
+    GoRoute(path: '/analysis', builder: (_, _) => const AnalysisPage()),
+    GoRoute(path: '/insights', builder: (_, _) => const InsightsPage()),
     GoRoute(
       path: '/transactions/add',
       builder: (context, state) => services.isRegistered<FinanceServices>()
