@@ -976,10 +976,16 @@ void main() {
       transaction('t1', '2026-01-01', '20'),
       transaction('t2', '2026-01-02', '15'),
     ]);
+    final afterEdit = execute([
+      transaction('t1', '2026-01-01', '20'),
+      transaction('t2', '2026-01-02', '21'),
+    ]);
     final afterDelete = execute([transaction('t1', '2026-01-01', '20')]);
     expect(before, hasLength(3));
     expect(afterAdd, hasLength(3));
     expect(afterAdd[1].metric!.value, DecimalValue.parse('15'));
+    expect(afterEdit, hasLength(3));
+    expect(afterEdit[1].metric!.value, DecimalValue.parse('21'));
     expect(afterDelete, hasLength(3));
     expect(afterDelete[1].metric!.value, DecimalValue.parse('0'));
   });
