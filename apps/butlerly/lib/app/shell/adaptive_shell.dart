@@ -4,15 +4,36 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-class AdaptiveShell extends StatelessWidget {
+class AdaptiveShell extends StatefulWidget {
   const AdaptiveShell({required this.navigationShell, super.key});
 
   final StatefulNavigationShell navigationShell;
 
-  void _selectDestination(int index) => navigationShell.goBranch(
-    index,
-    initialLocation: index == navigationShell.currentIndex,
-  );
+  @override
+  State<AdaptiveShell> createState() => _AdaptiveShellState();
+}
+
+class _AdaptiveShellState extends State<AdaptiveShell> {
+  int _previousPrimaryIndex = 0;
+
+  StatefulNavigationShell get navigationShell => widget.navigationShell;
+
+  void _selectDestination(int index) {
+    final current = navigationShell.currentIndex;
+    if (index != current) {
+      _previousPrimaryIndex = current;
+    }
+    navigationShell.goBranch(
+      index,
+      initialLocation: index == current,
+    );
+  }
+
+  Future<bool> _handleSystemBack() async {
+    if (navigationShell.currentIndex != 2) return true;
+    navigationShell.goBranch(_previousPrimaryIndex);
+    return false;
+  }
 
   List<NavigationDestination> _destinations(BuildContext context) => [
     NavigationDestination(
@@ -51,7 +72,9 @@ class AdaptiveShell extends StatelessWidget {
     return Semantics(
       button: true,
       selected: selected,
-      label: destination.label,
+      label: index == 2
+          ? context.l10n.text('addTransactionAction')
+          : destination.label,
       child: InkWell(
         onTap: () => _selectDestination(index),
         child: SizedBox(
@@ -103,56 +126,60 @@ class AdaptiveShell extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      if (constraints.maxWidth < ButlerlySize.phoneBreakpoint) {
-        return Scaffold(
-          body: SafeArea(bottom: false, child: navigationShell),
-          bottomNavigationBar: _phoneNavigation(context),
-        );
-      }
+  Widget build(BuildContext context) => WillPopScope(
+    onWillPop: _handleSystemBack,
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < ButlerlySize.phoneBreakpoint) {
+          return Scaffold(
+            body: SafeArea(bottom: false, child: navigationShell),
+            bottomNavigationBar: _phoneNavigation(context),
+          );
+        }
 
-      final extended = constraints.maxWidth >= ButlerlySize.desktopBreakpoint;
-      final destinations = _destinations(context);
-      return Scaffold(
-        body: SafeArea(
-          child: Row(
-            children: [
-              NavigationRail(
-                extended: extended,
-                selectedIndex: navigationShell.currentIndex,
-                onDestinationSelected: _selectDestination,
-                leading: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: ButlerlySpacing.standard,
+        final extended =
+            constraints.maxWidth >= ButlerlySize.desktopBreakpoint;
+        final destinations = _destinations(context);
+        return Scaffold(
+          body: SafeArea(
+            child: Row(
+              children: [
+                NavigationRail(
+                  extended: extended,
+                  selectedIndex: navigationShell.currentIndex,
+                  onDestinationSelected: _selectDestination,
+                  leading: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: ButlerlySpacing.standard,
+                    ),
+                    child: extended
+                        ? Text(
+                            context.l10n.text('appName'),
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(color: context.colors.brandStrong),
+                          )
+                        : Icon(
+                            Icons.shield_outlined,
+                            color: context.colors.brandStrong,
+                          ),
                   ),
-                  child: extended
-                      ? Text(
-                          context.l10n.text('appName'),
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(color: context.colors.brandStrong),
-                        )
-                      : Icon(
-                          Icons.shield_outlined,
-                          color: context.colors.brandStrong,
+                  destinations: destinations
+                      .map(
+                        (destination) => NavigationRailDestination(
+                          icon: destination.icon,
+                          selectedIcon: destination.selectedIcon,
+                          label: Text(destination.label),
                         ),
+                      )
+                      .toList(growable: false),
                 ),
-                destinations: destinations
-                    .map(
-                      (destination) => NavigationRailDestination(
-                        icon: destination.icon,
-                        selectedIcon: destination.selectedIcon,
-                        label: Text(destination.label),
-                      ),
-                    )
-                    .toList(growable: false),
-              ),
-              const VerticalDivider(width: 1),
-              Expanded(child: navigationShell),
-            ],
+                const VerticalDivider(width: 1),
+                Expanded(child: navigationShell),
+              ],
+            ),
           ),
-        ),
-      );
-    },
+        );
+      },
+    ),
   );
 }
