@@ -19,53 +19,78 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+final _primaryShellVisibility = PrimaryShellVisibilityController();
+
+PrimaryShellNavigatorObserver _primaryObserver(int branchIndex) =>
+    PrimaryShellNavigatorObserver(
+      branchIndex: branchIndex,
+      controller: _primaryShellVisibility,
+    );
+
+NoTransitionPage<void> _primaryPage(String name, Widget child) =>
+    NoTransitionPage<void>(
+      name: '$primaryShellRouteNamePrefix$name',
+      child: child,
+    );
+
 final appRouter = GoRouter(
   initialLocation: '/',
   routes: [
     GoRoute(path: '/launch', builder: (_, _) => const LaunchPage()),
     GoRoute(path: '/welcome', builder: (_, _) => const WelcomePage()),
+
+    // Primary app shell. Every section-level destination below keeps the
+    // footer/navigation rail visible. Detail and workflow routes stay outside
+    // this StatefulShellRoute.
     StatefulShellRoute.indexedStack(
-      builder: (context, state, navigationShell) =>
-          AdaptiveShell(navigationShell: navigationShell),
+      builder: (context, state, navigationShell) => AdaptiveShell(
+        navigationShell: navigationShell,
+        visibilityController: _primaryShellVisibility,
+      ),
       branches: [
         StatefulShellBranch(
+          observers: [_primaryObserver(0)],
           routes: [
             GoRoute(
               path: '/',
               pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: HomePage()),
+                  _primaryPage('home', const HomePage()),
             ),
           ],
         ),
         StatefulShellBranch(
+          observers: [_primaryObserver(1)],
           routes: [
             GoRoute(
               path: '/add',
               pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: AddPage()),
+                  _primaryPage('add', const AddPage()),
             ),
           ],
         ),
         StatefulShellBranch(
+          observers: [_primaryObserver(2)],
           routes: [
             GoRoute(
               path: '/transactions',
               pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: TransactionsPage()),
+                  _primaryPage('transactions', const TransactionsPage()),
             ),
           ],
         ),
         StatefulShellBranch(
+          observers: [_primaryObserver(3)],
           routes: [
             GoRoute(
               path: '/tools',
               pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: ToolsPage()),
+                  _primaryPage('tools', const ToolsPage()),
             ),
             GoRoute(
               path: '/review',
-              pageBuilder: (context, state) => NoTransitionPage(
-                child: ReviewPage(
+              pageBuilder: (context, state) => _primaryPage(
+                'review',
+                ReviewPage(
                   showPossibleDuplicates:
                       state.uri.queryParameters['view'] == 'duplicates',
                 ),
@@ -74,31 +99,35 @@ final appRouter = GoRouter(
             GoRoute(
               path: '/search',
               pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: SearchPage()),
+                  _primaryPage('search', const SearchPage()),
             ),
             GoRoute(
               path: '/analysis',
               pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: AnalysisPage()),
+                  _primaryPage('analysis', const AnalysisPage()),
             ),
             GoRoute(
               path: '/insights',
               pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: InsightsPage()),
+                  _primaryPage('insights', const InsightsPage()),
             ),
           ],
         ),
         StatefulShellBranch(
+          observers: [_primaryObserver(4)],
           routes: [
             GoRoute(
               path: '/settings',
               pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: SettingsPage()),
+                  _primaryPage('more', const SettingsPage()),
             ),
           ],
         ),
       ],
     ),
+
+    // Secondary navigation. These pages intentionally render outside the
+    // primary shell and therefore never show the footer/navigation rail.
     GoRoute(
       path: '/transactions/add',
       builder: (context, state) => services.isRegistered<FinanceServices>()
