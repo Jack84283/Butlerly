@@ -14,6 +14,7 @@ import 'package:butlerly/features/foundation/presentation/search_page.dart';
 import 'package:butlerly/features/foundation/presentation/settings_page.dart';
 import 'package:butlerly/features/foundation/presentation/statement_capture_page.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
+import 'package:butlerly/features/tools/presentation/tools_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -48,6 +49,11 @@ final appRouter = GoRouter(
         StatefulShellBranch(
           routes: [
             GoRoute(
+              path: '/tools',
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: ToolsPage()),
+            ),
+            GoRoute(
               path: '/review',
               pageBuilder: (context, state) => NoTransitionPage(
                 child: ReviewPage(
@@ -56,10 +62,6 @@ final appRouter = GoRouter(
                 ),
               ),
             ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
             GoRoute(
               path: '/search',
               pageBuilder: (context, state) =>
