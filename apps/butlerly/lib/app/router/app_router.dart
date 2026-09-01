@@ -53,6 +53,20 @@ final appRouter = GoRouter(
               pageBuilder: (context, state) =>
                   const NoTransitionPage(child: ToolsPage()),
             ),
+            GoRoute(
+              path: '/review',
+              pageBuilder: (context, state) => NoTransitionPage(
+                child: ReviewPage(
+                  showPossibleDuplicates:
+                      state.uri.queryParameters['view'] == 'duplicates',
+                ),
+              ),
+            ),
+            GoRoute(
+              path: '/search',
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: SearchPage()),
+            ),
           ],
         ),
         StatefulShellBranch(
@@ -79,14 +93,6 @@ final appRouter = GoRouter(
             ),
     ),
     GoRoute(path: '/add', builder: (_, _) => const AddPage()),
-    GoRoute(
-      path: '/review',
-      builder: (context, state) => ReviewPage(
-        showPossibleDuplicates:
-            state.uri.queryParameters['view'] == 'duplicates',
-      ),
-    ),
-    GoRoute(path: '/search', builder: (_, _) => const SearchPage()),
     GoRoute(
       path: '/payment-sources',
       builder: (_, _) => const PaymentSourcesPage(),
