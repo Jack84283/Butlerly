@@ -17,7 +17,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class TransactionsPage extends StatefulWidget {
-  const TransactionsPage({super.key});
+  const TransactionsPage({
+    super.key,
+    this.query = const ListTransactionsQuery(),
+  });
+  final ListTransactionsQuery query;
 
   @override
   State<TransactionsPage> createState() => _TransactionsPageState();
@@ -65,9 +69,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
         languageCode ??
         _loadedLanguageCode ??
         Localizations.localeOf(context).languageCode;
-    final result = await finance.listTransactions(
-      const ListTransactionsQuery(),
-    );
+    final result = await finance.listTransactions(widget.query);
     final values = switch (result) {
       ApplicationSuccess<List<TransactionDto>>(:final value) => value,
       ApplicationFailure<List<TransactionDto>>() => throw StateError(

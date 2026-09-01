@@ -71,7 +71,7 @@ void main() {
     await tester.drag(find.byType(Scrollable).first, const Offset(0, -2000));
     await tester.pumpAndSettle();
     expect(find.text('Analysis'), findsOneWidget);
-    expect(find.text('Good'), findsOneWidget);
+    expect(find.text('Not evaluated'), findsOneWidget);
     expect(
       find.text('Calculated privately on this device and available offline.'),
       findsNothing,
@@ -115,6 +115,7 @@ void main() {
       condition: const RuleCondition(operator: 'none'),
       severity: RuleSeverity.info,
       definitionHash: RuleDefinitionHash('a' * 64),
+      surface: AnalysisSurface.insights,
     );
     await tester.pumpWidget(
       app(

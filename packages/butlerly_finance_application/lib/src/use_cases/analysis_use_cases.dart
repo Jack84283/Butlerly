@@ -72,6 +72,23 @@ final class CalculateAnalysisOverview {
     );
   });
 
+  /// Creates a selected-period context from date-only UI input while retaining
+  /// the configured financial timezone and base currency in this layer.
+  Future<ApplicationResult<AnalysisContext>> contextForDates({
+    required String startDate,
+    required String endDate,
+  }) async {
+    final timeZoneId = await datasetBuilder.timeZoneId();
+    return contextFor(
+      'selected_period',
+      customPeriod: AnalysisPeriod(
+        startDate: startDate,
+        endDate: endDate,
+        timeZoneId: timeZoneId,
+      ),
+    );
+  }
+
   /// Resolves the default month in the application layer so presentation never
   /// invents financial windows or timezone policy.
   Future<ApplicationResult<List<RuleExecutionResult>>> currentMonth(
