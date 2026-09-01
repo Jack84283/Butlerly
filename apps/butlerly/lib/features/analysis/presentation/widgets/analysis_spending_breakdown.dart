@@ -5,6 +5,7 @@ import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart
 import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 
@@ -30,6 +31,24 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
         .map(analysisNumber)
         .fold<double>(0, (a, b) => a > b ? a : b);
     final chartValues = model.categories.take(5).toList(growable: false);
+    final remainingValue = model.categories
+        .skip(chartValues.length)
+        .map(analysisNumber)
+        .fold<double>(0, (sum, value) => sum + value);
+    final chartSlices = [
+      for (final metric in chartValues)
+        _SpendingSlice(
+          label: analysisDimension(context, metric, masterData),
+          value: analysisNumber(metric),
+          currency: metric.currency?.value,
+        ),
+      if (remainingValue > 0)
+        _SpendingSlice(
+          label: context.l10n.text('otherCategories'),
+          value: remainingValue,
+          currency: chartValues.first.currency?.value,
+        ),
+    ];
     final chartColors = [
       Theme.of(context).colorScheme.primary,
       Theme.of(context).colorScheme.secondary,
@@ -50,36 +69,30 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
           const SizedBox(height: ButlerlySpacing.small),
           Semantics(
             label:
-                '${context.l10n.text('spendingDistribution')}: ${chartValues.map((metric) => '${analysisDimension(context, metric, masterData)} ${analysisMoney(context, metric)}').join(', ')}',
+                '${context.l10n.text('spendingDistribution')}: ${chartSlices.map((slice) => '${slice.label} ${_sliceMoney(context, slice)}').join(', ')}',
             child: SizedBox(
               height: 180,
               width: double.infinity,
               child: CustomPaint(
                 painter: _SpendingDonutPainter(
-                  values: chartValues
-                      .map(analysisNumber)
-                      .toList(growable: false),
+                  values: chartSlices.map((slice) => slice.value).toList(),
                   colors: chartColors,
                 ),
               ),
             ),
           ),
-          for (var index = 0; index < chartValues.length; index++)
+          for (var index = 0; index < chartSlices.length; index++)
             Padding(
               padding: const EdgeInsets.only(bottom: ButlerlySpacing.micro),
               child: Row(
                 children: [
-                  Icon(Icons.circle, size: 8, color: chartColors[index]),
-                  const SizedBox(width: ButlerlySpacing.micro),
-                  Expanded(
-                    child: Text(
-                      analysisDimension(
-                        context,
-                        chartValues[index],
-                        masterData,
-                      ),
-                    ),
+                  Icon(
+                    Icons.circle,
+                    size: 8,
+                    color: chartColors[index % chartColors.length],
                   ),
+                  const SizedBox(width: ButlerlySpacing.micro),
+                  Expanded(child: Text(chartSlices[index].label)),
                 ],
               ),
             ),
@@ -164,3 +177,19 @@ class _SpendingDonutPainter extends CustomPainter {
   bool shouldRepaint(covariant _SpendingDonutPainter old) =>
       old.values != values || old.colors != colors;
 }
+
+class _SpendingSlice {
+  const _SpendingSlice({
+    required this.label,
+    required this.value,
+    required this.currency,
+  });
+
+  final String label;
+  final double value;
+  final String? currency;
+}
+
+String _sliceMoney(BuildContext context, _SpendingSlice slice) =>
+    '${localizedDecimal(context, slice.value.toString())} ${slice.currency ?? ''}'
+        .trim();
