@@ -26,6 +26,11 @@ class AdaptiveShell extends StatelessWidget {
       label: context.l10n.text('transactions'),
     ),
     NavigationDestination(
+      icon: const Icon(Icons.add_circle_outline_rounded),
+      selectedIcon: const Icon(Icons.add_circle_rounded),
+      label: context.l10n.text('add'),
+    ),
+    NavigationDestination(
       icon: const Icon(Icons.build_outlined),
       selectedIcon: const Icon(Icons.build_rounded),
       label: context.l10n.text('tools'),
@@ -36,24 +41,6 @@ class AdaptiveShell extends StatelessWidget {
       label: context.l10n.text('more'),
     ),
   ];
-
-  Widget _addButton(BuildContext context) => Tooltip(
-    message: context.l10n.text('addTransactionAction'),
-    child: Semantics(
-      button: true,
-      label: context.l10n.text('addTransactionAction'),
-      child: IconButton.filled(
-        onPressed: () => context.push('/add'),
-        icon: const Icon(Icons.add_rounded),
-        iconSize: 30,
-        style: IconButton.styleFrom(
-          minimumSize: const Size.square(ButlerlySize.preferredTarget),
-          backgroundColor: context.colors.interactive,
-          foregroundColor: Theme.of(context).colorScheme.onPrimary,
-        ),
-      ),
-    ),
-  );
 
   Widget _destination(
     BuildContext context,
@@ -104,11 +91,10 @@ class AdaptiveShell extends StatelessWidget {
           height: 80,
           child: Row(
             children: [
-              Expanded(child: _destination(context, destinations[0], 0)),
-              Expanded(child: _destination(context, destinations[1], 1)),
-              Expanded(child: _addButton(context)),
-              Expanded(child: _destination(context, destinations[2], 2)),
-              Expanded(child: _destination(context, destinations[3], 3)),
+              for (var index = 0; index < destinations.length; index++)
+                Expanded(
+                  child: _destination(context, destinations[index], index),
+                ),
             ],
           ),
         ),
@@ -140,23 +126,16 @@ class AdaptiveShell extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(
                     vertical: ButlerlySpacing.standard,
                   ),
-                  child: Column(
-                    children: [
-                      if (extended)
-                        Text(
+                  child: extended
+                      ? Text(
                           context.l10n.text('appName'),
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(color: context.colors.brandStrong),
                         )
-                      else
-                        Icon(
+                      : Icon(
                           Icons.shield_outlined,
                           color: context.colors.brandStrong,
                         ),
-                      const SizedBox(height: ButlerlySpacing.standard),
-                      _addButton(context),
-                    ],
-                  ),
                 ),
                 destinations: destinations
                     .map(
