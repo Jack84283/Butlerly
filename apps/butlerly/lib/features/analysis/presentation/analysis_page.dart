@@ -240,14 +240,15 @@ class _AnalysisPageState extends State<AnalysisPage> {
         future: _result,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return ListView(
-              padding: const EdgeInsets.all(ButlerlySpacing.standard),
+            return ButlerlyPage(
+              title: context.l10n.text('analysis'),
               children: const [AnalysisSkeleton()],
             );
           }
           final result = snapshot.data;
           if (result is! ApplicationSuccess<List<RuleExecutionResult>>) {
-            return ListView(
+            return ButlerlyPage(
+              title: context.l10n.text('analysis'),
               children: [
                 ButlerlyErrorState(
                   title: context.l10n.text('analysisUnavailable'),
