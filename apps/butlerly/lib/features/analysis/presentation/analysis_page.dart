@@ -383,6 +383,7 @@ class _AnalysisContent extends StatelessWidget {
                 transactions: transactions,
                 onSelectDate: onSelectDate,
                 onTransactionTap: onTransactionRequested,
+                masterData: masterData,
               ),
         if (model.insight != null) ...[
           _SectionHeader(title: context.l10n.text('insights')),
