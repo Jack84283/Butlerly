@@ -1,4 +1,5 @@
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -56,6 +57,67 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    'refresh reloads analysis, calendar, and selected-day transactions',
+    (tester) async {
+      var analysisLoads = 0;
+      var calendarLoads = 0;
+      var selectedDayLoads = 0;
+      final now = DateTime.now();
+      final date = '${now.year}-${now.month.toString().padLeft(2, '0')}-01';
+
+      await tester.pumpWidget(
+        app(
+          () async {
+            analysisLoads++;
+            return const ApplicationSuccess(<RuleExecutionResult>[]);
+          },
+          loadCalendar: (year, month) async {
+            calendarLoads++;
+            return ApplicationSuccess(
+              AnalysisCalendarResult(
+                year: year,
+                month: month,
+                timeZoneId: 'America/Los_Angeles',
+                days: [
+                  AnalysisCalendarDay(
+                    financialDate: date,
+                    transactionCount: 1,
+                    expenseTotal: null,
+                    incomeTotal: null,
+                    currencyBasis: CurrencyBasis.baseCurrency,
+                  ),
+                ],
+              ),
+            );
+          },
+          loadTransactionsForDate: (_) async {
+            selectedDayLoads++;
+            return const ApplicationSuccess(<TransactionDto>[]);
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, -1200));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(
+        find.byKey(ValueKey('analysis-calendar-$date')),
+      );
+      await tester.tap(find.byKey(ValueKey('analysis-calendar-$date')));
+      await tester.pumpAndSettle();
+      final beforeAnalysis = analysisLoads;
+      final beforeCalendar = calendarLoads;
+      final beforeSelectedDay = selectedDayLoads;
+
+      notifyTransactionChanged();
+      await tester.pumpAndSettle();
+
+      expect(analysisLoads, greaterThan(beforeAnalysis));
+      expect(calendarLoads, greaterThan(beforeCalendar));
+      expect(selectedDayLoads, greaterThan(beforeSelectedDay));
+    },
+  );
 
   testWidgets('renders an offline all-clear state from application results', (
     tester,

@@ -104,6 +104,12 @@ class _AnalysisPageState extends State<AnalysisPage> {
     final start = context.period.startDate == '2000-01-01'
         ? DateTime(DateTime.now().year, DateTime.now().month)
         : DateTime.parse(context.period.startDate);
+    final end = context.period.endDate == '2000-01-01'
+        ? DateTime(start.year, start.month + 1, 0)
+        : DateTime.parse(context.period.endDate);
+    if (widget.loadCalendar == null &&
+        end.day != DateTime(start.year, start.month + 1, 0).day)
+      return null;
     if (widget.loadCalendar != null)
       return widget.loadCalendar!(start.year, start.month);
     final useCase = services.isRegistered<FinanceServices>()
@@ -217,9 +223,10 @@ class _AnalysisPageState extends State<AnalysisPage> {
               result.value
                   .map((r) => r.metric?.context ?? r.finding?.context)
                   .whereType<AnalysisContext>()
-                  .firstOrNull ??
-              _emptyContext;
-          _calendar ??= _loadCalendar(analysisContext);
+                  .firstOrNull;
+          _calendar ??= analysisContext == null
+              ? _loadCalendarForTestOnly()
+              : _loadCalendar(analysisContext);
           return _AnalysisContent(
             results: result.value,
             analysisContext: analysisContext,
@@ -234,15 +241,13 @@ class _AnalysisPageState extends State<AnalysisPage> {
       ),
     ),
   );
-  static final _emptyContext = AnalysisContext(
-    period: AnalysisPeriod(
-      startDate: '2000-01-01',
-      endDate: '2000-01-01',
-      timeZoneId: 'UTC',
-    ),
-    datasetMode: DatasetMode.allEligible,
-    currencyBasis: CurrencyBasis.baseCurrency,
-  );
+
+  Future<ApplicationResult<AnalysisCalendarResult>>?
+  _loadCalendarForTestOnly() {
+    if (widget.loadCalendar == null) return null;
+    final now = DateTime.now();
+    return widget.loadCalendar!(now.year, now.month);
+  }
 }
 
 class _AnalysisContent extends StatelessWidget {
@@ -257,7 +262,7 @@ class _AnalysisContent extends StatelessWidget {
     required this.onSelectDate,
   });
   final List<RuleExecutionResult> results;
-  final AnalysisContext analysisContext;
+  final AnalysisContext? analysisContext;
   final String period;
   final Future<ApplicationResult<AnalysisCalendarResult>>? calendar;
   final String? selectedDate;
@@ -269,7 +274,7 @@ class _AnalysisContent extends StatelessWidget {
     final model = _AnalysisModel.fromResults(results);
     return ButlerlyPage(
       title: context.l10n.text('analysis'),
-      subtitle: _periodDescription(context, period, analysisContext.period),
+      subtitle: _periodDescription(context, period, analysisContext?.period),
       children: [
         _AnalysisPeriodSelector(value: period, onChanged: onPeriodChanged),
         const SizedBox(height: ButlerlySpacing.standard),
@@ -279,13 +284,16 @@ class _AnalysisContent extends StatelessWidget {
         _SectionHeader(title: context.l10n.text('spending')),
         _AnalysisBreakdown(
           model: model,
-          onCategoryTap: (metric) => _openTransactions(
-            context,
-            period: analysisContext.period,
-            category: _dimension(metric),
-          ),
-          onViewAll: model.categories.length > 5
-              ? () => _openTransactions(context, period: analysisContext.period)
+          onCategoryTap: analysisContext == null
+              ? null
+              : (metric) => _openTransactions(
+                  context,
+                  period: analysisContext!.period,
+                  category: _dimension(metric),
+                ),
+          onViewAll: analysisContext != null && model.categories.length > 5
+              ? () =>
+                    _openTransactions(context, period: analysisContext!.period)
               : null,
         ),
         _SectionHeader(title: context.l10n.text('financialCalendar')),
@@ -298,7 +306,7 @@ class _AnalysisContent extends StatelessWidget {
                 onSelectDate: onSelectDate,
                 onViewTransactions: () => _openTransactions(
                   context,
-                  period: analysisContext.period,
+                  period: analysisContext!.period,
                   date: selectedDate,
                 ),
               ),
@@ -306,7 +314,16 @@ class _AnalysisContent extends StatelessWidget {
           _SectionHeader(title: context.l10n.text('insights')),
           _AnalysisInsight(
             finding: model.insight!,
-            onTap: () => context.push('/insights'),
+            onTap: () => context.push(
+              Uri(
+                path: '/insights',
+                queryParameters: {
+                  'finding': model.insight!.id,
+                  'from': model.insight!.context.period.startDate,
+                  'to': model.insight!.context.period.endDate,
+                },
+              ).toString(),
+            ),
           ),
         ] else if (model.insightUnavailable) ...[
           _SectionHeader(title: context.l10n.text('insights')),
@@ -596,14 +613,16 @@ class _AnalysisActivity extends StatelessWidget {
         );
       final calendar = value.value;
       final first = DateTime(calendar.year, calendar.month);
-      final leading = first.weekday - DateTime.monday;
+      final materialLocalizations = MaterialLocalizations.of(context);
+      final firstDayOfWeek = materialLocalizations.firstDayOfWeekIndex;
+      final leading = (first.weekday % 7 - firstDayOfWeek + 7) % 7;
       final today = financialDateAt(DateTime.now(), calendar.timeZoneId);
       final todayDate = _date(today);
       return ButlerlyCard(
         child: Column(
           children: [
             Text(
-              MaterialLocalizations.of(context).formatMonthYear(first),
+              materialLocalizations.formatMonthYear(first),
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: ButlerlySpacing.small),
@@ -613,9 +632,9 @@ class _AnalysisActivity extends StatelessWidget {
                   Expanded(
                     child: Center(
                       child: Text(
-                        MaterialLocalizations.of(
-                          context,
-                        ).narrowWeekdays[(weekday + 1) % 7],
+                        materialLocalizations.narrowWeekdays[(firstDayOfWeek +
+                                weekday) %
+                            7],
                         style: Theme.of(context).textTheme.labelSmall,
                       ),
                     ),
@@ -975,7 +994,7 @@ abstract final class _AnalysisRuleRoles {
 String _periodDescription(
   BuildContext context,
   String period,
-  AnalysisPeriod value,
+  AnalysisPeriod? value,
 ) {
   final label = context.l10n.text(switch (period) {
     'current_month' => 'thisMonth',
@@ -985,7 +1004,9 @@ String _periodDescription(
     'rolling_90_days' => 'last90Days',
     _ => 'custom',
   });
-  return '$label · ${value.startDate} – ${value.endDate}';
+  return value == null
+      ? label
+      : '$label · ${value.startDate} – ${value.endDate}';
 }
 
 String _money(BuildContext context, AnalysisMetric metric) =>
