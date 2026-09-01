@@ -14,6 +14,7 @@ import 'package:butlerly/features/analysis/presentation/widgets/analysis_summary
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_trend.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
+import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -29,6 +30,7 @@ class AnalysisPage extends StatefulWidget {
     this.loadTransactionsForDate,
     this.loadMasterData,
     this.onNavigationRequested,
+    this.onTransactionRequested,
   });
   final Future<ApplicationResult<List<RuleExecutionResult>>> Function()? load;
   final Future<ApplicationResult<List<RuleExecutionResult>>> Function(
@@ -44,6 +46,7 @@ class AnalysisPage extends StatefulWidget {
   loadTransactionsForDate;
   final Future<TransactionMasterData> Function()? loadMasterData;
   final ValueChanged<String>? onNavigationRequested;
+  final ValueChanged<TransactionDto>? onTransactionRequested;
   @override
   State<AnalysisPage> createState() => _AnalysisPageState();
 }
@@ -221,6 +224,24 @@ class _AnalysisPageState extends State<AnalysisPage> {
     _selectedDate = date;
     _transactions = _loadTransactions(date);
   });
+
+  Future<void> _openTransactionDetail(TransactionDto transaction) async {
+    if (widget.onTransactionRequested case final callback?) {
+      callback(transaction);
+      return;
+    }
+    if (!services.isRegistered<FinanceServices>()) return;
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => TransactionDetailPage(
+          finance: services<FinanceServices>(),
+          transaction: transaction,
+        ),
+      ),
+    );
+    if (changed == true) _reload();
+  }
+
   Future<void> _refresh() async {
     final value = _load(_period);
     final selected = _selectedDate;
@@ -278,6 +299,8 @@ class _AnalysisPageState extends State<AnalysisPage> {
             calendar: _calendar,
             selectedDate: _selectedDate,
             transactions: _transactions,
+            onTransactionRequested:
+                widget.onTransactionRequested ?? _openTransactionDetail,
             onPeriodChanged: _selectPeriod,
             onSelectDate: _selectDate,
           );
@@ -300,6 +323,7 @@ class _AnalysisContent extends StatelessWidget {
     required this.period,
     required this.masterData,
     required this.onNavigationRequested,
+    required this.onTransactionRequested,
     required this.calendar,
     required this.selectedDate,
     required this.transactions,
@@ -311,6 +335,7 @@ class _AnalysisContent extends StatelessWidget {
   final String period;
   final TransactionMasterData? masterData;
   final ValueChanged<String>? onNavigationRequested;
+  final ValueChanged<TransactionDto> onTransactionRequested;
   final Future<ApplicationResult<AnalysisCalendarResult>>? calendar;
   final String? selectedDate;
   final Future<ApplicationResult<List<TransactionDto>>>? transactions;
@@ -331,6 +356,7 @@ class _AnalysisContent extends StatelessWidget {
         const SizedBox(height: ButlerlySpacing.standard),
         AnalysisSummary(model: model),
         _SectionHeader(title: context.l10n.text('trends')),
+        Text(context.l10n.text('trendsDescription')),
         AnalysisTrend(model: model, masterData: masterData),
         _SectionHeader(title: context.l10n.text('spending')),
         AnalysisSpendingBreakdown(
@@ -356,11 +382,8 @@ class _AnalysisContent extends StatelessWidget {
                 selectedDate: selectedDate,
                 transactions: transactions,
                 onSelectDate: onSelectDate,
-                onViewTransactions: () => _openTransactions(
-                  context,
-                  period: analysisContext?.period,
-                  date: selectedDate,
-                ),
+                onTransactionTap: onTransactionRequested,
+                masterData: masterData,
               ),
         if (model.insight != null) ...[
           _SectionHeader(title: context.l10n.text('insights')),

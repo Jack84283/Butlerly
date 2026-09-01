@@ -1,3 +1,4 @@
+import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -19,6 +20,7 @@ void main() {
     loadTransactionsForDate,
     Future<TransactionMasterData> Function()? loadMasterData,
     ValueChanged<String>? onNavigationRequested,
+    ValueChanged<TransactionDto>? onTransactionRequested,
   }) => MaterialApp(
     localizationsDelegates: const [
       AppLocalizations.delegate,
@@ -35,6 +37,7 @@ void main() {
       loadTransactionsForDate: loadTransactionsForDate,
       loadMasterData: loadMasterData,
       onNavigationRequested: onNavigationRequested,
+      onTransactionRequested: onTransactionRequested,
     ),
   );
 
@@ -139,6 +142,14 @@ void main() {
     await tester.drag(find.byType(Scrollable).first, const Offset(0, -2000));
     await tester.pumpAndSettle();
     expect(find.text('Analysis'), findsOneWidget);
+    expect(
+      find.text('See how spending changes across the selected period.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('More activity is needed to show a trend.'),
+      findsOneWidget,
+    );
     expect(find.text('Not evaluated'), findsOneWidget);
     expect(
       find.text('Calculated privately on this device and available offline.'),
@@ -351,11 +362,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Dining'), findsOneWidget);
+    expect(find.text('Dining'), findsNWidgets(2));
     expect(find.text('category-id'), findsNothing);
     expect(find.text('View all categories'), findsNothing);
-    await tester.ensureVisible(find.text('Dining'));
-    await tester.tap(find.text('Dining'));
+    await tester.ensureVisible(find.text('Dining').last);
+    await tester.tap(find.text('Dining').last);
     expect(requestedNavigation, contains('from=2026-08-01'));
     expect(requestedNavigation, contains('to=2026-08-31'));
     expect(requestedNavigation, contains('category=category-id'));
@@ -428,6 +439,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('View all categories'));
+    expect(find.text('Other'), findsOneWidget);
     await tester.tap(find.text('View all categories'));
     expect(requestedNavigation, '/transactions?from=2026-08-01&to=2026-08-31');
   });
@@ -440,7 +452,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       final requestedMonths = <String>[];
-      String? requestedNavigation;
+      TransactionDto? selectedTransaction;
       ApplicationResult<AnalysisCalendarResult> calendar(int year, int month) {
         requestedMonths.add('$year-$month');
         final last = DateTime.utc(year, month + 1, 0).day;
@@ -471,22 +483,24 @@ void main() {
           loadTransactionsForDate: (date) async => ApplicationSuccess(
             date.endsWith('-02')
                 ? [
-                    TransactionDto(
-                      id: 'transaction-1',
-                      amount: '12.00',
-                      currency: 'USD',
-                      direction: 'expense',
-                      status: 'active',
-                      reviewState: 'clear',
-                      transactionDate: date,
-                      description: 'Groceries',
-                      createdAt: DateTime.utc(2026),
-                      updatedAt: DateTime.utc(2026),
-                    ),
+                    for (var index = 1; index <= 4; index++)
+                      TransactionDto(
+                        id: 'transaction-$index',
+                        amount: '12.00',
+                        currency: 'USD',
+                        direction: 'expense',
+                        status: 'active',
+                        reviewState: 'clear',
+                        transactionDate: date,
+                        description: index == 1 ? 'Groceries' : 'Item $index',
+                        createdAt: DateTime.utc(2026),
+                        updatedAt: DateTime.utc(2026),
+                      ),
                   ]
                 : const [],
           ),
-          onNavigationRequested: (path) => requestedNavigation = path,
+          onTransactionRequested: (transaction) =>
+              selectedTransaction = transaction,
         ),
       );
       await tester.pumpAndSettle();
@@ -506,14 +520,12 @@ void main() {
       await tester.tap(find.byKey(ValueKey('analysis-calendar-$date2')));
       await tester.pumpAndSettle();
       expect(find.text('Groceries'), findsOneWidget);
-      expect(
-        find.byKey(
-          const ValueKey('analysis-calendar-transaction-transaction-1'),
-        ),
-        findsOneWidget,
-      );
-      await tester.tap(find.text('View transactions'));
-      expect(requestedNavigation, contains('from=$date2&to=$date2'));
+      expect(find.byType(ButlerlyRecordRow), findsNWidgets(4));
+      // The row is the primary drill-down control; the former View
+      // transactions link is intentionally absent.
+      await tester.tap(find.text('Item 4'));
+      expect(find.text('View transactions'), findsNothing);
+      expect(selectedTransaction?.id, 'transaction-4');
       expect(requestedMonths, hasLength(1));
     },
   );
