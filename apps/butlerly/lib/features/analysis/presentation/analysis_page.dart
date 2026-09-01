@@ -402,6 +402,32 @@ class _AnalysisContent extends StatelessWidget {
       Uri(path: '/transactions', queryParameters: query).toString(),
     );
   }
+  const _AnalysisModel({
+    this.spending,
+    this.income,
+    this.net,
+    this.transactionCount,
+    this.insight,
+    required this.insightUnavailable,
+    required this.trend,
+    required this.categories,
+    required this.qualityCount,
+    required this.qualityEvaluated,
+    required this.qualityLimited,
+    this.comparison,
+  });
+  final AnalysisMetric? spending;
+  final AnalysisMetric? income;
+  final AnalysisMetric? net;
+  final AnalysisMetric? transactionCount;
+  final AnalysisFinding? insight;
+  final bool insightUnavailable;
+  final List<AnalysisMetric> trend;
+  final List<AnalysisMetric> categories;
+  final int qualityCount;
+  final bool qualityEvaluated;
+  final bool qualityLimited;
+  final AnalysisComparison? comparison;
 }
 
 class _SectionHeader extends StatelessWidget {
