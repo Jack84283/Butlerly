@@ -40,18 +40,18 @@ final appRouter = GoRouter(
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/transactions',
+              path: '/add',
               pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: TransactionsPage()),
+                  const NoTransitionPage(child: AddPage()),
             ),
           ],
         ),
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/add',
+              path: '/transactions',
               pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: AddPage()),
+                  const NoTransitionPage(child: TransactionsPage()),
             ),
           ],
         ),
