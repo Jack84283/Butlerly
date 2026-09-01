@@ -30,7 +30,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
   }
 
   Future<bool> _handleSystemBack() async {
-    if (navigationShell.currentIndex != 2) return true;
+    if (navigationShell.currentIndex != 1) return true;
     navigationShell.goBranch(_previousPrimaryIndex);
     return false;
   }
@@ -42,14 +42,14 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
       label: context.l10n.text('home'),
     ),
     NavigationDestination(
-      icon: const Icon(Icons.receipt_long_outlined),
-      selectedIcon: const Icon(Icons.receipt_long_rounded),
-      label: context.l10n.text('transactions'),
-    ),
-    NavigationDestination(
       icon: const Icon(Icons.add_circle_outline_rounded),
       selectedIcon: const Icon(Icons.add_circle_rounded),
       label: context.l10n.text('add'),
+    ),
+    NavigationDestination(
+      icon: const Icon(Icons.receipt_long_outlined),
+      selectedIcon: const Icon(Icons.receipt_long_rounded),
+      label: context.l10n.text('transactions'),
     ),
     NavigationDestination(
       icon: const Icon(Icons.build_outlined),
@@ -72,7 +72,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     return Semantics(
       button: true,
       selected: selected,
-      label: index == 2
+      label: index == 1
           ? context.l10n.text('addTransactionAction')
           : destination.label,
       child: InkWell(
