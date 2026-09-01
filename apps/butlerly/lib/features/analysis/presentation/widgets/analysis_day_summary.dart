@@ -13,12 +13,12 @@ class AnalysisDaySummary extends StatelessWidget {
     required this.date,
     required this.result,
     required this.expense,
-    required this.onViewTransactions,
+    required this.onTransactionTap,
   });
   final String date;
   final Future<ApplicationResult<List<TransactionDto>>>? result;
   final Money? expense;
-  final VoidCallback onViewTransactions;
+  final ValueChanged<TransactionDto> onTransactionTap;
 
   @override
   Widget build(
@@ -41,13 +41,6 @@ class AnalysisDaySummary extends StatelessWidget {
             Text(
               '$date · ${localizedCount(context, value.value.length.toString())} ${context.l10n.text('transactions')}${expense == null ? '' : ' · ${analysisMoneyValue(context, expense!)} ${context.l10n.text('spent')}'}',
             ),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(
-                onPressed: onViewTransactions,
-                child: Text(context.l10n.text('viewTransactions')),
-              ),
-            ),
             if (value.value.isEmpty) Text(context.l10n.text('noTransactions')),
             for (final transaction in value.value.take(3))
               ListTile(
@@ -56,6 +49,7 @@ class AnalysisDaySummary extends StatelessWidget {
                 ),
                 dense: true,
                 contentPadding: EdgeInsets.zero,
+                onTap: () => onTransactionTap(transaction),
                 title: Text(
                   transaction.description?.trim().isNotEmpty == true
                       ? transaction.description!

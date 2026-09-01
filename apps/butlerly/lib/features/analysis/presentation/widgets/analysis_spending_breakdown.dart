@@ -1,4 +1,5 @@
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
@@ -28,9 +29,61 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
     final max = model.categories
         .map(analysisNumber)
         .fold<double>(0, (a, b) => a > b ? a : b);
+    final chartValues = model.categories.take(5).toList(growable: false);
+    final chartColors = [
+      Theme.of(context).colorScheme.primary,
+      Theme.of(context).colorScheme.secondary,
+      Theme.of(context).colorScheme.tertiary,
+      context.colors.interactive,
+      Theme.of(context).colorScheme.error,
+    ];
     return ButlerlyCard(
       child: Column(
         children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              context.l10n.text('spendingDistribution'),
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+          ),
+          const SizedBox(height: ButlerlySpacing.small),
+          Semantics(
+            label:
+                '${context.l10n.text('spendingDistribution')}: ${chartValues.map((metric) => '${analysisDimension(context, metric, masterData)} ${analysisMoney(context, metric)}').join(', ')}',
+            child: SizedBox(
+              height: 180,
+              width: double.infinity,
+              child: CustomPaint(
+                painter: _SpendingDonutPainter(
+                  values: chartValues
+                      .map(analysisNumber)
+                      .toList(growable: false),
+                  colors: chartColors,
+                ),
+              ),
+            ),
+          ),
+          for (var index = 0; index < chartValues.length; index++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: ButlerlySpacing.micro),
+              child: Row(
+                children: [
+                  Icon(Icons.circle, size: 8, color: chartColors[index]),
+                  const SizedBox(width: ButlerlySpacing.micro),
+                  Expanded(
+                    child: Text(
+                      analysisDimension(
+                        context,
+                        chartValues[index],
+                        masterData,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: ButlerlySpacing.small),
           for (final metric in model.categories.take(5))
             Padding(
               padding: const EdgeInsets.only(bottom: ButlerlySpacing.small),
@@ -76,4 +129,38 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SpendingDonutPainter extends CustomPainter {
+  const _SpendingDonutPainter({required this.values, required this.colors});
+  final List<double> values;
+  final List<Color> colors;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final total = values.fold<double>(0, (sum, value) => sum + value);
+    if (total <= 0) return;
+    final center = size.center(Offset.zero);
+    final radius = size.shortestSide / 2 - 12;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 28;
+    var start = -3.141592653589793 / 2;
+    for (var index = 0; index < values.length; index++) {
+      final sweep = values[index] / total * 2 * 3.141592653589793;
+      paint.color = colors[index % colors.length];
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        start,
+        sweep,
+        false,
+        paint,
+      );
+      start += sweep;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SpendingDonutPainter old) =>
+      old.values != values || old.colors != colors;
 }

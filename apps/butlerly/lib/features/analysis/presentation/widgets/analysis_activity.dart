@@ -28,13 +28,13 @@ class AnalysisActivity extends StatelessWidget {
     required this.selectedDate,
     required this.transactions,
     required this.onSelectDate,
-    required this.onViewTransactions,
+    required this.onTransactionTap,
   });
   final Future<ApplicationResult<AnalysisCalendarResult>> result;
   final String? selectedDate;
   final Future<ApplicationResult<List<TransactionDto>>>? transactions;
   final ValueChanged<String> onSelectDate;
-  final VoidCallback onViewTransactions;
+  final ValueChanged<TransactionDto> onTransactionTap;
 
   @override
   Widget build(
@@ -149,7 +149,7 @@ class AnalysisActivity extends StatelessWidget {
                     .where((day) => day.financialDate == selectedDate)
                     .firstOrNull
                     ?.expenseTotal,
-                onViewTransactions: onViewTransactions,
+                onTransactionTap: onTransactionTap,
               ),
           ],
         ),
