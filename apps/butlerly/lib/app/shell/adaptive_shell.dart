@@ -29,10 +29,9 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     );
   }
 
-  Future<bool> _handleSystemBack() async {
-    if (navigationShell.currentIndex != 1) return true;
+  void _handleBlockedPop(bool didPop, Object? result) {
+    if (didPop || navigationShell.currentIndex != 1) return;
     navigationShell.goBranch(_previousPrimaryIndex);
-    return false;
   }
 
   List<NavigationDestination> _destinations(BuildContext context) => [
@@ -126,8 +125,9 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
   }
 
   @override
-  Widget build(BuildContext context) => WillPopScope(
-    onWillPop: _handleSystemBack,
+  Widget build(BuildContext context) => PopScope(
+    canPop: navigationShell.currentIndex != 1,
+    onPopInvokedWithResult: _handleBlockedPop,
     child: LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth < ButlerlySize.phoneBreakpoint) {
