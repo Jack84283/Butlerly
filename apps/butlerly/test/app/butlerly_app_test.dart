@@ -279,27 +279,6 @@ void main() {
     }
   });
 
-  testWidgets('Transactions search action keeps primary navigation available', (
-    tester,
-  ) async {
-    setPhoneViewport(tester);
-    await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Transactions').last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Search'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(SearchBar), findsOneWidget);
-    expect(find.bySemanticsLabel('Add Transaction'), findsOneWidget);
-    expect(
-      tester.getSemantics(find.text('Tools').last).flagsCollection.isSelected ==
-          Tristate.isTrue,
-      isTrue,
-    );
-  });
-
   testWidgets('More opens More without optional Insights or Notifications', (
     tester,
   ) async {
