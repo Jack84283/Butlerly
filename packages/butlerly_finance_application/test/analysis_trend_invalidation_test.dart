@@ -3,6 +3,41 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('current month summary uses month-to-date transactions', () async {
+    final now = DateTime.now();
+    final date =
+        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-01';
+    final transactions = _Transactions([
+      _transaction('expense', date, '120'),
+      _transaction(
+        'income',
+        date,
+        '500',
+        direction: TransactionDirection.income,
+      ),
+    ]);
+    final calculate = CalculateAnalysisOverview(
+      _Rules([
+        _summaryRule('ANL-R001', TransactionDirection.expense),
+        _summaryRule('ANL-R002', TransactionDirection.income),
+        _netRule(),
+      ]),
+      AnalysisDatasetBuilder(transactions, _Preferences(), null),
+      const AnalysisRuleEngine(),
+    );
+
+    final result = await calculate.currentMonth(now);
+    final values =
+        (result as ApplicationSuccess<List<RuleExecutionResult>>).value;
+    DecimalValue metric(String id) => values
+        .singleWhere((value) => value.rule.identity.value == id)
+        .metric!
+        .value;
+    expect(metric('ANL-R001'), DecimalValue.parse('120'));
+    expect(metric('ANL-R002'), DecimalValue.parse('500'));
+    expect(metric('ANL-R003'), DecimalValue.parse('380'));
+  });
+
   test(
     'transaction invalidation rebuilds the complete trend axis through the application use case',
     () async {
@@ -65,6 +100,65 @@ void main() {
   );
 }
 
+AnalysisRuleDefinition _summaryRule(
+  String id,
+  TransactionDirection direction,
+) => AnalysisRuleDefinition(
+  identity: RuleIdentity(id),
+  version: RuleVersion('1.0.0'),
+  schemaVersion: '1.0.0',
+  type: AnalysisRuleType.metric,
+  nameKey: id,
+  descriptionKey: id,
+  enabled: true,
+  status: AnalysisRuleStatus.active,
+  period: 'selected_period',
+  measure: const RuleMeasure(
+    operation: RuleOperation.sum,
+    field: 'amount',
+    currencyBasis: CurrencyBasis.baseCurrency,
+  ),
+  grouping: RuleGrouping.none,
+  baseline: RuleBaseline.none,
+  condition: const RuleCondition(operator: 'none'),
+  severity: RuleSeverity.info,
+  surface: AnalysisSurface.overview,
+  filters: [
+    AnalysisFilter(
+      kind: AnalysisFilterKind.direction,
+      values: [direction.name],
+    ),
+  ],
+  definitionHash: RuleDefinitionHash('b' * 64),
+);
+
+AnalysisRuleDefinition _netRule() => AnalysisRuleDefinition(
+  identity: RuleIdentity('ANL-R003'),
+  version: RuleVersion('1.0.0'),
+  schemaVersion: '1.0.0',
+  type: AnalysisRuleType.metric,
+  nameKey: 'ANL-R003',
+  descriptionKey: 'ANL-R003',
+  enabled: true,
+  status: AnalysisRuleStatus.active,
+  period: 'selected_period',
+  measure: const RuleMeasure(
+    operation: RuleOperation.difference,
+    field: 'amount',
+    currencyBasis: CurrencyBasis.baseCurrency,
+  ),
+  grouping: RuleGrouping.none,
+  baseline: RuleBaseline.none,
+  condition: const RuleCondition(operator: 'none'),
+  severity: RuleSeverity.info,
+  surface: AnalysisSurface.overview,
+  dependencies: [
+    RuleDependency(ruleId: RuleIdentity('ANL-R001')),
+    RuleDependency(ruleId: RuleIdentity('ANL-R002')),
+  ],
+  definitionHash: RuleDefinitionHash('c' * 64),
+);
+
 AnalysisRuleDefinition _trendRule() => AnalysisRuleDefinition(
   identity: RuleIdentity('ANL-R014'),
   version: RuleVersion('1.3.0'),
@@ -90,14 +184,19 @@ AnalysisRuleDefinition _trendRule() => AnalysisRuleDefinition(
   refreshPolicy: RefreshPolicy.onInvalidation,
 );
 
-Transaction _transaction(String id, String date, String amount) => Transaction(
+Transaction _transaction(
+  String id,
+  String date,
+  String amount, {
+  TransactionDirection direction = TransactionDirection.expense,
+}) => Transaction(
   id: TransactionId(id),
   timing: KnownTransactionTime(DateTime.utc(2026, 1, 1, 12)),
   money: Money(
     amount: DecimalValue.parse(amount),
     currency: CurrencyCode('USD'),
   ),
-  direction: TransactionDirection.expense,
+  direction: direction,
   sourceType: TransactionSourceType.manual,
   transactionDate: date,
   provenance: [

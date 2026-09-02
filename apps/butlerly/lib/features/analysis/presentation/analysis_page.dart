@@ -1,10 +1,12 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_activity.dart';
+import 'package:butlerly/features/analysis/presentation/widgets/analysis_custom_period_sheet.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_data_quality.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_insight_preview.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_period_selector.dart';
@@ -113,6 +115,20 @@ class _AnalysisPageState extends State<AnalysisPage> {
         ),
       );
     }
+    if (period == _defaultPeriod) {
+      return useCase.currentMonth(DateTime.now()).then((value) {
+        if (value is ApplicationSuccess<List<RuleExecutionResult>>) {
+          final context = value.value
+              .map(
+                (result) => result.metric?.context ?? result.finding?.context,
+              )
+              .whereType<AnalysisContext>()
+              .firstOrNull;
+          if (context != null) _context = context;
+        }
+        return value;
+      });
+    }
     final contextFuture = period == 'selected_period' && _customRange != null
         ? useCase.contextForDates(
             startDate: analysisDate(_customRange!.start),
@@ -196,10 +212,17 @@ class _AnalysisPageState extends State<AnalysisPage> {
   }
 
   Future<void> _chooseCustomPeriod() async {
-    final range = await showDateRangePicker(
+    final now = DateTime.now();
+    final initialRange =
+        _customRange ??
+        DateTimeRange(
+          start: DateTime(now.year, now.month, 1),
+          end: DateTime(now.year, now.month + 1, 0),
+        );
+    final range = await showButlerlyBottomSheet<DateTimeRange>(
       context: context,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      builder: (context) =>
+          AnalysisCustomPeriodSheet(initialRange: initialRange),
     );
     if (!mounted || range == null) return;
     setState(() {
