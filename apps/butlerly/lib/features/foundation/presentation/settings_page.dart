@@ -203,26 +203,9 @@ class SettingsPage extends ConsumerWidget {
             ),
           ],
         ),
-        ButlerlySectionHeader(title: context.l10n.text('transactions')),
-        _SettingsSectionCard(
-          children: [
-            _SettingsRow(
-              icon: Icons.document_scanner_outlined,
-              title: context.l10n.text('addTransactionAction'),
-              subtitle: context.l10n.text('addTransactionActionSubtitle'),
-              onTap: () => context.push('/add'),
-            ),
-          ],
-        ),
         ButlerlySectionHeader(title: context.l10n.text('privacyAndData')),
         _SettingsSectionCard(
           children: [
-            _SettingsRow(
-              icon: Icons.import_export_rounded,
-              title: context.l10n.text('importExport'),
-              subtitle: context.l10n.text('importExportBody'),
-              onTap: () => context.push('/import-export'),
-            ),
             _SettingsRow(
               icon: Icons.privacy_tip_outlined,
               title: context.l10n.text('privacyAndData'),
