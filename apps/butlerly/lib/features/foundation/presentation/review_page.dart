@@ -278,11 +278,9 @@ class _ReviewPageState extends State<ReviewPage> {
           segments: [
             ButtonSegment(
               value: _ReviewView.uncategorized,
-              label: Center(
-                child: Text(
-                  context.l10n.text('uncategorized'),
-                  textAlign: TextAlign.center,
-                ),
+              label: _ReviewSectionLabel(
+                title: context.l10n.text('uncategorized'),
+                future: _uncategorized,
               ),
             ),
             ButtonSegment(
@@ -303,11 +301,9 @@ class _ReviewPageState extends State<ReviewPage> {
             ),
             ButtonSegment(
               value: _ReviewView.needsReview,
-              label: Center(
-                child: Text(
-                  context.l10n.text('needsReview'),
-                  textAlign: TextAlign.center,
-                ),
+              label: _ReviewSectionLabel(
+                title: context.l10n.text('needsReview'),
+                future: _items,
               ),
             ),
           ],
@@ -565,6 +561,38 @@ class _ReviewTransactionCard extends StatelessWidget {
 }
 
 enum _ReviewView { needsReview, uncategorized, duplicates }
+
+class _ReviewSectionLabel extends StatelessWidget {
+  const _ReviewSectionLabel({required this.title, required this.future});
+
+  final String title;
+  final Future<List<Object>> future;
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<List<Object>>(
+    future: future,
+    builder: (context, snapshot) {
+      final count = snapshot.data?.length;
+      return Center(
+        child: Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: ButlerlySpacing.micro,
+          children: [
+            Text(title, textAlign: TextAlign.center),
+            if (count != null)
+              Text(
+                '($count)',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+          ],
+        ),
+      );
+    },
+  );
+}
 
 class _DuplicateGroupCard extends StatefulWidget {
   const _DuplicateGroupCard({
