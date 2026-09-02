@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
@@ -38,6 +40,8 @@ class _SearchPageState extends State<SearchPage>
   late Future<List<String>> _currencies;
   TransactionMasterData _presentation = const TransactionMasterData();
   String? _loadedLanguageCode;
+  Timer? _searchDebounce;
+  int _searchGeneration = 0;
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
@@ -67,6 +71,7 @@ class _SearchPageState extends State<SearchPage>
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _text.dispose();
     super.dispose();
   }
@@ -137,11 +142,54 @@ class _SearchPageState extends State<SearchPage>
     };
   }
 
-  void _submit() => setState(() {
-    _results = _search();
-  });
+  void _scheduleSearch() {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 300), _submit);
+  }
+
+  void _submit() {
+    _searchDebounce?.cancel();
+    final generation = ++_searchGeneration;
+    final future = _search();
+    if (!mounted) return;
+    setState(() {
+      _results = _latestSearch(future, generation);
+    });
+  }
+
+  Future<List<TransactionDto>> _latestSearch(
+    Future<List<TransactionDto>> future,
+    int generation,
+  ) async {
+    final value = await future;
+    // FutureBuilder is bound to the future for the latest generation. Keeping
+    // the generation here also makes the latest-wins contract explicit at the
+    // asynchronous boundary if this method gains side effects later.
+    if (generation != _searchGeneration) return const [];
+    return value;
+  }
+
+  void _clearFilters() {
+    setState(() {
+      _currency = null;
+      _direction = null;
+      _categoryId = null;
+      _paymentSourceId = null;
+      _needsReview = null;
+      _from = null;
+      _to = null;
+    });
+    _submit();
+  }
+
+  void _resetSearch() {
+    _text.clear();
+    _clearFilters();
+  }
 
   Future<void> _refreshAfterTransactionChange() async {
+    _searchDebounce?.cancel();
+    _searchGeneration++;
     final languageCode =
         _loadedLanguageCode ?? Localizations.localeOf(context).languageCode;
     final results = _search();
@@ -156,19 +204,6 @@ class _SearchPageState extends State<SearchPage>
     await Future.wait([results, masterData, currencies]);
   }
 
-  void _clear() {
-    setState(() {
-      _currency = null;
-      _direction = null;
-      _categoryId = null;
-      _paymentSourceId = null;
-      _needsReview = null;
-      _from = null;
-      _to = null;
-      _results = null;
-    });
-  }
-
   int get _activeFilterCount => [
     _currency,
     _direction,
@@ -180,6 +215,13 @@ class _SearchPageState extends State<SearchPage>
   ].where((value) => value != null).length;
 
   Future<void> _openFilters() async {
+    var stagedCurrency = _currency;
+    var stagedDirection = _direction;
+    var stagedCategoryId = _categoryId;
+    var stagedPaymentSourceId = _paymentSourceId;
+    var stagedNeedsReview = _needsReview;
+    var stagedFrom = _from;
+    var stagedTo = _to;
     await showButlerlyBottomSheet<void>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -194,29 +236,31 @@ class _SearchPageState extends State<SearchPage>
                   future: _currencies,
                   builder: (context, snapshot) => ButlerlyCurrencyFilter(
                     currencies: snapshot.data ?? const [],
-                    value: _currency,
+                    value: stagedCurrency,
                     label: context.l10n.text('currency'),
                     anyLabel: context.l10n.text('anyCurrency'),
                     onChanged: (value) =>
-                        setSheetState(() => _currency = value),
+                        setSheetState(() => stagedCurrency = value),
                   ),
                 ),
                 const SizedBox(height: ButlerlySpacing.standard),
                 ButlerlyDirectionFilter(
-                  value: _direction,
+                  value: stagedDirection,
                   label: context.l10n.text('direction'),
                   anyLabel: context.l10n.text('anyDirection'),
-                  onChanged: (value) => setSheetState(() => _direction = value),
+                  onChanged: (value) =>
+                      setSheetState(() => stagedDirection = value),
                 ),
                 const SizedBox(height: ButlerlySpacing.standard),
                 ButlerlyDateRangeFilter(
-                  from: _from,
-                  to: _to,
+                  from: stagedFrom,
+                  to: stagedTo,
                   fromLabel: context.l10n.text('fromDate'),
                   toLabel: context.l10n.text('toDate'),
                   formatDate: _searchDate,
-                  onFromChanged: (value) => setSheetState(() => _from = value),
-                  onToChanged: (value) => setSheetState(() => _to = value),
+                  onFromChanged: (value) =>
+                      setSheetState(() => stagedFrom = value),
+                  onToChanged: (value) => setSheetState(() => stagedTo = value),
                 ),
                 const SizedBox(height: ButlerlySpacing.standard),
                 FutureBuilder<TransactionMasterDataSnapshot>(
@@ -227,11 +271,11 @@ class _SearchPageState extends State<SearchPage>
                     masterData:
                         snapshot.data?.presentation ??
                         const TransactionMasterData(),
-                    value: _categoryId,
+                    value: stagedCategoryId,
                     label: context.l10n.text('anyCategory'),
                     anyLabel: context.l10n.text('anyCategory'),
                     onChanged: (value) =>
-                        setSheetState(() => _categoryId = value),
+                        setSheetState(() => stagedCategoryId = value),
                   ),
                 ),
                 const SizedBox(height: ButlerlySpacing.standard),
@@ -239,24 +283,31 @@ class _SearchPageState extends State<SearchPage>
                   future: _masterData,
                   builder: (context, snapshot) => ButlerlyPaymentSourceFilter(
                     sources: snapshot.data?.paymentSources ?? const [],
-                    value: _paymentSourceId,
+                    value: stagedPaymentSourceId,
                     label: context.l10n.text('anyPaymentSource'),
                     anyLabel: context.l10n.text('anyPaymentSource'),
                     onChanged: (value) =>
-                        setSheetState(() => _paymentSourceId = value),
+                        setSheetState(() => stagedPaymentSourceId = value),
                   ),
                 ),
                 const SizedBox(height: ButlerlySpacing.standard),
                 ButlerlyReviewFilter(
-                  value: _needsReview,
+                  value: stagedNeedsReview,
                   label: context.l10n.text('needsReview'),
                   onChanged: (value) =>
-                      setSheetState(() => _needsReview = value),
+                      setSheetState(() => stagedNeedsReview = value),
                 ),
                 const SizedBox(height: ButlerlySpacing.section),
                 FilledButton(
                   key: const ValueKey('apply-search-filters'),
                   onPressed: () {
+                    _currency = stagedCurrency;
+                    _direction = stagedDirection;
+                    _categoryId = stagedCategoryId;
+                    _paymentSourceId = stagedPaymentSourceId;
+                    _needsReview = stagedNeedsReview;
+                    _from = stagedFrom;
+                    _to = stagedTo;
                     Navigator.pop(context);
                     _submit();
                   },
@@ -264,8 +315,15 @@ class _SearchPageState extends State<SearchPage>
                 ),
                 TextButton(
                   onPressed: () {
-                    _clear();
+                    stagedCurrency = null;
+                    stagedDirection = null;
+                    stagedCategoryId = null;
+                    stagedPaymentSourceId = null;
+                    stagedNeedsReview = null;
+                    stagedFrom = null;
+                    stagedTo = null;
                     Navigator.pop(context);
+                    _clearFilters();
                   },
                   child: Text(context.l10n.text('clearFilters')),
                 ),
@@ -306,6 +364,12 @@ class _SearchPageState extends State<SearchPage>
                 hintText: context.l10n.text('searchHint'),
                 leading: const Icon(Icons.search_rounded),
                 trailing: [
+                  IconButton(
+                    key: const ValueKey('search-submit'),
+                    tooltip: context.l10n.text('search'),
+                    onPressed: _submit,
+                    icon: const Icon(Icons.search_rounded),
+                  ),
                   if (_text.text.isNotEmpty)
                     IconButton(
                       tooltip: context.l10n.text('clear'),
@@ -316,7 +380,10 @@ class _SearchPageState extends State<SearchPage>
                       icon: const Icon(Icons.close_rounded),
                     ),
                 ],
-                onChanged: (_) => setState(() {}),
+                onChanged: (_) {
+                  setState(() {});
+                  _scheduleSearch();
+                },
                 onSubmitted: (_) => _submit(),
               ),
             ),
@@ -335,7 +402,7 @@ class _SearchPageState extends State<SearchPage>
           Align(
             alignment: AlignmentDirectional.centerEnd,
             child: TextButton(
-              onPressed: _clear,
+              onPressed: _clearFilters,
               child: Text(context.l10n.text('clearFilters')),
             ),
           ),
@@ -371,8 +438,8 @@ class _SearchPageState extends State<SearchPage>
                   icon: Icons.search_off_rounded,
                   title: context.l10n.text('noResults'),
                   message: context.l10n.text('noResultsBody'),
-                  actionLabel: context.l10n.text('clearFilters'),
-                  onAction: _clear,
+                  actionLabel: context.l10n.text('clearSearch'),
+                  onAction: _resetSearch,
                 );
               }
               return ButlerlyTransactionList(

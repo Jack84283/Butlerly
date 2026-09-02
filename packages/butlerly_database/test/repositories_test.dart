@@ -541,6 +541,42 @@ void main() {
   );
 
   test('searches and filters transactions locally', () async {
+    final paymentSource = PaymentSource(
+      id: PaymentSourceId('search-source'),
+      name: 'Everyday Card',
+      type: PaymentSourceType.card,
+      displayIdentity: 'Visa •••• 1234',
+      issuer: 'Search Bank',
+      note: 'Household spending',
+    );
+    final merchant = Merchant(
+      id: MerchantId('search-merchant'),
+      name: 'Costco Wholesale',
+    );
+    final category = Category(
+      id: CategoryId('search-category'),
+      name: 'Groceries',
+      origin: CategoryOrigin.system,
+    );
+    final tag = Tag(id: TagId('search-tag'), name: 'Household');
+    await SqlitePaymentSourceRepository(database).save(paymentSource);
+    await SqliteMerchantRepository(database).save(merchant);
+    await SqliteCategoryRepository(database).save(category);
+    await SqliteTagRepository(database).save(tag);
+    await SqliteMasterTranslationRepository(database).saveAll([
+      const MasterTranslation(
+        masterType: 'category',
+        masterId: 'search-category',
+        locale: 'zh-Hans',
+        label: '杂货',
+      ),
+      const MasterTranslation(
+        masterType: 'tag',
+        masterId: 'search-tag',
+        locale: 'zh-Hans',
+        label: '家庭',
+      ),
+    ]);
     final value = Transaction(
       id: TransactionId('searchable-transaction'),
       timing: KnownTransactionTime(now),
@@ -551,7 +587,13 @@ void main() {
       direction: TransactionDirection.expense,
       sourceType: TransactionSourceType.manual,
       description: 'Déjeuner à Paris',
+      rawCounterparty: 'Café 東京',
+      externalReference: 'receipt-東京-42',
       notes: 'Client meeting',
+      merchantId: merchant.id,
+      categoryId: category.id,
+      tagIds: [tag.id],
+      paymentSourceId: paymentSource.id,
       provenance: [
         Provenance(
           id: ProvenanceId('search-provenance'),
@@ -564,14 +606,76 @@ void main() {
       transactionDate: '2026-08-09',
     );
     await transactions.save(value);
+    final evidence = SqliteEvidenceRepository(database);
+    await evidence.save(
+      EvidenceItem(
+        id: EvidenceId('search-evidence'),
+        type: EvidenceType.document,
+        originalName: 'costco-receipt.pdf',
+        mediaType: 'application/pdf',
+        provenance: Provenance(
+          id: ProvenanceId('search-evidence-provenance'),
+          sourceType: ProvenanceSourceType.userEntry,
+          capturedAt: now,
+        ),
+        createdAt: now,
+      ),
+    );
+    await evidence.saveExtraction(
+      Extraction(
+        id: ExtractionId('search-extraction'),
+        evidenceId: EvidenceId('search-evidence'),
+        values: {'rawText': '原始收据文本'},
+        provenance: Provenance(
+          id: ProvenanceId('search-extraction-provenance'),
+          sourceType: ProvenanceSourceType.userEntry,
+          capturedAt: now,
+        ),
+        createdAt: now,
+      ),
+    );
+    await evidence.link(
+      AttachmentLink(
+        id: AttachmentLinkId('search-attachment'),
+        transactionId: value.id,
+        evidenceId: EvidenceId('search-evidence'),
+        createdAt: now,
+      ),
+    );
+
+    for (final term in [
+      'déjeuner',
+      'café 東京',
+      'client meeting',
+      'costco',
+      'groceries',
+      'household',
+      'everyday card',
+      'receipt-東京-42',
+      'costco-receipt.pdf',
+      '原始收据文本',
+      '杂货',
+      '家庭',
+    ]) {
+      final match = await transactions.query(
+        TransactionRepositoryQuery(text: term),
+      );
+      expect(
+        match.map((transaction) => transaction.id),
+        contains(value.id),
+        reason: term,
+      );
+    }
 
     final matching = await transactions.query(
       TransactionRepositoryQuery(
-        text: 'client',
-        from: now.subtract(const Duration(days: 1)),
-        to: now.add(const Duration(days: 1)),
+        text: 'costco',
+        from: DateTime.utc(2026, 8, 9),
+        to: DateTime.utc(2026, 8, 9),
         currency: 'eur',
         direction: TransactionDirection.expense,
+        categoryId: category.id,
+        paymentSourceId: paymentSource.id,
         status: TransactionStatus.active,
         needsReview: false,
       ),

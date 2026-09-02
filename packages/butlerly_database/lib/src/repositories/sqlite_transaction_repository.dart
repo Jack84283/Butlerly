@@ -78,8 +78,30 @@ final class SqliteTransactionRepository implements TransactionRepository {
         LOWER(COALESCE(t.description, '')) LIKE ? OR
         LOWER(COALESCE(t.raw_counterparty, '')) LIKE ? OR
         LOWER(COALESCE(t.notes, '')) LIKE ? OR
+        LOWER(COALESCE(t.external_reference, '')) LIKE ? OR
         LOWER(COALESCE(m.name, '')) LIKE ? OR
         LOWER(COALESCE(c.name, '')) LIKE ? OR
+        EXISTS (
+          SELECT 1 FROM category_translations ct
+          WHERE ct.category_id = t.category_id AND
+            LOWER(ct.label) LIKE ?
+        ) OR
+        EXISTS (
+          SELECT 1 FROM transaction_tags tt
+          JOIN tags tg ON tg.id = tt.tag_id
+          WHERE tt.transaction_id = t.id AND
+            LOWER(tg.name) LIKE ?
+        ) OR
+        EXISTS (
+          SELECT 1 FROM transaction_tags tt
+          JOIN tag_translations tgl ON tgl.tag_id = tt.tag_id
+          WHERE tt.transaction_id = t.id AND
+            LOWER(tgl.label) LIKE ?
+        ) OR
+        LOWER(COALESCE(ps.name, '')) LIKE ? OR
+        LOWER(COALESCE(ps.display_identity, '')) LIKE ? OR
+        LOWER(COALESCE(ps.issuer, '')) LIKE ? OR
+        LOWER(COALESCE(ps.note, '')) LIKE ? OR
         EXISTS (
           SELECT 1 FROM attachment_links al
           JOIN evidence_items e ON e.id = al.evidence_id
@@ -90,7 +112,7 @@ final class SqliteTransactionRepository implements TransactionRepository {
           )
         )
       )''');
-      arguments.addAll(List<Object?>.filled(7, '%$text%'));
+      arguments.addAll(List<Object?>.filled(15, '%$text%'));
     }
     if (query.from != null) {
       conditions.add('t.transaction_date >= ?');
@@ -136,6 +158,7 @@ final class SqliteTransactionRepository implements TransactionRepository {
         '''SELECT DISTINCT t.* FROM transactions t
            LEFT JOIN merchants m ON m.id = t.merchant_id
            LEFT JOIN categories c ON c.id = t.category_id
+           LEFT JOIN payment_sources ps ON ps.id = t.payment_source_id
            ${conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}'}
            ORDER BY t.transaction_date DESC, t.id''',
         arguments,

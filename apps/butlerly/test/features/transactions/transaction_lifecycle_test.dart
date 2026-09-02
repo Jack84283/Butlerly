@@ -334,11 +334,86 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('apply-search-filters')));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(EditableText), 'Lunch');
-    await tester.testTextInput.receiveAction(TextInputAction.search);
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 350));
 
     expect(find.text('Lunch'), findsAtLeastNWidgets(1));
     expect(find.text('Bus'), findsNothing);
+  });
+
+  testWidgets('cancelling Search filters preserves the active filter state', (
+    tester,
+  ) async {
+    await services<FinanceServices>().saveCategory(
+      Category(
+        id: CategoryId('cancel-category'),
+        name: 'Dining',
+        origin: CategoryOrigin.user,
+      ),
+    );
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: SearchPage())),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.tune_rounded).first);
+    await tester.pumpAndSettle();
+    final categoryFilter = find.byKey(const ValueKey('search-category-filter'));
+    await tester.scrollUntilVisible(
+      categoryFilter,
+      160,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(categoryFilter);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Dining').last);
+    await tester.pumpAndSettle();
+
+    // Dismiss the sheet without applying the staged selection.
+    await tester.tapAt(const Offset(8, 8));
+    await tester.pumpAndSettle();
+
+    final filterButton = tester.widget<IconButton>(
+      find
+          .ancestor(
+            of: find.byIcon(Icons.tune_rounded),
+            matching: find.byType(IconButton),
+          )
+          .first,
+    );
+    expect(filterButton.isSelected, isFalse);
+    expect(find.byKey(const ValueKey('apply-search-filters')), findsNothing);
+  });
+
+  testWidgets('keyboard submission and clear text update Search immediately', (
+    tester,
+  ) async {
+    await services<FinanceServices>().createTransaction(
+      CreateTransactionCommand(
+        id: 'keyboard-search',
+        provenanceId: 'keyboard-search-provenance',
+        timing: KnownTransactionTime(DateTime.utc(2026, 8, 9)),
+        money: Money(
+          amount: DecimalValue.parse('12.50'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        description: 'Keyboard Search Match',
+      ),
+    );
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: SearchPage())),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(EditableText), 'Keyboard Search');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+    expect(find.text('Keyboard Search Match'), findsAtLeastNWidgets(1));
+
+    await tester.tap(find.byIcon(Icons.close_rounded));
+    await tester.pumpAndSettle();
+    expect(find.text('Keyboard Search Match'), findsAtLeastNWidgets(1));
+    expect(find.byIcon(Icons.close_rounded), findsNothing);
   });
 
   testWidgets('Home refreshes when a transaction changes outside its route', (
