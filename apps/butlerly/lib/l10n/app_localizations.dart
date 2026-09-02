@@ -98,6 +98,8 @@ class AppLocalizations {
           'Incomplete or uncertain records will appear here without being changed automatically.',
       'quickActions': 'Quick actions',
       'add': 'Add',
+      'addSubtitle':
+          'Add transactions, receipts, statements, and other financial information to Butlerly.',
       'addData': 'Add data',
       'addTransaction': 'Add transaction',
       'addTransactionSubtitle': 'Enter a transaction manually',
@@ -646,6 +648,7 @@ class AppLocalizations {
       'nothingNeedsAttentionBody': '不完整或不确定的记录会显示在这里，系统不会自动修改。',
       'quickActions': '快捷操作',
       'add': '添加',
+      'addSubtitle': '向 Butlerly 添加交易、收据、账单和其他财务信息。',
       'addData': '添加数据',
       'addTransaction': '添加交易',
       'addTransactionSubtitle': '手动输入交易',
@@ -1151,6 +1154,8 @@ class AppLocalizations {
           'Los registros inciertos aparecerán aquí sin cambios automáticos.',
       'quickActions': 'Acciones rápidas',
       'add': 'Añadir',
+      'addSubtitle':
+          'Añade transacciones, recibos, extractos y otra información financiera a Butlerly.',
       'addData': 'Añadir datos',
       'addTransaction': 'Añadir transacción',
       'addTransactionSubtitle': 'Introduce una transacción manualmente',

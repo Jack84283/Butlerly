@@ -14,6 +14,7 @@ class AddPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ButlerlyPage(
     title: context.l10n.text('add'),
+    subtitle: context.l10n.text('addSubtitle'),
     children: [
       _AddActionCard(
         icon: Icons.add_card_outlined,

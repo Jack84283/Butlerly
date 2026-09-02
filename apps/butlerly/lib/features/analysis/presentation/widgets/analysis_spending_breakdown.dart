@@ -1,5 +1,4 @@
 import 'package:butlerly/design_system/components/butlerly_components.dart';
-import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
@@ -38,24 +37,25 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
     final chartSlices = [
       for (final metric in chartValues)
         _SpendingSlice(
+          categoryId: analysisCategoryId(metric),
           label: analysisDimension(context, metric, masterData),
           value: analysisNumber(metric),
           currency: metric.currency?.value,
         ),
       if (remainingValue > 0)
         _SpendingSlice(
+          categoryId: 'other',
           label: context.l10n.text('otherCategories'),
           value: remainingValue,
           currency: chartValues.first.currency?.value,
         ),
     ];
-    final chartColors = [
-      Theme.of(context).colorScheme.primary,
-      Theme.of(context).colorScheme.secondary,
-      Theme.of(context).colorScheme.tertiary,
-      context.colors.interactive,
-      Theme.of(context).colorScheme.error,
-    ];
+    final colorsByCategory = ButlerlyChartColors.forCategories(
+      chartSlices.map((slice) => slice.categoryId),
+    );
+    final chartColors = chartSlices
+        .map((slice) => colorsByCategory[slice.categoryId]!)
+        .toList(growable: false);
     return ButlerlyCard(
       child: Column(
         children: [
@@ -86,11 +86,7 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: ButlerlySpacing.micro),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.circle,
-                    size: 8,
-                    color: chartColors[index % chartColors.length],
-                  ),
+                  Icon(Icons.circle, size: 8, color: chartColors[index]),
                   const SizedBox(width: ButlerlySpacing.micro),
                   Expanded(child: Text(chartSlices[index].label)),
                 ],
@@ -180,11 +176,13 @@ class _SpendingDonutPainter extends CustomPainter {
 
 class _SpendingSlice {
   const _SpendingSlice({
+    required this.categoryId,
     required this.label,
     required this.value,
     required this.currency,
   });
 
+  final String categoryId;
   final String label;
   final double value;
   final String? currency;
