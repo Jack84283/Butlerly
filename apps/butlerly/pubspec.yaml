@@ -80,6 +80,7 @@ flutter:
     - assets/analysis_rules/metrics/
     - assets/analysis_rules/insights/
     - assets/analysis_rules/data_quality/
+    - assets/icons/categories/
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
