@@ -623,6 +623,7 @@ void main() {
       tester.widget<Text>(find.text('Needs review')).textAlign,
       TextAlign.center,
     );
+    expect(find.text('(1)'), findsNWidgets(2));
     expect(find.text('Canonical review row'), findsOneWidget);
     expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
     await tester.tap(find.text('Canonical review row'));
@@ -732,6 +733,8 @@ void main() {
     await tester.tap(find.text('Not Categorized'));
     await tester.pumpAndSettle();
     expect(find.text('Refresh me'), findsOneWidget);
+    expect(find.text('(1)'), findsOneWidget);
+    expect(find.text('(0)'), findsOneWidget);
     await finance.createTransaction(
       CreateTransactionCommand(
         id: 'review-refresh-added',
@@ -752,6 +755,8 @@ void main() {
     await tester.tap(find.text('Not Categorized'));
     await tester.pumpAndSettle();
     expect(find.text('Added after refresh'), findsOneWidget);
+    expect(find.text('(2)'), findsOneWidget);
+    expect(find.text('(0)'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
 

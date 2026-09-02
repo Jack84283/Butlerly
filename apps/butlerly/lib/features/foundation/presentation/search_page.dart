@@ -407,6 +407,8 @@ class _SearchPageState extends State<SearchPage>
               child: Text(context.l10n.text('clearFilters')),
             ),
           ),
+        if (_activeFilterCount == 0)
+          const SizedBox(height: ButlerlySpacing.section),
         if (_results == null)
           ButlerlyEmptyState(
             icon: Icons.search_rounded,
