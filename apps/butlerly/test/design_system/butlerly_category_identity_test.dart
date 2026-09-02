@@ -25,7 +25,7 @@ void main() {
     );
 
     for (final categoryId in builtInIds) {
-      final identity = ButlerlyCategoryIdentity.forId(categoryId);
+      final identity = ButlerlyCategoryIdentity.forBuiltInId(categoryId)!;
       expect(identity.categoryId, categoryId);
       expect(identity.localizationKey, categoryId);
       expect(
@@ -33,23 +33,37 @@ void main() {
         isTrue,
         reason: 'Missing category asset for $categoryId',
       );
-      expect(ButlerlyCategoryColors.palette, contains(identity.colorId));
+      expect(
+        ButlerlyCategoryColors.palette,
+        contains(identity.categoryColorId),
+      );
     }
   });
 
   test('custom categories use the canonical custom asset and stable color', () {
-    final first = ButlerlyCategoryIdentity.forId('custom-category');
-    final second = ButlerlyCategoryIdentity.forId('custom-category');
+    final first = ButlerlyCategoryIdentity.custom(
+      categoryId: 'custom-category',
+      categoryColorId: ButlerlyCategoryColorId.coral,
+    );
+    final second = ButlerlyCategoryIdentity.custom(
+      categoryId: 'custom-category',
+      categoryColorId: ButlerlyCategoryColorId.coral,
+    );
 
     expect(first.assetName, 'custom');
     expect(first.assetPath, endsWith('assets/icons/categories/custom.svg'));
-    expect(first.colorId, second.colorId);
-    expect(ButlerlyCategoryColors.palette, contains(first.colorId));
+    expect(first.categoryColorId, second.categoryColorId);
+    expect(ButlerlyCategoryColors.palette, contains(first.categoryColorId));
+    expect(ButlerlyCategoryIdentity.forBuiltInId('category.unknown'), isNull);
   });
 
   test('category identity is independent of application theme', () {
-    final identity = ButlerlyCategoryIdentity.forId('category.food.groceries');
-    final categoryColor = ButlerlyCategoryColors.color(identity.colorId);
+    final identity = ButlerlyCategoryIdentity.forBuiltInId(
+      'category.food.groceries',
+    )!;
+    final categoryColor = ButlerlyCategoryColors.color(
+      identity.categoryColorId,
+    );
 
     for (final theme in [
       AppTheme.light,
@@ -58,7 +72,10 @@ void main() {
       AppTheme.darkFor(ButlerlyColorTheme.green),
     ]) {
       expect(theme.brightness, isNotNull);
-      expect(categoryColor, ButlerlyCategoryColors.color(identity.colorId));
+      expect(
+        categoryColor,
+        ButlerlyCategoryColors.color(identity.categoryColorId),
+      );
     }
     expect(categoryColor, isNot(AppTheme.light.colorScheme.surface));
   });

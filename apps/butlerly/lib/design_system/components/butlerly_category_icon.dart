@@ -9,6 +9,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 class ButlerlyCategoryIcon extends StatelessWidget {
   const ButlerlyCategoryIcon({
     required this.categoryId,
+    this.customColorId,
     this.semanticLabel,
     this.containerSize = ButlerlySize.categoryIconContainer,
     this.glyphSize = ButlerlySize.categoryIconGlyph,
@@ -16,13 +17,30 @@ class ButlerlyCategoryIcon extends StatelessWidget {
   });
 
   final String categoryId;
+
+  /// The persisted color for a user category. Required for custom IDs.
+  final ButlerlyCategoryColorId? customColorId;
   final String? semanticLabel;
   final double containerSize;
   final double glyphSize;
 
   @override
   Widget build(BuildContext context) {
-    final identity = ButlerlyCategoryIdentity.forId(categoryId);
+    final identity =
+        ButlerlyCategoryIdentity.forBuiltInId(categoryId) ??
+        (customColorId == null
+            ? null
+            : ButlerlyCategoryIdentity.custom(
+                categoryId: categoryId,
+                categoryColorId: customColorId!,
+              ));
+    assert(
+      identity != null,
+      'Unknown category ID requires a persisted custom color assignment.',
+    );
+    if (identity == null) {
+      return SizedBox.square(dimension: containerSize);
+    }
     return Semantics(
       image: true,
       label: semanticLabel,
@@ -30,8 +48,8 @@ class ButlerlyCategoryIcon extends StatelessWidget {
         dimension: containerSize,
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: ButlerlyCategoryColors.color(identity.colorId),
-            borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+            color: ButlerlyCategoryColors.color(identity.categoryColorId),
+            shape: BoxShape.circle,
           ),
           child: Center(
             child: SvgPicture.asset(

@@ -29,13 +29,4 @@ abstract final class ButlerlyCategoryColors {
   static const whiteGlyph = Colors.white;
 
   static Color color(ButlerlyCategoryColorId id) => palette[id]!;
-
-  static ButlerlyCategoryColorId forCustom(String categoryId) {
-    var hash = 0;
-    for (final codeUnit in categoryId.codeUnits) {
-      hash = (hash * 31 + codeUnit) & 0x7fffffff;
-    }
-    return ButlerlyCategoryColorId.values[hash %
-        ButlerlyCategoryColorId.values.length];
-  }
 }
