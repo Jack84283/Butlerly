@@ -8,6 +8,7 @@ import 'package:butlerly/features/foundation/presentation/payment_sources_page.d
 import 'package:butlerly/features/foundation/presentation/review_page.dart';
 import 'package:butlerly/features/foundation/presentation/search_page.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_count_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -335,9 +336,29 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(EditableText), 'Lunch');
     await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
 
     expect(find.text('Lunch'), findsAtLeastNWidgets(1));
     expect(find.text('Bus'), findsNothing);
+    expect(find.text('1 transaction'), findsOneWidget);
+  });
+
+  testWidgets('transaction count uses singular and plural labels', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Column(
+          children: [
+            TransactionCountText(count: 1),
+            TransactionCountText(count: 23),
+          ],
+        ),
+      ),
+    );
+
+    expect(find.text('1 transaction'), findsOneWidget);
+    expect(find.text('23 transactions'), findsOneWidget);
   });
 
   testWidgets('cancelling Search filters preserves the active filter state', (
@@ -409,10 +430,12 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.search);
     await tester.pumpAndSettle();
     expect(find.text('Keyboard Search Match'), findsAtLeastNWidgets(1));
+    expect(find.text('1 transaction'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.close_rounded));
     await tester.pumpAndSettle();
     expect(find.text('Keyboard Search Match'), findsAtLeastNWidgets(1));
+    expect(find.text('1 transaction'), findsOneWidget);
     expect(find.byIcon(Icons.close_rounded), findsNothing);
   });
 
@@ -479,6 +502,7 @@ void main() {
 
     expect(find.text('Organized row'), findsOneWidget);
     expect(find.text('Corner Market • Groceries • Weekly'), findsOneWidget);
+    expect(find.text('1 transaction'), findsOneWidget);
     final filterBottom = tester.getBottomLeft(
       find.byWidgetPredicate(
         (widget) => widget.runtimeType.toString().startsWith('SegmentedButton'),
