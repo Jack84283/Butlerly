@@ -50,8 +50,11 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
           currency: chartValues.first.currency?.value,
         ),
     ];
+    final colorsByCategory = ButlerlyChartColors.forCategories(
+      chartSlices.map((slice) => slice.categoryId),
+    );
     final chartColors = chartSlices
-        .map((slice) => ButlerlyChartColors.category(slice.categoryId))
+        .map((slice) => colorsByCategory[slice.categoryId]!)
         .toList(growable: false);
     return ButlerlyCard(
       child: Column(
@@ -83,11 +86,7 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: ButlerlySpacing.micro),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.circle,
-                    size: 8,
-                    color: chartColors[index],
-                  ),
+                  Icon(Icons.circle, size: 8, color: chartColors[index]),
                   const SizedBox(width: ButlerlySpacing.micro),
                   Expanded(child: Text(chartSlices[index].label)),
                 ],

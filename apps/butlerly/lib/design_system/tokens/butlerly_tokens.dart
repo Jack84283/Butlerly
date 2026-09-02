@@ -35,6 +35,30 @@ abstract final class ButlerlyChartColors {
     Color(0xFF56B4E9), // sky
     Color(0xFFF0E442), // yellow
     Color(0xFF882255), // wine
+    Color(0xFF332288), // indigo
+    Color(0xFF117733), // forest
+    Color(0xFF44AA99), // teal
+    Color(0xFF88CCEE), // cyan
+    Color(0xFFDDCC77), // sand
+    Color(0xFFAA4499), // violet
+    Color(0xFF661100), // brown
+    Color(0xFF999933), // olive
+    Color(0xFF1B9E77), // emerald
+    Color(0xFFD95F02), // pumpkin
+    Color(0xFF7570B3), // periwinkle
+    Color(0xFFE7298A), // magenta
+    Color(0xFF66A61E), // leaf
+    Color(0xFFE6AB02), // gold
+    Color(0xFFA6761D), // ochre
+    Color(0xFF666666), // charcoal
+    Color(0xFF3B5BA5), // cobalt
+    Color(0xFFB2182B), // crimson
+    Color(0xFF2166AC), // ocean
+    Color(0xFF762A83), // plum
+    Color(0xFF1B7837), // pine
+    Color(0xFFB35806), // sienna
+    Color(0xFF5E3C99), // grape
+    Color(0xFF4D9221), // moss
   ];
 
   /// Returns a deterministic palette color for a category identifier.
@@ -42,11 +66,36 @@ abstract final class ButlerlyChartColors {
   /// The palette is finite by design. Identifiers beyond its capacity reuse a
   /// palette entry based on a stable string hash rather than creating shades.
   static Color category(String categoryId) {
+    return categoryPalette[_paletteIndex(categoryId)];
+  }
+
+  /// Assigns unique colors to visible categories while palette colors remain.
+  ///
+  /// IDs are sorted before collision resolution so the result is independent
+  /// of query order. Once all 32 colors are in use, the stable base color is
+  /// reused for additional categories.
+  static Map<String, Color> forCategories(Iterable<String> categoryIds) {
+    final ids = categoryIds.toSet().toList()..sort();
+    final assigned = <String, Color>{};
+    final used = <int>{};
+    for (final id in ids) {
+      final base = _paletteIndex(id);
+      var index = base;
+      while (used.contains(index) && used.length < categoryPalette.length) {
+        index = (index + 1) % categoryPalette.length;
+      }
+      assigned[id] = categoryPalette[index];
+      used.add(index);
+    }
+    return assigned;
+  }
+
+  static int _paletteIndex(String categoryId) {
     var hash = 0;
     for (final codeUnit in categoryId.codeUnits) {
       hash = (hash * 31 + codeUnit) & 0x7fffffff;
     }
-    return categoryPalette[hash % categoryPalette.length];
+    return hash % categoryPalette.length;
   }
 }
 
