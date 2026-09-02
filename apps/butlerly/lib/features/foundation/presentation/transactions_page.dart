@@ -7,6 +7,7 @@ import 'package:butlerly/design_system/components/butlerly_transaction_controls.
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_count_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -206,15 +207,24 @@ class _TransactionsPageState extends State<TransactionsPage> {
                     setState(() => _filter = _TransactionFilter.all),
               )
             else
-              TransactionRecordList(
-                transactions: visible,
-                masterData: data.masterData,
-                possibleDuplicateIds: data.possibleDuplicateIds,
-                possibleDuplicateLabel: context.l10n.text('possibleDuplicate'),
-                onPossibleDuplicateTap: () =>
-                    GoRouter.of(context).push('/review?view=duplicates'),
-                onTap: _openDetail,
-                navigates: true,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TransactionCountText(count: visible.length),
+                  const SizedBox(height: ButlerlySpacing.compact),
+                  TransactionRecordList(
+                    transactions: visible,
+                    masterData: data.masterData,
+                    possibleDuplicateIds: data.possibleDuplicateIds,
+                    possibleDuplicateLabel: context.l10n.text(
+                      'possibleDuplicate',
+                    ),
+                    onPossibleDuplicateTap: () =>
+                        GoRouter.of(context).push('/review?view=duplicates'),
+                    onTap: _openDetail,
+                    navigates: true,
+                  ),
+                ],
               ),
             const SizedBox(height: ButlerlySpacing.structural),
           ],

@@ -278,42 +278,32 @@ void main() {
     }
   });
 
-  testWidgets('More opens More without optional Insights or Notifications', (
-    tester,
-  ) async {
-    setPhoneViewport(tester);
-    await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
-    await tester.pumpAndSettle();
+  testWidgets(
+    'More opens More without duplicate Transactions or optional features',
+    (tester) async {
+      setPhoneViewport(tester);
+      await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.text('More').last);
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('More').last);
+      await tester.pumpAndSettle();
 
-    expect(find.text('More'), findsAtLeastNWidgets(1));
-    expect(find.text('Add Transaction'), findsOneWidget);
-    expect(
-      find.text(
-        'Add transaction yourself, from receipt, from statement and local file',
-      ),
-      findsOneWidget,
-    );
-    await tester.tap(find.text('Add Transaction'));
-    await tester.pumpAndSettle();
-    expect(find.text('Add'), findsOneWidget);
-    await tester.binding.handlePopRoute();
-    await tester.pumpAndSettle();
+      expect(find.text('More'), findsAtLeastNWidgets(1));
+      expect(find.text('Add Transaction'), findsNothing);
 
-    await tester.scrollUntilVisible(
-      find.text('Optional features'),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('Optional features'), findsOneWidget);
-    expect(find.text('Insights'), findsNothing);
-    expect(find.text('Notifications'), findsNothing);
+      await tester.scrollUntilVisible(
+        find.text('Optional features'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('Optional features'), findsOneWidget);
+      expect(find.text('Insights'), findsNothing);
+      expect(find.text('Notifications'), findsNothing);
 
-    await tester.tap(find.text('Home').last);
-    await tester.pumpAndSettle();
-  });
+      await tester.tap(find.text('Home').last);
+      await tester.pumpAndSettle();
+    },
+  );
 
   testWidgets('Home Quick Actions open Analysis, Insights, and Notifications', (
     tester,

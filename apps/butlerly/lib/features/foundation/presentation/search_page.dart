@@ -6,6 +6,7 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_count_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
@@ -434,42 +435,57 @@ class _SearchPageState extends State<SearchPage>
               }
               final values = snapshot.requireData;
               if (values.isEmpty) {
-                return ButlerlyEmptyState(
-                  icon: Icons.search_off_rounded,
-                  title: context.l10n.text('noResults'),
-                  message: context.l10n.text('noResultsBody'),
-                  actionLabel: context.l10n.text('clearSearch'),
-                  onAction: _resetSearch,
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TransactionCountText(count: values.length),
+                    const SizedBox(height: ButlerlySpacing.compact),
+                    ButlerlyEmptyState(
+                      icon: Icons.search_off_rounded,
+                      title: context.l10n.text('noResults'),
+                      message: context.l10n.text('noResultsBody'),
+                      actionLabel: context.l10n.text('clearSearch'),
+                      onAction: _resetSearch,
+                    ),
+                  ],
                 );
               }
-              return ButlerlyTransactionList(
-                children: values
-                    .map(
-                      (value) => ButlerlyTransactionListItem(
-                        title:
-                            value.description ??
-                            context.l10n.text('untitledTransaction'),
-                        subtitle: _presentation.summary(value),
-                        meta: transactionDateLabel(
-                          value,
-                          pendingLabel: context.l10n.text('datePending'),
-                          locale: Localizations.localeOf(
-                            context,
-                          ).toLanguageTag(),
-                        ),
-                        amount: localizedTransactionAmount(
-                          context,
-                          value.amount,
-                        ),
-                        currency: value.currency,
-                        isIncome:
-                            value.direction == TransactionDirection.income.name,
-                        needsReview: value.reviewState == 'needsReview',
-                        onTap: () => _openDetail(value),
-                        showNavigationIndicator: true,
-                      ),
-                    )
-                    .toList(growable: false),
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TransactionCountText(count: values.length),
+                  const SizedBox(height: ButlerlySpacing.compact),
+                  ButlerlyTransactionList(
+                    children: values
+                        .map(
+                          (value) => ButlerlyTransactionListItem(
+                            title:
+                                value.description ??
+                                context.l10n.text('untitledTransaction'),
+                            subtitle: _presentation.summary(value),
+                            meta: transactionDateLabel(
+                              value,
+                              pendingLabel: context.l10n.text('datePending'),
+                              locale: Localizations.localeOf(
+                                context,
+                              ).toLanguageTag(),
+                            ),
+                            amount: localizedTransactionAmount(
+                              context,
+                              value.amount,
+                            ),
+                            currency: value.currency,
+                            isIncome:
+                                value.direction ==
+                                TransactionDirection.income.name,
+                            needsReview: value.reviewState == 'needsReview',
+                            onTap: () => _openDetail(value),
+                            showNavigationIndicator: true,
+                          ),
+                        )
+                        .toList(growable: false),
+                  ),
+                ],
               );
             },
           ),
