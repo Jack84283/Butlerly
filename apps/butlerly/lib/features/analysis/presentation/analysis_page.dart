@@ -183,18 +183,34 @@ class _AnalysisPageState extends State<AnalysisPage> {
     return services<FinanceServices>().queryTransactionsForFinancialDate(date);
   }
 
-  void _reload() {
+  Future<void> _reload() async {
     if (!mounted) return;
     final selected = _selectedDate;
+    final finance = services.isRegistered<FinanceServices>()
+        ? services<FinanceServices>()
+        : null;
+    final invalidation = finance?.invalidateAnalysis;
+    final reload = invalidation == null
+        ? Future<ApplicationResult<void>>.value(const ApplicationSuccess(null))
+        : invalidation.call(
+            AnalysisInvalidationReason.transactionChanged,
+            DateTime.now().toUtc(),
+          );
+    final result = reload.then((_) => _load(_period));
     setState(() {
-      _result = _load(_period);
+      _result = result;
       _calendar = null;
-      _transactions = selected == null ? null : _loadTransactions(selected);
+      _transactions = null;
+    });
+    await result;
+    if (!mounted || selected == null || selected != _selectedDate) return;
+    setState(() {
+      _transactions = _loadTransactions(selected);
     });
   }
 
   void _selectPeriod(String period) {
-    if (period == _period) return;
+    if (period == _period && period != 'selected_period') return;
     if (period == 'selected_period') {
       _chooseCustomPeriod();
       return;
@@ -294,14 +310,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
   }
 
   Future<void> _refresh() async {
-    final value = _load(_period);
-    final selected = _selectedDate;
-    setState(() {
-      _result = value;
-      _calendar = null;
-      _transactions = selected == null ? null : _loadTransactions(selected);
-    });
-    await value;
+    await _reload();
   }
 
   @override

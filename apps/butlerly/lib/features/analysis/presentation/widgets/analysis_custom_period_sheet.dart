@@ -69,6 +69,7 @@ class _AnalysisCustomPeriodSheetState extends State<AnalysisCustomPeriodSheet> {
           children: [
             Expanded(
               child: _DateChoice(
+                key: const ValueKey('analysis-custom-period-from'),
                 label: context.l10n.text('from'),
                 value: _format(context, _start),
                 selected: !_editingEnd,
@@ -78,6 +79,7 @@ class _AnalysisCustomPeriodSheetState extends State<AnalysisCustomPeriodSheet> {
             const SizedBox(width: ButlerlySpacing.compact),
             Expanded(
               child: _DateChoice(
+                key: const ValueKey('analysis-custom-period-to'),
                 label: context.l10n.text('to'),
                 value: _format(context, _end),
                 selected: _editingEnd,
@@ -101,6 +103,7 @@ class _AnalysisCustomPeriodSheetState extends State<AnalysisCustomPeriodSheet> {
 
 class _DateChoice extends StatelessWidget {
   const _DateChoice({
+    super.key,
     required this.label,
     required this.value,
     required this.selected,

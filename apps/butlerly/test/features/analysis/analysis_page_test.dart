@@ -72,6 +72,7 @@ void main() {
   testWidgets('custom period uses a staged bottom sheet range editor', (
     tester,
   ) async {
+    Future<DateTimeRange?>? selectedRange;
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: const [
@@ -84,15 +85,16 @@ void main() {
         home: Scaffold(
           body: Builder(
             builder: (context) => ElevatedButton(
-              onPressed: () => showButlerlyBottomSheet<void>(
-                context: context,
-                builder: (_) => AnalysisCustomPeriodSheet(
-                  initialRange: DateTimeRange(
-                    start: DateTime(2026, 9, 1),
-                    end: DateTime(2026, 9, 20),
+              onPressed: () =>
+                  selectedRange = showButlerlyBottomSheet<DateTimeRange>(
+                    context: context,
+                    builder: (_) => AnalysisCustomPeriodSheet(
+                      initialRange: DateTimeRange(
+                        start: DateTime(2026, 9, 1),
+                        end: DateTime(2026, 9, 20),
+                      ),
+                    ),
                   ),
-                ),
-              ),
               child: const Text('open'),
             ),
           ),
@@ -105,11 +107,34 @@ void main() {
 
     expect(find.text('Select range'), findsOneWidget);
     expect(find.byType(CalendarDatePicker), findsOneWidget);
-    expect(
-      find.byKey(const ValueKey('analysis-custom-period-save')),
-      findsOneWidget,
-    );
+    final save = find.byKey(const ValueKey('analysis-custom-period-save'));
+    expect(save, findsOneWidget);
     expect(find.byType(Dialog), findsNothing);
+    expect(find.textContaining('Sep 1'), findsWidgets);
+    expect(find.textContaining('Sep 20'), findsWidgets);
+
+    final titleX = tester.getTopLeft(find.text('Select range')).dx;
+    final from = find.byKey(const ValueKey('analysis-custom-period-from'));
+    final fromX = tester.getTopLeft(from).dx;
+    final fromValueX = tester
+        .getTopLeft(
+          find.descendant(of: from, matching: find.textContaining('Sep 1')),
+        )
+        .dx;
+    expect(fromX, closeTo(titleX, 0.1));
+    expect(fromValueX, closeTo(fromX, 0.1));
+
+    final saveButton = tester.widget<TextButton>(save);
+    final theme = Theme.of(tester.element(save));
+    expect(
+      saveButton.style?.foregroundColor?.resolve(<WidgetState>{}),
+      theme.colorScheme.primary,
+    );
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+    expect(await selectedRange, isNotNull);
+    expect((await selectedRange)!.start, DateTime(2026, 9, 1));
+    expect((await selectedRange)!.end, DateTime(2026, 9, 20));
   });
 
   testWidgets(
