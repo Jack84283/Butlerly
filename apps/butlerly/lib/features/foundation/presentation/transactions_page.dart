@@ -132,7 +132,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
       future: _transactions,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator());
+          return const ButlerlyLoadingState();
         }
         if (snapshot.hasError) {
           return ButlerlyErrorState(

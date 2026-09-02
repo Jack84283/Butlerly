@@ -7,11 +7,9 @@ import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_count_label.dart';
-import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
-import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
@@ -420,10 +418,7 @@ class _SearchPageState extends State<SearchPage>
             future: _results,
             builder: (context, snapshot) {
               if (snapshot.connectionState != ConnectionState.done) {
-                return const Padding(
-                  padding: EdgeInsets.all(ButlerlySpacing.large),
-                  child: Center(child: CircularProgressIndicator()),
-                );
+                return const ButlerlyLoadingState();
               }
               if (snapshot.hasError) {
                 return ButlerlyErrorState(
@@ -456,35 +451,11 @@ class _SearchPageState extends State<SearchPage>
                 children: [
                   TransactionCountText(count: values.length),
                   const SizedBox(height: ButlerlySpacing.compact),
-                  ButlerlyTransactionList(
-                    children: values
-                        .map(
-                          (value) => ButlerlyTransactionListItem(
-                            title:
-                                value.description ??
-                                context.l10n.text('untitledTransaction'),
-                            subtitle: _presentation.summary(value),
-                            meta: transactionDateLabel(
-                              value,
-                              pendingLabel: context.l10n.text('datePending'),
-                              locale: Localizations.localeOf(
-                                context,
-                              ).toLanguageTag(),
-                            ),
-                            amount: localizedTransactionAmount(
-                              context,
-                              value.amount,
-                            ),
-                            currency: value.currency,
-                            isIncome:
-                                value.direction ==
-                                TransactionDirection.income.name,
-                            needsReview: value.reviewState == 'needsReview',
-                            onTap: () => _openDetail(value),
-                            showNavigationIndicator: true,
-                          ),
-                        )
-                        .toList(growable: false),
+                  TransactionRecordList(
+                    transactions: values,
+                    masterData: _presentation,
+                    onTap: _openDetail,
+                    navigates: true,
                   ),
                 ],
               );
