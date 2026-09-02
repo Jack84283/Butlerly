@@ -54,3 +54,21 @@ jobs:
       - run: ./tool/setup.sh
       - run: flutter build ios --simulator --no-codesign
         working-directory: apps/butlerly
+
+  ios_integration:
+    name: iOS Integration Journeys
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-toolchain
+      - run: ./tool/setup.sh
+      - run: ./tool/validate.sh integration_test
+
+  android_smoke:
+    name: Android Smoke Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-toolchain
+      - run: ./tool/setup.sh
+      - run: ./tool/validate.sh android_smoke

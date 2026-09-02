@@ -57,6 +57,11 @@ final class LocalDataManager {
     'statement_rows',
     'financial_statements',
     'suggestions',
+    // Analysis findings and materialized results are derived from the user's
+    // financial data and must not survive an erase/restart boundary. Bundled
+    // rule definitions and their catalog remain application-owned config.
+    'analysis_findings',
+    'analysis_rule_results',
     'attachment_links',
     'extractions',
     'evidence_items',
