@@ -752,7 +752,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                         onChanged: (value) =>
                             setState(() => _paymentSourceId = value),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: ButlerlySpacing.standard),
                       Align(
                         alignment: Alignment.centerLeft,
                         child: Wrap(

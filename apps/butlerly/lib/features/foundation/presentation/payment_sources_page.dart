@@ -129,6 +129,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                     labelText: context.l10n.text('lastFour'),
                   ),
                 ),
+                const SizedBox(height: ButlerlySpacing.small),
                 TextField(
                   controller: currency,
                   textCapitalization: TextCapitalization.characters,

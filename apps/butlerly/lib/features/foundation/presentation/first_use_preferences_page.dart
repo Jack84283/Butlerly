@@ -33,7 +33,8 @@ class FirstUsePreferencesPage extends ConsumerWidget {
               textAlign: TextAlign.center,
             ),
             ButlerlySectionHeader(title: context.l10n.text('preferences')),
-            Card(
+            ButlerlyCard(
+              padding: EdgeInsets.zero,
               child: Padding(
                 padding: const EdgeInsets.all(ButlerlySpacing.standard),
                 child: Column(

@@ -428,7 +428,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
       ],
     ),
     body: _busy
-        ? const Center(child: CircularProgressIndicator())
+        ? const ButlerlyLoadingState()
         : _statements.isEmpty
         ? Center(
             child: Padding(
@@ -441,41 +441,45 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
             itemCount: _statements.length,
             itemBuilder: (_, index) {
               final item = _statements[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: ButlerlySpacing.cardGap),
-                child: ListTile(
-                  leading: const Icon(Icons.description_outlined),
-                  title: Text(statementDisplayTitle(context, item, _sources)),
-                  subtitle: Text(
-                    item.extractionMessage == null
-                        ? (item.paymentSourceId == null
-                              ? context.l10n.text(
-                                  'choosePaymentSourceToContinue',
-                                )
-                              : context.l10n.text('reviewInProgress'))
-                        : _statementStatusLabel(
-                            context,
-                            item.extractionMessage,
+              return Padding(
+                padding: const EdgeInsets.only(bottom: ButlerlySpacing.cardGap),
+                child: ButlerlyCard(
+                  padding: EdgeInsets.zero,
+                  child: ListTile(
+                    leading: const Icon(Icons.description_outlined),
+                    title: Text(statementDisplayTitle(context, item, _sources)),
+                    subtitle: Text(
+                      item.extractionMessage == null
+                          ? (item.paymentSourceId == null
+                                ? context.l10n.text(
+                                    'choosePaymentSourceToContinue',
+                                  )
+                                : context.l10n.text('reviewInProgress'))
+                          : _statementStatusLabel(
+                              context,
+                              item.extractionMessage,
+                            ),
+                      style: context.transactionItemMetadata,
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (kDebugMode &&
+                            _debugDiagnostics.containsKey(item.id))
+                          IconButton(
+                            tooltip: context.l10n.text('extractionDiagnostics'),
+                            onPressed: () => _showDiagnostics(item.id),
+                            icon: const Icon(Icons.bug_report_outlined),
                           ),
-                    style: context.transactionItemMetadata,
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (kDebugMode && _debugDiagnostics.containsKey(item.id))
                         IconButton(
-                          tooltip: context.l10n.text('extractionDiagnostics'),
-                          onPressed: () => _showDiagnostics(item.id),
-                          icon: const Icon(Icons.bug_report_outlined),
+                          tooltip: context.l10n.text('deleteStatement'),
+                          onPressed: () => _deleteUnprocessed(item),
+                          icon: const Icon(Icons.delete_outline_rounded),
                         ),
-                      IconButton(
-                        tooltip: context.l10n.text('deleteStatement'),
-                        onPressed: () => _deleteUnprocessed(item),
-                        icon: const Icon(Icons.delete_outline_rounded),
-                      ),
-                    ],
+                      ],
+                    ),
+                    onTap: () => _open(item),
                   ),
-                  onTap: () => _open(item),
                 ),
               );
             },
@@ -536,6 +540,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                     labelText: context.l10n.text('name'),
                   ),
                 ),
+                const SizedBox(height: ButlerlySpacing.small),
                 DropdownButtonFormField<PaymentSourceType>(
                   initialValue: type,
                   decoration: InputDecoration(
@@ -552,6 +557,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                   onChanged: (value) =>
                       setDialogState(() => type = value ?? type),
                 ),
+                const SizedBox(height: ButlerlySpacing.small),
                 TextField(
                   controller: lastFour,
                   keyboardType: TextInputType.number,
@@ -1250,76 +1256,83 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
             ),
           ),
         for (final row in _rows)
-          Card(
-            margin: const EdgeInsets.only(bottom: ButlerlySpacing.cardGap),
-            child: Padding(
-              padding: const EdgeInsets.all(ButlerlySpacing.cardPadding),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    row.description ?? row.originalText,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  Text(
-                    [
-                      row.transactionDate?.toIso8601String().substring(0, 10) ??
-                          context.l10n.text('dateNeedsReview'),
-                      row.currency ?? context.l10n.text('currencyNeedsReview'),
-                      row.amount ?? context.l10n.text('amountNeedsReview'),
-                      _statementDirectionLabel(context, row.direction),
-                      _statementRowStatusLabel(context, row.status),
-                    ].join(' · '),
-                  ),
-                  if (row.status == StatementRowStatus.pending ||
-                      row.status == StatementRowStatus.unresolved ||
-                      row.status == StatementRowStatus.deferred ||
-                      row.status == StatementRowStatus.skipped)
-                    ButlerlyButtonBar(
-                      alignment: ButlerlyButtonBarAlignment.start,
-                      density: ButlerlyButtonBarDensity.compact,
-                      spacing: ButlerlyButtonBarSpacing.none,
-                      children: [
-                        if (row.status != StatementRowStatus.skipped)
-                          ButlerlyCompactActionButton(
-                            onPressed: () => _edit(row),
-                            icon: Icons.edit_outlined,
-                            child: Text(context.l10n.text('edit')),
-                          ),
-                        if (row.status != StatementRowStatus.skipped)
-                          ButlerlyCompactActionButton(
-                            onPressed:
-                                _sourceId != null &&
-                                    row.transactionDate != null &&
-                                    row.amount != null &&
-                                    row.currency != null &&
-                                    row.direction != null
-                                ? () => _act(row, StatementRowStatus.saved)
-                                : null,
-                            icon: Icons.save_outlined,
-                            child: Text(context.l10n.text('save')),
-                          ),
-                        if (row.status != StatementRowStatus.skipped)
-                          ButlerlyCompactActionButton(
-                            onPressed: () =>
-                                _act(row, StatementRowStatus.deferred),
-                            icon: Icons.schedule_outlined,
-                            child: Text(context.l10n.text('later')),
-                          ),
-                        ButlerlyCompactActionButton(
-                          onPressed: () => _toggleSkipRestore(row),
-                          icon: row.status == StatementRowStatus.skipped
-                              ? Icons.restore_outlined
-                              : Icons.skip_next_outlined,
-                          child: Text(
-                            row.status == StatementRowStatus.skipped
-                                ? context.l10n.text('restore')
-                                : context.l10n.text('skip'),
-                          ),
-                        ),
-                      ],
+          Padding(
+            padding: const EdgeInsets.only(bottom: ButlerlySpacing.cardGap),
+            child: ButlerlyCard(
+              padding: EdgeInsets.zero,
+              child: Padding(
+                padding: const EdgeInsets.all(ButlerlySpacing.cardPadding),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      row.description ?? row.originalText,
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
-                ],
+                    Text(
+                      [
+                        row.transactionDate?.toIso8601String().substring(
+                              0,
+                              10,
+                            ) ??
+                            context.l10n.text('dateNeedsReview'),
+                        row.currency ??
+                            context.l10n.text('currencyNeedsReview'),
+                        row.amount ?? context.l10n.text('amountNeedsReview'),
+                        _statementDirectionLabel(context, row.direction),
+                        _statementRowStatusLabel(context, row.status),
+                      ].join(' · '),
+                    ),
+                    if (row.status == StatementRowStatus.pending ||
+                        row.status == StatementRowStatus.unresolved ||
+                        row.status == StatementRowStatus.deferred ||
+                        row.status == StatementRowStatus.skipped)
+                      ButlerlyButtonBar(
+                        alignment: ButlerlyButtonBarAlignment.start,
+                        density: ButlerlyButtonBarDensity.compact,
+                        spacing: ButlerlyButtonBarSpacing.none,
+                        children: [
+                          if (row.status != StatementRowStatus.skipped)
+                            ButlerlyCompactActionButton(
+                              onPressed: () => _edit(row),
+                              icon: Icons.edit_outlined,
+                              child: Text(context.l10n.text('edit')),
+                            ),
+                          if (row.status != StatementRowStatus.skipped)
+                            ButlerlyCompactActionButton(
+                              onPressed:
+                                  _sourceId != null &&
+                                      row.transactionDate != null &&
+                                      row.amount != null &&
+                                      row.currency != null &&
+                                      row.direction != null
+                                  ? () => _act(row, StatementRowStatus.saved)
+                                  : null,
+                              icon: Icons.save_outlined,
+                              child: Text(context.l10n.text('save')),
+                            ),
+                          if (row.status != StatementRowStatus.skipped)
+                            ButlerlyCompactActionButton(
+                              onPressed: () =>
+                                  _act(row, StatementRowStatus.deferred),
+                              icon: Icons.schedule_outlined,
+                              child: Text(context.l10n.text('later')),
+                            ),
+                          ButlerlyCompactActionButton(
+                            onPressed: () => _toggleSkipRestore(row),
+                            icon: row.status == StatementRowStatus.skipped
+                                ? Icons.restore_outlined
+                                : Icons.skip_next_outlined,
+                            child: Text(
+                              row.status == StatementRowStatus.skipped
+                                  ? context.l10n.text('restore')
+                                  : context.l10n.text('skip'),
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
