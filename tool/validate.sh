@@ -49,7 +49,7 @@ validate_flutter_application() (
 
 validate_integration_test() (
   cd apps/butlerly
-  flutter test integration_test/v1_journeys_test.dart
+  flutter test -d macos integration_test/v1_journeys_test.dart
 )
 
 validate_android_smoke() (
