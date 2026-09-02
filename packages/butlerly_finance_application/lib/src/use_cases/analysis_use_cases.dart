@@ -96,12 +96,7 @@ final class CalculateAnalysisOverview {
   ) async {
     final context = await contextFor('current_month', instant: instant);
     return switch (context) {
-      ApplicationSuccess<AnalysisContext>(:final value) => call(
-        value,
-        // The current month is still changing. Do not reuse a materialized
-        // result from earlier in the same month for this entry point.
-        forceRefresh: true,
-      ),
+      ApplicationSuccess<AnalysisContext>(:final value) => call(value),
       ApplicationFailure<AnalysisContext>() => ApplicationFailure(
         const ApplicationFailureDetail(
           code: ApplicationFailureCode.validation,
