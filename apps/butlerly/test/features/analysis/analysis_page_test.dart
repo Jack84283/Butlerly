@@ -109,6 +109,10 @@ void main() {
     expect(find.byType(CalendarDatePicker), findsOneWidget);
     final save = find.byKey(const ValueKey('analysis-custom-period-save'));
     expect(save, findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('analysis-custom-period-cancel')),
+      findsOneWidget,
+    );
     expect(find.byType(Dialog), findsNothing);
     expect(find.textContaining('Sep 1'), findsWidgets);
     expect(find.textContaining('Sep 20'), findsWidgets);
@@ -124,17 +128,56 @@ void main() {
     expect(fromX, closeTo(titleX, 0.1));
     expect(fromValueX, closeTo(fromX, 0.1));
 
-    final saveButton = tester.widget<TextButton>(save);
-    final theme = Theme.of(tester.element(save));
-    expect(
-      saveButton.style?.foregroundColor?.resolve(<WidgetState>{}),
-      theme.colorScheme.primary,
-    );
+    expect(tester.widget(save), isA<FilledButton>());
     await tester.tap(save);
     await tester.pumpAndSettle();
     expect(await selectedRange, isNotNull);
     expect((await selectedRange)!.start, DateTime(2026, 9, 1));
     expect((await selectedRange)!.end, DateTime(2026, 9, 20));
+  });
+
+  testWidgets('cancelling custom period leaves the selection unapplied', (
+    tester,
+  ) async {
+    Future<DateTimeRange?>? selectedRange;
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () =>
+                  selectedRange = showButlerlyBottomSheet<DateTimeRange>(
+                    context: context,
+                    builder: (_) => AnalysisCustomPeriodSheet(
+                      initialRange: DateTimeRange(
+                        start: DateTime(2026, 9, 1),
+                        end: DateTime(2026, 9, 20),
+                      ),
+                    ),
+                  ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('analysis-custom-period-cancel')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(await selectedRange, isNull);
+    expect(find.text('Select range'), findsNothing);
   });
 
   testWidgets(

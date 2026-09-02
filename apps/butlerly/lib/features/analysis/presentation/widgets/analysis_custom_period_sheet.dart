@@ -48,20 +48,7 @@ class _AnalysisCustomPeriodSheetState extends State<AnalysisCustomPeriodSheet> {
 
   @override
   Widget build(BuildContext context) => ButlerlySheet(
-    title: Row(
-      children: [
-        Expanded(child: Text(context.l10n.text('selectRange'))),
-        TextButton(
-          key: const ValueKey('analysis-custom-period-save'),
-          style: TextButton.styleFrom(
-            foregroundColor: Theme.of(context).colorScheme.primary,
-          ),
-          onPressed: () =>
-              Navigator.pop(context, DateTimeRange(start: _start, end: _end)),
-          child: Text(context.l10n.text('save')),
-        ),
-      ],
-    ),
+    title: Text(context.l10n.text('selectRange')),
     content: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -98,6 +85,19 @@ class _AnalysisCustomPeriodSheetState extends State<AnalysisCustomPeriodSheet> {
         ),
       ],
     ),
+    actions: [
+      TextButton(
+        key: const ValueKey('analysis-custom-period-cancel'),
+        onPressed: () => Navigator.pop(context),
+        child: Text(context.l10n.text('cancel')),
+      ),
+      FilledButton(
+        key: const ValueKey('analysis-custom-period-save'),
+        onPressed: () =>
+            Navigator.pop(context, DateTimeRange(start: _start, end: _end)),
+        child: Text(context.l10n.text('save')),
+      ),
+    ],
   );
 }
 
