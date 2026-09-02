@@ -11,7 +11,6 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 /// Real local application boundary used by V1 integration tests.
 ///
@@ -31,7 +30,6 @@ final class V1IntegrationHarness {
   Directory get evidence => Directory(path.join(root.path, 'evidence'));
 
   static Future<V1IntegrationHarness> create() async {
-    sqfliteFfiInit();
     final root = await Directory.systemTemp.createTemp('butlerly-v1-e2e-');
     final harness = V1IntegrationHarness._(root);
     await harness._open();
@@ -41,11 +39,7 @@ final class V1IntegrationHarness {
   Future<void> _open() async {
     await documents.create(recursive: true);
     await evidence.create(recursive: true);
-    database = LocalDatabase(
-      logger: AppLogger(),
-      factory: databaseFactoryFfi,
-      databaseDirectory: root.path,
-    );
+    database = LocalDatabase(logger: AppLogger(), databaseDirectory: root.path);
     await database.initialize();
     configureDependencies(
       configuration: const AppConfiguration(),

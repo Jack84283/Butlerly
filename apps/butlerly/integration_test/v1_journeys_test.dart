@@ -4,9 +4,11 @@ import 'dart:io';
 import 'package:butlerly/app/butlerly_app.dart';
 import 'package:butlerly/core/evidence/local_ocr_service.dart';
 import 'package:butlerly/core/import/local_csv_importer.dart';
+import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -58,6 +60,39 @@ void main() {
           .value
           ?.firstUseCompleted,
       isTrue,
+    );
+  });
+
+  testWidgets('real UI creates and saves a local transaction', (tester) async {
+    await harness.finance.saveUserPreference(
+      UserPreference(
+        locale: 'en',
+        formattingLocale: 'en-US',
+        regionCode: 'US',
+        baseCurrency: CurrencyCode('USD'),
+        timeZoneId: 'UTC',
+        firstUseCompleted: true,
+      ),
+    );
+    await tester.pumpWidget(
+      MaterialApp(home: TransactionEditorPage(finance: harness.finance)),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(TextFormField), findsAtLeastNWidgets(4));
+    await tester.enterText(find.byType(TextFormField).at(0), '18.75');
+    await tester.enterText(find.byType(TextFormField).at(2), 'UI merchant');
+    await tester.fling(find.byType(ListView).last, const Offset(0, -500), 1000);
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Save locally'), findsOneWidget);
+    await tester.tap(find.text('Save locally'));
+    await tester.pump(const Duration(milliseconds: 500));
+
+    final saved = await harness.finance.listTransactions(
+      const ListTransactionsQuery(text: 'UI merchant'),
+    );
+    expect(
+      (saved as ApplicationSuccess<List<TransactionDto>>).value,
+      hasLength(1),
     );
   });
 
