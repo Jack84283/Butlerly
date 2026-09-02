@@ -48,14 +48,28 @@ class ButlerlyPage extends StatelessWidget {
                 ButlerlySize.phoneGutter,
                 ButlerlySpacing.large,
               ),
-          sliver: SliverList.list(
-            children: [
-              if (subtitle != null) ...[
-                Text(subtitle!, style: Theme.of(context).textTheme.bodyMedium),
-                const SizedBox(height: ButlerlySpacing.section),
-              ],
-              ...children,
-            ],
+          sliver: SliverLayoutBuilder(
+            builder: (context, constraints) {
+              final extraWidth =
+                  constraints.crossAxisExtent -
+                  ButlerlySize.pageContentMaxWidth;
+              final horizontalInset = extraWidth > 0 ? extraWidth / 2 : 0.0;
+              return SliverPadding(
+                padding: EdgeInsets.symmetric(horizontal: horizontalInset),
+                sliver: SliverList.list(
+                  children: [
+                    if (subtitle != null) ...[
+                      Text(
+                        subtitle!,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: ButlerlySpacing.section),
+                    ],
+                    ...children,
+                  ],
+                ),
+              );
+            },
           ),
         ),
       ],
