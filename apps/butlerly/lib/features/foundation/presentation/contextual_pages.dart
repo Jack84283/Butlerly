@@ -563,14 +563,14 @@ class _StatementPreviewDialogState extends State<_StatementPreviewDialog> {
               }),
             ),
             if (widget.preview.errors.isNotEmpty) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: ButlerlySpacing.compact),
               Text(
                 context.l10n.text('rowsNeedCorrection', {
                   'count': '${widget.preview.errors.length}',
                 }),
               ),
             ],
-            const SizedBox(height: 12),
+            const SizedBox(height: ButlerlySpacing.small),
             ButlerlyPaymentSourceSelector(
               value: _sourceId,
               label: context.l10n.text('paymentSource'),
@@ -578,7 +578,7 @@ class _StatementPreviewDialogState extends State<_StatementPreviewDialog> {
               sources: widget.sources,
               onChanged: (value) => setState(() => _sourceId = value),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: ButlerlySpacing.small),
             for (final row in widget.preview.rows.take(8))
               ListTile(
                 dense: true,

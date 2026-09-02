@@ -72,7 +72,7 @@ class LegalDocumentPage extends StatelessWidget {
           );
         }
         if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
+          return const ButlerlyLoadingState();
         }
         return SafeArea(
           child: SingleChildScrollView(
