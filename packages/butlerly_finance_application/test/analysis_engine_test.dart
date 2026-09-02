@@ -18,6 +18,7 @@ void main() {
     List<RuleDependency> dependencies = const [],
     List<AnalysisFilter> filters = const [],
     RuleGrouping grouping = RuleGrouping.none,
+    AnalysisSurface surface = AnalysisSurface.overview,
   }) => AnalysisRuleDefinition(
     identity: RuleIdentity(id),
     version: RuleVersion('1.0.0'),
@@ -33,6 +34,7 @@ void main() {
     baseline: RuleBaseline.none,
     condition: const RuleCondition(operator: 'none'),
     severity: RuleSeverity.info,
+    surface: surface,
     dependencies: dependencies,
     filters: filters,
     definitionHash: RuleDefinitionHash(
@@ -800,17 +802,233 @@ void main() {
     final results = const AnalysisRuleEngine().execute(
       dataset: dataset(),
       definitions: [
-        rule('ANL-R014', RuleOperation.sum, grouping: RuleGrouping.day),
+        rule(
+          'ANL-R014',
+          RuleOperation.sum,
+          grouping: RuleGrouping.day,
+          surface: AnalysisSurface.trends,
+        ),
       ],
     );
-    expect(results.map((result) => result.metric!.dimension), [
+    expect(results, hasLength(31));
+    expect(results.map((result) => result.metric!.dimension).take(3), [
+      '2026-01-01:value',
       '2026-01-02:value',
       '2026-01-03:value',
     ]);
+    expect(results[1].metric!.value, DecimalValue.parse('10'));
+    expect(results[2].metric!.value, DecimalValue.parse('25'));
+    expect(results.last.metric!.dimension, '2026-01-31:value');
+  });
+
+  test('trend fills missing dates with zero values', () {
+    final trendContext = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-01-01',
+        endDate: '2026-01-05',
+        timeZoneId: 'Asia/Shanghai',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.original,
+    );
+    final results = const AnalysisRuleEngine().execute(
+      dataset: AnalysisDataset(
+        context: trendContext,
+        transactions: [
+          AnalysisEconomicTransaction(
+            id: TransactionId('start'),
+            money: Money(
+              amount: DecimalValue.parse('20'),
+              currency: CurrencyCode('USD'),
+            ),
+            direction: TransactionDirection.expense,
+            transactionDate: '2026-01-01',
+          ),
+          AnalysisEconomicTransaction(
+            id: TransactionId('end'),
+            money: Money(
+              amount: DecimalValue.parse('30'),
+              currency: CurrencyCode('USD'),
+            ),
+            direction: TransactionDirection.expense,
+            transactionDate: '2026-01-05',
+          ),
+        ],
+      ),
+      definitions: [
+        rule(
+          'ANL-R014',
+          RuleOperation.sum,
+          grouping: RuleGrouping.day,
+          surface: AnalysisSurface.trends,
+        ),
+      ],
+    );
+    expect(results, hasLength(5));
     expect(results.map((result) => result.metric!.value), [
-      DecimalValue.parse('10'),
-      DecimalValue.parse('25'),
+      DecimalValue.parse('20'),
+      DecimalValue.parse('0'),
+      DecimalValue.parse('0'),
+      DecimalValue.parse('0'),
+      DecimalValue.parse('30'),
     ]);
+  });
+
+  test('trend includes future dates and empty periods', () {
+    final trendContext = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-09-01',
+        endDate: '2026-09-30',
+        timeZoneId: 'Asia/Shanghai',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.original,
+    );
+    final results = const AnalysisRuleEngine().execute(
+      dataset: AnalysisDataset(context: trendContext, transactions: const []),
+      definitions: [
+        rule(
+          'ANL-R014',
+          RuleOperation.sum,
+          grouping: RuleGrouping.day,
+          surface: AnalysisSurface.trends,
+        ),
+      ],
+    );
+    expect(results, hasLength(30));
+    expect(results.first.metric!.dimension, '2026-09-01:value');
+    expect(results.last.metric!.dimension, '2026-09-30:value');
+    expect(results.every((result) => result.metric!.value.isZero), isTrue);
+  });
+
+  test('trend supports every calendar month length', () {
+    for (final period in [
+      ('2026-02-01', '2026-02-28', 28),
+      ('2024-02-01', '2024-02-29', 29),
+      ('2026-04-01', '2026-04-30', 30),
+      ('2026-01-01', '2026-01-31', 31),
+    ]) {
+      final trendContext = AnalysisContext(
+        period: AnalysisPeriod(
+          startDate: period.$1,
+          endDate: period.$2,
+          timeZoneId: 'Asia/Shanghai',
+        ),
+        datasetMode: DatasetMode.allEligible,
+        currencyBasis: CurrencyBasis.original,
+      );
+      final results = const AnalysisRuleEngine().execute(
+        dataset: AnalysisDataset(context: trendContext, transactions: const []),
+        definitions: [
+          rule(
+            'ANL-R014',
+            RuleOperation.sum,
+            grouping: RuleGrouping.day,
+            surface: AnalysisSurface.trends,
+          ),
+        ],
+      );
+      expect(results, hasLength(period.$3), reason: period.$2);
+    }
+  });
+
+  test('trend mutation changes a daily bucket without losing the axis', () {
+    final trendContext = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-01-01',
+        endDate: '2026-01-03',
+        timeZoneId: 'Asia/Shanghai',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.original,
+    );
+    final definition = rule(
+      'ANL-R014',
+      RuleOperation.sum,
+      grouping: RuleGrouping.day,
+      surface: AnalysisSurface.trends,
+    );
+    AnalysisEconomicTransaction transaction(
+      String id,
+      String date,
+      String amount,
+    ) => AnalysisEconomicTransaction(
+      id: TransactionId(id),
+      money: Money(
+        amount: DecimalValue.parse(amount),
+        currency: CurrencyCode('USD'),
+      ),
+      direction: TransactionDirection.expense,
+      transactionDate: date,
+    );
+    List<RuleExecutionResult> execute(
+      List<AnalysisEconomicTransaction> transactions,
+    ) => const AnalysisRuleEngine().execute(
+      dataset: AnalysisDataset(
+        context: trendContext,
+        transactions: transactions,
+      ),
+      definitions: [definition],
+    );
+
+    final before = execute([transaction('t1', '2026-01-01', '20')]);
+    final afterAdd = execute([
+      transaction('t1', '2026-01-01', '20'),
+      transaction('t2', '2026-01-02', '15'),
+    ]);
+    final afterEdit = execute([
+      transaction('t1', '2026-01-01', '20'),
+      transaction('t2', '2026-01-02', '21'),
+    ]);
+    final afterDelete = execute([transaction('t1', '2026-01-01', '20')]);
+    expect(before, hasLength(3));
+    expect(afterAdd, hasLength(3));
+    expect(afterAdd[1].metric!.value, DecimalValue.parse('15'));
+    expect(afterEdit, hasLength(3));
+    expect(afterEdit[1].metric!.value, DecimalValue.parse('21'));
+    expect(afterDelete, hasLength(3));
+    expect(afterDelete[1].metric!.value, DecimalValue.parse('0'));
+  });
+
+  test('trend dimensions use the authoritative financial transaction date', () {
+    final trendContext = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-01-01',
+        endDate: '2026-01-02',
+        timeZoneId: 'America/Los_Angeles',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.original,
+    );
+    final results = const AnalysisRuleEngine().execute(
+      dataset: AnalysisDataset(
+        context: trendContext,
+        transactions: [
+          AnalysisEconomicTransaction(
+            id: TransactionId('financial-date'),
+            money: Money(
+              amount: DecimalValue.parse('12'),
+              currency: CurrencyCode('USD'),
+            ),
+            direction: TransactionDirection.expense,
+            transactionDate: '2026-01-02',
+          ),
+        ],
+      ),
+      definitions: [
+        rule(
+          'ANL-R014',
+          RuleOperation.sum,
+          grouping: RuleGrouping.day,
+          surface: AnalysisSurface.trends,
+        ),
+      ],
+    );
+    expect(results.map((result) => result.metric!.dimension), [
+      '2026-01-01:value',
+      '2026-01-02:value',
+    ]);
+    expect(results.last.metric!.value, DecimalValue.parse('12'));
   });
 }
 

@@ -137,7 +137,15 @@ final class AnalysisRuleEngine {
                   _matchesQualityField(value, rule),
             )
             .toList(growable: false);
-        for (final entry in _group(values, rule.grouping).entries) {
+        final grouped = _group(
+          values,
+          rule.grouping,
+          completeDailyAxis:
+              rule.surface == AnalysisSurface.trends &&
+              rule.grouping == RuleGrouping.day,
+          window: primaryWindow,
+        );
+        for (final entry in grouped.entries) {
           for (final measure
               in rule.measures.isEmpty ? [rule.measure] : rule.measures) {
             final metric = _metric(
@@ -384,8 +392,10 @@ final class AnalysisRuleEngine {
 
   Map<String, List<AnalysisEconomicTransaction>> _group(
     List<AnalysisEconomicTransaction> values,
-    RuleGrouping grouping,
-  ) {
+    RuleGrouping grouping, {
+    bool completeDailyAxis = false,
+    ResolvedAnalysisWindow? window,
+  }) {
     if (grouping == RuleGrouping.none) return {'': values};
     String key(AnalysisEconomicTransaction value) => switch (grouping) {
       RuleGrouping.category => value.categoryId?.value ?? 'uncategorized',
@@ -399,6 +409,15 @@ final class AnalysisRuleEngine {
       RuleGrouping.none => '',
     };
     final grouped = <String, List<AnalysisEconomicTransaction>>{};
+    if (completeDailyAxis && window != null) {
+      for (
+        var date = window.start;
+        date.isBefore(window.endExclusive);
+        date = date.add(const Duration(days: 1))
+      ) {
+        grouped[_formatDate(date)] = <AnalysisEconomicTransaction>[];
+      }
+    }
     for (final value in values) {
       if (grouping == RuleGrouping.tag && value.tagIds.length > 1) {
         for (final tag in value.tagIds) {
@@ -410,6 +429,9 @@ final class AnalysisRuleEngine {
     }
     return grouped;
   }
+
+  String _formatDate(DateTime value) =>
+      '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 
   String _weekKey(String? value) {
     if (value == null) return 'unknown';
