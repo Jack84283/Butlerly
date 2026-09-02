@@ -78,6 +78,26 @@ void main() {
     }
   });
 
+  testWidgets('visualization card provides a shared title hierarchy', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: const Scaffold(
+          body: ButlerlyVisualizationCard(
+            title: 'Trend',
+            child: SizedBox(key: Key('visualization-content'), height: 40),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Trend'), findsOneWidget);
+    expect(find.byKey(const Key('visualization-content')), findsOneWidget);
+    expect(find.byType(Card), findsOneWidget);
+  });
+
   testWidgets('review actions inherit localized labels from the app', (
     tester,
   ) async {

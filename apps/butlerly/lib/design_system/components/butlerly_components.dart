@@ -109,6 +109,35 @@ class ButlerlyCard extends StatelessWidget {
   );
 }
 
+/// Shared container for chart content with a semantic title and consistent
+/// title-to-visual spacing. Chart-specific geometry remains owned by the
+/// visualization inside the card.
+class ButlerlyVisualizationCard extends StatelessWidget {
+  const ButlerlyVisualizationCard({
+    required this.title,
+    required this.child,
+    this.semanticLabel,
+    super.key,
+  });
+
+  final String title;
+  final Widget child;
+  final String? semanticLabel;
+
+  @override
+  Widget build(BuildContext context) => ButlerlyCard(
+    semanticLabel: semanticLabel ?? title,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: ButlerlySpacing.small),
+        child,
+      ],
+    ),
+  );
+}
+
 class ButlerlySectionHeader extends StatelessWidget {
   const ButlerlySectionHeader({required this.title, this.action, super.key});
 
