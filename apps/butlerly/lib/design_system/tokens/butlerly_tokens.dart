@@ -24,6 +24,32 @@ abstract final class ButlerlySpacing {
   static const bottomActionSpacing = section;
 }
 
+/// Stable categorical colors shared by charts and their legends.
+abstract final class ButlerlyChartColors {
+  static const categoryPalette = <Color>[
+    Color(0xFF0072B2), // blue
+    Color(0xFFE69F00), // amber
+    Color(0xFF009E73), // green
+    Color(0xFFD55E00), // orange
+    Color(0xFFCC79A7), // purple
+    Color(0xFF56B4E9), // sky
+    Color(0xFFF0E442), // yellow
+    Color(0xFF882255), // wine
+  ];
+
+  /// Returns a deterministic palette color for a category identifier.
+  ///
+  /// The palette is finite by design. Identifiers beyond its capacity reuse a
+  /// palette entry based on a stable string hash rather than creating shades.
+  static Color category(String categoryId) {
+    var hash = 0;
+    for (final codeUnit in categoryId.codeUnits) {
+      hash = (hash * 31 + codeUnit) & 0x7fffffff;
+    }
+    return categoryPalette[hash % categoryPalette.length];
+  }
+}
+
 abstract final class ButlerlyRadius {
   static const small = 6.0;
   static const standard = 10.0;
