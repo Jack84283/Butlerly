@@ -5,6 +5,8 @@ import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
+export 'butlerly_category_icon.dart';
+
 class ButlerlyPage extends StatelessWidget {
   const ButlerlyPage({
     required this.children,

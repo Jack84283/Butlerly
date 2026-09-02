@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
 
 abstract final class ButlerlySpacing {
+  static const none = 0.0;
+  static const xxs = 2.0;
+  static const xs = micro;
+  static const sm = compact;
+  static const md = standard;
+  static const lg = section;
+  static const xl = large;
+  static const xxl = major;
   static const micro = 4.0;
   static const compact = 8.0;
   static const small = 12.0;
@@ -26,6 +34,8 @@ abstract final class ButlerlySpacing {
 
 /// Stable categorical colors shared by charts and their legends.
 abstract final class ButlerlyChartColors {
+  /// Analysis series colors. This palette is intentionally separate from the
+  /// persistent eight-color category identity palette below the theme layer.
   static const categoryPalette = <Color>[
     Color(0xFF0072B2), // blue
     Color(0xFFE69F00), // amber
@@ -104,6 +114,12 @@ abstract final class ButlerlyRadius {
   static const standard = 10.0;
   static const large = 16.0;
   static const full = 999.0;
+  static const control = small;
+  static const input = standard;
+  static const card = standard;
+  static const sheet = large;
+  static const dialog = large;
+  static const pill = full;
 }
 
 abstract final class ButlerlySize {
@@ -117,18 +133,29 @@ abstract final class ButlerlySize {
   static const readableWidth = 760.0;
   static const stateContentWidth = 520.0;
   static const recordRowMinHeight = 72.0;
+  static const standardIcon = 24.0;
+  static const categoryIconGlyph = 24.0;
+  static const categoryIconContainer = 40.0;
   static const compactActionIconSize = 18.0;
   static const sourcePreviewWidth = 64.0;
   static const sourcePreviewHeight = 80.0;
+  static const navigationBarHeight = 72.0;
 }
 
 abstract final class ButlerlyMotion {
   static const fast = Duration(milliseconds: 120);
   static const standard = Duration(milliseconds: 200);
   static const deliberate = Duration(milliseconds: 300);
+  static const long = deliberate;
+  static const curve = Curves.easeInOut;
 
   static Duration responsive(BuildContext context, Duration duration) =>
       MediaQuery.disableAnimationsOf(context) ? Duration.zero : duration;
+}
+
+abstract final class ButlerlyAccessibility {
+  static const minimumContrastRatio = 4.5;
+  static const minimumTouchTarget = ButlerlySize.minimumTarget;
 }
 
 abstract final class ButlerlyElevation {
@@ -136,4 +163,8 @@ abstract final class ButlerlyElevation {
   static const raised = 1.0;
   static const overlay = 4.0;
   static const modal = 8.0;
+  static const card = raised;
+  static const dialog = modal;
+  static const bottomSheet = modal;
+  static const floating = overlay;
 }

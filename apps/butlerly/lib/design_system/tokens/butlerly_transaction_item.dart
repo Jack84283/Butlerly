@@ -1,5 +1,6 @@
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:flutter/material.dart';
 
 /// Layout values shared by every transaction-record list presentation.
@@ -25,10 +26,7 @@ abstract final class ButlerlyTransactionItemTokens {
 /// Semantic styles for the three lines and indicators in a transaction row.
 extension ButlerlyTransactionItemStyles on BuildContext {
   TextStyle get transactionItemAmount =>
-      Theme.of(this).textTheme.titleMedium!.copyWith(
-        fontFeatures: const [FontFeature.tabularFigures()],
-        fontWeight: FontWeight.w700,
-      );
+      ButlerlyTypography.financialAmount(Theme.of(this).textTheme.titleMedium!);
 
   TextStyle get transactionItemDate => Theme.of(this).textTheme.bodySmall!;
 
@@ -49,10 +47,8 @@ extension ButlerlyTransactionItemStyles on BuildContext {
 
 extension ButlerlyTransactionDetailStyles on BuildContext {
   TextStyle get transactionDetailAmount =>
-      Theme.of(this).textTheme.titleLarge!.copyWith(
-        fontSize: 32,
-        fontWeight: FontWeight.w700,
-        fontFeatures: const [FontFeature.tabularFigures()],
+      ButlerlyTypography.financialDetailAmount(
+        Theme.of(this).textTheme.titleLarge!,
       );
 
   TextStyle get transactionDetailDescription =>

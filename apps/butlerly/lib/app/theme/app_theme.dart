@@ -1,6 +1,7 @@
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:flutter/material.dart';
 
 abstract final class AppTheme {
@@ -27,58 +28,11 @@ abstract final class AppTheme {
       brightness: brightness,
       fontFamily: null,
     );
-    final textTheme = base.textTheme.copyWith(
-      displaySmall: base.textTheme.displaySmall?.copyWith(
-        fontSize: 32,
-        height: 1.25,
-        fontWeight: FontWeight.w600,
-        color: colors.primaryText,
-      ),
-      headlineLarge: base.textTheme.headlineLarge?.copyWith(
-        fontSize: 28,
-        height: 34 / 28,
-        fontWeight: FontWeight.w600,
-        color: colors.primaryText,
-      ),
-      headlineMedium: base.textTheme.headlineMedium?.copyWith(
-        fontSize: 22,
-        height: 28 / 22,
-        fontWeight: FontWeight.w600,
-        color: colors.primaryText,
-      ),
-      titleLarge: base.textTheme.titleLarge?.copyWith(
-        fontSize: 18,
-        height: 24 / 18,
-        fontWeight: FontWeight.w600,
-        color: colors.primaryText,
-      ),
-      titleMedium: base.textTheme.titleMedium?.copyWith(
-        fontSize: 16,
-        height: 1.5,
-        fontWeight: FontWeight.w600,
-        color: colors.primaryText,
-      ),
-      bodyLarge: base.textTheme.bodyLarge?.copyWith(
-        fontSize: 16,
-        height: 1.5,
-        color: colors.primaryText,
-      ),
-      bodyMedium: base.textTheme.bodyMedium?.copyWith(
-        fontSize: 15,
-        height: 1.4,
-        color: colors.secondaryText,
-      ),
-      labelLarge: base.textTheme.labelLarge?.copyWith(
-        fontSize: 14,
-        height: 20 / 14,
-        fontWeight: FontWeight.w500,
-        color: colors.primaryText,
-      ),
-      bodySmall: base.textTheme.bodySmall?.copyWith(
-        fontSize: 12,
-        height: 17 / 12,
-        color: colors.tertiaryText,
-      ),
+    final textTheme = ButlerlyTypography.apply(
+      base.textTheme,
+      primaryText: colors.primaryText,
+      secondaryText: colors.secondaryText,
+      tertiaryText: colors.tertiaryText,
     );
 
     final scheme = ColorScheme(
@@ -249,18 +203,16 @@ abstract final class AppTheme {
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        height: 72,
+        height: ButlerlySize.navigationBarHeight,
         backgroundColor: colors.surface,
         indicatorColor: colors.selection,
         labelTextStyle: WidgetStateProperty.resolveWith(
-          (states) => textTheme.labelSmall?.copyWith(
-            fontSize: 10.5,
+          (states) => ButlerlyTypography.navigationLabel(
+            textTheme.labelSmall!,
             color: states.contains(WidgetState.selected)
                 ? colors.interactive
                 : colors.secondaryText,
-            fontWeight: states.contains(WidgetState.selected)
-                ? FontWeight.w600
-                : FontWeight.w400,
+            selected: states.contains(WidgetState.selected),
           ),
         ),
         iconTheme: WidgetStateProperty.resolveWith(
