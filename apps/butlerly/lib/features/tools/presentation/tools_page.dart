@@ -83,7 +83,11 @@ class _ToolCard extends StatelessWidget {
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(tool.icon, color: context.colors.interactive, size: 28),
+        Icon(
+          tool.icon,
+          color: context.colors.interactive,
+          size: ButlerlySize.standardIcon,
+        ),
         const SizedBox(width: ButlerlySpacing.standard),
         Expanded(
           child: Column(

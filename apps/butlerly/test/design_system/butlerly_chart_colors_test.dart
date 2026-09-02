@@ -33,4 +33,19 @@ void main() {
       ButlerlyChartColors.forCategories(ids),
     );
   });
+
+  test(
+    'chart consumers can resolve identical colors for slices and legends',
+    () {
+      final ids = ['food', 'housing', 'other'];
+      final resolved = ButlerlyChartColors.forCategories(ids);
+
+      final sliceColors = ids.map((id) => resolved[id]).toList(growable: false);
+      final legendColors = ids
+          .map((id) => resolved[id])
+          .toList(growable: false);
+
+      expect(sliceColors, legendColors);
+    },
+  );
 }

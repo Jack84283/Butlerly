@@ -317,7 +317,7 @@ class _ReviewPageState extends State<ReviewPage> {
             future: _duplicateGroups,
             builder: (context, snapshot) {
               if (snapshot.connectionState != ConnectionState.done) {
-                return const Center(child: CircularProgressIndicator());
+                return const ButlerlyLoadingState();
               }
               if (snapshot.hasError) {
                 return ButlerlyErrorState(
@@ -387,7 +387,7 @@ class _ReviewPageState extends State<ReviewPage> {
             builder: (context, snapshot) {
               final values = snapshot.data ?? const <TransactionDto>[];
               if (snapshot.connectionState != ConnectionState.done) {
-                return const Center(child: CircularProgressIndicator());
+                return const ButlerlyLoadingState();
               }
               if (snapshot.hasError) {
                 return ButlerlyErrorState(
@@ -429,10 +429,7 @@ class _ReviewPageState extends State<ReviewPage> {
             future: _items,
             builder: (context, snapshot) {
               if (snapshot.connectionState != ConnectionState.done) {
-                return const Padding(
-                  padding: EdgeInsets.all(ButlerlySpacing.large),
-                  child: Center(child: CircularProgressIndicator()),
-                );
+                return const ButlerlyLoadingState();
               }
               if (snapshot.hasError) {
                 return ButlerlyErrorState(
@@ -544,8 +541,8 @@ class _ReviewTransactionCard extends StatelessWidget {
               const SizedBox(height: ButlerlySpacing.small),
               Text(recommendation),
               const SizedBox(height: ButlerlySpacing.standard),
-              Wrap(
-                spacing: ButlerlySpacing.compact,
+              ButlerlyButtonBar(
+                spacing: ButlerlyButtonBarSpacing.none,
                 children: [
                   FilledButton(onPressed: onPrimary, child: Text(primaryLabel)),
                   OutlinedButton(onPressed: onEdit, child: Text(editLabel)),
@@ -653,109 +650,119 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: ButlerlySpacing.small),
-      child: Padding(
-        padding: const EdgeInsets.all(ButlerlySpacing.standard),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.warning_amber_rounded, color: Colors.amber.shade800),
-                const SizedBox(width: ButlerlySpacing.small),
-                Expanded(
-                  child: Text(
-                    context.l10n.text('possibleDuplicateGroup'),
-                    style: Theme.of(context).textTheme.titleMedium,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: ButlerlySpacing.small),
+      child: ButlerlyCard(
+        padding: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.all(ButlerlySpacing.standard),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.amber.shade800,
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: ButlerlySpacing.small),
-            Text(_duplicateKeyLabel(context)),
-            const SizedBox(height: ButlerlySpacing.small),
-            FutureBuilder<
-              (List<TransactionDto>, TransactionMasterDataSnapshot)
-            >(
-              future: _candidateData,
-              builder: (context, snapshot) {
-                final transactions = snapshot.data?.$1 ?? const [];
-                final masterData = snapshot.data?.$2;
-                return RadioGroup<TransactionId>(
-                  groupValue: _selectedTransactionId,
-                  onChanged: (id) =>
-                      setState(() => _selectedTransactionId = id),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ButlerlyTransactionList(
-                        children: [
-                          for (final transaction in transactions)
-                            ButlerlyTransactionListItem(
-                              title:
-                                  transaction.description?.trim().isNotEmpty ==
-                                      true
-                                  ? transaction.description!
-                                  : context.l10n.text('untitledTransaction'),
-                              amount: localizedTransactionAmount(
-                                context,
-                                transaction.amount,
-                              ),
-                              currency: transaction.currency,
-                              meta: transactionDateLabel(
-                                transaction,
-                                pendingLabel: context.l10n.text('datePending'),
-                                locale: Localizations.localeOf(
+                  const SizedBox(width: ButlerlySpacing.small),
+                  Expanded(
+                    child: Text(
+                      context.l10n.text('possibleDuplicateGroup'),
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: ButlerlySpacing.small),
+              Text(_duplicateKeyLabel(context)),
+              const SizedBox(height: ButlerlySpacing.small),
+              FutureBuilder<
+                (List<TransactionDto>, TransactionMasterDataSnapshot)
+              >(
+                future: _candidateData,
+                builder: (context, snapshot) {
+                  final transactions = snapshot.data?.$1 ?? const [];
+                  final masterData = snapshot.data?.$2;
+                  return RadioGroup<TransactionId>(
+                    groupValue: _selectedTransactionId,
+                    onChanged: (id) =>
+                        setState(() => _selectedTransactionId = id),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ButlerlyTransactionList(
+                          children: [
+                            for (final transaction in transactions)
+                              ButlerlyTransactionListItem(
+                                title:
+                                    transaction.description
+                                            ?.trim()
+                                            .isNotEmpty ==
+                                        true
+                                    ? transaction.description!
+                                    : context.l10n.text('untitledTransaction'),
+                                amount: localizedTransactionAmount(
                                   context,
-                                ).toLanguageTag(),
-                              ),
-                              subtitle: _transactionEvidenceLabel(
-                                context,
-                                transaction,
-                                masterData,
-                              ),
-                              isIncome:
-                                  transaction.direction ==
-                                  TransactionDirection.income.name,
-                              selectionControl:
-                                  ButlerlyTransactionSelectionControl<
-                                    TransactionId
-                                  >(value: TransactionId(transaction.id)),
-                              onTap: () => setState(
-                                () => _selectedTransactionId = TransactionId(
-                                  transaction.id,
+                                  transaction.amount,
+                                ),
+                                currency: transaction.currency,
+                                meta: transactionDateLabel(
+                                  transaction,
+                                  pendingLabel: context.l10n.text(
+                                    'datePending',
+                                  ),
+                                  locale: Localizations.localeOf(
+                                    context,
+                                  ).toLanguageTag(),
+                                ),
+                                subtitle: _transactionEvidenceLabel(
+                                  context,
+                                  transaction,
+                                  masterData,
+                                ),
+                                isIncome:
+                                    transaction.direction ==
+                                    TransactionDirection.income.name,
+                                selectionControl:
+                                    ButlerlyTransactionSelectionControl<
+                                      TransactionId
+                                    >(value: TransactionId(transaction.id)),
+                                onTap: () => setState(
+                                  () => _selectedTransactionId = TransactionId(
+                                    transaction.id,
+                                  ),
                                 ),
                               ),
-                            ),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              ButlerlyButtonBar(
+                alignment: ButlerlyButtonBarAlignment.start,
+                density: ButlerlyButtonBarDensity.compact,
+                spacing: ButlerlyButtonBarSpacing.none,
+                children: [
+                  OutlinedButton(
+                    onPressed: widget.onKeepBoth,
+                    child: Text(context.l10n.text('keepBoth')),
                   ),
-                );
-              },
-            ),
-            ButlerlyButtonBar(
-              alignment: ButlerlyButtonBarAlignment.start,
-              density: ButlerlyButtonBarDensity.compact,
-              spacing: ButlerlyButtonBarSpacing.none,
-              children: [
-                OutlinedButton(
-                  onPressed: widget.onKeepBoth,
-                  child: Text(context.l10n.text('keepBoth')),
-                ),
-                Tooltip(
-                  message: context.l10n.text('consolidateUseOneHint'),
-                  child: FilledButton(
-                    onPressed: _selectedTransactionId == null
-                        ? null
-                        : () => widget.onConsolidate(_selectedTransactionId!),
-                    child: Text(context.l10n.text('consolidateUseOne')),
+                  Tooltip(
+                    message: context.l10n.text('consolidateUseOneHint'),
+                    child: FilledButton(
+                      onPressed: _selectedTransactionId == null
+                          ? null
+                          : () => widget.onConsolidate(_selectedTransactionId!),
+                      child: Text(context.l10n.text('consolidateUseOne')),
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

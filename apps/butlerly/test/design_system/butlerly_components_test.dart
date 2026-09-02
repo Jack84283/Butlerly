@@ -32,6 +32,36 @@ void main() {
     }
   });
 
+  testWidgets(
+    'page content stays full width on phones and readable on wide screens',
+    (tester) async {
+      Future<double> contentWidth(Size size) async {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.light,
+            home: const ButlerlyPage(
+              title: 'Page',
+              children: [SizedBox(key: Key('page-content'), height: 20)],
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        return tester.getSize(find.byKey(const Key('page-content'))).width;
+      }
+
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      expect(await contentWidth(const Size(390, 844)), 358);
+      expect(
+        await contentWidth(const Size(1200, 900)),
+        ButlerlySize.pageContentMaxWidth,
+      );
+    },
+  );
+
   testWidgets('shared loading state is available in both themes', (
     tester,
   ) async {
@@ -46,6 +76,26 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
       expect(find.text('Loading'), findsOneWidget);
     }
+  });
+
+  testWidgets('visualization card provides a shared title hierarchy', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: const Scaffold(
+          body: ButlerlyVisualizationCard(
+            title: 'Trend',
+            child: SizedBox(key: Key('visualization-content'), height: 40),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Trend'), findsOneWidget);
+    expect(find.byKey(const Key('visualization-content')), findsOneWidget);
+    expect(find.byType(Card), findsOneWidget);
   });
 
   testWidgets('review actions inherit localized labels from the app', (

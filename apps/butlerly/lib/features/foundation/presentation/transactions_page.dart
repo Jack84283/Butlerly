@@ -132,7 +132,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
       future: _transactions,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator());
+          return const ButlerlyLoadingState();
         }
         if (snapshot.hasError) {
           return ButlerlyErrorState(
@@ -559,6 +559,8 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
           return Form(
             key: _formKey,
             child: ListView(
+              // The editor's wider inset keeps the final action reachable in
+              // the established form layout at compact test and phone sizes.
               padding: const EdgeInsets.all(24),
               children: [
                 ButlerlyDirectionSelector(
@@ -586,7 +588,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                     }
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: ButlerlySpacing.standard),
                 TextFormField(
                   controller: _currency,
                   textCapitalization: TextCapitalization.characters,
@@ -602,7 +604,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                     }
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: ButlerlySpacing.standard),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(context.l10n.text('date')),
@@ -623,7 +625,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                     }
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: ButlerlySpacing.standard),
                 TextFormField(
                   controller: _description,
                   decoration: InputDecoration(
@@ -641,7 +643,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   ),
                   maxLines: 3,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: ButlerlySpacing.standard),
                 ButlerlyMerchantSelector(
                   label: context.l10n.text('merchant'),
                   clearLabel: context.l10n.text('clear'),
@@ -651,7 +653,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   onCreate: () => _createMerchant(data),
                   createTooltip: context.l10n.text('merchant'),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: ButlerlySpacing.standard),
                 ButlerlyCategorySelector(
                   label: context.l10n.text('category'),
                   clearLabel: context.l10n.text('clear'),
@@ -663,7 +665,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   value: selectedParentId,
                   onChanged: (value) => setState(() => _categoryId = value),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: ButlerlySpacing.standard),
                 ButlerlySubcategorySelector(
                   label: context.l10n.text('subcategory'),
                   clearLabel: context.l10n.text('clear'),
@@ -679,7 +681,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   onChanged: (value) =>
                       setState(() => _categoryId = value ?? selectedParentId),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: ButlerlySpacing.standard),
                 ButlerlyPaymentSourceSelector(
                   label: context.l10n.text('paymentSource'),
                   clearLabel: context.l10n.text('clear'),
@@ -977,7 +979,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(ButlerlySpacing.pagePadding),
         children: [
           SizedBox(
             width: double.infinity,
@@ -1000,7 +1002,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             ),
           ),
           if (transaction.normalizedMoney.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: ButlerlySpacing.compact),
             Text(
               context.l10n.text('referenceAmounts'),
               style: Theme.of(context).textTheme.labelLarge,
@@ -1015,7 +1017,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               ),
             ),
           ],
-          const SizedBox(height: 24),
+          const SizedBox(height: ButlerlySpacing.section),
           _DetailRow(
             label: context.l10n.text('direction'),
             value: context.l10n.text(transaction.direction),
@@ -1040,7 +1042,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               value: transaction.notes!,
             ),
           if (transaction.provenance.isNotEmpty) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: ButlerlySpacing.standard),
             Text(
               context.l10n.text('recordHistory'),
               style: Theme.of(context).textTheme.titleMedium,
@@ -1052,7 +1054,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               ),
             ),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: ButlerlySpacing.standard),
           _EvidenceSection(finance: finance, transactionId: transaction.id),
           _TransactionMasterDataRows(
             key: ValueKey(
@@ -1066,7 +1068,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               finance: finance,
               paymentSourceId: transaction.paymentSourceId!,
             ),
-          const SizedBox(height: 24),
+          const SizedBox(height: ButlerlySpacing.section),
           OutlinedButton.icon(
             onPressed: () async {
               final changed = await _organizeTransaction(
@@ -1090,7 +1092,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             icon: const Icon(Icons.sell_outlined),
             label: Text(context.l10n.text('organizeTransaction')),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: ButlerlySpacing.small),
           OutlinedButton.icon(
             onPressed: () async {
               final assigned = await _assignPaymentSource(
@@ -1105,7 +1107,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             icon: const Icon(Icons.account_balance_wallet_outlined),
             label: Text(context.l10n.text('assignPaymentSource')),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: ButlerlySpacing.small),
           OutlinedButton.icon(
             onPressed: transaction.status == TransactionStatus.archived.name
                 ? () async {
@@ -1124,7 +1126,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   : context.l10n.text('archiveTransaction'),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: ButlerlySpacing.small),
           ButlerlyDestructiveButton(
             onPressed: () => _delete(context),
             icon: const Icon(Icons.delete_forever_outlined),

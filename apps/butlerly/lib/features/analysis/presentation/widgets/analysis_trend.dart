@@ -25,7 +25,8 @@ class AnalysisTrend extends StatelessWidget {
     final max = model.trend
         .map(analysisNumber)
         .fold<double>(0, (a, b) => a > b ? a : b);
-    return ButlerlyCard(
+    return ButlerlyVisualizationCard(
+      title: context.l10n.text('spendingTrend'),
       semanticLabel: context.l10n.text('spendingTrend'),
       child: Semantics(
         label: model.trend

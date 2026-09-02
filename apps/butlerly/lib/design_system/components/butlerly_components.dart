@@ -48,14 +48,28 @@ class ButlerlyPage extends StatelessWidget {
                 ButlerlySize.phoneGutter,
                 ButlerlySpacing.large,
               ),
-          sliver: SliverList.list(
-            children: [
-              if (subtitle != null) ...[
-                Text(subtitle!, style: Theme.of(context).textTheme.bodyMedium),
-                const SizedBox(height: ButlerlySpacing.section),
-              ],
-              ...children,
-            ],
+          sliver: SliverLayoutBuilder(
+            builder: (context, constraints) {
+              final extraWidth =
+                  constraints.crossAxisExtent -
+                  ButlerlySize.pageContentMaxWidth;
+              final horizontalInset = extraWidth > 0 ? extraWidth / 2 : 0.0;
+              return SliverPadding(
+                padding: EdgeInsets.symmetric(horizontal: horizontalInset),
+                sliver: SliverList.list(
+                  children: [
+                    if (subtitle != null) ...[
+                      Text(
+                        subtitle!,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: ButlerlySpacing.section),
+                    ],
+                    ...children,
+                  ],
+                ),
+              );
+            },
           ),
         ),
       ],
@@ -91,6 +105,35 @@ class ButlerlyCard extends StatelessWidget {
         onTap: onTap,
         child: Padding(padding: padding, child: child),
       ),
+    ),
+  );
+}
+
+/// Shared container for chart content with a semantic title and consistent
+/// title-to-visual spacing. Chart-specific geometry remains owned by the
+/// visualization inside the card.
+class ButlerlyVisualizationCard extends StatelessWidget {
+  const ButlerlyVisualizationCard({
+    required this.title,
+    required this.child,
+    this.semanticLabel,
+    super.key,
+  });
+
+  final String title;
+  final Widget child;
+  final String? semanticLabel;
+
+  @override
+  Widget build(BuildContext context) => ButlerlyCard(
+    semanticLabel: semanticLabel ?? title,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: ButlerlySpacing.small),
+        child,
+      ],
     ),
   );
 }

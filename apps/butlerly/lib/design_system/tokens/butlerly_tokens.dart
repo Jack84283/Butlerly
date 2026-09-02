@@ -131,12 +131,19 @@ abstract final class ButlerlySize {
   static const tabletGutter = 24.0;
   static const desktopGutter = 32.0;
   static const readableWidth = 760.0;
+
+  /// Maximum width for page content on larger viewports.
+  ///
+  /// Phone layouts remain constrained by the page gutters; larger layouts use
+  /// this value to keep content readable instead of stretching edge to edge.
+  static const pageContentMaxWidth = readableWidth;
   static const stateContentWidth = 520.0;
   static const recordRowMinHeight = 72.0;
   static const standardIcon = 24.0;
   static const categoryIconGlyph = 24.0;
   static const categoryIconContainer = 40.0;
   static const compactActionIconSize = 18.0;
+  static const navigationLabelGap = ButlerlySpacing.xxs;
   static const sourcePreviewWidth = 64.0;
   static const sourcePreviewHeight = 80.0;
   static const navigationBarHeight = 72.0;

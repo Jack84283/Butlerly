@@ -123,7 +123,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           iconColor: Theme.of(context).colorScheme.error,
           onTap: _confirmErase,
         ),
-        if (_busy) const Center(child: CircularProgressIndicator()),
+        if (_busy) const ButlerlyLoadingState(),
       ],
     ),
   );

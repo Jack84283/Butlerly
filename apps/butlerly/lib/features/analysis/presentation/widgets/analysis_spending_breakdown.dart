@@ -56,17 +56,10 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
     final chartColors = chartSlices
         .map((slice) => colorsByCategory[slice.categoryId]!)
         .toList(growable: false);
-    return ButlerlyCard(
+    return ButlerlyVisualizationCard(
+      title: context.l10n.text('spendingDistribution'),
       child: Column(
         children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              context.l10n.text('spendingDistribution'),
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-          ),
-          const SizedBox(height: ButlerlySpacing.small),
           Semantics(
             label:
                 '${context.l10n.text('spendingDistribution')}: ${chartSlices.map((slice) => '${slice.label} ${_sliceMoney(context, slice)}').join(', ')}',

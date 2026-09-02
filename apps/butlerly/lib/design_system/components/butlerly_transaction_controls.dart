@@ -76,7 +76,7 @@ class _ButlerlyDuplicateTransactionConfirmationState
         children: [
           Text(context.l10n.text('proposedTransaction')),
           _summary(widget.proposed),
-          const SizedBox(height: 16),
+          const SizedBox(height: ButlerlySpacing.standard),
           Text(context.l10n.text('existingTransactions')),
           for (final candidate in widget.candidates) ...[
             const Divider(),

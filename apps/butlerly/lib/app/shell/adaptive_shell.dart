@@ -1,5 +1,6 @@
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -119,10 +120,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
       _previousPrimaryIndex = current;
       _lastPrimaryIndex = index;
     }
-    navigationShell.goBranch(
-      index,
-      initialLocation: index == current,
-    );
+    navigationShell.goBranch(index, initialLocation: index == current);
   }
 
   void _handleSystemBack(bool didPop, Object? result) {
@@ -165,11 +163,23 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     int index,
   ) {
     final selected = navigationShell.currentIndex == index;
-    final labelStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
+    final labelStyle = ButlerlyTypography.navigationLabel(
+      Theme.of(context).textTheme.labelSmall!,
       color: selected
           ? context.colors.interactive
           : context.colors.secondaryText,
-      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+      selected: selected,
+    );
+    final icon = IconTheme(
+      data: IconThemeData(
+        size: ButlerlySize.standardIcon,
+        color: selected
+            ? context.colors.interactive
+            : context.colors.secondaryText,
+      ),
+      child: selected
+          ? (destination.selectedIcon ?? destination.icon)
+          : destination.icon,
     );
     return Semantics(
       button: true,
@@ -185,10 +195,8 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              selected
-                  ? (destination.selectedIcon ?? destination.icon)
-                  : destination.icon,
-              const SizedBox(height: 2),
+              icon,
+              const SizedBox(height: ButlerlySize.navigationLabelGap),
               if (index == 1)
                 RichText(
                   text: TextSpan(text: destination.label, style: labelStyle),
@@ -217,7 +225,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
       child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 80,
+          height: ButlerlySize.navigationBarHeight,
           child: Row(
             children: [
               for (var index = 0; index < destinations.length; index++)
