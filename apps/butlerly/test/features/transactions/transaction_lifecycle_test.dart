@@ -501,7 +501,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Organized row'), findsOneWidget);
-    expect(find.text('Corner Market • Groceries • Weekly'), findsOneWidget);
+    expect(find.text('Groceries'), findsOneWidget);
+    expect(find.text('Weekly'), findsOneWidget);
     expect(find.text('1 transaction'), findsOneWidget);
     final filterBottom = tester.getBottomLeft(
       find.byWidgetPredicate(

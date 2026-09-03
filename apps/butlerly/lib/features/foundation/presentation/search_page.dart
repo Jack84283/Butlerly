@@ -8,6 +8,7 @@ import 'package:butlerly/design_system/components/butlerly_transaction_controls.
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_count_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_record_list.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -38,6 +39,7 @@ class _SearchPageState extends State<SearchPage>
   late Future<TransactionMasterDataSnapshot> _masterData;
   late Future<List<String>> _currencies;
   TransactionMasterData _presentation = const TransactionMasterData();
+  Map<String, String> _paymentSourceNames = const {};
   String? _loadedLanguageCode;
   Timer? _searchDebounce;
   int _searchGeneration = 0;
@@ -81,7 +83,15 @@ class _SearchPageState extends State<SearchPage>
   ) {
     masterData.then((value) {
       if (mounted && _loadedLanguageCode == languageCode) {
-        setState(() => _presentation = value.presentation);
+        setState(() {
+          _presentation = value.presentation;
+          _paymentSourceNames = {
+            for (final source in value.paymentSources)
+              source.id.value: source.lastFour == null
+                  ? source.name
+                  : '${source.name} ••••${source.lastFour}',
+          };
+        });
       }
     });
   }
@@ -454,6 +464,8 @@ class _SearchPageState extends State<SearchPage>
                   TransactionRecordList(
                     transactions: values,
                     masterData: _presentation,
+                    paymentSourceNames: _paymentSourceNames,
+                    groupByFinancialDate: true,
                     onTap: _openDetail,
                     navigates: true,
                   ),

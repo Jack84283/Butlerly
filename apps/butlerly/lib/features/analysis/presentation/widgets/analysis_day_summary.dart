@@ -1,7 +1,7 @@
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
-import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_record_list.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -48,7 +48,7 @@ class AnalysisDaySummary extends StatelessWidget {
             if (value.value.isNotEmpty)
               TransactionRecordList(
                 transactions: value.value,
-                masterData: masterData,
+                masterData: masterData ?? const TransactionMasterData(),
                 onTap: onTransactionTap,
                 navigates: true,
               ),
