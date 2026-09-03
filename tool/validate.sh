@@ -47,6 +47,16 @@ validate_flutter_application() (
   flutter build web
 )
 
+validate_integration_test() (
+  cd apps/butlerly
+  flutter test -d "${BUTLERLY_IOS_DEVICE_ID:-macos}" integration_test/v1_journeys_test.dart
+)
+
+validate_android_smoke() (
+  cd apps/butlerly
+  flutter build apk --debug
+)
+
 case "${1:-all}" in
   all)
     validate_finance_domain
@@ -66,8 +76,14 @@ case "${1:-all}" in
   flutter_application)
     validate_flutter_application
     ;;
+  integration_test)
+    validate_integration_test
+    ;;
+  android_smoke)
+    validate_android_smoke
+    ;;
   *)
-    echo "Usage: $0 [all|finance_domain|database|finance_application|flutter_application]" >&2
+    echo "Usage: $0 [all|finance_domain|database|finance_application|flutter_application|integration_test|android_smoke]" >&2
     exit 2
     ;;
 esac
