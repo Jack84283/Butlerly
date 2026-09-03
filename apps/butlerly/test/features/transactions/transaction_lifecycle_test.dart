@@ -496,6 +496,19 @@ void main() {
     await finance.assignMerchant('organized-row', 'merchant-row');
     await finance.assignCategory('organized-row', 'category-row');
     await finance.addTag('organized-row', 'tag-row');
+    await finance.createTransaction(
+      CreateTransactionCommand(
+        id: 'organized-row-previous-day',
+        provenanceId: 'manual-organized-row-previous-day',
+        timing: KnownTransactionTime(DateTime.utc(2026, 8, 10)),
+        money: Money(
+          amount: DecimalValue.parse('12.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        description: 'Previous day',
+      ),
+    );
 
     await tester.pumpWidget(const MaterialApp(home: TransactionsPage()));
     await tester.pumpAndSettle();
@@ -503,13 +516,16 @@ void main() {
     expect(find.text('Organized row'), findsOneWidget);
     expect(find.text('Groceries'), findsOneWidget);
     expect(find.text('Weekly'), findsOneWidget);
-    expect(find.text('1 transaction'), findsOneWidget);
+    expect(find.text('2 transactions'), findsOneWidget);
+    expect(find.text('Aug 11, 2026'), findsOneWidget);
+    expect(find.text('Aug 10, 2026'), findsOneWidget);
+    expect(find.byType(Card), findsNWidgets(2));
     final filterBottom = tester.getBottomLeft(
       find.byWidgetPredicate(
         (widget) => widget.runtimeType.toString().startsWith('SegmentedButton'),
       ),
     );
-    final firstRowTop = tester.getTopLeft(find.byType(ButlerlyRecordRow));
+    final firstRowTop = tester.getTopLeft(find.byType(ButlerlyRecordRow).first);
     expect(
       firstRowTop.dy - filterBottom.dy,
       greaterThanOrEqualTo(ButlerlySpacing.section),

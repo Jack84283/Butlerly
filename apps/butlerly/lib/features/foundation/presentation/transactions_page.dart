@@ -233,6 +233,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                     transactions: visible,
                     masterData: data.masterData,
                     paymentSourceNames: data.paymentSourceNames,
+                    groupByFinancialDate: true,
                     possibleDuplicateIds: data.possibleDuplicateIds,
                     possibleDuplicateLabel: context.l10n.text(
                       'possibleDuplicate',
