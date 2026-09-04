@@ -520,11 +520,7 @@ void main() {
     expect(find.text('Aug 11, 2026'), findsOneWidget);
     expect(find.text('Aug 10, 2026'), findsOneWidget);
     expect(find.byType(Card), findsNWidgets(2));
-    final filterBottom = tester.getBottomLeft(
-      find.byWidgetPredicate(
-        (widget) => widget.runtimeType.toString().startsWith('SegmentedButton'),
-      ),
-    );
+    final filterBottom = tester.getBottomLeft(find.byType(TabBar));
     final firstRowTop = tester.getTopLeft(find.byType(ButlerlyRecordRow).first);
     expect(
       firstRowTop.dy - filterBottom.dy,
@@ -564,13 +560,70 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Needs review'));
+    await tester.ensureVisible(find.byType(Tab).at(2));
+    await tester.tap(find.byType(Tab).at(2));
     await tester.pumpAndSettle();
     expect(find.text('Lunch'), findsOneWidget);
     await tester.tap(find.text('Resolve'));
     await tester.pumpAndSettle();
 
     expect(find.text('You’re all caught up'), findsOneWidget);
+  });
+
+  testWidgets('Transactions tabs preserve filter selection and content', (
+    tester,
+  ) async {
+    await services<FinanceServices>().createTransaction(
+      CreateTransactionCommand(
+        id: 'tab-income',
+        provenanceId: 'manual-tab-income',
+        timing: KnownTransactionTime(DateTime.utc(2026, 8, 9)),
+        money: Money(
+          amount: DecimalValue.parse('100.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.income,
+        description: 'Tab income',
+      ),
+    );
+    await services<FinanceServices>().createTransaction(
+      CreateTransactionCommand(
+        id: 'tab-expense',
+        provenanceId: 'manual-tab-expense',
+        timing: KnownTransactionTime(DateTime.utc(2026, 8, 8)),
+        money: Money(
+          amount: DecimalValue.parse('25.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        description: 'Tab expense',
+      ),
+    );
+
+    await tester.pumpWidget(const MaterialApp(home: TransactionsPage()));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TabBar), findsOneWidget);
+    expect(find.byType(SegmentedButton), findsNothing);
+    final tabBar = tester.widget<TabBar>(find.byType(TabBar));
+    expect(tabBar.controller?.index, 0);
+
+    await tester.tap(find.byType(Tab).at(1));
+    await tester.pumpAndSettle();
+    expect(tabBar.controller?.index, 1);
+    expect(find.text('Tab income'), findsOneWidget);
+    expect(find.text('Tab expense'), findsNothing);
+
+    await tester.tap(find.byType(Tab).at(2));
+    await tester.pumpAndSettle();
+    expect(tabBar.controller?.index, 2);
+    expect(find.text('Tab income'), findsNothing);
+    expect(find.text('Tab expense'), findsOneWidget);
+
+    await tester.tap(find.byType(Tab).at(3));
+    await tester.pumpAndSettle();
+    expect(tabBar.controller?.index, 3);
+    expect(find.text('No records found'), findsOneWidget);
   });
 
   testWidgets('Review transaction views use the canonical record list', (
@@ -623,21 +676,47 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    expect(find.byType(SegmentedButton), findsNothing);
     final uncategorizedPosition = tester.getTopLeft(
-      find.text('Not Categorized'),
+      find.descendant(
+        of: find.byType(Tab).at(0),
+        matching: find.text('Not Categorized'),
+      ),
     );
     final duplicatesPosition = tester.getTopLeft(
-      find.textContaining('Possible duplicates'),
+      find.descendant(
+        of: find.byType(Tab).at(1),
+        matching: find.textContaining('Possible duplicates'),
+      ),
     );
-    final needsReviewPosition = tester.getTopLeft(find.text('Needs review'));
+    final needsReviewPosition = tester.getTopLeft(
+      find.descendant(
+        of: find.byType(Tab).at(2),
+        matching: find.text('Needs review'),
+      ),
+    );
     expect(uncategorizedPosition.dx, lessThan(duplicatesPosition.dx));
     expect(duplicatesPosition.dx, lessThan(needsReviewPosition.dx));
     expect(
-      tester.widget<Text>(find.text('Not Categorized')).textAlign,
+      tester
+          .widget<Text>(
+            find.descendant(
+              of: find.byType(Tab).at(0),
+              matching: find.text('Not Categorized'),
+            ),
+          )
+          .textAlign,
       TextAlign.center,
     );
     expect(
-      tester.widget<Text>(find.text('Needs review')).textAlign,
+      tester
+          .widget<Text>(
+            find.descendant(
+              of: find.byType(Tab).at(2),
+              matching: find.text('Needs review'),
+            ),
+          )
+          .textAlign,
       TextAlign.center,
     );
     expect(find.text('(1)'), findsNWidgets(2));
@@ -657,18 +736,46 @@ void main() {
     router.go('/review');
     await tester.pumpAndSettle();
     expect(find.text('Canonical review row'), findsOneWidget);
-    await tester.tap(find.text('Needs review'));
+    await tester.ensureVisible(find.byType(Tab).at(2));
+    await tester.tap(find.byType(Tab).at(2));
     await tester.pumpAndSettle();
     expect(find.byType(ButlerlyCard), findsOneWidget);
     expect(find.byType(ButlerlyRecordRow), findsOneWidget);
     expect(find.text('Needs a category'), findsOneWidget);
     expect(find.text('Resolve'), findsOneWidget);
 
-    await tester.tap(find.text('Not Categorized'));
+    await tester.ensureVisible(find.byType(Tab).at(0));
+    await tester.tap(find.byType(Tab).at(0));
     await tester.pumpAndSettle();
     expect(find.byType(ButlerlyTransactionList), findsOneWidget);
     expect(find.byType(ButlerlyRecordRow), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Review tabs select each existing review view', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: ReviewPage())),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TabBar), findsOneWidget);
+    expect(find.byType(SegmentedButton), findsNothing);
+    final tabBar = tester.widget<TabBar>(find.byType(TabBar));
+
+    await tester.tap(find.byType(Tab).at(0));
+    await tester.pumpAndSettle();
+    expect(tabBar.controller?.index, 0);
+    expect(find.text('You’re all caught up'), findsOneWidget);
+
+    await tester.tap(find.byType(Tab).at(1));
+    await tester.pumpAndSettle();
+    expect(tabBar.controller?.index, 1);
+    expect(find.text('No possible duplicates found'), findsOneWidget);
+
+    await tester.tap(find.byType(Tab).at(2));
+    await tester.pumpAndSettle();
+    expect(tabBar.controller?.index, 2);
+    expect(find.text('You’re all caught up'), findsOneWidget);
   });
 
   testWidgets('Review duplicates query selects the duplicate mode on entry', (
@@ -747,7 +854,8 @@ void main() {
     );
     await tester.pumpWidget(const MaterialApp(home: ReviewPage()));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Not Categorized'));
+    await tester.ensureVisible(find.byType(Tab).at(0));
+    await tester.tap(find.byType(Tab).at(0));
     await tester.pumpAndSettle();
     expect(find.text('Refresh me'), findsOneWidget);
     expect(find.text('(1)'), findsOneWidget);
@@ -769,7 +877,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.pumpWidget(const MaterialApp(home: ReviewPage()));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Not Categorized'));
+    await tester.ensureVisible(find.byType(Tab).at(0));
+    await tester.tap(find.byType(Tab).at(0));
     await tester.pumpAndSettle();
     expect(find.text('Added after refresh'), findsOneWidget);
     expect(find.text('(2)'), findsOneWidget);
@@ -810,12 +919,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Possible duplicate group'), findsOneWidget);
-      final modeControlBottom = tester.getBottomLeft(
-        find.byWidgetPredicate(
-          (widget) =>
-              widget.runtimeType.toString().startsWith('SegmentedButton'),
-        ),
-      );
+      final modeControlBottom = tester.getBottomLeft(find.byType(TabBar));
       final rescanTop = tester.getTopLeft(
         find.text('Rescan possible duplicates'),
       );

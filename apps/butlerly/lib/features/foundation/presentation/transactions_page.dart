@@ -29,8 +29,10 @@ class TransactionsPage extends StatefulWidget {
   State<TransactionsPage> createState() => _TransactionsPageState();
 }
 
-class _TransactionsPageState extends State<TransactionsPage> {
+class _TransactionsPageState extends State<TransactionsPage>
+    with SingleTickerProviderStateMixin {
   late Future<_TransactionsData> _transactions;
+  late final TabController _tabController;
   _TransactionFilter _filter = _TransactionFilter.all;
   String? _loadedLanguageCode;
 
@@ -41,6 +43,10 @@ class _TransactionsPageState extends State<TransactionsPage> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(
+      length: _TransactionFilter.values.length,
+      vsync: this,
+    );
     _transactions = Future.value(const _TransactionsData([]));
     transactionChanges.addListener(_handleTransactionChange);
   }
@@ -56,6 +62,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
   @override
   void dispose() {
+    _tabController.dispose();
     transactionChanges.removeListener(_handleTransactionChange);
     super.dispose();
   }
@@ -178,32 +185,19 @@ class _TransactionsPageState extends State<TransactionsPage> {
         return ButlerlyPage(
           title: context.l10n.text('transactions'),
           children: [
-            SizedBox(
-              height: ButlerlySize.preferredTarget,
-              child: SegmentedButton<_TransactionFilter>(
-                showSelectedIcon: false,
-                segments: [
-                  ButtonSegment(
-                    value: _TransactionFilter.all,
-                    label: Text(context.l10n.text('all')),
-                  ),
-                  ButtonSegment(
-                    value: _TransactionFilter.income,
-                    label: Text(context.l10n.text('income')),
-                  ),
-                  ButtonSegment(
-                    value: _TransactionFilter.expense,
-                    label: Text(context.l10n.text('expense')),
-                  ),
-                  ButtonSegment(
-                    value: _TransactionFilter.archived,
-                    label: Text(context.l10n.text('archived')),
-                  ),
-                ],
-                selected: {_filter},
-                onSelectionChanged: (selection) =>
-                    setState(() => _filter = selection.single),
-              ),
+            TabBar(
+              controller: _tabController,
+              isScrollable: false,
+              tabs: [
+                Tab(text: context.l10n.text('all')),
+                Tab(text: context.l10n.text('income')),
+                Tab(text: context.l10n.text('expense')),
+                Tab(text: context.l10n.text('archived')),
+              ],
+              onTap: (index) {
+                final filter = _TransactionFilter.values[index];
+                if (filter != _filter) setState(() => _filter = filter);
+              },
             ),
             const SizedBox(height: ButlerlySpacing.section),
             if (values.isEmpty)

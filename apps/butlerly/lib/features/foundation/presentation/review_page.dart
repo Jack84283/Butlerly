@@ -22,11 +22,13 @@ class ReviewPage extends StatefulWidget {
   State<ReviewPage> createState() => _ReviewPageState();
 }
 
-class _ReviewPageState extends State<ReviewPage> {
+class _ReviewPageState extends State<ReviewPage>
+    with SingleTickerProviderStateMixin {
   late Future<List<ReviewItemDto>> _items;
   late Future<List<TransactionDto>> _uncategorized;
   late Future<List<DuplicateCandidateGroup>> _duplicateGroups;
   late Future<TransactionMasterDataSnapshot> _masterData;
+  late final TabController _tabController;
   _ReviewView _view = _ReviewView.needsReview;
   String? _loadedLanguageCode;
 
@@ -40,6 +42,11 @@ class _ReviewPageState extends State<ReviewPage> {
     _view = widget.showPossibleDuplicates
         ? _ReviewView.duplicates
         : _ReviewView.uncategorized;
+    _tabController = TabController(
+      length: _reviewTabs.length,
+      initialIndex: _tabIndex(_view),
+      vsync: this,
+    );
     _items = _load();
     _uncategorized = _loadUncategorized();
     _duplicateGroups = _loadDuplicateGroups();
@@ -48,6 +55,7 @@ class _ReviewPageState extends State<ReviewPage> {
 
   @override
   void dispose() {
+    _tabController.dispose();
     transactionChanges.removeListener(_handleTransactionChange);
     super.dispose();
   }
@@ -66,6 +74,7 @@ class _ReviewPageState extends State<ReviewPage> {
       _view = widget.showPossibleDuplicates
           ? _ReviewView.duplicates
           : _ReviewView.uncategorized;
+      _tabController.index = _tabIndex(_view);
     });
   }
 
@@ -274,19 +283,18 @@ class _ReviewPageState extends State<ReviewPage> {
     return ButlerlyPage(
       title: context.l10n.text('review'),
       children: [
-        SegmentedButton<_ReviewView>(
-          showSelectedIcon: false,
-          segments: [
-            ButtonSegment(
-              value: _ReviewView.uncategorized,
-              label: _ReviewSectionLabel(
+        TabBar(
+          controller: _tabController,
+          isScrollable: false,
+          tabs: [
+            Tab(
+              child: _ReviewSectionLabel(
                 title: context.l10n.text('uncategorized'),
                 future: _uncategorized,
               ),
             ),
-            ButtonSegment(
-              value: _ReviewView.duplicates,
-              label: FutureBuilder<List<DuplicateCandidateGroup>>(
+            Tab(
+              child: FutureBuilder<List<DuplicateCandidateGroup>>(
                 future: _duplicateGroups,
                 builder: (context, snapshot) {
                   final count = snapshot.data?.length;
@@ -300,16 +308,14 @@ class _ReviewPageState extends State<ReviewPage> {
                 },
               ),
             ),
-            ButtonSegment(
-              value: _ReviewView.needsReview,
-              label: _ReviewSectionLabel(
+            Tab(
+              child: _ReviewSectionLabel(
                 title: context.l10n.text('needsReview'),
                 future: _items,
               ),
             ),
           ],
-          selected: {_view},
-          onSelectionChanged: (value) => setState(() => _view = value.single),
+          onTap: (index) => setState(() => _view = _reviewTabs[index]),
         ),
         if (_view != _ReviewView.duplicates)
           const SizedBox(height: ButlerlySpacing.section),
@@ -561,6 +567,14 @@ class _ReviewTransactionCard extends StatelessWidget {
 }
 
 enum _ReviewView { needsReview, uncategorized, duplicates }
+
+const _reviewTabs = [
+  _ReviewView.uncategorized,
+  _ReviewView.duplicates,
+  _ReviewView.needsReview,
+];
+
+int _tabIndex(_ReviewView view) => _reviewTabs.indexOf(view);
 
 class _ReviewSectionLabel extends StatelessWidget {
   const _ReviewSectionLabel({required this.title, required this.future});
