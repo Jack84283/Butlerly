@@ -4,10 +4,45 @@ import 'package:sqflite_common/sqlite_api.dart' hide Transaction;
 import '../database/butlerly_database.dart';
 import '../mappers/sqlite_helpers.dart';
 
-final class SqliteTransactionRepository implements TransactionRepository {
+final class SqliteTransactionRepository
+    implements TransactionRepository, HistoricalClassificationRepository {
   const SqliteTransactionRepository(this.database);
 
   final ButlerlyDatabase database;
+
+  @override
+  Future<List<Transaction>> findClassificationCandidates({
+    MerchantId? merchantId,
+    String? normalizedDescription,
+    TransactionId? excludeTransactionId,
+  }) async {
+    final clauses = <String>[
+      "t.status = 'active'",
+      't.category_id IS NOT NULL',
+      'NOT EXISTS (SELECT 1 FROM review_issues ri WHERE ri.transaction_id = t.id AND ri.status = \'active\')',
+    ];
+    final args = <Object?>[];
+    final matchers = <String>[];
+    if (merchantId != null) {
+      matchers.add('t.merchant_id = ?');
+      args.add(merchantId.value);
+    }
+    if (normalizedDescription != null && normalizedDescription.isNotEmpty) {
+      matchers.add('t.normalized_description = ?');
+      args.add(normalizedDescription);
+    }
+    if (matchers.isEmpty) return const [];
+    clauses.add('(${matchers.join(' OR ')})');
+    if (excludeTransactionId != null) {
+      clauses.add('t.id != ?');
+      args.add(excludeTransactionId.value);
+    }
+    final rows = await database.connection.rawQuery(
+      'SELECT t.* FROM transactions t WHERE ${clauses.join(' AND ')} ORDER BY t.id',
+      args,
+    );
+    return Future.wait(rows.map(_hydrate));
+  }
 
   @override
   Future<void> save(Transaction value) async {
@@ -246,6 +281,7 @@ final class SqliteTransactionRepository implements TransactionRepository {
       ),
       merchantId: _optionalId(row['merchant_id'], MerchantId.new),
       categoryId: _optionalId(row['category_id'], CategoryId.new),
+      subcategoryId: _optionalId(row['subcategory_id'], CategoryId.new),
       tagIds: tagRows
           .map((value) => TagId(value['tag_id']! as String))
           .toList(),
@@ -327,6 +363,10 @@ final class SqliteTransactionRepository implements TransactionRepository {
     'payment_source_id': value.paymentSourceId?.value,
     'merchant_id': value.merchantId?.value,
     'category_id': value.categoryId?.value,
+    'subcategory_id': value.subcategoryId?.value,
+    'normalized_description': normalizeMerchantName(
+      value.description ?? value.rawCounterparty ?? '',
+    ),
     'created_at': value.createdAt.toIso8601String(),
     'updated_at': value.updatedAt.toIso8601String(),
   };

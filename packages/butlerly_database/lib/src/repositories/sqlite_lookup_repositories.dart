@@ -57,6 +57,10 @@ final class SqliteMerchantRepository implements MerchantRepository {
         'name': value.name,
         'status': value.status.name,
         'raw_name': value.rawName,
+        'normalized_name': value.normalizedName,
+        'default_category_id': value.defaultCategoryId?.value,
+        'default_subcategory_id': value.defaultSubcategoryId?.value,
+        'is_built_in': value.isBuiltIn ? 1 : 0,
       });
 
   @override
@@ -76,6 +80,18 @@ final class SqliteMerchantRepository implements MerchantRepository {
     name: row['name']! as String,
     status: MerchantStatus.values.byName(row['status'] as String? ?? 'active'),
     rawName: row['raw_name'] as String?,
+    normalizedName: normalizeMerchantName(
+      (row['normalized_name'] as String?)?.trim().isNotEmpty == true
+          ? row['normalized_name']! as String
+          : row['name']! as String,
+    ),
+    defaultCategoryId: row['default_category_id'] == null
+        ? null
+        : CategoryId(row['default_category_id']! as String),
+    defaultSubcategoryId: row['default_subcategory_id'] == null
+        ? null
+        : CategoryId(row['default_subcategory_id']! as String),
+    isBuiltIn: (row['is_built_in'] as int? ?? 0) != 0,
   );
 }
 

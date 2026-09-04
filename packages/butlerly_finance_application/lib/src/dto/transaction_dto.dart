@@ -2,6 +2,7 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
 import 'provenance_dto.dart';
 import 'normalized_money_dto.dart';
+import '../use_cases/classification_use_cases.dart';
 
 final class TransactionDto {
   const TransactionDto({
@@ -24,9 +25,11 @@ final class TransactionDto {
     this.paymentSourceId,
     this.merchantId,
     this.categoryId,
+    this.subcategoryId,
     this.tagIds = const [],
     this.provenance = const [],
     this.normalizedMoney = const [],
+    this.classificationProposal,
   });
 
   final String id;
@@ -48,9 +51,11 @@ final class TransactionDto {
   final String? paymentSourceId;
   final String? merchantId;
   final String? categoryId;
+  final String? subcategoryId;
   final List<String> tagIds;
   final List<ProvenanceDto> provenance;
   final List<NormalizedMoneyDto> normalizedMoney;
+  final ClassificationProposal? classificationProposal;
 
   factory TransactionDto.fromDomain(Transaction value) => TransactionDto(
     id: value.id.value,
@@ -74,6 +79,7 @@ final class TransactionDto {
     paymentSourceId: value.paymentSourceId?.value,
     merchantId: value.merchantId?.value,
     categoryId: value.categoryId?.value,
+    subcategoryId: value.subcategoryId?.value,
     tagIds: List.unmodifiable(value.tagIds.map((id) => id.value)),
     provenance: List.unmodifiable(
       value.provenance.map(ProvenanceDto.fromDomain),

@@ -47,11 +47,29 @@ INSERT OR IGNORE INTO tags (id,name,status) VALUES ('tag.tax_related','Tax Relat
 INSERT OR IGNORE INTO tags (id,name,status) VALUES ('tag.travel','Travel','active');
 INSERT OR IGNORE INTO tags (id,name,status) VALUES ('tag.recurring','Recurring','active');
 INSERT OR IGNORE INTO tags (id,name,status) VALUES ('tag.subscription','Subscription','active');
+
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.transportation.public','Public Transit','system','category.transportation','active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.transportation.rideshare','Taxi & Rideshare','system','category.transportation','active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.transportation.maintenance','Vehicle Maintenance','system','category.transportation','active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.entertainment.streaming','Streaming & Subscriptions','system','category.entertainment','active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.entertainment.events','Events','system','category.entertainment','active');
+
+-- Built-in merchant defaults are suggestions only; users may classify them differently.
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.safeway','Safeway','safeway','category.food','category.food.groceries',1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.costco','Costco','costco','category.food','category.food.groceries',1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.walmart','Walmart','walmart','category.shopping',NULL,1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.amazon','Amazon','amazon','category.shopping',NULL,1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.starbucks','Starbucks','starbucks','category.food','category.food.coffee',1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.target','Target','target','category.shopping',NULL,1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.whole_foods','Whole Foods','whole foods','category.food','category.food.groceries',1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.trader_joes','Trader Joe''s','trader joe s','category.food','category.food.groceries',1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.walgreens','Walgreens','walgreens','category.health','category.health.pharmacy',1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.cvs','CVS','cvs','category.health','category.health.pharmacy',1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.home_depot','Home Depot','home depot','category.housing','category.housing.maintenance',1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.shell','Shell','shell','category.transportation','category.transportation.fuel',1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.chevron','Chevron','chevron','category.transportation','category.transportation.fuel',1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.uber','Uber','uber','category.transportation','category.transportation.rideshare',1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.lyft','Lyft','lyft','category.transportation','category.transportation.rideshare',1,'active');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.income','en','Income');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.income.salary','en','Salary');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.income.bonus','en','Bonus');

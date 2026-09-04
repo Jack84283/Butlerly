@@ -59,6 +59,12 @@ class LocalDatabase {
     final migrationV2ToV3 = await rootBundle.loadString(
       'packages/butlerly_database/database/migrations/v2_to_v3.sql',
     );
+    final migrationV3ToV4 = await rootBundle.loadString(
+      'packages/butlerly_database/database/migrations/v3_to_v4.sql',
+    );
+    final migrationV4ToV5 = await rootBundle.loadString(
+      'packages/butlerly_database/database/migrations/v4_to_v5.sql',
+    );
     final catalogSql = await rootBundle.loadString(
       'packages/butlerly_database/database/seed/catalog.sql',
     );
@@ -67,7 +73,12 @@ class LocalDatabase {
       path: path.join(directory, 'butlerly.db'),
       schemaSql: schemaSql,
       seedSql: [catalogSql],
-      migrations: {2: migrationV1ToV2, 3: migrationV2ToV3},
+      migrations: {
+        2: migrationV1ToV2,
+        3: migrationV2ToV3,
+        4: migrationV3ToV4,
+        5: migrationV4ToV5,
+      },
     );
     await _database!.open();
     status = DatabaseStatus.ready;

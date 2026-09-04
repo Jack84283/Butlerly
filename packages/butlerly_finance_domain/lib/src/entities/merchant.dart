@@ -9,18 +9,31 @@ final class Merchant {
     required String name,
     this.status = MerchantStatus.active,
     this.rawName,
-  }) : name = _validate(name);
+    String? normalizedName,
+    this.defaultCategoryId,
+    this.defaultSubcategoryId,
+    this.isBuiltIn = false,
+  }) : name = _validate(name),
+       normalizedName = normalizedName ?? normalizeMerchantName(name);
 
   final MerchantId id;
   final String name;
   final MerchantStatus status;
   final String? rawName;
+  final String normalizedName;
+  final CategoryId? defaultCategoryId;
+  final CategoryId? defaultSubcategoryId;
+  final bool isBuiltIn;
 
   Merchant archive() => Merchant(
     id: id,
     name: name,
     status: MerchantStatus.archived,
     rawName: rawName,
+    normalizedName: normalizedName,
+    defaultCategoryId: defaultCategoryId,
+    defaultSubcategoryId: defaultSubcategoryId,
+    isBuiltIn: isBuiltIn,
   );
 
   static String _validate(String value) {
@@ -34,4 +47,16 @@ final class Merchant {
     }
     return normalized;
   }
+}
+
+/// Conservative, deterministic merchant matching representation.
+String normalizeMerchantName(String value) {
+  var normalized = value.toLowerCase().trim();
+  normalized = normalized.replaceAll(RegExp(r"[^a-z0-9]+"), ' ');
+  normalized = normalized.replaceAll(
+    RegExp(r'\b(store|location|#)?\s*\d{2,}\b'),
+    ' ',
+  );
+  normalized = normalized.replaceAll(RegExp(r'\s+'), ' ').trim();
+  return normalized;
 }

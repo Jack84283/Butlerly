@@ -96,6 +96,7 @@ final class UpdateTransaction {
         categoryId: !command.replaceCategory
             ? current.categoryId
             : _optional(command.categoryId, CategoryId.new),
+        subcategoryId: current.subcategoryId,
         tagIds: command.replaceTags
             ? command.tagIds?.map(TagId.new).toList(growable: false) ?? const []
             : current.tagIds,

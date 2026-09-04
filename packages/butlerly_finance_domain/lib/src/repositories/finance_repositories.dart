@@ -153,6 +153,15 @@ abstract interface class MerchantRepository {
   Future<List<Merchant>> listAll();
 }
 
+/// Repository-owned, already-filtered candidates for local classification.
+abstract interface class HistoricalClassificationRepository {
+  Future<List<Transaction>> findClassificationCandidates({
+    MerchantId? merchantId,
+    String? normalizedDescription,
+    TransactionId? excludeTransactionId,
+  });
+}
+
 abstract interface class CategoryRepository {
   Future<void> save(Category category);
   Future<Category?> findById(CategoryId id);
