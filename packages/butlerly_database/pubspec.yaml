@@ -8,6 +8,7 @@ flutter:
     - database/schema/v1.sql
     - database/migrations/v1_to_v2.sql
     - database/migrations/v2_to_v3.sql
+    - database/migrations/v3_to_v4.sql
     - database/seed/catalog.sql
 
 environment:

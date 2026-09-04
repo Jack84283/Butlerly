@@ -7,6 +7,17 @@ import 'reference_data_seed.dart';
 /// The MD-0001 V1 system catalog. Labels are persisted separately as
 /// translations; these domain records contain stable semantic IDs.
 InitialMasterData buildInitialMasterData() => InitialMasterData(
+  merchants: [
+    for (final row in _merchants)
+      Merchant(
+        id: MerchantId(row.$1),
+        name: row.$2,
+        normalizedName: normalizeMerchantName(row.$2),
+        defaultCategoryId: CategoryId(row.$3),
+        defaultSubcategoryId: row.$4 == null ? null : CategoryId(row.$4!),
+        isBuiltIn: true,
+      ),
+  ],
   categories: [
     for (final row in _categories)
       Category(
@@ -103,4 +114,62 @@ const _tags = <(String, String)>[
   ('tag.travel', 'Travel'),
   ('tag.recurring', 'Recurring'),
   ('tag.subscription', 'Subscription'),
+];
+
+const _merchants = <(String, String, String, String?)>[
+  ('merchant.safeway', 'Safeway', 'category.food', 'category.food.groceries'),
+  ('merchant.costco', 'Costco', 'category.food', 'category.food.groceries'),
+  ('merchant.walmart', 'Walmart', 'category.shopping', null),
+  ('merchant.amazon', 'Amazon', 'category.shopping', null),
+  ('merchant.starbucks', 'Starbucks', 'category.food', 'category.food.coffee'),
+  ('merchant.target', 'Target', 'category.shopping', null),
+  (
+    'merchant.whole_foods',
+    'Whole Foods',
+    'category.food',
+    'category.food.groceries',
+  ),
+  (
+    'merchant.trader_joes',
+    "Trader Joe's",
+    'category.food',
+    'category.food.groceries',
+  ),
+  (
+    'merchant.walgreens',
+    'Walgreens',
+    'category.health',
+    'category.health.pharmacy',
+  ),
+  ('merchant.cvs', 'CVS', 'category.health', 'category.health.pharmacy'),
+  (
+    'merchant.home_depot',
+    'Home Depot',
+    'category.housing',
+    'category.housing.maintenance',
+  ),
+  (
+    'merchant.shell',
+    'Shell',
+    'category.transportation',
+    'category.transportation.fuel',
+  ),
+  (
+    'merchant.chevron',
+    'Chevron',
+    'category.transportation',
+    'category.transportation.fuel',
+  ),
+  (
+    'merchant.uber',
+    'Uber',
+    'category.transportation',
+    'category.transportation.rideshare',
+  ),
+  (
+    'merchant.lyft',
+    'Lyft',
+    'category.transportation',
+    'category.transportation.rideshare',
+  ),
 ];

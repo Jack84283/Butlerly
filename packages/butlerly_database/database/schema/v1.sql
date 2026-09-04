@@ -153,7 +153,11 @@ CREATE TABLE financial_statements (
 CREATE TABLE merchants (
       id TEXT PRIMARY KEY NOT NULL,
       name TEXT NOT NULL
-    , status TEXT NOT NULL DEFAULT 'active', raw_name TEXT);
+    , status TEXT NOT NULL DEFAULT 'active', raw_name TEXT,
+      normalized_name TEXT NOT NULL DEFAULT '',
+      default_category_id TEXT REFERENCES categories(id),
+      default_subcategory_id TEXT REFERENCES categories(id),
+      is_built_in INTEGER NOT NULL DEFAULT 0);
 
 CREATE TABLE normalized_money (transaction_id TEXT NOT NULL REFERENCES transactions(id) ON DELETE CASCADE, exchange_rate_id TEXT REFERENCES exchange_rates(id), amount_coefficient TEXT NOT NULL, amount_scale INTEGER NOT NULL CHECK(amount_scale >= 0), currency TEXT NOT NULL, normalization_source TEXT NOT NULL DEFAULT 'exchangeRate', base_currency TEXT NOT NULL, effective_date TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(transaction_id, exchange_rate_id));
 

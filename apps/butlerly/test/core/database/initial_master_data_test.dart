@@ -6,7 +6,23 @@ void main() {
   test('seeds the exact MD-0001 system category and tag IDs', () {
     final data = buildInitialMasterData();
 
-    expect(data.merchants, isEmpty);
+    expect(data.merchants.map((value) => value.name), containsAll([
+      'Safeway',
+      'Costco',
+      'Walmart',
+      'Amazon',
+      'Starbucks',
+      'Target',
+      'Whole Foods',
+      "Trader Joe's",
+      'Walgreens',
+      'CVS',
+      'Home Depot',
+      'Shell',
+      'Chevron',
+      'Uber',
+      'Lyft',
+    ]));
     expect(
       data.categories.map((value) => value.id.value),
       contains('category.food'),

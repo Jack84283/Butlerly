@@ -105,7 +105,15 @@ void main() {
     final resultsMigration = await File(
       'database/migrations/v2_to_v3.sql',
     ).readAsString();
-    final legacy = current.replaceFirst(', status_before_skip TEXT', '');
+    final merchantMigration = await File(
+      'database/migrations/v3_to_v4.sql',
+    ).readAsString();
+    final legacy = current
+        .replaceFirst(', status_before_skip TEXT', '')
+        .replaceFirst(
+          ',\n      normalized_name TEXT NOT NULL DEFAULT \'\',\n      default_category_id TEXT REFERENCES categories(id),\n      default_subcategory_id TEXT REFERENCES categories(id),\n      is_built_in INTEGER NOT NULL DEFAULT 0',
+          '',
+        );
     final legacyDb = await databaseFactoryFfi.openDatabase(
       path,
       options: OpenDatabaseOptions(
@@ -130,10 +138,10 @@ void main() {
       factory: databaseFactoryFfi,
       path: path,
       schemaSql: current,
-      migrations: {2: migration, 3: resultsMigration},
+      migrations: {2: migration, 3: resultsMigration, 4: merchantMigration},
     );
     await database.open();
-    expect(await database.connection.getVersion(), 3);
+    expect(await database.connection.getVersion(), 4);
     expect(
       (await database.connection.rawQuery(
         'PRAGMA table_info(statement_rows)',

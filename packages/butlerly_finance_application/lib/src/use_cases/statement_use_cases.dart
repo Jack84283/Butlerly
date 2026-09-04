@@ -5,6 +5,7 @@ import '../result/application_result.dart';
 import 'transaction_use_cases.dart';
 import 'reconciliation_use_cases.dart';
 import 'duplicate_transaction_use_cases.dart';
+import 'classification_use_cases.dart';
 
 final class StatementImportSummary {
   const StatementImportSummary({
@@ -45,6 +46,7 @@ final class StatementServices {
     this.evidence,
     required this.duplicateGroups,
     required this.duplicateChecker,
+    this.classifier,
   });
   final StatementRepository statements;
   final TransactionRepository transactions;
@@ -53,6 +55,7 @@ final class StatementServices {
   final EvidenceRepository? evidence;
   final DuplicateCandidateGroupRepository duplicateGroups;
   final DuplicateTransactionChecker duplicateChecker;
+  final ProposeTransactionClassification? classifier;
 
   Future<ApplicationResult<StatementImportAssessment>> assessBatch(
     FinancialStatement statement,
@@ -438,6 +441,20 @@ final class StatementServices {
     }
     final now = clock.now();
     final transactionId = 'statement-${row.statementId}-${row.id}';
+    final proposal = classifier == null
+        ? null
+        : await classifier!.call(
+            merchantId: row.merchantId == null
+                ? null
+                : MerchantId(row.merchantId!),
+            description: row.description ?? row.originalText,
+            excludeTransactionId: TransactionId(transactionId),
+          );
+    final resolvedMerchantId =
+        row.merchantId == null &&
+            proposal is ApplicationSuccess<ClassificationProposal>
+        ? proposal.value.merchantId?.value
+        : row.merchantId;
     final transaction = Transaction(
       id: TransactionId(transactionId),
       timing: const UnknownTransactionTime(
@@ -453,7 +470,9 @@ final class StatementServices {
       description: row.description,
       rawCounterparty: row.originalText,
       paymentSourceId: PaymentSourceId(row.paymentSourceId ?? paymentSourceId),
-      merchantId: row.merchantId == null ? null : MerchantId(row.merchantId!),
+      merchantId: resolvedMerchantId == null
+          ? null
+          : MerchantId(resolvedMerchantId),
       categoryId: row.categoryId == null ? null : CategoryId(row.categoryId!),
       tagIds: row.tagIds.map(TagId.new).toList(growable: false),
       externalReference: 'statement-row:${row.id}',
@@ -490,7 +509,35 @@ final class StatementServices {
       ),
       transaction,
     );
-    return TransactionDto.fromDomain(transaction);
+    final dto = TransactionDto.fromDomain(transaction);
+    return TransactionDto(
+      id: dto.id,
+      amount: dto.amount,
+      currency: dto.currency,
+      direction: dto.direction,
+      status: dto.status,
+      reviewState: dto.reviewState,
+      createdAt: dto.createdAt,
+      updatedAt: dto.updatedAt,
+      occurredAt: dto.occurredAt,
+      transactionDate: dto.transactionDate,
+      timeZoneId: dto.timeZoneId,
+      description: dto.description,
+      rawCounterparty: dto.rawCounterparty,
+      sourceLanguage: dto.sourceLanguage,
+      notes: dto.notes,
+      externalReference: dto.externalReference,
+      paymentSourceId: dto.paymentSourceId,
+      merchantId: dto.merchantId,
+      categoryId: dto.categoryId,
+      tagIds: dto.tagIds,
+      provenance: dto.provenance,
+      normalizedMoney: dto.normalizedMoney,
+      classificationProposal:
+          proposal is ApplicationSuccess<ClassificationProposal>
+          ? proposal.value
+          : null,
+    );
   });
 
   static StatementRow _copy(
