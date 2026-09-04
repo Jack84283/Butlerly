@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
@@ -318,6 +320,8 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   String _loadedLanguageCode = 'en';
   bool _dateChanged = false;
   bool _saving = false;
+  bool _classificationOverridden = false;
+  int _classificationRequest = 0;
 
   @override
   void initState() {
@@ -338,6 +342,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
     _subcategoryId = existing?.subcategoryId;
     _paymentSourceId = existing?.paymentSourceId;
     _tagIds = {...?existing?.tagIds};
+    _description.addListener(_handleDescriptionChanged);
     _masterData = _loadMasterData(_loadedLanguageCode);
   }
 
@@ -362,9 +367,47 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   void dispose() {
     _amount.dispose();
     _currency.dispose();
+    _description.removeListener(_handleDescriptionChanged);
     _description.dispose();
     _notes.dispose();
     super.dispose();
+  }
+
+  void _handleDescriptionChanged() {
+    if (_classificationOverridden) return;
+    unawaited(_refreshClassification());
+  }
+
+  Future<void> _refreshClassification() async {
+    final request = ++_classificationRequest;
+    final result = await widget.finance.proposeTransactionClassification(
+      merchantId: _merchantId == null ? null : MerchantId(_merchantId!),
+      description: _description.text.trim(),
+      excludeTransactionId: widget.existing == null
+          ? null
+          : TransactionId(widget.existing!.id),
+    );
+    if (!mounted ||
+        request != _classificationRequest ||
+        _classificationOverridden) {
+      return;
+    }
+    if (result case ApplicationSuccess<ClassificationProposal>(
+      value: final proposal,
+    )) {
+      setState(() {
+        if (_merchantId == null && proposal.merchantId != null) {
+          _merchantId = proposal.merchantId!.value;
+        }
+        _categoryId = proposal.categoryId?.value;
+        _subcategoryId = proposal.subcategoryId?.value;
+      });
+    }
+  }
+
+  Future<void> _selectMerchant(String? value) async {
+    setState(() => _merchantId = value);
+    if (!_classificationOverridden) await _refreshClassification();
   }
 
   Future<void> _save() async {
@@ -477,6 +520,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
               notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
               merchantId: _merchantId,
               categoryId: _categoryId,
+              subcategoryId: _subcategoryId,
               paymentSourceId: _paymentSourceId,
               tagIds: _tagIds.toList(growable: false),
               replaceMerchant: true,
@@ -622,7 +666,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   clearLabel: context.l10n.text('clear'),
                   merchants: data.merchants,
                   value: _merchantId,
-                  onChanged: (value) => setState(() => _merchantId = value),
+                  onChanged: _selectMerchant,
                   onCreate: () => _createMerchant(data),
                   createTooltip: context.l10n.text('merchant'),
                 ),
@@ -637,6 +681,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   ),
                   value: selectedParentId,
                   onChanged: (value) => setState(() {
+                    _classificationOverridden = true;
                     _categoryId = value;
                     _subcategoryId = null;
                   }),
@@ -653,6 +698,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   parentId: selectedParentId,
                   value: _subcategoryId,
                   onChanged: (value) => setState(() {
+                    _classificationOverridden = true;
                     _subcategoryId = value;
                     _categoryId = selectedParentId;
                   }),

@@ -85,8 +85,11 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   bool _committed = false;
   String? _merchantId;
   String? _categoryId;
+  String? _subcategoryId;
   String? _paymentSourceId;
   final Set<String> _tagIds = {};
+  bool _classificationOverridden = false;
+  int _classificationRequest = 0;
   List<Merchant> _merchants = const [];
   List<Category> _categories = const [];
   List<Tag> _tags = const [];
@@ -102,6 +105,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   @override
   void initState() {
     super.initState();
+    _merchantRaw.addListener(_handleDescriptionChanged);
     _load();
   }
 
@@ -112,9 +116,44 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     }
     _amount.dispose();
     _currency.dispose();
+    _merchantRaw.removeListener(_handleDescriptionChanged);
     _merchantRaw.dispose();
     _notes.dispose();
     super.dispose();
+  }
+
+  void _handleDescriptionChanged() {
+    if (_classificationOverridden) return;
+    unawaited(_refreshClassification());
+  }
+
+  Future<void> _refreshClassification() async {
+    final request = ++_classificationRequest;
+    final result = await finance.proposeTransactionClassification(
+      merchantId: _merchantId == null ? null : MerchantId(_merchantId!),
+      description: _merchantRaw.text.trim(),
+    );
+    if (!mounted ||
+        request != _classificationRequest ||
+        _classificationOverridden) {
+      return;
+    }
+    if (result case ApplicationSuccess<ClassificationProposal>(
+      value: final proposal,
+    )) {
+      setState(() {
+        if (_merchantId == null && proposal.merchantId != null) {
+          _merchantId = proposal.merchantId!.value;
+        }
+        _categoryId = proposal.categoryId?.value;
+        _subcategoryId = proposal.subcategoryId?.value;
+      });
+    }
+  }
+
+  Future<void> _selectMerchant(String? value) async {
+    setState(() => _merchantId = value);
+    if (!_classificationOverridden) await _refreshClassification();
   }
 
   Future<void> _load() async {
@@ -264,6 +303,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         _paymentSourceId = paymentSourceId;
         _processing = false;
       });
+      await _refreshClassification();
     } catch (_) {
       if (!mounted) return;
       setState(() => _processing = false);
@@ -538,6 +578,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
         merchantId: _merchantId,
         categoryId: _categoryId,
+        subcategoryId: _subcategoryId,
         paymentSourceId: _paymentSourceId,
         tagIds: _tagIds.toList(growable: false),
       ),
@@ -673,8 +714,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                         value: _merchantId,
                         label: context.l10n.text('merchant'),
                         clearLabel: context.l10n.text('clear'),
-                        onChanged: (value) =>
-                            setState(() => _merchantId = value),
+                        onChanged: (value) => _selectMerchant(value),
                       ),
                       const SizedBox(height: ButlerlySpacing.standard),
                       TextFormField(
@@ -726,7 +766,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                         masterData: _masterData,
                         value: selectedParentId,
                         onChanged: (value) => setState(() {
+                          _classificationOverridden = true;
                           _categoryId = value;
+                          _subcategoryId = null;
                         }),
                       ),
                       const SizedBox(height: ButlerlySpacing.standard),
@@ -736,11 +778,11 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                         categories: activeCategories,
                         masterData: _masterData,
                         parentId: selectedParentId,
-                        value: selectedCategory?.parentId == null
-                            ? null
-                            : _categoryId,
+                        value: _subcategoryId,
                         onChanged: (value) => setState(() {
-                          _categoryId = value ?? selectedParentId;
+                          _classificationOverridden = true;
+                          _subcategoryId = value;
+                          _categoryId = selectedParentId;
                         }),
                       ),
                       const SizedBox(height: ButlerlySpacing.standard),
