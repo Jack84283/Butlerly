@@ -184,21 +184,21 @@ class _TransactionsPageState extends State<TransactionsPage>
             .toList(growable: false);
         return ButlerlyPage(
           title: context.l10n.text('transactions'),
+          pinnedHeader: TabBar(
+            controller: _tabController,
+            isScrollable: false,
+            tabs: [
+              Tab(text: context.l10n.text('all')),
+              Tab(text: context.l10n.text('income')),
+              Tab(text: context.l10n.text('expense')),
+              Tab(text: context.l10n.text('archived')),
+            ],
+            onTap: (index) {
+              final filter = _TransactionFilter.values[index];
+              if (filter != _filter) setState(() => _filter = filter);
+            },
+          ),
           children: [
-            TabBar(
-              controller: _tabController,
-              isScrollable: false,
-              tabs: [
-                Tab(text: context.l10n.text('all')),
-                Tab(text: context.l10n.text('income')),
-                Tab(text: context.l10n.text('expense')),
-                Tab(text: context.l10n.text('archived')),
-              ],
-              onTap: (index) {
-                final filter = _TransactionFilter.values[index];
-                if (filter != _filter) setState(() => _filter = filter);
-              },
-            ),
             const SizedBox(height: ButlerlySpacing.section),
             if (values.isEmpty)
               ButlerlyEmptyState(

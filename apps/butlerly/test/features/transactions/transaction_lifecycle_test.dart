@@ -605,6 +605,15 @@ void main() {
 
     expect(find.byType(TabBar), findsOneWidget);
     expect(find.byType(SegmentedButton), findsNothing);
+    expect(
+      find
+          .byType(SliverPersistentHeader)
+          .evaluate()
+          .where(
+            (element) => (element.widget as SliverPersistentHeader).pinned,
+          ),
+      isNotEmpty,
+    );
     final tabBar = tester.widget<TabBar>(find.byType(TabBar));
     expect(tabBar.controller?.index, 0);
 
@@ -697,29 +706,8 @@ void main() {
     );
     expect(uncategorizedPosition.dx, lessThan(duplicatesPosition.dx));
     expect(duplicatesPosition.dx, lessThan(needsReviewPosition.dx));
-    expect(
-      tester
-          .widget<Text>(
-            find.descendant(
-              of: find.byType(Tab).at(0),
-              matching: find.text('Not Categorized'),
-            ),
-          )
-          .textAlign,
-      TextAlign.center,
-    );
-    expect(
-      tester
-          .widget<Text>(
-            find.descendant(
-              of: find.byType(Tab).at(2),
-              matching: find.text('Needs review'),
-            ),
-          )
-          .textAlign,
-      TextAlign.center,
-    );
-    expect(find.text('(1)'), findsNWidgets(2));
+    expect(find.text('(1)'), findsNothing);
+    expect(find.text('Possible duplicates (0)'), findsOneWidget);
     expect(find.text('Canonical review row'), findsOneWidget);
     expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
     await tester.tap(find.text('Canonical review row'));
@@ -760,6 +748,15 @@ void main() {
 
     expect(find.byType(TabBar), findsOneWidget);
     expect(find.byType(SegmentedButton), findsNothing);
+    expect(
+      find
+          .byType(SliverPersistentHeader)
+          .evaluate()
+          .where(
+            (element) => (element.widget as SliverPersistentHeader).pinned,
+          ),
+      isNotEmpty,
+    );
     final tabBar = tester.widget<TabBar>(find.byType(TabBar));
 
     await tester.tap(find.byType(Tab).at(0));
@@ -824,14 +821,6 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(
-      tester.widget<Text>(find.text('Not Categorized')).textAlign,
-      TextAlign.center,
-    );
-    expect(
-      tester.widget<Text>(find.text('Needs review')).textAlign,
-      TextAlign.center,
-    );
     expect(tester.takeException(), isNull);
   });
 
@@ -858,8 +847,9 @@ void main() {
     await tester.tap(find.byType(Tab).at(0));
     await tester.pumpAndSettle();
     expect(find.text('Refresh me'), findsOneWidget);
-    expect(find.text('(1)'), findsOneWidget);
-    expect(find.text('(0)'), findsOneWidget);
+    expect(find.text('(1)'), findsNothing);
+    expect(find.text('(0)'), findsNothing);
+    expect(find.text('Possible duplicates (0)'), findsOneWidget);
     await finance.createTransaction(
       CreateTransactionCommand(
         id: 'review-refresh-added',
@@ -881,8 +871,9 @@ void main() {
     await tester.tap(find.byType(Tab).at(0));
     await tester.pumpAndSettle();
     expect(find.text('Added after refresh'), findsOneWidget);
-    expect(find.text('(2)'), findsOneWidget);
-    expect(find.text('(0)'), findsOneWidget);
+    expect(find.text('(2)'), findsNothing);
+    expect(find.text('(0)'), findsNothing);
+    expect(find.text('Possible duplicates (0)'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
 

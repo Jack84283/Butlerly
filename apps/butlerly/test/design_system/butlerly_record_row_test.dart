@@ -106,6 +106,10 @@ void main() {
     expect(find.text('Visa ••••8421'), findsOneWidget);
     expect(find.text('Vacation · Family'), findsOneWidget);
     expect(find.text('Sep 2, 2026'), findsOneWidget);
+    expect(
+      tester.getTopRight(find.text('−82.47 USD')).dx,
+      tester.getTopRight(find.text('Sep 2, 2026')).dx,
+    );
     expect(find.byIcon(Icons.arrow_downward_rounded), findsNothing);
     expect(
       tester.getTopLeft(find.text('Possible duplicate')).dy,

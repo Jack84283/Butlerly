@@ -282,41 +282,31 @@ class _ReviewPageState extends State<ReviewPage>
     }
     return ButlerlyPage(
       title: context.l10n.text('review'),
+      pinnedHeader: TabBar(
+        controller: _tabController,
+        isScrollable: false,
+        tabs: [
+          Tab(text: context.l10n.text('uncategorized')),
+          Tab(
+            child: FutureBuilder<List<DuplicateCandidateGroup>>(
+              future: _duplicateGroups,
+              builder: (context, snapshot) {
+                final count = snapshot.data?.length;
+                final label = context.l10n.text('possibleDuplicates');
+                return Center(
+                  child: Text(
+                    count == null ? label : '$label ($count)',
+                    textAlign: TextAlign.center,
+                  ),
+                );
+              },
+            ),
+          ),
+          Tab(text: context.l10n.text('needsReview')),
+        ],
+        onTap: (index) => setState(() => _view = _reviewTabs[index]),
+      ),
       children: [
-        TabBar(
-          controller: _tabController,
-          isScrollable: false,
-          tabs: [
-            Tab(
-              child: _ReviewSectionLabel(
-                title: context.l10n.text('uncategorized'),
-                future: _uncategorized,
-              ),
-            ),
-            Tab(
-              child: FutureBuilder<List<DuplicateCandidateGroup>>(
-                future: _duplicateGroups,
-                builder: (context, snapshot) {
-                  final count = snapshot.data?.length;
-                  final label = context.l10n.text('possibleDuplicates');
-                  return Center(
-                    child: Text(
-                      count == null ? label : '$label ($count)',
-                      textAlign: TextAlign.center,
-                    ),
-                  );
-                },
-              ),
-            ),
-            Tab(
-              child: _ReviewSectionLabel(
-                title: context.l10n.text('needsReview'),
-                future: _items,
-              ),
-            ),
-          ],
-          onTap: (index) => setState(() => _view = _reviewTabs[index]),
-        ),
         if (_view != _ReviewView.duplicates)
           const SizedBox(height: ButlerlySpacing.section),
         if (_view == _ReviewView.duplicates)
@@ -575,38 +565,6 @@ const _reviewTabs = [
 ];
 
 int _tabIndex(_ReviewView view) => _reviewTabs.indexOf(view);
-
-class _ReviewSectionLabel extends StatelessWidget {
-  const _ReviewSectionLabel({required this.title, required this.future});
-
-  final String title;
-  final Future<List<Object>> future;
-
-  @override
-  Widget build(BuildContext context) => FutureBuilder<List<Object>>(
-    future: future,
-    builder: (context, snapshot) {
-      final count = snapshot.data?.length;
-      return Center(
-        child: Wrap(
-          alignment: WrapAlignment.center,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: ButlerlySpacing.micro,
-          children: [
-            Text(title, textAlign: TextAlign.center),
-            if (count != null)
-              Text(
-                '($count)',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-          ],
-        ),
-      );
-    },
-  );
-}
 
 class _DuplicateGroupCard extends StatefulWidget {
   const _DuplicateGroupCard({
