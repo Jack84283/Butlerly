@@ -664,7 +664,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                       TextFormField(
                         controller: _merchantRaw,
                         decoration: InputDecoration(
-                          labelText: context.l10n.text('merchant'),
+                          labelText: context.l10n.text('description'),
                         ),
                       ),
                       const SizedBox(height: ButlerlySpacing.standard),

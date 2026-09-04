@@ -311,6 +311,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   late TransactionDirection _direction;
   late String? _merchantId;
   late String? _categoryId;
+  late String? _subcategoryId;
   late String? _paymentSourceId;
   late Set<String> _tagIds;
   late Future<_EditorMasterData> _masterData;
@@ -334,6 +335,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
     );
     _merchantId = existing?.merchantId;
     _categoryId = existing?.categoryId;
+    _subcategoryId = existing?.subcategoryId;
     _paymentSourceId = existing?.paymentSourceId;
     _tagIds = {...?existing?.tagIds};
     _masterData = _loadMasterData(_loadedLanguageCode);
@@ -388,6 +390,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
       paymentSourceId: _paymentSourceId,
       merchantId: _merchantId,
       categoryId: _categoryId,
+      subcategoryId: _subcategoryId,
       tagIds: _tagIds.toList(growable: false),
     );
     final duplicate = await widget.finance.duplicateTransactionChecker.call(
@@ -456,6 +459,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
               notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
               merchantId: _merchantId,
               categoryId: _categoryId,
+              subcategoryId: _subcategoryId,
               paymentSourceId: _paymentSourceId,
               tagIds: _tagIds.toList(growable: false),
             ),
@@ -632,7 +636,10 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                     tagNames: data.tagLabels,
                   ),
                   value: selectedParentId,
-                  onChanged: (value) => setState(() => _categoryId = value),
+                  onChanged: (value) => setState(() {
+                    _categoryId = value;
+                    _subcategoryId = null;
+                  }),
                 ),
                 const SizedBox(height: ButlerlySpacing.standard),
                 ButlerlySubcategorySelector(
@@ -644,11 +651,11 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                     tagNames: data.tagLabels,
                   ),
                   parentId: selectedParentId,
-                  value: selectedCategory?.parentId == null
-                      ? null
-                      : _categoryId,
-                  onChanged: (value) =>
-                      setState(() => _categoryId = value ?? selectedParentId),
+                  value: _subcategoryId,
+                  onChanged: (value) => setState(() {
+                    _subcategoryId = value;
+                    _categoryId = selectedParentId;
+                  }),
                 ),
                 const SizedBox(height: ButlerlySpacing.standard),
                 ButlerlyPaymentSourceSelector(

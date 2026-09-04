@@ -83,8 +83,15 @@ final class CreateReceiptTransaction {
             ? null
             : MerchantId(resolvedMerchantId),
         categoryId: command.categoryId == null
-            ? null
+            ? proposal is ApplicationSuccess<ClassificationProposal>
+                  ? proposal.value.categoryId
+                  : null
             : CategoryId(command.categoryId!),
+        subcategoryId:
+            command.categoryId == null &&
+                proposal is ApplicationSuccess<ClassificationProposal>
+            ? proposal.value.subcategoryId
+            : null,
         paymentSourceId: command.paymentSourceId == null
             ? null
             : PaymentSourceId(command.paymentSourceId!),
