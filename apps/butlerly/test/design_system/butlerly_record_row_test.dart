@@ -29,7 +29,6 @@ void main() {
     );
 
     expect(find.bySemanticsLabel('Possible duplicate'), findsOneWidget);
-    expect(find.byTooltip('Possible duplicate'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.warning_amber_rounded));
     expect(openedReview, isTrue);
@@ -254,7 +253,7 @@ void main() {
           .semanticLabel,
       'Ingresos',
     );
-    expect(find.byTooltip('Necesita revisión'), findsOneWidget);
+    expect(find.bySemanticsLabel('Necesita revisión'), findsOneWidget);
   });
 
   testWidgets('income uses upward direction and list dividers omit the last', (

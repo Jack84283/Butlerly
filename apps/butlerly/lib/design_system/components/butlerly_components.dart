@@ -749,32 +749,30 @@ class ButlerlyTransactionListItem extends StatelessWidget {
         : context.l10n.text('needsReview');
     return Padding(
       padding: const EdgeInsets.only(top: ButlerlySpacing.compact),
-      child: Tooltip(
-        message: label,
-        child: Semantics(
-          container: true,
-          button: onPossibleDuplicateTap != null,
-          label: label,
-          child: InkWell(
-            onTap: onPossibleDuplicateTap,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Semantics(
-                  label: label,
-                  container: true,
-                  child: Icon(
-                    Icons.warning_amber_rounded,
-                    size: ButlerlyTransactionItemTokens.warningIconSize,
-                    color: context.transactionItemWarningIcon,
-                  ),
+      child: Semantics(
+        container: true,
+        explicitChildNodes: true,
+        button: onPossibleDuplicateTap != null,
+        label: label,
+        child: InkWell(
+          onTap: onPossibleDuplicateTap,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ExcludeSemantics(
+                child: Icon(
+                  Icons.warning_amber_rounded,
+                  size: ButlerlyTransactionItemTokens.warningIconSize,
+                  color: context.transactionItemWarningIcon,
                 ),
-                const SizedBox(width: ButlerlySpacing.micro),
-                Flexible(
+              ),
+              const SizedBox(width: ButlerlySpacing.micro),
+              Flexible(
+                child: ExcludeSemantics(
                   child: Text(label, style: context.transactionItemMetadata),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
