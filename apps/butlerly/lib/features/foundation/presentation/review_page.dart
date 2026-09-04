@@ -285,7 +285,7 @@ class _ReviewPageState extends State<ReviewPage>
       children: [
         TabBar(
           controller: _tabController,
-          isScrollable: false,
+          isScrollable: true,
           tabs: [
             Tab(
               child: _ReviewSectionLabel(

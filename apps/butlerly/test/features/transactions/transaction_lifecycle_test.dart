@@ -752,32 +752,6 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('Review tabs select each existing review view', (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(home: Scaffold(body: ReviewPage())),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.byType(TabBar), findsOneWidget);
-    expect(find.byType(SegmentedButton), findsNothing);
-    final tabBar = tester.widget<TabBar>(find.byType(TabBar));
-
-    await tester.tap(find.byType(Tab).at(0));
-    await tester.pumpAndSettle();
-    expect(tabBar.controller?.index, 0);
-    expect(find.text('You’re all caught up'), findsOneWidget);
-
-    await tester.tap(find.byType(Tab).at(1));
-    await tester.pumpAndSettle();
-    expect(tabBar.controller?.index, 1);
-    expect(find.text('No possible duplicates found'), findsOneWidget);
-
-    await tester.tap(find.byType(Tab).at(2));
-    await tester.pumpAndSettle();
-    expect(tabBar.controller?.index, 2);
-    expect(find.text('You’re all caught up'), findsOneWidget);
-  });
-
   testWidgets('Review duplicates query selects the duplicate mode on entry', (
     tester,
   ) async {

@@ -187,7 +187,7 @@ class _TransactionsPageState extends State<TransactionsPage>
           children: [
             TabBar(
               controller: _tabController,
-              isScrollable: false,
+              isScrollable: true,
               tabs: [
                 Tab(text: context.l10n.text('all')),
                 Tab(text: context.l10n.text('income')),
