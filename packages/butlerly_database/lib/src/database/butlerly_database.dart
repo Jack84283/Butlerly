@@ -1,5 +1,5 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart'
-    show RepositoryException, RepositoryFailureCode;
+    show RepositoryException, RepositoryFailureCode, normalizeMerchantName;
 import 'package:sqflite_common/sqlite_api.dart';
 
 /// SQLite executor for database-owned schema and catalog assets.
@@ -59,6 +59,9 @@ final class ButlerlyDatabase {
               for (final statement in splitSqlStatements(sql)) {
                 await database.execute(statement);
               }
+              if (version == 5) {
+                await _backfillNormalizedDescriptions(database);
+              }
             }
             if (newVersion != databaseVersion) {
               throw const RepositoryException(
@@ -86,6 +89,27 @@ final class ButlerlyDatabase {
       await _database?.close();
       _database = null;
       rethrow;
+    }
+  }
+
+  static Future<void> _backfillNormalizedDescriptions(Database database) async {
+    final rows = await database.query(
+      'transactions',
+      columns: ['id', 'description', 'raw_counterparty'],
+    );
+    for (final row in rows) {
+      await database.update(
+        'transactions',
+        {
+          'normalized_description': normalizeMerchantName(
+            row['description'] as String? ??
+                row['raw_counterparty'] as String? ??
+                '',
+          ),
+        },
+        where: 'id = ?',
+        whereArgs: [row['id']],
+      );
     }
   }
 

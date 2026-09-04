@@ -141,6 +141,57 @@ void main() {
         },
       ),
     );
+    await legacyDb.insert('categories', {
+      'id': 'category.food',
+      'name': 'Food & Dining',
+      'origin': 'system',
+      'status': 'active',
+    });
+    await legacyDb.insert('merchants', {
+      'id': 'merchant.safeway',
+      'name': 'Safeway',
+      'status': 'active',
+    });
+    await legacyDb.insert('provenances', {
+      'id': 'legacy-provenance',
+      'source_type': 'import',
+      'captured_at': '2026-01-01T00:00:00.000Z',
+      'original_representation': 'SAFEWAY #1234',
+    });
+    await legacyDb.insert('transactions', {
+      'id': 'legacy-safeway',
+      'unknown_time_reason': 'unknown',
+      'amount_coefficient': '12',
+      'amount_scale': 0,
+      'currency': 'USD',
+      'direction': 'expense',
+      'source_type': 'import',
+      'status': 'active',
+      'description': 'SAFEWAY #1234',
+      'raw_counterparty': 'ignored raw value',
+      'merchant_id': 'merchant.safeway',
+      'category_id': 'category.food',
+      'created_at': '2026-01-01T00:00:00.000Z',
+      'updated_at': '2026-01-01T00:00:00.000Z',
+      'transaction_date': '2026-01-01',
+    });
+    await legacyDb.insert('transaction_provenances', {
+      'transaction_id': 'legacy-safeway',
+      'provenance_id': 'legacy-provenance',
+    });
+    await legacyDb.insert('transactions', {
+      'id': 'legacy-empty',
+      'unknown_time_reason': 'unknown',
+      'amount_coefficient': '1',
+      'amount_scale': 0,
+      'currency': 'USD',
+      'direction': 'expense',
+      'source_type': 'import',
+      'status': 'active',
+      'created_at': '2026-01-01T00:00:00.000Z',
+      'updated_at': '2026-01-01T00:00:00.000Z',
+      'transaction_date': '2026-01-01',
+    });
     expect(
       await legacyDb.rawQuery('PRAGMA table_info(statement_rows)'),
       isNot(
@@ -167,6 +218,38 @@ void main() {
         'PRAGMA table_info(statement_rows)',
       )).any((row) => row['name'] == 'status_before_skip'),
       isTrue,
+    );
+    expect(
+      (await database.connection.query(
+        'transactions',
+        columns: ['normalized_description'],
+        where: 'id = ?',
+        whereArgs: ['legacy-safeway'],
+      )).single['normalized_description'],
+      'safeway',
+    );
+    expect(
+      (await database.connection.query(
+        'transactions',
+        columns: ['normalized_description'],
+        where: 'id = ?',
+        whereArgs: ['legacy-empty'],
+      )).single['normalized_description'],
+      '',
+    );
+    final candidates =
+        await (SqliteTransactionRepository(database)
+                as HistoricalClassificationRepository)
+            .findClassificationCandidates(normalizedDescription: 'safeway');
+    expect(candidates.map((value) => value.id.value), ['legacy-safeway']);
+    expect(
+      (await (SqliteTransactionRepository(database)
+                  as HistoricalClassificationRepository)
+              .findClassificationCandidates(
+                merchantId: MerchantId('merchant.safeway'),
+              ))
+          .map((value) => value.id.value),
+      ['legacy-safeway'],
     );
     await database.close();
     await directory.delete(recursive: true);
