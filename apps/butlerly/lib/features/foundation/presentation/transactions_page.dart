@@ -10,6 +10,7 @@ import 'package:butlerly/features/foundation/presentation/transaction_change_not
 import 'package:butlerly/features/foundation/presentation/transaction_count_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_record_list.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -83,8 +84,24 @@ class _TransactionsPageState extends State<TransactionsPage> {
         finance,
         languageCode: activeLanguageCode,
       ),
+      paymentSourceNames: await _paymentSourceNames(finance),
       possibleDuplicateIds: await _possibleDuplicateIds(finance),
     );
+  }
+
+  Future<Map<String, String>> _paymentSourceNames(
+    FinanceServices finance,
+  ) async {
+    final result = await finance.listPaymentSources();
+    return switch (result) {
+      ApplicationSuccess<List<PaymentSource>>(:final value) => {
+        for (final source in value)
+          source.id.value: source.lastFour == null
+              ? source.name
+              : '${source.name} ••••${source.lastFour}',
+      },
+      _ => const {},
+    };
   }
 
   Future<Set<String>> _possibleDuplicateIds(FinanceServices finance) async {
@@ -215,6 +232,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
                   TransactionRecordList(
                     transactions: visible,
                     masterData: data.masterData,
+                    paymentSourceNames: data.paymentSourceNames,
+                    groupByFinancialDate: true,
                     possibleDuplicateIds: data.possibleDuplicateIds,
                     possibleDuplicateLabel: context.l10n.text(
                       'possibleDuplicate',
@@ -240,58 +259,14 @@ final class _TransactionsData {
   const _TransactionsData(
     this.transactions, {
     this.masterData = const TransactionMasterData(),
+    this.paymentSourceNames = const {},
     this.possibleDuplicateIds = const {},
   });
 
   final List<TransactionDto> transactions;
   final TransactionMasterData masterData;
+  final Map<String, String> paymentSourceNames;
   final Set<String> possibleDuplicateIds;
-}
-
-/// The canonical transaction list presentation shared by transaction-backed screens.
-class TransactionRecordList extends StatelessWidget {
-  const TransactionRecordList({
-    required this.transactions,
-    required this.onTap,
-    this.masterData,
-    this.possibleDuplicateIds = const {},
-    this.possibleDuplicateLabel,
-    this.onPossibleDuplicateTap,
-    this.navigates = false,
-    super.key,
-  });
-
-  final List<TransactionDto> transactions;
-  final TransactionMasterData? masterData;
-  final Set<String> possibleDuplicateIds;
-  final String? possibleDuplicateLabel;
-  final VoidCallback? onPossibleDuplicateTap;
-  final ValueChanged<TransactionDto> onTap;
-  final bool navigates;
-
-  @override
-  Widget build(BuildContext context) => ButlerlyTransactionList(
-    children: transactions
-        .map(
-          (value) => ButlerlyRecordRow(
-            title: value.description?.trim().isNotEmpty == true
-                ? value.description!
-                : context.l10n.text('untitledTransaction'),
-            subtitle: masterData?.summary(value),
-            meta: _transactionDate(value, context),
-            amount: localizedTransactionAmount(context, value.amount),
-            currency: value.currency,
-            isIncome: value.direction == TransactionDirection.income.name,
-            needsReview: value.reviewState == 'needsReview',
-            possibleDuplicate: possibleDuplicateIds.contains(value.id),
-            possibleDuplicateLabel: possibleDuplicateLabel,
-            onPossibleDuplicateTap: onPossibleDuplicateTap,
-            onTap: () => onTap(value),
-            showNavigationIndicator: navigates,
-          ),
-        )
-        .toList(growable: false),
-  );
 }
 
 sealed class TransactionEditorResult {

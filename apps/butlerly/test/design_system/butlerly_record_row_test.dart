@@ -78,6 +78,56 @@ void main() {
     expect(find.byType(Card), findsNothing);
   });
 
+  testWidgets('canonical item uses signed amounts and renders optional tags', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: ButlerlyRecordRow(
+            title: 'Whole Foods',
+            amount: '82.47',
+            currency: 'USD',
+            categoryLabel: 'Groceries',
+            subcategoryLabel: 'Supermarket',
+            paymentSource: 'Visa ••••8421',
+            tags: const ['Vacation', 'Family'],
+            meta: 'Sep 2, 2026',
+            showDate: true,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('−82.47 USD'), findsOneWidget);
+    expect(find.text('Groceries · Supermarket'), findsOneWidget);
+    expect(find.text('Visa ••••8421'), findsOneWidget);
+    expect(find.text('Vacation'), findsOneWidget);
+    expect(find.text('Family'), findsOneWidget);
+    expect(find.text('Sep 2, 2026'), findsOneWidget);
+    expect(find.byIcon(Icons.arrow_downward_rounded), findsNothing);
+  });
+
+  testWidgets('canonical income item uses a plus sign', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: ButlerlyRecordRow(
+            title: 'Payroll',
+            amount: '4820.00',
+            currency: 'USD',
+            categoryLabel: 'Income',
+            isIncome: true,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('+4820.00 USD'), findsOneWidget);
+  });
+
   testWidgets('navigable item shows a decorative trailing chevron', (
     tester,
   ) async {

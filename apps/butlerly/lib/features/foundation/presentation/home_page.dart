@@ -4,11 +4,10 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
-import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_record_list.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
-import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
@@ -68,6 +67,7 @@ class _HomePageState extends State<HomePage> {
       finance.listTransactions(const ListTransactionsQuery()),
       finance.listReviewItems(),
       TransactionMasterData.load(finance, languageCode: activeLanguageCode),
+      finance.listPaymentSources(),
     ]);
     final transactions = switch (results[0]) {
       ApplicationSuccess<List<TransactionDto>>(:final value) => value,
@@ -82,6 +82,15 @@ class _HomePageState extends State<HomePage> {
       transactions.length,
       reviewItems.length,
       results[2] as TransactionMasterData,
+      switch (results[3]) {
+        ApplicationSuccess<List<PaymentSource>>(:final value) => {
+          for (final source in value)
+            source.id.value: source.lastFour == null
+                ? source.name
+                : '${source.name} ••••${source.lastFour}',
+        },
+        _ => const {},
+      },
     );
   }
 
@@ -166,29 +175,14 @@ class _HomePageState extends State<HomePage> {
                 if (data.transactions.isEmpty)
                   const _HomeEmptyTransactions()
                 else
-                  ButlerlyTransactionList(
-                    children: data.transactions
-                        .map(
-                          (value) => ButlerlyTransactionListItem(
-                            title:
-                                value.description ??
-                                context.l10n.text('untitledTransaction'),
-                            subtitle: data.masterData.summary(value),
-                            meta: _date(value, context),
-                            amount: localizedTransactionAmount(
-                              context,
-                              value.amount,
-                            ),
-                            currency: value.currency,
-                            isIncome:
-                                value.direction ==
-                                TransactionDirection.income.name,
-                            needsReview: value.reviewState == 'needsReview',
-                            onTap: () => _open(value),
-                            showNavigationIndicator: true,
-                          ),
-                        )
-                        .toList(growable: false),
+                  TransactionRecordList(
+                    transactions: data.transactions,
+                    masterData: data.masterData,
+                    paymentSourceNames: data.paymentSourceNames,
+                    onTap: _open,
+                    navigates: true,
+                    showDateInRows: true,
+                    wrapInCard: true,
                   ),
                 const SizedBox(height: ButlerlySpacing.structural),
               ],
@@ -473,17 +467,12 @@ class _HomeData {
     this.transactionCount,
     this.reviewCount, [
     this.masterData = const TransactionMasterData(),
+    this.paymentSourceNames = const {},
   ]);
 
   final List<TransactionDto> transactions;
   final int transactionCount;
   final int reviewCount;
   final TransactionMasterData masterData;
+  final Map<String, String> paymentSourceNames;
 }
-
-String _date(TransactionDto value, BuildContext context) =>
-    transactionDateLabel(
-      value,
-      pendingLabel: context.l10n.text('datePending'),
-      locale: Localizations.localeOf(context).toLanguageTag(),
-    );

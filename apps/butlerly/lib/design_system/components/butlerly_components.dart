@@ -1,3 +1,4 @@
+import 'package:butlerly/design_system/components/butlerly_category_icon.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -469,6 +470,12 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     required this.currency,
     this.subtitle,
     this.meta,
+    this.categoryId,
+    this.categoryLabel,
+    this.subcategoryLabel,
+    this.paymentSource,
+    this.tags = const [],
+    this.showDate = false,
     this.isIncome = false,
     this.needsReview = false,
     this.possibleDuplicate = false,
@@ -483,6 +490,12 @@ class ButlerlyTransactionListItem extends StatelessWidget {
   final String title;
   final String? subtitle;
   final String? meta;
+  final String? categoryId;
+  final String? categoryLabel;
+  final String? subcategoryLabel;
+  final String? paymentSource;
+  final List<String> tags;
+  final bool showDate;
   final String amount;
   final String currency;
   final bool isIncome;
@@ -500,140 +513,324 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     label:
         '$title, $amount $currency${needsReview ? ', ${context.l10n.text('needsReview')}' : ''}'
         '${possibleDuplicate && possibleDuplicateLabel != null ? ', $possibleDuplicateLabel' : ''}',
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(
-        minHeight: ButlerlyTransactionItemTokens.minTouchHeight,
-      ),
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              ButlerlyTransactionItemTokens.horizontalInset,
-              ButlerlyTransactionItemTokens.topPadding,
-              ButlerlyTransactionItemTokens.horizontalInset,
-              ButlerlyTransactionItemTokens.bottomPadding,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
+    child:
+        categoryLabel != null ||
+            categoryId != null ||
+            paymentSource != null ||
+            tags.isNotEmpty
+        ? _buildCanonical(context)
+        : _buildLegacy(context),
+  );
+
+  Widget _buildCanonical(BuildContext context) => ConstrainedBox(
+    constraints: const BoxConstraints(
+      minHeight: ButlerlyTransactionItemTokens.minTouchHeight,
+    ),
+    child: Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            ButlerlyTransactionItemTokens.horizontalInset,
+            ButlerlyTransactionItemTokens.topPadding,
+            ButlerlyTransactionItemTokens.horizontalInset,
+            ButlerlyTransactionItemTokens.bottomPadding,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: ButlerlySpacing.micro),
+                child: categoryId != null
+                    ? ButlerlyCategoryIcon(
+                        categoryId: categoryId!,
+                        semanticLabel: categoryLabel,
+                      )
+                    : _NeutralTransactionIcon(),
+              ),
+              const SizedBox(width: ButlerlySpacing.small),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      isIncome
-                          ? Icons.arrow_upward_rounded
-                          : Icons.arrow_downward_rounded,
-                      semanticLabel: context.l10n.text(
-                        isIncome ? 'income' : 'expense',
-                      ),
-                      size: ButlerlyTransactionItemTokens.directionIconSize,
-                      color: context.transactionItemDirectionIcon(isIncome),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: _title(context)),
+                        const SizedBox(width: ButlerlySpacing.small),
+                        Flexible(child: _signedAmount(context)),
+                        if (needsReview || possibleDuplicate)
+                          _reviewIndicator(context),
+                        if (showNavigationIndicator)
+                          _navigationIndicator(context),
+                        ?selectionControl,
+                      ],
                     ),
                     const SizedBox(
-                      width: ButlerlyTransactionItemTokens.headerSpacing,
+                      height: ButlerlyTransactionItemTokens.headerSpacing,
                     ),
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Text(
-                            '$amount $currency',
-                            style: context.transactionItemAmount,
-                            textHeightBehavior: ButlerlyTransactionItemTokens
-                                .textHeightBehavior,
-                          ),
-                          if (needsReview || possibleDuplicate) ...[
-                            const SizedBox(
-                              width:
-                                  ButlerlyTransactionItemTokens.headerSpacing,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: _categoryText(context)),
+                        if (showDate && meta != null) ...[
+                          const SizedBox(width: ButlerlySpacing.small),
+                          Flexible(
+                            child: Text(
+                              meta!,
+                              textAlign: TextAlign.end,
+                              style: context.transactionItemDate,
                             ),
-                            Tooltip(
-                              message:
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (paymentSource case final source?
+                        when source.trim().isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          top: ButlerlyTransactionItemTokens.headerSpacing,
+                        ),
+                        child: Text(
+                          source,
+                          style: context.transactionItemMetadata,
+                        ),
+                      ),
+                    if (tags.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          top: ButlerlySpacing.compact,
+                        ),
+                        child: Wrap(
+                          spacing: ButlerlySpacing.micro,
+                          runSpacing: ButlerlySpacing.micro,
+                          children: [
+                            for (final tag in tags.where(
+                              (value) => value.trim().isNotEmpty,
+                            ))
+                              ButlerlyTagChip(label: tag),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Widget _buildLegacy(BuildContext context) => ConstrainedBox(
+    constraints: const BoxConstraints(
+      minHeight: ButlerlyTransactionItemTokens.minTouchHeight,
+    ),
+    child: Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            ButlerlyTransactionItemTokens.horizontalInset,
+            ButlerlyTransactionItemTokens.topPadding,
+            ButlerlyTransactionItemTokens.horizontalInset,
+            ButlerlyTransactionItemTokens.bottomPadding,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    isIncome
+                        ? Icons.arrow_upward_rounded
+                        : Icons.arrow_downward_rounded,
+                    semanticLabel: context.l10n.text(
+                      isIncome ? 'income' : 'expense',
+                    ),
+                    size: ButlerlyTransactionItemTokens.directionIconSize,
+                    color: context.transactionItemDirectionIcon(isIncome),
+                  ),
+                  const SizedBox(
+                    width: ButlerlyTransactionItemTokens.headerSpacing,
+                  ),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Text(
+                          '$amount $currency',
+                          style: context.transactionItemAmount,
+                          textHeightBehavior:
+                              ButlerlyTransactionItemTokens.textHeightBehavior,
+                        ),
+                        if (needsReview || possibleDuplicate) ...[
+                          const SizedBox(
+                            width: ButlerlyTransactionItemTokens.headerSpacing,
+                          ),
+                          Tooltip(
+                            message:
+                                possibleDuplicateLabel ??
+                                context.l10n.text('needsReview'),
+                            child: Semantics(
+                              container: true,
+                              button: onPossibleDuplicateTap != null,
+                              label:
                                   possibleDuplicateLabel ??
                                   context.l10n.text('needsReview'),
-                              child: Semantics(
-                                container: true,
-                                button: onPossibleDuplicateTap != null,
-                                label:
-                                    possibleDuplicateLabel ??
-                                    context.l10n.text('needsReview'),
-                                child: InkWell(
-                                  onTap: onPossibleDuplicateTap,
-                                  child: Padding(
-                                    padding: EdgeInsets.all(
-                                      ButlerlySpacing.micro,
-                                    ),
-                                    child: Icon(
-                                      Icons.warning_amber_rounded,
-                                      size: ButlerlyTransactionItemTokens
-                                          .warningIconSize,
-                                      color: context.transactionItemWarningIcon,
-                                    ),
+                              child: InkWell(
+                                onTap: onPossibleDuplicateTap,
+                                child: Padding(
+                                  padding: EdgeInsets.all(
+                                    ButlerlySpacing.micro,
+                                  ),
+                                  child: Icon(
+                                    Icons.warning_amber_rounded,
+                                    size: ButlerlyTransactionItemTokens
+                                        .warningIconSize,
+                                    color: context.transactionItemWarningIcon,
                                   ),
                                 ),
                               ),
                             ),
-                          ],
+                          ),
                         ],
+                      ],
+                    ),
+                  ),
+                  if (meta != null)
+                    const SizedBox(
+                      width: ButlerlyTransactionItemTokens.headerSpacing,
+                    ),
+                  if (meta != null)
+                    Flexible(
+                      child: Align(
+                        alignment: AlignmentDirectional.centerEnd,
+                        child: Text(
+                          meta!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.end,
+                          style: context.transactionItemDate,
+                          textHeightBehavior:
+                              ButlerlyTransactionItemTokens.textHeightBehavior,
+                        ),
                       ),
                     ),
-                    if (meta != null)
-                      const SizedBox(
-                        width: ButlerlyTransactionItemTokens.headerSpacing,
+                  if (showNavigationIndicator) ...[
+                    const SizedBox(
+                      width: ButlerlyTransactionItemTokens.headerSpacing,
+                    ),
+                    ExcludeSemantics(
+                      child: Icon(
+                        Icons.chevron_right_rounded,
+                        size: ButlerlyTransactionItemTokens.navigationIconSize,
+                        color: context.transactionItemNavigationIcon,
                       ),
-                    if (meta != null)
-                      Flexible(
-                        child: Align(
-                          alignment: AlignmentDirectional.centerEnd,
-                          child: Text(
-                            meta!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.end,
-                            style: context.transactionItemDate,
-                            textHeightBehavior: ButlerlyTransactionItemTokens
-                                .textHeightBehavior,
-                          ),
-                        ),
-                      ),
-                    if (showNavigationIndicator) ...[
-                      const SizedBox(
-                        width: ButlerlyTransactionItemTokens.headerSpacing,
-                      ),
-                      ExcludeSemantics(
-                        child: Icon(
-                          Icons.chevron_right_rounded,
-                          size:
-                              ButlerlyTransactionItemTokens.navigationIconSize,
-                          color: context.transactionItemNavigationIcon,
-                        ),
-                      ),
-                    ],
-                    ?selectionControl,
+                    ),
                   ],
-                ),
+                  ?selectionControl,
+                ],
+              ),
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: context.transactionItemDescription,
+                textHeightBehavior:
+                    ButlerlyTransactionItemTokens.textHeightBehavior,
+              ),
+              if (subtitle != null && subtitle!.trim().isNotEmpty)
                 Text(
-                  title,
+                  subtitle!,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: context.transactionItemDescription,
+                  style: context.transactionItemMetadata,
                   textHeightBehavior:
                       ButlerlyTransactionItemTokens.textHeightBehavior,
                 ),
-                if (subtitle != null && subtitle!.trim().isNotEmpty)
-                  Text(
-                    subtitle!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.transactionItemMetadata,
-                    textHeightBehavior:
-                        ButlerlyTransactionItemTokens.textHeightBehavior,
-                  ),
-              ],
-            ),
+            ],
           ),
         ),
+      ),
+    ),
+  );
+
+  Widget _title(BuildContext context) => Text(
+    title,
+    maxLines: 2,
+    overflow: TextOverflow.ellipsis,
+    style: context.transactionItemDescription,
+    textHeightBehavior: ButlerlyTransactionItemTokens.textHeightBehavior,
+  );
+
+  Widget _categoryText(BuildContext context) => Text(
+    [
+      if (categoryLabel case final value? when value.trim().isNotEmpty) value,
+      if (subcategoryLabel case final value?
+          when value.trim().isNotEmpty && value != categoryLabel)
+        value,
+    ].join(' · '),
+    maxLines: 2,
+    overflow: TextOverflow.ellipsis,
+    style: context.transactionItemMetadata,
+  );
+
+  Widget _signedAmount(BuildContext context) => Text(
+    '${isIncome ? '+' : '−'}$amount $currency',
+    textAlign: TextAlign.end,
+    style: context.transactionItemAmount.copyWith(
+      color: isIncome ? context.colors.success : null,
+    ),
+    textHeightBehavior: ButlerlyTransactionItemTokens.textHeightBehavior,
+  );
+
+  Widget _reviewIndicator(BuildContext context) => Tooltip(
+    message: possibleDuplicateLabel ?? context.l10n.text('needsReview'),
+    child: Icon(
+      Icons.warning_amber_rounded,
+      size: ButlerlyTransactionItemTokens.warningIconSize,
+      color: context.transactionItemWarningIcon,
+    ),
+  );
+
+  Widget _navigationIndicator(BuildContext context) => ExcludeSemantics(
+    child: Icon(
+      Icons.chevron_right_rounded,
+      size: ButlerlyTransactionItemTokens.navigationIconSize,
+      color: context.transactionItemNavigationIcon,
+    ),
+  );
+}
+
+class ButlerlyTagChip extends StatelessWidget {
+  const ButlerlyTagChip({required this.label, super.key});
+  final String label;
+  @override
+  Widget build(BuildContext context) => Chip(
+    label: Text(label),
+    visualDensity: VisualDensity.compact,
+    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    padding: const EdgeInsets.symmetric(horizontal: ButlerlySpacing.micro),
+  );
+}
+
+class _NeutralTransactionIcon extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => SizedBox.square(
+    dimension: ButlerlySize.categoryIconContainer,
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        color: context.colors.subtleSurface,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        Icons.receipt_long_outlined,
+        size: ButlerlySize.categoryIconGlyph,
+        color: context.colors.secondaryText,
       ),
     ),
   );
@@ -664,6 +861,12 @@ class ButlerlyRecordRow extends ButlerlyTransactionListItem {
     required super.currency,
     super.subtitle,
     super.meta,
+    super.categoryId,
+    super.categoryLabel,
+    super.subcategoryLabel,
+    super.paymentSource,
+    super.tags,
+    super.showDate,
     super.isIncome,
     super.needsReview,
     super.possibleDuplicate,

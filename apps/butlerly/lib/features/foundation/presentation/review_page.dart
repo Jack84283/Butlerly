@@ -5,6 +5,7 @@ import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_record_list.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
@@ -409,7 +410,9 @@ class _ReviewPageState extends State<ReviewPage> {
                 future: _masterData,
                 builder: (context, masterSnapshot) => TransactionRecordList(
                   transactions: values,
-                  masterData: masterSnapshot.data?.presentation,
+                  masterData:
+                      masterSnapshot.data?.presentation ??
+                      const TransactionMasterData(),
                   onTap: _openUncategorized,
                   navigates: true,
                 ),
