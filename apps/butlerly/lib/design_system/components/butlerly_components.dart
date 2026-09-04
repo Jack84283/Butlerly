@@ -598,69 +598,74 @@ class ButlerlyTransactionListItem extends StatelessWidget {
               ),
               const SizedBox(width: ButlerlySpacing.small),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: _title(context)),
-                        const SizedBox(width: ButlerlySpacing.small),
-                        Expanded(
-                          child: Align(
-                            alignment: AlignmentDirectional.centerEnd,
-                            child: _signedAmount(context),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(
-                      height: ButlerlyTransactionItemTokens.headerSpacing,
-                    ),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: _categoryText(context)),
-                        if (showDate && meta != null) ...[
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.only(
+                    end: ButlerlyTransactionItemTokens.metadataTrailingInset,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: _title(context)),
                           const SizedBox(width: ButlerlySpacing.small),
                           Expanded(
                             child: Align(
                               alignment: AlignmentDirectional.centerEnd,
-                              child: Text(
-                                meta!,
-                                textAlign: TextAlign.end,
-                                style: context.transactionItemDate,
-                              ),
+                              child: _signedAmount(context),
                             ),
                           ),
                         ],
-                      ],
-                    ),
-                    if (paymentSource case final source?
-                        when source.trim().isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          top: ButlerlyTransactionItemTokens.headerSpacing,
-                        ),
-                        child: Text(
-                          source,
-                          style: context.transactionItemMetadata,
-                        ),
                       ),
-                    if (_visibleTags.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          top: ButlerlySpacing.compact,
-                        ),
-                        child: Text(
-                          _visibleTags.join(' · '),
-                          style: context.transactionItemMetadata,
-                        ),
+                      const SizedBox(
+                        height: ButlerlyTransactionItemTokens.headerSpacing,
                       ),
-                    if (needsReview || possibleDuplicate)
-                      _duplicateWarning(context),
-                  ],
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: _categoryText(context)),
+                          if (showDate && meta != null) ...[
+                            const SizedBox(width: ButlerlySpacing.small),
+                            Expanded(
+                              child: Align(
+                                alignment: AlignmentDirectional.centerEnd,
+                                child: Text(
+                                  meta!,
+                                  textAlign: TextAlign.end,
+                                  style: context.transactionItemDate,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      if (paymentSource case final source?
+                          when source.trim().isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            top: ButlerlyTransactionItemTokens.headerSpacing,
+                          ),
+                          child: Text(
+                            source,
+                            style: context.transactionItemMetadata,
+                          ),
+                        ),
+                      if (_visibleTags.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            top: ButlerlySpacing.compact,
+                          ),
+                          child: Text(
+                            _visibleTags.join(' · '),
+                            style: context.transactionItemMetadata,
+                          ),
+                        ),
+                      if (needsReview || possibleDuplicate)
+                        _duplicateWarning(context),
+                    ],
+                  ),
                 ),
               ),
               ?selectionControl,

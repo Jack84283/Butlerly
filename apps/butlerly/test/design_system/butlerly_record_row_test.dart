@@ -149,6 +149,12 @@ void main() {
       tester.getTopRight(find.text('−82.47 USD')).dx,
       tester.getTopRight(find.text('Sep 2, 2026')).dx,
     );
+    expect(
+      tester.getTopRight(find.text('−82.47 USD')).dx,
+      lessThan(
+        tester.getTopLeft(find.byIcon(Icons.check_box_outline_blank)).dx,
+      ),
+    );
   });
 
   testWidgets(
