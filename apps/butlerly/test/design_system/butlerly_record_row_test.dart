@@ -151,8 +151,10 @@ void main() {
     );
     expect(
       tester.getTopRight(find.text('−82.47 USD')).dx,
-      lessThan(
-        tester.getTopLeft(find.byIcon(Icons.check_box_outline_blank)).dx,
+      closeTo(
+        tester.getTopLeft(find.byIcon(Icons.check_box_outline_blank)).dx -
+            ButlerlySpacing.compact,
+        0.01,
       ),
     );
   });
