@@ -541,7 +541,9 @@ class ButlerlyTransactionListItem extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.all(ButlerlySpacing.micro),
+                padding: const EdgeInsetsDirectional.only(
+                  start: ButlerlyTransactionItemTokens.categoryIconLeadingInset,
+                ),
                 child: categoryId != null
                     ? ButlerlyCategoryIcon(
                         categoryId: categoryId!,
@@ -561,6 +563,8 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                         Expanded(child: _title(context)),
                         const SizedBox(width: ButlerlySpacing.small),
                         Flexible(child: _signedAmount(context)),
+                        if (needsReview && !possibleDuplicate)
+                          _reviewIndicator(context),
                         ?selectionControl,
                       ],
                     ),
@@ -594,20 +598,14 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                           style: context.transactionItemMetadata,
                         ),
                       ),
-                    if (tags.isNotEmpty)
+                    if (_visibleTags.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(
                           top: ButlerlySpacing.compact,
                         ),
-                        child: Wrap(
-                          spacing: ButlerlySpacing.micro,
-                          runSpacing: ButlerlySpacing.micro,
-                          children: [
-                            for (final tag in tags.where(
-                              (value) => value.trim().isNotEmpty,
-                            ))
-                              ButlerlyTagChip(label: tag),
-                          ],
+                        child: Text(
+                          _visibleTags.join(' · '),
+                          style: context.transactionItemMetadata,
                         ),
                       ),
                     if (possibleDuplicate) _duplicateWarning(context),
@@ -773,6 +771,19 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     textHeightBehavior: ButlerlyTransactionItemTokens.textHeightBehavior,
   );
 
+  List<String> get _visibleTags =>
+      tags.where((value) => value.trim().isNotEmpty).toList(growable: false);
+
+  Widget _reviewIndicator(BuildContext context) => Tooltip(
+    message: context.l10n.text('needsReview'),
+    child: Icon(
+      Icons.warning_amber_rounded,
+      semanticLabel: context.l10n.text('needsReview'),
+      size: ButlerlyTransactionItemTokens.warningIconSize,
+      color: context.transactionItemWarningIcon,
+    ),
+  );
+
   Widget _duplicateWarning(BuildContext context) => Padding(
     padding: const EdgeInsets.only(top: ButlerlySpacing.compact),
     child: Semantics(
@@ -800,23 +811,6 @@ class ButlerlyTransactionListItem extends StatelessWidget {
         ),
       ),
     ),
-  );
-}
-
-class ButlerlyTagChip extends StatelessWidget {
-  const ButlerlyTagChip({required this.label, super.key});
-  final String label;
-  @override
-  Widget build(BuildContext context) => Chip(
-    label: Text(label, style: context.transactionItemMetadata),
-    backgroundColor: context.colors.subtleSurface,
-    side: BorderSide(color: context.colors.cardDivider),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(ButlerlyRadius.small),
-    ),
-    visualDensity: VisualDensity.compact,
-    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    padding: const EdgeInsets.symmetric(horizontal: ButlerlySpacing.micro),
   );
 }
 

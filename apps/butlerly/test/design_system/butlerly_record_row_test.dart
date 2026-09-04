@@ -105,15 +105,37 @@ void main() {
     expect(find.text('−82.47 USD'), findsOneWidget);
     expect(find.text('Groceries · Supermarket'), findsOneWidget);
     expect(find.text('Visa ••••8421'), findsOneWidget);
-    expect(find.text('Vacation'), findsOneWidget);
-    expect(find.text('Family'), findsOneWidget);
+    expect(find.text('Vacation · Family'), findsOneWidget);
     expect(find.text('Sep 2, 2026'), findsOneWidget);
     expect(find.byIcon(Icons.arrow_downward_rounded), findsNothing);
     expect(
       tester.getTopLeft(find.text('Possible duplicate')).dy,
-      greaterThan(tester.getTopLeft(find.text('Family')).dy),
+      greaterThan(tester.getTopLeft(find.text('Vacation · Family')).dy),
     );
   });
+
+  testWidgets(
+    'canonical item keeps needs-review visible without duplicate line',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: ButlerlyRecordRow(
+              title: 'Needs review',
+              amount: '10.00',
+              currency: 'USD',
+              categoryLabel: 'Groceries',
+              needsReview: true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
+      expect(find.text('Needs review'), findsOneWidget);
+    },
+  );
 
   testWidgets('canonical income item uses a plus sign', (tester) async {
     await tester.pumpWidget(
