@@ -106,6 +106,10 @@ void main() {
     expect(find.text('Visa ••••8421'), findsOneWidget);
     expect(find.text('Vacation · Family'), findsOneWidget);
     expect(find.text('Sep 2, 2026'), findsOneWidget);
+    expect(
+      tester.getTopRight(find.text('−82.47 USD')).dx,
+      tester.getTopRight(find.text('Sep 2, 2026')).dx,
+    );
     expect(find.byIcon(Icons.arrow_downward_rounded), findsNothing);
     expect(
       tester.getTopLeft(find.text('Possible duplicate')).dy,
@@ -114,6 +118,36 @@ void main() {
     expect(
       tester.getTopLeft(find.byIcon(Icons.warning_amber_rounded)).dy,
       greaterThan(tester.getTopLeft(find.text('−82.47 USD')).dy),
+    );
+  });
+
+  testWidgets('canonical item aligns amount and date with selection control', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: ButlerlyRecordRow(
+            title: 'Whole Foods',
+            amount: '82.47',
+            currency: 'USD',
+            categoryLabel: 'Groceries',
+            meta: 'Sep 2, 2026',
+            showDate: true,
+            selectionControl: const SizedBox(
+              width: ButlerlySize.minimumTarget,
+              height: ButlerlySize.minimumTarget,
+              child: Icon(Icons.check_box_outline_blank),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      tester.getTopRight(find.text('−82.47 USD')).dx,
+      tester.getTopRight(find.text('Sep 2, 2026')).dx,
     );
   });
 

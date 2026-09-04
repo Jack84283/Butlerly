@@ -16,6 +16,7 @@ class ButlerlyPage extends StatelessWidget {
     this.actions = const [],
     this.padding,
     this.controller,
+    this.pinnedHeader,
     super.key,
   });
 
@@ -25,6 +26,7 @@ class ButlerlyPage extends StatelessWidget {
   final List<Widget> children;
   final EdgeInsets? padding;
   final ScrollController? controller;
+  final Widget? pinnedHeader;
 
   @override
   Widget build(BuildContext context) => ColoredBox(
@@ -39,6 +41,11 @@ class ButlerlyPage extends StatelessWidget {
             title: Text(title!),
             actions: actions,
             backgroundColor: context.colors.background.withValues(alpha: 0.96),
+          ),
+        if (pinnedHeader != null)
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: _ButlerlyPinnedHeaderDelegate(child: pinnedHeader!),
           ),
         SliverPadding(
           padding:
@@ -76,6 +83,44 @@ class ButlerlyPage extends StatelessWidget {
       ],
     ),
   );
+}
+
+class _ButlerlyPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
+  const _ButlerlyPinnedHeaderDelegate({required this.child});
+
+  final Widget child;
+
+  @override
+  double get minExtent => ButlerlySize.preferredTarget;
+
+  @override
+  double get maxExtent => ButlerlySize.preferredTarget;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) => ColoredBox(
+    color: context.colors.background,
+    child: Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: ButlerlySize.phoneGutter,
+        ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxWidth: ButlerlySize.pageContentMaxWidth,
+          ),
+          child: SizedBox(width: double.infinity, child: child),
+        ),
+      ),
+    ),
+  );
+
+  @override
+  bool shouldRebuild(covariant _ButlerlyPinnedHeaderDelegate oldDelegate) =>
+      oldDelegate.child != child;
 }
 
 class ButlerlyCard extends StatelessWidget {
@@ -562,8 +607,12 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                       children: [
                         Expanded(child: _title(context)),
                         const SizedBox(width: ButlerlySpacing.small),
-                        Flexible(child: _signedAmount(context)),
-                        ?selectionControl,
+                        Expanded(
+                          child: Align(
+                            alignment: AlignmentDirectional.centerEnd,
+                            child: _signedAmount(context),
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(
@@ -575,11 +624,14 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                         Expanded(child: _categoryText(context)),
                         if (showDate && meta != null) ...[
                           const SizedBox(width: ButlerlySpacing.small),
-                          Flexible(
-                            child: Text(
-                              meta!,
-                              textAlign: TextAlign.end,
-                              style: context.transactionItemDate,
+                          Expanded(
+                            child: Align(
+                              alignment: AlignmentDirectional.centerEnd,
+                              child: Text(
+                                meta!,
+                                textAlign: TextAlign.end,
+                                style: context.transactionItemDate,
+                              ),
                             ),
                           ),
                         ],
@@ -611,6 +663,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                   ],
                 ),
               ),
+              ?selectionControl,
             ],
           ),
         ),
