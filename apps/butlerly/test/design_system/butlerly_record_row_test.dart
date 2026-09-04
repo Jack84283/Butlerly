@@ -121,6 +121,36 @@ void main() {
     );
   });
 
+  testWidgets('canonical item aligns amount and date with selection control', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: ButlerlyRecordRow(
+            title: 'Whole Foods',
+            amount: '82.47',
+            currency: 'USD',
+            categoryLabel: 'Groceries',
+            meta: 'Sep 2, 2026',
+            showDate: true,
+            selectionControl: const SizedBox(
+              width: ButlerlySize.minimumTarget,
+              height: ButlerlySize.minimumTarget,
+              child: Icon(Icons.check_box_outline_blank),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      tester.getTopRight(find.text('−82.47 USD')).dx,
+      tester.getTopRight(find.text('Sep 2, 2026')).dx,
+    );
+  });
+
   testWidgets(
     'canonical item keeps needs-review visible without duplicate line',
     (tester) async {

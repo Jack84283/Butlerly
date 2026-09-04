@@ -613,7 +613,6 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                             child: _signedAmount(context),
                           ),
                         ),
-                        ?selectionControl,
                       ],
                     ),
                     const SizedBox(
@@ -664,6 +663,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                   ],
                 ),
               ),
+              ?selectionControl,
             ],
           ),
         ),
