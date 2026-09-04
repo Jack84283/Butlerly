@@ -642,7 +642,7 @@ void main() {
     );
     expect(find.text('(1)'), findsNWidgets(2));
     expect(find.text('Canonical review row'), findsOneWidget);
-    expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
     await tester.tap(find.text('Canonical review row'));
     await tester.pumpAndSettle();
     expect(find.byType(TransactionDetailPage), findsOneWidget);

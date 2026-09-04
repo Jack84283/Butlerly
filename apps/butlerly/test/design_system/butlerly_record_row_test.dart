@@ -29,7 +29,6 @@ void main() {
     );
 
     expect(find.bySemanticsLabel('Possible duplicate'), findsOneWidget);
-    expect(find.byTooltip('Possible duplicate'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.warning_amber_rounded));
     expect(openedReview, isTrue);
@@ -95,6 +94,8 @@ void main() {
             tags: const ['Vacation', 'Family'],
             meta: 'Sep 2, 2026',
             showDate: true,
+            possibleDuplicate: true,
+            possibleDuplicateLabel: 'Possible duplicate',
           ),
         ),
       ),
@@ -103,11 +104,41 @@ void main() {
     expect(find.text('−82.47 USD'), findsOneWidget);
     expect(find.text('Groceries · Supermarket'), findsOneWidget);
     expect(find.text('Visa ••••8421'), findsOneWidget);
-    expect(find.text('Vacation'), findsOneWidget);
-    expect(find.text('Family'), findsOneWidget);
+    expect(find.text('Vacation · Family'), findsOneWidget);
     expect(find.text('Sep 2, 2026'), findsOneWidget);
     expect(find.byIcon(Icons.arrow_downward_rounded), findsNothing);
+    expect(
+      tester.getTopLeft(find.text('Possible duplicate')).dy,
+      greaterThan(tester.getTopLeft(find.text('Vacation · Family')).dy),
+    );
+    expect(
+      tester.getTopLeft(find.byIcon(Icons.warning_amber_rounded)).dy,
+      greaterThan(tester.getTopLeft(find.text('−82.47 USD')).dy),
+    );
   });
+
+  testWidgets(
+    'canonical item keeps needs-review visible without duplicate line',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: ButlerlyRecordRow(
+              title: 'Pending merchant',
+              amount: '10.00',
+              currency: 'USD',
+              categoryLabel: 'Groceries',
+              needsReview: true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
+      expect(find.text('Needs review'), findsOneWidget);
+    },
+  );
 
   testWidgets('canonical income item uses a plus sign', (tester) async {
     await tester.pumpWidget(
@@ -128,7 +159,7 @@ void main() {
     expect(find.text('+4820.00 USD'), findsOneWidget);
   });
 
-  testWidgets('navigable item shows a decorative trailing chevron', (
+  testWidgets('navigable item preserves tap behavior without a chevron', (
     tester,
   ) async {
     var tapped = false;
@@ -148,11 +179,7 @@ void main() {
       ),
     );
 
-    expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
-    final chevron = tester.widget<Icon>(
-      find.byIcon(Icons.chevron_right_rounded),
-    );
-    expect(chevron.semanticLabel, isNull);
+    expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
     await tester.tap(find.text('Coffee'));
     expect(tapped, isTrue);
   });
@@ -226,7 +253,7 @@ void main() {
           .semanticLabel,
       'Ingresos',
     );
-    expect(find.byTooltip('Necesita revisión'), findsOneWidget);
+    expect(find.bySemanticsLabel('Necesita revisión'), findsOneWidget);
   });
 
   testWidgets('income uses upward direction and list dividers omit the last', (

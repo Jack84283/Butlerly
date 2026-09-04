@@ -8,6 +8,10 @@ abstract final class ButlerlyTransactionItemTokens {
   static const horizontalInset = ButlerlySpacing.micro;
   static const topPadding = ButlerlySpacing.compact;
   static const bottomPadding = ButlerlySpacing.micro;
+
+  /// Compensates for the row's horizontal inset so the icon's final left and
+  /// top offsets from the item boundary are identical.
+  static const categoryIconLeadingInset = topPadding - horizontalInset;
   static const directionIconSize = 18.0;
   static const warningIconSize = 18.0;
   static const navigationIconSize = 18.0;
