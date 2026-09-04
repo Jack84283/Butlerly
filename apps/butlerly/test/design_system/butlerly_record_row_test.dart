@@ -95,6 +95,8 @@ void main() {
             tags: const ['Vacation', 'Family'],
             meta: 'Sep 2, 2026',
             showDate: true,
+            possibleDuplicate: true,
+            possibleDuplicateLabel: 'Possible duplicate',
           ),
         ),
       ),
@@ -107,6 +109,10 @@ void main() {
     expect(find.text('Family'), findsOneWidget);
     expect(find.text('Sep 2, 2026'), findsOneWidget);
     expect(find.byIcon(Icons.arrow_downward_rounded), findsNothing);
+    expect(
+      tester.getTopLeft(find.text('Possible duplicate')).dy,
+      greaterThan(tester.getTopLeft(find.text('Family')).dy),
+    );
   });
 
   testWidgets('canonical income item uses a plus sign', (tester) async {
@@ -128,7 +134,7 @@ void main() {
     expect(find.text('+4820.00 USD'), findsOneWidget);
   });
 
-  testWidgets('navigable item shows a decorative trailing chevron', (
+  testWidgets('navigable item preserves tap behavior without a chevron', (
     tester,
   ) async {
     var tapped = false;
@@ -148,11 +154,7 @@ void main() {
       ),
     );
 
-    expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
-    final chevron = tester.widget<Icon>(
-      find.byIcon(Icons.chevron_right_rounded),
-    );
-    expect(chevron.semanticLabel, isNull);
+    expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
     await tester.tap(find.text('Coffee'));
     expect(tapped, isTrue);
   });
