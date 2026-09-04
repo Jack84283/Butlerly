@@ -37,6 +37,7 @@ final class Transaction {
     this.paymentSourceId,
     this.merchantId,
     this.categoryId,
+    this.subcategoryId,
     List<TagId> tagIds = const [],
     List<ReviewIssue> reviewIssues = const [],
     List<NormalizedMoney> normalizedMoney = const [],
@@ -97,6 +98,7 @@ final class Transaction {
   final PaymentSourceId? paymentSourceId;
   final MerchantId? merchantId;
   final CategoryId? categoryId;
+  final CategoryId? subcategoryId;
   final List<TagId> tagIds;
   final List<Provenance> provenance;
   final List<ReviewIssue> reviewIssues;
@@ -120,6 +122,9 @@ final class Transaction {
 
   Transaction assignCategory(CategoryId? value, DateTime at) =>
       _copy(categoryId: value, replaceCategory: true, updatedAt: at);
+
+  Transaction assignSubcategory(CategoryId? value, DateTime at) =>
+      _copy(subcategoryId: value, replaceSubcategory: true, updatedAt: at);
 
   Transaction assignPaymentSource(PaymentSourceId? value, DateTime at) =>
       _copy(paymentSourceId: value, replacePaymentSource: true, updatedAt: at);
@@ -211,6 +216,8 @@ final class Transaction {
     bool replaceMerchant = false,
     CategoryId? categoryId,
     bool replaceCategory = false,
+    CategoryId? subcategoryId,
+    bool replaceSubcategory = false,
     List<TagId>? tagIds,
     List<ReviewIssue>? reviewIssues,
     List<NormalizedMoney>? normalizedMoney,
@@ -235,6 +242,7 @@ final class Transaction {
         : this.paymentSourceId,
     merchantId: replaceMerchant ? merchantId : this.merchantId,
     categoryId: replaceCategory ? categoryId : this.categoryId,
+    subcategoryId: replaceSubcategory ? subcategoryId : this.subcategoryId,
     tagIds: tagIds ?? this.tagIds,
     provenance: provenance,
     reviewIssues: reviewIssues ?? this.reviewIssues,

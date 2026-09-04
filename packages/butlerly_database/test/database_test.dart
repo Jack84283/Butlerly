@@ -108,10 +108,25 @@ void main() {
     final merchantMigration = await File(
       'database/migrations/v3_to_v4.sql',
     ).readAsString();
+    final classificationMigration = await File(
+      'database/migrations/v4_to_v5.sql',
+    ).readAsString();
     final legacy = current
         .replaceFirst(', status_before_skip TEXT', '')
         .replaceFirst(
           ',\n      normalized_name TEXT NOT NULL DEFAULT \'\',\n      default_category_id TEXT REFERENCES categories(id),\n      default_subcategory_id TEXT REFERENCES categories(id),\n      is_built_in INTEGER NOT NULL DEFAULT 0',
+          '',
+        )
+        .replaceFirst(
+          ',\n      subcategory_id TEXT REFERENCES categories(id), normalized_description TEXT NOT NULL DEFAULT \'\'',
+          '',
+        )
+        .replaceFirst(
+          "CREATE INDEX idx_transactions_classification_merchant ON transactions(merchant_id, status, category_id, subcategory_id);",
+          '',
+        )
+        .replaceFirst(
+          "CREATE INDEX idx_transactions_classification_description ON transactions(normalized_description, status, category_id, subcategory_id);",
           '',
         );
     final legacyDb = await databaseFactoryFfi.openDatabase(
@@ -138,10 +153,15 @@ void main() {
       factory: databaseFactoryFfi,
       path: path,
       schemaSql: current,
-      migrations: {2: migration, 3: resultsMigration, 4: merchantMigration},
+      migrations: {
+        2: migration,
+        3: resultsMigration,
+        4: merchantMigration,
+        5: classificationMigration,
+      },
     );
     await database.open();
-    expect(await database.connection.getVersion(), 4);
+    expect(await database.connection.getVersion(), 5);
     expect(
       (await database.connection.rawQuery(
         'PRAGMA table_info(statement_rows)',

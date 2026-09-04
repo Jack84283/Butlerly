@@ -530,6 +530,7 @@ final class StatementServices {
       paymentSourceId: dto.paymentSourceId,
       merchantId: dto.merchantId,
       categoryId: dto.categoryId,
+      subcategoryId: dto.subcategoryId,
       tagIds: dto.tagIds,
       provenance: dto.provenance,
       normalizedMoney: dto.normalizedMoney,

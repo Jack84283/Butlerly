@@ -12,7 +12,7 @@ final class ButlerlyDatabase {
     this.migrations = const {},
   });
 
-  static const databaseVersion = 4;
+  static const databaseVersion = 5;
 
   final DatabaseFactory factory;
   final String path;

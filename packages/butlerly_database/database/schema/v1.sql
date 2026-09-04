@@ -303,6 +303,7 @@ CREATE TABLE transactions (
       category_id TEXT REFERENCES categories(id),
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL, transaction_date TEXT, occurred_at_utc TEXT, time_zone_id TEXT, external_reference TEXT,
+      subcategory_id TEXT REFERENCES categories(id), normalized_description TEXT NOT NULL DEFAULT '',
       CHECK ((occurred_at IS NOT NULL) != (unknown_time_reason IS NOT NULL))
     );
 
@@ -353,6 +354,10 @@ CREATE INDEX idx_transactions_duplicate_group_lookup ON transactions(transaction
 CREATE INDEX idx_transactions_external_reference ON transactions(external_reference);
 
 CREATE INDEX idx_transactions_merchant ON transactions(merchant_id);
+
+CREATE INDEX idx_transactions_classification_merchant ON transactions(merchant_id, status, category_id, subcategory_id);
+
+CREATE INDEX idx_transactions_classification_description ON transactions(normalized_description, status, category_id, subcategory_id);
 
 CREATE INDEX idx_transactions_occurred_at ON transactions(occurred_at);
 

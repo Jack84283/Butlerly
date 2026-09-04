@@ -24,10 +24,15 @@ final class ClassificationProposal {
 
 /// Resolves a deterministic proposal without mutating the transaction.
 final class ProposeTransactionClassification {
-  const ProposeTransactionClassification(this.transactions, this.merchants);
+  const ProposeTransactionClassification(
+    this.transactions,
+    this.merchants, {
+    this.historical,
+  });
 
   final TransactionRepository transactions;
   final MerchantRepository merchants;
+  final HistoricalClassificationRepository? historical;
 
   Future<ApplicationResult<ClassificationProposal>> call({
     MerchantId? merchantId,
@@ -38,30 +43,39 @@ final class ProposeTransactionClassification {
     final merchant = merchantId == null
         ? _resolveMerchant(allMerchants, description)
         : allMerchants.where((value) => value.id == merchantId).firstOrNull;
-    final history = await transactions.listAll();
-    final candidates = history
-        .where((value) {
-          if (value.id == excludeTransactionId ||
-              value.status != TransactionStatus.active ||
-              value.categoryId == null ||
-              value.reviewState != TransactionReviewState.clear) {
-            return false;
-          }
-          if (merchant != null && value.merchantId == merchant.id) return true;
-          final query = normalizeMerchantName(description ?? '');
-          return query.isNotEmpty &&
-              normalizeMerchantName(
-                    value.description ?? value.rawCounterparty ?? '',
-                  ) ==
-                  query;
-        })
-        .toList(growable: false);
+    final normalizedDescription = normalizeMerchantName(description ?? '');
+    final candidates = historical == null
+        ? (await transactions.listAll())
+              .where((value) {
+                if (value.id == excludeTransactionId ||
+                    value.status != TransactionStatus.active ||
+                    value.categoryId == null ||
+                    value.reviewState != TransactionReviewState.clear) {
+                  return false;
+                }
+                if (merchant != null && value.merchantId == merchant.id) {
+                  return true;
+                }
+                return normalizedDescription.isNotEmpty &&
+                    normalizeMerchantName(
+                          value.description ?? value.rawCounterparty ?? '',
+                        ) ==
+                        normalizedDescription;
+              })
+              .toList(growable: false)
+        : await historical!.findClassificationCandidates(
+            merchantId: merchant?.id,
+            normalizedDescription: normalizedDescription.isEmpty
+                ? null
+                : normalizedDescription,
+            excludeTransactionId: excludeTransactionId,
+          );
     final classification = _consistentClassification(candidates);
     if (classification != null) {
       return ClassificationProposal(
         merchantId: merchant?.id,
         categoryId: classification.$1,
-        subcategoryId: null,
+        subcategoryId: classification.$2,
         source: ClassificationSource.history,
         confidence: candidates.length >= 3 ? 1 : .75,
         reason: 'matched ${candidates.length} confirmed transaction(s)',
@@ -111,7 +125,8 @@ final class ProposeTransactionClassification {
     if (values.isEmpty) return null;
     final counts = <String, int>{};
     for (final value in values) {
-      final key = value.categoryId!.value;
+      final key =
+          '${value.categoryId!.value}\u0000${value.subcategoryId?.value ?? ''}';
       counts[key] = (counts[key] ?? 0) + 1;
     }
     final sorted = counts.entries.toList()
@@ -122,6 +137,10 @@ final class ProposeTransactionClassification {
       );
     final winner = sorted.first;
     if (sorted.length > 1 && winner.value == sorted[1].value) return null;
-    return (CategoryId(winner.key), null);
+    final parts = winner.key.split('\u0000');
+    return (
+      CategoryId(parts.first),
+      parts.length == 1 || parts[1].isEmpty ? null : CategoryId(parts[1]),
+    );
   }
 }

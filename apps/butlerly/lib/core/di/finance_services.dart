@@ -42,7 +42,13 @@ final class FinanceServices {
        createReceiptTransaction = CreateReceiptTransaction(
          transactions,
          const SystemApplicationClock(),
-         classifier: ProposeTransactionClassification(transactions, merchants),
+         classifier: ProposeTransactionClassification(
+           transactions,
+           merchants,
+           historical: transactions is HistoricalClassificationRepository
+               ? transactions as HistoricalClassificationRepository
+               : null,
+         ),
        ),
        createPaymentTransaction = CreatePaymentTransaction(
          transactions,
@@ -215,6 +221,9 @@ final class FinanceServices {
                classifier: ProposeTransactionClassification(
                  transactions,
                  merchants,
+                 historical: transactions is HistoricalClassificationRepository
+                     ? transactions as HistoricalClassificationRepository
+                     : null,
                ),
              ),
        updateAnalysisFindingLifecycle = analysisFindings == null

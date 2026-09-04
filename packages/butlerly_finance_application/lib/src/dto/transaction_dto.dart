@@ -25,6 +25,7 @@ final class TransactionDto {
     this.paymentSourceId,
     this.merchantId,
     this.categoryId,
+    this.subcategoryId,
     this.tagIds = const [],
     this.provenance = const [],
     this.normalizedMoney = const [],
@@ -50,6 +51,7 @@ final class TransactionDto {
   final String? paymentSourceId;
   final String? merchantId;
   final String? categoryId;
+  final String? subcategoryId;
   final List<String> tagIds;
   final List<ProvenanceDto> provenance;
   final List<NormalizedMoneyDto> normalizedMoney;
@@ -77,6 +79,7 @@ final class TransactionDto {
     paymentSourceId: value.paymentSourceId?.value,
     merchantId: value.merchantId?.value,
     categoryId: value.categoryId?.value,
+    subcategoryId: value.subcategoryId?.value,
     tagIds: List.unmodifiable(value.tagIds.map((id) => id.value)),
     provenance: List.unmodifiable(
       value.provenance.map(ProvenanceDto.fromDomain),
