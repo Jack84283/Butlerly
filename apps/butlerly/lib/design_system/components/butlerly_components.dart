@@ -633,6 +633,8 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                                 alignment: AlignmentDirectional.centerEnd,
                                 child: Text(
                                   meta!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   textAlign: TextAlign.end,
                                   style: context.transactionItemDate,
                                 ),
@@ -771,7 +773,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
 
   Widget _title(BuildContext context) => Text(
     title,
-    maxLines: 2,
+    maxLines: 1,
     overflow: TextOverflow.ellipsis,
     style: context.transactionItemDescription,
     textHeightBehavior: ButlerlyTransactionItemTokens.textHeightBehavior,
