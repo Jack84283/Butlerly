@@ -112,6 +112,10 @@ void main() {
       tester.getTopLeft(find.text('Possible duplicate')).dy,
       greaterThan(tester.getTopLeft(find.text('Vacation · Family')).dy),
     );
+    expect(
+      tester.getTopLeft(find.byIcon(Icons.warning_amber_rounded)).dy,
+      greaterThan(tester.getTopLeft(find.text('−82.47 USD')).dy),
+    );
   });
 
   testWidgets(
@@ -122,7 +126,7 @@ void main() {
           theme: AppTheme.light,
           home: Scaffold(
             body: ButlerlyRecordRow(
-              title: 'Needs review',
+              title: 'Pending merchant',
               amount: '10.00',
               currency: 'USD',
               categoryLabel: 'Groceries',

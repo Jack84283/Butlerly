@@ -563,8 +563,6 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                         Expanded(child: _title(context)),
                         const SizedBox(width: ButlerlySpacing.small),
                         Flexible(child: _signedAmount(context)),
-                        if (needsReview && !possibleDuplicate)
-                          _reviewIndicator(context),
                         ?selectionControl,
                       ],
                     ),
@@ -608,7 +606,8 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                           style: context.transactionItemMetadata,
                         ),
                       ),
-                    if (possibleDuplicate) _duplicateWarning(context),
+                    if (needsReview || possibleDuplicate)
+                      _duplicateWarning(context),
                   ],
                 ),
               ),
@@ -662,37 +661,6 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                           textHeightBehavior:
                               ButlerlyTransactionItemTokens.textHeightBehavior,
                         ),
-                        if (needsReview || possibleDuplicate) ...[
-                          const SizedBox(
-                            width: ButlerlyTransactionItemTokens.headerSpacing,
-                          ),
-                          Tooltip(
-                            message:
-                                possibleDuplicateLabel ??
-                                context.l10n.text('needsReview'),
-                            child: Semantics(
-                              container: true,
-                              button: onPossibleDuplicateTap != null,
-                              label:
-                                  possibleDuplicateLabel ??
-                                  context.l10n.text('needsReview'),
-                              child: InkWell(
-                                onTap: onPossibleDuplicateTap,
-                                child: Padding(
-                                  padding: EdgeInsets.all(
-                                    ButlerlySpacing.micro,
-                                  ),
-                                  child: Icon(
-                                    Icons.warning_amber_rounded,
-                                    size: ButlerlyTransactionItemTokens
-                                        .warningIconSize,
-                                    color: context.transactionItemWarningIcon,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                   ),
@@ -735,6 +703,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                   textHeightBehavior:
                       ButlerlyTransactionItemTokens.textHeightBehavior,
                 ),
+              if (needsReview || possibleDuplicate) _duplicateWarning(context),
             ],
           ),
         ),
@@ -774,44 +743,43 @@ class ButlerlyTransactionListItem extends StatelessWidget {
   List<String> get _visibleTags =>
       tags.where((value) => value.trim().isNotEmpty).toList(growable: false);
 
-  Widget _reviewIndicator(BuildContext context) => Tooltip(
-    message: context.l10n.text('needsReview'),
-    child: Icon(
-      Icons.warning_amber_rounded,
-      semanticLabel: context.l10n.text('needsReview'),
-      size: ButlerlyTransactionItemTokens.warningIconSize,
-      color: context.transactionItemWarningIcon,
-    ),
-  );
-
-  Widget _duplicateWarning(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(top: ButlerlySpacing.compact),
-    child: Semantics(
-      container: true,
-      button: onPossibleDuplicateTap != null,
-      label: possibleDuplicateLabel ?? context.l10n.text('needsReview'),
-      child: InkWell(
-        onTap: onPossibleDuplicateTap,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.warning_amber_rounded,
-              size: ButlerlyTransactionItemTokens.warningIconSize,
-              color: context.transactionItemWarningIcon,
+  Widget _duplicateWarning(BuildContext context) {
+    final label = possibleDuplicate
+        ? possibleDuplicateLabel ?? context.l10n.text('possibleDuplicate')
+        : context.l10n.text('needsReview');
+    return Padding(
+      padding: const EdgeInsets.only(top: ButlerlySpacing.compact),
+      child: Tooltip(
+        message: label,
+        child: Semantics(
+          container: true,
+          button: onPossibleDuplicateTap != null,
+          label: label,
+          child: InkWell(
+            onTap: onPossibleDuplicateTap,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Semantics(
+                  label: label,
+                  container: true,
+                  child: Icon(
+                    Icons.warning_amber_rounded,
+                    size: ButlerlyTransactionItemTokens.warningIconSize,
+                    color: context.transactionItemWarningIcon,
+                  ),
+                ),
+                const SizedBox(width: ButlerlySpacing.micro),
+                Flexible(
+                  child: Text(label, style: context.transactionItemMetadata),
+                ),
+              ],
             ),
-            const SizedBox(width: ButlerlySpacing.micro),
-            Flexible(
-              child: Text(
-                possibleDuplicateLabel ?? context.l10n.text('needsReview'),
-                style: context.transactionItemMetadata,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _NeutralTransactionIcon extends StatelessWidget {
