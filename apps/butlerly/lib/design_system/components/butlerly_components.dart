@@ -608,9 +608,15 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                         Expanded(child: _title(context)),
                         const SizedBox(width: ButlerlySpacing.small),
                         Expanded(
-                          child: Align(
-                            alignment: AlignmentDirectional.centerEnd,
-                            child: _signedAmount(context),
+                          child: Padding(
+                            padding: const EdgeInsetsDirectional.only(
+                              end: ButlerlyTransactionItemTokens
+                                  .metadataTrailingInset,
+                            ),
+                            child: Align(
+                              alignment: AlignmentDirectional.centerEnd,
+                              child: _signedAmount(context),
+                            ),
                           ),
                         ),
                       ],
@@ -625,12 +631,20 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                         if (showDate && meta != null) ...[
                           const SizedBox(width: ButlerlySpacing.small),
                           Expanded(
-                            child: Align(
-                              alignment: AlignmentDirectional.centerEnd,
-                              child: Text(
-                                meta!,
-                                textAlign: TextAlign.end,
-                                style: context.transactionItemDate,
+                            child: Padding(
+                              padding: const EdgeInsetsDirectional.only(
+                                end: ButlerlyTransactionItemTokens
+                                    .metadataTrailingInset,
+                              ),
+                              child: Align(
+                                alignment: AlignmentDirectional.centerEnd,
+                                child: Text(
+                                  meta!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.end,
+                                  style: context.transactionItemDate,
+                                ),
                               ),
                             ),
                           ),
@@ -766,7 +780,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
 
   Widget _title(BuildContext context) => Text(
     title,
-    maxLines: 2,
+    maxLines: 1,
     overflow: TextOverflow.ellipsis,
     style: context.transactionItemDescription,
     textHeightBehavior: ButlerlyTransactionItemTokens.textHeightBehavior,

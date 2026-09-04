@@ -16,6 +16,7 @@ abstract final class ButlerlyTransactionItemTokens {
   static const warningIconSize = 18.0;
   static const navigationIconSize = 18.0;
   static const headerSpacing = ButlerlySpacing.micro;
+  static const metadataTrailingInset = ButlerlySpacing.compact;
   static const dividerThickness = 1.0;
   static const dividerInset = ButlerlySpacing.micro;
   static const minTouchHeight = ButlerlySize.recordRowMinHeight;

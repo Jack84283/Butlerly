@@ -149,6 +149,58 @@ void main() {
       tester.getTopRight(find.text('−82.47 USD')).dx,
       tester.getTopRight(find.text('Sep 2, 2026')).dx,
     );
+    expect(
+      tester.getTopRight(find.text('−82.47 USD')).dx,
+      closeTo(
+        tester.getTopLeft(find.byIcon(Icons.check_box_outline_blank)).dx -
+            ButlerlySpacing.compact,
+        0.01,
+      ),
+    );
+  });
+
+  testWidgets('long canonical titles stay on one line above date metadata', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: ButlerlyRecordRow(
+            title: 'A very long merchant description that must be truncated',
+            amount: '82.47',
+            currency: 'USD',
+            categoryLabel: 'Groceries',
+            meta: 'Sep 2, 2026',
+            showDate: true,
+            tags: const ['Vacation', 'Family'],
+            possibleDuplicate: true,
+            possibleDuplicateLabel: 'Possible duplicate',
+          ),
+        ),
+      ),
+    );
+
+    final title = tester.widget<Text>(
+      find.textContaining('A very long merchant description'),
+    );
+    final date = tester.widget<Text>(find.text('Sep 2, 2026'));
+    expect(title.maxLines, 1);
+    expect(title.overflow, TextOverflow.ellipsis);
+    expect(date.maxLines, 1);
+    expect(date.overflow, TextOverflow.ellipsis);
+    expect(
+      tester.getTopLeft(find.text('−82.47 USD')).dy,
+      lessThan(tester.getTopLeft(find.text('Sep 2, 2026')).dy),
+    );
+    expect(
+      tester.getTopRight(find.text('−82.47 USD')).dx,
+      tester.getTopRight(find.text('Sep 2, 2026')).dx,
+    );
+    expect(
+      tester.getSize(find.byType(ButlerlyRecordRow)).height,
+      greaterThan(ButlerlySize.recordRowMinHeight),
+    );
   });
 
   testWidgets(
