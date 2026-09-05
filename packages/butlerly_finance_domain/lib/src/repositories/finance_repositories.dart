@@ -24,7 +24,13 @@ abstract interface class TransactionRepository {
   Future<Transaction?> findById(TransactionId id);
   Future<List<Transaction>> listAll();
   Future<List<Transaction>> query(TransactionRepositoryQuery query);
+
   Future<void> removePermanently(TransactionId id);
+}
+
+/// Optional optimized access path for the Needs Review workflow.
+abstract interface class ReviewTransactionRepository {
+  Future<List<Transaction>> queryTransactionsForReview();
 }
 
 final class DuplicateTransactionGroupMatch {

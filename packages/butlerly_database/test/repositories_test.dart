@@ -503,6 +503,65 @@ void main() {
     expect(restored.provenance.single.originalRepresentation, '元の取引');
   });
 
+  test(
+    'bulk review query hydrates each matching transaction and children',
+    () async {
+      final tag = Tag(id: TagId('bulk-tag'), name: 'Bulk');
+      await SqliteTagRepository(database).save(tag);
+      final first = minimalTransaction(now, id: 'transaction-1').addReviewIssue(
+        ReviewIssue(
+          id: ReviewIssueId('review-bulk-0'),
+          transactionId: TransactionId('transaction-1'),
+          reason: ReviewIssueReason.uncertain,
+          createdAt: now,
+        ),
+        now,
+      );
+      final second = minimalTransaction(now, id: 'transaction-2')
+          .addReviewIssue(
+            ReviewIssue(
+              id: ReviewIssueId('review-bulk-1'),
+              transactionId: TransactionId('transaction-2'),
+              reason: ReviewIssueReason.incomplete,
+              createdAt: now,
+            ),
+            now,
+          );
+      await transactions.save(
+        Transaction(
+          id: first.id,
+          timing: first.timing,
+          money: first.money,
+          direction: first.direction,
+          sourceType: first.sourceType,
+          provenance: first.provenance,
+          tagIds: [tag.id],
+          reviewIssues: first.reviewIssues,
+          createdAt: first.createdAt,
+          updatedAt: first.updatedAt,
+        ),
+      );
+      await transactions.save(second);
+
+      final reviewTransactions = await transactions
+          .queryTransactionsForReview();
+      expect(reviewTransactions, hasLength(2));
+      expect(reviewTransactions.map((value) => value.id.value), [
+        'transaction-1',
+        'transaction-2',
+      ]);
+      final restored = reviewTransactions.firstWhere(
+        (value) => value.id == TransactionId('transaction-1'),
+      );
+      expect(restored.tagIds, [tag.id]);
+      expect(restored.provenance.single.id, ProvenanceId('manual-provenance'));
+      expect(
+        reviewTransactions.last.reviewIssues.single.id,
+        ReviewIssueId('review-bulk-1'),
+      );
+    },
+  );
+
   test('maps foreign-key failures without leaking SQLite details', () async {
     final value = minimalTransaction(
       now,
@@ -777,8 +836,11 @@ void main() {
   });
 }
 
-Transaction minimalTransaction(DateTime now) => Transaction(
-  id: TransactionId('transaction-minimal'),
+Transaction minimalTransaction(
+  DateTime now, {
+  String id = 'transaction-minimal',
+}) => Transaction(
+  id: TransactionId(id),
   timing: const UnknownTransactionTime(UnknownTransactionTimeReason.pending),
   money: Money(amount: DecimalValue.parse('10'), currency: CurrencyCode('EUR')),
   direction: TransactionDirection.expense,

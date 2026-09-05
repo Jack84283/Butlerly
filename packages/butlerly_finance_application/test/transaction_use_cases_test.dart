@@ -388,6 +388,7 @@ void main() {
         'issue-1',
       ),
     );
+    expect(transactions.reviewQueryCalls, 1);
 
     final resolved = await ResolveReviewIssue(transactions, clock)(
       'transaction-1',
@@ -513,10 +514,12 @@ final class FixedClock implements ApplicationClock {
   DateTime now() => value;
 }
 
-final class MemoryTransactions implements TransactionRepository {
+final class MemoryTransactions
+    implements TransactionRepository, ReviewTransactionRepository {
   final values = <String, Transaction>{};
   TransactionRepositoryQuery? lastQuery;
   RepositoryException? failure;
+  int reviewQueryCalls = 0;
 
   @override
   Future<Transaction?> findById(TransactionId id) async => values[id.value];
@@ -528,6 +531,18 @@ final class MemoryTransactions implements TransactionRepository {
   Future<List<Transaction>> query(TransactionRepositoryQuery query) async {
     lastQuery = query;
     return values.values.toList();
+  }
+
+  @override
+  Future<List<Transaction>> queryTransactionsForReview() async {
+    reviewQueryCalls++;
+    return values.values
+        .where(
+          (value) =>
+              value.status == TransactionStatus.active &&
+              value.reviewState == TransactionReviewState.needsReview,
+        )
+        .toList();
   }
 
   @override

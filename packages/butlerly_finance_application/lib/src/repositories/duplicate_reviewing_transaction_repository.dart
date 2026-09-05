@@ -5,7 +5,7 @@ import '../use_cases/duplicate_review_use_cases.dart';
 /// Keeps possible-duplicate review metadata current after any transaction
 /// mutation without copying duplicate identity rules into each use case.
 final class DuplicateReviewingTransactionRepository
-    implements TransactionRepository {
+    implements TransactionRepository, ReviewTransactionRepository {
   const DuplicateReviewingTransactionRepository(this.delegate, this.refresh);
 
   final TransactionRepository delegate;
@@ -34,6 +34,17 @@ final class DuplicateReviewingTransactionRepository
   @override
   Future<List<Transaction>> query(TransactionRepositoryQuery query) =>
       delegate.query(query);
+
+  @override
+  Future<List<Transaction>> queryTransactionsForReview() =>
+      delegate is ReviewTransactionRepository
+          ? (delegate as ReviewTransactionRepository).queryTransactionsForReview()
+          : delegate.query(
+              const TransactionRepositoryQuery(
+                needsReview: true,
+                status: TransactionStatus.active,
+              ),
+            );
 
   Future<void> _refreshReviewMetadata({
     Transaction? previous,
