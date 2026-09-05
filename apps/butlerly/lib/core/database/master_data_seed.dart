@@ -15,6 +15,13 @@ List<MasterTranslation> systemMasterTranslations() => [
       locale: 'zh-Hans',
       label: entry.value,
     ),
+  for (final entry in _es.entries)
+    MasterTranslation(
+      masterType: entry.key.startsWith('category.') ? 'category' : 'tag',
+      masterId: entry.key,
+      locale: 'es',
+      label: entry.value,
+    ),
 ];
 
 /// Resolves Butlerly-owned labels without changing the stable domain value.
@@ -47,7 +54,11 @@ String? _systemLabelByEnglish(String name, String languageCode) {
 
 String? _systemLabel(String id, String languageCode) {
   final zh = languageCode == 'zh' || languageCode == 'zh-Hans';
-  return (zh ? _zh : _en)[id];
+  return (zh
+      ? _zh
+      : languageCode == 'es'
+      ? _es
+      : _en)[id];
 }
 
 const _en = <String, String>{
@@ -158,4 +169,59 @@ const _zh = <String, String>{
   'tag.travel': '旅行',
   'tag.recurring': '定期',
   'tag.subscription': '订阅',
+};
+
+const _es = <String, String>{
+  'category.income': 'Ingresos',
+  'category.income.salary': 'Salario',
+  'category.income.bonus': 'Bonificación',
+  'category.income.investment': 'Ingresos por inversiones',
+  'category.income.refund': 'Reembolso',
+  'category.income.other': 'Otros ingresos',
+  'category.food': 'Comida y restaurantes',
+  'category.food.restaurants': 'Restaurantes',
+  'category.food.groceries': 'Comestibles',
+  'category.food.coffee': 'Café y bebidas',
+  'category.food.delivery': 'Entrega y comida para llevar',
+  'category.transportation': 'Transporte',
+  'category.transportation.fuel': 'Combustible',
+  'category.transportation.public': 'Transporte público',
+  'category.transportation.rideshare': 'Taxi y transporte compartido',
+  'category.transportation.parking': 'Estacionamiento',
+  'category.transportation.maintenance': 'Mantenimiento del vehículo',
+  'category.housing': 'Vivienda',
+  'category.housing.rent_mortgage': 'Alquiler e hipoteca',
+  'category.housing.utilities': 'Servicios públicos',
+  'category.housing.maintenance': 'Mantenimiento del hogar',
+  'category.shopping': 'Compras',
+  'category.shopping.clothing': 'Ropa',
+  'category.shopping.electronics': 'Electrónica',
+  'category.shopping.household': 'Hogar',
+  'category.health': 'Salud',
+  'category.health.medical': 'Atención médica',
+  'category.health.pharmacy': 'Farmacia',
+  'category.health.fitness': 'Fitness',
+  'category.entertainment': 'Entretenimiento',
+  'category.entertainment.streaming': 'Streaming y suscripciones',
+  'category.entertainment.events': 'Eventos',
+  'category.travel': 'Viajes',
+  'category.travel.airfare': 'Vuelos',
+  'category.travel.hotel': 'Hoteles',
+  'category.travel.local': 'Transporte local',
+  'category.education': 'Educación',
+  'category.personal': 'Cuidado personal',
+  'category.gifts': 'Regalos y donaciones',
+  'category.insurance': 'Seguros',
+  'category.taxes': 'Impuestos',
+  'category.fees': 'Comisiones y cargos',
+  'category.transfer': 'Transferencia',
+  'category.uncategorized': 'Sin categoría',
+  'category.other': 'Otros',
+  'tag.business': 'Negocios',
+  'tag.personal': 'Personal',
+  'tag.reimbursable': 'Reembolsable',
+  'tag.tax_related': 'Relacionado con impuestos',
+  'tag.travel': 'Viajes',
+  'tag.recurring': 'Recurrente',
+  'tag.subscription': 'Suscripción',
 };

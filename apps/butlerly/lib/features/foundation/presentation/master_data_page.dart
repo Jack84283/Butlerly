@@ -50,6 +50,14 @@ class _MasterDataPageState extends State<MasterDataPage>
 
   void _refresh() => setState(() => _data = _load());
 
+  bool _accepted<T>(ApplicationResult<T> result) {
+    if (result is ApplicationSuccess<T>) return true;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(context.l10n.text('dataPreserved'))));
+    return false;
+  }
+
   Future<void> _editExisting(Object value) async {
     final finance = _finance;
     if (finance == null) return;
@@ -62,18 +70,24 @@ class _MasterDataPageState extends State<MasterDataPage>
     );
     if (name == null) return;
     if (value is Category) {
-      await finance.saveCategory(
+      final parent = value.parentId == null ? null : await _chooseParent();
+      if (value.parentId != null && parent == null) return;
+      final saved = await finance.saveCategory(
         Category(
           id: value.id,
           name: name,
           origin: value.origin,
-          parentId: value.parentId,
+          parentId: parent,
           status: value.status,
         ),
       );
+      if (!_accepted(saved)) return;
     } else {
       final tag = value as Tag;
-      await finance.saveTag(Tag(id: tag.id, name: name, status: tag.status));
+      final saved = await finance.saveTag(
+        Tag(id: tag.id, name: name, status: tag.status),
+      );
+      if (!_accepted(saved)) return;
     }
     if (mounted) _refresh();
   }
@@ -99,16 +113,17 @@ class _MasterDataPageState extends State<MasterDataPage>
     final finance = _finance;
     if (finance == null) return;
     if (index == 2) {
-      await finance.saveTag(
+      final saved = await finance.saveTag(
         Tag(
           id: TagId('user.tag.${DateTime.now().microsecondsSinceEpoch}'),
           name: result,
         ),
       );
+      if (!_accepted(saved)) return;
     } else {
       final parent = index == 1 ? await _chooseParent() : null;
       if (index == 1 && parent == null) return;
-      await finance.saveCategory(
+      final saved = await finance.saveCategory(
         Category(
           id: CategoryId(
             'user.category.${DateTime.now().microsecondsSinceEpoch}',
@@ -118,6 +133,7 @@ class _MasterDataPageState extends State<MasterDataPage>
           parentId: parent,
         ),
       );
+      if (!_accepted(saved)) return;
     }
     _refresh();
   }
@@ -284,12 +300,20 @@ class _MasterDataList extends StatelessWidget {
               onToggle: finance == null
                   ? null
                   : () async {
-                      await finance!.saveTag(
+                      final saved = await finance!.saveTag(
                         tag.status == TagStatus.active
                             ? tag.archive()
                             : Tag(id: tag.id, name: tag.name),
                       );
-                      onChanged();
+                      if (saved is ApplicationSuccess<Tag>) {
+                        onChanged();
+                      } else if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(context.l10n.text('dataPreserved')),
+                          ),
+                        );
+                      }
                     },
             ),
         ],
@@ -320,7 +344,7 @@ class _MasterDataList extends StatelessWidget {
             onToggle: finance == null
                 ? null
                 : () async {
-                    await finance!.saveCategory(
+                    final saved = await finance!.saveCategory(
                       category.status == CategoryStatus.active
                           ? category.archive()
                           : Category(
@@ -330,7 +354,15 @@ class _MasterDataList extends StatelessWidget {
                               parentId: category.parentId,
                             ),
                     );
-                    onChanged();
+                    if (saved is ApplicationSuccess<Category>) {
+                      onChanged();
+                    } else if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(context.l10n.text('dataPreserved')),
+                        ),
+                      );
+                    }
                   },
           ),
       ],

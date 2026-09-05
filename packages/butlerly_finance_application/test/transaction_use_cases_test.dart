@@ -38,6 +38,45 @@ void main() {
     },
   );
 
+  test('rejects a missing or nested subcategory parent', () async {
+    final categories = MemoryCategories();
+    final save = SaveCategory(categories);
+    final missing = await save(
+      Category(
+        id: CategoryId('user.child'),
+        name: 'Child',
+        origin: CategoryOrigin.user,
+        parentId: CategoryId('missing'),
+      ),
+    );
+    expect(missing, isA<ApplicationFailure<Category>>());
+
+    await categories.save(
+      Category(
+        id: CategoryId('root'),
+        name: 'Root',
+        origin: CategoryOrigin.user,
+      ),
+    );
+    await categories.save(
+      Category(
+        id: CategoryId('nested'),
+        name: 'Nested',
+        origin: CategoryOrigin.user,
+        parentId: CategoryId('root'),
+      ),
+    );
+    final invalid = await save(
+      Category(
+        id: CategoryId('grandchild'),
+        name: 'Grandchild',
+        origin: CategoryOrigin.user,
+        parentId: CategoryId('nested'),
+      ),
+    );
+    expect(invalid, isA<ApplicationFailure<Category>>());
+  });
+
   test(
     'applies confirmed history to manual and imported transactions',
     () async {
