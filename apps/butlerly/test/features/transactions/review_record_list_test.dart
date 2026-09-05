@@ -1,5 +1,6 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_record_list.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -70,6 +71,12 @@ void main() {
         );
         expect(tester.takeException(), isNull);
         expect(find.byType(ButlerlyCard), findsNWidgets(2));
+        expect(
+          tester.widgetList<Card>(find.byType(Card)).map((card) => card.color),
+          everyElement(
+            AppTheme.light.extension<ButlerlySemanticColors>()!.surface,
+          ),
+        );
         expect(find.byType(ButlerlyRecordRow), findsNWidgets(3));
         expect(find.text('Visa •••• 1234'), findsNWidgets(3));
         expect(find.text('Not Categorized'), findsNWidgets(3));
@@ -98,4 +105,41 @@ void main() {
       },
     );
   }
+
+  testWidgets(
+    'grouped transaction cards keep their token surface in dark mode',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: Scaffold(
+            body: TransactionRecordList(
+              transactions: [
+                TransactionDto(
+                  id: 'dark-card',
+                  amount: '10.00',
+                  currency: 'USD',
+                  direction: 'expense',
+                  status: 'active',
+                  reviewState: 'needsReview',
+                  createdAt: DateTime.utc(2026),
+                  updatedAt: DateTime.utc(2026),
+                  transactionDate: '2026-09-04',
+                  description: 'Dark mode merchant',
+                ),
+              ],
+              groupByFinancialDate: true,
+              onTap: (_) {},
+            ),
+          ),
+        ),
+      );
+
+      final card = tester.widget<Card>(find.byType(Card));
+      expect(
+        card.color,
+        AppTheme.dark.extension<ButlerlySemanticColors>()!.surface,
+      );
+    },
+  );
 }
