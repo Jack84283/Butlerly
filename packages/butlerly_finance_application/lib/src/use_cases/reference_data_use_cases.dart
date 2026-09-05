@@ -199,6 +199,13 @@ final class SaveCategory {
 
   Future<ApplicationResult<Category>> call(Category value) =>
       runApplication('save category', () async {
+        if (value.parentId != null &&
+            await repository.findById(value.parentId!) == null) {
+          throw const RepositoryException(
+            RepositoryFailureCode.notFound,
+            'parent category',
+          );
+        }
         await repository.save(value);
         return value;
       });
