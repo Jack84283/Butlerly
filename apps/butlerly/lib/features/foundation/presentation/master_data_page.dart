@@ -48,10 +48,14 @@ class _MasterDataPageState extends State<MasterDataPage>
     return _MasterData(categories.value, tags.value, []);
   }
 
-  void _refresh() => setState(() => _data = _load());
+  void _refresh() {
+    if (!mounted) return;
+    setState(() => _data = _load());
+  }
 
   bool _accepted<T>(ApplicationResult<T> result) {
     if (result is ApplicationSuccess<T>) return true;
+    if (!mounted) return false;
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(context.l10n.text('dataPreserved'))));
@@ -68,10 +72,10 @@ class _MasterDataPageState extends State<MasterDataPage>
       labelKey: value is Category ? 'categoryName' : 'tagName',
       initial: currentName,
     );
-    if (name == null) return;
+    if (name == null || !mounted) return;
     if (value is Category) {
       final parent = value.parentId == null ? null : await _chooseParent();
-      if (value.parentId != null && parent == null) return;
+      if (!mounted || (value.parentId != null && parent == null)) return;
       final saved = await finance.saveCategory(
         Category(
           id: value.id,
@@ -122,7 +126,7 @@ class _MasterDataPageState extends State<MasterDataPage>
       if (!_accepted(saved)) return;
     } else {
       final parent = index == 1 ? await _chooseParent() : null;
-      if (index == 1 && parent == null) return;
+      if (!mounted || (index == 1 && parent == null)) return;
       final saved = await finance.saveCategory(
         Category(
           id: CategoryId(
@@ -135,7 +139,7 @@ class _MasterDataPageState extends State<MasterDataPage>
       );
       if (!_accepted(saved)) return;
     }
-    _refresh();
+    if (mounted) _refresh();
   }
 
   Future<CategoryId?> _chooseParent() async {
