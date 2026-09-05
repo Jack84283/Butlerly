@@ -1,7 +1,9 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -24,7 +26,7 @@ class ReviewPage extends StatefulWidget {
 
 class _ReviewPageState extends State<ReviewPage>
     with SingleTickerProviderStateMixin {
-  late Future<List<ReviewItemDto>> _items;
+  late Future<List<_ReviewEntry>> _items;
   late Future<List<TransactionDto>> _uncategorized;
   late Future<List<DuplicateCandidateGroup>> _duplicateGroups;
   late Future<TransactionMasterDataSnapshot> _masterData;
@@ -105,16 +107,26 @@ class _ReviewPageState extends State<ReviewPage>
     ).load(languageCode: languageCode);
   }
 
-  Future<List<ReviewItemDto>> _load() async {
+  Future<List<_ReviewEntry>> _load() async {
     final finance = _finance;
     if (finance == null) return const [];
     final result = await finance.listReviewItems();
-    return switch (result) {
-      ApplicationSuccess<List<ReviewItemDto>>(:final value) => value,
-      ApplicationFailure<List<ReviewItemDto>>() => throw StateError(
-        'Review items could not be loaded.',
-      ),
-    };
+    if (result is! ApplicationSuccess<List<ReviewItemDto>>) {
+      throw StateError('Review items could not be loaded.');
+    }
+    final grouped = <String, List<ReviewItemDto>>{};
+    for (final item in result.value) {
+      grouped.putIfAbsent(item.transactionId, () => []).add(item);
+    }
+    return Future.wait(
+      grouped.entries.map((entry) async {
+        final loaded = await finance.getTransaction(entry.key);
+        if (loaded is! ApplicationSuccess<TransactionDto>) {
+          throw StateError('Review transaction could not be loaded.');
+        }
+        return _ReviewEntry(loaded.value, entry.value);
+      }),
+    );
   }
 
   void _refresh() => setState(() {
@@ -211,9 +223,9 @@ class _ReviewPageState extends State<ReviewPage>
     _refresh();
   }
 
-  Future<void> _close(ReviewItemDto item, {required bool dismiss}) async {
+  Future<bool> _close(ReviewItemDto item, {required bool dismiss}) async {
     final finance = _finance;
-    if (finance == null) return;
+    if (finance == null) return false;
     final ApplicationResult<dynamic> result;
     if (item.issueId.startsWith('reconciliation-')) {
       final candidates = await finance.listReconciliationCandidates();
@@ -223,7 +235,7 @@ class _ReviewPageState extends State<ReviewPage>
                 .where((value) => 'reconciliation-${value.id}' == item.issueId)
                 .firstOrNull
           : null;
-      if (candidate == null) return;
+      if (candidate == null) return false;
       result = dismiss
           ? await finance.rejectReconciliation(candidate)
           : await finance.confirmReconciliation(candidate);
@@ -232,15 +244,16 @@ class _ReviewPageState extends State<ReviewPage>
           ? await finance.dismissReviewIssue(item.transactionId, item.issueId)
           : await finance.resolveReviewIssue(item.transactionId, item.issueId);
     }
-    if (!mounted) return;
+    if (!mounted) return false;
     if (result is ApplicationFailure) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.text('dataPreserved'))),
       );
-      return;
+      return false;
     }
     notifyTransactionChanged();
     _refresh();
+    return true;
   }
 
   Future<void> _openTransaction(ReviewItemDto item) async {
@@ -257,6 +270,61 @@ class _ReviewPageState extends State<ReviewPage>
       );
       if (changed == true) _refresh();
     }
+  }
+
+  Future<void> _openReview(_ReviewEntry entry) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (detailContext) => Scaffold(
+          appBar: AppBar(title: Text(context.l10n.text('needsReview'))),
+          body: ButlerlyPage(
+            children: [
+              for (final item in entry.items)
+                if (item.reason == ReviewIssueReason.normalizationMissing.name)
+                  _NormalizationReviewCard(
+                    item: item,
+                    finance: _finance!,
+                    onDone: () {
+                      if (detailContext.mounted) {
+                        Navigator.of(detailContext).pop();
+                      }
+                    },
+                  )
+                else
+                  _ReviewTransactionCard(
+                    title:
+                        item.description ??
+                        context.l10n.text('untitledTransaction'),
+                    amount: item.amount,
+                    currency: item.currency,
+                    reason: item.detail ?? _reason(item.reason, context),
+                    recommendation: context.l10n.text('reviewRecommendation'),
+                    primaryLabel: context.l10n.text('resolve'),
+                    onPrimary: () async {
+                      final closed = await _close(item, dismiss: false);
+                      if (closed && detailContext.mounted) {
+                        Navigator.of(detailContext).pop();
+                      }
+                    },
+                    editLabel: context.l10n.text('edit'),
+                    onEdit: () {
+                      Navigator.of(detailContext).pop();
+                      _openTransaction(item);
+                    },
+                    dismissLabel: context.l10n.text('dismiss'),
+                    onDismiss: () async {
+                      final closed = await _close(item, dismiss: true);
+                      if (closed && detailContext.mounted) {
+                        Navigator.of(detailContext).pop();
+                      }
+                    },
+                  ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (mounted) _refresh();
   }
 
   Future<void> _openUncategorized(TransactionDto transaction) async {
@@ -409,6 +477,25 @@ class _ReviewPageState extends State<ReviewPage>
                   masterData:
                       masterSnapshot.data?.presentation ??
                       const TransactionMasterData(),
+                  paymentSourceNames: {
+                    for (final source
+                        in masterSnapshot.data?.paymentSources ??
+                            <PaymentSource>[])
+                      source.id.value: source.name,
+                  },
+                  groupByFinancialDate: true,
+                  showDateInRows: true,
+                  missingCategoryLabel: context.l10n.text('uncategorized'),
+                  supportingContentBuilder: (context, transaction) => Text(
+                    context.l10n.text(
+                      transaction.subcategoryId == null
+                          ? 'classificationMissing'
+                          : 'categoryMissing',
+                    ),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: context.colors.secondaryText,
+                    ),
+                  ),
                   onTap: _openUncategorized,
                   navigates: true,
                 ),
@@ -424,7 +511,7 @@ class _ReviewPageState extends State<ReviewPage>
             message: context.l10n.text('reviewEmptyBody'),
           )
         else
-          FutureBuilder<List<ReviewItemDto>>(
+          FutureBuilder<List<_ReviewEntry>>(
             future: _items,
             builder: (context, snapshot) {
               if (snapshot.connectionState != ConnectionState.done) {
@@ -447,43 +534,54 @@ class _ReviewPageState extends State<ReviewPage>
                   message: context.l10n.text('reviewEmptyBody'),
                 );
               }
-              return Column(
-                children: items
-                    .map(
-                      (item) => Padding(
-                        padding: const EdgeInsets.only(
-                          bottom: ButlerlySpacing.small,
+              final byId = {
+                for (final entry in items) entry.transaction.id: entry,
+              };
+              return FutureBuilder<TransactionMasterDataSnapshot>(
+                future: _masterData,
+                builder: (context, masterSnapshot) => TransactionRecordList(
+                  transactions: items
+                      .map((entry) => entry.transaction)
+                      .toList(),
+                  masterData:
+                      masterSnapshot.data?.presentation ??
+                      const TransactionMasterData(),
+                  paymentSourceNames: {
+                    for (final source
+                        in masterSnapshot.data?.paymentSources ??
+                            <PaymentSource>[])
+                      source.id.value: source.name,
+                  },
+                  groupByFinancialDate: true,
+                  showDateInRows: true,
+                  missingCategoryLabel: context.l10n.text('uncategorized'),
+                  supportingContentBuilder: (context, transaction) {
+                    // Preserve the application's issue order; do not introduce a new priority policy.
+                    final item = byId[transaction.id]!.items.first;
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ExcludeSemantics(
+                          child: Icon(
+                            Icons.warning_amber_rounded,
+                            size: ButlerlyTransactionItemTokens.warningIconSize,
+                            color: context.transactionItemWarningIcon,
+                          ),
                         ),
-                        child:
-                            item.reason ==
-                                ReviewIssueReason.normalizationMissing.name
-                            ? _NormalizationReviewCard(
-                                item: item,
-                                finance: _finance!,
-                                onDone: _refresh,
-                              )
-                            : _ReviewTransactionCard(
-                                amount: item.amount,
-                                currency: item.currency,
-                                title:
-                                    item.description ??
-                                    context.l10n.text('untitledTransaction'),
-                                reason:
-                                    item.detail ??
-                                    _reason(item.reason, context),
-                                recommendation: context.l10n.text(
-                                  'reviewRecommendation',
-                                ),
-                                primaryLabel: context.l10n.text('resolve'),
-                                onPrimary: () => _close(item, dismiss: false),
-                                editLabel: context.l10n.text('edit'),
-                                dismissLabel: context.l10n.text('dismiss'),
-                                onEdit: () => _openTransaction(item),
-                                onDismiss: () => _close(item, dismiss: true),
-                              ),
-                      ),
-                    )
-                    .toList(growable: false),
+                        const SizedBox(width: ButlerlySpacing.micro),
+                        Expanded(
+                          child: Text(
+                            item.detail?.trim().isNotEmpty == true
+                                ? item.detail!
+                                : _reason(item.reason, context),
+                            style: context.transactionItemMetadata,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                  onTap: (transaction) => _openReview(byId[transaction.id]!),
+                ),
               );
             },
           ),
@@ -824,6 +922,7 @@ class _NormalizationReviewCardState extends State<_NormalizationReviewCard> {
         preference.value == null) {
       return;
     }
+    if (!mounted) return;
     DecimalValue amount;
     try {
       amount = DecimalValue.parse(_controller.text.trim());
@@ -838,7 +937,9 @@ class _NormalizationReviewCardState extends State<_NormalizationReviewCard> {
         currency: preference.value!.baseCurrency,
       ),
     );
-    if (mounted) setState(() => _saving = false);
+    if (result is ApplicationSuccess) notifyTransactionChanged();
+    if (!mounted) return;
+    setState(() => _saving = false);
     if (result is ApplicationSuccess) {
       widget.onDone();
     }
@@ -875,7 +976,16 @@ class _NormalizationReviewCardState extends State<_NormalizationReviewCard> {
 }
 
 String _reason(String value, BuildContext context) => switch (value) {
-  'incomplete' => context.l10n.text('uncategorized'),
+  'incomplete' => context.l10n.text('reviewIncomplete'),
+  'uncertain' => context.l10n.text('reviewUncertain'),
+  'conflict' => context.l10n.text('reviewConflict'),
+  'normalizationMissing' => context.l10n.text('reviewNormalizationMissing'),
   'duplicateCandidate' => context.l10n.text('possibleDuplicates'),
   _ => context.l10n.text('needsReview'),
 };
+
+final class _ReviewEntry {
+  const _ReviewEntry(this.transaction, this.items);
+  final TransactionDto transaction;
+  final List<ReviewItemDto> items;
+}

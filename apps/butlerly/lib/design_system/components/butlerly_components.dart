@@ -520,6 +520,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     this.subcategoryLabel,
     this.paymentSource,
     this.tags = const [],
+    this.supportingContent,
     this.showDate = false,
     this.isIncome = false,
     this.needsReview = false,
@@ -540,6 +541,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
   final String? subcategoryLabel;
   final String? paymentSource;
   final List<String> tags;
+  final Widget? supportingContent;
   final bool showDate;
   final String amount;
   final String currency;
@@ -640,8 +642,12 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                                 alignment: AlignmentDirectional.centerEnd,
                                 child: Text(
                                   meta!,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: supportingContent == null
+                                      ? 1
+                                      : null,
+                                  overflow: supportingContent == null
+                                      ? TextOverflow.ellipsis
+                                      : TextOverflow.visible,
                                   textAlign: TextAlign.end,
                                   style: context.transactionItemDate,
                                 ),
@@ -672,7 +678,14 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                           style: context.transactionItemMetadata,
                         ),
                       ),
-                    if (needsReview || possibleDuplicate)
+                    if (supportingContent case final content?)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          top: ButlerlySpacing.compact,
+                        ),
+                        child: content,
+                      )
+                    else if (needsReview || possibleDuplicate)
                       _duplicateWarning(context),
                   ],
                 ),
@@ -895,6 +908,7 @@ class ButlerlyRecordRow extends ButlerlyTransactionListItem {
     super.subcategoryLabel,
     super.paymentSource,
     super.tags,
+    super.supportingContent,
     super.showDate,
     super.isIncome,
     super.needsReview,

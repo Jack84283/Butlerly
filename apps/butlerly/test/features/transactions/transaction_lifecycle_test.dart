@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
@@ -564,6 +566,9 @@ void main() {
     await tester.tap(find.byType(Tab).at(2));
     await tester.pumpAndSettle();
     expect(find.text('Lunch'), findsOneWidget);
+    expect(find.text('Resolve'), findsNothing);
+    await tester.tap(find.text('Lunch'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Resolve'));
     await tester.pumpAndSettle();
 
@@ -730,7 +735,7 @@ void main() {
     expect(find.byType(ButlerlyCard), findsOneWidget);
     expect(find.byType(ButlerlyRecordRow), findsOneWidget);
     expect(find.text('Needs a category'), findsOneWidget);
-    expect(find.text('Resolve'), findsOneWidget);
+    expect(find.text('Resolve'), findsNothing);
 
     await tester.ensureVisible(find.byType(Tab).at(0));
     await tester.tap(find.byType(Tab).at(0));
@@ -738,6 +743,130 @@ void main() {
     expect(find.byType(ButlerlyTransactionList), findsOneWidget);
     expect(find.byType(ButlerlyRecordRow), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Review groups dates and shows one issue per transaction', (
+    tester,
+  ) async {
+    final finance = services<FinanceServices>();
+    for (var i = 0; i < 3; i++) {
+      await finance.createTransaction(
+        CreateTransactionCommand(
+          id: 'group-$i',
+          provenanceId: 'group-p-$i',
+          timing: KnownTransactionTime(DateTime.utc(2026, 9, i == 2 ? 3 : 4)),
+          transactionDate: i == 2 ? '2026-09-03' : '2026-09-04',
+          money: Money(
+            amount: DecimalValue.parse('42.18'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+          description: 'Grouped merchant $i',
+        ),
+      );
+      var stored = repository.values['group-$i']!;
+      for (var issue = 0; issue < 2; issue++) {
+        final at = stored.updatedAt.add(const Duration(seconds: 1));
+        stored = stored.addReviewIssue(
+          ReviewIssue(
+            id: ReviewIssueId('group-$i-issue-$issue'),
+            transactionId: stored.id,
+            reason: ReviewIssueReason.conflict,
+            createdAt: at,
+            detail: issue == 0
+                ? 'Receipt amount differs from transaction'
+                : 'Secondary issue',
+          ),
+          at,
+        );
+      }
+      repository.values['group-$i'] = stored;
+    }
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: ReviewPage())),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(ButlerlyCard), findsNWidgets(2));
+    expect(find.text('Category and subcategory are missing'), findsNWidgets(3));
+    await tester.tap(find.byType(Tab).at(2));
+    await tester.pumpAndSettle();
+    expect(find.byType(ButlerlyCard), findsNWidgets(2));
+    expect(find.byType(ButlerlyRecordRow), findsNWidgets(3));
+    expect(
+      find.text('Receipt amount differs from transaction'),
+      findsNWidgets(3),
+    );
+    expect(find.text('Secondary issue'), findsNothing);
+    expect(find.text('Resolve'), findsNothing);
+    await tester.tap(find.text('Grouped merchant 0'));
+    await tester.pumpAndSettle();
+    expect(find.text('Secondary issue'), findsOneWidget);
+    expect(find.text('Resolve'), findsNWidgets(2));
+    await tester.tap(find.text('Edit').first);
+    await tester.pumpAndSettle();
+    expect(find.byType(TransactionDetailPage), findsOneWidget);
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    expect(find.text('Resolve'), findsNothing);
+    expect(find.byType(ButlerlyRecordRow), findsNWidgets(3));
+  });
+
+  testWidgets('normalization completion after leaving detail is safe', (
+    tester,
+  ) async {
+    final finance = services<FinanceServices>();
+    await finance.saveUserPreference(
+      UserPreference(
+        locale: 'en',
+        baseCurrency: CurrencyCode('USD'),
+        timeZoneId: 'UTC',
+      ),
+    );
+    await finance.createTransaction(
+      CreateTransactionCommand(
+        id: 'normalize-review',
+        provenanceId: 'normalize-p',
+        timing: KnownTransactionTime(DateTime.utc(2026, 9, 4)),
+        money: Money(
+          amount: DecimalValue.parse('42.18'),
+          currency: CurrencyCode('EUR'),
+        ),
+        direction: TransactionDirection.expense,
+        description: 'Normalize me',
+      ),
+    );
+    final stored = repository.values['normalize-review']!;
+    repository.values['normalize-review'] = stored.addReviewIssue(
+      ReviewIssue(
+        id: ReviewIssueId('normalize-issue'),
+        transactionId: stored.id,
+        reason: ReviewIssueReason.normalizationMissing,
+        createdAt: stored.updatedAt,
+      ),
+      stored.updatedAt,
+    );
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: ReviewPage())),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(Tab).at(2));
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsNothing);
+    await tester.tap(find.text('Normalize me'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '50');
+    final pending = Completer<void>();
+    repository.saveGate = pending.future;
+    await tester.tap(find.text('Confirm'));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    pending.complete();
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.byType(ReviewPage), findsOneWidget);
+    expect(find.text('Normalize me'), findsNothing);
+    expect(repository.values['normalize-review']!.normalizedMoney, isNotEmpty);
   });
 
   testWidgets('Review tabs select each existing review view', (tester) async {
@@ -1608,7 +1737,8 @@ Future<void> _tapEditorSave(WidgetTester tester) async {
 
 Transaction _editorTransaction(String id) {
   final now = DateTime.now().toUtc();
-  final date = now.toIso8601String().substring(0, 10);
+  // Match the new editor's local calendar date, even when UTC is tomorrow.
+  final date = now.toLocal().toIso8601String().substring(0, 10);
   return Transaction(
     id: TransactionId(id),
     timing: const UnknownTransactionTime(UnknownTransactionTimeReason.unknown),
@@ -1682,6 +1812,7 @@ final class MemoryUserPreferences implements UserPreferenceRepository {
 
 final class MemoryTransactionRepository implements TransactionRepository {
   final values = <String, Transaction>{};
+  Future<void>? saveGate;
 
   @override
   Future<Transaction?> findById(TransactionId id) async => values[id.value];
@@ -1711,6 +1842,7 @@ final class MemoryTransactionRepository implements TransactionRepository {
 
   @override
   Future<void> save(Transaction transaction) async {
+    if (saveGate case final pending?) await pending;
     values[transaction.id.value] = transaction;
   }
 }
