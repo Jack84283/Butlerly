@@ -13,7 +13,6 @@ import 'package:butlerly/features/analysis/presentation/widgets/analysis_period_
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_skeleton.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_spending_breakdown.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_summary.dart';
-import 'package:butlerly/features/analysis/presentation/widgets/analysis_trend.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
@@ -428,9 +427,6 @@ class _AnalysisContent extends StatelessWidget {
         AnalysisPeriodSelector(value: period, onChanged: onPeriodChanged),
         const SizedBox(height: ButlerlySpacing.standard),
         AnalysisSummary(model: model),
-        _SectionHeader(title: context.l10n.text('trends')),
-        Text(context.l10n.text('trendsDescription')),
-        AnalysisTrend(model: model, masterData: masterData),
         _SectionHeader(title: context.l10n.text('spending')),
         AnalysisSpendingBreakdown(
           model: model,

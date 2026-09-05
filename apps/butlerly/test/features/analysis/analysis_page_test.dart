@@ -255,14 +255,6 @@ void main() {
     await tester.drag(find.byType(Scrollable).first, const Offset(0, -2000));
     await tester.pumpAndSettle();
     expect(find.text('Analysis'), findsOneWidget);
-    expect(
-      find.text('See how spending changes across the selected period.'),
-      findsOneWidget,
-    );
-    expect(
-      find.text('More activity is needed to show a trend.'),
-      findsOneWidget,
-    );
     expect(find.text('Not evaluated'), findsOneWidget);
     expect(
       find.text('Calculated privately on this device and available offline.'),
