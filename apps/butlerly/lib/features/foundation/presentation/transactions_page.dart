@@ -201,7 +201,7 @@ class _TransactionsPageState extends State<TransactionsPage>
             },
           ),
           children: [
-            const SizedBox(height: ButlerlySpacing.section),
+            const SizedBox(height: ButlerlySpacing.compact),
             if (values.isEmpty)
               ButlerlyEmptyState(
                 icon: Icons.receipt_long_outlined,
@@ -224,7 +224,7 @@ class _TransactionsPageState extends State<TransactionsPage>
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   TransactionCountText(count: visible.length),
-                  const SizedBox(height: ButlerlySpacing.micro),
+                  const SizedBox(height: ButlerlySpacing.compact),
                   TransactionRecordList(
                     transactions: visible,
                     masterData: data.masterData,
