@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 abstract final class ButlerlyTransactionItemTokens {
   static const horizontalInset = ButlerlySpacing.micro;
   static const topPadding = ButlerlySpacing.compact;
-  static const bottomPadding = ButlerlySpacing.micro;
+  static const bottomPadding = ButlerlySpacing.compact;
 
   /// Compensates for the row's horizontal inset so the icon's final left and
   /// top offsets from the item boundary are identical.

@@ -201,7 +201,7 @@ class _TransactionsPageState extends State<TransactionsPage>
             },
           ),
           children: [
-            const SizedBox(height: ButlerlySpacing.section),
+            const SizedBox(height: ButlerlySpacing.compact),
             if (values.isEmpty)
               ButlerlyEmptyState(
                 icon: Icons.receipt_long_outlined,
