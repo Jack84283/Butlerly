@@ -224,7 +224,7 @@ class _TransactionsPageState extends State<TransactionsPage>
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   TransactionCountText(count: visible.length),
-                  const SizedBox(height: ButlerlySpacing.compact),
+                  const SizedBox(height: ButlerlySpacing.micro),
                   TransactionRecordList(
                     transactions: visible,
                     masterData: data.masterData,

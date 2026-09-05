@@ -405,7 +405,10 @@ void main() {
       ButlerlySpacing.micro,
     );
     expect(ButlerlyTransactionItemTokens.topPadding, ButlerlySpacing.compact);
-    expect(ButlerlyTransactionItemTokens.bottomPadding, ButlerlySpacing.micro);
+    expect(
+      ButlerlyTransactionItemTokens.bottomPadding,
+      ButlerlySpacing.compact,
+    );
     expect(ButlerlyTransactionItemTokens.dividerInset, ButlerlySpacing.micro);
     expect(ButlerlyTransactionItemTokens.minTouchHeight, 72);
   });
