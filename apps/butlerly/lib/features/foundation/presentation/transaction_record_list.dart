@@ -25,6 +25,8 @@ class TransactionRecordList extends StatelessWidget {
     this.groupByFinancialDate = false,
     this.wrapInCard = false,
     this.showDateInRows = false,
+    this.supportingContentBuilder,
+    this.missingCategoryLabel,
     super.key,
   });
 
@@ -39,6 +41,8 @@ class TransactionRecordList extends StatelessWidget {
   final bool groupByFinancialDate;
   final bool wrapInCard;
   final bool showDateInRows;
+  final Widget Function(BuildContext, TransactionDto)? supportingContentBuilder;
+  final String? missingCategoryLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -123,10 +127,11 @@ class TransactionRecordList extends StatelessWidget {
       categoryId: iconCategoryId,
       // An empty label intentionally selects canonical mode so uncategorized
       // rows still receive the neutral leading icon and signed amount layout.
-      categoryLabel: parent ?? category ?? '',
+      categoryLabel: parent ?? category ?? missingCategoryLabel ?? '',
       subcategoryLabel: parent == null ? null : category,
       paymentSource: sourceLabel,
       tags: tags,
+      supportingContent: supportingContentBuilder?.call(context, transaction),
       meta: showDateInRows
           ? transactionDateLabel(
               transaction,
