@@ -16,6 +16,7 @@ abstract final class ButlerlyTransactionItemTokens {
   static const warningIconSize = 18.0;
   static const navigationIconSize = 18.0;
   static const headerSpacing = ButlerlySpacing.micro;
+  static const metadataSpacing = ButlerlySpacing.micro;
   static const metadataTrailingInset = ButlerlySpacing.compact;
   static const dividerThickness = 1.0;
   static const dividerInset = ButlerlySpacing.micro;
@@ -36,7 +37,7 @@ extension ButlerlyTransactionItemStyles on BuildContext {
   TextStyle get transactionItemDate => Theme.of(this).textTheme.bodySmall!;
 
   TextStyle get transactionItemDescription =>
-      Theme.of(this).textTheme.bodyMedium!;
+      Theme.of(this).textTheme.bodyMedium!.copyWith(color: colors.primaryText);
 
   TextStyle get transactionItemMetadata => Theme.of(this).textTheme.bodySmall!;
 

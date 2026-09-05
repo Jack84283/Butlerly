@@ -661,7 +661,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                         when source.trim().isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(
-                          top: ButlerlyTransactionItemTokens.headerSpacing,
+                          top: ButlerlyTransactionItemTokens.metadataSpacing,
                         ),
                         child: Text(
                           source,
@@ -671,7 +671,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                     if (_visibleTags.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(
-                          top: ButlerlySpacing.compact,
+                          top: ButlerlyTransactionItemTokens.metadataSpacing,
                         ),
                         child: Text(
                           _visibleTags.join(' · '),

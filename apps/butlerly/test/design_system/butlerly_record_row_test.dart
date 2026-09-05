@@ -1,5 +1,6 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -399,6 +400,10 @@ void main() {
 
     expect(tester.widget<Text>(find.text('1.00 USD')).style?.fontSize, 31);
     expect(tester.widget<Text>(find.text('Description')).style?.fontSize, 23);
+    expect(
+      tester.widget<Text>(find.text('Description')).style?.color,
+      AppTheme.light.extension<ButlerlySemanticColors>()!.primaryText,
+    );
     expect(tester.widget<Text>(find.text('Metadata')).style?.fontSize, 17);
     expect(
       ButlerlyTransactionItemTokens.horizontalInset,
@@ -412,4 +417,33 @@ void main() {
     expect(ButlerlyTransactionItemTokens.dividerInset, ButlerlySpacing.micro);
     expect(ButlerlyTransactionItemTokens.minTouchHeight, 72);
   });
+
+  testWidgets(
+    'metadata lines use four pixels between payment source and tags',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: ButlerlyRecordRow(
+              title: 'Whole Foods',
+              amount: '20.00',
+              currency: 'USD',
+              categoryLabel: 'Food',
+              paymentSource: 'Visa',
+              tags: const ['Groceries'],
+            ),
+          ),
+        ),
+      );
+
+      final paymentSource = tester.getRect(find.text('Visa'));
+      final tags = tester.getRect(find.text('Groceries'));
+      expect(tags.top - paymentSource.bottom, ButlerlySpacing.micro);
+      expect(
+        ButlerlyTransactionItemTokens.metadataSpacing,
+        ButlerlySpacing.micro,
+      );
+    },
+  );
 }
