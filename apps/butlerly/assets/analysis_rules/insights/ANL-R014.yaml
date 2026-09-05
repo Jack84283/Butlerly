@@ -1,13 +1,13 @@
 schemaVersion: "1.0.0"
 ruleId: ANL-R014
-ruleVersion: "1.4.0"
+ruleVersion: "1.5.0"
 enabled: true
 surface: trends
 type: metric
 nameKey: analysis.rule.r014.name
 descriptionKey: analysis.rule.r014.description
 period: selected_period
-grouping: month
+grouping: adaptive
 measure:
   operation: sum
   field: amount

@@ -43,7 +43,7 @@ void main() {
     'monthly trend uses canonical chronological buckets and preserves gaps',
     () async {
       final calculate = CalculateAnalysisOverview(
-        _Rules([_trendRule(grouping: RuleGrouping.month)]),
+        _Rules([_trendRule(grouping: RuleGrouping.adaptive)]),
         AnalysisDatasetBuilder(
           _Transactions([
             _transaction('nov', '2025-11-15', '20'),
@@ -75,6 +75,38 @@ void main() {
       ]);
     },
   );
+
+  test('current month trend uses daily buckets through today', () async {
+    final calculate = CalculateAnalysisOverview(
+      _Rules([_trendRule(grouping: RuleGrouping.adaptive)]),
+      AnalysisDatasetBuilder(
+        _Transactions([
+          _transaction('first', '2026-09-01', '20'),
+          _transaction('today', '2026-09-05', '15'),
+          _transaction('future', '2026-09-06', '80'),
+        ]),
+        _Preferences(),
+        null,
+      ),
+      const AnalysisRuleEngine(),
+    );
+
+    final result = await calculate.currentMonth(DateTime.utc(2026, 9, 5, 12));
+    expect(_trendDimensions(result), [
+      '2026-09-01:value',
+      '2026-09-02:value',
+      '2026-09-03:value',
+      '2026-09-04:value',
+      '2026-09-05:value',
+    ]);
+    expect(_trendValues(result), [
+      DecimalValue.parse('20'),
+      DecimalValue.parse('0'),
+      DecimalValue.parse('0'),
+      DecimalValue.parse('0'),
+      DecimalValue.parse('15'),
+    ]);
+  });
 
   test(
     'current-month materialized summaries recompute after invalidation',

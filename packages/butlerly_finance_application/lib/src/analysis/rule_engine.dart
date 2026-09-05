@@ -119,6 +119,7 @@ final class AnalysisRuleEngine {
         }
         final primaryWindow =
             (primaryResolution as AnalysisPeriodResolved).window;
+        final grouping = _effectiveGrouping(rule, primaryWindow);
         final primaryValues = rule.type == AnalysisRuleType.dataQuality
             ? dataset.transactions
             : dataset.primaryTransactionsByPeriod[rule.period] ??
@@ -139,13 +140,13 @@ final class AnalysisRuleEngine {
             .toList(growable: false);
         final grouped = _group(
           values,
-          rule.grouping,
+          grouping,
           completeDailyAxis:
               rule.surface == AnalysisSurface.trends &&
-              rule.grouping == RuleGrouping.day,
+              grouping == RuleGrouping.day,
           completeMonthlyAxis:
               rule.surface == AnalysisSurface.trends &&
-              rule.grouping == RuleGrouping.month,
+              grouping == RuleGrouping.month,
           window: primaryWindow,
         );
         for (final entry in grouped.entries) {
@@ -411,6 +412,7 @@ final class AnalysisRuleEngine {
       RuleGrouping.week => _weekKey(value.transactionDate),
       RuleGrouping.month => value.transactionDate?.substring(0, 7) ?? 'unknown',
       RuleGrouping.none => '',
+      RuleGrouping.adaptive => 'unknown',
     };
     final grouped = <String, List<AnalysisEconomicTransaction>>{};
     if (completeDailyAxis && window != null) {
@@ -448,6 +450,15 @@ final class AnalysisRuleEngine {
 
   String _formatMonth(DateTime value) =>
       '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}';
+
+  RuleGrouping _effectiveGrouping(
+    AnalysisRuleDefinition rule,
+    ResolvedAnalysisWindow window,
+  ) {
+    if (rule.grouping != RuleGrouping.adaptive) return rule.grouping;
+    final days = window.endExclusive.difference(window.start).inDays;
+    return days <= 31 ? RuleGrouping.day : RuleGrouping.month;
+  }
 
   String _weekKey(String? value) {
     if (value == null) return 'unknown';

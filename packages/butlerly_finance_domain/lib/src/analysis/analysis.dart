@@ -43,6 +43,7 @@ enum RuleGrouping {
   day,
   week,
   month,
+  adaptive,
 }
 
 enum RuleBaseline {
