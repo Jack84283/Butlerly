@@ -35,9 +35,23 @@ final class FinanceServices {
        loadReferenceData = LoadReferenceData(
          referenceData ?? const _NoReferenceDataRepository(),
        ),
+       proposeTransactionClassification = ProposeTransactionClassification(
+         transactions,
+         merchants,
+         historical: transactions is HistoricalClassificationRepository
+             ? transactions as HistoricalClassificationRepository
+             : null,
+       ),
        createTransaction = CreateTransaction(
          transactions,
          const SystemApplicationClock(),
+         classifier: ProposeTransactionClassification(
+           transactions,
+           merchants,
+           historical: transactions is HistoricalClassificationRepository
+               ? transactions as HistoricalClassificationRepository
+               : null,
+         ),
        ),
        createReceiptTransaction = CreateReceiptTransaction(
          transactions,
@@ -57,6 +71,13 @@ final class FinanceServices {
        importTransaction = ImportTransaction(
          transactions,
          const SystemApplicationClock(),
+         classifier: ProposeTransactionClassification(
+           transactions,
+           merchants,
+           historical: transactions is HistoricalClassificationRepository
+               ? transactions as HistoricalClassificationRepository
+               : null,
+         ),
        ),
        getTransaction = GetTransaction(transactions),
        updateTransaction = UpdateTransaction(
@@ -242,6 +263,7 @@ final class FinanceServices {
   final LoadMasterTranslations loadMasterTranslations;
   final LoadReferenceData loadReferenceData;
   final CreateTransaction createTransaction;
+  final ProposeTransactionClassification proposeTransactionClassification;
   final CreateReceiptTransaction createReceiptTransaction;
   final CreatePaymentTransaction createPaymentTransaction;
   final ImportTransaction importTransaction;

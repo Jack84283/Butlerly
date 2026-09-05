@@ -142,9 +142,9 @@ void main() {
 
     expect(find.text('Add'), findsOneWidget);
     expect(find.text('Add transaction manually'), findsOneWidget);
-    expect(find.text('Add transaction from receipt'), findsOneWidget);
-    expect(find.text('Add transaction from statement'), findsOneWidget);
-    expect(find.text('Add transaction from local file'), findsOneWidget);
+    expect(find.text('Scan Receipt'), findsOneWidget);
+    expect(find.text('Import Statement'), findsOneWidget);
+    expect(find.text('Import File'), findsOneWidget);
     expect(find.text('Payment sources'), findsOneWidget);
 
     await tester.binding.handlePopRoute();

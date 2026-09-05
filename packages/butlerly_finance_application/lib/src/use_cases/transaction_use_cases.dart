@@ -4,6 +4,7 @@ import '../commands/transaction_commands.dart';
 import '../dto/review_item_dto.dart';
 import '../dto/transaction_dto.dart';
 import '../result/application_result.dart';
+import 'classification_use_cases.dart';
 
 abstract interface class ApplicationClock {
   DateTime now();
@@ -17,15 +18,28 @@ final class SystemApplicationClock implements ApplicationClock {
 }
 
 final class CreateTransaction {
-  const CreateTransaction(this.repository, this.clock);
+  const CreateTransaction(this.repository, this.clock, {this.classifier});
 
   final TransactionRepository repository;
   final ApplicationClock clock;
+  final ProposeTransactionClassification? classifier;
 
   Future<ApplicationResult<TransactionDto>> call(
     CreateTransactionCommand command,
   ) => runApplication('create transaction', () async {
     final now = clock.now();
+    final proposal = command.categoryId == null && classifier != null
+        ? await classifier!.call(
+            merchantId: command.merchantId == null
+                ? null
+                : MerchantId(command.merchantId!),
+            description: command.description ?? command.rawCounterparty,
+            excludeTransactionId: TransactionId(command.id),
+          )
+        : null;
+    final proposed = proposal is ApplicationSuccess<ClassificationProposal>
+        ? proposal.value
+        : null;
     final transaction = Transaction(
       id: TransactionId(command.id),
       timing: command.timing,
@@ -38,8 +52,18 @@ final class CreateTransaction {
       notes: command.notes,
       externalReference: command.externalReference,
       paymentSourceId: _optional(command.paymentSourceId, PaymentSourceId.new),
-      merchantId: _optional(command.merchantId, MerchantId.new),
-      categoryId: _optional(command.categoryId, CategoryId.new),
+      merchantId: _optional(
+        command.merchantId ?? proposed?.merchantId?.value,
+        MerchantId.new,
+      ),
+      categoryId: _optional(
+        command.categoryId ?? proposed?.categoryId?.value,
+        CategoryId.new,
+      ),
+      subcategoryId: _optional(
+        command.subcategoryId ?? proposed?.subcategoryId?.value,
+        CategoryId.new,
+      ),
       tagIds: command.tagIds.map(TagId.new).toList(growable: false),
       provenance: [
         Provenance(
@@ -96,7 +120,9 @@ final class UpdateTransaction {
         categoryId: !command.replaceCategory
             ? current.categoryId
             : _optional(command.categoryId, CategoryId.new),
-        subcategoryId: current.subcategoryId,
+        subcategoryId: !command.replaceCategory
+            ? current.subcategoryId
+            : _optional(command.subcategoryId, CategoryId.new),
         tagIds: command.replaceTags
             ? command.tagIds?.map(TagId.new).toList(growable: false) ?? const []
             : current.tagIds,
@@ -117,10 +143,11 @@ final class UpdateTransaction {
 }
 
 final class ImportTransaction {
-  const ImportTransaction(this.repository, this.clock);
+  const ImportTransaction(this.repository, this.clock, {this.classifier});
 
   final TransactionRepository repository;
   final ApplicationClock clock;
+  final ProposeTransactionClassification? classifier;
 
   Future<ApplicationResult<TransactionDto>> call(
     ImportTransactionCommand command,
@@ -142,6 +169,15 @@ final class ImportTransaction {
       );
     }
     final now = clock.now();
+    final proposal = classifier == null
+        ? null
+        : await classifier!.call(
+            description: command.description ?? command.rawCounterparty,
+            excludeTransactionId: TransactionId(command.id),
+          );
+    final proposed = proposal is ApplicationSuccess<ClassificationProposal>
+        ? proposal.value
+        : null;
     final transaction = Transaction(
       id: TransactionId(command.id),
       timing: command.occurredAtUtc == null
@@ -156,6 +192,9 @@ final class ImportTransaction {
       notes: command.notes,
       externalReference: command.externalReference,
       paymentSourceId: _optional(command.paymentSourceId, PaymentSourceId.new),
+      merchantId: proposed?.merchantId,
+      categoryId: proposed?.categoryId,
+      subcategoryId: proposed?.subcategoryId,
       provenance: [
         Provenance(
           id: ProvenanceId(command.provenanceId),

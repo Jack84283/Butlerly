@@ -105,13 +105,13 @@ class AppLocalizations {
       'addTransactionSubtitle': 'Enter a transaction manually',
       'addTransactionManually': 'Add transaction manually',
       'addTransactionManuallySubtitle': 'Enter transaction details yourself',
-      'addTransactionFromReceipt': 'Add transaction from receipt',
+      'addTransactionFromReceipt': 'Scan Receipt',
       'addTransactionFromReceiptSubtitle':
           'Scan a receipt to extract transaction details',
-      'addTransactionFromStatement': 'Add transaction from statement',
+      'addTransactionFromStatement': 'Import Statement',
       'addTransactionFromStatementSubtitle':
           'Scan a statement to review and add transactions',
-      'addTransactionFromLocalFile': 'Add transaction from local file',
+      'addTransactionFromLocalFile': 'Import File',
       'addTransactionFromLocalFileSubtitle':
           'Import transaction from a supported transaction file',
       'scanReceipt': 'Scan receipt',
@@ -654,11 +654,11 @@ class AppLocalizations {
       'addTransactionSubtitle': '手动输入交易',
       'addTransactionManually': '手动添加交易',
       'addTransactionManuallySubtitle': '自行输入交易详情',
-      'addTransactionFromReceipt': '从收据添加交易',
+      'addTransactionFromReceipt': '扫描收据',
       'addTransactionFromReceiptSubtitle': '扫描收据以提取交易详情',
-      'addTransactionFromStatement': '从账单添加交易',
+      'addTransactionFromStatement': '导入账单',
       'addTransactionFromStatementSubtitle': '扫描账单以审核并添加交易',
-      'addTransactionFromLocalFile': '从本地文件添加交易',
+      'addTransactionFromLocalFile': '导入文件',
       'addTransactionFromLocalFileSubtitle': '从支持的交易文件导入交易',
       'scanReceipt': '扫描收据',
       'scanReceiptSubtitle': '拍摄收据并提取交易详情',
@@ -1162,14 +1162,13 @@ class AppLocalizations {
       'addTransactionManually': 'Añadir transacción manualmente',
       'addTransactionManuallySubtitle':
           'Introduce los detalles de la transacción',
-      'addTransactionFromReceipt': 'Añadir transacción desde un recibo',
+      'addTransactionFromReceipt': 'Escanear recibo',
       'addTransactionFromReceiptSubtitle':
           'Escanea un recibo para extraer los detalles de la transacción',
-      'addTransactionFromStatement': 'Añadir transacción desde un extracto',
+      'addTransactionFromStatement': 'Importar extracto',
       'addTransactionFromStatementSubtitle':
           'Escanea un extracto para revisar y añadir transacciones',
-      'addTransactionFromLocalFile':
-          'Añadir transacción desde un archivo local',
+      'addTransactionFromLocalFile': 'Importar archivo',
       'addTransactionFromLocalFileSubtitle':
           'Importa transacciones desde un archivo compatible',
       'scanReceipt': 'Escanear recibo',

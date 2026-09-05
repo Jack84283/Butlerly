@@ -17,6 +17,7 @@ final class CreateTransactionCommand {
     this.paymentSourceId,
     this.merchantId,
     this.categoryId,
+    this.subcategoryId,
     this.tagIds = const [],
   });
 
@@ -35,6 +36,7 @@ final class CreateTransactionCommand {
   final String? paymentSourceId;
   final String? merchantId;
   final String? categoryId;
+  final String? subcategoryId;
   final List<String> tagIds;
 }
 
@@ -54,6 +56,7 @@ final class UpdateTransactionCommand {
     this.paymentSourceId,
     this.merchantId,
     this.categoryId,
+    this.subcategoryId,
     this.tagIds,
     this.replacePaymentSource = false,
     this.replaceMerchant = false,
@@ -75,6 +78,7 @@ final class UpdateTransactionCommand {
   final String? paymentSourceId;
   final String? merchantId;
   final String? categoryId;
+  final String? subcategoryId;
   final List<String>? tagIds;
   final bool replacePaymentSource;
   final bool replaceMerchant;

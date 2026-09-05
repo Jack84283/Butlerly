@@ -39,6 +39,81 @@ void main() {
   );
 
   test(
+    'applies confirmed history to manual and imported transactions',
+    () async {
+      final merchants = MemoryMerchants();
+      await merchants.save(
+        Merchant(
+          id: MerchantId('merchant-safeway'),
+          name: 'Safeway',
+          defaultCategoryId: CategoryId('wrong-default'),
+        ),
+      );
+      transactions.values['historical'] = Transaction(
+        id: TransactionId('historical'),
+        timing: KnownTransactionTime(now),
+        money: money('20'),
+        direction: TransactionDirection.expense,
+        sourceType: TransactionSourceType.manual,
+        description: 'SAFEWAY #1234',
+        merchantId: MerchantId('merchant-safeway'),
+        categoryId: CategoryId('food'),
+        subcategoryId: CategoryId('groceries'),
+        provenance: [
+          Provenance(
+            id: ProvenanceId('historical-provenance'),
+            sourceType: ProvenanceSourceType.userEntry,
+            capturedAt: now,
+          ),
+        ],
+        createdAt: now,
+        updatedAt: now,
+      );
+      final classifier = ProposeTransactionClassification(
+        transactions,
+        merchants,
+      );
+
+      await CreateTransaction(transactions, clock, classifier: classifier)(
+        CreateTransactionCommand(
+          id: 'manual-classified',
+          provenanceId: 'manual-classified-provenance',
+          timing: KnownTransactionTime(now),
+          money: money('12'),
+          direction: TransactionDirection.expense,
+          description: 'SAFEWAY #5678',
+        ),
+      );
+      expect(
+        transactions.values['manual-classified']!.categoryId?.value,
+        'food',
+      );
+      expect(
+        transactions.values['manual-classified']!.subcategoryId?.value,
+        'groceries',
+      );
+
+      await ImportTransaction(transactions, clock, classifier: classifier)(
+        ImportTransactionCommand(
+          id: 'file-classified',
+          provenanceId: 'file-classified-provenance',
+          sourceId: 'local.csv',
+          originalRepresentation: 'SAFEWAY #5678',
+          money: money('12'),
+          direction: TransactionDirection.expense,
+          transactionDate: '2026-08-09',
+          description: 'SAFEWAY #5678',
+        ),
+      );
+      expect(transactions.values['file-classified']!.categoryId?.value, 'food');
+      expect(
+        transactions.values['file-classified']!.subcategoryId?.value,
+        'groceries',
+      );
+    },
+  );
+
+  test(
     'receipt creation is idempotent and preserves reviewed fields',
     () async {
       final command = ReceiptTransactionCommand(
@@ -465,6 +540,20 @@ final class MemoryTransactions implements TransactionRepository {
     if (failure case final error?) throw error;
     values[transaction.id.value] = transaction;
   }
+}
+
+final class MemoryMerchants implements MerchantRepository {
+  final values = <String, Merchant>{};
+
+  @override
+  Future<Merchant?> findById(MerchantId id) async => values[id.value];
+
+  @override
+  Future<List<Merchant>> listAll() async => values.values.toList();
+
+  @override
+  Future<void> save(Merchant merchant) async =>
+      values[merchant.id.value] = merchant;
 }
 
 final class MemoryCategories implements CategoryRepository {

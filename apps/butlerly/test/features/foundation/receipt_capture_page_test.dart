@@ -14,15 +14,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../transactions/transaction_lifecycle_test.dart' show
-    MemoryCategories,
-    MemoryDuplicateGroups,
-    MemoryEvidence,
-    MemoryMerchants,
-    MemoryPaymentSources,
-    MemoryTags,
-    MemoryTransactionRepository,
-    MemoryUserPreferences;
+import '../transactions/transaction_lifecycle_test.dart'
+    show
+        MemoryCategories,
+        MemoryDuplicateGroups,
+        MemoryEvidence,
+        MemoryMerchants,
+        MemoryPaymentSources,
+        MemoryTags,
+        MemoryTransactionRepository,
+        MemoryUserPreferences;
 
 void main() {
   testWidgets('consumes injected OCR and exposes editable receipt form', (
@@ -134,17 +135,21 @@ void main() {
     final postProcessException = tester.takeException();
     expect(postProcessException, isNull);
 
-    expect(events, containsAllInOrder([
-      'picker',
-      'preserve',
-      'fileForPreserved',
-      'ocr-start',
-      'ocr-complete',
-    ]));
+    expect(
+      events,
+      containsAllInOrder([
+        'picker',
+        'preserve',
+        'fileForPreserved',
+        'ocr-start',
+        'ocr-complete',
+      ]),
+    );
     expect(ocrStarted, isTrue);
     expect(ocrCompleted, isTrue);
     expect(find.text('Reading receipt'), findsNothing);
     expect(find.byType(TextFormField), findsWidgets);
+    expect(find.text('Description'), findsOneWidget);
     expect(find.text('12.34'), findsOneWidget);
     expect(find.text('Save receipt transaction'), findsOneWidget);
     expect(tester.takeException(), isNull);

@@ -17,6 +17,7 @@ final class ReceiptTransactionCommand {
     this.notes,
     this.merchantId,
     this.categoryId,
+    this.subcategoryId,
     this.paymentSourceId,
     this.tagIds = const [],
   });
@@ -31,6 +32,7 @@ final class ReceiptTransactionCommand {
   final String? notes;
   final String? merchantId;
   final String? categoryId;
+  final String? subcategoryId;
   final String? paymentSourceId;
   final List<String> tagIds;
 }
@@ -83,8 +85,16 @@ final class CreateReceiptTransaction {
             ? null
             : MerchantId(resolvedMerchantId),
         categoryId: command.categoryId == null
-            ? null
+            ? proposal is ApplicationSuccess<ClassificationProposal>
+                  ? proposal.value.categoryId
+                  : null
             : CategoryId(command.categoryId!),
+        subcategoryId: command.subcategoryId == null
+            ? command.categoryId == null &&
+                      proposal is ApplicationSuccess<ClassificationProposal>
+                  ? proposal.value.subcategoryId
+                  : null
+            : CategoryId(command.subcategoryId!),
         paymentSourceId: command.paymentSourceId == null
             ? null
             : PaymentSourceId(command.paymentSourceId!),

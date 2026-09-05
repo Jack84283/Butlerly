@@ -473,7 +473,16 @@ final class StatementServices {
       merchantId: resolvedMerchantId == null
           ? null
           : MerchantId(resolvedMerchantId),
-      categoryId: row.categoryId == null ? null : CategoryId(row.categoryId!),
+      categoryId: row.categoryId == null
+          ? proposal is ApplicationSuccess<ClassificationProposal>
+                ? proposal.value.categoryId
+                : null
+          : CategoryId(row.categoryId!),
+      subcategoryId:
+          row.categoryId == null &&
+              proposal is ApplicationSuccess<ClassificationProposal>
+          ? proposal.value.subcategoryId
+          : null,
       tagIds: row.tagIds.map(TagId.new).toList(growable: false),
       externalReference: 'statement-row:${row.id}',
       provenance: [
