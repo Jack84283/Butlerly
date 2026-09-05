@@ -33,6 +33,19 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('monthly trend exposes readable period labels', (tester) async {
+    await tester.pumpWidget(
+      _app([
+        _metric('2025-11', '10'),
+        _metric('2025-12', '20'),
+        _metric('2026-01', '30'),
+      ]),
+    );
+    expect(find.text('Nov'), findsOneWidget);
+    expect(find.text('Dec'), findsOneWidget);
+    expect(find.text('Jan'), findsOneWidget);
+  });
 }
 
 Widget _app(List<AnalysisMetric> trend) => MaterialApp(

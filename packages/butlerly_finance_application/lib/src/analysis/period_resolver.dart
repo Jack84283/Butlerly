@@ -70,11 +70,7 @@ final class AnalysisPeriodResolver {
         // Compatibility for in-memory callers from the pre-resolver API.
         'currentPeriod' => _selected(context.period),
         'selected_month' => _selectedMonth(context.period),
-        'current_month' => _month(
-          today.year,
-          today.month,
-          context.period.timeZoneId,
-        ),
+        'current_month' => _currentMonth(today, context.period.timeZoneId),
         'previous_month' => _previousMonth(today, context.period.timeZoneId),
         'year_to_date' => _yearToDate(today, context.period.timeZoneId),
         'previous_year' => _previousYear(today, context.period.timeZoneId),
@@ -167,6 +163,18 @@ final class AnalysisPeriodResolver {
         coverage: AnalysisCoverageState.complete,
         periodType: 'month',
       );
+
+  ResolvedAnalysisWindow _currentMonth(DateTime today, String timeZoneId) {
+    final start = DateTime.utc(today.year, today.month, 1);
+    return ResolvedAnalysisWindow(
+      start: start,
+      endExclusive: DateTime.utc(today.year, today.month, today.day + 1),
+      timeZoneId: timeZoneId,
+      coverage: AnalysisCoverageState.partial,
+      periodType: 'month',
+      limitations: const ['currentMonthToDate'],
+    );
+  }
 
   ResolvedAnalysisWindow _previousMonth(DateTime today, String timeZoneId) {
     final current = DateTime.utc(today.year, today.month, 1);

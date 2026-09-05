@@ -16,7 +16,7 @@ rules:
     ruleVersion: "1.1.0"
     file: metrics/ANL-R010.yaml
   - ruleId: ANL-R014
-    ruleVersion: "1.3.0"
+    ruleVersion: "1.5.0"
     file: insights/ANL-R014.yaml
   - ruleId: ANL-R016
     ruleVersion: "1.1.0"

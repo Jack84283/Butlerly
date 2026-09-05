@@ -119,6 +119,7 @@ final class AnalysisRuleEngine {
         }
         final primaryWindow =
             (primaryResolution as AnalysisPeriodResolved).window;
+        final grouping = _effectiveGrouping(rule, primaryWindow);
         final primaryValues = rule.type == AnalysisRuleType.dataQuality
             ? dataset.transactions
             : dataset.primaryTransactionsByPeriod[rule.period] ??
@@ -139,10 +140,13 @@ final class AnalysisRuleEngine {
             .toList(growable: false);
         final grouped = _group(
           values,
-          rule.grouping,
+          grouping,
           completeDailyAxis:
               rule.surface == AnalysisSurface.trends &&
-              rule.grouping == RuleGrouping.day,
+              grouping == RuleGrouping.day,
+          completeMonthlyAxis:
+              rule.surface == AnalysisSurface.trends &&
+              grouping == RuleGrouping.month,
           window: primaryWindow,
         );
         for (final entry in grouped.entries) {
@@ -394,6 +398,7 @@ final class AnalysisRuleEngine {
     List<AnalysisEconomicTransaction> values,
     RuleGrouping grouping, {
     bool completeDailyAxis = false,
+    bool completeMonthlyAxis = false,
     ResolvedAnalysisWindow? window,
   }) {
     if (grouping == RuleGrouping.none) return {'': values};
@@ -407,6 +412,7 @@ final class AnalysisRuleEngine {
       RuleGrouping.week => _weekKey(value.transactionDate),
       RuleGrouping.month => value.transactionDate?.substring(0, 7) ?? 'unknown',
       RuleGrouping.none => '',
+      RuleGrouping.adaptive => 'unknown',
     };
     final grouped = <String, List<AnalysisEconomicTransaction>>{};
     if (completeDailyAxis && window != null) {
@@ -416,6 +422,15 @@ final class AnalysisRuleEngine {
         date = date.add(const Duration(days: 1))
       ) {
         grouped[_formatDate(date)] = <AnalysisEconomicTransaction>[];
+      }
+    }
+    if (completeMonthlyAxis && window != null) {
+      for (
+        var month = DateTime.utc(window.start.year, window.start.month);
+        month.isBefore(window.endExclusive);
+        month = DateTime.utc(month.year, month.month + 1)
+      ) {
+        grouped[_formatMonth(month)] = <AnalysisEconomicTransaction>[];
       }
     }
     for (final value in values) {
@@ -432,6 +447,18 @@ final class AnalysisRuleEngine {
 
   String _formatDate(DateTime value) =>
       '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+
+  String _formatMonth(DateTime value) =>
+      '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}';
+
+  RuleGrouping _effectiveGrouping(
+    AnalysisRuleDefinition rule,
+    ResolvedAnalysisWindow window,
+  ) {
+    if (rule.grouping != RuleGrouping.adaptive) return rule.grouping;
+    final days = window.endExclusive.difference(window.start).inDays;
+    return days <= 31 ? RuleGrouping.day : RuleGrouping.month;
+  }
 
   String _weekKey(String? value) {
     if (value == null) return 'unknown';

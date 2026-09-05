@@ -63,7 +63,7 @@ void main() {
         resolver.resolvePrimary(type: 'current_month', context: leap)
             as AnalysisPeriodResolved;
     expect(current.window.start, DateTime.utc(2024, 3, 1));
-    expect(current.window.endExclusive, DateTime.utc(2024, 4, 1));
+    expect(current.window.endExclusive, DateTime.utc(2024, 3, 2));
     final previous =
         resolver.resolvePrimary(type: 'previous_month', context: leap)
             as AnalysisPeriodResolved;
