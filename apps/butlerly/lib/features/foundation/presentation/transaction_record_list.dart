@@ -1,5 +1,6 @@
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -83,6 +84,10 @@ class TransactionRecordList extends StatelessWidget {
           ),
           const SizedBox(height: ButlerlySpacing.small),
           ButlerlyCard(
+            // Keep the transaction group surface explicit.  Relying only on
+            // CardTheme makes this presentation appear flat when a host
+            // screen supplies an incomplete theme.
+            color: context.colors.surface,
             padding: EdgeInsets.zero,
             child: ButlerlyTransactionList(
               children: [
