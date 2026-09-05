@@ -405,6 +405,24 @@ void main() {
     );
   });
 
+  test('maps review repository failures to an application failure', () async {
+    transactions.failure = const RepositoryException(
+      RepositoryFailureCode.unavailable,
+      'query transactions for review',
+    );
+
+    final result = await ListReviewItems(transactions)();
+
+    expect(
+      result,
+      isA<ApplicationFailure<List<ReviewItemDto>>>().having(
+        (value) => value.failure.code,
+        'code',
+        ApplicationFailureCode.unavailable,
+      ),
+    );
+  });
+
   test('needs review is limited to active unresolved issues', () async {
     final base = transaction(now);
     final first = base.addReviewIssue(
@@ -536,6 +554,7 @@ final class MemoryTransactions
   @override
   Future<List<Transaction>> queryTransactionsForReview() async {
     reviewQueryCalls++;
+    if (failure case final error?) throw error;
     return values.values
         .where(
           (value) =>

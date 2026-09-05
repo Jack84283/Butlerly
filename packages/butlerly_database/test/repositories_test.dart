@@ -562,6 +562,21 @@ void main() {
     },
   );
 
+  test('maps bulk review query database failures', () async {
+    await database.close();
+
+    await expectLater(
+      transactions.queryTransactionsForReview(),
+      throwsA(
+        isA<RepositoryException>().having(
+          (error) => error.code,
+          'code',
+          RepositoryFailureCode.unavailable,
+        ),
+      ),
+    );
+  });
+
   test('maps foreign-key failures without leaking SQLite details', () async {
     final value = minimalTransaction(
       now,

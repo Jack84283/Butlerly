@@ -209,6 +209,14 @@ final class SqliteTransactionRepository
 
   @override
   Future<List<Transaction>> queryTransactionsForReview() async {
+    try {
+      return await _queryTransactionsForReview();
+    } on DatabaseException catch (error) {
+      throw mapDatabaseException(error, 'query transactions for review');
+    }
+  }
+
+  Future<List<Transaction>> _queryTransactionsForReview() async {
     final rows = await database.connection.rawQuery(
       '''SELECT t.* FROM transactions t
          WHERE t.status = ? AND EXISTS (

@@ -38,13 +38,13 @@ final class DuplicateReviewingTransactionRepository
   @override
   Future<List<Transaction>> queryTransactionsForReview() =>
       delegate is ReviewTransactionRepository
-          ? (delegate as ReviewTransactionRepository).queryTransactionsForReview()
-          : delegate.query(
-              const TransactionRepositoryQuery(
-                needsReview: true,
-                status: TransactionStatus.active,
-              ),
-            );
+      ? (delegate as ReviewTransactionRepository).queryTransactionsForReview()
+      : delegate.query(
+          const TransactionRepositoryQuery(
+            needsReview: true,
+            status: TransactionStatus.active,
+          ),
+        );
 
   Future<void> _refreshReviewMetadata({
     Transaction? previous,
