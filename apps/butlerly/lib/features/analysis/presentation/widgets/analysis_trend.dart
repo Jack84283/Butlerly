@@ -35,16 +35,37 @@ class AnalysisTrend extends StatelessWidget {
                   '${analysisDimension(context, m, masterData)} ${analysisMoney(context, m)}',
             )
             .join(', '),
-        child: SizedBox(
-          height: 150,
-          child: CustomPaint(
-            painter: _TrendPainter(
-              values: model.trend
-                  .map<double>((m) => max == 0 ? 0 : analysisNumber(m) / max)
-                  .toList(),
-              color: context.colors.interactive,
+        child: Column(
+          children: [
+            SizedBox(
+              height: 150,
+              child: CustomPaint(
+                painter: _TrendPainter(
+                  values: model.trend
+                      .map<double>(
+                        (m) => max == 0 ? 0 : analysisNumber(m) / max,
+                      )
+                      .toList(),
+                  color: context.colors.interactive,
+                ),
+              ),
             ),
-          ),
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  for (final metric in model.trend)
+                    Flexible(
+                      child: Text(
+                        analysisPeriodLabel(context, metric),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

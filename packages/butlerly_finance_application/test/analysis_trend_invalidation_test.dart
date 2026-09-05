@@ -4,14 +4,15 @@ import 'package:test/test.dart';
 
 void main() {
   test('current month summary uses month-to-date transactions', () async {
-    final now = DateTime.now();
-    final date =
-        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-01';
+    final now = DateTime.utc(2026, 9, 5, 12);
     final transactions = _Transactions([
-      _transaction('expense', date, '120'),
+      _transaction('first', '2026-09-01', '120'),
+      _transaction('today', '2026-09-05', '30'),
+      _transaction('previous', '2026-08-31', '900'),
+      _transaction('future', '2026-09-06', '800'),
       _transaction(
         'income',
-        date,
+        '2026-09-05',
         '500',
         direction: TransactionDirection.income,
       ),
@@ -33,10 +34,47 @@ void main() {
         .singleWhere((value) => value.rule.identity.value == id)
         .metric!
         .value;
-    expect(metric('ANL-R001'), DecimalValue.parse('120'));
+    expect(metric('ANL-R001'), DecimalValue.parse('150'));
     expect(metric('ANL-R002'), DecimalValue.parse('500'));
-    expect(metric('ANL-R003'), DecimalValue.parse('380'));
+    expect(metric('ANL-R003'), DecimalValue.parse('350'));
   });
+
+  test(
+    'monthly trend uses canonical chronological buckets and preserves gaps',
+    () async {
+      final calculate = CalculateAnalysisOverview(
+        _Rules([_trendRule(grouping: RuleGrouping.month)]),
+        AnalysisDatasetBuilder(
+          _Transactions([
+            _transaction('nov', '2025-11-15', '20'),
+            _transaction('jan', '2026-01-15', '40'),
+          ]),
+          _Preferences(),
+          null,
+        ),
+        const AnalysisRuleEngine(),
+      );
+      final context =
+          (await calculate.contextForDates(
+                    startDate: '2025-11-01',
+                    endDate: '2026-01-31',
+                  )
+                  as ApplicationSuccess<AnalysisContext>)
+              .value;
+
+      final result = await calculate.call(context);
+      expect(_trendDimensions(result), [
+        '2025-11:value',
+        '2025-12:value',
+        '2026-01:value',
+      ]);
+      expect(_trendValues(result), [
+        DecimalValue.parse('20'),
+        DecimalValue.parse('0'),
+        DecimalValue.parse('40'),
+      ]);
+    },
+  );
 
   test(
     'current-month materialized summaries recompute after invalidation',
@@ -272,30 +310,31 @@ AnalysisRuleDefinition _netRule() => AnalysisRuleDefinition(
   definitionHash: RuleDefinitionHash('c' * 64),
 );
 
-AnalysisRuleDefinition _trendRule() => AnalysisRuleDefinition(
-  identity: RuleIdentity('ANL-R014'),
-  version: RuleVersion('1.3.0'),
-  schemaVersion: '1.0.0',
-  type: AnalysisRuleType.metric,
-  nameKey: 'analysis.rule.r014.name',
-  descriptionKey: 'analysis.rule.r014.description',
-  enabled: true,
-  status: AnalysisRuleStatus.active,
-  period: 'selected_period',
-  measure: const RuleMeasure(
-    operation: RuleOperation.sum,
-    field: 'amount',
-    currencyBasis: CurrencyBasis.baseCurrency,
-  ),
-  grouping: RuleGrouping.day,
-  baseline: RuleBaseline.none,
-  condition: const RuleCondition(operator: 'none'),
-  severity: RuleSeverity.info,
-  surface: AnalysisSurface.trends,
-  definitionHash: RuleDefinitionHash('a' * 64),
-  resultPersistence: ResultPersistencePolicy.transient,
-  refreshPolicy: RefreshPolicy.onInvalidation,
-);
+AnalysisRuleDefinition _trendRule({RuleGrouping grouping = RuleGrouping.day}) =>
+    AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R014'),
+      version: RuleVersion('1.3.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.metric,
+      nameKey: 'analysis.rule.r014.name',
+      descriptionKey: 'analysis.rule.r014.description',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(
+        operation: RuleOperation.sum,
+        field: 'amount',
+        currencyBasis: CurrencyBasis.baseCurrency,
+      ),
+      grouping: grouping,
+      baseline: RuleBaseline.none,
+      condition: const RuleCondition(operator: 'none'),
+      severity: RuleSeverity.info,
+      surface: AnalysisSurface.trends,
+      definitionHash: RuleDefinitionHash('a' * 64),
+      resultPersistence: ResultPersistencePolicy.transient,
+      refreshPolicy: RefreshPolicy.onInvalidation,
+    );
 
 Transaction _transaction(
   String id,

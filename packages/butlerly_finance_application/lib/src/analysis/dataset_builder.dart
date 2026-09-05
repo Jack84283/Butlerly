@@ -137,12 +137,13 @@ final class AnalysisDatasetBuilder {
         final baselineResolution = periodResolver.resolvePreviousEquivalent(
           primary: window,
         );
-        if (baselineResolution case AnalysisPeriodResolved(:final window)) {
+        if (baselineResolution is AnalysisPeriodResolved) {
+          final baselineWindow = baselineResolution.window;
           baselineByPeriod[type] = _buildTransactions(
             source,
             reconciliationLinks,
             preference.baseCurrency,
-            window,
+            baselineWindow,
           );
         }
       }

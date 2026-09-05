@@ -36,8 +36,7 @@ class AnalysisModel {
             .map((r) => r.metric!)
             .toList()
           ..sort(
-            (a, b) =>
-                analysisRawDimension(a).compareTo(analysisRawDimension(b)),
+            (a, b) => analysisPeriodKey(a).compareTo(analysisPeriodKey(b)),
           );
     final finding = results
         .where(
@@ -148,6 +147,8 @@ String analysisCategoryId(AnalysisMetric metric) =>
 
 String analysisRawDimension(AnalysisMetric metric) =>
     metric.dimension?.split(':').firstOrNull ?? metric.rule.nameKey;
+
+String analysisPeriodKey(AnalysisMetric metric) => analysisRawDimension(metric);
 
 extension AnalysisFirstOrNull<T> on Iterable<T> {
   T? get firstOrNull => isEmpty ? null : first;

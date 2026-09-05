@@ -143,6 +143,9 @@ final class AnalysisRuleEngine {
           completeDailyAxis:
               rule.surface == AnalysisSurface.trends &&
               rule.grouping == RuleGrouping.day,
+          completeMonthlyAxis:
+              rule.surface == AnalysisSurface.trends &&
+              rule.grouping == RuleGrouping.month,
           window: primaryWindow,
         );
         for (final entry in grouped.entries) {
@@ -394,6 +397,7 @@ final class AnalysisRuleEngine {
     List<AnalysisEconomicTransaction> values,
     RuleGrouping grouping, {
     bool completeDailyAxis = false,
+    bool completeMonthlyAxis = false,
     ResolvedAnalysisWindow? window,
   }) {
     if (grouping == RuleGrouping.none) return {'': values};
@@ -418,6 +422,15 @@ final class AnalysisRuleEngine {
         grouped[_formatDate(date)] = <AnalysisEconomicTransaction>[];
       }
     }
+    if (completeMonthlyAxis && window != null) {
+      for (
+        var month = DateTime.utc(window.start.year, window.start.month);
+        month.isBefore(window.endExclusive);
+        month = DateTime.utc(month.year, month.month + 1)
+      ) {
+        grouped[_formatMonth(month)] = <AnalysisEconomicTransaction>[];
+      }
+    }
     for (final value in values) {
       if (grouping == RuleGrouping.tag && value.tagIds.length > 1) {
         for (final tag in value.tagIds) {
@@ -432,6 +445,9 @@ final class AnalysisRuleEngine {
 
   String _formatDate(DateTime value) =>
       '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+
+  String _formatMonth(DateTime value) =>
+      '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}';
 
   String _weekKey(String? value) {
     if (value == null) return 'unknown';

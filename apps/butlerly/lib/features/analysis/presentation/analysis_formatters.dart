@@ -4,6 +4,7 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 String analysisPeriodDescription(
   BuildContext context,
@@ -56,3 +57,12 @@ String analysisDimension(
 
 String analysisDate(DateTime value) =>
     '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+
+String analysisPeriodLabel(BuildContext context, AnalysisMetric metric) {
+  final raw = analysisPeriodKey(metric);
+  final date = DateTime.tryParse('$raw-01');
+  if (date == null) return raw;
+  return DateFormat.MMM(
+    Localizations.localeOf(context).toString(),
+  ).format(date);
+}
