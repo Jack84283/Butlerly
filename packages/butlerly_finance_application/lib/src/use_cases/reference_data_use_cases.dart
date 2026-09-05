@@ -199,6 +199,22 @@ final class SaveCategory {
 
   Future<ApplicationResult<Category>> call(Category value) =>
       runApplication('save category', () async {
+        if (value.parentId != null) {
+          final parent = await repository.findById(value.parentId!);
+          if (parent == null) {
+            throw const RepositoryException(
+              RepositoryFailureCode.notFound,
+              'parent category',
+            );
+          }
+          if (parent.parentId != null || parent.id == value.id) {
+            invalid(
+              code: DomainErrorCode.relationshipMismatch,
+              field: 'parentId',
+              message: 'A subcategory must belong to a root category.',
+            );
+          }
+        }
         await repository.save(value);
         return value;
       });

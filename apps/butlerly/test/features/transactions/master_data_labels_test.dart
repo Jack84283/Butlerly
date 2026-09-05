@@ -12,6 +12,19 @@ void main() {
 
     expect(categoryDisplayLabel(category, 'en'), 'Food & Dining');
     expect(categoryDisplayLabel(category, 'zh'), '餐饮');
+    expect(categoryDisplayLabel(category, 'es'), 'Comida y restaurantes');
+    expect(
+      categoryDisplayLabel(
+        Category(
+          id: CategoryId('category.food.groceries'),
+          name: 'Groceries',
+          origin: CategoryOrigin.system,
+          parentId: category.id,
+        ),
+        'es',
+      ),
+      'Comestibles',
+    );
     expect(category.id.value, 'category.food');
   });
 
@@ -25,6 +38,10 @@ void main() {
 
     expect(categoryDisplayLabel(category, 'en'), '我的餐馆');
     expect(tagDisplayLabel(tag, 'zh'), '出差');
+    expect(
+      tagDisplayLabel(Tag(id: TagId('tag.business'), name: 'Business'), 'es'),
+      'Negocios',
+    );
   });
 
   test(

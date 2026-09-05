@@ -6,6 +6,7 @@ import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
 import 'package:butlerly/features/foundation/presentation/add_page.dart';
 import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
+import 'package:butlerly/features/foundation/presentation/master_data_page.dart';
 import 'package:butlerly/features/foundation/presentation/payment_sources_page.dart';
 import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart';
 import 'package:butlerly/features/foundation/presentation/receipt_capture_page.dart';
@@ -165,6 +166,7 @@ final appRouter = GoRouter(
             ),
     ),
     GoRoute(path: '/privacy-data', builder: (_, _) => const PrivacyDataPage()),
+    GoRoute(path: '/master-data', builder: (_, _) => const MasterDataPage()),
     GoRoute(
       path: '/notifications',
       builder: (_, _) => const NotificationsPage(),

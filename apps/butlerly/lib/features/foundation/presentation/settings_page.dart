@@ -214,6 +214,17 @@ class SettingsPage extends ConsumerWidget {
             ),
           ],
         ),
+        ButlerlySectionHeader(title: context.l10n.text('masterData')),
+        _SettingsSectionCard(
+          children: [
+            _SettingsRow(
+              icon: Icons.account_tree_outlined,
+              title: context.l10n.text('masterData'),
+              subtitle: context.l10n.text('masterDataSubtitle'),
+              onTap: () => context.push('/master-data'),
+            ),
+          ],
+        ),
         ButlerlySectionHeader(title: context.l10n.text('optionalFeatures')),
         _SettingsSectionCard(
           children: [
