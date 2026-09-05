@@ -5,7 +5,10 @@ import '../database/butlerly_database.dart';
 import '../mappers/sqlite_helpers.dart';
 
 final class SqliteTransactionRepository
-    implements TransactionRepository, HistoricalClassificationRepository {
+    implements
+        TransactionRepository,
+        HistoricalClassificationRepository,
+        ReviewTransactionRepository {
   const SqliteTransactionRepository(this.database);
 
   final ButlerlyDatabase database;
@@ -205,6 +208,86 @@ final class SqliteTransactionRepository
   }
 
   @override
+  Future<List<Transaction>> queryTransactionsForReview() async {
+    try {
+      return await _queryTransactionsForReview();
+    } on DatabaseException catch (error) {
+      throw mapDatabaseException(error, 'query transactions for review');
+    }
+  }
+
+  Future<List<Transaction>> _queryTransactionsForReview() async {
+    final rows = await database.connection.rawQuery(
+      '''SELECT t.* FROM transactions t
+         WHERE t.status = ? AND EXISTS (
+           SELECT 1 FROM review_issues ri
+           WHERE ri.transaction_id = t.id AND ri.status = ?
+         ) ORDER BY t.transaction_date DESC, t.id''',
+      [TransactionStatus.active.name, ReviewIssueStatus.active.name],
+    );
+    if (rows.isEmpty) return const [];
+    final ids = rows.map((row) => row['id']! as String).toList();
+    final provenanceByTransaction = <String, List<Map<String, Object?>>>{};
+    final tagsByTransaction = <String, List<Map<String, Object?>>>{};
+    final issuesByTransaction = <String, List<Map<String, Object?>>>{};
+    final normalizedByTransaction = <String, List<Map<String, Object?>>>{};
+    for (final chunk in _chunks(ids)) {
+      final placeholders = List.filled(chunk.length, '?').join(', ');
+      final args = [...chunk];
+      final provenanceRows = await database.connection.rawQuery(
+        '''SELECT p.*, tp.transaction_id FROM provenances p
+           INNER JOIN transaction_provenances tp ON tp.provenance_id = p.id
+           WHERE tp.transaction_id IN ($placeholders) ORDER BY p.captured_at''',
+        args,
+      );
+      for (final row in provenanceRows) {
+        (provenanceByTransaction[row['transaction_id']! as String] ??= []).add(
+          row,
+        );
+      }
+      final tagRows = await database.connection.rawQuery(
+        'SELECT transaction_id, tag_id FROM transaction_tags '
+        'WHERE transaction_id IN ($placeholders)',
+        args,
+      );
+      for (final row in tagRows) {
+        (tagsByTransaction[row['transaction_id']! as String] ??= []).add(row);
+      }
+      final issueRows = await database.connection.rawQuery(
+        'SELECT * FROM review_issues WHERE transaction_id IN ($placeholders) '
+        'ORDER BY created_at',
+        args,
+      );
+      for (final row in issueRows) {
+        (issuesByTransaction[row['transaction_id']! as String] ??= []).add(row);
+      }
+      final normalizedRows = await database.connection.rawQuery(
+        '''SELECT n.*, r.id AS rate_id, r.from_currency, r.to_currency,
+                  r.rate_coefficient, r.rate_scale, r.effective_at, r.source
+           FROM normalized_money n LEFT JOIN exchange_rates r
+             ON r.id = n.exchange_rate_id
+           WHERE n.transaction_id IN ($placeholders) ORDER BY r.effective_at''',
+        args,
+      );
+      for (final row in normalizedRows) {
+        (normalizedByTransaction[row['transaction_id']! as String] ??= []).add(
+          row,
+        );
+      }
+    }
+    return [
+      for (final row in rows)
+        _hydrateFromRows(
+          row,
+          provenanceRows: provenanceByTransaction[row['id'] as String] ?? [],
+          tagRows: tagsByTransaction[row['id'] as String] ?? [],
+          issueRows: issuesByTransaction[row['id'] as String] ?? [],
+          normalizedRows: normalizedByTransaction[row['id'] as String] ?? [],
+        ),
+    ];
+  }
+
+  @override
   Future<void> removePermanently(TransactionId id) async {
     try {
       await database.transaction((tx) async {
@@ -255,6 +338,23 @@ final class SqliteTransactionRepository
       [id],
     );
 
+    return _hydrateFromRows(
+      row,
+      provenanceRows: provenanceRows,
+      tagRows: tagRows,
+      issueRows: issueRows,
+      normalizedRows: normalizedRows,
+    );
+  }
+
+  Transaction _hydrateFromRows(
+    Map<String, Object?> row, {
+    required List<Map<String, Object?>> provenanceRows,
+    required List<Map<String, Object?>> tagRows,
+    required List<Map<String, Object?>> issueRows,
+    required List<Map<String, Object?>> normalizedRows,
+  }) {
+    final id = row['id']! as String;
     final money = Money(
       amount: decimalFromRow(row, 'amount_coefficient', 'amount_scale'),
       currency: CurrencyCode(row['currency']! as String),
@@ -295,6 +395,18 @@ final class SqliteTransactionRepository
       transactionDate: row['transaction_date'] as String?,
       timeZoneId: row['time_zone_id'] as String?,
     );
+  }
+
+  static Iterable<List<String>> _chunks(
+    List<String> values, [
+    int size = 900,
+  ]) sync* {
+    for (var offset = 0; offset < values.length; offset += size) {
+      final end = (offset + size < values.length)
+          ? offset + size
+          : values.length;
+      yield values.sublist(offset, end);
+    }
   }
 
   static Future<void> _replaceChildren(

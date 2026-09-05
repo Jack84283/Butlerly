@@ -423,12 +423,18 @@ final class ListReviewItems {
 
   Future<ApplicationResult<List<ReviewItemDto>>> call() =>
       runApplication('list review items', () async {
-        final transactions = await repository.query(
-          const TransactionRepositoryQuery(
-            needsReview: true,
-            status: TransactionStatus.active,
-          ),
-        );
+        final List<Transaction> transactions;
+        if (repository is ReviewTransactionRepository) {
+          transactions = await (repository as ReviewTransactionRepository)
+              .queryTransactionsForReview();
+        } else {
+          transactions = await repository.query(
+            const TransactionRepositoryQuery(
+              needsReview: true,
+              status: TransactionStatus.active,
+            ),
+          );
+        }
         return List.unmodifiable(
           transactions.expand(
             (transaction) => transaction.reviewIssues

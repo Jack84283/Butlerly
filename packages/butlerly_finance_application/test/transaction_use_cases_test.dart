@@ -388,6 +388,7 @@ void main() {
         'issue-1',
       ),
     );
+    expect(transactions.reviewQueryCalls, 1);
 
     final resolved = await ResolveReviewIssue(transactions, clock)(
       'transaction-1',
@@ -401,6 +402,24 @@ void main() {
     expect(
       transactions.values['transaction-1']!.reviewIssues.single.status,
       ReviewIssueStatus.resolved,
+    );
+  });
+
+  test('maps review repository failures to an application failure', () async {
+    transactions.failure = const RepositoryException(
+      RepositoryFailureCode.unavailable,
+      'query transactions for review',
+    );
+
+    final result = await ListReviewItems(transactions)();
+
+    expect(
+      result,
+      isA<ApplicationFailure<List<ReviewItemDto>>>().having(
+        (value) => value.failure.code,
+        'code',
+        ApplicationFailureCode.unavailable,
+      ),
     );
   });
 
@@ -513,10 +532,12 @@ final class FixedClock implements ApplicationClock {
   DateTime now() => value;
 }
 
-final class MemoryTransactions implements TransactionRepository {
+final class MemoryTransactions
+    implements TransactionRepository, ReviewTransactionRepository {
   final values = <String, Transaction>{};
   TransactionRepositoryQuery? lastQuery;
   RepositoryException? failure;
+  int reviewQueryCalls = 0;
 
   @override
   Future<Transaction?> findById(TransactionId id) async => values[id.value];
@@ -528,6 +549,19 @@ final class MemoryTransactions implements TransactionRepository {
   Future<List<Transaction>> query(TransactionRepositoryQuery query) async {
     lastQuery = query;
     return values.values.toList();
+  }
+
+  @override
+  Future<List<Transaction>> queryTransactionsForReview() async {
+    reviewQueryCalls++;
+    if (failure case final error?) throw error;
+    return values.values
+        .where(
+          (value) =>
+              value.status == TransactionStatus.active &&
+              value.reviewState == TransactionReviewState.needsReview,
+        )
+        .toList();
   }
 
   @override
