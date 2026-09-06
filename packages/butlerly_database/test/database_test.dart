@@ -111,6 +111,9 @@ void main() {
     final classificationMigration = await File(
       'database/migrations/v4_to_v5.sql',
     ).readAsString();
+    final statementSubcategoryMigration = await File(
+      'database/migrations/v5_to_v6.sql',
+    ).readAsString();
     final legacy = current
         .replaceFirst(', status_before_skip TEXT', '')
         .replaceFirst(
@@ -120,6 +123,10 @@ void main() {
         .replaceFirst(
           ',\n      subcategory_id TEXT REFERENCES categories(id), normalized_description TEXT NOT NULL DEFAULT \'\'',
           '',
+        )
+        .replaceFirst(
+          ',\n      subcategory_id TEXT REFERENCES categories(id),\n      UNIQUE(statement_id, position)',
+          ',\n      UNIQUE(statement_id, position)',
         )
         .replaceFirst(
           "CREATE INDEX idx_transactions_classification_merchant ON transactions(merchant_id, status, category_id, subcategory_id);",
@@ -209,14 +216,21 @@ void main() {
         3: resultsMigration,
         4: merchantMigration,
         5: classificationMigration,
+        6: statementSubcategoryMigration,
       },
     );
     await database.open();
-    expect(await database.connection.getVersion(), 5);
+    expect(await database.connection.getVersion(), 6);
     expect(
       (await database.connection.rawQuery(
         'PRAGMA table_info(statement_rows)',
       )).any((row) => row['name'] == 'status_before_skip'),
+      isTrue,
+    );
+    expect(
+      (await database.connection.rawQuery(
+        'PRAGMA table_info(statement_rows)',
+      )).any((row) => row['name'] == 'subcategory_id'),
       isTrue,
     );
     expect(

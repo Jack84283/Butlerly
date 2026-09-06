@@ -478,11 +478,11 @@ final class StatementServices {
                 ? proposal.value.categoryId
                 : null
           : CategoryId(row.categoryId!),
-      subcategoryId:
-          row.categoryId == null &&
-              proposal is ApplicationSuccess<ClassificationProposal>
-          ? proposal.value.subcategoryId
-          : null,
+      subcategoryId: row.subcategoryId == null
+          ? proposal is ApplicationSuccess<ClassificationProposal>
+                ? proposal.value.subcategoryId
+                : null
+          : CategoryId(row.subcategoryId!),
       tagIds: row.tagIds.map(TagId.new).toList(growable: false),
       externalReference: 'statement-row:${row.id}',
       provenance: [
@@ -576,6 +576,7 @@ final class StatementServices {
     transactionId: transactionId ?? row.transactionId,
     merchantId: row.merchantId,
     categoryId: row.categoryId,
+    subcategoryId: row.subcategoryId,
     tagIds: row.tagIds,
     paymentSourceId: row.paymentSourceId,
     sourceReferenceId: row.sourceReferenceId,
@@ -623,6 +624,7 @@ final class StatementServices {
           transactionId: row.transactionId,
           merchantId: row.merchantId,
           categoryId: row.categoryId,
+          subcategoryId: row.subcategoryId,
           tagIds: row.tagIds,
           paymentSourceId: row.paymentSourceId,
           sourceReferenceId: row.sourceReferenceId,

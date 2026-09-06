@@ -72,6 +72,27 @@ void main() {
     expect(find.text('旅行'), findsNothing);
   });
 
+  testWidgets('subcategory clear emits null instead of its parent category', (
+    tester,
+  ) async {
+    String? clearedValue = 'groceries';
+    await pump(
+      tester,
+      ButlerlySubcategorySelector(
+        categories: [parent, child],
+        masterData: labels,
+        parentId: parent.id.value,
+        value: clearedValue,
+        label: 'Subcategory',
+        clearLabel: 'Clear subcategory',
+        onChanged: (value) => clearedValue = value,
+      ),
+    );
+
+    await tester.tap(find.byTooltip('Clear subcategory').first);
+    expect(clearedValue, isNull);
+  });
+
   testWidgets('shared selectors expose localized clear labels', (tester) async {
     await pump(
       tester,

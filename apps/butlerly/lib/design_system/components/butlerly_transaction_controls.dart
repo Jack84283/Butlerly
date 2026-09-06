@@ -198,8 +198,8 @@ class ButlerlySubcategorySelector extends StatelessWidget {
             label: masterData.categoryName(category.id.value) ?? category.name,
           ),
       ],
-      onChanged: (next) => onChanged(next ?? parentId),
-      onClear: selected == null ? null : () => onChanged(parentId),
+      onChanged: onChanged,
+      onClear: selected == null ? null : () => onChanged(null),
       clearTooltip: clearLabel,
     );
   }
