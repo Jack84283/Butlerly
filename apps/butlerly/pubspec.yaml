@@ -49,5 +49,4 @@ flutter:
     - assets/analysis_rules/insights/
     - assets/analysis_rules/data_quality/
     - assets/icons/categories/
-    - assets/branding/
   uses-material-design: true
