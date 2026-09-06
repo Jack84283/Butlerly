@@ -241,6 +241,7 @@ CREATE TABLE statement_rows (
       transaction_id TEXT REFERENCES transactions(id),
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL, merchant_id TEXT REFERENCES merchants(id), category_id TEXT REFERENCES categories(id), tag_ids TEXT, payment_source_id TEXT REFERENCES payment_sources(id), source_reference_id TEXT, review_reason TEXT, disposition_reason TEXT, status_before_skip TEXT,
+      subcategory_id TEXT REFERENCES categories(id),
       UNIQUE(statement_id, position)
     );
 

@@ -90,6 +90,7 @@ final class StatementRow {
     this.transactionId,
     this.merchantId,
     this.categoryId,
+    this.subcategoryId,
     this.tagIds = const [],
     this.paymentSourceId,
     this.sourceReferenceId,
@@ -142,6 +143,7 @@ final class StatementRow {
   final String? transactionId;
   final String? merchantId;
   final String? categoryId;
+  final String? subcategoryId;
   final List<String> tagIds;
   final String? paymentSourceId;
   final String? sourceReferenceId;

@@ -128,6 +128,40 @@ void main() {
     },
   );
 
+  test(
+    'preserves an explicit parent when history proposes another category',
+    () async {
+      final merchants = _Merchants();
+      transactions.values['historical'] = _transaction(
+        'historical',
+        amount: '99',
+        categoryId: 'category.travel',
+        subcategoryId: 'category.travel.hotels',
+      );
+      service = StatementServices(
+        statements,
+        transactions,
+        statements,
+        _Clock(now),
+        duplicateGroups: groups,
+        duplicateChecker: DuplicateTransactionChecker(transactions),
+        classifier: ProposeTransactionClassification(transactions, merchants),
+      );
+
+      final result = await service.save(
+        _row('explicit-parent', amount: '13', categoryId: 'category.food'),
+        'source',
+        allowCreateNew: true,
+      );
+
+      expect(result, isA<ApplicationSuccess<TransactionDto>>());
+      final saved =
+          transactions.values['statement-statement-row-explicit-parent']!;
+      expect(saved.categoryId, CategoryId('category.food'));
+      expect(saved.subcategoryId, isNull);
+    },
+  );
+
   test('skip and restore toggle the existing statement row', () async {
     for (final previous in [
       StatementRowStatus.pending,
@@ -191,6 +225,8 @@ StatementRow _row(
   StatementRowStatus status = StatementRowStatus.pending,
   String? currency = 'USD',
   String? direction = 'expense',
+  String? categoryId,
+  String? subcategoryId,
 }) => StatementRow(
   id: 'row-$id',
   statementId: 'statement',
@@ -201,6 +237,8 @@ StatementRow _row(
   amount: amount,
   currency: currency,
   direction: direction,
+  categoryId: categoryId,
+  subcategoryId: subcategoryId,
   confidence: confidence,
   transactionId: transactionId,
   status: status,
@@ -208,7 +246,12 @@ StatementRow _row(
   updatedAt: DateTime.utc(2026, 8, 1),
 );
 
-Transaction _transaction(String id, {required String amount}) => Transaction(
+Transaction _transaction(
+  String id, {
+  required String amount,
+  String? categoryId,
+  String? subcategoryId,
+}) => Transaction(
   id: TransactionId(id),
   timing: const UnknownTransactionTime(UnknownTransactionTimeReason.unknown),
   money: Money(
@@ -218,6 +261,8 @@ Transaction _transaction(String id, {required String amount}) => Transaction(
   direction: TransactionDirection.expense,
   sourceType: TransactionSourceType.manual,
   transactionDate: '2026-08-20',
+  categoryId: categoryId == null ? null : CategoryId(categoryId),
+  subcategoryId: subcategoryId == null ? null : CategoryId(subcategoryId),
   provenance: [
     Provenance(
       id: ProvenanceId('$id-p'),
@@ -229,6 +274,17 @@ Transaction _transaction(String id, {required String amount}) => Transaction(
   createdAt: DateTime.utc(2026, 8, 20),
   updatedAt: DateTime.utc(2026, 8, 20),
 );
+
+final class _Merchants implements MerchantRepository {
+  @override
+  Future<Merchant?> findById(MerchantId id) async => null;
+
+  @override
+  Future<List<Merchant>> listAll() async => const [];
+
+  @override
+  Future<void> save(Merchant merchant) async {}
+}
 
 final class _Clock implements ApplicationClock {
   const _Clock(this.value);

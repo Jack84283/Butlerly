@@ -111,6 +111,9 @@ void main() {
     final classificationMigration = await File(
       'database/migrations/v4_to_v5.sql',
     ).readAsString();
+    final statementSubcategoryMigration = await File(
+      'database/migrations/v5_to_v6.sql',
+    ).readAsString();
     final legacy = current
         .replaceFirst(', status_before_skip TEXT', '')
         .replaceFirst(
@@ -120,6 +123,10 @@ void main() {
         .replaceFirst(
           ',\n      subcategory_id TEXT REFERENCES categories(id), normalized_description TEXT NOT NULL DEFAULT \'\'',
           '',
+        )
+        .replaceFirst(
+          ',\n      subcategory_id TEXT REFERENCES categories(id),\n      UNIQUE(statement_id, position)',
+          ',\n      UNIQUE(statement_id, position)',
         )
         .replaceFirst(
           "CREATE INDEX idx_transactions_classification_merchant ON transactions(merchant_id, status, category_id, subcategory_id);",
@@ -175,6 +182,50 @@ void main() {
       'updated_at': '2026-01-01T00:00:00.000Z',
       'transaction_date': '2026-01-01',
     });
+    await legacyDb.insert('categories', {
+      'id': 'category.food.restaurants',
+      'name': 'Restaurants',
+      'origin': 'system',
+      'parent_id': 'category.food',
+      'status': 'active',
+    });
+    await legacyDb.insert('evidence_items', {
+      'id': 'legacy-evidence',
+      'type': 'statement',
+      'original_name': 'legacy.csv',
+      'media_type': 'text/csv',
+      'provenance_id': 'legacy-provenance',
+      'created_at': '2026-01-01T00:00:00.000Z',
+    });
+    await legacyDb.insert('financial_statements', {
+      'id': 'legacy-statement',
+      'evidence_id': 'legacy-evidence',
+      'status': 'needsSource',
+      'created_at': '2026-01-01T00:00:00.000Z',
+      'updated_at': '2026-01-01T00:00:00.000Z',
+    });
+    await legacyDb.insert('statement_rows', {
+      'id': 'legacy-flattened',
+      'statement_id': 'legacy-statement',
+      'position': 0,
+      'original_text': 'Restaurant 10.00',
+      'row_kind': 'purchase',
+      'status': 'pending',
+      'category_id': 'category.food.restaurants',
+      'created_at': '2026-01-01T00:00:00.000Z',
+      'updated_at': '2026-01-01T00:00:00.000Z',
+    });
+    await legacyDb.insert('statement_rows', {
+      'id': 'legacy-root',
+      'statement_id': 'legacy-statement',
+      'position': 1,
+      'original_text': 'Food 20.00',
+      'row_kind': 'purchase',
+      'status': 'pending',
+      'category_id': 'category.food',
+      'created_at': '2026-01-01T00:00:00.000Z',
+      'updated_at': '2026-01-01T00:00:00.000Z',
+    });
     await legacyDb.insert('transaction_provenances', {
       'transaction_id': 'legacy-safeway',
       'provenance_id': 'legacy-provenance',
@@ -209,14 +260,21 @@ void main() {
         3: resultsMigration,
         4: merchantMigration,
         5: classificationMigration,
+        6: statementSubcategoryMigration,
       },
     );
     await database.open();
-    expect(await database.connection.getVersion(), 5);
+    expect(await database.connection.getVersion(), 6);
     expect(
       (await database.connection.rawQuery(
         'PRAGMA table_info(statement_rows)',
       )).any((row) => row['name'] == 'status_before_skip'),
+      isTrue,
+    );
+    expect(
+      (await database.connection.rawQuery(
+        'PRAGMA table_info(statement_rows)',
+      )).any((row) => row['name'] == 'subcategory_id'),
       isTrue,
     );
     expect(
@@ -227,6 +285,27 @@ void main() {
         whereArgs: ['legacy-safeway'],
       )).single['normalized_description'],
       'safeway',
+    );
+    expect(
+      (await database.connection.query(
+        'statement_rows',
+        columns: ['category_id', 'subcategory_id'],
+        where: 'id = ?',
+        whereArgs: ['legacy-flattened'],
+      )).single,
+      {
+        'category_id': 'category.food',
+        'subcategory_id': 'category.food.restaurants',
+      },
+    );
+    expect(
+      (await database.connection.query(
+        'statement_rows',
+        columns: ['category_id', 'subcategory_id'],
+        where: 'id = ?',
+        whereArgs: ['legacy-root'],
+      )).single,
+      {'category_id': 'category.food', 'subcategory_id': null},
     );
     expect(
       (await database.connection.query(

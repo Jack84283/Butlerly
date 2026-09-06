@@ -860,15 +860,8 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
     final amount = TextEditingController(text: row.amount);
     final currency = TextEditingController(text: row.currency);
     var direction = row.direction;
-    var subcategoryId =
-        row.categoryId != null &&
-            widget.masterData.presentation.categoryParentId(row.categoryId) !=
-                null
-        ? row.categoryId
-        : null;
-    var categoryId =
-        widget.masterData.presentation.categoryParentId(row.categoryId) ??
-        row.categoryId;
+    var subcategoryId = row.subcategoryId;
+    var categoryId = row.categoryId;
     var merchantId = row.merchantId;
     var tagIds = row.tagIds.toSet();
     final accepted = await showButlerlyBottomSheet<bool>(
@@ -1031,7 +1024,8 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
               direction != null
           ? StatementRowStatus.pending
           : StatementRowStatus.unresolved,
-      categoryId: subcategoryId ?? categoryId,
+      categoryId: categoryId,
+      subcategoryId: subcategoryId,
       merchantId: merchantId,
       tagIds: tagIds.toList(growable: false),
       paymentSourceId: row.paymentSourceId,
