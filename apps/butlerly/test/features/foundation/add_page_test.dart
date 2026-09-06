@@ -45,17 +45,17 @@ void main() {
     expect(find.byType(ButlerlyCard), findsNWidgets(5));
     expect(find.text('Add transaction manually'), findsOneWidget);
     expect(find.text('Enter transaction details yourself'), findsOneWidget);
-    expect(find.text('Scan Receipt'), findsOneWidget);
+    expect(find.text('Scan receipt'), findsOneWidget);
     expect(
       find.text('Scan a receipt to extract transaction details'),
       findsOneWidget,
     );
-    expect(find.text('Import Statement'), findsOneWidget);
+    expect(find.text('Import statement'), findsOneWidget);
     expect(
       find.text('Scan a statement to review and add transactions'),
       findsOneWidget,
     );
-    expect(find.text('Import File'), findsOneWidget);
+    expect(find.text('Import file'), findsOneWidget);
     expect(
       find.text('Import transaction from a supported transaction file'),
       findsOneWidget,

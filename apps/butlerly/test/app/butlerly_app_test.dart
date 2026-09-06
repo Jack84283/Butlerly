@@ -119,7 +119,7 @@ void main() {
     expect(find.text('No transactions yet'), findsOneWidget);
     expect(find.text('Transactions'), findsOneWidget);
     expect(find.text('Tools'), findsOneWidget);
-    expect(find.bySemanticsLabel('Add Transaction'), findsOneWidget);
+    expect(find.bySemanticsLabel('Add transaction'), findsOneWidget);
     expect(find.text('More'), findsAtLeastNWidgets(1));
     expect(find.text('More...'), findsNothing);
     expect(find.text('Local records'), findsOneWidget);
@@ -142,9 +142,9 @@ void main() {
 
     expect(find.text('Add'), findsOneWidget);
     expect(find.text('Add transaction manually'), findsOneWidget);
-    expect(find.text('Scan Receipt'), findsOneWidget);
-    expect(find.text('Import Statement'), findsOneWidget);
-    expect(find.text('Import File'), findsOneWidget);
+    expect(find.text('Scan receipt'), findsOneWidget);
+    expect(find.text('Import statement'), findsOneWidget);
+    expect(find.text('Import file'), findsOneWidget);
     expect(find.text('Payment sources'), findsOneWidget);
 
     await tester.binding.handlePopRoute();
@@ -158,13 +158,13 @@ void main() {
       await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.bySemanticsLabel('Add Transaction'));
+      await tester.tap(find.bySemanticsLabel('Add transaction'));
       await tester.pumpAndSettle();
 
       expect(find.text('Add'), findsOneWidget);
       expect(
         tester
-                .getSemantics(find.bySemanticsLabel('Add Transaction'))
+                .getSemantics(find.bySemanticsLabel('Add transaction'))
                 .flagsCollection
                 .isSelected ==
             Tristate.isTrue,
@@ -186,7 +186,7 @@ void main() {
     for (final destination in const ['Transactions', 'Tools', 'More']) {
       await tester.tap(find.text(destination).last);
       await tester.pumpAndSettle();
-      await tester.tap(find.bySemanticsLabel('Add Transaction'));
+      await tester.tap(find.bySemanticsLabel('Add transaction'));
       await tester.pumpAndSettle();
       expect(find.text('Add'), findsOneWidget);
       await tester.binding.handlePopRoute();
@@ -201,7 +201,7 @@ void main() {
       );
       expect(
         tester
-                .getSemantics(find.bySemanticsLabel('Add Transaction'))
+                .getSemantics(find.bySemanticsLabel('Add transaction'))
                 .flagsCollection
                 .isSelected ==
             Tristate.isTrue,
@@ -248,7 +248,7 @@ void main() {
         case 'Insights':
           expect(find.text('Not enough data for insights'), findsOneWidget);
       }
-      expect(find.bySemanticsLabel('Add Transaction'), findsNothing);
+      expect(find.bySemanticsLabel('Add transaction'), findsNothing);
       appRouter.go('/tools');
       await tester.pumpAndSettle();
     }
@@ -272,7 +272,7 @@ void main() {
         case '/insights':
           expect(find.text('Not enough data for insights'), findsOneWidget);
       }
-      expect(find.bySemanticsLabel('Add Transaction'), findsNothing);
+      expect(find.bySemanticsLabel('Add transaction'), findsNothing);
       appRouter.go('/tools');
       await tester.pumpAndSettle();
     }
@@ -289,7 +289,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('More'), findsAtLeastNWidgets(1));
-      expect(find.text('Add Transaction'), findsNothing);
+      expect(find.text('Add transaction'), findsNothing);
 
       await tester.scrollUntilVisible(
         find.text('Optional features'),

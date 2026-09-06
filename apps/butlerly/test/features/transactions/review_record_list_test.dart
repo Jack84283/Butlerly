@@ -54,7 +54,7 @@ void main() {
                     tagNames: {'family': '#family'},
                   ),
                   paymentSourceNames: const {'visa': 'Visa •••• 1234'},
-                  missingCategoryLabel: 'Not Categorized',
+                  missingCategoryLabel: 'Not categorized',
                   groupByFinancialDate: true,
                   showDateInRows: true,
                   supportingContentBuilder: (_, transaction) => Text(
@@ -79,7 +79,7 @@ void main() {
         );
         expect(find.byType(ButlerlyRecordRow), findsNWidgets(3));
         expect(find.text('Visa •••• 1234'), findsNWidgets(3));
-        expect(find.text('Not Categorized'), findsNWidgets(3));
+        expect(find.text('Not categorized'), findsNWidgets(3));
         expect(find.text('−42.18 USD'), findsNWidgets(3));
         expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
         expect(find.byIcon(Icons.warning_amber_rounded), findsNothing);

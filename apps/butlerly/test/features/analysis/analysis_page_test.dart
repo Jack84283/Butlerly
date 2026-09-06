@@ -59,7 +59,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('analysis-period-selector')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Last Month').last);
+    await tester.tap(find.text('Last month').last);
     await tester.pumpAndSettle();
     expect(periods, contains('current_month'));
     expect(periods, contains('previous_month'));
