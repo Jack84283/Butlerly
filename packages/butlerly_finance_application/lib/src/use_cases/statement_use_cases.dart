@@ -479,7 +479,8 @@ final class StatementServices {
                 : null
           : CategoryId(row.categoryId!),
       subcategoryId: row.subcategoryId == null
-          ? proposal is ApplicationSuccess<ClassificationProposal>
+          ? row.categoryId == null &&
+                    proposal is ApplicationSuccess<ClassificationProposal>
                 ? proposal.value.subcategoryId
                 : null
           : CategoryId(row.subcategoryId!),
