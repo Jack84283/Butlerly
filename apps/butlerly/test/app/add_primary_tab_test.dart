@@ -21,7 +21,7 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.bySemanticsLabel('Add Transaction'));
+    await tester.tap(find.bySemanticsLabel('Add transaction'));
     await tester.pumpAndSettle();
 
     expect(find.text('Add transaction manually'), findsOneWidget);
@@ -34,7 +34,7 @@ void main() {
     expect(find.byIcon(Icons.arrow_back_ios_new), findsNothing);
     expect(
       tester
-              .getSemantics(find.bySemanticsLabel('Add Transaction'))
+              .getSemantics(find.bySemanticsLabel('Add transaction'))
               .flagsCollection
               .isSelected ==
           Tristate.isTrue,
@@ -45,16 +45,15 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Add transaction manually'), findsNothing);
     expect(
-      tester
-              .getSemantics(find.text('Tools').last)
-              .flagsCollection
-              .isSelected ==
+      tester.getSemantics(find.text('Tools').last).flagsCollection.isSelected ==
           Tristate.isTrue,
       isTrue,
     );
   });
 
-  testWidgets('direct /add route opens inside the primary shell', (tester) async {
+  testWidgets('direct /add route opens inside the primary shell', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -65,10 +64,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Add transaction manually'), findsOneWidget);
-    expect(find.bySemanticsLabel('Add Transaction'), findsOneWidget);
+    expect(find.bySemanticsLabel('Add transaction'), findsOneWidget);
     expect(
       tester
-              .getSemantics(find.bySemanticsLabel('Add Transaction'))
+              .getSemantics(find.bySemanticsLabel('Add transaction'))
               .flagsCollection
               .isSelected ==
           Tristate.isTrue,
@@ -91,19 +90,26 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     await tester.pumpAndSettle();
 
-    for (final route in const ['/review', '/search', '/analysis', '/insights']) {
+    for (final route in const [
+      '/review',
+      '/search',
+      '/analysis',
+      '/insights',
+    ]) {
       appRouter.go(route);
       await tester.pumpAndSettle();
 
       expect(
-        find.bySemanticsLabel('Add Transaction'),
+        find.bySemanticsLabel('Add transaction'),
         findsNothing,
         reason: '$route is a secondary Tools destination.',
       );
     }
   });
 
-  testWidgets('secondary routes do not render the primary footer', (tester) async {
+  testWidgets('secondary routes do not render the primary footer', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -123,7 +129,7 @@ void main() {
       appRouter.go(route);
       await tester.pumpAndSettle();
       expect(
-        find.bySemanticsLabel('Add Transaction'),
+        find.bySemanticsLabel('Add transaction'),
         findsNothing,
         reason: '$route must stay outside the primary app shell.',
       );

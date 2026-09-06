@@ -694,7 +694,7 @@ void main() {
     final uncategorizedPosition = tester.getTopLeft(
       find.descendant(
         of: find.byType(Tab).at(0),
-        matching: find.text('Not Categorized'),
+        matching: find.text('Not categorized'),
       ),
     );
     final duplicatesPosition = tester.getTopLeft(
