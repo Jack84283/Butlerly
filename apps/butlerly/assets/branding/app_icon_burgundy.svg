@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Butlerly app icon</title>
+  <rect width="512" height="512" rx="96" fill="#720018" />
+  <g fill="#F6F0E7">
+    <rect x="136" y="30" width="140" height="388" />
+    <path d="M296 30a60 60 0 0 1 0 120Z" />
+    <path d="M296 258a80 80 0 0 1 0 160Z" />
+  </g>
+  <g fill="#B51F3B">
+    <path d="M256 448 200 432 184 464 256 464Z" />
+    <path d="M256 448 312 432 328 464 256 464Z" />
+  </g>
+  <circle cx="256" cy="448" r="13" fill="#F6F0E7" />
+</svg>
