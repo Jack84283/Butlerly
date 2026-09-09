@@ -37,11 +37,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Spending increased'), findsOneWidget);
-    expect(
-      find.textContaining('higher than the previous period'),
-      findsOneWidget,
-    );
+    expect(find.text('Spending compared with baseline'), findsOneWidget);
+    expect(find.textContaining('previous equivalent period'), findsOneWidget);
     expect(find.textContaining('7,420'), findsOneWidget);
     expect(find.textContaining('5,930'), findsOneWidget);
     expect(find.textContaining('1,490'), findsOneWidget);
@@ -72,20 +69,86 @@ void main() {
     expect(path, '/transactions?ids=support-1%2Csupport-2');
   });
 
+  testWidgets('renders multiple active insight rules generically', (
+    tester,
+  ) async {
+    final results = <RuleExecutionResult>[
+      _result(finding: _finding()),
+      _result(
+        rule: _syntheticRule(),
+        finding: _finding(id: 'finding-2', rule: _syntheticRule()),
+      ),
+    ];
+    await tester.pumpWidget(
+      app((_) async => ApplicationSuccess<List<RuleExecutionResult>>(results)),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Spending compared with baseline'), findsOneWidget);
+    expect(find.text('Expenses'), findsOneWidget);
+    expect(find.byTooltip('Dismiss'), findsNWidgets(2));
+  });
+
+  testWidgets('renders only active findings in deterministic severity order', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      app(
+        (_) async => ApplicationSuccess<List<RuleExecutionResult>>([
+          _result(
+            rule: _syntheticRule(),
+            finding: _finding(
+              id: 'info-finding',
+              rule: _syntheticRule(),
+              severity: RuleSeverity.info,
+            ),
+          ),
+          _result(
+            finding: _finding(
+              id: 'critical-finding',
+              severity: RuleSeverity.critical,
+            ),
+          ),
+          _result(
+            finding: _finding(
+              id: 'dismissed-finding',
+              lifecycle: FindingLifecycle.dismissed,
+            ),
+          ),
+        ]),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Dismiss'), findsNWidgets(2));
+    final titles = tester
+        .widgetList<Text>(find.byType(Text))
+        .map((text) => text.data)
+        .whereType<String>()
+        .toList();
+    expect(
+      titles.indexOf('Spending compared with baseline'),
+      lessThan(titles.indexOf('Expenses')),
+    );
+  });
+
   test('supports authored insight copy in all V1 locales', () {
     expect(
-      AppLocalizations(const Locale('en')).text('insightSpendingIncreaseTitle'),
-      'Spending increased',
+      AppLocalizations(
+        const Locale('en'),
+      ).text('analysis.rule.r020.description'),
+      'Compare spending in the selected period with the previous equivalent period.',
     );
     expect(
       AppLocalizations(
         const Locale('zh', 'CN'),
-      ).text('insightSpendingIncreaseTitle'),
-      '支出增加',
+      ).text('analysis.rule.r020.description'),
+      '将所选期间的支出与上一等效期间进行比较。',
     );
     expect(
-      AppLocalizations(const Locale('es')).text('insightSpendingIncreaseTitle'),
-      'Los gastos aumentaron',
+      AppLocalizations(
+        const Locale('es'),
+      ).text('analysis.rule.r020.description'),
+      'Compara los gastos del período seleccionado con el período equivalente anterior.',
     );
   });
 
@@ -162,26 +225,51 @@ void main() {
 RuleExecutionResult _result({
   AnalysisFinding? finding,
   AnalysisComparison? comparison,
+  AnalysisRuleDefinition? rule,
 }) => RuleExecutionResult(
-  rule: _rule(),
+  rule: rule ?? _rule(),
   finding: finding,
   comparison: comparison,
 );
 
-AnalysisFinding _finding({List<EvidenceReference> evidence = const []}) =>
-    AnalysisFinding(
-      id: 'finding-1',
-      rule: _rule(),
-      context: _context(),
-      severity: RuleSeverity.attention,
-      lifecycle: FindingLifecycle.active,
-      currentValue: DecimalValue.parse('7420'),
-      baselineValue: DecimalValue.parse('5930'),
-      absoluteChange: DecimalValue.parse('1490'),
-      percentageChange: DecimalValue.parse('25.1'),
-      evidence: evidence,
-      generatedAt: DateTime.utc(2026, 9, 5),
-    );
+AnalysisFinding _finding({
+  String id = 'finding-1',
+  AnalysisRuleDefinition? rule,
+  List<EvidenceReference> evidence = const [],
+  RuleSeverity severity = RuleSeverity.attention,
+  FindingLifecycle lifecycle = FindingLifecycle.active,
+}) => AnalysisFinding(
+  id: id,
+  rule: rule ?? _rule(),
+  context: _context(),
+  severity: severity,
+  lifecycle: lifecycle,
+  currentValue: DecimalValue.parse('7420'),
+  baselineValue: DecimalValue.parse('5930'),
+  absoluteChange: DecimalValue.parse('1490'),
+  percentageChange: DecimalValue.parse('25.1'),
+  evidence: evidence,
+  generatedAt: DateTime.utc(2026, 9, 5),
+);
+
+AnalysisRuleDefinition _syntheticRule() => AnalysisRuleDefinition(
+  identity: RuleIdentity('ANL-R999'),
+  version: RuleVersion('1.0.0'),
+  schemaVersion: '1.0.0',
+  type: AnalysisRuleType.insight,
+  nameKey: 'analysis.rule.r001.name',
+  descriptionKey: 'analysis.rule.r020.description',
+  enabled: true,
+  status: AnalysisRuleStatus.active,
+  period: 'selected_period',
+  measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
+  grouping: RuleGrouping.none,
+  baseline: RuleBaseline.previousEquivalentPeriod,
+  condition: const RuleCondition(operator: 'none'),
+  severity: RuleSeverity.info,
+  definitionHash: RuleDefinitionHash('e' * 64),
+  surface: AnalysisSurface.insights,
+);
 
 AnalysisRuleDefinition _rule() => AnalysisRuleDefinition(
   identity: RuleIdentity('ANL-R020'),

@@ -480,6 +480,8 @@ class AppLocalizations {
       'analysis.rule.r014.name': 'Monthly spending insight',
       'analysis.rule.r016.name': 'Transactions by day',
       'analysis.rule.r020.name': 'Spending compared with baseline',
+      'analysis.rule.r020.description':
+          'Compare spending in the selected period with the previous equivalent period.',
       'analysis.rule.r090.name': 'Data quality issues',
       'analysis.rule.r091.name': 'Missing exchange rates',
       'analysis.rule.r092.name': 'Unresolved reconciliation',
@@ -491,9 +493,6 @@ class AppLocalizations {
       'previousPeriod': 'Previous period',
       'difference': 'Difference',
       'percentageChange': 'Percentage change',
-      'insightSpendingIncreaseBody':
-          'Spending is {percent}% higher than the previous period.',
-      'insightSpendingIncreaseTitle': 'Spending increased',
       'insightsInsufficientHistory': 'Not enough history yet',
       'insightsInsufficientHistoryBody':
           'Insights compare your financial activity over time. Keep adding transactions and Butlerly will surface meaningful changes.',
@@ -1036,6 +1035,7 @@ class AppLocalizations {
       'analysis.rule.r014.name': '月度支出洞察',
       'analysis.rule.r016.name': '每日交易笔数',
       'analysis.rule.r020.name': '与基准相比的支出',
+      'analysis.rule.r020.description': '将所选期间的支出与上一等效期间进行比较。',
       'analysis.rule.r090.name': '数据质量问题',
       'analysis.rule.r091.name': '缺少汇率',
       'analysis.rule.r092.name': '未解决的对账',
@@ -1046,8 +1046,6 @@ class AppLocalizations {
       'previousPeriod': '上一期间',
       'difference': '差额',
       'percentageChange': '百分比变化',
-      'insightSpendingIncreaseBody': '支出比上一期间高 {percent}%。',
-      'insightSpendingIncreaseTitle': '支出增加',
       'insightsInsufficientHistory': '历史记录不足',
       'insightsInsufficientHistoryBody':
           '洞察会比较一段时间内的财务活动。继续添加交易，Butlerly 会显示有意义的变化。',
@@ -1621,6 +1619,8 @@ class AppLocalizations {
       'analysis.rule.r014.name': 'Información de gastos mensuales',
       'analysis.rule.r016.name': 'Transacciones por día',
       'analysis.rule.r020.name': 'Gastos comparados con la base',
+      'analysis.rule.r020.description':
+          'Compara los gastos del período seleccionado con el período equivalente anterior.',
       'analysis.rule.r090.name': 'Problemas de calidad de datos',
       'analysis.rule.r091.name': 'Tipos de cambio ausentes',
       'analysis.rule.r092.name': 'Conciliación sin resolver',
@@ -1632,9 +1632,6 @@ class AppLocalizations {
       'previousPeriod': 'Período anterior',
       'difference': 'Diferencia',
       'percentageChange': 'Cambio porcentual',
-      'insightSpendingIncreaseBody':
-          'Los gastos son un {percent}% mayores que en el período anterior.',
-      'insightSpendingIncreaseTitle': 'Los gastos aumentaron',
       'insightsInsufficientHistory': 'Aún no hay suficiente historial',
       'insightsInsufficientHistoryBody':
           'Las perspectivas comparan tu actividad financiera a lo largo del tiempo. Sigue añadiendo transacciones y Butlerly mostrará cambios relevantes.',

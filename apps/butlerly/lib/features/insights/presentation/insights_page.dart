@@ -279,15 +279,30 @@ class _InsightsContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final result = results
-        .where((value) => value.rule.identity.value == 'ANL-R020')
-        .firstOrNull;
-    final finding = result?.finding?.lifecycle == FindingLifecycle.active
-        ? result?.finding
-        : null;
-    final comparison = result?.comparison;
-    final hasHistory =
-        comparison?.availability == AnalysisDataAvailability.sufficient;
+    final insightResults = results
+        .where(
+          (result) =>
+              result.rule.surface == AnalysisSurface.insights &&
+              result.rule.type == AnalysisRuleType.insight,
+        )
+        .toList(growable: false);
+    final activeFindings =
+        insightResults
+            .map((result) => result.finding)
+            .whereType<AnalysisFinding>()
+            .where((finding) => finding.lifecycle == FindingLifecycle.active)
+            .toList()
+          ..sort(_compareFindings);
+    final evaluated = insightResults.any(
+      (result) =>
+          result.failure == null &&
+          (result.finding != null ||
+              result.metric != null ||
+              result.comparison?.availability ==
+                  AnalysisDataAvailability.sufficient ||
+              result.comparison?.availability ==
+                  AnalysisDataAvailability.empty),
+    );
     return ButlerlyPage(
       title: context.l10n.text('insights'),
       subtitle: analysisPeriodDescription(
@@ -298,15 +313,17 @@ class _InsightsContent extends StatelessWidget {
       children: [
         AnalysisPeriodSelector(value: period, onChanged: onPeriodChanged),
         const SizedBox(height: ButlerlySpacing.standard),
-        if (finding case final value?) ...[
+        if (activeFindings.isNotEmpty) ...[
           ButlerlySectionHeader(title: context.l10n.text('needsAttention')),
-          _InsightCard(
-            finding: value,
-            analysisContext: this.context,
-            onDismiss: () => onDismiss(value),
-            onViewTransactions: () => onViewTransactions(value),
-          ),
-        ] else if (!hasHistory)
+          for (final finding in activeFindings)
+            _InsightCard(
+              finding: finding,
+              rule: finding.rule,
+              analysisContext: this.context ?? finding.context,
+              onDismiss: () => onDismiss(finding),
+              onViewTransactions: () => onViewTransactions(finding),
+            ),
+        ] else if (!evaluated)
           ButlerlyEmptyState(
             icon: Icons.insights_outlined,
             title: context.l10n.text('insightsInsufficientHistory'),
@@ -321,42 +338,84 @@ class _InsightsContent extends StatelessWidget {
       ],
     );
   }
+
+  int _compareFindings(AnalysisFinding left, AnalysisFinding right) {
+    final severity = {
+      RuleSeverity.critical: 0,
+      RuleSeverity.warning: 1,
+      RuleSeverity.attention: 2,
+      RuleSeverity.info: 3,
+    };
+    final bySeverity = severity[left.severity]!.compareTo(
+      severity[right.severity]!,
+    );
+    if (bySeverity != 0) return bySeverity;
+    final byDate = right.generatedAt.compareTo(left.generatedAt);
+    if (byDate != 0) return byDate;
+    return left.rule.identity.value.compareTo(right.rule.identity.value);
+  }
 }
 
 class _InsightCard extends StatelessWidget {
   const _InsightCard({
     required this.finding,
+    required this.rule,
     required this.analysisContext,
     required this.onDismiss,
     required this.onViewTransactions,
   });
 
   final AnalysisFinding finding;
-  final AnalysisContext? analysisContext;
+  final AnalysisRuleDefinition rule;
+  final AnalysisContext analysisContext;
   final VoidCallback onDismiss;
   final VoidCallback onViewTransactions;
 
   @override
   Widget build(BuildContext context) {
-    final currency = analysisContext?.baseCurrency?.value ?? '';
-    String amount(DecimalValue? value) => value == null
-        ? context.l10n.text('notAvailable')
+    final currency = analysisContext.baseCurrency?.value ?? '';
+    String? amount(DecimalValue? value) => value == null
+        ? null
         : '${localizedDecimal(context, value.toString())} $currency'.trim();
-    final percent = finding.percentageChange;
-    final change = finding.absoluteChange;
+    final severity = _severityPresentation(context, finding.severity);
+    final values = <Widget>[
+      _InsightValue(
+        label: context.l10n.text('currentPeriod'),
+        value: amount(finding.currentValue),
+      ),
+      _InsightValue(
+        label: context.l10n.text('previousPeriod'),
+        value: amount(finding.baselineValue),
+      ),
+      _InsightValue(
+        label: context.l10n.text('difference'),
+        value: amount(finding.absoluteChange),
+      ),
+      _InsightValue(
+        label: context.l10n.text('percentageChange'),
+        value: finding.percentageChange == null
+            ? null
+            : '${localizedDecimal(context, finding.percentageChange.toString())}%',
+      ),
+      _InsightValue(
+        label: context.l10n.text('analysisPeriod'),
+        value:
+            '${analysisContext.period.startDate} – ${analysisContext.period.endDate}',
+      ),
+    ].whereType<_InsightValue>().where((value) => value.value != null).toList();
     return ButlerlyCard(
-      semanticLabel: context.l10n.text(finding.rule.nameKey),
+      semanticLabel: context.l10n.text(rule.nameKey),
       onTap: onViewTransactions,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.trending_up, color: context.colors.warning),
+              Icon(severity.icon, color: severity.color),
               const SizedBox(width: ButlerlySpacing.small),
               Expanded(
                 child: Text(
-                  context.l10n.text('insightSpendingIncreaseTitle'),
+                  context.l10n.text(rule.nameKey),
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
@@ -368,31 +427,9 @@ class _InsightCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: ButlerlySpacing.small),
-          Text(
-            context.l10n.text('insightSpendingIncreaseBody', {
-              'percent': percent == null
-                  ? context.l10n.text('notAvailable')
-                  : localizedDecimal(context, percent.toString()),
-            }),
-          ),
+          Text(context.l10n.text(rule.descriptionKey)),
           const SizedBox(height: ButlerlySpacing.standard),
-          _InsightValue(
-            label: context.l10n.text('currentPeriod'),
-            value: amount(finding.currentValue),
-          ),
-          _InsightValue(
-            label: context.l10n.text('previousPeriod'),
-            value: amount(finding.baselineValue),
-          ),
-          _InsightValue(
-            label: context.l10n.text('difference'),
-            value: amount(change),
-          ),
-          if (percent != null)
-            _InsightValue(
-              label: context.l10n.text('percentageChange'),
-              value: '${localizedDecimal(context, percent.toString())}%',
-            ),
+          ...values,
           if (finding.evidence.isNotEmpty) ...[
             const SizedBox(height: ButlerlySpacing.small),
             Text(
@@ -418,14 +455,33 @@ class _InsightCard extends StatelessWidget {
 class _InsightValue extends StatelessWidget {
   const _InsightValue({required this.label, required this.value});
   final String label;
-  final String value;
+  final String? value;
 
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: ButlerlySpacing.micro),
     child: Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [Text(label), Text(value)],
+      children: [Text(label), Text(value!)],
     ),
   );
 }
+
+({IconData icon, Color color}) _severityPresentation(
+  BuildContext context,
+  RuleSeverity severity,
+) => switch (severity) {
+  RuleSeverity.critical => (
+    icon: Icons.error_outline,
+    color: context.colors.error,
+  ),
+  RuleSeverity.warning => (
+    icon: Icons.warning_amber_outlined,
+    color: context.colors.warning,
+  ),
+  RuleSeverity.attention => (
+    icon: Icons.priority_high,
+    color: context.colors.warning,
+  ),
+  RuleSeverity.info => (icon: Icons.info_outline, color: context.colors.info),
+};
