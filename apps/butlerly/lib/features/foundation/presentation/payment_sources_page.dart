@@ -1,6 +1,7 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_ocr_service.dart';
+import 'package:butlerly/core/evidence/platform_ocr_recognizer.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -11,7 +12,9 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 class PaymentSourcesPage extends StatefulWidget {
-  const PaymentSourcesPage({super.key});
+  const PaymentSourcesPage({this.ocrRecognizer, super.key});
+
+  final OcrRecognizer? ocrRecognizer;
 
   @override
   State<PaymentSourcesPage> createState() => _PaymentSourcesPageState();
@@ -55,7 +58,21 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
     try {
       final image = await ImagePicker().pickImage(source: ImageSource.camera);
       if (image == null || !mounted) return;
-      final result = await const LocalOcrService().recognizeCard(image.path);
+      final recognizer =
+          widget.ocrRecognizer ??
+          (services.isRegistered<OcrRecognizer>()
+              ? services<OcrRecognizer>()
+              : platformOcrRecognizer());
+      final document = await recognizer.recognize(
+        OcrRequest(
+          source: OcrSource(path: image.path, kind: OcrSourceKind.image),
+          intent: OcrIntent.paymentCard,
+        ),
+      );
+      if (document.text.trim().isEmpty) {
+        throw const FormatException('No readable card details were found.');
+      }
+      final result = CardTextParser.parse(document.text, document.observations);
       if (!mounted) return;
       await _edit(scanned: result);
     } on FormatException catch (error) {

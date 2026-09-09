@@ -58,8 +58,6 @@ void main() {
       localFileName: 'receipt.png',
       mediaType: 'image/png',
     );
-    var ocrStarted = false;
-    var ocrCompleted = false;
 
     tester.view.viewInsets = FakeViewPadding.zero;
     tester.view.padding = FakeViewPadding.zero;
@@ -87,20 +85,7 @@ void main() {
             return file;
           },
           discardPreserved: (_) async {},
-          ocr: (_) async {
-            ocrStarted = true;
-            events.add('ocr-start');
-            final result = ReceiptOcrResult(
-              merchant: 'Test Merchant',
-              amount: '12.34',
-              currency: 'USD',
-              date: DateTime(2026, 8, 28),
-              rawText: 'Test Merchant 12.34 USD',
-            );
-            ocrCompleted = true;
-            events.add('ocr-complete');
-            return result;
-          },
+          ocrRecognizer: _FakeOcrRecognizer(events),
           loadInitialData: () async => const ReceiptCaptureInitialData(
             preference: null,
             snapshot: TransactionMasterDataSnapshot(
@@ -145,8 +130,6 @@ void main() {
         'ocr-complete',
       ]),
     );
-    expect(ocrStarted, isTrue);
-    expect(ocrCompleted, isTrue);
     expect(find.text('Reading receipt'), findsNothing);
     expect(find.byType(TextFormField), findsWidgets);
     expect(find.text('Description'), findsOneWidget);
@@ -154,4 +137,33 @@ void main() {
     expect(find.text('Save receipt transaction'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+}
+
+final class _FakeOcrRecognizer implements OcrRecognizer {
+  _FakeOcrRecognizer(this.events);
+  final List<String> events;
+
+  @override
+  Future<OcrAvailability> availability() async => OcrAvailability.available;
+
+  @override
+  Future<OcrDocument> recognize(OcrRequest request) async {
+    events.add('ocr-start');
+    final observations = <OcrObservation>[
+      const OcrObservation(text: 'Test Merchant', confidence: .9, order: 0),
+      const OcrObservation(text: 'TOTAL 12.34 USD', confidence: .9, order: 1),
+    ];
+    events.add('ocr-complete');
+    return OcrDocument(
+      pages: [OcrPage(index: 0, observations: observations)],
+      diagnostics: OcrDiagnostics(
+        sourceKind: OcrSourceKind.image,
+        sourceOpened: true,
+        pageCount: 1,
+        observationCount: 2,
+        recognizedLineCount: 2,
+        observationsWithBounds: 0,
+      ),
+    );
+  }
 }

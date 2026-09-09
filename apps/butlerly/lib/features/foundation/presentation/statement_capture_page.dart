@@ -1,7 +1,7 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
-import 'package:butlerly/core/evidence/local_statement_ocr_support.dart';
+import 'package:butlerly/core/evidence/platform_ocr_recognizer.dart';
 import 'package:butlerly/core/evidence/statement_extractor.dart';
 import 'package:butlerly/core/evidence/statement_source_matcher.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
@@ -43,9 +43,10 @@ final class CancelStatementReconciliation
 }
 
 class StatementCapturePage extends StatefulWidget {
-  const StatementCapturePage({this.pickImage, super.key});
+  const StatementCapturePage({this.pickImage, this.ocrRecognizer, super.key});
 
   final Future<XFile?> Function(ImageSource source)? pickImage;
+  final OcrRecognizer? ocrRecognizer;
   @override
   State<StatementCapturePage> createState() => _StatementCapturePageState();
 }
@@ -161,10 +162,14 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     StatementExtraction? extraction;
     try {
       final localFile = await store.fileForPreserved(preserved);
-      if (localFile != null && supportsLocalStatementOcr()) {
-        extraction = await const LocalStatementExtractor().extract(
-          localFile.path,
-        );
+      if (localFile != null) {
+        extraction = await LocalStatementExtractor(
+          recognizer:
+              widget.ocrRecognizer ??
+              (services.isRegistered<OcrRecognizer>()
+                  ? services<OcrRecognizer>()
+                  : platformOcrRecognizer()),
+        ).extract(localFile.path);
       }
     } on Object {
       // The original is still retained so unreadable statements can be fixed.

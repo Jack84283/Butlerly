@@ -3,13 +3,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('enables statement OCR only for native iOS', () {
+  test('enables statement OCR for supported native platforms', () {
     expect(
       supportsLocalStatementOcr(platform: TargetPlatform.iOS, isWeb: false),
       isTrue,
     );
     for (final platform in TargetPlatform.values) {
-      if (platform != TargetPlatform.iOS) {
+      if (platform != TargetPlatform.iOS &&
+          platform != TargetPlatform.android) {
         expect(
           supportsLocalStatementOcr(platform: platform, isWeb: false),
           isFalse,

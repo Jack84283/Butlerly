@@ -1,27 +1,8 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/services.dart';
+import 'ocr_contract.dart';
 
-final class OcrObservation {
-  const OcrObservation({
-    required this.text,
-    required this.confidence,
-    required this.left,
-    required this.top,
-    required this.width,
-    required this.height,
-    this.pageIndex = 0,
-    this.order = 0,
-  });
-
-  final String text;
-  final double confidence;
-  final double left;
-  final double top;
-  final double width;
-  final double height;
-  final int pageIndex;
-  final int order;
-}
+export 'ocr_contract.dart';
 
 final class NativeOcrDiagnostics {
   const NativeOcrDiagnostics({
