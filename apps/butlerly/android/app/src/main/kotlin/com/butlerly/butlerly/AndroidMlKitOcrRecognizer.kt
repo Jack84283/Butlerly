@@ -3,7 +3,9 @@ package com.butlerly.butlerly
 import android.app.Activity
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.graphics.Rect
+import androidx.exifinterface.media.ExifInterface
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
@@ -18,6 +20,14 @@ class AndroidMlKitOcrRecognizer(private val activity: Activity) {
         // Keeps transient OCR bitmaps bounded to roughly 16 MiB at ARGB_8888,
         // including on supported devices with 3–4 GiB of RAM.
         const val MAX_OCR_DIMENSION = 2048
+
+        /** Maps the EXIF camera orientations which include a quarter-turn. */
+        fun exifRotationDegrees(orientation: Int): Int = when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> 90
+            ExifInterface.ORIENTATION_ROTATE_180 -> 180
+            ExifInterface.ORIENTATION_ROTATE_270 -> 270
+            else -> 0
+        }
     }
 
     fun recognize(call: MethodCall, result: MethodChannel.Result) {
@@ -40,17 +50,20 @@ class AndroidMlKitOcrRecognizer(private val activity: Activity) {
             result.error("image_open_failed", "The local image could not be opened.", mapOf("stage" to "imageDecode"))
             return
         }
-        val width = bitmap.width
-        val height = bitmap.height
+        val rotation = exifRotationDegrees(readExifOrientation(path))
+        val orientedBitmap = rotate(bitmap, rotation)
+        if (orientedBitmap !== bitmap) bitmap.recycle()
+        val width = orientedBitmap.width
+        val height = orientedBitmap.height
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
         try {
             // The original evidence file is never modified; this bounded bitmap
             // exists only for the duration of this recognition request.
-            recognizer.process(InputImage.fromBitmap(bitmap, 0))
+            recognizer.process(InputImage.fromBitmap(orientedBitmap, 0))
                 .addOnSuccessListener { text ->
                     if (text.text.isBlank()) {
                         result.error("no_text", "No readable text was found.", mapOf("stage" to "mlKitRecognition"))
-                        bitmap.recycle()
+                        orientedBitmap.recycle()
                         recognizer.close()
                         return@addOnSuccessListener
                     }
@@ -73,16 +86,16 @@ class AndroidMlKitOcrRecognizer(private val activity: Activity) {
                         "pixelHeight" to height,
                     )
                     result.success(mapOf("text" to text.text, "observations" to observations, "diagnostics" to diagnostics))
-                    bitmap.recycle()
+                    orientedBitmap.recycle()
                     recognizer.close()
                 }
                 .addOnFailureListener { error ->
                     result.error("ocr_failed", "Local text recognition failed.", mapOf("stage" to "mlKitRecognition", "type" to error.javaClass.simpleName))
-                    bitmap.recycle()
+                    orientedBitmap.recycle()
                     recognizer.close()
                 }
         } catch (error: Exception) {
-            bitmap.recycle()
+            orientedBitmap.recycle()
             recognizer.close()
             result.error("ocr_failed", "Local text recognition failed.", mapOf("stage" to "mlKitSetup", "type" to error.javaClass.simpleName))
         }
@@ -103,6 +116,29 @@ class AndroidMlKitOcrRecognizer(private val activity: Activity) {
                 inSampleSize = sampleSize
                 inPreferredConfig = Bitmap.Config.ARGB_8888
             },
+        )
+    }
+
+    private fun readExifOrientation(path: String): Int = try {
+        ExifInterface(path).getAttributeInt(
+            ExifInterface.TAG_ORIENTATION,
+            ExifInterface.ORIENTATION_UNDEFINED,
+        )
+    } catch (_: Exception) {
+        ExifInterface.ORIENTATION_UNDEFINED
+    }
+
+    private fun rotate(bitmap: Bitmap, degrees: Int): Bitmap {
+        if (degrees == 0) return bitmap
+        val matrix = Matrix().apply { postRotate(degrees.toFloat()) }
+        return Bitmap.createBitmap(
+            bitmap,
+            0,
+            0,
+            bitmap.width,
+            bitmap.height,
+            matrix,
+            true,
         )
     }
 
