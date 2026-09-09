@@ -5,6 +5,16 @@ enum OcrSourceKind { image, pdf }
 final class OcrSource {
   const OcrSource({required this.path, required this.kind});
 
+  factory OcrSource.fromPath(String path) {
+    final normalized = path.toLowerCase();
+    return OcrSource(
+      path: path,
+      kind: normalized.endsWith('.pdf')
+          ? OcrSourceKind.pdf
+          : OcrSourceKind.image,
+    );
+  }
+
   final String path;
   final OcrSourceKind kind;
 }
@@ -70,6 +80,10 @@ final class OcrDiagnostics {
     this.pixelWidth,
     this.pixelHeight,
     this.orientation,
+    this.visionObservationsRecognized,
+    this.confidenceMinimum,
+    this.confidenceAverage,
+    this.confidenceMaximum,
   });
 
   final OcrSourceKind sourceKind;
@@ -78,13 +92,20 @@ final class OcrDiagnostics {
   final int observationsWithBounds;
   final int? pixelWidth, pixelHeight;
   final String? orientation;
+  final int? visionObservationsRecognized;
+  final double? confidenceMinimum, confidenceAverage, confidenceMaximum;
 }
 
 final class OcrDocument {
-  const OcrDocument({required this.pages, required this.diagnostics});
+  const OcrDocument({
+    required this.pages,
+    required this.diagnostics,
+    this.fullText,
+  });
 
   final List<OcrPage> pages;
   final OcrDiagnostics diagnostics;
+  final String? fullText;
 
   List<OcrObservation> get observations =>
       [for (final page in pages) ...page.observations]..sort((a, b) {
@@ -92,7 +113,8 @@ final class OcrDocument {
         return page == 0 ? a.order.compareTo(b.order) : page;
       });
 
-  String get text => observations.map((value) => value.text).join('\n');
+  String get text =>
+      fullText ?? observations.map((value) => value.text).join('\n');
 }
 
 final class OcrRequest {
@@ -110,6 +132,7 @@ enum OcrFailureCode {
   unreadableSource,
   noReadableText,
   technicalFailure,
+  invalidResponse,
 }
 
 final class OcrException implements Exception {

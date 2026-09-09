@@ -58,8 +58,8 @@ final class PlatformOcrRecognizer implements OcrRecognizer {
       payload = await _channel
           .invokeMapMethod<Object?, Object?>('recognizeText', {
             'path': request.source.path,
-            'intent': request.intent.name,
-            'sourceKind': request.source.kind.name,
+            if (request.source.kind == OcrSourceKind.pdf)
+              'sourceKind': request.source.kind.name,
           });
     } on PlatformException catch (error) {
       throw _exception(error);
@@ -76,13 +76,24 @@ final class PlatformOcrRecognizer implements OcrRecognizer {
       );
     }
     final observations = _observations(payload['observations']);
+    final diagnosticMap = payload['diagnostics'];
+    final reportedCount = diagnosticMap is Map
+        ? (diagnosticMap['observationCount'] as num?)?.toInt()
+        : null;
+    if (reportedCount != null && reportedCount != observations.length) {
+      throw const OcrException(
+        code: OcrFailureCode.invalidResponse,
+        stage: 'methodChannel',
+      );
+    }
     final normalizedObservations = observations.isNotEmpty
         ? observations
         : _textObservations(payload['text'] as String? ?? '');
-    final diagnostics = _diagnostics(payload['diagnostics'], request.source);
+    final diagnostics = _diagnostics(diagnosticMap, request.source);
     return OcrDocument(
       pages: _pages(normalizedObservations, diagnostics),
       diagnostics: diagnostics,
+      fullText: payload['text'] as String? ?? '',
     );
   }
 
@@ -161,6 +172,11 @@ final class PlatformOcrRecognizer implements OcrRecognizer {
       pixelWidth: (map['pixelWidth'] as num?)?.toInt(),
       pixelHeight: (map['pixelHeight'] as num?)?.toInt(),
       orientation: map['orientation'] as String?,
+      visionObservationsRecognized: (map['visionObservationCount'] as num?)
+          ?.toInt(),
+      confidenceMinimum: (map['confidenceMinimum'] as num?)?.toDouble(),
+      confidenceAverage: (map['confidenceAverage'] as num?)?.toDouble(),
+      confidenceMaximum: (map['confidenceMaximum'] as num?)?.toDouble(),
     );
   }
 
@@ -168,7 +184,15 @@ final class PlatformOcrRecognizer implements OcrRecognizer {
     List<OcrObservation> observations,
     OcrDiagnostics diagnostics,
   ) => [
-    for (var index = 0; index < diagnostics.pageCount; index++)
+    for (
+      var index = 0;
+      index <
+          [
+            diagnostics.pageCount,
+            ...observations.map((value) => value.pageIndex + 1),
+          ].reduce((a, b) => a > b ? a : b);
+      index++
+    )
       OcrPage(
         index: index,
         observations: observations

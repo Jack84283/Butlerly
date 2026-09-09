@@ -1,4 +1,5 @@
 import 'package:butlerly/core/evidence/local_ocr_service.dart';
+import 'package:butlerly/core/evidence/platform_ocr_recognizer.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
 enum StatementExtractionOutcome {
@@ -157,33 +158,24 @@ final class StatementLayoutProfile {
 
 /// Offline, layout-aware extraction backed by on-device OCR.
 final class LocalStatementExtractor {
-  const LocalStatementExtractor({
-    this.ocr = const LocalOcrService(),
-    this.recognizer,
-  });
-  final LocalOcrService? ocr;
+  const LocalStatementExtractor({this.recognizer});
   final OcrRecognizer? recognizer;
 
   Future<StatementExtraction> extract(String path) async {
     try {
-      if (recognizer != null) {
-        return extractDocument(
-          await recognizer!.recognize(
-            OcrRequest(
-              source: OcrSource(path: path, kind: OcrSourceKind.image),
-              intent: OcrIntent.statement,
-            ),
+      return extractDocument(
+        await (recognizer ?? const PlatformOcrRecognizer()).recognize(
+          OcrRequest(
+            source: OcrSource.fromPath(path),
+            intent: OcrIntent.statement,
           ),
-        );
-      }
-      final result = await ocr!.recognizeStatement(path);
-      return fromObservations(
-        result.rawText,
-        result.observations,
-        nativeDiagnostics: result.nativeDiagnostics,
+        ),
       );
     } on OcrException catch (error) {
-      return _technicalFailure(error.code.name, error.stage);
+      if (error.code == OcrFailureCode.noReadableText) {
+        return _noText();
+      }
+      return _technicalFailure(_legacyFailureCode(error.code), error.stage);
     } on LocalOcrException catch (error) {
       return _technicalFailure(error.code, error.stage);
     }
@@ -209,8 +201,38 @@ final class LocalStatementExtractor {
     );
   }
 
-  StatementExtraction extractDocument(OcrDocument document) =>
-      fromObservations(document.text, document.observations);
+  String _legacyFailureCode(OcrFailureCode code) => switch (code) {
+    OcrFailureCode.unreadableSource => 'image_open_failed',
+    OcrFailureCode.unsupportedSource => 'unsupported_source',
+    OcrFailureCode.noReadableText => 'no_text',
+    OcrFailureCode.unavailable => 'native_ocr_unavailable',
+    OcrFailureCode.invalidResponse => 'observation_count_mismatch',
+    OcrFailureCode.technicalFailure => 'ocr_failed',
+  };
+
+  StatementExtraction _noText() {
+    return const StatementExtraction(
+      rawText: '',
+      rows: [],
+      outcome: StatementExtractionOutcome.noText,
+      diagnostics: StatementExtractionDiagnostics(
+        observationsRecognized: 0,
+        pagesProcessed: 0,
+        transactionRegionsDetected: 0,
+        visualRowsReconstructed: 0,
+        candidatesReconstructed: 0,
+        unresolvedCandidates: 0,
+        lowConfidenceCandidates: 0,
+        nonTransactionObservationsIgnored: 0,
+      ),
+    );
+  }
+
+  StatementExtraction extractDocument(OcrDocument document) => fromObservations(
+    redactPanLikeText(document.text),
+    document.observations,
+    nativeDiagnostics: nativeDiagnosticsFromOcr(document.diagnostics),
+  );
 
   static StatementExtraction fromObservations(
     String text,
