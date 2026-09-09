@@ -232,12 +232,21 @@ class _InsightsPageState extends State<InsightsPage> {
               ? _chooseCustomPeriod()
               : _selectPeriod(value),
           onDismiss: _dismiss,
-          onViewTransactions: (_) {
+          onViewTransactions: (finding) {
             final period = _context?.period;
             if (period == null) return;
             final path = Uri(
               path: '/transactions',
-              queryParameters: {'from': period.startDate, 'to': period.endDate},
+              queryParameters: {
+                if (finding.evidence.isEmpty) ...{
+                  'from': period.startDate,
+                  'to': period.endDate,
+                },
+                if (finding.evidence.isNotEmpty)
+                  'ids': finding.evidence
+                      .map((evidence) => evidence.transactionId.value)
+                      .join(','),
+              },
             ).toString();
             if (widget.onNavigationRequested case final callback?) {
               callback(path);

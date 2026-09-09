@@ -3,6 +3,50 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('preserves a dismissed R020 finding across recalculation', () async {
+    final now = DateTime.utc(2026, 9, 5, 12);
+    final findings = _Findings();
+    final calculate = CalculateAnalysisOverview(
+      _Rules([_insightRule()]),
+      AnalysisDatasetBuilder(
+        _Transactions([
+          _transaction('current', '2026-09-01', '120'),
+          _transaction('baseline', '2026-08-27', '90'),
+        ]),
+        _Preferences(),
+        null,
+      ),
+      const AnalysisRuleEngine(),
+      findings: findings,
+    );
+
+    final first = await calculate.currentMonth(now);
+    final firstFinding =
+        (first as ApplicationSuccess<List<RuleExecutionResult>>)
+            .value
+            .single
+            .finding!;
+    expect(firstFinding.lifecycle, FindingLifecycle.active);
+    expect(findings.values.single.lifecycle, FindingLifecycle.active);
+
+    await findings.updateLifecycle(
+      firstFinding.id,
+      FindingLifecycle.dismissed,
+      now,
+    );
+    final recalculated = await calculate.currentMonth(now);
+    final recalculatedFinding =
+        (recalculated as ApplicationSuccess<List<RuleExecutionResult>>)
+            .value
+            .single
+            .finding!;
+    expect(recalculatedFinding.lifecycle, FindingLifecycle.dismissed);
+    expect(
+      (await findings.list()).single.lifecycle,
+      FindingLifecycle.dismissed,
+    );
+  });
+
   test('current month summary uses month-to-date transactions', () async {
     final now = DateTime.utc(2026, 9, 5, 12);
     final transactions = _Transactions([
@@ -315,6 +359,34 @@ AnalysisRuleDefinition _summaryRule(
   definitionHash: RuleDefinitionHash('b' * 64),
 );
 
+AnalysisRuleDefinition _insightRule() => AnalysisRuleDefinition(
+  identity: RuleIdentity('ANL-R020'),
+  version: RuleVersion('1.2.0'),
+  schemaVersion: '1.0.0',
+  type: AnalysisRuleType.insight,
+  nameKey: 'analysis.rule.r020.name',
+  descriptionKey: 'analysis.rule.r020.description',
+  enabled: true,
+  status: AnalysisRuleStatus.active,
+  period: 'selected_period',
+  measure: const RuleMeasure(
+    operation: RuleOperation.sum,
+    field: 'amount',
+    currencyBasis: CurrencyBasis.baseCurrency,
+  ),
+  grouping: RuleGrouping.none,
+  baseline: RuleBaseline.previousEquivalentPeriod,
+  condition: RuleCondition(
+    operator: 'gte',
+    value: DecimalValue.fromParts(coefficient: BigInt.from(20), scale: 0),
+  ),
+  severity: RuleSeverity.attention,
+  surface: AnalysisSurface.insights,
+  definitionHash: RuleDefinitionHash('d' * 64),
+  resultPersistence: ResultPersistencePolicy.finding,
+  refreshPolicy: RefreshPolicy.onInvalidation,
+);
+
 AnalysisRuleDefinition _netRule() => AnalysisRuleDefinition(
   identity: RuleIdentity('ANL-R003'),
   version: RuleVersion('1.0.0'),
@@ -550,19 +622,66 @@ final class _Results implements AnalysisRuleResultRepository {
 }
 
 final class _Findings implements AnalysisFindingRepository {
-  @override
-  Future<List<AnalysisFinding>> list({FindingLifecycle? lifecycle}) async =>
-      const [];
+  final values = <AnalysisFinding>[];
 
   @override
-  Future<void> save(AnalysisFinding finding) async {}
+  Future<List<AnalysisFinding>> list({FindingLifecycle? lifecycle}) async =>
+      values
+          .where((value) => lifecycle == null || value.lifecycle == lifecycle)
+          .toList(growable: false);
+
+  @override
+  Future<void> save(AnalysisFinding finding) async {
+    final index = values.indexWhere((value) => value.id == finding.id);
+    if (index == -1) {
+      values.add(finding);
+    } else {
+      final existing = values[index];
+      values[index] = AnalysisFinding(
+        id: finding.id,
+        rule: finding.rule,
+        context: finding.context,
+        severity: finding.severity,
+        lifecycle: existing.lifecycle,
+        currentValue: finding.currentValue,
+        baselineValue: finding.baselineValue,
+        absoluteChange: finding.absoluteChange,
+        percentageChange: finding.percentageChange,
+        dimension: finding.dimension,
+        supportingMetrics: finding.supportingMetrics,
+        evidence: finding.evidence,
+        qualityIssues: finding.qualityIssues,
+        generatedAt: finding.generatedAt,
+      );
+    }
+  }
 
   @override
   Future<void> updateLifecycle(
     String id,
     FindingLifecycle lifecycle,
     DateTime at,
-  ) async {}
+  ) async {
+    final index = values.indexWhere((value) => value.id == id);
+    if (index == -1) return;
+    final value = values[index];
+    values[index] = AnalysisFinding(
+      id: value.id,
+      rule: value.rule,
+      context: value.context,
+      severity: value.severity,
+      lifecycle: lifecycle,
+      currentValue: value.currentValue,
+      baselineValue: value.baselineValue,
+      absoluteChange: value.absoluteChange,
+      percentageChange: value.percentageChange,
+      dimension: value.dimension,
+      supportingMetrics: value.supportingMetrics,
+      evidence: value.evidence,
+      qualityIssues: value.qualityIssues,
+      generatedAt: value.generatedAt,
+    );
+  }
 }
 
 extension on Iterable<Transaction> {

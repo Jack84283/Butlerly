@@ -253,6 +253,7 @@ final class ListTransactions {
     final values = await repository.query(
       TransactionRepositoryQuery(
         text: query.text,
+        transactionIds: query.transactionIds?.map(TransactionId.new).toList(),
         from: query.from,
         to: query.to,
         categoryId: _optional(query.categoryId, CategoryId.new),

@@ -54,13 +54,22 @@ void main() {
     String? path;
     await tester.pumpWidget(
       app(
-        (_) async => ApplicationSuccess([_result(finding: _finding())]),
+        (_) async => ApplicationSuccess([
+          _result(
+            finding: _finding(
+              evidence: [
+                EvidenceReference(transactionId: TransactionId('support-1')),
+                EvidenceReference(transactionId: TransactionId('support-2')),
+              ],
+            ),
+          ),
+        ]),
         onNavigationRequested: (value) => path = value,
       ),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('View transactions'));
-    expect(path, '/transactions?from=2026-09-01&to=2026-09-05');
+    expect(path, '/transactions?ids=support-1%2Csupport-2');
   });
 
   test('supports authored insight copy in all V1 locales', () {
@@ -159,18 +168,20 @@ RuleExecutionResult _result({
   comparison: comparison,
 );
 
-AnalysisFinding _finding() => AnalysisFinding(
-  id: 'finding-1',
-  rule: _rule(),
-  context: _context(),
-  severity: RuleSeverity.attention,
-  lifecycle: FindingLifecycle.active,
-  currentValue: DecimalValue.parse('7420'),
-  baselineValue: DecimalValue.parse('5930'),
-  absoluteChange: DecimalValue.parse('1490'),
-  percentageChange: DecimalValue.parse('25.1'),
-  generatedAt: DateTime.utc(2026, 9, 5),
-);
+AnalysisFinding _finding({List<EvidenceReference> evidence = const []}) =>
+    AnalysisFinding(
+      id: 'finding-1',
+      rule: _rule(),
+      context: _context(),
+      severity: RuleSeverity.attention,
+      lifecycle: FindingLifecycle.active,
+      currentValue: DecimalValue.parse('7420'),
+      baselineValue: DecimalValue.parse('5930'),
+      absoluteChange: DecimalValue.parse('1490'),
+      percentageChange: DecimalValue.parse('25.1'),
+      evidence: evidence,
+      generatedAt: DateTime.utc(2026, 9, 5),
+    );
 
 AnalysisRuleDefinition _rule() => AnalysisRuleDefinition(
   identity: RuleIdentity('ANL-R020'),

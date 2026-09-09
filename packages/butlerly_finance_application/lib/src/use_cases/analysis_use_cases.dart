@@ -153,11 +153,37 @@ final class CalculateAnalysisOverview {
         'analysis dataset unavailable',
       );
     }
-    final executionResults = engine.execute(
+    final calculatedResults = engine.execute(
       dataset: (dataset as ApplicationDatasetSuccess).dataset,
       definitions: definitions,
       availableResults: available,
     );
+    final persistedLifecycles = findings == null
+        ? const <String, FindingLifecycle>{}
+        : {
+            for (final finding in await findings!.list())
+              finding.id: finding.lifecycle,
+          };
+    final executionResults = calculatedResults
+        .map((result) {
+          final finding = result.finding;
+          if (finding == null) {
+            return result;
+          }
+          final lifecycle = persistedLifecycles[finding.id];
+          if (lifecycle == null || lifecycle == finding.lifecycle) {
+            return result;
+          }
+          return RuleExecutionResult(
+            rule: result.rule,
+            metric: result.metric,
+            finding: _withLifecycle(finding, lifecycle),
+            comparison: result.comparison,
+            issues: result.issues,
+            failure: result.failure,
+          );
+        })
+        .toList(growable: false);
     if (findings != null || results != null) {
       for (final result in executionResults) {
         final finding = result.finding;
@@ -182,6 +208,26 @@ final class CalculateAnalysisOverview {
     return executionResults;
   });
 }
+
+AnalysisFinding _withLifecycle(
+  AnalysisFinding finding,
+  FindingLifecycle lifecycle,
+) => AnalysisFinding(
+  id: finding.id,
+  rule: finding.rule,
+  context: finding.context,
+  severity: finding.severity,
+  lifecycle: lifecycle,
+  currentValue: finding.currentValue,
+  baselineValue: finding.baselineValue,
+  absoluteChange: finding.absoluteChange,
+  percentageChange: finding.percentageChange,
+  dimension: finding.dimension,
+  supportingMetrics: finding.supportingMetrics,
+  evidence: finding.evidence,
+  qualityIssues: finding.qualityIssues,
+  generatedAt: finding.generatedAt,
+);
 
 final class RerunAnalysis {
   const RerunAnalysis(this.calculate);

@@ -80,6 +80,7 @@ final appRouter = GoRouter(
                 'transactions',
                 TransactionsPage(
                   query: ListTransactionsQuery(
+                    transactionIds: _queryIds(state.uri.queryParameters['ids']),
                     from: _queryDate(state.uri.queryParameters['from']),
                     to: _queryDate(state.uri.queryParameters['to']),
                     categoryId: state.uri.queryParameters['category'],
@@ -190,3 +191,6 @@ final appRouter = GoRouter(
 
 DateTime? _queryDate(String? value) =>
     value == null ? null : DateTime.tryParse(value);
+
+List<String>? _queryIds(String? value) =>
+    value?.split(',').where((id) => id.isNotEmpty).toList(growable: false);

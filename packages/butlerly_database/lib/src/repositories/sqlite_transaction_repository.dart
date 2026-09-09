@@ -111,6 +111,13 @@ final class SqliteTransactionRepository
     final conditions = <String>[];
     final arguments = <Object?>[];
     final text = query.text?.trim().toLowerCase();
+    if (query.transactionIds case final ids?) {
+      if (ids.isEmpty) return const [];
+      conditions.add(
+        't.id IN (${List<String>.filled(ids.length, '?').join(', ')})',
+      );
+      arguments.addAll(ids.map((id) => id.value));
+    }
     if (text != null && text.isNotEmpty) {
       conditions.add('''(
         LOWER(COALESCE(t.description, '')) LIKE ? OR

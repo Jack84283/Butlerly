@@ -125,6 +125,7 @@ final class ImportTransactionCommand {
 final class ListTransactionsQuery {
   const ListTransactionsQuery({
     this.text,
+    this.transactionIds,
     this.from,
     this.to,
     this.categoryId,
@@ -137,6 +138,7 @@ final class ListTransactionsQuery {
   });
 
   final String? text;
+  final List<String>? transactionIds;
   final DateTime? from;
   final DateTime? to;
   final String? categoryId;
