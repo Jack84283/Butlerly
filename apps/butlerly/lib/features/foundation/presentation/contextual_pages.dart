@@ -660,24 +660,6 @@ class NotificationsPage extends StatelessWidget {
   );
 }
 
-class InsightsPage extends StatelessWidget {
-  const InsightsPage({super.key});
-
-  @override
-  Widget build(BuildContext context) => ButlerlyPage(
-    title: context.l10n.text('insights'),
-    children: [
-      ButlerlyEmptyState(
-        icon: Icons.insights_outlined,
-        title: context.l10n.text('notEnoughInsightData'),
-        message: context.l10n.text('notEnoughInsightDataBody'),
-        actionLabel: context.l10n.text('addData'),
-        onAction: () => context.push('/add'),
-      ),
-    ],
-  );
-}
-
 class AssistantUnavailablePage extends StatelessWidget {
   const AssistantUnavailablePage({super.key});
 

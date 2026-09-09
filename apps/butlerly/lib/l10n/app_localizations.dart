@@ -487,6 +487,20 @@ class AppLocalizations {
       'baselineAvailable':
           'Compared with an independently calculated baseline.',
       'supportingTransactions': '{count} supporting transactions',
+      'currentPeriod': 'Current period',
+      'previousPeriod': 'Previous period',
+      'difference': 'Difference',
+      'percentageChange': 'Percentage change',
+      'insightSpendingIncreaseBody':
+          'Spending is {percent}% higher than the previous period.',
+      'insightSpendingIncreaseTitle': 'Spending increased',
+      'insightsInsufficientHistory': 'Not enough history yet',
+      'insightsInsufficientHistoryBody':
+          'Insights compare your financial activity over time. Keep adding transactions and Butlerly will surface meaningful changes.',
+      'insightsNothingNoteworthy': 'Nothing needs your attention',
+      'insightsNothingNoteworthyBody':
+          'Your recent financial activity does not currently trigger any insights.',
+      'insightActionFailed': 'This insight could not be updated.',
       'assistant': 'Assistant',
       'assistantUnavailable': 'Assistant is not configured',
       'assistantUnavailableBody':
@@ -1028,6 +1042,18 @@ class AppLocalizations {
       'baselineUnavailable': '没有可比较的基准。',
       'baselineAvailable': '与独立计算的基准进行比较。',
       'supportingTransactions': '支持的交易：{count}',
+      'currentPeriod': '当前期间',
+      'previousPeriod': '上一期间',
+      'difference': '差额',
+      'percentageChange': '百分比变化',
+      'insightSpendingIncreaseBody': '支出比上一期间高 {percent}%。',
+      'insightSpendingIncreaseTitle': '支出增加',
+      'insightsInsufficientHistory': '历史记录不足',
+      'insightsInsufficientHistoryBody':
+          '洞察会比较一段时间内的财务活动。继续添加交易，Butlerly 会显示有意义的变化。',
+      'insightsNothingNoteworthy': '目前无需关注',
+      'insightsNothingNoteworthyBody': '您最近的财务活动目前没有触发任何洞察。',
+      'insightActionFailed': '无法更新此洞察。',
       'assistant': '助手',
       'assistantUnavailable': '助手尚未配置',
       'assistantUnavailableBody': '您的本地记录和手动流程仍然可用。没有数据被发送到任何地方。',
@@ -1602,6 +1628,20 @@ class AppLocalizations {
       'baselineAvailable':
           'Comparado con una base calculada de forma independiente.',
       'supportingTransactions': '{count} transacciones de respaldo',
+      'currentPeriod': 'Período actual',
+      'previousPeriod': 'Período anterior',
+      'difference': 'Diferencia',
+      'percentageChange': 'Cambio porcentual',
+      'insightSpendingIncreaseBody':
+          'Los gastos son un {percent}% mayores que en el período anterior.',
+      'insightSpendingIncreaseTitle': 'Los gastos aumentaron',
+      'insightsInsufficientHistory': 'Aún no hay suficiente historial',
+      'insightsInsufficientHistoryBody':
+          'Las perspectivas comparan tu actividad financiera a lo largo del tiempo. Sigue añadiendo transacciones y Butlerly mostrará cambios relevantes.',
+      'insightsNothingNoteworthy': 'Nada requiere tu atención',
+      'insightsNothingNoteworthyBody':
+          'Tu actividad financiera reciente no activa ninguna perspectiva en este momento.',
+      'insightActionFailed': 'No se pudo actualizar esta perspectiva.',
       'assistant': 'Asistente',
       'assistantUnavailable': 'El Asistente no está configurado',
       'assistantUnavailableBody':

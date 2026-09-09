@@ -246,7 +246,7 @@ void main() {
         case 'Analysis':
           expect(find.text('Analysis'), findsOneWidget);
         case 'Insights':
-          expect(find.text('Not enough data for insights'), findsOneWidget);
+          expect(find.text('Insights'), findsOneWidget);
       }
       expect(find.bySemanticsLabel('Add transaction'), findsNothing);
       appRouter.go('/tools');
@@ -270,7 +270,7 @@ void main() {
         case '/analysis':
           expect(find.text('Analysis'), findsOneWidget);
         case '/insights':
-          expect(find.text('Not enough data for insights'), findsOneWidget);
+          expect(find.text('Insights'), findsOneWidget);
       }
       expect(find.bySemanticsLabel('Add transaction'), findsNothing);
       appRouter.go('/tools');
@@ -320,7 +320,7 @@ void main() {
 
     await tester.tap(find.text('Insights'));
     await tester.pumpAndSettle();
-    expect(find.text('Not enough data for insights'), findsOneWidget);
+    expect(find.text('Insights'), findsOneWidget);
     await tester.pageBack();
     await tester.pumpAndSettle();
 

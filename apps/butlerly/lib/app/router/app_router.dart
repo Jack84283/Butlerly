@@ -15,6 +15,7 @@ import 'package:butlerly/features/foundation/presentation/search_page.dart';
 import 'package:butlerly/features/foundation/presentation/settings_page.dart';
 import 'package:butlerly/features/foundation/presentation/statement_capture_page.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
+import 'package:butlerly/features/insights/presentation/insights_page.dart';
 import 'package:butlerly/features/tools/presentation/tools_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
