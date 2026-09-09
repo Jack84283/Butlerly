@@ -21,12 +21,23 @@ class AndroidMlKitOcrRecognizer(private val activity: Activity) {
         // including on supported devices with 3–4 GiB of RAM.
         const val MAX_OCR_DIMENSION = 2048
 
-        /** Maps the EXIF camera orientations which include a quarter-turn. */
-        fun exifRotationDegrees(orientation: Int): Int = when (orientation) {
-            ExifInterface.ORIENTATION_ROTATE_90 -> 90
-            ExifInterface.ORIENTATION_ROTATE_180 -> 180
-            ExifInterface.ORIENTATION_ROTATE_270 -> 270
-            else -> 0
+        data class ExifTransform(
+            val rotationDegrees: Int,
+            val mirrorX: Boolean,
+            val mirrorY: Boolean,
+        )
+
+        /** Maps all EXIF camera orientations into an upright bitmap transform. */
+        fun exifTransform(orientation: Int): ExifTransform = when (orientation) {
+            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> ExifTransform(0, mirrorX = true, mirrorY = false)
+            ExifInterface.ORIENTATION_ROTATE_180 -> ExifTransform(180, mirrorX = false, mirrorY = false)
+            ExifInterface.ORIENTATION_FLIP_VERTICAL -> ExifTransform(0, mirrorX = false, mirrorY = true)
+            // EXIF transpose/transverse are a reflection plus a quarter-turn.
+            ExifInterface.ORIENTATION_TRANSPOSE -> ExifTransform(90, mirrorX = true, mirrorY = false)
+            ExifInterface.ORIENTATION_ROTATE_90 -> ExifTransform(90, mirrorX = false, mirrorY = false)
+            ExifInterface.ORIENTATION_TRANSVERSE -> ExifTransform(270, mirrorX = true, mirrorY = false)
+            ExifInterface.ORIENTATION_ROTATE_270 -> ExifTransform(270, mirrorX = false, mirrorY = false)
+            else -> ExifTransform(0, mirrorX = false, mirrorY = false)
         }
     }
 
@@ -50,8 +61,8 @@ class AndroidMlKitOcrRecognizer(private val activity: Activity) {
             result.error("image_open_failed", "The local image could not be opened.", mapOf("stage" to "imageDecode"))
             return
         }
-        val rotation = exifRotationDegrees(readExifOrientation(path))
-        val orientedBitmap = rotate(bitmap, rotation)
+        val orientationTransform = exifTransform(readExifOrientation(path))
+        val orientedBitmap = transform(bitmap, orientationTransform)
         if (orientedBitmap !== bitmap) bitmap.recycle()
         val width = orientedBitmap.width
         val height = orientedBitmap.height
@@ -128,9 +139,15 @@ class AndroidMlKitOcrRecognizer(private val activity: Activity) {
         ExifInterface.ORIENTATION_UNDEFINED
     }
 
-    private fun rotate(bitmap: Bitmap, degrees: Int): Bitmap {
-        if (degrees == 0) return bitmap
-        val matrix = Matrix().apply { postRotate(degrees.toFloat()) }
+    private fun transform(bitmap: Bitmap, transform: ExifTransform): Bitmap {
+        if (transform.rotationDegrees == 0 && !transform.mirrorX && !transform.mirrorY) return bitmap
+        val matrix = Matrix().apply {
+            setRotate(transform.rotationDegrees.toFloat())
+            postScale(
+                if (transform.mirrorX) -1f else 1f,
+                if (transform.mirrorY) -1f else 1f,
+            )
+        }
         return Bitmap.createBitmap(
             bitmap,
             0,
