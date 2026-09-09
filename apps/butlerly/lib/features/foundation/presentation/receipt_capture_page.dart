@@ -5,6 +5,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/evidence/local_ocr_service.dart';
+import 'package:butlerly/core/evidence/platform_ocr_recognizer.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -34,6 +35,7 @@ class ReceiptCapturePage extends StatefulWidget {
     this.finance,
     this.evidenceStore,
     this.ocr,
+    this.ocrRecognizer,
     this.pickImage,
     this.openFile,
     this.preserveEvidence,
@@ -47,6 +49,7 @@ class ReceiptCapturePage extends StatefulWidget {
   final FinanceServices? finance;
   final LocalEvidenceStore? evidenceStore;
   final Future<ReceiptOcrResult> Function(String path)? ocr;
+  final OcrRecognizer? ocrRecognizer;
   final Future<XFile?> Function(ImageSource source)? pickImage;
   final Future<files.XFile?> Function(files.XTypeGroup group)? openFile;
   final Future<PreservedEvidenceSource> Function(XFile source)?
@@ -287,9 +290,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     });
 
     try {
-      final result = widget.ocr == null
-          ? await const LocalOcrService().recognize(stableSource.path)
-          : await widget.ocr!(stableSource.path);
+      final result = await _recognizeReceipt(stableSource.path);
       if (!mounted) return;
       final paymentSourceId = await _resolvePaymentSource(result.cardLast4);
       if (!mounted) return;
@@ -311,6 +312,25 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         SnackBar(content: Text(context.l10n.text('receiptTextReadFailed'))),
       );
     }
+  }
+
+  Future<ReceiptOcrResult> _recognizeReceipt(String path) async {
+    if (widget.ocr != null) return widget.ocr!(path);
+    final recognizer =
+        widget.ocrRecognizer ??
+        (services.isRegistered<OcrRecognizer>()
+            ? services<OcrRecognizer>()
+            : platformOcrRecognizer());
+    final document = await recognizer.recognize(
+      OcrRequest(
+        source: OcrSource(path: path, kind: OcrSourceKind.image),
+        intent: OcrIntent.receipt,
+      ),
+    );
+    if (document.text.trim().isEmpty) {
+      throw const FormatException('No readable receipt text was found.');
+    }
+    return ReceiptExtractor.extract(document.text, document.observations);
   }
 
   Future<void> _discard(PreservedEvidenceSource source) =>

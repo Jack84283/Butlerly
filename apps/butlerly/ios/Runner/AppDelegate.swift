@@ -18,6 +18,10 @@ import Vision
     guard let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "ButlerlyLocalOcr") else { return }
     let channel = FlutterMethodChannel(name: "butlerly/local_ocr", binaryMessenger: registrar.messenger())
     channel.setMethodCallHandler { call, result in
+      if call.method == "availability" {
+        result(true)
+        return
+      }
       guard call.method == "recognizeText" else { result(FlutterMethodNotImplemented); return }
       guard let arguments = call.arguments as? [String: Any], let path = arguments["path"] as? String else {
         result(FlutterError(code: "invalid_arguments", message: "A local image path is required.", details: nil)); return

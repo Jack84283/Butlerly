@@ -3,6 +3,7 @@ import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
+import 'package:butlerly/core/evidence/platform_ocr_recognizer.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly_database/butlerly_database.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -19,6 +20,7 @@ void configureDependencies({
     ..registerSingleton<AppConfiguration>(configuration)
     ..registerSingleton<AppLogger>(logger)
     ..registerSingleton<LocalDatabase>(database);
+  services.registerSingleton<OcrRecognizer>(platformOcrRecognizer());
 
   services.registerSingleton<LocalDataManager>(LocalDataManager(database));
 

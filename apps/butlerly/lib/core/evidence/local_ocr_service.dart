@@ -1,27 +1,7 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
-import 'package:flutter/services.dart';
+import 'platform_ocr_recognizer.dart';
 
-final class OcrObservation {
-  const OcrObservation({
-    required this.text,
-    required this.confidence,
-    required this.left,
-    required this.top,
-    required this.width,
-    required this.height,
-    this.pageIndex = 0,
-    this.order = 0,
-  });
-
-  final String text;
-  final double confidence;
-  final double left;
-  final double top;
-  final double width;
-  final double height;
-  final int pageIndex;
-  final int order;
-}
+export 'ocr_contract.dart';
 
 final class NativeOcrDiagnostics {
   const NativeOcrDiagnostics({
@@ -72,6 +52,22 @@ final class NativeOcrDiagnostics {
     );
   }
 }
+
+NativeOcrDiagnostics nativeDiagnosticsFromOcr(OcrDiagnostics value) =>
+    NativeOcrDiagnostics(
+      sourceKind: value.sourceKind.name,
+      sourceOpened: value.sourceOpened,
+      observationsRecognized: value.observationCount,
+      recognizedLineCount: value.recognizedLineCount,
+      observationsWithBounds: value.observationsWithBounds,
+      pixelWidth: value.pixelWidth,
+      pixelHeight: value.pixelHeight,
+      orientation: value.orientation,
+      visionObservationsRecognized: value.visionObservationsRecognized,
+      confidenceMinimum: value.confidenceMinimum,
+      confidenceAverage: value.confidenceAverage,
+      confidenceMaximum: value.confidenceMaximum,
+    );
 
 final class LocalOcrException implements Exception {
   const LocalOcrException({required this.code, required this.stage});
@@ -194,18 +190,21 @@ String redactPanLikeText(String text) {
   return redacted;
 }
 
+/// Compatibility facade for older callers. New code must inject [OcrRecognizer].
+/// The platform transport itself lives only in [PlatformOcrRecognizer].
+@Deprecated('Inject OcrRecognizer instead.')
 final class LocalOcrService {
-  const LocalOcrService();
+  const LocalOcrService([this.recognizer = const PlatformOcrRecognizer()]);
 
-  static const _channel = MethodChannel('butlerly/local_ocr');
+  final OcrRecognizer recognizer;
 
   Future<ReceiptOcrResult> recognize(String path) async {
-    final payload = await _recognizeText(path);
-    final text = payload.text;
+    final document = await _recognizeDocument(path, OcrIntent.receipt);
+    final text = document.text;
     if (text.trim().isEmpty) {
       throw const FormatException('No readable receipt text was found.');
     }
-    final extracted = ReceiptExtractor.extract(text, payload.observations);
+    final extracted = ReceiptExtractor.extract(text, document.observations);
     return ReceiptOcrResult(
       rawText: extracted.rawText,
       observations: extracted.observations,
@@ -223,102 +222,50 @@ final class LocalOcrService {
       cardNetwork: extracted.cardNetwork,
       cardType: extracted.cardType,
       cardExpiry: extracted.cardExpiry,
-      nativeDiagnostics: payload.diagnostics,
+      nativeDiagnostics: _legacyDiagnostics(document.diagnostics),
     );
   }
 
   Future<ReceiptOcrResult> recognizeStatement(String path) async {
-    final payload = await _recognizeText(path);
+    final document = await _recognizeDocument(path, OcrIntent.statement);
     return ReceiptOcrResult(
-      rawText: payload.text,
-      observations: payload.observations,
-      nativeDiagnostics: payload.diagnostics,
+      rawText: document.text,
+      observations: document.observations,
+      nativeDiagnostics: _legacyDiagnostics(document.diagnostics),
     );
   }
 
-  static Future<_NativeOcrPayload> _recognizeText(String path) async {
-    Map<String, Object?>? raw;
+  Future<OcrDocument> _recognizeDocument(String path, OcrIntent intent) async {
     try {
-      raw = await _channel.invokeMapMethod<String, Object?>('recognizeText', {
-        'path': path,
-      });
-    } on PlatformException catch (error) {
-      final details = error.details;
+      return await recognizer.recognize(
+        OcrRequest(source: OcrSource.fromPath(path), intent: intent),
+      );
+    } on OcrException catch (error) {
       throw LocalOcrException(
-        code: error.code,
-        stage: details is Map
-            ? details['stage'] as String? ?? 'nativeOcr'
-            : 'nativeOcr',
-      );
-    } on MissingPluginException {
-      throw const LocalOcrException(
-        code: 'native_ocr_unavailable',
-        stage: 'methodChannel',
-      );
-    }
-    if (raw == null) {
-      throw const LocalOcrException(
-        code: 'empty_native_response',
-        stage: 'methodChannel',
+        code: switch (error.code) {
+          OcrFailureCode.unreadableSource => 'image_open_failed',
+          OcrFailureCode.unsupportedSource => 'unsupported_source',
+          OcrFailureCode.noReadableText => 'no_text',
+          OcrFailureCode.unavailable => 'native_ocr_unavailable',
+          OcrFailureCode.technicalFailure => 'ocr_failed',
+          OcrFailureCode.invalidResponse => 'observation_count_mismatch',
+        },
+        stage: error.stage,
       );
     }
-    final observations = _observations(raw['observations']);
-    final diagnostics = NativeOcrDiagnostics.fromMap(raw['diagnostics']);
-    if (diagnostics != null &&
-        !diagnostics.matchesChannelPayload(observations.length)) {
-      throw const LocalOcrException(
-        code: 'observation_count_mismatch',
-        stage: 'methodChannel',
-      );
-    }
-    return _NativeOcrPayload(
-      text: raw['text'] as String? ?? '',
-      observations: observations,
-      diagnostics: diagnostics,
-    );
   }
 
-  static List<OcrObservation> _observations(Object? value) {
-    if (value is! List) return const [];
-    return value
-        .whereType<Map>()
-        .indexed
-        .map((entry) {
-          final (index, item) = entry;
-          return OcrObservation(
-            text: item['text'] as String? ?? '',
-            confidence: (item['confidence'] as num?)?.toDouble() ?? 0,
-            left: (item['left'] as num?)?.toDouble() ?? 0,
-            top: (item['top'] as num?)?.toDouble() ?? 0,
-            width: (item['width'] as num?)?.toDouble() ?? 0,
-            height: (item['height'] as num?)?.toDouble() ?? 0,
-            pageIndex: (item['pageIndex'] as num?)?.toInt() ?? 0,
-            order: (item['order'] as num?)?.toInt() ?? index,
-          );
-        })
-        .toList(growable: false);
-  }
+  static NativeOcrDiagnostics _legacyDiagnostics(OcrDiagnostics value) =>
+      nativeDiagnosticsFromOcr(value);
 
   Future<CardScanResult> recognizeCard(String path) async {
-    final payload = await _recognizeText(path);
-    final text = payload.text;
+    final document = await _recognizeDocument(path, OcrIntent.paymentCard);
+    final text = document.text;
     if (text.trim().isEmpty) {
       throw const FormatException('No readable card details were found.');
     }
-    return CardTextParser.parse(text, payload.observations);
+    return CardTextParser.parse(text, document.observations);
   }
-}
-
-final class _NativeOcrPayload {
-  const _NativeOcrPayload({
-    required this.text,
-    required this.observations,
-    required this.diagnostics,
-  });
-
-  final String text;
-  final List<OcrObservation> observations;
-  final NativeOcrDiagnostics? diagnostics;
 }
 
 final class CardScanResult {

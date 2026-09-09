@@ -53,6 +53,9 @@ validate_integration_test() (
 )
 
 validate_android_smoke() (
+  cd apps/butlerly/android
+  ./gradlew :app:testDebugUnitTest
+  cd ../../..
   cd apps/butlerly
   flutter build apk --debug
 )
