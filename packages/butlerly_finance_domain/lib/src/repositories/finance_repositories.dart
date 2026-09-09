@@ -124,6 +124,7 @@ abstract interface class AnalysisRuleResultRepository {
 final class TransactionRepositoryQuery {
   const TransactionRepositoryQuery({
     this.text,
+    this.transactionIds,
     this.from,
     this.to,
     this.categoryId,
@@ -136,6 +137,7 @@ final class TransactionRepositoryQuery {
   });
 
   final String? text;
+  final List<TransactionId>? transactionIds;
   final DateTime? from;
   final DateTime? to;
   final CategoryId? categoryId;
