@@ -146,7 +146,7 @@ measure:
     expect(result.diagnostics.map((value) => value.code), contains('semantic'));
   });
 
-  test('rejects an alert without joint percentage and absolute conditions', () {
+  test('rejects an alert without a base-currency measure', () {
     final parsed = parser.parse('''
 schemaVersion: "1.0.0"
 ruleId: ANL-R024
@@ -160,7 +160,7 @@ baseline: previousEquivalentPeriod
 measure:
   operation: sum
   field: amount
-  currencyBasis: baseCurrency
+  currencyBasis: original
 condition:
   operator: gte
   left: percentageChange
@@ -202,24 +202,23 @@ result:
     expect(definitions['ANL-R001'].role, 'expenseTotal');
     expect(definitions['ANL-R002'].role, 'incomeTotal');
     expect(definitions['ANL-R021'].outputType, InsightOutputType.pattern);
-    expect(definitions['ANL-R024'].outputType, InsightOutputType.pattern);
+    expect(definitions['ANL-R024'].outputType, InsightOutputType.alert);
     final r024 = definitions['ANL-R024'] as AnalysisRuleDefinition;
     expect(r024.condition.operator, 'any');
+    expect(r024.condition.children, hasLength(2));
+    expect(r024.condition.children.first.operator, 'all');
     expect(
-      r024.condition.children.map((RuleCondition value) => value.operator),
-      containsAll(['gteMultiplier', 'gtMultiplier']),
+      r024.condition.children.first.children
+          .map((RuleCondition value) => value.left),
+      containsAll(['currentTotal', 'currentTotal']),
     );
-    expect(
-      r024.condition.children.map((RuleCondition value) => value.left),
-      containsAll(['currentTotal', 'currentMaximum']),
-    );
-    expect(
-      r024.condition.children.map((RuleCondition value) => value.right),
-      containsAll(['baselineTotal', 'baselineAverage']),
-    );
+    expect(r024.condition.children.last.operator, 'gtMultiplier');
+    expect(r024.condition.children.last.left, 'currentMaximum');
+    expect(r024.condition.children.last.right, 'baselineAverage');
     expect(definitions['ANL-R025'].outputType, InsightOutputType.pattern);
     final r025 = definitions['ANL-R025'] as AnalysisRuleDefinition;
     expect(r025.baseline, RuleBaseline.previousEquivalentPeriod);
+    expect(r025.grouping, RuleGrouping.transaction);
     expect(r025.condition.operator, 'any');
     expect(
       r025.condition.children.map((RuleCondition value) => value.right),
