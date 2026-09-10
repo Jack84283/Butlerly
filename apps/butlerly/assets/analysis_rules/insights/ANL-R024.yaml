@@ -17,10 +17,15 @@ filters:
 condition:
   operator: any
   children:
-    - operator: gteMultiplier
-      left: currentTotal
-      right: baselineTotal
-      value: "1.20"
+    - operator: all
+      children:
+        - operator: gt
+          left: currentTotal
+          value: "0"
+        - operator: gteMultiplier
+          left: currentTotal
+          right: baselineTotal
+          value: "1.20"
     - operator: gtMultiplier
       left: currentMaximum
       right: baselineAverage
@@ -28,4 +33,4 @@ condition:
 result:
   persistence: finding
   refresh: onInvalidation
-  outputType: pattern
+  outputType: alert
