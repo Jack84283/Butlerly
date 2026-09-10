@@ -92,10 +92,16 @@ void main() {
     expect(travelResult.finding!.currentValue, DecimalValue.parse('70'));
     expect(travelResult.finding!.baselineValue, isNull);
     expect(travelResult.finding!.percentageChange, isNull);
+    expect(travelResult.comparison, isNull);
+    expect(
+      travelResult.issues.map((issue) => issue.code),
+      isNot(contains('missingBaseline')),
+    );
 
     final foodResult = results.singleWhere(
-      (result) => result.comparison?.currentValue == DecimalValue.parse('30'),
+      (result) => result.finding?.dimension != 'travel',
     );
     expect(foodResult.finding, isNull);
+    expect(foodResult.comparison, isNull);
   });
 }
