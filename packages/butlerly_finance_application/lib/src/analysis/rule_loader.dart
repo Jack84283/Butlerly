@@ -337,6 +337,15 @@ final class RuleDefinitionValidator {
           'Insight rules require a meaningful condition.',
         );
       }
+      if (outputType == InsightOutputType.alert &&
+          (parsedMeasures.first.currencyBasis != CurrencyBasis.baseCurrency ||
+              condition.operator != 'all' ||
+              !_containsConditionLeft(condition, 'percentageChange') ||
+              !_containsConditionLeft(condition, 'absoluteChange'))) {
+        throw const FormatException(
+          'Alert rules require base-currency percentage and absolute conditions.',
+        );
+      }
       definition = AnalysisRuleDefinition(
         identity: RuleIdentity(id ?? ''),
         version: RuleVersion(version ?? ''),
@@ -535,6 +544,10 @@ RuleCondition _condition(Object? raw) {
     children: children,
   );
 }
+
+bool _containsConditionLeft(RuleCondition condition, String left) =>
+    condition.left == left ||
+    condition.children.any((child) => _containsConditionLeft(child, left));
 
 String canonicalize(Map<String, Object?> values) =>
     jsonEncode(_canonicalValue(values));

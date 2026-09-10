@@ -865,6 +865,122 @@ void main() {
     expect(merchantFinding.baselineValue, DecimalValue.parse('100'));
   });
 
+  test(
+    'share and rolling median primitives support declared insight rules',
+    () {
+      AnalysisEconomicTransaction transaction(
+        String id,
+        String amount, {
+        String? category,
+        String date = '2026-01-10',
+      }) => AnalysisEconomicTransaction(
+        id: TransactionId(id),
+        money: Money(
+          amount: DecimalValue.parse(amount),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        transactionDate: date,
+        categoryId: category == null ? null : CategoryId(category),
+      );
+
+      final concentration = AnalysisRuleDefinition(
+        identity: RuleIdentity('ANL-R026'),
+        version: RuleVersion('1.0.0'),
+        schemaVersion: '1.0.0',
+        type: AnalysisRuleType.insight,
+        nameKey: 'concentration',
+        descriptionKey: 'concentration.description',
+        enabled: true,
+        status: AnalysisRuleStatus.active,
+        period: 'selected_period',
+        measure: const RuleMeasure(
+          operation: RuleOperation.share,
+          field: 'amount',
+        ),
+        grouping: RuleGrouping.category,
+        baseline: RuleBaseline.previousEquivalentPeriod,
+        condition: RuleCondition(
+          operator: 'gte',
+          left: 'value',
+          value: DecimalValue.parse('50'),
+        ),
+        severity: RuleSeverity.attention,
+        surface: AnalysisSurface.insights,
+        definitionHash: RuleDefinitionHash('6' * 64),
+      );
+      final concentrationResult = const AnalysisRuleEngine().execute(
+        dataset: AnalysisDataset(
+          context: context,
+          transactions: [
+            transaction('food-1', '75', category: 'food'),
+            transaction('other-1', '25', category: 'other'),
+          ],
+          baselineTransactions: [
+            transaction('food-0', '100', category: 'food'),
+          ],
+        ),
+        definitions: [concentration],
+      );
+      final food = concentrationResult
+          .map((result) => result.finding)
+          .whereType<AnalysisFinding>()
+          .single;
+      expect(food.currentValue, DecimalValue.parse('75'));
+      expect(food.impactValue, DecimalValue.parse('75'));
+      expect(food.evidence.single.transactionId.value, 'food-1');
+
+      final unusual = AnalysisRuleDefinition(
+        identity: RuleIdentity('ANL-R025'),
+        version: RuleVersion('1.0.0'),
+        schemaVersion: '1.0.0',
+        type: AnalysisRuleType.insight,
+        nameKey: 'unusual',
+        descriptionKey: 'unusual.description',
+        enabled: true,
+        status: AnalysisRuleStatus.active,
+        period: 'selected_period',
+        measure: const RuleMeasure(
+          operation: RuleOperation.maximum,
+          field: 'amount',
+        ),
+        grouping: RuleGrouping.none,
+        baseline: RuleBaseline.rollingMedian,
+        condition: RuleCondition(
+          operator: 'gte',
+          left: 'percentageChange',
+          value: DecimalValue.parse('100'),
+        ),
+        severity: RuleSeverity.attention,
+        surface: AnalysisSurface.insights,
+        definitionHash: RuleDefinitionHash('7' * 64),
+      );
+      final unusualResult = const AnalysisRuleEngine()
+          .execute(
+            dataset: AnalysisDataset(
+              context: context,
+              transactions: [
+                transaction('large', '300'),
+                transaction('ordinary', '50'),
+              ],
+              baselineTransactions: [
+                transaction('baseline-1', '100'),
+                transaction('baseline-2', '100'),
+                transaction('baseline-3', '200'),
+              ],
+            ),
+            definitions: [unusual],
+          )
+          .single;
+      expect(unusualResult.finding?.currentValue, DecimalValue.parse('300'));
+      expect(unusualResult.finding?.baselineValue, DecimalValue.parse('100'));
+      expect(
+        unusualResult.finding?.evidence.single.transactionId.value,
+        'large',
+      );
+    },
+  );
+
   test('insights require sufficient current and baseline data', () {
     final insight = AnalysisRuleDefinition(
       identity: RuleIdentity('ANL-R020'),
@@ -910,6 +1026,7 @@ void main() {
         RuleOperation.minimum,
         RuleOperation.maximum,
         RuleOperation.frequency,
+        RuleOperation.share,
       ]) {
         final result = const AnalysisRuleEngine()
             .execute(
@@ -930,10 +1047,7 @@ void main() {
           AnalysisDataAvailability.empty,
           reason: operation.name,
         );
-        expect(
-          result.metric!.qualityIssues.map((issue) => issue.code),
-          contains('insufficientData'),
-        );
+        expect(result.metric!.qualityIssues, isEmpty);
       }
     },
   );

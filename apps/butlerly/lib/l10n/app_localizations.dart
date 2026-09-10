@@ -218,6 +218,7 @@ class AppLocalizations {
       'tagSaveFailed': 'Could not save the tag. Your transaction is unchanged.',
       'unavailableMerchant': 'Unavailable merchant',
       'unavailableCategory': 'Unavailable category',
+      'unavailableSubcategory': 'Unavailable subcategory',
       'unavailableTag': 'Unavailable tag',
       'paymentSource': 'Payment source',
       'unavailablePaymentSource': 'Unavailable payment source',
@@ -491,6 +492,15 @@ class AppLocalizations {
       'analysis.rule.r023.name': 'Merchant movement',
       'analysis.rule.r023.description':
           'A merchant changed materially compared with the equivalent period.',
+      'analysis.rule.r024.name': 'Material spending alert',
+      'analysis.rule.r024.description':
+          'Overall spending exceeded both the percentage and absolute materiality thresholds.',
+      'analysis.rule.r025.name': 'Unusually large purchase',
+      'analysis.rule.r025.description':
+          'A purchase is materially larger than the comparable spending baseline.',
+      'analysis.rule.r026.name': 'Spending concentration',
+      'analysis.rule.r026.description':
+          'One category represents a materially high share of spending in this period.',
       'analysis.rule.r090.name': 'Data quality issues',
       'analysis.rule.r091.name': 'Missing exchange rates',
       'analysis.rule.r092.name': 'Unresolved reconciliation',
@@ -825,6 +835,7 @@ class AppLocalizations {
       'tagSaveFailed': '无法保存标签，您的交易未被更改。',
       'unavailableMerchant': '商户不可用',
       'unavailableCategory': '分类不可用',
+      'unavailableSubcategory': '子分类不可用',
       'unavailableTag': '标签不可用',
       'paymentSource': '付款来源',
       'unavailablePaymentSource': '付款来源不可用',
@@ -1073,6 +1084,12 @@ class AppLocalizations {
       'analysis.rule.r022.description': '某个子类别与等效期间相比发生了明显变化。',
       'analysis.rule.r023.name': '商户变化',
       'analysis.rule.r023.description': '某个商户与等效期间相比发生了明显变化。',
+      'analysis.rule.r024.name': '重大支出提醒',
+      'analysis.rule.r024.description': '总支出同时超过百分比和绝对金额的重要性阈值。',
+      'analysis.rule.r025.name': '异常大额购买',
+      'analysis.rule.r025.description': '某笔购买明显高于可比较的支出基准。',
+      'analysis.rule.r026.name': '支出集中度',
+      'analysis.rule.r026.description': '某个类别占本期间支出的比例明显偏高。',
       'analysis.rule.r090.name': '数据质量问题',
       'analysis.rule.r091.name': '缺少汇率',
       'analysis.rule.r092.name': '未解决的对账',
@@ -1403,6 +1420,7 @@ class AppLocalizations {
           'No se pudo guardar la etiqueta. La transacción no cambió.',
       'unavailableMerchant': 'Comercio no disponible',
       'unavailableCategory': 'Categoría no disponible',
+      'unavailableSubcategory': 'Subcategoría no disponible',
       'unavailableTag': 'Etiqueta no disponible',
       'paymentSource': 'Fuente de pago',
       'unavailablePaymentSource': 'Fuente de pago no disponible',
@@ -1682,6 +1700,15 @@ class AppLocalizations {
       'analysis.rule.r023.name': 'Cambio por comercio',
       'analysis.rule.r023.description':
           'Un comercio cambió de forma significativa frente al período equivalente.',
+      'analysis.rule.r024.name': 'Alerta de gasto material',
+      'analysis.rule.r024.description':
+          'El gasto total superó los umbrales porcentual y absoluto de materialidad.',
+      'analysis.rule.r025.name': 'Compra inusualmente grande',
+      'analysis.rule.r025.description':
+          'Una compra es considerablemente mayor que la base de gasto comparable.',
+      'analysis.rule.r026.name': 'Concentración del gasto',
+      'analysis.rule.r026.description':
+          'Una categoría representa una proporción materialmente alta del gasto del período.',
       'analysis.rule.r090.name': 'Problemas de calidad de datos',
       'analysis.rule.r091.name': 'Tipos de cambio ausentes',
       'analysis.rule.r092.name': 'Conciliación sin resolver',

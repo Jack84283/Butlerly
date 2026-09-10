@@ -1,0 +1,33 @@
+schemaVersion: "1.0.0"
+ruleId: ANL-R024
+ruleVersion: "1.0.0"
+# This definition remains inactive until Product approves the absolute
+# materiality floor for alerts. Its joint condition is intentionally retained
+# so enabling it cannot regress to percentage-only alerting.
+enabled: false
+surface: insights
+type: insight
+nameKey: analysis.rule.r024.name
+descriptionKey: analysis.rule.r024.description
+period: selected_period
+baseline: previousEquivalentPeriod
+measure:
+  operation: sum
+  field: amount
+  currencyBasis: baseCurrency
+filters:
+  direction: expense
+condition:
+  operator: all
+  children:
+    - operator: gte
+      left: percentageChange
+      value: "20"
+    - operator: gte
+      left: absoluteChange
+      # Placeholder is deliberately not activation-eligible without approval.
+      value: "100"
+result:
+  persistence: finding
+  refresh: onInvalidation
+  outputType: alert

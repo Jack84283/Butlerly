@@ -46,8 +46,109 @@ void main() {
       expect(evaluation.summary.income, DecimalValue.parse('250'));
       expect(evaluation.summary.netCashFlow, DecimalValue.parse('150'));
       expect(evaluation.summary.eligibleTransactionCount, 2);
+      expect(
+        evaluation.summary.limitations.map((issue) => issue.code),
+        contains('missingBaseline'),
+      );
       expect(evaluation.activeFindings, isEmpty);
       expect(evaluation.hasSufficientHistory, isFalse);
+    },
+  );
+
+  test(
+    'ranks grouped insights by monetary impact before percentage change',
+    () async {
+      final calculate = CalculateAnalysisOverview(
+        _Rules([_groupedInsightRule()]),
+        AnalysisDatasetBuilder(
+          _Transactions([
+            _transaction(
+              'current-a',
+              '2026-09-01',
+              '300',
+              category: 'category-a',
+            ),
+            _transaction(
+              'current-b',
+              '2026-09-01',
+              '100',
+              category: 'category-b',
+            ),
+            _transaction(
+              'baseline-a',
+              '2026-08-01',
+              '100',
+              category: 'category-a',
+            ),
+            _transaction(
+              'baseline-b',
+              '2026-08-01',
+              '50',
+              category: 'category-b',
+            ),
+          ]),
+          _Preferences(),
+          null,
+        ),
+        const AnalysisRuleEngine(),
+      );
+
+      final result = await CalculateInsights(
+        calculate,
+      ).currentMonth(DateTime.utc(2026, 9, 5, 12));
+      final evaluation =
+          (result as ApplicationSuccess<InsightsEvaluation>).value;
+      expect(evaluation.patterns.map((value) => value.dimension), [
+        'category-a',
+        'category-b',
+      ]);
+      expect(
+        evaluation.patterns.first.absoluteChange,
+        DecimalValue.parse('200'),
+      );
+    },
+  );
+
+  test(
+    'zero direction totals are valid data without quality limitations',
+    () async {
+      Future<PeriodSummary> summaryFor(List<Transaction> values) async {
+        final calculate = CalculateAnalysisOverview(
+          _Rules([
+            _summaryRule('ANL-R001', TransactionDirection.expense),
+            _summaryRule('ANL-R002', TransactionDirection.income),
+            _netRule(),
+          ]),
+          AnalysisDatasetBuilder(_Transactions(values), _Preferences(), null),
+          const AnalysisRuleEngine(),
+        );
+        final result = await CalculateInsights(
+          calculate,
+        ).currentMonth(DateTime.utc(2026, 9, 5, 12));
+        return (result as ApplicationSuccess<InsightsEvaluation>).value.summary;
+      }
+
+      final expenseOnly = await summaryFor([
+        _transaction('expense-only', '2026-09-01', '25'),
+      ]);
+      expect(expenseOnly.income, DecimalValue.parse('0'));
+      expect(expenseOnly.limitations, isEmpty);
+
+      final incomeOnly = await summaryFor([
+        _transaction(
+          'income-only',
+          '2026-09-01',
+          '25',
+          direction: TransactionDirection.income,
+        ),
+      ]);
+      expect(incomeOnly.expenseSpending, DecimalValue.parse('0'));
+      expect(incomeOnly.limitations, isEmpty);
+
+      final empty = await summaryFor(const []);
+      expect(empty.expenseSpending, DecimalValue.parse('0'));
+      expect(empty.income, DecimalValue.parse('0'));
+      expect(empty.limitations, isEmpty);
     },
   );
 
@@ -490,6 +591,37 @@ AnalysisRuleDefinition _insightRule() => AnalysisRuleDefinition(
   refreshPolicy: RefreshPolicy.onInvalidation,
 );
 
+AnalysisRuleDefinition _groupedInsightRule() => AnalysisRuleDefinition(
+  identity: RuleIdentity('ANL-R021'),
+  version: RuleVersion('1.1.0'),
+  schemaVersion: '1.0.0',
+  type: AnalysisRuleType.insight,
+  nameKey: 'analysis.rule.r021.name',
+  descriptionKey: 'analysis.rule.r021.description',
+  enabled: true,
+  status: AnalysisRuleStatus.active,
+  period: 'selected_period',
+  measure: const RuleMeasure(
+    operation: RuleOperation.sum,
+    field: 'amount',
+    currencyBasis: CurrencyBasis.baseCurrency,
+  ),
+  grouping: RuleGrouping.category,
+  baseline: RuleBaseline.previousEquivalentPeriod,
+  condition: RuleCondition(
+    operator: 'gte',
+    value: DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0),
+  ),
+  severity: RuleSeverity.attention,
+  surface: AnalysisSurface.insights,
+  filters: [
+    AnalysisFilter(kind: AnalysisFilterKind.direction, values: ['expense']),
+  ],
+  definitionHash: RuleDefinitionHash('f' * 64),
+  resultPersistence: ResultPersistencePolicy.finding,
+  refreshPolicy: RefreshPolicy.onInvalidation,
+);
+
 AnalysisRuleDefinition _netRule() => AnalysisRuleDefinition(
   identity: RuleIdentity('ANL-R003'),
   version: RuleVersion('1.0.0'),
@@ -549,6 +681,7 @@ Transaction _transaction(
   String date,
   String amount, {
   TransactionDirection direction = TransactionDirection.expense,
+  String? category,
 }) => Transaction(
   id: TransactionId(id),
   timing: KnownTransactionTime(DateTime.utc(2026, 1, 1, 12)),
@@ -559,6 +692,7 @@ Transaction _transaction(
   direction: direction,
   sourceType: TransactionSourceType.manual,
   transactionDate: date,
+  categoryId: category == null ? null : CategoryId(category),
   provenance: [
     Provenance(
       id: ProvenanceId('provenance-$id'),
@@ -752,6 +886,7 @@ final class _Findings implements AnalysisFindingRepository {
         absoluteChange: finding.absoluteChange,
         percentageChange: finding.percentageChange,
         dimension: finding.dimension,
+        impactValue: finding.impactValue,
         supportingMetrics: finding.supportingMetrics,
         evidence: finding.evidence,
         qualityIssues: finding.qualityIssues,
@@ -780,6 +915,7 @@ final class _Findings implements AnalysisFindingRepository {
       absoluteChange: value.absoluteChange,
       percentageChange: value.percentageChange,
       dimension: value.dimension,
+      impactValue: value.impactValue,
       supportingMetrics: value.supportingMetrics,
       evidence: value.evidence,
       qualityIssues: value.qualityIssues,

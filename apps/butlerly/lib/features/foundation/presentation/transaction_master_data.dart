@@ -23,6 +23,8 @@ final class TransactionMasterData {
 
   String? categoryName(String? id) => id == null ? null : categoryNames[id];
 
+  String? subcategoryName(String? id) => id == null ? null : categoryNames[id];
+
   String? categoryParentId(String? id) =>
       id == null ? null : categoryParentIds[id];
 

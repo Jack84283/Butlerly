@@ -224,6 +224,7 @@ AnalysisFinding _withLifecycle(
   absoluteChange: finding.absoluteChange,
   percentageChange: finding.percentageChange,
   dimension: finding.dimension,
+  impactValue: finding.impactValue,
   supportingMetrics: finding.supportingMetrics,
   evidence: finding.evidence,
   qualityIssues: finding.qualityIssues,
@@ -353,7 +354,8 @@ final class CalculateInsights {
               result.rule.type == AnalysisRuleType.insight,
         )
         .map((result) => _insightResult(result, context, baselineContext))
-        .toList(growable: false);
+        .toList();
+    insightResults.sort(_compareInsights);
     // History sufficiency is about whether at least one insight comparison
     // has a usable baseline, not merely whether the selected period contains
     // transactions. A selected-period-only dataset must not present an
@@ -394,6 +396,7 @@ final class CalculateInsights {
           finding?.percentageChange ?? comparison?.percentageChange,
       currency: context.baseCurrency,
       dimension: finding?.dimension,
+      impactValue: finding?.impactValue,
       evidence: evidence,
       limitations: [...result.issues, ...?finding?.qualityIssues],
       failure: result.failure,
@@ -496,6 +499,64 @@ final class CalculateInsights {
           detail: result.failure!.message,
         ),
   }.toList(growable: false);
+
+  int _compareInsights(InsightResult left, InsightResult right) {
+    final outputPriority = {
+      InsightOutputType.alert: 0,
+      InsightOutputType.pattern: 1,
+      InsightOutputType.summary: 2,
+      InsightOutputType.dataQuality: 3,
+      InsightOutputType.unresolved: 4,
+    };
+    final byOutput = outputPriority[left.outputType]!.compareTo(
+      outputPriority[right.outputType]!,
+    );
+    if (byOutput != 0) return byOutput;
+
+    final leftFinding = left.finding;
+    final rightFinding = right.finding;
+    if (leftFinding == null || rightFinding == null) {
+      return leftFinding == null ? (rightFinding == null ? 0 : 1) : -1;
+    }
+    final severity = {
+      RuleSeverity.critical: 0,
+      RuleSeverity.warning: 1,
+      RuleSeverity.attention: 2,
+      RuleSeverity.info: 3,
+    };
+    final bySeverity = severity[leftFinding.severity]!.compareTo(
+      severity[rightFinding.severity]!,
+    );
+    if (bySeverity != 0) return bySeverity;
+    final byImpact = _compareMagnitude(
+      right.impactValue ?? right.absoluteChange,
+      left.impactValue ?? left.absoluteChange,
+    );
+    if (byImpact != 0) return byImpact;
+    final byPercentage = _compareMagnitude(
+      right.percentageChange,
+      left.percentageChange,
+    );
+    if (byPercentage != 0) return byPercentage;
+    final byGeneratedAt = right.generatedAt.compareTo(left.generatedAt);
+    if (byGeneratedAt != 0) return byGeneratedAt;
+    final byRule = left.rule.identity.value.compareTo(
+      right.rule.identity.value,
+    );
+    if (byRule != 0) return byRule;
+    return (left.dimension ?? '').compareTo(right.dimension ?? '');
+  }
+
+  int _compareMagnitude(DecimalValue? left, DecimalValue? right) {
+    if (left == null || right == null) {
+      return left == null ? (right == null ? 0 : 1) : -1;
+    }
+    final leftCoefficient = left.coefficient.abs();
+    final rightCoefficient = right.coefficient.abs();
+    final scale = left.scale > right.scale ? left.scale : right.scale;
+    return (leftCoefficient * BigInt.from(10).pow(scale - left.scale))
+        .compareTo(rightCoefficient * BigInt.from(10).pow(scale - right.scale));
+  }
 }
 
 DecimalValue _zero() =>

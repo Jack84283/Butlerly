@@ -258,6 +258,7 @@ final class AnalysisRuleEngine {
       absoluteChange: comparison.absoluteChange,
       percentageChange: comparison.percentageChange,
       dimension: dimension.isEmpty ? null : dimension,
+      impactValue: current.impactValue,
       supportingMetrics: [current.id, ?comparison.baselineMetricId],
       evidence: current.evidence,
       qualityIssues: [
@@ -316,7 +317,7 @@ final class AnalysisRuleEngine {
         ? null
         : _metric(
             rule,
-            rule.measure,
+            _baselineMeasure(rule),
             dataset,
             baselineGroup,
             const <String, AnalysisMetric>{},
@@ -354,6 +355,22 @@ final class AnalysisRuleEngine {
           left.coefficient * BigInt.from(10).pow(scale - left.scale) -
           right.coefficient * BigInt.from(10).pow(scale - right.scale),
       scale: scale,
+    );
+  }
+
+  RuleMeasure _baselineMeasure(AnalysisRuleDefinition rule) {
+    final operation = switch (rule.baseline) {
+      RuleBaseline.rollingAverage => RuleOperation.average,
+      RuleBaseline.rollingMedian => RuleOperation.median,
+      _ => rule.measure.operation,
+    };
+    if (operation == rule.measure.operation) return rule.measure;
+    return RuleMeasure(
+      operation: operation,
+      field: rule.measure.field,
+      currencyBasis: rule.measure.currencyBasis,
+      key: rule.measure.key,
+      filters: rule.measure.filters,
     );
   }
 
@@ -606,6 +623,11 @@ final class AnalysisRuleEngine {
               : value.money.amount,
         )
         .toList(growable: false);
+    final evidenceValues = _evidenceValues(
+      measure.operation,
+      selected,
+      amountValues,
+    );
     final result = switch (measure.operation) {
       RuleOperation.count => DecimalValue.fromParts(
         coefficient: BigInt.from(_countForField(selected, measure.field)),
@@ -634,6 +656,24 @@ final class AnalysisRuleEngine {
         scale: 0,
       ),
       RuleOperation.difference => _difference(rule, dependencies),
+      RuleOperation.share => _share(
+        amountValues,
+        _measureSourceValues(dataset, rule, contextOverride)
+            .where((value) => _matchesFilters(value, rule.filters))
+            .where((value) => _matchesFilters(value, measure.filters))
+            .where(
+              (value) => measure.currencyBasis == CurrencyBasis.baseCurrency
+                  ? value.normalizedMoney != null ||
+                        value.money.currency == metricContext.baseCurrency
+                  : true,
+            )
+            .map(
+              (value) => measure.currencyBasis == CurrencyBasis.baseCurrency
+                  ? (value.normalizedMoney ?? value.money).amount
+                  : value.money.amount,
+            )
+            .toList(growable: false),
+      ),
     };
     final monetary = {
       RuleOperation.sum,
@@ -655,16 +695,10 @@ final class AnalysisRuleEngine {
         : measure.currencyBasis == CurrencyBasis.baseCurrency
         ? AnalysisDataAvailability.insufficient
         : AnalysisDataAvailability.empty;
-    final qualityIssues = [
-      ...dataset.qualityIssues,
-      if (availability != AnalysisDataAvailability.sufficient)
-        DataQualityIssue(
-          code: 'insufficientData',
-          detail: availability == AnalysisDataAvailability.empty
-              ? 'No eligible data was available for ${measure.operation.name}.'
-              : 'Required currency normalization was unavailable for ${measure.operation.name}.',
-        ),
-    ];
+    // An empty direction-specific metric is a valid result (for example an
+    // expense-only period has zero income). Genuine data-quality issues are
+    // supplied by the dataset builder and are not inferred from a zero value.
+    final qualityIssues = [...dataset.qualityIssues];
     return AnalysisMetric(
       id: AnalysisResultIdentity.forRule(
         rule: rule,
@@ -678,15 +712,72 @@ final class AnalysisRuleEngine {
       value: result,
       currency: currency,
       transactionCount: selected.length,
+      impactValue: measure.operation == RuleOperation.share
+          ? _sum(amountValues)
+          : null,
       availability: availability,
       dimension: dimension.isEmpty ? measure.key : '$dimension:${measure.key}',
-      evidence: selected
+      evidence: evidenceValues
           .map((value) => EvidenceReference(transactionId: value.id))
           .toList(growable: false),
       qualityIssues: qualityIssues,
       calculatedAt: at,
     );
   }
+
+  List<AnalysisEconomicTransaction> _evidenceValues(
+    RuleOperation operation,
+    List<AnalysisEconomicTransaction> selected,
+    List<DecimalValue> amountValues,
+  ) {
+    if (operation != RuleOperation.maximum || amountValues.isEmpty) {
+      return selected;
+    }
+    final maximum = amountValues.reduce(
+      (left, right) => left.compareTo(right) >= 0 ? left : right,
+    );
+    return [
+      for (var index = 0; index < selected.length; index++)
+        if (amountValues[index] == maximum) selected[index],
+    ];
+  }
+
+  List<AnalysisEconomicTransaction> _measureSourceValues(
+    AnalysisDataset dataset,
+    AnalysisRuleDefinition rule,
+    AnalysisContext? contextOverride,
+  ) => contextOverride == null
+      ? dataset.primaryTransactionsByPeriod[rule.period] ?? dataset.transactions
+      : dataset.baselineTransactionsByPeriod[rule.period] ??
+            dataset.baselineTransactions;
+
+  DecimalValue _share(
+    List<DecimalValue> numeratorValues,
+    List<DecimalValue> denominatorValues,
+  ) {
+    final denominator = _sum(denominatorValues);
+    if (denominator.isZero) return _zero();
+    final numerator = _sum(numeratorValues);
+    const precision = 6;
+    final commonScale = numerator.scale > denominator.scale
+        ? numerator.scale
+        : denominator.scale;
+    final normalizedNumerator =
+        numerator.coefficient *
+        BigInt.from(10).pow(commonScale - numerator.scale);
+    final normalizedDenominator =
+        denominator.coefficient *
+        BigInt.from(10).pow(commonScale - denominator.scale);
+    final value =
+        normalizedNumerator *
+        BigInt.from(100) *
+        BigInt.from(10).pow(precision) ~/
+        normalizedDenominator.abs();
+    return DecimalValue.fromParts(coefficient: value, scale: precision);
+  }
+
+  DecimalValue _zero() =>
+      DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0);
 
   bool _matchesFilters(
     AnalysisEconomicTransaction value,

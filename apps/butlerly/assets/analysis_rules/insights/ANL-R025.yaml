@@ -1,24 +1,23 @@
 schemaVersion: "1.0.0"
-ruleId: ANL-R023
-ruleVersion: "1.1.0"
+ruleId: ANL-R025
+ruleVersion: "1.0.0"
 enabled: true
 surface: insights
 type: insight
-nameKey: analysis.rule.r023.name
-descriptionKey: analysis.rule.r023.description
+nameKey: analysis.rule.r025.name
+descriptionKey: analysis.rule.r025.description
 period: selected_period
-baseline: previousEquivalentPeriod
+baseline: rollingMedian
 measure:
-  operation: sum
+  operation: maximum
   field: amount
   currencyBasis: baseCurrency
-grouping: merchant
 filters:
   direction: expense
 condition:
   operator: gte
   left: percentageChange
-  value: "20"
+  value: "100"
 result:
   persistence: finding
   refresh: onInvalidation

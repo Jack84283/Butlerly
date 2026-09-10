@@ -43,6 +43,7 @@ void main() {
       value: DecimalValue.parse('12.50'),
       currency: CurrencyCode('USD'),
       dimension: 'value',
+      impactValue: DecimalValue.parse('12.50'),
       transactionCount: 1,
       evidence: [
         EvidenceReference(
@@ -63,6 +64,7 @@ void main() {
     ).metric!;
     expect(restored.value, metric.value);
     expect(restored.currency, metric.currency);
+    expect(restored.impactValue, metric.impactValue);
     expect(restored.evidence.single.transactionId.value, 't1');
     expect(restored.evidence.single.evidenceId!.value, 'e1');
     expect(restored.qualityIssues.single.code, issue.code);
@@ -104,6 +106,7 @@ void main() {
       baselineValue: DecimalValue.parse('100'),
       absoluteChange: DecimalValue.parse('-8'),
       percentageChange: DecimalValue.parse('-8'),
+      impactValue: DecimalValue.parse('92'),
       generatedAt: DateTime.utc(2026, 1, 2),
     );
     final comparison = AnalysisComparison(
@@ -126,6 +129,7 @@ void main() {
       rule,
     );
     expect(restored.finding, isNotNull);
+    expect(restored.finding!.impactValue, finding.impactValue);
     expect(restored.comparison, isNotNull);
     expect(restored.comparison!.baselineValue, comparison.baselineValue);
     expect(restored.comparison!.absoluteChange, comparison.absoluteChange);

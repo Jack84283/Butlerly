@@ -32,6 +32,7 @@ enum RuleOperation {
   distinctCount,
   frequency,
   difference,
+  share,
 }
 
 enum RuleGrouping {
@@ -388,6 +389,7 @@ final class AnalysisMetric {
     required this.value,
     this.currency,
     this.dimension,
+    this.impactValue,
     this.transactionCount = 0,
     this.availability = AnalysisDataAvailability.sufficient,
     this.evidence = const [],
@@ -400,6 +402,11 @@ final class AnalysisMetric {
   final DecimalValue value;
   final CurrencyCode? currency;
   final String? dimension;
+
+  /// Base-currency magnitude used to rank grouped insight results. This is
+  /// separate from [value] because some metrics, such as concentration share,
+  /// are expressed as percentages while their impact is monetary.
+  final DecimalValue? impactValue;
   final int transactionCount;
   final AnalysisDataAvailability availability;
   final List<EvidenceReference> evidence;
@@ -439,6 +446,7 @@ final class AnalysisFinding {
     this.absoluteChange,
     this.percentageChange,
     this.dimension,
+    this.impactValue,
     this.supportingMetrics = const [],
     this.evidence = const [],
     this.qualityIssues = const [],
@@ -454,6 +462,7 @@ final class AnalysisFinding {
   final DecimalValue? absoluteChange;
   final DecimalValue? percentageChange;
   final String? dimension;
+  final DecimalValue? impactValue;
   final List<String> supportingMetrics;
   final List<EvidenceReference> evidence;
   final List<DataQualityIssue> qualityIssues;
@@ -512,6 +521,7 @@ final class InsightResult {
     this.percentageChange,
     this.currency,
     this.dimension,
+    this.impactValue,
     this.evidence = const [],
     this.limitations = const [],
     this.exclusions = const [],
@@ -528,6 +538,7 @@ final class InsightResult {
   final DecimalValue? percentageChange;
   final CurrencyCode? currency;
   final String? dimension;
+  final DecimalValue? impactValue;
   final List<EvidenceReference> evidence;
   final List<DataQualityIssue> limitations;
   final List<String> exclusions;

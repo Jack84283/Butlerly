@@ -8,6 +8,7 @@ import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_custom_period_sheet.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_period_selector.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -21,12 +22,14 @@ class InsightsPage extends StatefulWidget {
     this.loadEvaluation,
     this.dismissFinding,
     this.onNavigationRequested,
+    this.masterData,
   });
 
   final Future<ApplicationResult<InsightsEvaluation>> Function(String)?
   loadEvaluation;
   final Future<ApplicationResult<void>> Function(String)? dismissFinding;
   final ValueChanged<String>? onNavigationRequested;
+  final TransactionMasterData? masterData;
 
   @override
   State<InsightsPage> createState() => _InsightsPageState();
@@ -38,6 +41,8 @@ class _InsightsPageState extends State<InsightsPage> {
   String _period = _defaultPeriod;
   AnalysisContext? _context;
   DateTimeRange? _customRange;
+  TransactionMasterData _presentation = const TransactionMasterData();
+  String? _loadedLanguageCode;
 
   @override
   void initState() {
@@ -50,6 +55,28 @@ class _InsightsPageState extends State<InsightsPage> {
   void dispose() {
     transactionChanges.removeListener(_reload);
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (widget.masterData != null) {
+      _presentation = widget.masterData!;
+      return;
+    }
+    final languageCode = Localizations.localeOf(context).languageCode;
+    if (_loadedLanguageCode == languageCode) return;
+    _loadedLanguageCode = languageCode;
+    final finance = services.isRegistered<FinanceServices>()
+        ? services<FinanceServices>()
+        : null;
+    if (finance == null) return;
+    TransactionMasterDataProvider(
+      finance,
+    ).load(languageCode: languageCode).then((snapshot) {
+      if (!mounted || _loadedLanguageCode != languageCode) return;
+      setState(() => _presentation = snapshot.presentation);
+    });
   }
 
   Future<ApplicationResult<InsightsEvaluation>> _load(String period) {
@@ -220,6 +247,7 @@ class _InsightsPageState extends State<InsightsPage> {
         }
         return _InsightsContent(
           evaluation: result.value,
+          masterData: _presentation,
           period: _period,
           onPeriodChanged: (value) => value == 'selected_period'
               ? _chooseCustomPeriod()
@@ -259,6 +287,7 @@ class _InsightsContent extends StatelessWidget {
     required this.onPeriodChanged,
     required this.onDismiss,
     required this.onViewTransactions,
+    required this.masterData,
   });
 
   final InsightsEvaluation evaluation;
@@ -266,11 +295,11 @@ class _InsightsContent extends StatelessWidget {
   final ValueChanged<String> onPeriodChanged;
   final Future<void> Function(InsightResult) onDismiss;
   final ValueChanged<InsightResult> onViewTransactions;
+  final TransactionMasterData masterData;
 
   @override
   Widget build(BuildContext context) {
-    final activeFindings = [...evaluation.activeFindings]
-      ..sort(_compareInsights);
+    final activeFindings = evaluation.activeFindings;
     final alerts = activeFindings
         .where((result) => result.outputType == InsightOutputType.alert)
         .toList(growable: false);
@@ -319,6 +348,7 @@ class _InsightsContent extends StatelessWidget {
           for (final insight in alerts)
             _InsightCard(
               insight: insight,
+              masterData: masterData,
               onDismiss: () => onDismiss(insight),
               onViewTransactions: () => onViewTransactions(insight),
             ),
@@ -328,6 +358,7 @@ class _InsightsContent extends StatelessWidget {
           for (final insight in patterns)
             _InsightCard(
               insight: insight,
+              masterData: masterData,
               onDismiss: () => onDismiss(insight),
               onViewTransactions: () => onViewTransactions(insight),
             ),
@@ -346,22 +377,6 @@ class _InsightsContent extends StatelessWidget {
           ),
       ],
     );
-  }
-
-  int _compareInsights(InsightResult left, InsightResult right) {
-    final severity = {
-      RuleSeverity.critical: 0,
-      RuleSeverity.warning: 1,
-      RuleSeverity.attention: 2,
-      RuleSeverity.info: 3,
-    };
-    final bySeverity = severity[left.finding!.severity]!.compareTo(
-      severity[right.finding!.severity]!,
-    );
-    if (bySeverity != 0) return bySeverity;
-    final byDate = right.generatedAt.compareTo(left.generatedAt);
-    if (byDate != 0) return byDate;
-    return left.rule.identity.value.compareTo(right.rule.identity.value);
   }
 }
 
@@ -442,19 +457,24 @@ class _InsightCard extends StatelessWidget {
     required this.insight,
     required this.onDismiss,
     required this.onViewTransactions,
+    required this.masterData,
   });
 
   final InsightResult insight;
   final VoidCallback onDismiss;
   final VoidCallback onViewTransactions;
+  final TransactionMasterData masterData;
 
   @override
   Widget build(BuildContext context) {
     final currency = insight.currency?.value ?? '';
     final rule = insight.rule;
+    final dimensionLabel = _dimensionLabel(context, insight, masterData);
+    final isShare = insight.rule.measure.operation == RuleOperation.share;
     String? amount(DecimalValue? value) => value == null
         ? null
-        : '${localizedDecimal(context, value.toString())} $currency'.trim();
+        : '${localizedDecimal(context, value.toString())}${isShare ? '%' : ' $currency'}'
+              .trim();
     final severity = _severityPresentation(context, insight.finding!.severity);
     final values = <Widget>[
       _InsightValue(
@@ -469,6 +489,11 @@ class _InsightCard extends StatelessWidget {
         label: context.l10n.text('difference'),
         value: amount(insight.absoluteChange),
       ),
+      if (dimensionLabel != null)
+        _InsightValue(
+          label: _dimensionTypeLabel(context, insight.rule.grouping),
+          value: dimensionLabel,
+        ),
       _InsightValue(
         label: context.l10n.text('percentageChange'),
         value: insight.percentageChange == null
@@ -482,7 +507,10 @@ class _InsightCard extends StatelessWidget {
       ),
     ].whereType<_InsightValue>().where((value) => value.value != null).toList();
     return ButlerlyCard(
-      semanticLabel: context.l10n.text(rule.nameKey),
+      semanticLabel: [
+        context.l10n.text(rule.nameKey),
+        ...?dimensionLabel == null ? null : [dimensionLabel],
+      ].join(': '),
       onTap: onViewTransactions,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -583,3 +611,41 @@ String _qualityIssueText(BuildContext context, String code) => switch (code) {
     context.l10n.text('analysisDataQualityIssueRuleFailure'),
   _ => context.l10n.text('analysisDataQualityIssueGeneric'),
 };
+
+String? _dimensionLabel(
+  BuildContext context,
+  InsightResult insight,
+  TransactionMasterData masterData,
+) {
+  final dimension = insight.dimension;
+  if (dimension == null) return null;
+  return switch (insight.rule.grouping) {
+    RuleGrouping.category =>
+      masterData.categoryName(dimension) ??
+          (dimension == 'uncategorized'
+              ? context.l10n.text('uncategorized')
+              : context.l10n.text('unavailableCategory')),
+    RuleGrouping.subcategory =>
+      masterData.subcategoryName(dimension) ??
+          (dimension == 'uncategorized'
+              ? context.l10n.text('uncategorized')
+              : context.l10n.text('unavailableSubcategory')),
+    RuleGrouping.merchant =>
+      masterData.merchantName(dimension) ??
+          context.l10n.text('unavailableMerchant'),
+    RuleGrouping.paymentSource => context.l10n.text('unavailablePaymentSource'),
+    RuleGrouping.tag =>
+      masterData.tagName(dimension) ?? context.l10n.text('unavailableTag'),
+    _ => null,
+  };
+}
+
+String _dimensionTypeLabel(BuildContext context, RuleGrouping grouping) =>
+    switch (grouping) {
+      RuleGrouping.category => context.l10n.text('category'),
+      RuleGrouping.subcategory => context.l10n.text('subcategory'),
+      RuleGrouping.merchant => context.l10n.text('merchant'),
+      RuleGrouping.paymentSource => context.l10n.text('paymentSource'),
+      RuleGrouping.tag => context.l10n.text('tag'),
+      _ => context.l10n.text('analysisSummary'),
+    };

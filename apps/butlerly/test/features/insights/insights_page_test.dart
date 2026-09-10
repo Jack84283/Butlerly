@@ -1,3 +1,4 @@
+import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/insights/presentation/insights_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -11,6 +12,7 @@ void main() {
     Future<ApplicationResult<T>> Function(String) load, {
     Future<ApplicationResult<void>> Function(String)? dismissFinding,
     ValueChanged<String>? onNavigationRequested,
+    TransactionMasterData? masterData,
   }) {
     Future<ApplicationResult<InsightsEvaluation>> loadEvaluation(
       String period,
@@ -39,6 +41,7 @@ void main() {
         loadEvaluation: loadEvaluation,
         dismissFinding: dismissFinding,
         onNavigationRequested: onNavigationRequested,
+        masterData: masterData,
       ),
     );
   }
@@ -139,6 +142,54 @@ void main() {
     expect(find.byTooltip('Dismiss'), findsNWidgets(2));
   });
 
+  testWidgets(
+    'resolves and renders labels for multiple findings in one group',
+    (tester) async {
+      final rule = _groupedRule();
+      await tester.pumpWidget(
+        app(
+          (_) async => ApplicationSuccess<List<RuleExecutionResult>>([
+            _result(
+              rule: rule,
+              finding: _finding(
+                id: 'food-finding',
+                rule: rule,
+                dimension: 'category.food',
+              ),
+            ),
+            _result(
+              rule: rule,
+              finding: _finding(
+                id: 'travel-finding',
+                rule: rule,
+                dimension: 'category.travel',
+              ),
+            ),
+          ]),
+          masterData: const TransactionMasterData(
+            categoryNames: {
+              'category.food': 'Food & Dining',
+              'category.travel': 'Travel',
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+      await tester.pumpAndSettle();
+      expect(find.text('Food & Dining'), findsOneWidget);
+      expect(find.text('Travel'), findsOneWidget);
+      expect(
+        find.bySemanticsLabel('Category movement: Food & Dining'),
+        findsOneWidget,
+      );
+      expect(
+        find.bySemanticsLabel('Category movement: Travel'),
+        findsOneWidget,
+      );
+    },
+  );
+
   testWidgets('renders only active findings in deterministic severity order', (
     tester,
   ) async {
@@ -146,17 +197,17 @@ void main() {
       app(
         (_) async => ApplicationSuccess<List<RuleExecutionResult>>([
           _result(
+            finding: _finding(
+              id: 'critical-finding',
+              severity: RuleSeverity.critical,
+            ),
+          ),
+          _result(
             rule: _syntheticRule(),
             finding: _finding(
               id: 'info-finding',
               rule: _syntheticRule(),
               severity: RuleSeverity.info,
-            ),
-          ),
-          _result(
-            finding: _finding(
-              id: 'critical-finding',
-              severity: RuleSeverity.critical,
             ),
           ),
           _result(
@@ -182,6 +233,64 @@ void main() {
       titles.indexOf('Spending compared with baseline'),
       lessThan(titles.indexOf('Expenses')),
     );
+  });
+
+  testWidgets('renders subcategory and merchant grouping labels', (
+    tester,
+  ) async {
+    final subcategoryRule = _groupedRule(
+      id: 'ANL-R022',
+      grouping: RuleGrouping.subcategory,
+      nameKey: 'analysis.rule.r022.name',
+      descriptionKey: 'analysis.rule.r022.description',
+    );
+    final merchantRule = _groupedRule(
+      id: 'ANL-R023',
+      grouping: RuleGrouping.merchant,
+      nameKey: 'analysis.rule.r023.name',
+      descriptionKey: 'analysis.rule.r023.description',
+    );
+    await tester.pumpWidget(
+      app(
+        (_) async => ApplicationSuccess<List<RuleExecutionResult>>([
+          _result(
+            rule: subcategoryRule,
+            finding: _finding(
+              id: 'restaurant-finding',
+              rule: subcategoryRule,
+              dimension: 'subcategory.restaurants',
+            ),
+          ),
+          _result(
+            rule: merchantRule,
+            finding: _finding(
+              id: 'merchant-finding',
+              rule: merchantRule,
+              dimension: 'merchant.acme',
+            ),
+          ),
+        ]),
+        masterData: const TransactionMasterData(
+          categoryNames: {'subcategory.restaurants': 'Restaurants'},
+          merchantNames: {'merchant.acme': 'Acme Market'},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    expect(find.text('Restaurants'), findsOneWidget);
+    expect(find.text('Acme Market'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel('Subcategory movement: Restaurants'),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel('Merchant movement: Acme Market'),
+      findsOneWidget,
+    );
+    expect(find.text('subcategory.restaurants'), findsNothing);
+    expect(find.text('merchant.acme'), findsNothing);
   });
 
   test('supports authored insight copy in all V1 locales', () {
@@ -297,6 +406,7 @@ AnalysisFinding _finding({
   List<EvidenceReference> evidence = const [],
   RuleSeverity severity = RuleSeverity.attention,
   FindingLifecycle lifecycle = FindingLifecycle.active,
+  String? dimension,
 }) => AnalysisFinding(
   id: id,
   rule: rule ?? _rule(),
@@ -307,6 +417,7 @@ AnalysisFinding _finding({
   baselineValue: DecimalValue.parse('5930'),
   absoluteChange: DecimalValue.parse('1490'),
   percentageChange: DecimalValue.parse('25.1'),
+  dimension: dimension,
   evidence: evidence,
   generatedAt: DateTime.utc(2026, 9, 5),
 );
@@ -349,6 +460,30 @@ AnalysisRuleDefinition _rule() => AnalysisRuleDefinition(
   ),
   severity: RuleSeverity.attention,
   definitionHash: RuleDefinitionHash('a' * 64),
+  surface: AnalysisSurface.insights,
+);
+
+AnalysisRuleDefinition _groupedRule({
+  String id = 'ANL-R021',
+  RuleGrouping grouping = RuleGrouping.category,
+  String nameKey = 'analysis.rule.r021.name',
+  String descriptionKey = 'analysis.rule.r021.description',
+}) => AnalysisRuleDefinition(
+  identity: RuleIdentity(id),
+  version: RuleVersion('1.1.0'),
+  schemaVersion: '1.0.0',
+  type: AnalysisRuleType.insight,
+  nameKey: nameKey,
+  descriptionKey: descriptionKey,
+  enabled: true,
+  status: AnalysisRuleStatus.active,
+  period: 'selected_period',
+  measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
+  grouping: grouping,
+  baseline: RuleBaseline.previousEquivalentPeriod,
+  condition: const RuleCondition(operator: 'gte'),
+  severity: RuleSeverity.attention,
+  definitionHash: RuleDefinitionHash('b' * 64),
   surface: AnalysisSurface.insights,
 );
 
