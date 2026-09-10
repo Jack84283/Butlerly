@@ -318,7 +318,8 @@ final class AnalysisRuleEngine {
             at,
             contextOverride: baselineContext,
           );
-    final usableBaseline = baseline?.availability == AnalysisDataAvailability.insufficient
+    final usableBaseline =
+        baseline?.availability == AnalysisDataAvailability.insufficient
         ? null
         : baseline;
     final baselineValue = usableBaseline?.value;
@@ -416,14 +417,14 @@ final class AnalysisRuleEngine {
 
   bool _conditionMatches(
     RuleCondition condition,
-    DecimalValue value, [
+    DecimalValue value,
     DecimalValue? percentageChange,
     DecimalValue? absoluteChange, {
     AnalysisRuleDefinition? rule,
     AnalysisDataset? dataset,
     String dimension = '',
     List<AnalysisEconomicTransaction> currentValues = const [],
-  }]) {
+  }) {
     if (condition.operator == 'none') return true;
     if (condition.children.isNotEmpty) {
       final matches = condition.children
@@ -477,9 +478,6 @@ final class AnalysisRuleEngine {
       if (left == null || right == null || multiplier == null) return false;
       final threshold = _multiply(right, multiplier);
       if (right.isZero) {
-        // A zero comparison period is a valid zero baseline, not missing data.
-        // For increase-style multiplier conditions, 0 -> 0 is not an increase,
-        // while any positive current value is new activity from zero.
         return left.compareTo(_zero()) > 0;
       }
       return condition.operator == 'gtMultiplier'
@@ -518,11 +516,36 @@ final class AnalysisRuleEngine {
       null || 'value' || 'currentValue' => currentMetricValue,
       'percentageChange' => percentageChange,
       'absoluteChange' => absoluteChange,
-      'currentTotal' => _conditionAggregate(rule, dataset, currentValues, RuleOperation.sum),
-      'currentAverage' => _conditionAggregate(rule, dataset, currentValues, RuleOperation.average),
-      'currentMinimum' => _conditionAggregate(rule, dataset, currentValues, RuleOperation.minimum),
-      'currentMaximum' => _conditionAggregate(rule, dataset, currentValues, RuleOperation.maximum),
-      'currentCount' => _conditionAggregate(rule, dataset, currentValues, RuleOperation.count),
+      'currentTotal' => _conditionAggregate(
+          rule,
+          dataset,
+          currentValues,
+          RuleOperation.sum,
+        ),
+      'currentAverage' => _conditionAggregate(
+          rule,
+          dataset,
+          currentValues,
+          RuleOperation.average,
+        ),
+      'currentMinimum' => _conditionAggregate(
+          rule,
+          dataset,
+          currentValues,
+          RuleOperation.minimum,
+        ),
+      'currentMaximum' => _conditionAggregate(
+          rule,
+          dataset,
+          currentValues,
+          RuleOperation.maximum,
+        ),
+      'currentCount' => _conditionAggregate(
+          rule,
+          dataset,
+          currentValues,
+          RuleOperation.count,
+        ),
       'baselineTotal' => _conditionAggregate(
           rule,
           dataset,
@@ -569,7 +592,9 @@ final class AnalysisRuleEngine {
     RuleOperation operation, {
     bool baseline = false,
   }) {
-    final context = baseline ? _baselineContext(rule, dataset) ?? dataset.context : dataset.context;
+    final context = baseline
+        ? _baselineContext(rule, dataset) ?? dataset.context
+        : dataset.context;
     final selected = values
         .where((value) => _matchesFilters(value, rule.measure.filters))
         .where(
@@ -594,7 +619,8 @@ final class AnalysisRuleEngine {
         .toList(growable: false);
     return switch (operation) {
       RuleOperation.sum => _sum(amounts),
-      RuleOperation.average => amounts.isEmpty ? _zero() : _sum(amounts).divideBy(amounts.length),
+      RuleOperation.average =>
+        amounts.isEmpty ? _zero() : _sum(amounts).divideBy(amounts.length),
       RuleOperation.minimum => amounts.isEmpty
           ? _zero()
           : amounts.reduce((a, b) => a.compareTo(b) <= 0 ? a : b),
