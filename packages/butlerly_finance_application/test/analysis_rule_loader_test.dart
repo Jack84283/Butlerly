@@ -202,14 +202,29 @@ result:
     expect(definitions['ANL-R001'].role, 'expenseTotal');
     expect(definitions['ANL-R002'].role, 'incomeTotal');
     expect(definitions['ANL-R021'].outputType, InsightOutputType.pattern);
-    expect(definitions['ANL-R024'].outputType, InsightOutputType.alert);
-    final alert = definitions['ANL-R024'] as AnalysisRuleDefinition;
-    expect(alert.condition.operator, 'all');
+    expect(definitions['ANL-R024'].outputType, InsightOutputType.pattern);
+    final r024 = definitions['ANL-R024'] as AnalysisRuleDefinition;
+    expect(r024.condition.operator, 'any');
     expect(
-      alert.condition.children.map((RuleCondition value) => value.left),
-      containsAll(['percentageChange', 'absoluteChange']),
+      r024.condition.children.map((RuleCondition value) => value.operator),
+      containsAll(['gteMultiplier', 'gtMultiplier']),
+    );
+    expect(
+      r024.condition.children.map((RuleCondition value) => value.left),
+      containsAll(['currentTotal', 'currentMaximum']),
+    );
+    expect(
+      r024.condition.children.map((RuleCondition value) => value.right),
+      containsAll(['baselineTotal', 'baselineAverage']),
     );
     expect(definitions['ANL-R025'].outputType, InsightOutputType.pattern);
+    final r025 = definitions['ANL-R025'] as AnalysisRuleDefinition;
+    expect(r025.baseline, RuleBaseline.previousEquivalentPeriod);
+    expect(r025.condition.operator, 'any');
+    expect(
+      r025.condition.children.map((RuleCondition value) => value.right),
+      containsAll(['baselineAverage', 'baselineMaximum']),
+    );
     expect(definitions['ANL-R026'].outputType, InsightOutputType.pattern);
     expect(
       definitions['ANL-R016'].measures.first.operation,
@@ -219,8 +234,8 @@ result:
     expect(definitions['ANL-R021'].enabled, isTrue);
     expect(definitions['ANL-R022'].enabled, isTrue);
     expect(definitions['ANL-R023'].enabled, isTrue);
-    expect(definitions['ANL-R024'].enabled, isFalse);
-    expect(definitions['ANL-R025'].enabled, isFalse);
+    expect(definitions['ANL-R024'].enabled, isTrue);
+    expect(definitions['ANL-R025'].enabled, isTrue);
     expect(definitions['ANL-R026'].enabled, isTrue);
     expect(definitions['ANL-R020'].surface, AnalysisSurface.insights);
     expect(definitions['ANL-R090'].surface, AnalysisSurface.dataQuality);
