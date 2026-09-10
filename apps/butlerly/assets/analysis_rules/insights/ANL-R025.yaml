@@ -12,6 +12,7 @@ measure:
   operation: maximum
   field: amount
   currencyBasis: baseCurrency
+grouping: transaction
 filters:
   direction: expense
 condition:
