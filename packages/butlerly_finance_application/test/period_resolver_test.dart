@@ -49,6 +49,22 @@ void main() {
     expect(window.limitations, contains('equivalentElapsedCoverage'));
   });
 
+  test('partial month baselines never extend beyond the prior calendar', () {
+    final primary =
+        const AnalysisPeriodResolver().resolvePrimary(
+              type: 'selected_month',
+              context: context,
+            )
+            as AnalysisPeriodResolved;
+    final result = const AnalysisPeriodResolver().resolvePreviousEquivalent(
+      primary: primary.window,
+      elapsedAnchor: DateTime.utc(2026, 4, 1),
+    );
+    final window = (result as AnalysisPeriodResolved).window;
+    expect(window.start, DateTime.utc(2026, 2, 1));
+    expect(window.endExclusive, DateTime.utc(2026, 3, 1));
+  });
+
   test('supports month, year, leap-year, and rolling period boundaries', () {
     final resolver = AnalysisPeriodResolver(
       clock: _Clock(DateTime.utc(2024, 03, 01, 07)),

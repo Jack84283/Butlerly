@@ -1,7 +1,7 @@
 schemaVersion: "1.0.0"
 ruleId: ANL-R023
 ruleVersion: "1.0.0"
-enabled: true
+enabled: false
 surface: insights
 type: insight
 nameKey: analysis.rule.r023.name

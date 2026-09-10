@@ -179,24 +179,31 @@ void main() {
       definitionHash: RuleDefinitionHash('c' * 64),
       resultPersistence: ResultPersistencePolicy.materialized,
     );
-    AnalysisContext context(String month) => AnalysisContext(
+    AnalysisContext context(
+      String month, {
+      String periodType = 'selected_period',
+    }) => AnalysisContext(
       period: AnalysisPeriod(
         startDate: '$month-01',
         endDate: '$month-31',
         timeZoneId: 'UTC',
       ),
+      periodType: periodType,
       datasetMode: DatasetMode.allEligible,
       currencyBasis: CurrencyBasis.baseCurrency,
       baseCurrency: CurrencyCode('USD'),
     );
-    AnalysisRuleResult result(String month) => AnalysisRuleResult(
+    AnalysisRuleResult result(
+      String month, {
+      String periodType = 'selected_period',
+    }) => AnalysisRuleResult(
       id: 'result-$month',
       ruleId: rule.identity,
       ruleVersion: rule.version,
       definitionHash: rule.definitionHash,
       resultType: AnalysisResultType.metric,
       surface: AnalysisSurface.overview,
-      context: context(month),
+      context: context(month, periodType: periodType),
       payload: '{"value":"10"}',
       calculatedAt: now,
       sourceRevision: 1,
@@ -206,6 +213,7 @@ void main() {
     );
     await repository.save(result('2026-07'));
     await repository.save(result('2026-08'));
+    await repository.save(result('2026-09', periodType: 'current_month'));
     expect(
       (await repository.find(
         rule: rule,
@@ -213,6 +221,22 @@ void main() {
         sourceRevision: 1,
       ))?.freshness,
       AnalysisResultFreshness.fresh,
+    );
+    expect(
+      (await repository.find(
+        rule: rule,
+        context: context('2026-09', periodType: 'current_month'),
+        sourceRevision: 1,
+      ))?.context.periodType,
+      'current_month',
+    );
+    expect(
+      await repository.find(
+        rule: rule,
+        context: context('2026-09'),
+        sourceRevision: 1,
+      ),
+      isNull,
     );
     expect(
       await repository.find(

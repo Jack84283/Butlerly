@@ -354,15 +354,22 @@ final class CalculateInsights {
         )
         .map((result) => _insightResult(result, context, baselineContext))
         .toList(growable: false);
-    final hasSelectedData =
-        (count?.transactionCount ?? 0) > 0 ||
-        expense?.availability == AnalysisDataAvailability.sufficient ||
-        income?.availability == AnalysisDataAvailability.sufficient;
+    // History sufficiency is about whether at least one insight comparison
+    // has a usable baseline, not merely whether the selected period contains
+    // transactions. A selected-period-only dataset must not present an
+    // all-clear state when there is nothing meaningful to compare against.
+    final hasSufficientHistory = results.any(
+      (result) =>
+          result.rule.surface == AnalysisSurface.insights &&
+          result.rule.type == AnalysisRuleType.insight &&
+          result.comparison?.availability ==
+              AnalysisDataAvailability.sufficient,
+    );
     return InsightsEvaluation(
       summary: summary,
       results: insightResults,
       limitations: summaryLimitations,
-      hasSufficientHistory: hasSelectedData,
+      hasSufficientHistory: hasSufficientHistory,
     );
   }
 

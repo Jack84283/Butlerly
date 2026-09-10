@@ -47,7 +47,7 @@ void main() {
       expect(evaluation.summary.netCashFlow, DecimalValue.parse('150'));
       expect(evaluation.summary.eligibleTransactionCount, 2);
       expect(evaluation.activeFindings, isEmpty);
-      expect(evaluation.hasSufficientHistory, isTrue);
+      expect(evaluation.hasSufficientHistory, isFalse);
     },
   );
 

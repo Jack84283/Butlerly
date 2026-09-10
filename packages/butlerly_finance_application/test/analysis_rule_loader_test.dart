@@ -180,6 +180,9 @@ measure:
       RuleOperation.count,
     );
     expect(definitions['ANL-R020'].enabled, isTrue);
+    expect(definitions['ANL-R021'].enabled, isFalse);
+    expect(definitions['ANL-R022'].enabled, isFalse);
+    expect(definitions['ANL-R023'].enabled, isFalse);
     expect(definitions['ANL-R020'].surface, AnalysisSurface.insights);
     expect(definitions['ANL-R090'].surface, AnalysisSurface.dataQuality);
   });

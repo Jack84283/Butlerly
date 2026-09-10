@@ -114,7 +114,14 @@ void main() {
     final statementSubcategoryMigration = await File(
       'database/migrations/v5_to_v6.sql',
     ).readAsString();
+    final analysisPeriodTypeMigration = await File(
+      'database/migrations/v6_to_v7.sql',
+    ).readAsString();
     final legacy = current
+        .replaceFirst(
+          ",\n      period_type TEXT NOT NULL DEFAULT 'selected_period'",
+          '',
+        )
         .replaceFirst(', status_before_skip TEXT', '')
         .replaceFirst(
           ',\n      normalized_name TEXT NOT NULL DEFAULT \'\',\n      default_category_id TEXT REFERENCES categories(id),\n      default_subcategory_id TEXT REFERENCES categories(id),\n      is_built_in INTEGER NOT NULL DEFAULT 0',
@@ -261,10 +268,17 @@ void main() {
         4: merchantMigration,
         5: classificationMigration,
         6: statementSubcategoryMigration,
+        7: analysisPeriodTypeMigration,
       },
     );
     await database.open();
-    expect(await database.connection.getVersion(), 6);
+    expect(await database.connection.getVersion(), 7);
+    expect(
+      (await database.connection.rawQuery(
+        'PRAGMA table_info(analysis_rule_results)',
+      )).any((row) => row['name'] == 'period_type'),
+      isTrue,
+    );
     expect(
       (await database.connection.rawQuery(
         'PRAGMA table_info(statement_rows)',

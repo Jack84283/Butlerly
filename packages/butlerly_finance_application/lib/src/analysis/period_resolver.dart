@@ -162,7 +162,7 @@ final class AnalysisPeriodResolver {
             partialCalendar || coverage == AnalysisCoverageState.partial
             ? previousStart.add(
                 partialCalendar
-                    ? comparableCalendarDuration
+                    ? previousEnd.difference(previousStart)
                     : comparableElapsed,
               )
             : previousEnd,
