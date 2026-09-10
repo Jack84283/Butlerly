@@ -33,6 +33,8 @@ void main() {
     required String id,
     required RuleOperation operation,
     required RuleCondition condition,
+    RuleGrouping grouping = RuleGrouping.none,
+    InsightOutputType outputType = InsightOutputType.pattern,
   }) => AnalysisRuleDefinition(
     identity: RuleIdentity(id),
     version: RuleVersion('1.1.0'),
@@ -48,12 +50,12 @@ void main() {
       field: 'amount',
       currencyBasis: CurrencyBasis.baseCurrency,
     ),
-    grouping: RuleGrouping.none,
+    grouping: grouping,
     baseline: RuleBaseline.previousEquivalentPeriod,
     condition: condition,
     severity: RuleSeverity.attention,
     surface: AnalysisSurface.insights,
-    outputType: InsightOutputType.pattern,
+    outputType: outputType,
     resultPersistence: ResultPersistencePolicy.finding,
     definitionHash: RuleDefinitionHash('7' * 64),
     filters: const [
@@ -73,6 +75,54 @@ void main() {
     primaryTransactionsByPeriod: {'selected_period': current},
     baselineTransactions: baseline,
     baselineTransactionsByPeriod: {'selected_period': baseline},
+  );
+
+  RuleCondition increaseBy20Percent() => RuleCondition(
+    operator: 'all',
+    children: [
+      RuleCondition(
+        operator: 'gt',
+        left: 'currentTotal',
+        value: DecimalValue.parse('0'),
+      ),
+      RuleCondition(
+        operator: 'gteMultiplier',
+        left: 'currentTotal',
+        right: 'baselineTotal',
+        value: DecimalValue.parse('1.20'),
+      ),
+    ],
+  );
+
+  RuleCondition r024Condition() => RuleCondition(
+    operator: 'any',
+    children: [
+      increaseBy20Percent(),
+      RuleCondition(
+        operator: 'gtMultiplier',
+        left: 'currentMaximum',
+        right: 'baselineAverage',
+        value: DecimalValue.parse('1.50'),
+      ),
+    ],
+  );
+
+  RuleCondition r025Condition() => RuleCondition(
+    operator: 'any',
+    children: [
+      RuleCondition(
+        operator: 'gtMultiplier',
+        left: 'currentMaximum',
+        right: 'baselineAverage',
+        value: DecimalValue.parse('3.00'),
+      ),
+      RuleCondition(
+        operator: 'gtMultiplier',
+        left: 'currentMaximum',
+        right: 'baselineMaximum',
+        value: DecimalValue.parse('2.00'),
+      ),
+    ],
   );
 
   test('empty previous period is a zero baseline and comparison still runs', () {
@@ -104,6 +154,22 @@ void main() {
     );
   });
 
+  test('zero versus zero does not count as an increase', () {
+    final definition = rule(
+      id: 'ANL-R020',
+      operation: RuleOperation.sum,
+      condition: increaseBy20Percent(),
+    );
+
+    final result = const AnalysisRuleEngine().execute(
+      dataset: dataset(const [], const []),
+      definitions: [definition],
+    ).single;
+
+    expect(result.comparison!.baselineValue, DecimalValue.parse('0'));
+    expect(result.finding, isNull);
+  });
+
   test('R024 triggers on 20 percent total increase', () {
     final current = [expense('c1', '60'), expense('c2', '60')];
     final baseline = [
@@ -113,23 +179,8 @@ void main() {
     final definition = rule(
       id: 'ANL-R024',
       operation: RuleOperation.sum,
-      condition: RuleCondition(
-        operator: 'any',
-        children: [
-          RuleCondition(
-            operator: 'gteMultiplier',
-            left: 'currentTotal',
-            right: 'baselineTotal',
-            value: DecimalValue.parse('1.20'),
-          ),
-          RuleCondition(
-            operator: 'gtMultiplier',
-            left: 'currentMaximum',
-            right: 'baselineAverage',
-            value: DecimalValue.parse('1.50'),
-          ),
-        ],
-      ),
+      condition: r024Condition(),
+      outputType: InsightOutputType.alert,
     );
 
     final result = const AnalysisRuleEngine().execute(
@@ -151,23 +202,8 @@ void main() {
     final definition = rule(
       id: 'ANL-R024',
       operation: RuleOperation.sum,
-      condition: RuleCondition(
-        operator: 'any',
-        children: [
-          RuleCondition(
-            operator: 'gteMultiplier',
-            left: 'currentTotal',
-            right: 'baselineTotal',
-            value: DecimalValue.parse('1.20'),
-          ),
-          RuleCondition(
-            operator: 'gtMultiplier',
-            left: 'currentMaximum',
-            right: 'baselineAverage',
-            value: DecimalValue.parse('1.50'),
-          ),
-        ],
-      ),
+      condition: r024Condition(),
+      outputType: InsightOutputType.alert,
     );
 
     final result = const AnalysisRuleEngine().execute(
@@ -185,23 +221,8 @@ void main() {
     final definition = rule(
       id: 'ANL-R024',
       operation: RuleOperation.sum,
-      condition: RuleCondition(
-        operator: 'any',
-        children: [
-          RuleCondition(
-            operator: 'gteMultiplier',
-            left: 'currentTotal',
-            right: 'baselineTotal',
-            value: DecimalValue.parse('1.20'),
-          ),
-          RuleCondition(
-            operator: 'gtMultiplier',
-            left: 'currentMaximum',
-            right: 'baselineAverage',
-            value: DecimalValue.parse('1.50'),
-          ),
-        ],
-      ),
+      condition: r024Condition(),
+      outputType: InsightOutputType.alert,
     );
 
     final result = const AnalysisRuleEngine().execute(
@@ -214,8 +235,12 @@ void main() {
     expect(result.finding!.percentageChange, isNull);
   });
 
-  test('R025 triggers above 3x previous average or 2x previous maximum', () {
-    final current = [expense('c1', '310')];
+  test('R025 evaluates every current transaction and emits each qualifier', () {
+    final current = [
+      expense('c1', '220'),
+      expense('c2', '310'),
+      expense('c3', '100'),
+    ];
     final baseline = [
       expense('b1', '40', date: '2026-08-05'),
       expense('b2', '100', date: '2026-08-06'),
@@ -223,69 +248,57 @@ void main() {
     final definition = rule(
       id: 'ANL-R025',
       operation: RuleOperation.maximum,
-      condition: RuleCondition(
-        operator: 'any',
-        children: [
-          RuleCondition(
-            operator: 'gtMultiplier',
-            left: 'currentMaximum',
-            right: 'baselineAverage',
-            value: DecimalValue.parse('3.00'),
-          ),
-          RuleCondition(
-            operator: 'gtMultiplier',
-            left: 'currentMaximum',
-            right: 'baselineMaximum',
-            value: DecimalValue.parse('2.00'),
-          ),
-        ],
-      ),
+      condition: r025Condition(),
+      grouping: RuleGrouping.transaction,
     );
 
-    final result = const AnalysisRuleEngine().execute(
+    final results = const AnalysisRuleEngine().execute(
       dataset: dataset(current, baseline),
       definitions: [definition],
-    ).single;
+    );
 
-    expect(result.finding, isNotNull);
-    expect(result.finding!.currentValue, DecimalValue.parse('310'));
-    expect(result.finding!.evidence.single.transactionId.value, 'c1');
+    expect(results, hasLength(3));
+    final findings = results.where((result) => result.finding != null).toList();
+    expect(findings, hasLength(2));
+    expect(
+      findings.map((result) => result.finding!.dimension).toSet(),
+      {'c1', 'c2'},
+    );
+    expect(
+      findings
+          .map((result) => result.finding!.evidence.single.transactionId.value)
+          .toSet(),
+      {'c1', 'c2'},
+    );
+    expect(
+      findings.map((result) => result.finding!.baselineValue).toSet(),
+      {DecimalValue.parse('100')},
+    );
   });
 
-  test('R025 also evaluates against zero when previous period is empty', () {
-    final current = [expense('c1', '1')];
+  test('R025 also evaluates every transaction against zero baseline', () {
+    final current = [expense('c1', '1'), expense('c2', '2')];
     final definition = rule(
       id: 'ANL-R025',
       operation: RuleOperation.maximum,
-      condition: RuleCondition(
-        operator: 'any',
-        children: [
-          RuleCondition(
-            operator: 'gtMultiplier',
-            left: 'currentMaximum',
-            right: 'baselineAverage',
-            value: DecimalValue.parse('3.00'),
-          ),
-          RuleCondition(
-            operator: 'gtMultiplier',
-            left: 'currentMaximum',
-            right: 'baselineMaximum',
-            value: DecimalValue.parse('2.00'),
-          ),
-        ],
-      ),
+      condition: r025Condition(),
+      grouping: RuleGrouping.transaction,
     );
 
-    final result = const AnalysisRuleEngine().execute(
+    final results = const AnalysisRuleEngine().execute(
       dataset: dataset(current, const []),
       definitions: [definition],
-    ).single;
-
-    expect(result.finding, isNotNull);
-    expect(result.finding!.baselineValue, DecimalValue.parse('0'));
-    expect(
-      result.issues.map((issue) => issue.code),
-      isNot(contains('missingBaseline')),
     );
+
+    expect(results, hasLength(2));
+    expect(results.every((result) => result.finding != null), isTrue);
+    for (final result in results) {
+      expect(result.finding!.baselineValue, DecimalValue.parse('0'));
+      expect(result.finding!.percentageChange, isNull);
+      expect(
+        result.issues.map((issue) => issue.code),
+        isNot(contains('missingBaseline')),
+      );
+    }
   });
 }
