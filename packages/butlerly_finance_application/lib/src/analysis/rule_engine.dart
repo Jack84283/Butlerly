@@ -383,7 +383,11 @@ final class AnalysisRuleEngine {
               _matchesQualityField(value, rule),
         )
         .toList(growable: false);
-    return rule.grouping == RuleGrouping.none
+    // Transaction-grouped rules compare each current transaction against the
+    // full previous-period population rather than looking for the same ID in
+    // the baseline period.
+    return rule.grouping == RuleGrouping.none ||
+            rule.grouping == RuleGrouping.transaction
         ? baselineEligible
         : _group(baselineEligible, rule.grouping)[dimension] ??
               const <AnalysisEconomicTransaction>[];
@@ -444,7 +448,7 @@ final class AnalysisRuleEngine {
       return switch (condition.operator) {
         'all' => matches.every((item) => item),
         'any' => matches.any((item) => item),
-        'not' => !matches.first,
+        'not' => matches.isNotEmpty && !matches.first,
         _ => false,
       };
     }
@@ -477,19 +481,29 @@ final class AnalysisRuleEngine {
       final multiplier = condition.value;
       if (left == null || right == null || multiplier == null) return false;
       final threshold = _multiply(right, multiplier);
-      if (right.isZero) {
-        return left.compareTo(_zero()) > 0;
-      }
       return condition.operator == 'gtMultiplier'
           ? left.compareTo(threshold) > 0
           : left.compareTo(threshold) >= 0;
     }
 
-    final targetValue = switch (condition.left) {
-      'percentageChange' => percentageChange,
-      'absoluteChange' => absoluteChange,
-      _ => value,
-    };
+    if (condition.left == null) return false;
+    final targetValue = rule != null && dataset != null
+        ? _conditionOperand(
+            condition.left,
+            rule,
+            dataset,
+            dimension,
+            currentValues,
+            value,
+            percentageChange,
+            absoluteChange,
+          )
+        : switch (condition.left) {
+            'percentageChange' => percentageChange,
+            'absoluteChange' => absoluteChange,
+            'value' || 'currentValue' => value,
+            _ => null,
+          };
     final target = condition.value;
     if (target == null || targetValue == null) return false;
     return switch (condition.operator) {
@@ -513,7 +527,8 @@ final class AnalysisRuleEngine {
     DecimalValue? absoluteChange,
   ) {
     return switch (name) {
-      null || 'value' || 'currentValue' => currentMetricValue,
+      null => null,
+      'value' || 'currentValue' => currentMetricValue,
       'percentageChange' => percentageChange,
       'absoluteChange' => absoluteChange,
       'currentTotal' => _conditionAggregate(
@@ -656,6 +671,7 @@ final class AnalysisRuleEngine {
   }) {
     if (grouping == RuleGrouping.none) return {'': values};
     String key(AnalysisEconomicTransaction value) => switch (grouping) {
+      RuleGrouping.transaction => value.id.value,
       RuleGrouping.category => value.categoryId?.value ?? 'uncategorized',
       RuleGrouping.subcategory => value.subcategoryId?.value ?? 'uncategorized',
       RuleGrouping.merchant => value.merchantId?.value ?? 'unresolved',
