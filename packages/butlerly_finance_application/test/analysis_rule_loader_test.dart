@@ -220,7 +220,7 @@ result:
     expect(definitions['ANL-R022'].enabled, isTrue);
     expect(definitions['ANL-R023'].enabled, isTrue);
     expect(definitions['ANL-R024'].enabled, isFalse);
-    expect(definitions['ANL-R025'].enabled, isTrue);
+    expect(definitions['ANL-R025'].enabled, isFalse);
     expect(definitions['ANL-R026'].enabled, isTrue);
     expect(definitions['ANL-R020'].surface, AnalysisSurface.insights);
     expect(definitions['ANL-R090'].surface, AnalysisSurface.dataQuality);
