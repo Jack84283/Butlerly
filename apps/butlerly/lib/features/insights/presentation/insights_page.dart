@@ -18,13 +18,13 @@ import 'package:go_router/go_router.dart';
 class InsightsPage extends StatefulWidget {
   const InsightsPage({
     super.key,
-    this.load,
+    this.loadEvaluation,
     this.dismissFinding,
     this.onNavigationRequested,
   });
 
-  final Future<ApplicationResult<List<RuleExecutionResult>>> Function(String)?
-  load;
+  final Future<ApplicationResult<InsightsEvaluation>> Function(String)?
+  loadEvaluation;
   final Future<ApplicationResult<void>> Function(String)? dismissFinding;
   final ValueChanged<String>? onNavigationRequested;
 
@@ -34,7 +34,7 @@ class InsightsPage extends StatefulWidget {
 
 class _InsightsPageState extends State<InsightsPage> {
   static const _defaultPeriod = 'current_month';
-  late Future<ApplicationResult<List<RuleExecutionResult>>> _result;
+  late Future<ApplicationResult<InsightsEvaluation>> _result;
   String _period = _defaultPeriod;
   AnalysisContext? _context;
   DateTimeRange? _customRange;
@@ -52,22 +52,17 @@ class _InsightsPageState extends State<InsightsPage> {
     super.dispose();
   }
 
-  Future<ApplicationResult<List<RuleExecutionResult>>> _load(String period) {
-    if (widget.load != null) {
-      return widget.load!(period).then((value) {
-        if (value is ApplicationSuccess<List<RuleExecutionResult>>) {
-          _context ??= value.value
-              .map(
-                (result) => result.metric?.context ?? result.finding?.context,
-              )
-              .whereType<AnalysisContext>()
-              .firstOrNull;
+  Future<ApplicationResult<InsightsEvaluation>> _load(String period) {
+    if (widget.loadEvaluation != null) {
+      return widget.loadEvaluation!(period).then((value) {
+        if (value is ApplicationSuccess<InsightsEvaluation>) {
+          _context = value.value.summary.context;
         }
         return value;
       });
     }
     final useCase = services.isRegistered<FinanceServices>()
-        ? services<FinanceServices>().calculateAnalysisOverview
+        ? services<FinanceServices>().calculateInsights
         : null;
     if (useCase == null) {
       return Future.value(
@@ -79,7 +74,7 @@ class _InsightsPageState extends State<InsightsPage> {
         ),
       );
     }
-    late final Future<ApplicationResult<List<RuleExecutionResult>>> future;
+    late final Future<ApplicationResult<InsightsEvaluation>> future;
     if (period == _defaultPeriod) {
       future = useCase.currentMonth(DateTime.now());
     } else if (period == 'selected_period' && _customRange != null) {
@@ -90,7 +85,7 @@ class _InsightsPageState extends State<InsightsPage> {
           )
           .then((value) {
             if (value is! ApplicationSuccess<AnalysisContext>) {
-              return const ApplicationFailure<List<RuleExecutionResult>>(
+              return const ApplicationFailure<InsightsEvaluation>(
                 ApplicationFailureDetail(
                   operation: 'resolve insights period',
                   code: ApplicationFailureCode.unavailable,
@@ -105,7 +100,7 @@ class _InsightsPageState extends State<InsightsPage> {
         value,
       ) {
         if (value is! ApplicationSuccess<AnalysisContext>) {
-          return const ApplicationFailure<List<RuleExecutionResult>>(
+          return const ApplicationFailure<InsightsEvaluation>(
             ApplicationFailureDetail(
               operation: 'resolve insights period',
               code: ApplicationFailureCode.unavailable,
@@ -117,11 +112,8 @@ class _InsightsPageState extends State<InsightsPage> {
       });
     }
     return future.then((value) {
-      if (value is ApplicationSuccess<List<RuleExecutionResult>>) {
-        _context ??= value.value
-            .map((result) => result.metric?.context ?? result.finding?.context)
-            .whereType<AnalysisContext>()
-            .firstOrNull;
+      if (value is ApplicationSuccess<InsightsEvaluation>) {
+        _context ??= value.value.summary.context;
       }
       return value;
     });
@@ -175,7 +167,9 @@ class _InsightsPageState extends State<InsightsPage> {
     });
   }
 
-  Future<void> _dismiss(AnalysisFinding finding) async {
+  Future<void> _dismiss(InsightResult insight) async {
+    final finding = insight.finding;
+    if (finding == null) return;
     Future<ApplicationResult<void>> Function(String)? dismiss =
         widget.dismissFinding;
     if (dismiss == null && services.isRegistered<FinanceServices>()) {
@@ -200,7 +194,7 @@ class _InsightsPageState extends State<InsightsPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    body: FutureBuilder<ApplicationResult<List<RuleExecutionResult>>>(
+    body: FutureBuilder<ApplicationResult<InsightsEvaluation>>(
       future: _result,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
@@ -210,7 +204,7 @@ class _InsightsPageState extends State<InsightsPage> {
           );
         }
         final result = snapshot.data;
-        if (result is! ApplicationSuccess<List<RuleExecutionResult>>) {
+        if (result is! ApplicationSuccess<InsightsEvaluation>) {
           return ButlerlyPage(
             title: context.l10n.text('insights'),
             children: [
@@ -225,25 +219,23 @@ class _InsightsPageState extends State<InsightsPage> {
           );
         }
         return _InsightsContent(
-          results: result.value,
-          context: _context,
+          evaluation: result.value,
           period: _period,
           onPeriodChanged: (value) => value == 'selected_period'
               ? _chooseCustomPeriod()
               : _selectPeriod(value),
           onDismiss: _dismiss,
-          onViewTransactions: (finding) {
-            final period = _context?.period;
-            if (period == null) return;
+          onViewTransactions: (insight) {
+            final period = insight.context.period;
             final path = Uri(
               path: '/transactions',
               queryParameters: {
-                if (finding.evidence.isEmpty) ...{
+                if (insight.evidence.isEmpty) ...{
                   'from': period.startDate,
                   'to': period.endDate,
                 },
-                if (finding.evidence.isNotEmpty)
-                  'ids': finding.evidence
+                if (insight.evidence.isNotEmpty)
+                  'ids': insight.evidence
                       .map((evidence) => evidence.transactionId.value)
                       .join(','),
               },
@@ -262,74 +254,91 @@ class _InsightsPageState extends State<InsightsPage> {
 
 class _InsightsContent extends StatelessWidget {
   const _InsightsContent({
-    required this.results,
-    required this.context,
+    required this.evaluation,
     required this.period,
     required this.onPeriodChanged,
     required this.onDismiss,
     required this.onViewTransactions,
   });
 
-  final List<RuleExecutionResult> results;
-  final AnalysisContext? context;
+  final InsightsEvaluation evaluation;
   final String period;
   final ValueChanged<String> onPeriodChanged;
-  final Future<void> Function(AnalysisFinding) onDismiss;
-  final ValueChanged<AnalysisFinding> onViewTransactions;
+  final Future<void> Function(InsightResult) onDismiss;
+  final ValueChanged<InsightResult> onViewTransactions;
 
   @override
   Widget build(BuildContext context) {
-    final insightResults = results
-        .where(
-          (result) =>
-              result.rule.surface == AnalysisSurface.insights &&
-              result.rule.type == AnalysisRuleType.insight,
-        )
+    final activeFindings = [...evaluation.activeFindings]
+      ..sort(_compareInsights);
+    final alerts = activeFindings
+        .where((result) => result.outputType == InsightOutputType.alert)
         .toList(growable: false);
-    final activeFindings =
-        insightResults
-            .map((result) => result.finding)
-            .whereType<AnalysisFinding>()
-            .where((finding) => finding.lifecycle == FindingLifecycle.active)
-            .toList()
-          ..sort(_compareFindings);
-    final evaluated = insightResults.any(
-      (result) =>
-          result.failure == null &&
-          (result.finding != null ||
-              result.metric != null ||
-              result.comparison?.availability ==
-                  AnalysisDataAvailability.sufficient ||
-              result.comparison?.availability ==
-                  AnalysisDataAvailability.empty),
-    );
+    final patterns = activeFindings
+        .where((result) => result.outputType == InsightOutputType.pattern)
+        .toList(growable: false);
     return ButlerlyPage(
       title: context.l10n.text('insights'),
       subtitle: analysisPeriodDescription(
         context,
         period,
-        this.context?.period,
+        evaluation.summary.context.period,
       ),
       children: [
         AnalysisPeriodSelector(value: period, onChanged: onPeriodChanged),
         const SizedBox(height: ButlerlySpacing.standard),
-        if (activeFindings.isNotEmpty) ...[
-          ButlerlySectionHeader(title: context.l10n.text('needsAttention')),
-          for (final finding in activeFindings)
-            _InsightCard(
-              finding: finding,
-              rule: finding.rule,
-              analysisContext: this.context ?? finding.context,
-              onDismiss: () => onDismiss(finding),
-              onViewTransactions: () => onViewTransactions(finding),
+        _PeriodSummaryCard(summary: evaluation.summary),
+        if (evaluation.limitations.isNotEmpty) ...[
+          ButlerlySectionHeader(
+            title: context.l10n.text('dataQualityLimitations'),
+          ),
+          ButlerlyCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: evaluation.limitations
+                  .fold<Map<String, DataQualityIssue>>(
+                    {},
+                    (issues, issue) =>
+                        issues..putIfAbsent(issue.code, () => issue),
+                  )
+                  .values
+                  .map(
+                    (issue) => Padding(
+                      padding: const EdgeInsets.only(
+                        bottom: ButlerlySpacing.micro,
+                      ),
+                      child: Text(_qualityIssueText(context, issue.code)),
+                    ),
+                  )
+                  .toList(growable: false),
             ),
-        ] else if (!evaluated)
+          ),
+        ],
+        if (alerts.isNotEmpty) ...[
+          ButlerlySectionHeader(title: context.l10n.text('needsAttention')),
+          for (final insight in alerts)
+            _InsightCard(
+              insight: insight,
+              onDismiss: () => onDismiss(insight),
+              onViewTransactions: () => onViewTransactions(insight),
+            ),
+        ],
+        if (patterns.isNotEmpty) ...[
+          ButlerlySectionHeader(title: context.l10n.text('otherInsights')),
+          for (final insight in patterns)
+            _InsightCard(
+              insight: insight,
+              onDismiss: () => onDismiss(insight),
+              onViewTransactions: () => onViewTransactions(insight),
+            ),
+        ],
+        if (activeFindings.isEmpty && !evaluation.hasSufficientHistory)
           ButlerlyEmptyState(
             icon: Icons.insights_outlined,
             title: context.l10n.text('insightsInsufficientHistory'),
             message: context.l10n.text('insightsInsufficientHistoryBody'),
           )
-        else
+        else if (activeFindings.isEmpty)
           ButlerlyEmptyState(
             icon: Icons.check_circle_outline,
             title: context.l10n.text('insightsNothingNoteworthy'),
@@ -339,15 +348,15 @@ class _InsightsContent extends StatelessWidget {
     );
   }
 
-  int _compareFindings(AnalysisFinding left, AnalysisFinding right) {
+  int _compareInsights(InsightResult left, InsightResult right) {
     final severity = {
       RuleSeverity.critical: 0,
       RuleSeverity.warning: 1,
       RuleSeverity.attention: 2,
       RuleSeverity.info: 3,
     };
-    final bySeverity = severity[left.severity]!.compareTo(
-      severity[right.severity]!,
+    final bySeverity = severity[left.finding!.severity]!.compareTo(
+      severity[right.finding!.severity]!,
     );
     if (bySeverity != 0) return bySeverity;
     final byDate = right.generatedAt.compareTo(left.generatedAt);
@@ -356,51 +365,120 @@ class _InsightsContent extends StatelessWidget {
   }
 }
 
+class _PeriodSummaryCard extends StatelessWidget {
+  const _PeriodSummaryCard({required this.summary});
+  final PeriodSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    String? amount(DecimalValue? value) => value == null
+        ? null
+        : '${localizedDecimal(context, value.toString())} ${summary.currency?.value ?? ''}'
+              .trim();
+    final values = <_InsightValue>[
+      _InsightValue(
+        label: context.l10n.text('currentPeriod'),
+        value:
+            '${summary.context.period.startDate} – ${summary.context.period.endDate}',
+      ),
+      if (summary.baselineContext != null)
+        _InsightValue(
+          label: context.l10n.text('previousPeriod'),
+          value:
+              '${summary.baselineContext!.period.startDate} – ${summary.baselineContext!.period.endDate}',
+        ),
+      _InsightValue(
+        label: context.l10n.text('totalSpending'),
+        value: amount(summary.expenseSpending),
+      ),
+      _InsightValue(
+        label: context.l10n.text('income'),
+        value: amount(summary.income),
+      ),
+      _InsightValue(
+        label: context.l10n.text('netCashFlow'),
+        value: amount(summary.netCashFlow),
+      ),
+      _InsightValue(
+        label: context.l10n.text('eligibleTransactions'),
+        value: '${summary.eligibleTransactionCount}',
+      ),
+      if (summary.expenseChange?.absoluteChange != null)
+        _InsightValue(
+          label: context.l10n.text('difference'),
+          value: amount(summary.expenseChange!.absoluteChange),
+        ),
+      if (summary.expenseChange?.percentageChange != null)
+        _InsightValue(
+          label: context.l10n.text('percentageChange'),
+          value:
+              '${localizedDecimal(context, summary.expenseChange!.percentageChange.toString())}%',
+        ),
+    ];
+    return ButlerlyCard(
+      semanticLabel: context.l10n.text('periodSummary'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.l10n.text('periodSummary'),
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: ButlerlySpacing.small),
+          ...values.where((value) => value.value != null),
+          if (!summary.comparisonAvailable)
+            Text(
+              '${context.l10n.text('comparisonUnavailable')}: '
+              '${context.l10n.text('comparisonUnavailableBody')}',
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _InsightCard extends StatelessWidget {
   const _InsightCard({
-    required this.finding,
-    required this.rule,
-    required this.analysisContext,
+    required this.insight,
     required this.onDismiss,
     required this.onViewTransactions,
   });
 
-  final AnalysisFinding finding;
-  final AnalysisRuleDefinition rule;
-  final AnalysisContext analysisContext;
+  final InsightResult insight;
   final VoidCallback onDismiss;
   final VoidCallback onViewTransactions;
 
   @override
   Widget build(BuildContext context) {
-    final currency = analysisContext.baseCurrency?.value ?? '';
+    final currency = insight.currency?.value ?? '';
+    final rule = insight.rule;
     String? amount(DecimalValue? value) => value == null
         ? null
         : '${localizedDecimal(context, value.toString())} $currency'.trim();
-    final severity = _severityPresentation(context, finding.severity);
+    final severity = _severityPresentation(context, insight.finding!.severity);
     final values = <Widget>[
       _InsightValue(
         label: context.l10n.text('currentPeriod'),
-        value: amount(finding.currentValue),
+        value: amount(insight.currentValue),
       ),
       _InsightValue(
         label: context.l10n.text('previousPeriod'),
-        value: amount(finding.baselineValue),
+        value: amount(insight.baselineValue),
       ),
       _InsightValue(
         label: context.l10n.text('difference'),
-        value: amount(finding.absoluteChange),
+        value: amount(insight.absoluteChange),
       ),
       _InsightValue(
         label: context.l10n.text('percentageChange'),
-        value: finding.percentageChange == null
+        value: insight.percentageChange == null
             ? null
-            : '${localizedDecimal(context, finding.percentageChange.toString())}%',
+            : '${localizedDecimal(context, insight.percentageChange.toString())}%',
       ),
       _InsightValue(
         label: context.l10n.text('analysisPeriod'),
         value:
-            '${analysisContext.period.startDate} – ${analysisContext.period.endDate}',
+            '${insight.context.period.startDate} – ${insight.context.period.endDate}',
       ),
     ].whereType<_InsightValue>().where((value) => value.value != null).toList();
     return ButlerlyCard(
@@ -430,11 +508,11 @@ class _InsightCard extends StatelessWidget {
           Text(context.l10n.text(rule.descriptionKey)),
           const SizedBox(height: ButlerlySpacing.standard),
           ...values,
-          if (finding.evidence.isNotEmpty) ...[
+          if (insight.evidence.isNotEmpty) ...[
             const SizedBox(height: ButlerlySpacing.small),
             Text(
               context.l10n.text('supportingTransactions', {
-                'count': '${finding.evidence.length}',
+                'count': '${insight.evidence.length}',
               }),
             ),
           ],
@@ -484,4 +562,24 @@ class _InsightValue extends StatelessWidget {
     color: context.colors.warning,
   ),
   RuleSeverity.info => (icon: Icons.info_outline, color: context.colors.info),
+};
+
+String _qualityIssueText(BuildContext context, String code) => switch (code) {
+  'missingFx' => context.l10n.text('analysisDataQualityIssueMissingFx'),
+  'insufficientData' => context.l10n.text(
+    'analysisDataQualityIssueInsufficient',
+  ),
+  'missingBaseline' => context.l10n.text('analysisDataQualityIssueBaseline'),
+  'equivalentElapsedCoverage' ||
+  'currentMonthToDate' ||
+  'currentYearInProgress' ||
+  'rollingWindowIncludesCurrentDate' => context.l10n.text(
+    'analysisDataQualityIssueCoverage',
+  ),
+  'reconciliationUncertainty' => context.l10n.text(
+    'analysisDataQualityIssueReconciliation',
+  ),
+  'execution' || 'dependencyFailure' || 'missingDependency' =>
+    context.l10n.text('analysisDataQualityIssueRuleFailure'),
+  _ => context.l10n.text('analysisDataQualityIssueGeneric'),
 };

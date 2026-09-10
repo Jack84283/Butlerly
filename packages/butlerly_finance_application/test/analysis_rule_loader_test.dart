@@ -157,7 +157,7 @@ measure:
             .where((file) => !file.path.endsWith('catalog.yaml'))
             .toList()
           ..sort((a, b) => a.path.compareTo(b.path));
-    expect(files, hasLength(11));
+    expect(files, hasLength(14));
     final ids = <String>{};
     final definitions = <String, dynamic>{};
     for (final file in files) {
@@ -172,6 +172,9 @@ measure:
     expect(definitions['ANL-R010'].filters.single.values, ['expense']);
     expect(definitions['ANL-R016'].surface, AnalysisSurface.calendar);
     expect(definitions['ANL-R016'].measures, hasLength(3));
+    expect(definitions['ANL-R001'].role, 'expenseTotal');
+    expect(definitions['ANL-R002'].role, 'incomeTotal');
+    expect(definitions['ANL-R021'].outputType, InsightOutputType.pattern);
     expect(
       definitions['ANL-R016'].measures.first.operation,
       RuleOperation.count,

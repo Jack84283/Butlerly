@@ -7,26 +7,41 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  Widget app(
-    Future<ApplicationResult<List<RuleExecutionResult>>> Function(String)
-    load, {
+  Widget app<T>(
+    Future<ApplicationResult<T>> Function(String) load, {
     Future<ApplicationResult<void>> Function(String)? dismissFinding,
     ValueChanged<String>? onNavigationRequested,
-  }) => MaterialApp(
-    localizationsDelegates: const [
-      AppLocalizations.delegate,
-      GlobalMaterialLocalizations.delegate,
-      GlobalWidgetsLocalizations.delegate,
-      GlobalCupertinoLocalizations.delegate,
-    ],
-    supportedLocales: AppLocalizations.supportedLocales,
-    home: InsightsPage(
-      key: UniqueKey(),
-      load: load,
-      dismissFinding: dismissFinding,
-      onNavigationRequested: onNavigationRequested,
-    ),
-  );
+  }) {
+    Future<ApplicationResult<InsightsEvaluation>> loadEvaluation(
+      String period,
+    ) async {
+      final result = await load(period);
+      if (result is ApplicationFailure<T>) {
+        return ApplicationFailure(result.failure);
+      }
+      final value = (result as ApplicationSuccess<T>).value;
+      if (value is InsightsEvaluation) return ApplicationSuccess(value);
+      return ApplicationSuccess(
+        _evaluation(value as List<RuleExecutionResult>),
+      );
+    }
+
+    return MaterialApp(
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: InsightsPage(
+        key: UniqueKey(),
+        loadEvaluation: loadEvaluation,
+        dismissFinding: dismissFinding,
+        onNavigationRequested: onNavigationRequested,
+      ),
+    );
+  }
 
   testWidgets('shows an R020 finding with its comparison values', (
     tester,
@@ -44,6 +59,38 @@ void main() {
     expect(find.textContaining('1,490'), findsOneWidget);
     expect(find.byTooltip('Dismiss'), findsOneWidget);
   });
+
+  testWidgets(
+    'always shows selected-period summary without an active finding',
+    (tester) async {
+      await tester.pumpWidget(
+        app(
+          (_) async => ApplicationSuccess(
+            InsightsEvaluation(
+              summary: PeriodSummary(
+                context: _context(),
+                expenseSpending: DecimalValue.parse('120'),
+                income: DecimalValue.parse('300'),
+                netCashFlow: DecimalValue.parse('180'),
+                eligibleTransactionCount: 3,
+                currency: CurrencyCode('USD'),
+                comparisonAvailable: false,
+              ),
+              results: const [],
+              hasSufficientHistory: true,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Period summary'), findsOneWidget);
+      expect(find.text('Total spending'), findsOneWidget);
+      expect(find.textContaining('120'), findsOneWidget);
+      await tester.dragFrom(const Offset(400, 500), const Offset(0, -500));
+      await tester.pumpAndSettle();
+      expect(find.text('Nothing needs your attention'), findsOneWidget);
+    },
+  );
 
   testWidgets('drills into the finding period for supporting transactions', (
     tester,
@@ -65,6 +112,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('View transactions'));
     expect(path, '/transactions?ids=support-1%2Csupport-2');
   });
@@ -82,6 +131,8 @@ void main() {
     await tester.pumpWidget(
       app((_) async => ApplicationSuccess<List<RuleExecutionResult>>(results)),
     );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
     await tester.pumpAndSettle();
     expect(find.text('Spending compared with baseline'), findsOneWidget);
     expect(find.text('Expenses'), findsOneWidget);
@@ -117,6 +168,8 @@ void main() {
         ]),
       ),
     );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
     await tester.pumpAndSettle();
 
     expect(find.byTooltip('Dismiss'), findsNWidgets(2));
@@ -168,6 +221,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.dragFrom(const Offset(400, 500), const Offset(0, -500));
+    await tester.pumpAndSettle();
     expect(find.text('Not enough history yet'), findsOneWidget);
     expect(find.text('Add data'), findsNothing);
 
@@ -186,6 +241,8 @@ void main() {
         ]),
       ),
     );
+    await tester.pumpAndSettle();
+    await tester.dragFrom(const Offset(400, 500), const Offset(0, -500));
     await tester.pumpAndSettle();
     expect(find.text('Nothing needs your attention'), findsOneWidget);
   });
@@ -217,6 +274,8 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Dismiss'));
+    await tester.pumpAndSettle();
+    await tester.dragFrom(const Offset(400, 500), const Offset(0, -500));
     await tester.pumpAndSettle();
     expect(find.text('Nothing needs your attention'), findsOneWidget);
   });
@@ -303,6 +362,67 @@ AnalysisContext _context() => AnalysisContext(
   currencyBasis: CurrencyBasis.baseCurrency,
   baseCurrency: CurrencyCode('USD'),
 );
+
+InsightsEvaluation _evaluation(List<RuleExecutionResult> results) {
+  final context = results
+      .map((result) => result.finding?.context ?? result.metric?.context)
+      .whereType<AnalysisContext>()
+      .firstOrNull;
+  final resolvedContext = context ?? _context();
+  return InsightsEvaluation(
+    summary: PeriodSummary(
+      context: resolvedContext,
+      currency: resolvedContext.baseCurrency,
+      comparisonAvailable: results.any(
+        (result) =>
+            result.comparison?.availability ==
+            AnalysisDataAvailability.sufficient,
+      ),
+      limitations: results
+          .expand((result) => result.issues)
+          .toList(growable: false),
+    ),
+    results: results
+        .where(
+          (result) =>
+              result.rule.surface == AnalysisSurface.insights &&
+              result.rule.type == AnalysisRuleType.insight,
+        )
+        .map(
+          (result) => InsightResult(
+            outputType: result.rule.outputType,
+            rule: result.rule,
+            context: resolvedContext,
+            finding: result.finding,
+            currentValue:
+                result.finding?.currentValue ?? result.comparison?.currentValue,
+            baselineValue:
+                result.finding?.baselineValue ??
+                result.comparison?.baselineValue,
+            absoluteChange:
+                result.finding?.absoluteChange ??
+                result.comparison?.absoluteChange,
+            percentageChange:
+                result.finding?.percentageChange ??
+                result.comparison?.percentageChange,
+            currency: resolvedContext.baseCurrency,
+            dimension: result.finding?.dimension,
+            evidence: result.finding?.evidence ?? const [],
+            limitations: result.issues,
+            failure: result.failure,
+          ),
+        )
+        .toList(growable: false),
+    hasSufficientHistory: results.any(
+      (result) =>
+          result.finding != null ||
+          result.metric != null ||
+          result.comparison?.availability ==
+              AnalysisDataAvailability.sufficient ||
+          result.comparison?.availability == AnalysisDataAvailability.empty,
+    ),
+  );
+}
 
 DecimalValue _zero() =>
     DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0);

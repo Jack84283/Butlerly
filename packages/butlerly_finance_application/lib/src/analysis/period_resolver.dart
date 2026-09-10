@@ -113,25 +113,58 @@ final class AnalysisPeriodResolver {
     final coverage = elapsed < duration
         ? AnalysisCoverageState.partial
         : AnalysisCoverageState.complete;
+    final calendarDuration = switch (primary.periodType) {
+      'month' => DateTime.utc(
+        primary.start.year,
+        primary.start.month + 1,
+        1,
+      ).difference(DateTime.utc(primary.start.year, primary.start.month, 1)),
+      'year' => DateTime.utc(
+        primary.start.year + 1,
+        1,
+        1,
+      ).difference(DateTime.utc(primary.start.year, 1, 1)),
+      _ => duration,
+    };
+    final partialCalendar =
+        primary.coverage == AnalysisCoverageState.partial ||
+        duration < calendarDuration;
+    final elapsedCalendar = primary.limitations.any(
+      (value) =>
+          value == 'currentMonthToDate' || value == 'currentYearInProgress',
+    );
+    final comparableCalendarDuration = elapsedCalendar ? elapsed : duration;
     final previousStart = switch (primary.periodType) {
       'month' => DateTime.utc(primary.start.year, primary.start.month - 1, 1),
       'year' => DateTime.utc(primary.start.year - 1, 1, 1),
       _ => end.subtract(duration),
     };
-    final previousEnd = switch (primary.periodType) {
+    final fullPreviousEnd = switch (primary.periodType) {
       'month' => DateTime.utc(previousStart.year, previousStart.month + 1, 1),
       'year' => DateTime.utc(previousStart.year + 1, 1, 1),
       _ => end,
     };
-    final previousDuration = previousEnd.difference(previousStart);
+    final previousDuration = fullPreviousEnd.difference(previousStart);
+    final previousEnd = partialCalendar
+        ? previousStart.add(
+            comparableCalendarDuration > previousDuration
+                ? previousDuration
+                : comparableCalendarDuration,
+          )
+        : fullPreviousEnd;
     final comparableElapsed = elapsed > previousDuration
         ? previousDuration
         : elapsed;
     return AnalysisPeriodResolved(
       ResolvedAnalysisWindow(
         start: previousStart,
-        endExclusive: coverage == AnalysisCoverageState.partial
-            ? previousStart.add(comparableElapsed)
+        endExclusive:
+            partialCalendar || coverage == AnalysisCoverageState.partial
+            ? previousStart.add(
+                partialCalendar
+                    ? comparableCalendarDuration
+                    : comparableElapsed,
+              )
             : previousEnd,
         timeZoneId: primary.timeZoneId,
         coverage: coverage,

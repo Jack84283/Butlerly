@@ -129,6 +129,7 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
       type: AnalysisRuleType.values.byName(json['type'] as String),
       nameKey: json['nameKey'] as String,
       descriptionKey: json['descriptionKey'] as String,
+      role: json['role'] as String?,
       enabled: json['enabled'] as bool? ?? true,
       status: AnalysisRuleStatus.active,
       period: json['period'] as String? ?? 'currentPeriod',
@@ -155,6 +156,14 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
       ),
       refreshPolicy: RefreshPolicy.values.byName(
         (json['result'] as Map?)?['refresh']?.toString() ?? 'onInvalidation',
+      ),
+      outputType: InsightOutputType.values.byName(
+        (json['result'] as Map?)?['outputType']?.toString() ??
+            (json['type'] == 'dataQuality'
+                ? 'dataQuality'
+                : json['type'] == 'metric'
+                ? 'summary'
+                : 'pattern'),
       ),
       definitionHash: RuleDefinitionHash(hash),
     );

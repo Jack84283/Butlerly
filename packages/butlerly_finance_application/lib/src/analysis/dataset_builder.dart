@@ -95,6 +95,7 @@ final class AnalysisDatasetBuilder {
           transactionDate: transaction.transactionDate,
           status: transaction.status,
           categoryId: transaction.categoryId,
+          subcategoryId: transaction.subcategoryId,
           merchantId: transaction.merchantId,
           paymentSourceId: transaction.paymentSourceId,
           tagIds: transaction.tagIds,
@@ -123,10 +124,9 @@ final class AnalysisDatasetBuilder {
     final primaryByPeriod = <String, List<AnalysisEconomicTransaction>>{};
     final baselineByPeriod = <String, List<AnalysisEconomicTransaction>>{};
     for (final type in supportedPeriods) {
-      final resolution = periodResolver.resolvePrimary(
-        type: type,
-        context: context,
-      );
+      final resolution = type == 'selected_period'
+          ? AnalysisPeriodResolved(_windowForContext(context))
+          : periodResolver.resolvePrimary(type: type, context: context);
       if (resolution case AnalysisPeriodResolved(:final window)) {
         primaryByPeriod[type] = _buildTransactions(
           source,
@@ -136,6 +136,9 @@ final class AnalysisDatasetBuilder {
         );
         final baselineResolution = periodResolver.resolvePreviousEquivalent(
           primary: window,
+          elapsedAnchor: context.periodType == 'selected_period'
+              ? null
+              : _parseDate(context.period.endDate).add(const Duration(days: 1)),
         );
         if (baselineResolution is AnalysisPeriodResolved) {
           final baselineWindow = baselineResolution.window;
@@ -159,6 +162,36 @@ final class AnalysisDatasetBuilder {
         qualityIssues: quality,
       ),
     );
+  }
+
+  ResolvedAnalysisWindow _windowForContext(AnalysisContext context) {
+    final start = _parseDate(context.period.startDate);
+    final end = _parseDate(context.period.endDate).add(const Duration(days: 1));
+    final partial = {
+      'current_month',
+      'year_to_date',
+      'rolling_30_days',
+      'rolling_90_days',
+    }.contains(context.periodType);
+    final periodType = switch (context.periodType) {
+      'current_month' || 'previous_month' || 'selected_month' => 'month',
+      'year_to_date' || 'previous_year' => 'year',
+      _ => 'custom',
+    };
+    return ResolvedAnalysisWindow(
+      start: start,
+      endExclusive: end,
+      timeZoneId: context.period.timeZoneId,
+      coverage: partial
+          ? AnalysisCoverageState.partial
+          : AnalysisCoverageState.complete,
+      periodType: periodType,
+    );
+  }
+
+  DateTime _parseDate(String value) {
+    final date = DateTime.parse(value);
+    return DateTime.utc(date.year, date.month, date.day);
   }
 
   List<AnalysisEconomicTransaction> _buildTransactions(
@@ -194,6 +227,7 @@ final class AnalysisDatasetBuilder {
             transactionDate: transaction.transactionDate,
             status: transaction.status,
             categoryId: transaction.categoryId,
+            subcategoryId: transaction.subcategoryId,
             merchantId: transaction.merchantId,
             paymentSourceId: transaction.paymentSourceId,
             tagIds: transaction.tagIds,

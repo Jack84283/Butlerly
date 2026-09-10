@@ -69,6 +69,7 @@ final class CalculateAnalysisOverview {
       datasetMode: DatasetMode.allEligible,
       currencyBasis: CurrencyBasis.baseCurrency,
       baseCurrency: baseCurrency,
+      periodType: type,
     );
   });
 
@@ -240,6 +241,266 @@ final class RerunAnalysis {
     context,
     forceRefresh: true,
     sourceRevision: sourceRevision,
+  );
+}
+
+/// Produces the complete Insights surface from the shared Analysis
+/// evaluation. This is the only layer that composes summary metrics with
+/// findings; the Flutter presentation receives values and evidence only.
+final class CalculateInsights {
+  const CalculateInsights(this.analysis);
+  final CalculateAnalysisOverview analysis;
+
+  Future<ApplicationResult<AnalysisContext>> contextFor(
+    String type, {
+    DateTime? instant,
+    AnalysisPeriod? customPeriod,
+  }) => analysis.contextFor(type, instant: instant, customPeriod: customPeriod);
+
+  Future<ApplicationResult<AnalysisContext>> contextForDates({
+    required String startDate,
+    required String endDate,
+  }) => analysis.contextForDates(startDate: startDate, endDate: endDate);
+
+  Future<ApplicationResult<InsightsEvaluation>> currentMonth(
+    DateTime instant,
+  ) => _fromContext(
+    analysis.contextFor('current_month', instant: instant),
+    forceRefresh: true,
+  );
+
+  Future<ApplicationResult<InsightsEvaluation>> call(
+    AnalysisContext context, {
+    bool forceRefresh = true,
+    int sourceRevision = 0,
+  }) async {
+    final result = await analysis.call(
+      context,
+      forceRefresh: forceRefresh,
+      sourceRevision: sourceRevision,
+    );
+    if (result is ApplicationFailure<List<RuleExecutionResult>>) {
+      return ApplicationFailure<InsightsEvaluation>(result.failure);
+    }
+    return ApplicationSuccess(
+      _build(
+        context,
+        (result as ApplicationSuccess<List<RuleExecutionResult>>).value,
+      ),
+    );
+  }
+
+  Future<ApplicationResult<InsightsEvaluation>> _fromContext(
+    Future<ApplicationResult<AnalysisContext>> contextResult, {
+    required bool forceRefresh,
+  }) async {
+    final context = await contextResult;
+    if (context is ApplicationFailure<AnalysisContext>) {
+      return ApplicationFailure(context.failure);
+    }
+    return call(
+      (context as ApplicationSuccess<AnalysisContext>).value,
+      forceRefresh: forceRefresh,
+    );
+  }
+
+  InsightsEvaluation _build(
+    AnalysisContext context,
+    List<RuleExecutionResult> results,
+  ) {
+    AnalysisMetric? summaryMetric(String role) => results
+        .where((result) => result.rule.role == role)
+        .map((result) => result.metric)
+        .whereType<AnalysisMetric>()
+        .firstOrNull;
+    final expense = summaryMetric('expenseTotal');
+    final income = summaryMetric('incomeTotal');
+    final net = summaryMetric('netCashFlow');
+    final count = summaryMetric('eligibleTransactionCount');
+    final expenseResult = _roleResult(results, 'expenseTotal');
+    final incomeResult = _roleResult(results, 'incomeTotal');
+    final baselineContext = _baselineContext(context);
+    final summaryLimitations = _issues(results);
+    final netComparison = _comparison(
+      current: net?.value,
+      baseline: _baselineValue(expenseResult, incomeResult),
+    );
+    final summary = PeriodSummary(
+      context: context,
+      baselineContext: baselineContext,
+      expenseSpending: expense?.value,
+      income: income?.value,
+      netCashFlow: net?.value,
+      eligibleTransactionCount: count?.transactionCount ?? 0,
+      currency: context.baseCurrency,
+      comparisonAvailable:
+          expenseResult?.comparison?.baselineValue != null ||
+          incomeResult?.comparison?.baselineValue != null,
+      comparisonUnavailableReason:
+          expenseResult?.comparison?.baselineValue == null &&
+              incomeResult?.comparison?.baselineValue == null
+          ? 'No comparable baseline was available.'
+          : null,
+      expenseChange: expenseResult?.comparison,
+      incomeChange: incomeResult?.comparison,
+      netCashFlowChange: netComparison,
+      limitations: summaryLimitations,
+    );
+    final insightResults = results
+        .where(
+          (result) =>
+              result.rule.surface == AnalysisSurface.insights &&
+              result.rule.type == AnalysisRuleType.insight,
+        )
+        .map((result) => _insightResult(result, context, baselineContext))
+        .toList(growable: false);
+    final hasSelectedData =
+        (count?.transactionCount ?? 0) > 0 ||
+        expense?.availability == AnalysisDataAvailability.sufficient ||
+        income?.availability == AnalysisDataAvailability.sufficient;
+    return InsightsEvaluation(
+      summary: summary,
+      results: insightResults,
+      limitations: summaryLimitations,
+      hasSufficientHistory: hasSelectedData,
+    );
+  }
+
+  InsightResult _insightResult(
+    RuleExecutionResult result,
+    AnalysisContext context,
+    AnalysisContext? baselineContext,
+  ) {
+    final finding = result.finding;
+    final comparison = result.comparison;
+    final evidence = finding?.evidence ?? const <EvidenceReference>[];
+    return InsightResult(
+      outputType: result.rule.outputType,
+      rule: result.rule,
+      context: context,
+      baselineContext: baselineContext,
+      finding: finding,
+      currentValue: finding?.currentValue ?? comparison?.currentValue,
+      baselineValue: finding?.baselineValue ?? comparison?.baselineValue,
+      absoluteChange: finding?.absoluteChange ?? comparison?.absoluteChange,
+      percentageChange:
+          finding?.percentageChange ?? comparison?.percentageChange,
+      currency: context.baseCurrency,
+      dimension: finding?.dimension,
+      evidence: evidence,
+      limitations: [...result.issues, ...?finding?.qualityIssues],
+      failure: result.failure,
+    );
+  }
+
+  RuleExecutionResult? _roleResult(
+    List<RuleExecutionResult> results,
+    String role,
+  ) => results.where((result) => result.rule.role == role).firstOrNull;
+
+  DecimalValue? _baselineValue(
+    RuleExecutionResult? expense,
+    RuleExecutionResult? income,
+  ) {
+    final expenseValue = expense?.comparison?.baselineValue;
+    final incomeValue = income?.comparison?.baselineValue;
+    if (expenseValue == null && incomeValue == null) return null;
+    return _subtract(incomeValue ?? _zero(), expenseValue ?? _zero());
+  }
+
+  AnalysisComparison? _comparison({
+    required DecimalValue? current,
+    required DecimalValue? baseline,
+  }) {
+    if (current == null) return null;
+    final absolute = baseline == null ? null : _subtract(current, baseline);
+    final percentage = baseline == null
+        ? null
+        : calculatePercentageChange(absolute!, baseline);
+    return AnalysisComparison(
+      currentValue: current,
+      baselineValue: baseline,
+      absoluteChange: absolute,
+      percentageChange: percentage,
+      availability: baseline == null
+          ? AnalysisDataAvailability.insufficient
+          : AnalysisDataAvailability.sufficient,
+    );
+  }
+
+  AnalysisContext? _baselineContext(AnalysisContext context) {
+    final primary = _windowForContext(context);
+    final previous = analysis.periodResolver.resolvePreviousEquivalent(
+      primary: primary,
+      elapsedAnchor: context.periodType == 'selected_period'
+          ? null
+          : DateTime.parse(context.period.endDate).add(const Duration(days: 1)),
+    );
+    if (previous is! AnalysisPeriodResolved) return null;
+    final window = previous.window;
+    return AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: _date(window.start),
+        endDate: _date(window.endExclusive.subtract(const Duration(days: 1))),
+        timeZoneId: window.timeZoneId,
+      ),
+      datasetMode: context.datasetMode,
+      currencyBasis: context.currencyBasis,
+      baseCurrency: context.baseCurrency,
+      periodType: context.periodType,
+    );
+  }
+
+  ResolvedAnalysisWindow _windowForContext(AnalysisContext context) {
+    final start = DateTime.parse(context.period.startDate);
+    final end = DateTime.parse(
+      context.period.endDate,
+    ).add(const Duration(days: 1));
+    final partial = {
+      'current_month',
+      'year_to_date',
+      'rolling_30_days',
+      'rolling_90_days',
+    }.contains(context.periodType);
+    final periodType = switch (context.periodType) {
+      'current_month' || 'previous_month' || 'selected_month' => 'month',
+      'year_to_date' || 'previous_year' => 'year',
+      _ => 'custom',
+    };
+    return ResolvedAnalysisWindow(
+      start: DateTime.utc(start.year, start.month, start.day),
+      endExclusive: DateTime.utc(end.year, end.month, end.day),
+      timeZoneId: context.period.timeZoneId,
+      coverage: partial
+          ? AnalysisCoverageState.partial
+          : AnalysisCoverageState.complete,
+      periodType: periodType,
+    );
+  }
+
+  List<DataQualityIssue> _issues(List<RuleExecutionResult> results) => {
+    for (final result in results) ...result.issues,
+    for (final result in results) ...?result.metric?.qualityIssues,
+    for (final result in results) ...?result.finding?.qualityIssues,
+    for (final result in results)
+      if (result.failure != null)
+        DataQualityIssue(
+          code: result.failure!.code,
+          detail: result.failure!.message,
+        ),
+  }.toList(growable: false);
+}
+
+DecimalValue _zero() =>
+    DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0);
+
+DecimalValue _subtract(DecimalValue left, DecimalValue right) {
+  final scale = left.scale > right.scale ? left.scale : right.scale;
+  return DecimalValue.fromParts(
+    coefficient:
+        left.coefficient * BigInt.from(10).pow(scale - left.scale) -
+        right.coefficient * BigInt.from(10).pow(scale - right.scale),
+    scale: scale,
   );
 }
 

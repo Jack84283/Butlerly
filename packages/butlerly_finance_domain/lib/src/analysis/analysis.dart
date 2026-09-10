@@ -37,6 +37,7 @@ enum RuleOperation {
 enum RuleGrouping {
   none,
   category,
+  subcategory,
   merchant,
   paymentSource,
   tag,
@@ -68,6 +69,10 @@ enum AnalysisResultType { metric, finding, dataQuality }
 enum AnalysisResultFreshness { fresh, stale }
 
 enum AnalysisDataAvailability { sufficient, empty, insufficient }
+
+/// Describes how an analysis result is presented. This is a declarative
+/// property of a rule, rather than a presentation decision based on a rule ID.
+enum InsightOutputType { summary, pattern, alert, dataQuality, unresolved }
 
 enum AnalysisFilterKind {
   direction,
@@ -185,11 +190,16 @@ final class AnalysisContext {
     required this.datasetMode,
     required this.currencyBasis,
     this.baseCurrency,
+    this.periodType = 'selected_period',
   });
   final AnalysisPeriod period;
   final DatasetMode datasetMode;
   final CurrencyBasis currencyBasis;
   final CurrencyCode? baseCurrency;
+
+  /// The semantic period selected by the user, retained separately from its
+  /// resolved dates so equivalent-period comparisons remain correct.
+  final String periodType;
 }
 
 /// Canonical identity for every materialized analysis calculation.
@@ -216,6 +226,7 @@ final class AnalysisResultIdentity {
       context.datasetMode.name,
       context.currencyBasis.name,
       context.baseCurrency?.value,
+      context.periodType,
       dimension,
     ].map(_encodePart).join('|'),
   );
@@ -235,6 +246,7 @@ final class AnalysisEconomicTransaction {
     this.status = TransactionStatus.active,
     this.normalizedMoney,
     this.categoryId,
+    this.subcategoryId,
     this.merchantId,
     this.paymentSourceId,
     this.tagIds = const [],
@@ -248,6 +260,7 @@ final class AnalysisEconomicTransaction {
   final TransactionStatus status;
   final String? transactionDate;
   final CategoryId? categoryId;
+  final CategoryId? subcategoryId;
   final MerchantId? merchantId;
   final PaymentSourceId? paymentSourceId;
   final List<TagId> tagIds;
@@ -333,6 +346,8 @@ final class AnalysisRuleDefinition {
     this.filters = const [],
     this.resultPersistence = ResultPersistencePolicy.transient,
     this.refreshPolicy = RefreshPolicy.onInvalidation,
+    this.role,
+    this.outputType = InsightOutputType.pattern,
   });
   final RuleIdentity identity;
   final RuleVersion version;
@@ -355,6 +370,8 @@ final class AnalysisRuleDefinition {
   final ResultPersistencePolicy resultPersistence;
   final RefreshPolicy refreshPolicy;
   final RuleDefinitionHash definitionHash;
+  final String? role;
+  final InsightOutputType outputType;
 }
 
 final class EvidenceReference {
@@ -469,6 +486,139 @@ final class RuleExecutionResult {
   final AnalysisComparison? comparison;
   final List<DataQualityIssue> issues;
   final AnalysisFailure? failure;
+}
+
+/// The selected and comparison windows used to explain an Insights result.
+/// These are kept alongside the values so a presentation layer never has to
+/// infer comparison semantics from a label or recalculate a period.
+final class AnalysisPeriodComparison {
+  const AnalysisPeriodComparison({this.selected, this.baseline});
+  final AnalysisContext? selected;
+  final AnalysisContext? baseline;
+}
+
+/// A stable, presentation-ready output from the Insights application use
+/// case. Financial values and evidence are produced by the Analysis engine.
+final class InsightResult {
+  const InsightResult({
+    required this.outputType,
+    required this.rule,
+    required this.context,
+    this.baselineContext,
+    this.finding,
+    this.currentValue,
+    this.baselineValue,
+    this.absoluteChange,
+    this.percentageChange,
+    this.currency,
+    this.dimension,
+    this.evidence = const [],
+    this.limitations = const [],
+    this.exclusions = const [],
+    this.failure,
+  });
+  final InsightOutputType outputType;
+  final AnalysisRuleDefinition rule;
+  final AnalysisContext context;
+  final AnalysisContext? baselineContext;
+  final AnalysisFinding? finding;
+  final DecimalValue? currentValue;
+  final DecimalValue? baselineValue;
+  final DecimalValue? absoluteChange;
+  final DecimalValue? percentageChange;
+  final CurrencyCode? currency;
+  final String? dimension;
+  final List<EvidenceReference> evidence;
+  final List<DataQualityIssue> limitations;
+  final List<String> exclusions;
+  final AnalysisFailure? failure;
+
+  DateTime get generatedAt =>
+      finding?.generatedAt ??
+      DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+  bool get isActive => finding?.lifecycle == FindingLifecycle.active;
+}
+
+final class PeriodSummary {
+  const PeriodSummary({
+    required this.context,
+    this.baselineContext,
+    this.expenseSpending,
+    this.income,
+    this.netCashFlow,
+    this.eligibleTransactionCount = 0,
+    this.currency,
+    this.comparisonAvailable = false,
+    this.comparisonUnavailableReason,
+    this.expenseChange,
+    this.incomeChange,
+    this.netCashFlowChange,
+    this.limitations = const [],
+    this.exclusions = const [],
+  });
+  final AnalysisContext context;
+  final AnalysisContext? baselineContext;
+  final DecimalValue? expenseSpending;
+  final DecimalValue? income;
+  final DecimalValue? netCashFlow;
+  final int eligibleTransactionCount;
+  final CurrencyCode? currency;
+  final bool comparisonAvailable;
+  final String? comparisonUnavailableReason;
+  final AnalysisComparison? expenseChange;
+  final AnalysisComparison? incomeChange;
+  final AnalysisComparison? netCashFlowChange;
+  final List<DataQualityIssue> limitations;
+  final List<String> exclusions;
+}
+
+final class InsightsEvaluation {
+  const InsightsEvaluation({
+    required this.summary,
+    required this.results,
+    this.limitations = const [],
+    this.hasSufficientHistory = true,
+  });
+  final PeriodSummary summary;
+  final List<InsightResult> results;
+  final List<DataQualityIssue> limitations;
+  final bool hasSufficientHistory;
+
+  List<InsightResult> get activeFindings => results
+      .where(
+        (result) =>
+            result.isActive &&
+            result.outputType != InsightOutputType.dataQuality,
+      )
+      .toList(growable: false);
+
+  List<InsightResult> get alerts => activeFindings
+      .where((result) => result.outputType == InsightOutputType.alert)
+      .toList(growable: false);
+
+  List<InsightResult> get patterns => activeFindings
+      .where((result) => result.outputType == InsightOutputType.pattern)
+      .toList(growable: false);
+}
+
+/// Calculates a percentage change without converting the financial values to
+/// binary floating point. Six fractional digits are retained before normal
+/// decimal normalization, which is sufficient for threshold comparisons while
+/// preserving exact values such as 50% and 20%.
+DecimalValue? calculatePercentageChange(
+  DecimalValue change,
+  DecimalValue baseline,
+) {
+  if (baseline.isZero) return null;
+  const precision = 6;
+  final numerator =
+      change.coefficient *
+      BigInt.from(100) *
+      BigInt.from(10).pow(baseline.scale + precision);
+  return DecimalValue.fromParts(
+    coefficient: numerator ~/ baseline.coefficient.abs(),
+    scale: change.scale + precision,
+  );
 }
 
 final class AnalysisRuleResult {

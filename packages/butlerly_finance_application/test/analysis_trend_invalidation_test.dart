@@ -2,7 +2,55 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:test/test.dart';
 
+final class _Clock implements ApplicationClock {
+  _Clock(this.value);
+  final DateTime value;
+
+  @override
+  DateTime now() => value;
+}
+
 void main() {
+  test(
+    'CalculateInsights returns a period summary without a finding',
+    () async {
+      final now = DateTime.utc(2026, 9, 5, 12);
+      final calculate = CalculateAnalysisOverview(
+        _Rules([
+          _summaryRule('ANL-R001', TransactionDirection.expense),
+          _summaryRule('ANL-R002', TransactionDirection.income),
+          _netRule(),
+          _countRule(),
+          _insightRule(),
+        ]),
+        AnalysisDatasetBuilder(
+          _Transactions([
+            _transaction('expense', '2026-09-01', '100'),
+            _transaction(
+              'income',
+              '2026-09-05',
+              '250',
+              direction: TransactionDirection.income,
+            ),
+          ]),
+          _Preferences(),
+          null,
+        ),
+        const AnalysisRuleEngine(),
+      );
+
+      final result = await CalculateInsights(calculate).currentMonth(now);
+      final evaluation =
+          (result as ApplicationSuccess<InsightsEvaluation>).value;
+      expect(evaluation.summary.expenseSpending, DecimalValue.parse('100'));
+      expect(evaluation.summary.income, DecimalValue.parse('250'));
+      expect(evaluation.summary.netCashFlow, DecimalValue.parse('150'));
+      expect(evaluation.summary.eligibleTransactionCount, 2);
+      expect(evaluation.activeFindings, isEmpty);
+      expect(evaluation.hasSufficientHistory, isTrue);
+    },
+  );
+
   test('preserves a dismissed R020 finding across recalculation', () async {
     final now = DateTime.utc(2026, 9, 5, 12);
     final findings = _Findings();
@@ -11,7 +59,7 @@ void main() {
       AnalysisDatasetBuilder(
         _Transactions([
           _transaction('current', '2026-09-01', '120'),
-          _transaction('baseline', '2026-08-27', '90'),
+          _transaction('baseline', '2026-08-01', '90'),
         ]),
         _Preferences(),
         null,
@@ -82,6 +130,37 @@ void main() {
     expect(metric('ANL-R002'), DecimalValue.parse('500'));
     expect(metric('ANL-R003'), DecimalValue.parse('350'));
   });
+
+  test(
+    'current month baseline includes the complete elapsed end date',
+    () async {
+      final now = DateTime.utc(2026, 9, 5, 12);
+      final resolver = AnalysisPeriodResolver(clock: _Clock(now));
+      final calculate = CalculateAnalysisOverview(
+        _Rules([_insightRule()]),
+        AnalysisDatasetBuilder(
+          _Transactions([
+            _transaction('current', '2026-09-01', '120'),
+            _transaction('baseline-start', '2026-08-01', '90'),
+            _transaction('baseline-end', '2026-08-05', '10'),
+          ]),
+          _Preferences(),
+          null,
+          periodResolver: resolver,
+        ),
+        AnalysisRuleEngine(periodResolver: resolver),
+        periodResolver: resolver,
+      );
+
+      final result = await calculate.currentMonth(now);
+      final finding = (result as ApplicationSuccess<List<RuleExecutionResult>>)
+          .value
+          .single
+          .finding!;
+      expect(finding.baselineValue, DecimalValue.parse('100'));
+      expect(finding.context.period.endDate, '2026-09-05');
+    },
+  );
 
   test(
     'monthly trend uses canonical chronological buckets and preserves gaps',
@@ -350,6 +429,7 @@ AnalysisRuleDefinition _summaryRule(
   condition: const RuleCondition(operator: 'none'),
   severity: RuleSeverity.info,
   surface: AnalysisSurface.overview,
+  role: id == 'ANL-R001' ? 'expenseTotal' : 'incomeTotal',
   filters: [
     AnalysisFilter(
       kind: AnalysisFilterKind.direction,
@@ -357,6 +437,29 @@ AnalysisRuleDefinition _summaryRule(
     ),
   ],
   definitionHash: RuleDefinitionHash('b' * 64),
+);
+
+AnalysisRuleDefinition _countRule() => AnalysisRuleDefinition(
+  identity: RuleIdentity('ANL-R004'),
+  version: RuleVersion('1.0.0'),
+  schemaVersion: '1.0.0',
+  type: AnalysisRuleType.metric,
+  nameKey: 'ANL-R004',
+  descriptionKey: 'ANL-R004',
+  enabled: true,
+  status: AnalysisRuleStatus.active,
+  period: 'selected_period',
+  measure: const RuleMeasure(
+    operation: RuleOperation.count,
+    field: 'transaction',
+  ),
+  grouping: RuleGrouping.none,
+  baseline: RuleBaseline.none,
+  condition: const RuleCondition(operator: 'none'),
+  severity: RuleSeverity.info,
+  surface: AnalysisSurface.overview,
+  role: 'eligibleTransactionCount',
+  definitionHash: RuleDefinitionHash('e' * 64),
 );
 
 AnalysisRuleDefinition _insightRule() => AnalysisRuleDefinition(
@@ -411,6 +514,7 @@ AnalysisRuleDefinition _netRule() => AnalysisRuleDefinition(
     RuleDependency(ruleId: RuleIdentity('ANL-R001')),
     RuleDependency(ruleId: RuleIdentity('ANL-R002')),
   ],
+  role: 'netCashFlow',
   definitionHash: RuleDefinitionHash('c' * 64),
 );
 

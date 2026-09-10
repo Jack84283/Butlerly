@@ -199,6 +199,7 @@ final class AnalysisRuleEngine {
                     rule.condition,
                     metric.value,
                     candidate.percentageChange,
+                    candidate.absoluteChange,
                   )) {
                 finding = candidate;
               }
@@ -281,13 +282,20 @@ final class AnalysisRuleEngine {
     final baselineValues =
         dataset.baselineTransactionsByPeriod[rule.period] ??
         dataset.baselineTransactions;
-    final baselineResolution = periodResolver.resolvePrimary(
-      type: rule.period,
-      context: dataset.context,
-    );
+    final baselineResolution = rule.period == 'selected_period'
+        ? AnalysisPeriodResolved(_windowForContext(dataset.context))
+        : periodResolver.resolvePrimary(
+            type: rule.period,
+            context: dataset.context,
+          );
     final baselineWindow = baselineResolution is AnalysisPeriodResolved
         ? periodResolver.resolvePreviousEquivalent(
             primary: baselineResolution.window,
+            elapsedAnchor: dataset.context.periodType == 'selected_period'
+                ? null
+                : DateTime.parse(
+                    dataset.context.period.endDate,
+                  ).add(const Duration(days: 1)),
           )
         : null;
     final baselineContext = baselineWindow is AnalysisPeriodResolved
@@ -324,12 +332,9 @@ final class AnalysisRuleEngine {
     final absolute = baselineValue == null
         ? null
         : _subtract(current.value, baselineValue);
-    final percentage = baselineValue == null || baselineValue.isZero
+    final percentage = baselineValue == null
         ? null
-        : DecimalValue.fromParts(
-            coefficient: absolute!.coefficient * BigInt.from(100),
-            scale: absolute.scale,
-          ).divideBy(baselineValue.coefficient.abs().toInt());
+        : calculatePercentageChange(absolute!, baselineValue);
     return AnalysisComparison(
       currentValue: current.value,
       baselineValue: baselineValue,
@@ -356,11 +361,19 @@ final class AnalysisRuleEngine {
     RuleCondition condition,
     DecimalValue value, [
     DecimalValue? percentageChange,
+    DecimalValue? absoluteChange,
   ]) {
     if (condition.operator == 'none') return true;
     if (condition.children.isNotEmpty) {
       final matches = condition.children
-          .map((child) => _conditionMatches(child, value, percentageChange))
+          .map(
+            (child) => _conditionMatches(
+              child,
+              value,
+              percentageChange,
+              absoluteChange,
+            ),
+          )
           .toList(growable: false);
       return switch (condition.operator) {
         'all' => matches.every((item) => item),
@@ -369,9 +382,11 @@ final class AnalysisRuleEngine {
         _ => false,
       };
     }
-    final targetValue = condition.left == 'percentageChange'
-        ? percentageChange
-        : value;
+    final targetValue = switch (condition.left) {
+      'percentageChange' => percentageChange,
+      'absoluteChange' => absoluteChange,
+      _ => value,
+    };
     final target = condition.value;
     if (target == null || targetValue == null) return false;
     return switch (condition.operator) {
@@ -404,6 +419,7 @@ final class AnalysisRuleEngine {
     if (grouping == RuleGrouping.none) return {'': values};
     String key(AnalysisEconomicTransaction value) => switch (grouping) {
       RuleGrouping.category => value.categoryId?.value ?? 'uncategorized',
+      RuleGrouping.subcategory => value.subcategoryId?.value ?? 'uncategorized',
       RuleGrouping.merchant => value.merchantId?.value ?? 'unresolved',
       RuleGrouping.paymentSource => value.paymentSourceId?.value ?? 'unknown',
       RuleGrouping.tag =>
@@ -466,6 +482,33 @@ final class AnalysisRuleEngine {
     if (date == null) return 'unknown';
     final monday = date.subtract(Duration(days: date.weekday - 1));
     return '${monday.year.toString().padLeft(4, '0')}-${monday.month.toString().padLeft(2, '0')}-${monday.day.toString().padLeft(2, '0')}';
+  }
+
+  ResolvedAnalysisWindow _windowForContext(AnalysisContext context) {
+    final start = DateTime.parse(context.period.startDate);
+    final end = DateTime.parse(
+      context.period.endDate,
+    ).add(const Duration(days: 1));
+    final partial = {
+      'current_month',
+      'year_to_date',
+      'rolling_30_days',
+      'rolling_90_days',
+    }.contains(context.periodType);
+    final periodType = switch (context.periodType) {
+      'current_month' || 'previous_month' || 'selected_month' => 'month',
+      'year_to_date' || 'previous_year' => 'year',
+      _ => 'custom',
+    };
+    return ResolvedAnalysisWindow(
+      start: DateTime.utc(start.year, start.month, start.day),
+      endExclusive: DateTime.utc(end.year, end.month, end.day),
+      timeZoneId: context.period.timeZoneId,
+      coverage: partial
+          ? AnalysisCoverageState.partial
+          : AnalysisCoverageState.complete,
+      periodType: periodType,
+    );
   }
 
   _RuleOrdering _order(List<AnalysisRuleDefinition> definitions) {
@@ -702,6 +745,7 @@ final class AnalysisRuleEngine {
           .map(
             (value) => switch (field) {
               'category' => value.categoryId?.value ?? 'uncategorized',
+              'subcategory' => value.subcategoryId?.value ?? 'uncategorized',
               'merchant' => value.merchantId?.value ?? 'unresolved',
               'paymentSource' => value.paymentSourceId?.value ?? 'unknown',
               'tag' => value.tagIds.map((tag) => tag.value).join(','),
@@ -775,30 +819,28 @@ AnalysisContext _contextForWindow(
   datasetMode: context.datasetMode,
   currencyBasis: context.currencyBasis,
   baseCurrency: context.baseCurrency,
+  periodType: context.periodType,
 );
 
 String _dateOnly(DateTime value) =>
     '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
-
-final class _RuleOrdering {
-  const _RuleOrdering(this.ordered, this.cyclicIds);
-  final List<AnalysisRuleDefinition> ordered;
-  final Set<String> cyclicIds;
-}
 
 extension on DecimalValue {
   DecimalValue divideBy(int divisor) {
     if (divisor <= 0) {
       return DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0);
     }
+    const precision = 6;
     return DecimalValue.fromParts(
-      coefficient: coefficient,
-      scale: scale + 6,
-    ).divideInteger(divisor);
+      coefficient:
+          coefficient * BigInt.from(10).pow(precision) ~/ BigInt.from(divisor),
+      scale: scale + precision,
+    );
   }
+}
 
-  DecimalValue divideInteger(int divisor) {
-    final quotient = coefficient ~/ BigInt.from(divisor);
-    return DecimalValue.fromParts(coefficient: quotient, scale: scale);
-  }
+final class _RuleOrdering {
+  const _RuleOrdering(this.ordered, this.cyclicIds);
+  final List<AnalysisRuleDefinition> ordered;
+  final Set<String> cyclicIds;
 }

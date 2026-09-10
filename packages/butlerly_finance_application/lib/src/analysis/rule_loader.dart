@@ -139,6 +139,7 @@ final class RuleDefinitionValidator {
       'surface',
       'measures',
       'result',
+      'role',
     };
     for (final key in values.keys) {
       if (!supported.contains(key)) {
@@ -314,6 +315,14 @@ final class RuleDefinitionValidator {
       }
       final result = values['result'];
       final resultMap = result is Map ? result : const <Object?, Object?>{};
+      final outputType = InsightOutputType.values.byName(
+        resultMap['outputType']?.toString() ??
+            (typeValue == AnalysisRuleType.dataQuality
+                ? 'dataQuality'
+                : typeValue == AnalysisRuleType.metric
+                ? 'summary'
+                : 'pattern'),
+      );
       final persistence = ResultPersistencePolicy.values.byName(
         resultMap['persistence']?.toString() ??
             (typeValue == AnalysisRuleType.insight ? 'finding' : 'transient'),
@@ -352,6 +361,8 @@ final class RuleDefinitionValidator {
         resultPersistence: persistence,
         refreshPolicy: refresh,
         definitionHash: hash,
+        role: values['role']?.toString(),
+        outputType: outputType,
       );
     } on Object catch (error) {
       diagnostics.add(

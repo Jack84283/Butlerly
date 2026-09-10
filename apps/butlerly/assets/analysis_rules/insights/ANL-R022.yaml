@@ -1,17 +1,18 @@
 schemaVersion: "1.0.0"
-ruleId: ANL-R020
-ruleVersion: "1.3.0"
+ruleId: ANL-R022
+ruleVersion: "1.0.0"
 enabled: true
 surface: insights
 type: insight
-nameKey: analysis.rule.r020.name
-descriptionKey: analysis.rule.r020.description
+nameKey: analysis.rule.r022.name
+descriptionKey: analysis.rule.r022.description
 period: selected_period
 baseline: previousEquivalentPeriod
 measure:
   operation: sum
   field: amount
   currencyBasis: baseCurrency
+grouping: subcategory
 filters:
   direction: expense
 condition:

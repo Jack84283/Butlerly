@@ -110,6 +110,7 @@ class AppLocalizations {
       'greetingEvening': 'Good evening',
       'homeSubtitle': 'Your private financial record, stored on this device.',
       'needsAttention': 'Needs attention',
+      'otherInsights': 'Other insights',
       'nothingNeedsAttention': 'Nothing needs attention',
       'nothingNeedsAttentionBody':
           'Incomplete or uncertain records will appear here without being changed automatically.',
@@ -433,7 +434,6 @@ class AppLocalizations {
       'last90Days': 'Last 90 days',
       'custom': 'Custom',
       'analysisSummary': 'Financial summary',
-      'totalSpending': 'Total spending',
       'netCashFlow': 'Net cash flow',
       'notAvailable': 'Not available',
       'spendingTrend': 'Spending trend',
@@ -482,6 +482,15 @@ class AppLocalizations {
       'analysis.rule.r020.name': 'Spending compared with baseline',
       'analysis.rule.r020.description':
           'Compare spending in the selected period with the previous equivalent period.',
+      'analysis.rule.r021.name': 'Category movement',
+      'analysis.rule.r021.description':
+          'A category changed materially compared with the equivalent period.',
+      'analysis.rule.r022.name': 'Subcategory movement',
+      'analysis.rule.r022.description':
+          'A subcategory changed materially compared with the equivalent period.',
+      'analysis.rule.r023.name': 'Merchant movement',
+      'analysis.rule.r023.description':
+          'A merchant changed materially compared with the equivalent period.',
       'analysis.rule.r090.name': 'Data quality issues',
       'analysis.rule.r091.name': 'Missing exchange rates',
       'analysis.rule.r092.name': 'Unresolved reconciliation',
@@ -493,6 +502,28 @@ class AppLocalizations {
       'previousPeriod': 'Previous period',
       'difference': 'Difference',
       'percentageChange': 'Percentage change',
+      'periodSummary': 'Period summary',
+      'totalSpending': 'Total spending',
+      'eligibleTransactions': 'Eligible transactions',
+      'comparisonUnavailable': 'Comparison unavailable',
+      'comparisonUnavailableBody':
+          'No comparable baseline was available for this period.',
+      'noNotablePatterns': 'No notable patterns for this period',
+      'dataQualityLimitations': 'Data quality and limitations',
+      'analysisDataQualityIssueMissingFx':
+          'Some foreign-currency transactions could not be converted.',
+      'analysisDataQualityIssueInsufficient':
+          'There is not enough eligible data for this calculation.',
+      'analysisDataQualityIssueBaseline':
+          'A comparable baseline is unavailable.',
+      'analysisDataQualityIssueCoverage':
+          'This comparison uses incomplete period coverage.',
+      'analysisDataQualityIssueReconciliation':
+          'Some transactions still need reconciliation review.',
+      'analysisDataQualityIssueRuleFailure':
+          'One insight could not be evaluated; other results remain available.',
+      'analysisDataQualityIssueGeneric': 'Some analysis data has limitations.',
+      'insightRuleFailed': 'This insight could not be evaluated.',
       'insightsInsufficientHistory': 'Not enough history yet',
       'insightsInsufficientHistoryBody':
           'Insights compare your financial activity over time. Keep adding transactions and Butlerly will surface meaningful changes.',
@@ -699,6 +730,7 @@ class AppLocalizations {
       'greetingEvening': '晚上好',
       'homeSubtitle': '您的私密财务记录存储在此设备上。',
       'needsAttention': '需要处理',
+      'otherInsights': '其他洞察',
       'nothingNeedsAttention': '暂无待处理事项',
       'nothingNeedsAttentionBody': '不完整或不确定的记录会显示在这里，系统不会自动修改。',
       'quickActions': '快捷操作',
@@ -993,7 +1025,6 @@ class AppLocalizations {
       'last90Days': '最近90天',
       'custom': '自定义',
       'analysisSummary': '财务摘要',
-      'totalSpending': '总支出',
       'netCashFlow': '净现金流',
       'notAvailable': '不可用',
       'spendingTrend': '支出趋势',
@@ -1036,6 +1067,12 @@ class AppLocalizations {
       'analysis.rule.r016.name': '每日交易笔数',
       'analysis.rule.r020.name': '与基准相比的支出',
       'analysis.rule.r020.description': '将所选期间的支出与上一等效期间进行比较。',
+      'analysis.rule.r021.name': '类别变化',
+      'analysis.rule.r021.description': '某个类别与等效期间相比发生了明显变化。',
+      'analysis.rule.r022.name': '子类别变化',
+      'analysis.rule.r022.description': '某个子类别与等效期间相比发生了明显变化。',
+      'analysis.rule.r023.name': '商户变化',
+      'analysis.rule.r023.description': '某个商户与等效期间相比发生了明显变化。',
       'analysis.rule.r090.name': '数据质量问题',
       'analysis.rule.r091.name': '缺少汇率',
       'analysis.rule.r092.name': '未解决的对账',
@@ -1046,6 +1083,21 @@ class AppLocalizations {
       'previousPeriod': '上一期间',
       'difference': '差额',
       'percentageChange': '百分比变化',
+      'periodSummary': '期间摘要',
+      'totalSpending': '总支出',
+      'eligibleTransactions': '符合条件的交易',
+      'comparisonUnavailable': '无法比较',
+      'comparisonUnavailableBody': '此期间没有可比较的基准。',
+      'noNotablePatterns': '此期间没有值得注意的模式',
+      'dataQualityLimitations': '数据质量和限制',
+      'analysisDataQualityIssueMissingFx': '部分外币交易无法换算。',
+      'analysisDataQualityIssueInsufficient': '此计算缺少足够的符合条件的数据。',
+      'analysisDataQualityIssueBaseline': '没有可比较的基准。',
+      'analysisDataQualityIssueCoverage': '此比较使用了不完整的期间数据。',
+      'analysisDataQualityIssueReconciliation': '部分交易仍需要对账审核。',
+      'analysisDataQualityIssueRuleFailure': '一个洞察无法评估；其他结果仍可用。',
+      'analysisDataQualityIssueGeneric': '部分分析数据存在限制。',
+      'insightRuleFailed': '无法评估此洞察。',
       'insightsInsufficientHistory': '历史记录不足',
       'insightsInsufficientHistoryBody':
           '洞察会比较一段时间内的财务活动。继续添加交易，Butlerly 会显示有意义的变化。',
@@ -1240,6 +1292,7 @@ class AppLocalizations {
       'homeSubtitle':
           'Tu registro financiero privado está en este dispositivo.',
       'needsAttention': 'Requiere atención',
+      'otherInsights': 'Otras perspectivas',
       'nothingNeedsAttention': 'Nada requiere atención',
       'nothingNeedsAttentionBody':
           'Los registros inciertos aparecerán aquí sin cambios automáticos.',
@@ -1571,7 +1624,6 @@ class AppLocalizations {
       'last90Days': 'Últimos 90 días',
       'custom': 'Personalizado',
       'analysisSummary': 'Resumen financiero',
-      'totalSpending': 'Gasto total',
       'netCashFlow': 'Flujo de caja neto',
       'notAvailable': 'No disponible',
       'spendingTrend': 'Tendencia de gastos',
@@ -1621,6 +1673,15 @@ class AppLocalizations {
       'analysis.rule.r020.name': 'Gastos comparados con la base',
       'analysis.rule.r020.description':
           'Compara los gastos del período seleccionado con el período equivalente anterior.',
+      'analysis.rule.r021.name': 'Cambio por categoría',
+      'analysis.rule.r021.description':
+          'Una categoría cambió de forma significativa frente al período equivalente.',
+      'analysis.rule.r022.name': 'Cambio por subcategoría',
+      'analysis.rule.r022.description':
+          'Una subcategoría cambió de forma significativa frente al período equivalente.',
+      'analysis.rule.r023.name': 'Cambio por comercio',
+      'analysis.rule.r023.description':
+          'Un comercio cambió de forma significativa frente al período equivalente.',
       'analysis.rule.r090.name': 'Problemas de calidad de datos',
       'analysis.rule.r091.name': 'Tipos de cambio ausentes',
       'analysis.rule.r092.name': 'Conciliación sin resolver',
@@ -1632,6 +1693,29 @@ class AppLocalizations {
       'previousPeriod': 'Período anterior',
       'difference': 'Diferencia',
       'percentageChange': 'Cambio porcentual',
+      'periodSummary': 'Resumen del período',
+      'totalSpending': 'Gasto total',
+      'eligibleTransactions': 'Transacciones elegibles',
+      'comparisonUnavailable': 'Comparación no disponible',
+      'comparisonUnavailableBody':
+          'No hay una base comparable disponible para este período.',
+      'noNotablePatterns': 'No hay patrones destacables en este período',
+      'dataQualityLimitations': 'Calidad y limitaciones de los datos',
+      'analysisDataQualityIssueMissingFx':
+          'No se pudieron convertir algunas transacciones en moneda extranjera.',
+      'analysisDataQualityIssueInsufficient':
+          'No hay suficientes datos elegibles para este cálculo.',
+      'analysisDataQualityIssueBaseline':
+          'No hay una base comparable disponible.',
+      'analysisDataQualityIssueCoverage':
+          'Esta comparación usa una cobertura de período incompleta.',
+      'analysisDataQualityIssueReconciliation':
+          'Algunas transacciones aún requieren revisión de conciliación.',
+      'analysisDataQualityIssueRuleFailure':
+          'No se pudo evaluar una perspectiva; los demás resultados siguen disponibles.',
+      'analysisDataQualityIssueGeneric':
+          'Algunos datos de análisis tienen limitaciones.',
+      'insightRuleFailed': 'No se pudo evaluar esta perspectiva.',
       'insightsInsufficientHistory': 'Aún no hay suficiente historial',
       'insightsInsufficientHistoryBody':
           'Las perspectivas comparan tu actividad financiera a lo largo del tiempo. Sigue añadiendo transacciones y Butlerly mostrará cambios relevantes.',
