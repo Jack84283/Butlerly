@@ -1,0 +1,27 @@
+schemaVersion: "1.0.0"
+ruleId: ANL-R026
+ruleVersion: "1.1.0"
+enabled: true
+surface: insights
+type: insight
+nameKey: analysis.rule.r026.name
+descriptionKey: analysis.rule.r026.description
+period: selected_period
+# Concentration is a current-period structural insight. A category must be
+# eligible even when it did not exist in the previous comparison period.
+baseline: none
+measure:
+  operation: share
+  field: amount
+  currencyBasis: baseCurrency
+grouping: category
+filters:
+  direction: expense
+condition:
+  operator: gte
+  left: value
+  value: "50"
+result:
+  persistence: finding
+  refresh: onInvalidation
+  outputType: pattern

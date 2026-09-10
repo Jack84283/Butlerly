@@ -49,6 +49,22 @@ void main() {
     expect(window.limitations, contains('equivalentElapsedCoverage'));
   });
 
+  test('partial month baselines never extend beyond the prior calendar', () {
+    final primary =
+        const AnalysisPeriodResolver().resolvePrimary(
+              type: 'selected_month',
+              context: context,
+            )
+            as AnalysisPeriodResolved;
+    final result = const AnalysisPeriodResolver().resolvePreviousEquivalent(
+      primary: primary.window,
+      elapsedAnchor: DateTime.utc(2026, 4, 1),
+    );
+    final window = (result as AnalysisPeriodResolved).window;
+    expect(window.start, DateTime.utc(2026, 2, 1));
+    expect(window.endExclusive, DateTime.utc(2026, 3, 1));
+  });
+
   test('supports month, year, leap-year, and rolling period boundaries', () {
     final resolver = AnalysisPeriodResolver(
       clock: _Clock(DateTime.utc(2024, 03, 01, 07)),
@@ -134,6 +150,37 @@ void main() {
       expect(window.coverage, AnalysisCoverageState.partial);
     },
   );
+
+  test('previous month compares complete month with complete prior month', () {
+    final resolver = AnalysisPeriodResolver(
+      clock: _Clock(DateTime.utc(2026, 9, 10, 12)),
+    );
+    final selectedContext = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-09-01',
+        endDate: '2026-09-10',
+        timeZoneId: 'UTC',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.original,
+      periodType: 'previous_month',
+    );
+    final primary =
+        resolver.resolvePrimary(
+              type: 'previous_month',
+              context: selectedContext,
+            )
+            as AnalysisPeriodResolved;
+    expect(primary.window.start, DateTime.utc(2026, 8, 1));
+    expect(primary.window.endExclusive, DateTime.utc(2026, 9, 1));
+
+    final baseline =
+        resolver.resolvePreviousEquivalent(primary: primary.window)
+            as AnalysisPeriodResolved;
+    expect(baseline.window.start, DateTime.utc(2026, 7, 1));
+    expect(baseline.window.endExclusive, DateTime.utc(2026, 8, 1));
+    expect(baseline.window.coverage, AnalysisCoverageState.complete);
+  });
 
   test('previous equivalent period supports custom selected ranges', () {
     final resolver = AnalysisPeriodResolver(

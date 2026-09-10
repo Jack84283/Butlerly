@@ -27,6 +27,7 @@ AnalysisRuleResult materializeResult(
       'value': metric.value.toString(),
       'currency': metric.currency?.value,
       'dimension': metric.dimension,
+      'impactValue': metric.impactValue?.toString(),
       'transactionCount': metric.transactionCount,
       'availability': metric.availability.name,
       'evidence': metric.evidence
@@ -51,6 +52,7 @@ AnalysisRuleResult materializeResult(
       'absoluteChange': finding.absoluteChange?.toString(),
       'percentageChange': finding.percentageChange?.toString(),
       'dimension': finding.dimension,
+      'impactValue': finding.impactValue?.toString(),
       'supportingMetrics': finding.supportingMetrics,
       'evidence': finding.evidence.map(_evidence).toList(growable: false),
       'qualityIssues': finding.qualityIssues
@@ -148,6 +150,7 @@ RuleExecutionResult restoreResult(
         absoluteChange: _decimal(json['absoluteChange']),
         percentageChange: _decimal(json['percentageChange']),
         dimension: json['dimension'] as String?,
+        impactValue: _decimal(json['impactValue']),
         supportingMetrics:
             (json['supportingMetrics'] as List?)
                 ?.map((value) => value.toString())
@@ -188,6 +191,7 @@ RuleExecutionResult restoreResult(
           ? null
           : CurrencyCode(json['currency'] as String),
       dimension: json['dimension'] as String?,
+      impactValue: _decimal(json['impactValue']),
       transactionCount: json['transactionCount'] as int? ?? 0,
       availability: AnalysisDataAvailability.values.byName(
         json['availability'] as String? ??

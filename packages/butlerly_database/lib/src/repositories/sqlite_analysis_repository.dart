@@ -129,6 +129,7 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
       type: AnalysisRuleType.values.byName(json['type'] as String),
       nameKey: json['nameKey'] as String,
       descriptionKey: json['descriptionKey'] as String,
+      role: json['role'] as String?,
       enabled: json['enabled'] as bool? ?? true,
       status: AnalysisRuleStatus.active,
       period: json['period'] as String? ?? 'currentPeriod',
@@ -155,6 +156,14 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
       ),
       refreshPolicy: RefreshPolicy.values.byName(
         (json['result'] as Map?)?['refresh']?.toString() ?? 'onInvalidation',
+      ),
+      outputType: InsightOutputType.values.byName(
+        (json['result'] as Map?)?['outputType']?.toString() ??
+            (json['type'] == 'dataQuality'
+                ? 'dataQuality'
+                : json['type'] == 'metric'
+                ? 'summary'
+                : 'pattern'),
       ),
       definitionHash: RuleDefinitionHash(hash),
     );
@@ -246,6 +255,7 @@ final class SqliteAnalysisRuleResultRepository
       'definition_hash = ?',
       'period_start = ?',
       'period_end = ?',
+      'period_type = ?',
       'time_zone_id = ?',
       'dataset_mode = ?',
       'currency_basis = ?',
@@ -257,6 +267,7 @@ final class SqliteAnalysisRuleResultRepository
       rule.definitionHash.value,
       context.period.startDate,
       context.period.endDate,
+      context.periodType,
       context.period.timeZoneId,
       context.datasetMode.name,
       context.currencyBasis.name,
@@ -294,6 +305,7 @@ final class SqliteAnalysisRuleResultRepository
       'definition_hash = ?',
       'period_start = ?',
       'period_end = ?',
+      'period_type = ?',
       'time_zone_id = ?',
       'dataset_mode = ?',
       'currency_basis = ?',
@@ -305,6 +317,7 @@ final class SqliteAnalysisRuleResultRepository
       rule.definitionHash.value,
       context.period.startDate,
       context.period.endDate,
+      context.periodType,
       context.period.timeZoneId,
       context.datasetMode.name,
       context.currencyBasis.name,
@@ -344,11 +357,12 @@ final class SqliteAnalysisRuleResultRepository
       '''
       INSERT INTO analysis_rule_results
         (id, rule_id, rule_version, definition_hash, result_type, surface,
-         period_start, period_end, time_zone_id, dataset_mode, currency_basis,
+         period_start, period_end, period_type, time_zone_id, dataset_mode,
+         currency_basis,
          base_currency, dimension, payload, calculated_at, source_revision,
          result_set_key, result_set_size,
          freshness, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         payload = excluded.payload,
         calculated_at = excluded.calculated_at,
@@ -367,6 +381,7 @@ final class SqliteAnalysisRuleResultRepository
         result.surface.name,
         result.context.period.startDate,
         result.context.period.endDate,
+        result.context.periodType,
         result.context.period.timeZoneId,
         result.context.datasetMode.name,
         result.context.currencyBasis.name,
@@ -427,6 +442,7 @@ final class SqliteAnalysisRuleResultRepository
         endDate: row['period_end']! as String,
         timeZoneId: row['time_zone_id']! as String,
       ),
+      periodType: row['period_type'] as String? ?? 'selected_period',
       datasetMode: DatasetMode.values.byName(row['dataset_mode']! as String),
       currencyBasis: CurrencyBasis.values.byName(
         row['currency_basis']! as String,

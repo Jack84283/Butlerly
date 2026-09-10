@@ -139,6 +139,7 @@ final class RuleDefinitionValidator {
       'surface',
       'measures',
       'result',
+      'role',
     };
     for (final key in values.keys) {
       if (!supported.contains(key)) {
@@ -314,6 +315,14 @@ final class RuleDefinitionValidator {
       }
       final result = values['result'];
       final resultMap = result is Map ? result : const <Object?, Object?>{};
+      final outputType = InsightOutputType.values.byName(
+        resultMap['outputType']?.toString() ??
+            (typeValue == AnalysisRuleType.dataQuality
+                ? 'dataQuality'
+                : typeValue == AnalysisRuleType.metric
+                ? 'summary'
+                : 'pattern'),
+      );
       final persistence = ResultPersistencePolicy.values.byName(
         resultMap['persistence']?.toString() ??
             (typeValue == AnalysisRuleType.insight ? 'finding' : 'transient'),
@@ -326,6 +335,15 @@ final class RuleDefinitionValidator {
           condition.operator == 'none') {
         throw const FormatException(
           'Insight rules require a meaningful condition.',
+        );
+      }
+      if (outputType == InsightOutputType.alert &&
+          (parsedMeasures.first.currencyBasis != CurrencyBasis.baseCurrency ||
+              condition.operator != 'all' ||
+              !_containsConditionLeft(condition, 'percentageChange') ||
+              !_containsConditionLeft(condition, 'absoluteChange'))) {
+        throw const FormatException(
+          'Alert rules require base-currency percentage and absolute conditions.',
         );
       }
       definition = AnalysisRuleDefinition(
@@ -352,6 +370,8 @@ final class RuleDefinitionValidator {
         resultPersistence: persistence,
         refreshPolicy: refresh,
         definitionHash: hash,
+        role: values['role']?.toString(),
+        outputType: outputType,
       );
     } on Object catch (error) {
       diagnostics.add(
@@ -524,6 +544,10 @@ RuleCondition _condition(Object? raw) {
     children: children,
   );
 }
+
+bool _containsConditionLeft(RuleCondition condition, String left) =>
+    condition.left == left ||
+    condition.children.any((child) => _containsConditionLeft(child, left));
 
 String canonicalize(Map<String, Object?> values) =>
     jsonEncode(_canonicalValue(values));

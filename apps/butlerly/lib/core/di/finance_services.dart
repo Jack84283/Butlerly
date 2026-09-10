@@ -226,6 +226,22 @@ final class FinanceServices {
                analysisRules,
                const AnalysisRuleEngine(),
              ),
+       calculateInsights = analysisRules == null
+           ? null
+           : CalculateInsights(
+               CalculateAnalysisOverview(
+                 analysisRules,
+                 AnalysisDatasetBuilder(
+                   transactions,
+                   preferences,
+                   reconciliationLinks,
+                   candidates: reconciliationCandidates,
+                 ),
+                 const AnalysisRuleEngine(),
+                 findings: analysisFindings,
+                 results: analysisResults,
+               ),
+             ),
        queryTransactionsForFinancialDate = QueryTransactionsForFinancialDate(
          transactions,
        ),
@@ -315,6 +331,7 @@ final class FinanceServices {
   final InstallBuiltInRules? installBuiltInRules;
   final CalculateAnalysisOverview? calculateAnalysisOverview;
   final CalculateAnalysisCalendar? calculateAnalysisCalendar;
+  final CalculateInsights? calculateInsights;
   final QueryTransactionsForFinancialDate queryTransactionsForFinancialDate;
   final UpdateFindingLifecycle? updateAnalysisFindingLifecycle;
   final InvalidateAnalysis? invalidateAnalysis;

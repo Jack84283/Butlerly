@@ -146,6 +146,33 @@ measure:
     expect(result.diagnostics.map((value) => value.code), contains('semantic'));
   });
 
+  test('rejects an alert without joint percentage and absolute conditions', () {
+    final parsed = parser.parse('''
+schemaVersion: "1.0.0"
+ruleId: ANL-R024
+ruleVersion: "1.0.0"
+enabled: false
+type: insight
+nameKey: alert.name
+descriptionKey: alert.description
+period: selected_period
+baseline: previousEquivalentPeriod
+measure:
+  operation: sum
+  field: amount
+  currencyBasis: baseCurrency
+condition:
+  operator: gte
+  left: percentageChange
+  value: "20"
+result:
+  outputType: alert
+''');
+    final result = validator.validate(parsed.document!);
+    expect(result.definition, isNull);
+    expect(result.diagnostics.map((value) => value.code), contains('semantic'));
+  });
+
   test('all bundled initial rules validate through the production loader', () {
     final root = Directory.current.path;
     final assets = Directory('$root/../../apps/butlerly/assets/analysis_rules');
@@ -157,7 +184,7 @@ measure:
             .where((file) => !file.path.endsWith('catalog.yaml'))
             .toList()
           ..sort((a, b) => a.path.compareTo(b.path));
-    expect(files, hasLength(11));
+    expect(files, hasLength(17));
     final ids = <String>{};
     final definitions = <String, dynamic>{};
     for (final file in files) {
@@ -172,11 +199,29 @@ measure:
     expect(definitions['ANL-R010'].filters.single.values, ['expense']);
     expect(definitions['ANL-R016'].surface, AnalysisSurface.calendar);
     expect(definitions['ANL-R016'].measures, hasLength(3));
+    expect(definitions['ANL-R001'].role, 'expenseTotal');
+    expect(definitions['ANL-R002'].role, 'incomeTotal');
+    expect(definitions['ANL-R021'].outputType, InsightOutputType.pattern);
+    expect(definitions['ANL-R024'].outputType, InsightOutputType.alert);
+    final alert = definitions['ANL-R024'] as AnalysisRuleDefinition;
+    expect(alert.condition.operator, 'all');
+    expect(
+      alert.condition.children.map((RuleCondition value) => value.left),
+      containsAll(['percentageChange', 'absoluteChange']),
+    );
+    expect(definitions['ANL-R025'].outputType, InsightOutputType.pattern);
+    expect(definitions['ANL-R026'].outputType, InsightOutputType.pattern);
     expect(
       definitions['ANL-R016'].measures.first.operation,
       RuleOperation.count,
     );
     expect(definitions['ANL-R020'].enabled, isTrue);
+    expect(definitions['ANL-R021'].enabled, isTrue);
+    expect(definitions['ANL-R022'].enabled, isTrue);
+    expect(definitions['ANL-R023'].enabled, isTrue);
+    expect(definitions['ANL-R024'].enabled, isFalse);
+    expect(definitions['ANL-R025'].enabled, isFalse);
+    expect(definitions['ANL-R026'].enabled, isTrue);
     expect(definitions['ANL-R020'].surface, AnalysisSurface.insights);
     expect(definitions['ANL-R090'].surface, AnalysisSurface.dataQuality);
   });

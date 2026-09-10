@@ -51,6 +51,7 @@ CREATE TABLE analysis_rule_results (
       surface TEXT NOT NULL,
       period_start TEXT NOT NULL,
       period_end TEXT NOT NULL,
+      period_type TEXT NOT NULL DEFAULT 'selected_period',
       time_zone_id TEXT NOT NULL,
       dataset_mode TEXT NOT NULL,
       currency_basis TEXT NOT NULL,
