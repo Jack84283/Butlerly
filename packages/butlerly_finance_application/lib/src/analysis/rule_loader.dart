@@ -338,12 +338,9 @@ final class RuleDefinitionValidator {
         );
       }
       if (outputType == InsightOutputType.alert &&
-          (parsedMeasures.first.currencyBasis != CurrencyBasis.baseCurrency ||
-              condition.operator != 'all' ||
-              !_containsConditionLeft(condition, 'percentageChange') ||
-              !_containsConditionLeft(condition, 'absoluteChange'))) {
+          parsedMeasures.first.currencyBasis != CurrencyBasis.baseCurrency) {
         throw const FormatException(
-          'Alert rules require base-currency percentage and absolute conditions.',
+          'Alert rules require a base-currency measure.',
         );
       }
       definition = AnalysisRuleDefinition(
@@ -544,10 +541,6 @@ RuleCondition _condition(Object? raw) {
     children: children,
   );
 }
-
-bool _containsConditionLeft(RuleCondition condition, String left) =>
-    condition.left == left ||
-    condition.children.any((child) => _containsConditionLeft(child, left));
 
 String canonicalize(Map<String, Object?> values) =>
     jsonEncode(_canonicalValue(values));
