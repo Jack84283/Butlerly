@@ -242,6 +242,26 @@ final class AnalysisRuleEngine {
     AnalysisMetric current,
     DateTime at,
   ) {
+    if (rule.baseline == RuleBaseline.none) {
+      return AnalysisFinding(
+        id: AnalysisResultIdentity.forRule(
+          rule: rule,
+          context: dataset.context,
+          dimension: dimension,
+        ).value,
+        rule: rule,
+        context: dataset.context,
+        severity: rule.severity,
+        lifecycle: FindingLifecycle.active,
+        currentValue: current.value,
+        dimension: dimension.isEmpty ? null : dimension,
+        impactValue: current.impactValue,
+        supportingMetrics: [current.id],
+        evidence: current.evidence,
+        qualityIssues: [...dataset.qualityIssues],
+        generatedAt: at,
+      );
+    }
     final comparison = _comparison(rule, dataset, dimension, current, at);
     return AnalysisFinding(
       id: AnalysisResultIdentity.forRule(
