@@ -1,6 +1,6 @@
 schemaVersion: "1.0.0"
 ruleId: ANL-R023
-ruleVersion: "1.2.0"
+ruleVersion: "1.1.0"
 enabled: true
 surface: insights
 type: insight
@@ -16,10 +16,15 @@ grouping: merchant
 filters:
   direction: expense
 condition:
-  operator: gteMultiplier
-  left: currentTotal
-  right: baselineTotal
-  value: "1.20"
+  operator: all
+  children:
+    - operator: gt
+      left: currentTotal
+      value: "0"
+    - operator: gteMultiplier
+      left: currentTotal
+      right: baselineTotal
+      value: "1.20"
 result:
   persistence: finding
   refresh: onInvalidation
