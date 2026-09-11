@@ -446,8 +446,20 @@ class _SearchPageState extends State<SearchPage>
             ),
           if (_activeFilterCount == 0)
             const SizedBox(height: ButlerlySpacing.section),
-        ] else
-          const SizedBox(height: ButlerlySpacing.compact),
+        ] else ...[
+          _LockedSearchCriteria(
+            transactionIds: _transactionIds,
+            from: _from,
+            to: _to,
+            categoryId: _categoryId,
+            paymentSourceId: _paymentSourceId,
+            currency: _currency,
+            direction: _direction,
+            presentation: _presentation,
+            paymentSourceNames: _paymentSourceNames,
+          ),
+          const SizedBox(height: ButlerlySpacing.standard),
+        ],
         if (_results == null)
           ButlerlyEmptyState(
             icon: Icons.search_rounded,
@@ -508,6 +520,67 @@ class _SearchPageState extends State<SearchPage>
           ),
         const SizedBox(height: ButlerlySpacing.structural),
       ],
+    );
+  }
+}
+
+class _LockedSearchCriteria extends StatelessWidget {
+  const _LockedSearchCriteria({
+    required this.transactionIds,
+    required this.from,
+    required this.to,
+    required this.categoryId,
+    required this.paymentSourceId,
+    required this.currency,
+    required this.direction,
+    required this.presentation,
+    required this.paymentSourceNames,
+  });
+
+  final List<String>? transactionIds;
+  final DateTime? from;
+  final DateTime? to;
+  final String? categoryId;
+  final String? paymentSourceId;
+  final String? currency;
+  final TransactionDirection? direction;
+  final TransactionMasterData presentation;
+  final Map<String, String> paymentSourceNames;
+
+  @override
+  Widget build(BuildContext context) {
+    final criteria = <String>[
+      if (from != null || to != null)
+        '${from == null ? '…' : _searchDate(from!)} – ${to == null ? '…' : _searchDate(to!)}',
+      if (categoryId != null)
+        '${context.l10n.text('category')}: ${presentation.categoryName(categoryId!) ?? categoryId!}',
+      if (paymentSourceId != null)
+        '${context.l10n.text('paymentSource')}: ${paymentSourceNames[paymentSourceId!] ?? paymentSourceId!}',
+      if (currency != null) '${context.l10n.text('currency')}: $currency',
+      if (direction != null)
+        '${context.l10n.text('direction')}: ${direction!.name}',
+      if (transactionIds?.isNotEmpty ?? false)
+        context.l10n.text('supportingTransactions', {
+          'count': '${transactionIds!.length}',
+        }),
+    ];
+    return ButlerlyCard(
+      key: const ValueKey('locked-search-criteria'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.l10n.text('filters'),
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+          const SizedBox(height: ButlerlySpacing.small),
+          for (final criterion in criteria)
+            Padding(
+              padding: const EdgeInsets.only(bottom: ButlerlySpacing.micro),
+              child: Text(criterion),
+            ),
+        ],
+      ),
     );
   }
 }
