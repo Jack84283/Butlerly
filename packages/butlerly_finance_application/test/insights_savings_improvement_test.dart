@@ -72,11 +72,11 @@ void main() {
 
   AnalysisRuleDefinition savingsRule() => AnalysisRuleDefinition(
     identity: RuleIdentity('ANL-R029'),
-    version: RuleVersion('1.0.0'),
+    version: RuleVersion('1.1.0'),
     schemaVersion: '1.0.0',
     type: AnalysisRuleType.insight,
-    nameKey: 'analysis.rule.r003.name',
-    descriptionKey: 'analysis.rule.r003.description',
+    nameKey: 'analysis.rule.r029.name',
+    descriptionKey: 'analysis.rule.r029.description',
     enabled: true,
     status: AnalysisRuleStatus.active,
     period: 'selected_period',
@@ -88,9 +88,39 @@ void main() {
     grouping: RuleGrouping.none,
     baseline: RuleBaseline.previousEquivalentPeriod,
     condition: RuleCondition(
-      operator: 'gt',
-      left: 'absoluteChange',
-      value: DecimalValue.parse('0'),
+      operator: 'any',
+      children: [
+        RuleCondition(
+          operator: 'all',
+          children: [
+            RuleCondition(
+              operator: 'gt',
+              left: 'baselineTotal',
+              value: DecimalValue.parse('0'),
+            ),
+            RuleCondition(
+              operator: 'gte',
+              left: 'percentageChange',
+              value: DecimalValue.parse('20'),
+            ),
+          ],
+        ),
+        RuleCondition(
+          operator: 'all',
+          children: [
+            RuleCondition(
+              operator: 'lte',
+              left: 'baselineTotal',
+              value: DecimalValue.parse('0'),
+            ),
+            RuleCondition(
+              operator: 'gt',
+              left: 'absoluteChange',
+              value: DecimalValue.parse('0'),
+            ),
+          ],
+        ),
+      ],
     ),
     severity: RuleSeverity.info,
     surface: AnalysisSurface.insights,
@@ -162,7 +192,7 @@ void main() {
           .execute(dataset: dataset, definitions: definitions)
           .firstWhere((result) => result.rule.identity.value == 'ANL-R029');
 
-  test('positive savings improvement triggers', () {
+  test('positive savings improvement above 20 percent triggers', () {
     final result = savingsResult(
       dataset(
         currentIncome: '1000',
@@ -177,6 +207,38 @@ void main() {
     expect(result.finding!.currentValue, DecimalValue.parse('300'));
     expect(result.finding!.baselineValue, DecimalValue.parse('200'));
     expect(result.finding!.absoluteChange, DecimalValue.parse('100'));
+  });
+
+  test('positive savings improvement at exactly 20 percent triggers', () {
+    final result = savingsResult(
+      dataset(
+        currentIncome: '1040',
+        currentExpense: '800',
+        baselineIncome: '1000',
+        baselineExpense: '800',
+      ),
+    );
+
+    expect(result.finding, isNotNull);
+    expect(result.finding!.baselineValue, DecimalValue.parse('200'));
+    expect(result.finding!.currentValue, DecimalValue.parse('240'));
+    expect(result.finding!.percentageChange, DecimalValue.parse('20'));
+  });
+
+  test('trivial positive savings improvement below 20 percent does not trigger', () {
+    final result = savingsResult(
+      dataset(
+        currentIncome: '1020',
+        currentExpense: '800',
+        baselineIncome: '1000',
+        baselineExpense: '800',
+      ),
+    );
+
+    expect(result.finding, isNull);
+    expect(result.comparison!.baselineValue, DecimalValue.parse('200'));
+    expect(result.comparison!.currentValue, DecimalValue.parse('220'));
+    expect(result.comparison!.percentageChange, DecimalValue.parse('10'));
   });
 
   test('zero baseline to positive savings triggers without infinite percent', () {
