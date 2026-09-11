@@ -252,9 +252,14 @@ class InsightBarVisualization extends StatelessWidget {
 }
 
 class InsightDonutVisualization extends StatelessWidget {
-  const InsightDonutVisualization({super.key, required this.data});
+  const InsightDonutVisualization({
+    super.key,
+    required this.data,
+    required this.percentageLabel,
+  });
 
   final List<InsightChartDatum> data;
+  final String Function(double value) percentageLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -268,13 +273,9 @@ class InsightDonutVisualization extends StatelessWidget {
       context.colors.brand,
       context.colors.secondaryText,
     ];
+    String share(double value) => percentageLabel(value / total * 100);
     return Semantics(
-      label: usable
-          .map(
-            (item) =>
-                '${item.label}: ${(item.value / total * 100).toStringAsFixed(1)}%',
-          )
-          .join(', '),
+      label: usable.map((item) => '${item.label}: ${share(item.value)}').join(', '),
       child: ExcludeSemantics(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -311,9 +312,7 @@ class InsightDonutVisualization extends StatelessWidget {
                           ),
                           const SizedBox(width: ButlerlySpacing.compact),
                           Expanded(child: Text(usable[index].label)),
-                          Text(
-                            '${(usable[index].value / total * 100).toStringAsFixed(0)}%',
-                          ),
+                          Text(share(usable[index].value)),
                         ],
                       ),
                     ),
