@@ -130,6 +130,7 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
       nameKey: json['nameKey'] as String,
       descriptionKey: json['descriptionKey'] as String,
       role: json['role'] as String?,
+      presentation: _presentation(json['presentation']),
       enabled: json['enabled'] as bool? ?? true,
       status: AnalysisRuleStatus.active,
       period: json['period'] as String? ?? 'currentPeriod',
@@ -166,6 +167,25 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
                 : 'pattern'),
       ),
       definitionHash: RuleDefinitionHash(hash),
+    );
+  }
+
+  InsightPresentation? _presentation(Object? raw) {
+    if (raw is! Map) return null;
+    final semanticType = raw['semantic_type']?.toString();
+    final visualizationType = raw['visualization_type']?.toString();
+    final primaryMetric = raw['primary_metric']?.toString();
+    if (semanticType == null ||
+        visualizationType == null ||
+        primaryMetric == null) {
+      return null;
+    }
+    return InsightPresentation(
+      semanticType: InsightSemanticType.values.byName(semanticType),
+      visualizationType: InsightVisualizationType.values.byName(
+        visualizationType,
+      ),
+      primaryMetric: InsightPrimaryMetric.values.byName(primaryMetric),
     );
   }
 
