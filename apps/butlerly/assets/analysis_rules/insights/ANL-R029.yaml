@@ -1,6 +1,6 @@
 schemaVersion: "1.0.0"
 ruleId: ANL-R029
-ruleVersion: "1.0.0"
+ruleVersion: "1.1.0"
 enabled: true
 surface: insights
 type: insight
@@ -20,9 +20,28 @@ dependencies:
   - ANL-R001
   - ANL-R002
 condition:
-  operator: gt
-  left: absoluteChange
-  value: "0"
+  operator: any
+  children:
+    # When prior savings were already positive, require a meaningful
+    # improvement rather than surfacing trivial dollar changes.
+    - operator: all
+      children:
+        - operator: gt
+          left: baselineTotal
+          value: "0"
+        - operator: gte
+          left: percentageChange
+          value: "20"
+    # Zero or negative prior savings use signed absolute improvement so
+    # zero-to-positive, deficit reduction, and deficit-to-surplus all count.
+    - operator: all
+      children:
+        - operator: lte
+          left: baselineTotal
+          value: "0"
+        - operator: gt
+          left: absoluteChange
+          value: "0"
 severity: info
 result:
   persistence: finding
