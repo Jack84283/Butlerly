@@ -78,9 +78,25 @@ void main() {
       MaterialApp(home: TransactionEditorPage(finance: harness.finance)),
     );
     await tester.pumpAndSettle();
-    expect(find.byType(TextFormField), findsAtLeastNWidgets(4));
-    await tester.enterText(find.byType(TextFormField).at(0), '18.75');
-    await tester.enterText(find.byType(TextFormField).at(2), 'UI merchant');
+
+    final descriptionField = find.byWidgetPredicate(
+      (widget) =>
+          widget is TextFormField &&
+          (widget.decoration?.labelText ?? '').toLowerCase().contains(
+            'description',
+          ),
+      description: 'transaction description field',
+    );
+    final amountField = find.byWidgetPredicate(
+      (widget) =>
+          widget is TextFormField &&
+          (widget.decoration?.labelText ?? '').toLowerCase() == 'amount',
+      description: 'transaction amount field',
+    );
+    expect(descriptionField, findsOneWidget);
+    expect(amountField, findsOneWidget);
+    await tester.enterText(descriptionField, 'UI merchant');
+    await tester.enterText(amountField, '18.75');
     await tester.fling(find.byType(ListView).last, const Offset(0, -500), 1000);
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('Save locally'), findsOneWidget);
