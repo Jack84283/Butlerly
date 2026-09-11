@@ -12,7 +12,6 @@ import 'package:butlerly/features/foundation/presentation/transaction_master_dat
 import 'package:butlerly/features/insights/presentation/insight_group_visualization.dart';
 import 'package:butlerly/features/insights/presentation/insight_presentation.dart';
 import 'package:butlerly/features/insights/presentation/insight_visualization.dart';
-import 'package:butlerly/features/insights/presentation/insights_localizations.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -286,24 +285,41 @@ class _InsightsContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activeFindings = evaluation.activeFindings;
-    final alerts = activeFindings
+    List<InsightResult> semanticResults(
+      Iterable<InsightResult> source,
+      InsightSemanticType semanticType,
+    ) => source
         .where(
           (result) =>
-              result.presentation.semanticType == InsightSemanticType.attention,
+              result.outputType != InsightOutputType.dataQuality &&
+              result.presentation.semanticType == semanticType,
         )
         .toList(growable: false);
-    final positives = activeFindings
-        .where(
-          (result) =>
-              result.presentation.semanticType == InsightSemanticType.positive,
-        )
-        .toList(growable: false);
-    final patterns = activeFindings
-        .where(
-          (result) =>
-              result.presentation.semanticType == InsightSemanticType.neutral,
-        )
-        .toList(growable: false);
+
+    final alerts = semanticResults(
+      activeFindings,
+      InsightSemanticType.attention,
+    );
+    final positives = semanticResults(
+      activeFindings,
+      InsightSemanticType.positive,
+    );
+    final patterns = semanticResults(
+      activeFindings,
+      InsightSemanticType.neutral,
+    );
+    final attentionChartResults = semanticResults(
+      evaluation.results,
+      InsightSemanticType.attention,
+    );
+    final positiveChartResults = semanticResults(
+      evaluation.results,
+      InsightSemanticType.positive,
+    );
+    final neutralChartResults = semanticResults(
+      evaluation.results,
+      InsightSemanticType.neutral,
+    );
     return ButlerlyPage(
       title: context.l10n.text('insights'),
       subtitle: analysisPeriodDescription(
@@ -343,7 +359,10 @@ class _InsightsContent extends StatelessWidget {
         ],
         if (alerts.isNotEmpty) ...[
           ButlerlySectionHeader(title: context.l10n.text('needsAttention')),
-          InsightGroupVisualizations(findings: alerts, masterData: masterData),
+          InsightGroupVisualizations(
+            results: attentionChartResults,
+            masterData: masterData,
+          ),
           for (final insight in alerts)
             Padding(
               padding: const EdgeInsets.only(
@@ -360,9 +379,12 @@ class _InsightsContent extends StatelessWidget {
         ],
         if (positives.isNotEmpty) ...[
           ButlerlySectionHeader(
-            title: insightText(context, 'insightsPositiveChanges'),
+            title: context.l10n.text('insightsPositiveChanges'),
           ),
-          InsightGroupVisualizations(findings: positives, masterData: masterData),
+          InsightGroupVisualizations(
+            results: positiveChartResults,
+            masterData: masterData,
+          ),
           for (final insight in positives)
             Padding(
               padding: const EdgeInsets.only(
@@ -379,7 +401,10 @@ class _InsightsContent extends StatelessWidget {
         ],
         if (patterns.isNotEmpty) ...[
           ButlerlySectionHeader(title: context.l10n.text('otherInsights')),
-          InsightGroupVisualizations(findings: patterns, masterData: masterData),
+          InsightGroupVisualizations(
+            results: neutralChartResults,
+            masterData: masterData,
+          ),
           for (final insight in patterns)
             Padding(
               padding: const EdgeInsets.only(
@@ -544,7 +569,7 @@ class _InsightCard extends StatelessWidget {
         : double.tryParse(insight.baselineValue.toString());
     return ButlerlyCard(
       semanticLabel: [
-        insightText(context, rule.nameKey),
+        context.l10n.text(rule.nameKey),
         ...?dimensionLabel == null ? null : [dimensionLabel],
       ].join(': '),
       color: semantic.color.withValues(alpha: 0.06),
@@ -558,14 +583,14 @@ class _InsightCard extends StatelessWidget {
               const SizedBox(width: ButlerlySpacing.small),
               Expanded(
                 child: Text(
-                  insightText(context, rule.nameKey),
+                  context.l10n.text(rule.nameKey),
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
             ],
           ),
           const SizedBox(height: ButlerlySpacing.small),
-          Text(insightText(context, rule.descriptionKey)),
+          Text(context.l10n.text(rule.descriptionKey)),
           if (presentation.visualizationType ==
                   InsightVisualizationType.comparison &&
               currentAmount != null &&
