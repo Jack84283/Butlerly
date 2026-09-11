@@ -96,7 +96,9 @@ class InsightGroupVisualizations extends StatelessWidget {
       RuleGrouping.merchant =>
         masterData.merchantName(dimension) ??
             context.l10n.text('unavailableMerchant'),
-      RuleGrouping.paymentSource => context.l10n.text('unavailablePaymentSource'),
+      RuleGrouping.paymentSource =>
+        masterData.paymentSourceName(dimension) ??
+            context.l10n.text('unavailablePaymentSource'),
       RuleGrouping.tag =>
         masterData.tagName(dimension) ?? context.l10n.text('unavailableTag'),
       _ => dimension,
