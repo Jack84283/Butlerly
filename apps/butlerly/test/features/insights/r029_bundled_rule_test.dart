@@ -18,10 +18,14 @@ void main() {
     return validated.definition!;
   }
 
-  final expenseRule = loadRule('assets/analysis_rules/metrics/ANL-R001.yaml');
-  final incomeRule = loadRule('assets/analysis_rules/metrics/ANL-R002.yaml');
-  final savingsRule = loadRule('assets/analysis_rules/insights/ANL-R029.yaml');
-  final definitions = [expenseRule, incomeRule, savingsRule];
+  late List<AnalysisRuleDefinition> definitions;
+
+  setUpAll(() {
+    final expenseRule = loadRule('assets/analysis_rules/metrics/ANL-R001.yaml');
+    final incomeRule = loadRule('assets/analysis_rules/metrics/ANL-R002.yaml');
+    final savingsRule = loadRule('assets/analysis_rules/insights/ANL-R029.yaml');
+    definitions = [expenseRule, incomeRule, savingsRule];
+  });
 
   final context = AnalysisContext(
     period: AnalysisPeriod(
