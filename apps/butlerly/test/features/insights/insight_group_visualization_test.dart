@@ -10,6 +10,39 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  Widget testApp({
+    required List<InsightResult> results,
+    required TransactionMasterData masterData,
+  }) => MaterialApp(
+    theme: ThemeData(
+      extensions: const [ButlerlySemanticColors.light],
+    ),
+    localizationsDelegates: const [
+      AppLocalizations.delegate,
+      GlobalMaterialLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+    ],
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: Scaffold(
+      body: InsightGroupVisualizations(
+        results: results,
+        masterData: masterData,
+      ),
+    ),
+  );
+
+  AnalysisContext context() => AnalysisContext(
+    period: AnalysisPeriod(
+      startDate: '2026-09-01',
+      endDate: '2026-09-10',
+      timeZoneId: 'America/Los_Angeles',
+    ),
+    datasetMode: DatasetMode.allEligible,
+    currencyBasis: CurrencyBasis.baseCurrency,
+    baseCurrency: CurrencyCode('USD'),
+  );
+
   testWidgets(
     'renders full category composition even when only one R026 finding triggers',
     (tester) async {
@@ -44,16 +77,7 @@ void main() {
           primaryMetric: InsightPrimaryMetric.share,
         ),
       );
-      final context = AnalysisContext(
-        period: AnalysisPeriod(
-          startDate: '2026-09-01',
-          endDate: '2026-09-10',
-          timeZoneId: 'America/Los_Angeles',
-        ),
-        datasetMode: DatasetMode.allEligible,
-        currencyBasis: CurrencyBasis.baseCurrency,
-        baseCurrency: CurrencyCode('USD'),
-      );
+      final analysisContext = context();
       InsightResult result(
         String dimension,
         String value, {
@@ -64,7 +88,7 @@ void main() {
             ? AnalysisFinding(
                 id: 'finding-$dimension',
                 rule: rule,
-                context: context,
+                context: analysisContext,
                 severity: RuleSeverity.info,
                 lifecycle: FindingLifecycle.active,
                 currentValue: parsed,
@@ -75,7 +99,7 @@ void main() {
         return InsightResult(
           outputType: InsightOutputType.pattern,
           rule: rule,
-          context: context,
+          context: analysisContext,
           finding: finding,
           currentValue: parsed,
           currency: CurrencyCode('USD'),
@@ -91,28 +115,14 @@ void main() {
       expect(results.where((result) => result.isActive), hasLength(1));
 
       await tester.pumpWidget(
-        MaterialApp(
-          theme: ThemeData(
-            extensions: const [ButlerlySemanticColors.light],
-          ),
-          localizationsDelegates: const [
-            AppLocalizations.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(
-            body: InsightGroupVisualizations(
-              results: results,
-              masterData: const TransactionMasterData(
-                categoryNames: {
-                  'category.food': 'Food',
-                  'category.rent': 'Rent',
-                  'category.other': 'Other',
-                },
-              ),
-            ),
+        testApp(
+          results: results,
+          masterData: const TransactionMasterData(
+            categoryNames: {
+              'category.food': 'Food',
+              'category.rent': 'Rent',
+              'category.other': 'Other',
+            },
           ),
         ),
       );
@@ -127,4 +137,63 @@ void main() {
       expect(find.text('15%'), findsOneWidget);
     },
   );
+
+  testWidgets('resolves payment-source chart labels from master data', (
+    tester,
+  ) async {
+    final rule = AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R099'),
+      version: RuleVersion('1.0.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.insight,
+      nameKey: 'analysisSummary',
+      descriptionKey: 'analysisSummary',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(
+        operation: RuleOperation.sum,
+        field: 'amount',
+        currencyBasis: CurrencyBasis.baseCurrency,
+      ),
+      grouping: RuleGrouping.paymentSource,
+      baseline: RuleBaseline.none,
+      condition: const RuleCondition(operator: 'none'),
+      severity: RuleSeverity.info,
+      definitionHash: RuleDefinitionHash('9' * 64),
+      surface: AnalysisSurface.insights,
+      presentation: const InsightPresentation(
+        semanticType: InsightSemanticType.neutral,
+        visualizationType: InsightVisualizationType.bar,
+        primaryMetric: InsightPrimaryMetric.amount,
+      ),
+    );
+    final analysisContext = context();
+    InsightResult result(String dimension, String value) => InsightResult(
+      outputType: InsightOutputType.pattern,
+      rule: rule,
+      context: analysisContext,
+      currentValue: DecimalValue.parse(value),
+      currency: CurrencyCode('USD'),
+      dimension: '$dimension:value',
+    );
+
+    await tester.pumpWidget(
+      testApp(
+        results: [result('source.visa', '70'), result('source.cash', '30')],
+        masterData: const TransactionMasterData(
+          paymentSourceNames: {
+            'source.visa': 'Personal Visa',
+            'source.cash': 'Cash',
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(InsightBarVisualization), findsOneWidget);
+    expect(find.text('Personal Visa'), findsOneWidget);
+    expect(find.text('Cash'), findsOneWidget);
+    expect(find.text('Unavailable payment source'), findsNothing);
+  });
 }
