@@ -16,10 +16,18 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 
 class SearchPage extends StatefulWidget {
-  const SearchPage({this.initialFrom, this.initialTo, super.key});
+  const SearchPage({
+    this.initialFrom,
+    this.initialTo,
+    this.initialQuery,
+    this.readOnly = false,
+    super.key,
+  });
 
   final DateTime? initialFrom;
   final DateTime? initialTo;
+  final ListTransactionsQuery? initialQuery;
+  final bool readOnly;
 
   @override
   State<SearchPage> createState() => _SearchPageState();
@@ -28,11 +36,14 @@ class SearchPage extends StatefulWidget {
 class _SearchPageState extends State<SearchPage>
     with AutomaticKeepAliveClientMixin {
   final _text = TextEditingController();
+  List<String>? _transactionIds;
   String? _currency;
   TransactionDirection? _direction;
   String? _categoryId;
   String? _paymentSourceId;
+  TransactionStatus? _status;
   bool? _needsReview;
+  bool _uncategorized = false;
   DateTime? _from;
   DateTime? _to;
   Future<List<TransactionDto>>? _results;
@@ -51,9 +62,19 @@ class _SearchPageState extends State<SearchPage>
   @override
   void initState() {
     super.initState();
-    _from = widget.initialFrom;
-    _to = widget.initialTo;
-    if (_from != null || _to != null) _results = _search();
+    final query = widget.initialQuery;
+    _text.text = query?.text ?? '';
+    _transactionIds = query?.transactionIds;
+    _currency = query?.currency;
+    _direction = query?.direction;
+    _categoryId = query?.categoryId;
+    _paymentSourceId = query?.paymentSourceId;
+    _status = query?.status;
+    _needsReview = query?.needsReview;
+    _uncategorized = query?.uncategorized ?? false;
+    _from = query?.from ?? widget.initialFrom;
+    _to = query?.to ?? widget.initialTo;
+    if (query != null || _from != null || _to != null) _results = _search();
   }
 
   @override
@@ -102,11 +123,14 @@ class _SearchPageState extends State<SearchPage>
     final result = await finance.listTransactions(
       ListTransactionsQuery(
         text: _text.text.trim().isEmpty ? null : _text.text.trim(),
+        transactionIds: _transactionIds,
         currency: _currency,
         direction: _direction,
         categoryId: _categoryId,
         paymentSourceId: _paymentSourceId,
+        status: _status,
         needsReview: _needsReview,
+        uncategorized: _uncategorized,
         from: _from,
         to: _to,
       ),
@@ -171,20 +195,20 @@ class _SearchPageState extends State<SearchPage>
     int generation,
   ) async {
     final value = await future;
-    // FutureBuilder is bound to the future for the latest generation. Keeping
-    // the generation here also makes the latest-wins contract explicit at the
-    // asynchronous boundary if this method gains side effects later.
     if (generation != _searchGeneration) return const [];
     return value;
   }
 
   void _clearFilters() {
     setState(() {
+      _transactionIds = null;
       _currency = null;
       _direction = null;
       _categoryId = null;
       _paymentSourceId = null;
+      _status = null;
       _needsReview = null;
+      _uncategorized = false;
       _from = null;
       _to = null;
     });
@@ -214,16 +238,20 @@ class _SearchPageState extends State<SearchPage>
   }
 
   int get _activeFilterCount => [
+    if (_transactionIds?.isNotEmpty ?? false) _transactionIds,
     _currency,
     _direction,
     _categoryId,
     _paymentSourceId,
+    _status,
     _needsReview,
+    if (_uncategorized) true,
     _from,
     _to,
   ].where((value) => value != null).length;
 
   Future<void> _openFilters() async {
+    if (widget.readOnly) return;
     var stagedCurrency = _currency;
     var stagedDirection = _direction;
     var stagedCategoryId = _categoryId;
@@ -365,58 +393,61 @@ class _SearchPageState extends State<SearchPage>
     return ButlerlyPage(
       title: context.l10n.text('search'),
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: SearchBar(
-                controller: _text,
-                hintText: context.l10n.text('searchHint'),
-                leading: const Icon(Icons.search_rounded),
-                trailing: [
-                  IconButton(
-                    key: const ValueKey('search-submit'),
-                    tooltip: context.l10n.text('search'),
-                    onPressed: _submit,
-                    icon: const Icon(Icons.search_rounded),
-                  ),
-                  if (_text.text.isNotEmpty)
+        if (!widget.readOnly) ...[
+          Row(
+            children: [
+              Expanded(
+                child: SearchBar(
+                  controller: _text,
+                  hintText: context.l10n.text('searchHint'),
+                  leading: const Icon(Icons.search_rounded),
+                  trailing: [
                     IconButton(
-                      tooltip: context.l10n.text('clear'),
-                      onPressed: () {
-                        _text.clear();
-                        _submit();
-                      },
-                      icon: const Icon(Icons.close_rounded),
+                      key: const ValueKey('search-submit'),
+                      tooltip: context.l10n.text('search'),
+                      onPressed: _submit,
+                      icon: const Icon(Icons.search_rounded),
                     ),
-                ],
-                onChanged: (_) {
-                  setState(() {});
-                  _scheduleSearch();
-                },
-                onSubmitted: (_) => _submit(),
+                    if (_text.text.isNotEmpty)
+                      IconButton(
+                        tooltip: context.l10n.text('clear'),
+                        onPressed: () {
+                          _text.clear();
+                          _submit();
+                        },
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                  ],
+                  onChanged: (_) {
+                    setState(() {});
+                    _scheduleSearch();
+                  },
+                  onSubmitted: (_) => _submit(),
+                ),
+              ),
+              const SizedBox(width: ButlerlySpacing.compact),
+              IconButton(
+                isSelected: _activeFilterCount > 0,
+                tooltip: _activeFilterCount > 0
+                    ? '${context.l10n.text('filters')} ($_activeFilterCount)'
+                    : context.l10n.text('filters'),
+                onPressed: _openFilters,
+                icon: const Icon(Icons.tune_rounded),
+              ),
+            ],
+          ),
+          if (_activeFilterCount > 0)
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: TextButton(
+                onPressed: _clearFilters,
+                child: Text(context.l10n.text('clearFilters')),
               ),
             ),
-            const SizedBox(width: ButlerlySpacing.compact),
-            IconButton(
-              isSelected: _activeFilterCount > 0,
-              tooltip: _activeFilterCount > 0
-                  ? '${context.l10n.text('filters')} ($_activeFilterCount)'
-                  : context.l10n.text('filters'),
-              onPressed: _openFilters,
-              icon: const Icon(Icons.tune_rounded),
-            ),
-          ],
-        ),
-        if (_activeFilterCount > 0)
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: TextButton(
-              onPressed: _clearFilters,
-              child: Text(context.l10n.text('clearFilters')),
-            ),
-          ),
-        if (_activeFilterCount == 0)
-          const SizedBox(height: ButlerlySpacing.section),
+          if (_activeFilterCount == 0)
+            const SizedBox(height: ButlerlySpacing.section),
+        ] else
+          const SizedBox(height: ButlerlySpacing.compact),
         if (_results == null)
           ButlerlyEmptyState(
             icon: Icons.search_rounded,
@@ -450,8 +481,10 @@ class _SearchPageState extends State<SearchPage>
                       icon: Icons.search_off_rounded,
                       title: context.l10n.text('noResults'),
                       message: context.l10n.text('noResultsBody'),
-                      actionLabel: context.l10n.text('clearSearch'),
-                      onAction: _resetSearch,
+                      actionLabel: widget.readOnly
+                          ? null
+                          : context.l10n.text('clearSearch'),
+                      onAction: widget.readOnly ? null : _resetSearch,
                     ),
                   ],
                 );
