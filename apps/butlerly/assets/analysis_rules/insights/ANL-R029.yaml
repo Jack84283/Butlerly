@@ -22,23 +22,26 @@ dependencies:
 condition:
   operator: any
   children:
-    # When prior savings were already positive, require a meaningful
-    # improvement rather than surfacing trivial dollar changes.
+    # baseline = currentValue - absoluteChange. A positive baseline therefore
+    # means currentValue > absoluteChange; require at least 20% improvement.
     - operator: all
       children:
-        - operator: gt
-          left: baselineTotal
-          value: "0"
+        - operator: gtMultiplier
+          left: currentValue
+          right: absoluteChange
+          value: "1"
         - operator: gte
           left: percentageChange
           value: "20"
-    # Zero or negative prior savings use signed absolute improvement so
-    # zero-to-positive, deficit reduction, and deficit-to-surplus all count.
+    # A zero or negative baseline means absoluteChange >= currentValue.
+    # Preserve signed improvements such as zero-to-positive, a smaller deficit,
+    # and deficit-to-surplus without applying a naive percentage threshold.
     - operator: all
       children:
-        - operator: lte
-          left: baselineTotal
-          value: "0"
+        - operator: gteMultiplier
+          left: absoluteChange
+          right: currentValue
+          value: "1"
         - operator: gt
           left: absoluteChange
           value: "0"
