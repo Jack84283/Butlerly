@@ -352,7 +352,11 @@ void main() {
           .copyWithType(AnalysisRuleType.insight)
           .copyWithBaseline(RuleBaseline.previousEquivalentPeriod)
           .copyWithCondition(
-            RuleCondition(operator: 'gt', value: DecimalValue.parse('0')),
+            RuleCondition(
+              operator: 'gt',
+              left: 'value',
+              value: DecimalValue.parse('0'),
+            ),
           );
       final finding = const AnalysisRuleEngine()
           .execute(
@@ -797,7 +801,11 @@ void main() {
       measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
       grouping: grouping,
       baseline: RuleBaseline.previousEquivalentPeriod,
-      condition: RuleCondition(operator: 'gt', value: DecimalValue.parse('0')),
+      condition: RuleCondition(
+        operator: 'gt',
+        left: 'value',
+        value: DecimalValue.parse('0'),
+      ),
       severity: RuleSeverity.info,
       definitionHash: RuleDefinitionHash('d' * 64),
     );
