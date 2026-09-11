@@ -573,7 +573,6 @@ class _InsightCard extends StatelessWidget {
         ...?dimensionLabel == null ? null : [dimensionLabel],
       ].join(': '),
       color: semantic.color.withValues(alpha: 0.06),
-      onTap: onViewTransactions,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -718,7 +717,9 @@ String? _dimensionLabel(
     RuleGrouping.merchant =>
       masterData.merchantName(dimension) ??
           context.l10n.text('unavailableMerchant'),
-    RuleGrouping.paymentSource => context.l10n.text('unavailablePaymentSource'),
+    RuleGrouping.paymentSource =>
+      masterData.paymentSourceName(dimension) ??
+          context.l10n.text('unavailablePaymentSource'),
     RuleGrouping.tag =>
       masterData.tagName(dimension) ?? context.l10n.text('unavailableTag'),
     _ => null,
