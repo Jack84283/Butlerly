@@ -20,14 +20,12 @@ class InsightsPage extends StatefulWidget {
   const InsightsPage({
     super.key,
     this.loadEvaluation,
-    this.dismissFinding,
     this.onNavigationRequested,
     this.masterData,
   });
 
   final Future<ApplicationResult<InsightsEvaluation>> Function(String)?
   loadEvaluation;
-  final Future<ApplicationResult<void>> Function(String)? dismissFinding;
   final ValueChanged<String>? onNavigationRequested;
   final TransactionMasterData? masterData;
 
@@ -194,31 +192,6 @@ class _InsightsPageState extends State<InsightsPage> {
     });
   }
 
-  Future<void> _dismiss(InsightResult insight) async {
-    final finding = insight.finding;
-    if (finding == null) return;
-    Future<ApplicationResult<void>> Function(String)? dismiss =
-        widget.dismissFinding;
-    if (dismiss == null && services.isRegistered<FinanceServices>()) {
-      final useCase =
-          services<FinanceServices>().updateAnalysisFindingLifecycle;
-      if (useCase != null) {
-        dismiss = (id) =>
-            useCase(id, FindingLifecycle.dismissed, DateTime.now().toUtc());
-      }
-    }
-    if (dismiss == null) return;
-    final result = await dismiss(finding.id);
-    if (!mounted) return;
-    if (result is ApplicationSuccess<void>) {
-      await _reload();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.text('insightActionFailed'))),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) => Scaffold(
     body: FutureBuilder<ApplicationResult<InsightsEvaluation>>(
@@ -252,20 +225,31 @@ class _InsightsPageState extends State<InsightsPage> {
           onPeriodChanged: (value) => value == 'selected_period'
               ? _chooseCustomPeriod()
               : _selectPeriod(value),
-          onDismiss: _dismiss,
           onViewTransactions: (insight) {
+            if (!_hasPreciseDrillDown(insight)) return;
             final period = insight.context.period;
+            final dimension = insight.dimension;
+            final isUncategorized =
+                insight.rule.grouping == RuleGrouping.category &&
+                dimension == 'uncategorized';
             final path = Uri(
-              path: '/transactions',
+              path: '/search',
               queryParameters: {
-                if (insight.evidence.isEmpty) ...{
-                  'from': period.startDate,
-                  'to': period.endDate,
-                },
+                'locked': 'true',
+                'from': period.startDate,
+                'to': period.endDate,
                 if (insight.evidence.isNotEmpty)
                   'ids': insight.evidence
                       .map((evidence) => evidence.transactionId.value)
                       .join(','),
+                if (dimension != null &&
+                    !isUncategorized &&
+                    insight.rule.grouping == RuleGrouping.category)
+                  'category': dimension,
+                if (isUncategorized) 'uncategorized': 'true',
+                if (dimension != null &&
+                    insight.rule.grouping == RuleGrouping.paymentSource)
+                  'paymentSource': dimension,
               },
             ).toString();
             if (widget.onNavigationRequested case final callback?) {
@@ -285,7 +269,6 @@ class _InsightsContent extends StatelessWidget {
     required this.evaluation,
     required this.period,
     required this.onPeriodChanged,
-    required this.onDismiss,
     required this.onViewTransactions,
     required this.masterData,
   });
@@ -293,7 +276,6 @@ class _InsightsContent extends StatelessWidget {
   final InsightsEvaluation evaluation;
   final String period;
   final ValueChanged<String> onPeriodChanged;
-  final Future<void> Function(InsightResult) onDismiss;
   final ValueChanged<InsightResult> onViewTransactions;
   final TransactionMasterData masterData;
 
@@ -346,21 +328,33 @@ class _InsightsContent extends StatelessWidget {
         if (alerts.isNotEmpty) ...[
           ButlerlySectionHeader(title: context.l10n.text('needsAttention')),
           for (final insight in alerts)
-            _InsightCard(
-              insight: insight,
-              masterData: masterData,
-              onDismiss: () => onDismiss(insight),
-              onViewTransactions: () => onViewTransactions(insight),
+            Padding(
+              padding: const EdgeInsets.only(
+                bottom: ButlerlySpacing.standard,
+              ),
+              child: _InsightCard(
+                insight: insight,
+                masterData: masterData,
+                onViewTransactions: _hasPreciseDrillDown(insight)
+                    ? () => onViewTransactions(insight)
+                    : null,
+              ),
             ),
         ],
         if (patterns.isNotEmpty) ...[
           ButlerlySectionHeader(title: context.l10n.text('otherInsights')),
           for (final insight in patterns)
-            _InsightCard(
-              insight: insight,
-              masterData: masterData,
-              onDismiss: () => onDismiss(insight),
-              onViewTransactions: () => onViewTransactions(insight),
+            Padding(
+              padding: const EdgeInsets.only(
+                bottom: ButlerlySpacing.standard,
+              ),
+              child: _InsightCard(
+                insight: insight,
+                masterData: masterData,
+                onViewTransactions: _hasPreciseDrillDown(insight)
+                    ? () => onViewTransactions(insight)
+                    : null,
+              ),
             ),
         ],
         if (activeFindings.isEmpty && !evaluation.hasSufficientHistory)
@@ -455,14 +449,12 @@ class _PeriodSummaryCard extends StatelessWidget {
 class _InsightCard extends StatelessWidget {
   const _InsightCard({
     required this.insight,
-    required this.onDismiss,
     required this.onViewTransactions,
     required this.masterData,
   });
 
   final InsightResult insight;
-  final VoidCallback onDismiss;
-  final VoidCallback onViewTransactions;
+  final VoidCallback? onViewTransactions;
   final TransactionMasterData masterData;
 
   @override
@@ -525,11 +517,6 @@ class _InsightCard extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
-              IconButton(
-                tooltip: context.l10n.text('dismiss'),
-                onPressed: onDismiss,
-                icon: const Icon(Icons.close),
-              ),
             ],
           ),
           const SizedBox(height: ButlerlySpacing.small),
@@ -544,18 +531,31 @@ class _InsightCard extends StatelessWidget {
               }),
             ),
           ],
-          const SizedBox(height: ButlerlySpacing.small),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: onViewTransactions,
-              child: Text(context.l10n.text('viewTransactions')),
+          if (onViewTransactions != null) ...[
+            const SizedBox(height: ButlerlySpacing.small),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: onViewTransactions,
+                child: Text(context.l10n.text('viewTransactions')),
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
   }
+}
+
+bool _hasPreciseDrillDown(InsightResult insight) {
+  if (insight.evidence.isNotEmpty) return true;
+  final dimension = insight.dimension;
+  return switch (insight.rule.grouping) {
+    RuleGrouping.none => true,
+    RuleGrouping.category => dimension != null,
+    RuleGrouping.paymentSource => dimension != null,
+    _ => false,
+  };
 }
 
 class _InsightValue extends StatelessWidget {

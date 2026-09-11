@@ -10,7 +10,6 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   Widget app<T>(
     Future<ApplicationResult<T>> Function(String) load, {
-    Future<ApplicationResult<void>> Function(String)? dismissFinding,
     ValueChanged<String>? onNavigationRequested,
     TransactionMasterData? masterData,
   }) {
@@ -39,7 +38,6 @@ void main() {
       home: InsightsPage(
         key: UniqueKey(),
         loadEvaluation: loadEvaluation,
-        dismissFinding: dismissFinding,
         onNavigationRequested: onNavigationRequested,
         masterData: masterData,
       ),
@@ -60,7 +58,7 @@ void main() {
     expect(find.textContaining('7,420'), findsOneWidget);
     expect(find.textContaining('5,930'), findsOneWidget);
     expect(find.textContaining('1,490'), findsOneWidget);
-    expect(find.byTooltip('Dismiss'), findsOneWidget);
+    expect(find.byTooltip('Dismiss'), findsNothing);
   });
 
   testWidgets(
@@ -95,7 +93,7 @@ void main() {
     },
   );
 
-  testWidgets('drills into the finding period for supporting transactions', (
+  testWidgets('drills into locked search for supporting transactions', (
     tester,
   ) async {
     String? path;
@@ -118,7 +116,10 @@ void main() {
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
     await tester.pumpAndSettle();
     await tester.tap(find.text('View transactions'));
-    expect(path, '/transactions?ids=support-1%2Csupport-2');
+    expect(
+      path,
+      '/search?locked=true&from=2026-09-01&to=2026-09-05&ids=support-1%2Csupport-2',
+    );
   });
 
   testWidgets('renders multiple active insight rules generically', (
@@ -139,7 +140,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Spending compared with baseline'), findsOneWidget);
     expect(find.text('Expenses'), findsOneWidget);
-    expect(find.byTooltip('Dismiss'), findsNWidgets(2));
+    expect(find.byTooltip('Dismiss'), findsNothing);
   });
 
   testWidgets(
@@ -223,7 +224,7 @@ void main() {
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
     await tester.pumpAndSettle();
 
-    expect(find.byTooltip('Dismiss'), findsNWidgets(2));
+    expect(find.byTooltip('Dismiss'), findsNothing);
     final titles = tester
         .widgetList<Text>(find.byType(Text))
         .map((text) => text.data)
@@ -356,37 +357,13 @@ void main() {
     expect(find.text('Nothing needs your attention'), findsOneWidget);
   });
 
-  testWidgets('dismissal removes the active finding after success', (
-    tester,
-  ) async {
-    var dismissed = false;
+  testWidgets('does not expose an insight dismissal control', (tester) async {
     await tester.pumpWidget(
-      app(
-        (_) async => dismissed
-            ? ApplicationSuccess([
-                _result(
-                  comparison: AnalysisComparison(
-                    currentValue: _zero(),
-                    baselineValue: _zero(),
-                    absoluteChange: _zero(),
-                    percentageChange: _zero(),
-                    availability: AnalysisDataAvailability.sufficient,
-                  ),
-                ),
-              ])
-            : ApplicationSuccess([_result(finding: _finding())]),
-        dismissFinding: (_) async {
-          dismissed = true;
-          return const ApplicationSuccess(null);
-        },
-      ),
+      app((_) async => ApplicationSuccess([_result(finding: _finding())])),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Dismiss'));
-    await tester.pumpAndSettle();
-    await tester.dragFrom(const Offset(400, 500), const Offset(0, -500));
-    await tester.pumpAndSettle();
-    expect(find.text('Nothing needs your attention'), findsOneWidget);
+    expect(find.byTooltip('Dismiss'), findsNothing);
+    expect(find.text('Spending compared with baseline'), findsOneWidget);
   });
 }
 
