@@ -49,7 +49,7 @@ rules:
     ruleVersion: "1.0.0"
     file: insights/ANL-R028.yaml
   - ruleId: ANL-R029
-    ruleVersion: "1.0.0"
+    ruleVersion: "1.1.0"
     file: insights/ANL-R029.yaml
   - ruleId: ANL-R090
     ruleVersion: "1.1.0"
