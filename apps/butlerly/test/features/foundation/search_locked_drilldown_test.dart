@@ -36,7 +36,7 @@ void main() {
       );
       expect(find.textContaining('2026-09-01'), findsOneWidget);
       expect(find.textContaining('2026-09-05'), findsOneWidget);
-      expect(find.textContaining('Uncategorized'), findsOneWidget);
+      expect(find.textContaining('Not categorized'), findsOneWidget);
       expect(find.byType(SearchBar), findsNothing);
       expect(find.byKey(const ValueKey('search-submit')), findsNothing);
       expect(find.byIcon(Icons.tune_rounded), findsNothing);
