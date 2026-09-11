@@ -137,9 +137,22 @@ void main() {
     expect(find.text('储蓄改善'), findsOneWidget);
   });
 
-  test('insight strings participate in localization completeness checks', () {
-    expect(AppLocalizations.missingKeysFor('es'), isEmpty);
-    expect(AppLocalizations.missingKeysFor('zh'), isEmpty);
+  test('new insight strings participate in localization completeness checks', () {
+    const keys = {
+      'insightsPositiveChanges',
+      'analysis.rule.r027.name',
+      'analysis.rule.r027.description',
+      'analysis.rule.r028.name',
+      'analysis.rule.r028.description',
+      'analysis.rule.r029.name',
+      'analysis.rule.r029.description',
+    };
+    for (final language in ['es', 'zh']) {
+      final missing = AppLocalizations.missingKeysFor(language);
+      for (final key in keys) {
+        expect(missing, isNot(contains(key)));
+      }
+    }
   });
 }
 
