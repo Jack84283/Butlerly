@@ -81,7 +81,7 @@ class InsightGroupVisualizations extends StatelessWidget {
   }
 
   String _dimensionLabel(BuildContext context, InsightResult insight) {
-    final dimension = insight.dimension!;
+    final dimension = _rawDimension(insight);
     return switch (insight.rule.grouping) {
       RuleGrouping.category =>
         masterData.categoryName(dimension) ??
@@ -101,5 +101,15 @@ class InsightGroupVisualizations extends StatelessWidget {
         masterData.tagName(dimension) ?? context.l10n.text('unavailableTag'),
       _ => dimension,
     };
+  }
+
+  String _rawDimension(InsightResult insight) {
+    final dimension = insight.dimension!;
+    if (insight.finding != null) return dimension;
+    final suffix = ':${insight.rule.measure.key}';
+    if (dimension.endsWith(suffix) && dimension.length > suffix.length) {
+      return dimension.substring(0, dimension.length - suffix.length);
+    }
+    return dimension;
   }
 }
