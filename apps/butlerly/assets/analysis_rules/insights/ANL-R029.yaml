@@ -4,8 +4,8 @@ ruleVersion: "1.0.0"
 enabled: true
 surface: insights
 type: insight
-nameKey: analysis.rule.r003.name
-descriptionKey: analysis.rule.r003.description
+nameKey: analysis.rule.r029.name
+descriptionKey: analysis.rule.r029.description
 role: positive
 period: selected_period
 baseline: previousEquivalentPeriod
