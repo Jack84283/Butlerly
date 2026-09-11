@@ -59,22 +59,68 @@ void main() {
       '/search?locked=true&from=2026-09-01&to=2026-09-05&ids=support-1',
     );
   });
+
+  testWidgets('offers precise uncategorized category drill-down', (
+    tester,
+  ) async {
+    String? path;
+    await tester.pumpWidget(
+      app(
+        _categoryInsight('uncategorized'),
+        onNavigationRequested: (value) => path = value,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('View transactions'));
+    expect(
+      path,
+      '/search?locked=true&from=2026-09-01&to=2026-09-05&uncategorized=true',
+    );
+  });
 }
 
-InsightResult _merchantInsight({List<EvidenceReference> evidence = const []}) {
+InsightResult _merchantInsight({List<EvidenceReference> evidence = const []}) =>
+    _insight(
+      grouping: RuleGrouping.merchant,
+      dimension: 'merchant.acme',
+      ruleId: 'ANL-R023',
+      nameKey: 'analysis.rule.r023.name',
+      descriptionKey: 'analysis.rule.r023.description',
+      evidence: evidence,
+    );
+
+InsightResult _categoryInsight(String dimension) => _insight(
+  grouping: RuleGrouping.category,
+  dimension: dimension,
+  ruleId: 'ANL-R021',
+  nameKey: 'analysis.rule.r021.name',
+  descriptionKey: 'analysis.rule.r021.description',
+);
+
+InsightResult _insight({
+  required RuleGrouping grouping,
+  required String dimension,
+  required String ruleId,
+  required String nameKey,
+  required String descriptionKey,
+  List<EvidenceReference> evidence = const [],
+}) {
   final context = _context();
   final rule = AnalysisRuleDefinition(
-    identity: RuleIdentity('ANL-R023'),
+    identity: RuleIdentity(ruleId),
     version: RuleVersion('1.1.0'),
     schemaVersion: '1.0.0',
     type: AnalysisRuleType.insight,
-    nameKey: 'analysis.rule.r023.name',
-    descriptionKey: 'analysis.rule.r023.description',
+    nameKey: nameKey,
+    descriptionKey: descriptionKey,
     enabled: true,
     status: AnalysisRuleStatus.active,
     period: 'selected_period',
     measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
-    grouping: RuleGrouping.merchant,
+    grouping: grouping,
     baseline: RuleBaseline.previousEquivalentPeriod,
     condition: const RuleCondition(operator: 'gte'),
     severity: RuleSeverity.attention,
@@ -82,7 +128,7 @@ InsightResult _merchantInsight({List<EvidenceReference> evidence = const []}) {
     surface: AnalysisSurface.insights,
   );
   final finding = AnalysisFinding(
-    id: 'merchant-finding',
+    id: '$ruleId-finding',
     rule: rule,
     context: context,
     severity: RuleSeverity.attention,
@@ -91,7 +137,7 @@ InsightResult _merchantInsight({List<EvidenceReference> evidence = const []}) {
     baselineValue: DecimalValue.parse('100'),
     absoluteChange: DecimalValue.parse('100'),
     percentageChange: DecimalValue.parse('100'),
-    dimension: 'merchant.acme',
+    dimension: dimension,
     evidence: evidence,
     generatedAt: DateTime.utc(2026, 9, 5),
   );
