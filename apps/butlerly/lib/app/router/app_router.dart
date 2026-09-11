@@ -137,6 +137,7 @@ final appRouter = GoRouter(
               'paymentSource',
               'currency',
               'direction',
+              'uncategorized',
             }.any(parameters.containsKey);
         return SearchPage(
           initialQuery: hasInitialQuery
@@ -148,6 +149,7 @@ final appRouter = GoRouter(
                   paymentSourceId: parameters['paymentSource'],
                   currency: parameters['currency'],
                   direction: _queryDirection(parameters['direction']),
+                  uncategorized: parameters['uncategorized'] == 'true',
                 )
               : null,
           readOnly: locked,
