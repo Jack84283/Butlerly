@@ -20,6 +20,7 @@ void main() {
     RuleGrouping grouping = RuleGrouping.none,
     RuleOperation operation = RuleOperation.sum,
     InsightOutputType outputType = InsightOutputType.pattern,
+    InsightPresentation? presentation,
   }) => AnalysisRuleDefinition(
     identity: RuleIdentity(id),
     version: RuleVersion('1.0.0'),
@@ -43,6 +44,7 @@ void main() {
     surface: AnalysisSurface.insights,
     role: role,
     outputType: outputType,
+    presentation: presentation,
   );
 
   InsightResult result(
@@ -59,7 +61,25 @@ void main() {
     currency: CurrencyCode('USD'),
   );
 
-  test('positive role maps to positive semantic comparison presentation', () {
+  test('declarative presentation overrides structural inference', () {
+    final presentation = result(
+      rule(
+        grouping: RuleGrouping.category,
+        operation: RuleOperation.share,
+        presentation: const InsightPresentation(
+          semanticType: InsightSemanticType.positive,
+          visualizationType: InsightVisualizationType.bar,
+          primaryMetric: InsightPrimaryMetric.percentage,
+        ),
+      ),
+    ).presentation;
+
+    expect(presentation.semanticType, InsightSemanticType.positive);
+    expect(presentation.visualizationType, InsightVisualizationType.bar);
+    expect(presentation.primaryMetric, InsightPrimaryMetric.percentage);
+  });
+
+  test('legacy positive role still maps to positive comparison presentation', () {
     final presentation = result(
       rule(role: 'positive'),
       baseline: DecimalValue.parse('100'),
@@ -73,7 +93,7 @@ void main() {
     expect(presentation.primaryMetric, InsightPrimaryMetric.amount);
   });
 
-  test('alert output defaults to attention without rule-id branching', () {
+  test('legacy alert output defaults to attention without rule-id branching', () {
     final presentation = result(
       rule(id: 'ANL-R777', outputType: InsightOutputType.alert),
     ).presentation;
@@ -81,7 +101,7 @@ void main() {
     expect(presentation.semanticType, InsightSemanticType.attention);
   });
 
-  test('category share result maps to pie presentation', () {
+  test('legacy category share result maps to pie presentation', () {
     final presentation = result(
       rule(
         id: 'ANL-R778',
