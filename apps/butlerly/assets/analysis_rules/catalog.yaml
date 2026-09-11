@@ -42,6 +42,12 @@ rules:
   - ruleId: ANL-R026
     ruleVersion: "1.1.0"
     file: insights/ANL-R026.yaml
+  - ruleId: ANL-R027
+    ruleVersion: "1.0.0"
+    file: insights/ANL-R027.yaml
+  - ruleId: ANL-R028
+    ruleVersion: "1.0.0"
+    file: insights/ANL-R028.yaml
   - ruleId: ANL-R090
     ruleVersion: "1.1.0"
     file: data_quality/ANL-R090.yaml
