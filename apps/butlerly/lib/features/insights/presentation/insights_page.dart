@@ -229,6 +229,9 @@ class _InsightsPageState extends State<InsightsPage> {
             if (!_hasPreciseDrillDown(insight)) return;
             final period = insight.context.period;
             final dimension = insight.dimension;
+            final isUncategorized =
+                insight.rule.grouping == RuleGrouping.category &&
+                dimension == 'uncategorized';
             final path = Uri(
               path: '/search',
               queryParameters: {
@@ -240,9 +243,10 @@ class _InsightsPageState extends State<InsightsPage> {
                       .map((evidence) => evidence.transactionId.value)
                       .join(','),
                 if (dimension != null &&
-                    dimension != 'uncategorized' &&
+                    !isUncategorized &&
                     insight.rule.grouping == RuleGrouping.category)
                   'category': dimension,
+                if (isUncategorized) 'uncategorized': 'true',
                 if (dimension != null &&
                     insight.rule.grouping == RuleGrouping.paymentSource)
                   'paymentSource': dimension,
@@ -548,7 +552,7 @@ bool _hasPreciseDrillDown(InsightResult insight) {
   final dimension = insight.dimension;
   return switch (insight.rule.grouping) {
     RuleGrouping.none => true,
-    RuleGrouping.category => dimension != null && dimension != 'uncategorized',
+    RuleGrouping.category => dimension != null,
     RuleGrouping.paymentSource => dimension != null,
     _ => false,
   };
