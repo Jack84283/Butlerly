@@ -1,11 +1,5 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
-enum InsightSemanticType { positive, attention, neutral }
-
-enum InsightVisualizationType { none, comparison, bar, pie, trend }
-
-enum InsightPrimaryMetric { amount, percentage, count, share }
-
 final class InsightPresentationMetadata {
   const InsightPresentationMetadata({
     required this.semanticType,
@@ -18,19 +12,26 @@ final class InsightPresentationMetadata {
   final InsightPrimaryMetric primaryMetric;
 }
 
-/// Resolves presentation behavior from declarative rule/result metadata.
-///
-/// This intentionally never branches on a rule ID. The optional rule [role]
-/// carries semantic intent for rules that need an explicit positive/attention
-/// classification; structural result fields determine the visualization.
+/// Resolves presentation behavior from declarative rule metadata first, then
+/// falls back to the legacy structural inference for older installed rules.
 extension InsightPresentationMetadataResolver on InsightResult {
-  InsightPresentationMetadata get presentation => InsightPresentationMetadata(
-    semanticType: _semanticType,
-    visualizationType: _visualizationType,
-    primaryMetric: _primaryMetric,
-  );
+  InsightPresentationMetadata get presentation {
+    final declared = rule.presentation;
+    if (declared != null) {
+      return InsightPresentationMetadata(
+        semanticType: declared.semanticType,
+        visualizationType: declared.visualizationType,
+        primaryMetric: declared.primaryMetric,
+      );
+    }
+    return InsightPresentationMetadata(
+      semanticType: _legacySemanticType,
+      visualizationType: _legacyVisualizationType,
+      primaryMetric: _legacyPrimaryMetric,
+    );
+  }
 
-  InsightSemanticType get _semanticType {
+  InsightSemanticType get _legacySemanticType {
     return switch (rule.role) {
       'positive' => InsightSemanticType.positive,
       'attention' => InsightSemanticType.attention,
@@ -41,7 +42,7 @@ extension InsightPresentationMetadataResolver on InsightResult {
     };
   }
 
-  InsightVisualizationType get _visualizationType {
+  InsightVisualizationType get _legacyVisualizationType {
     if (baselineValue != null) return InsightVisualizationType.comparison;
     if (rule.measure.operation == RuleOperation.share &&
         rule.grouping == RuleGrouping.category) {
@@ -60,7 +61,7 @@ extension InsightPresentationMetadataResolver on InsightResult {
     return InsightVisualizationType.none;
   }
 
-  InsightPrimaryMetric get _primaryMetric {
+  InsightPrimaryMetric get _legacyPrimaryMetric {
     if (rule.measure.operation == RuleOperation.share) {
       return InsightPrimaryMetric.share;
     }
