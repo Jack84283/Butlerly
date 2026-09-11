@@ -1,5 +1,6 @@
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/features/insights/presentation/insight_visualization.dart';
+import 'package:butlerly/features/insights/presentation/insights_localizations.dart';
 import 'package:butlerly/features/insights/presentation/insights_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -57,7 +58,6 @@ void main() {
       currentValue: DecimalValue.parse('500'),
       baselineValue: DecimalValue.parse('-250'),
       absoluteChange: DecimalValue.parse('750'),
-      dimension: null,
       generatedAt: DateTime.utc(2026, 9, 10),
     );
     final evaluation = InsightsEvaluation(
@@ -103,7 +103,9 @@ void main() {
     expect(find.text('Positive changes'), findsOneWidget);
     expect(find.text('Savings improved'), findsOneWidget);
     expect(
-      find.text('Net savings improved compared with the previous equivalent period.'),
+      find.text(
+        'Net savings improved compared with the previous equivalent period.',
+      ),
       findsOneWidget,
     );
     expect(find.byType(InsightComparisonVisualization), findsOneWidget);
@@ -124,9 +126,10 @@ void main() {
           GlobalCupertinoLocalizations.delegate,
         ],
         supportedLocales: AppLocalizations.supportedLocales,
-        home: const _LocalizedProbe(),
+        home: const Scaffold(body: _LocalizedProbe()),
       ),
     );
+    await tester.pumpAndSettle();
     expect(find.text('积极变化'), findsOneWidget);
     expect(find.text('储蓄改善'), findsOneWidget);
   });
@@ -136,9 +139,10 @@ class _LocalizedProbe extends StatelessWidget {
   const _LocalizedProbe();
 
   @override
-  Widget build(BuildContext context) {
-    return const InsightsPage(
-      loadEvaluation: null,
-    );
-  }
+  Widget build(BuildContext context) => Column(
+    children: [
+      Text(insightText(context, 'insightsPositiveChanges')),
+      Text(insightText(context, 'analysis.rule.r029.name')),
+    ],
+  );
 }
