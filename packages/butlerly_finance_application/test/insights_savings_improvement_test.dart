@@ -94,9 +94,10 @@ void main() {
           operator: 'all',
           children: [
             RuleCondition(
-              operator: 'gt',
-              left: 'baselineTotal',
-              value: DecimalValue.parse('0'),
+              operator: 'gtMultiplier',
+              left: 'currentValue',
+              right: 'absoluteChange',
+              value: DecimalValue.parse('1'),
             ),
             RuleCondition(
               operator: 'gte',
@@ -109,9 +110,10 @@ void main() {
           operator: 'all',
           children: [
             RuleCondition(
-              operator: 'lte',
-              left: 'baselineTotal',
-              value: DecimalValue.parse('0'),
+              operator: 'gteMultiplier',
+              left: 'absoluteChange',
+              right: 'currentValue',
+              value: DecimalValue.parse('1'),
             ),
             RuleCondition(
               operator: 'gt',
