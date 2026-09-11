@@ -21,6 +21,10 @@ final class AnalysisRuleEngine {
     final metrics = <String, AnalysisMetric>{};
     final resultById = <String, RuleExecutionResult>{};
     final knownIds = definitions.map((value) => value.identity.value).toSet();
+    final definitionsById = {
+      for (final definition in definitions)
+        definition.identity.value: definition,
+    };
     for (final rule in ordered) {
       if (!rule.enabled || rule.status != AnalysisRuleStatus.active) continue;
       try {
@@ -176,6 +180,7 @@ final class AnalysisRuleEngine {
                     entry.key,
                     metric,
                     calculatedAt ?? DateTime.now().toUtc(),
+                    definitionsById: definitionsById,
                   );
             var resultIssues =
                 metric?.qualityIssues ?? const <DataQualityIssue>[];
@@ -189,6 +194,7 @@ final class AnalysisRuleEngine {
                 entry.key,
                 metric,
                 calculatedAt ?? DateTime.now().toUtc(),
+                definitionsById: definitionsById,
               );
               resultIssues = candidate.qualityIssues;
               final baselineIsUsable =
@@ -244,8 +250,9 @@ final class AnalysisRuleEngine {
     AnalysisDataset dataset,
     String dimension,
     AnalysisMetric current,
-    DateTime at,
-  ) {
+    DateTime at, {
+    required Map<String, AnalysisRuleDefinition> definitionsById,
+  }) {
     if (rule.baseline == RuleBaseline.none) {
       return AnalysisFinding(
         id: AnalysisResultIdentity.forRule(
@@ -266,7 +273,14 @@ final class AnalysisRuleEngine {
         generatedAt: at,
       );
     }
-    final comparison = _comparison(rule, dataset, dimension, current, at);
+    final comparison = _comparison(
+      rule,
+      dataset,
+      dimension,
+      current,
+      at,
+      definitionsById: definitionsById,
+    );
     return AnalysisFinding(
       id: AnalysisResultIdentity.forRule(
         rule: rule,
@@ -302,10 +316,22 @@ final class AnalysisRuleEngine {
     AnalysisDataset dataset,
     String dimension,
     AnalysisMetric current,
-    DateTime at,
-  ) {
+    DateTime at, {
+    required Map<String, AnalysisRuleDefinition> definitionsById,
+  }) {
     final baselineGroup = _baselineGroup(rule, dataset, dimension);
     final baselineContext = _baselineContext(rule, dataset);
+    final baselineDependencies =
+        rule.measure.operation == RuleOperation.difference
+        ? _baselineDependencyMetrics(
+            rule,
+            dataset,
+            baselineGroup,
+            baselineContext,
+            at,
+            definitionsById,
+          )
+        : const <String, AnalysisMetric>{};
     final baseline = rule.baseline == RuleBaseline.none
         ? null
         : _metric(
@@ -313,7 +339,7 @@ final class AnalysisRuleEngine {
             _baselineMeasure(rule),
             dataset,
             baselineGroup,
-            const <String, AnalysisMetric>{},
+            baselineDependencies,
             dimension,
             at,
             contextOverride: baselineContext,
@@ -341,6 +367,39 @@ final class AnalysisRuleEngine {
           ? AnalysisDataAvailability.empty
           : AnalysisDataAvailability.sufficient,
     );
+  }
+
+  Map<String, AnalysisMetric> _baselineDependencyMetrics(
+    AnalysisRuleDefinition rule,
+    AnalysisDataset dataset,
+    List<AnalysisEconomicTransaction> baselineGroup,
+    AnalysisContext? baselineContext,
+    DateTime at,
+    Map<String, AnalysisRuleDefinition> definitionsById,
+  ) {
+    final metrics = <String, AnalysisMetric>{};
+    for (final dependency in rule.dependencies) {
+      final dependencyRule = definitionsById[dependency.ruleId.value];
+      if (dependencyRule == null) continue;
+      final dependencyValues = baselineGroup
+          .where((value) => _matchesFilters(value, dependencyRule.filters))
+          .where((value) => _matchesQualityField(value, dependencyRule))
+          .toList(growable: false);
+      final metric = _metric(
+        dependencyRule,
+        dependencyRule.measure,
+        dataset,
+        dependencyValues,
+        metrics,
+        '',
+        at,
+        contextOverride: baselineContext,
+      );
+      if (metric != null) {
+        metrics[dependencyRule.identity.value] = metric;
+      }
+    }
+    return metrics;
   }
 
   AnalysisContext? _baselineContext(
@@ -383,9 +442,6 @@ final class AnalysisRuleEngine {
               _matchesQualityField(value, rule),
         )
         .toList(growable: false);
-    // Transaction-grouped rules compare each current transaction against the
-    // full previous-period population rather than looking for the same ID in
-    // the baseline period.
     return rule.grouping == RuleGrouping.none ||
             rule.grouping == RuleGrouping.transaction
         ? baselineEligible
