@@ -13,7 +13,7 @@ void main() {
     return validator.validate(parsed.document!);
   }
 
-  test('difference insight with two metric dependencies is valid', () {
+  test('difference insight with declarative presentation is valid', () {
     final result = validate('''
 schemaVersion: "1.0.0"
 ruleId: ANL-R029
@@ -21,11 +21,14 @@ ruleVersion: "1.0.0"
 enabled: true
 surface: insights
 type: insight
-nameKey: analysis.rule.r003.name
-descriptionKey: analysis.rule.r003.description
-role: positive
+nameKey: analysis.rule.r029.name
+descriptionKey: analysis.rule.r029.description
 period: selected_period
 baseline: previousEquivalentPeriod
+presentation:
+  semantic_type: positive
+  visualization_type: comparison
+  primary_metric: amount
 measure:
   operation: difference
   field: amount
@@ -48,7 +51,18 @@ result:
     expect(result.definition, isNotNull);
     expect(result.definition!.measure.operation, RuleOperation.difference);
     expect(result.definition!.dependencies, hasLength(2));
-    expect(result.definition!.role, 'positive');
+    expect(
+      result.definition!.presentation?.semanticType,
+      InsightSemanticType.positive,
+    );
+    expect(
+      result.definition!.presentation?.visualizationType,
+      InsightVisualizationType.comparison,
+    );
+    expect(
+      result.definition!.presentation?.primaryMetric,
+      InsightPrimaryMetric.amount,
+    );
   });
 
   test('difference insight requires two dependencies', () {
@@ -59,8 +73,8 @@ ruleVersion: "1.0.0"
 enabled: true
 surface: insights
 type: insight
-nameKey: analysis.rule.r003.name
-descriptionKey: analysis.rule.r003.description
+nameKey: analysis.rule.r029.name
+descriptionKey: analysis.rule.r029.description
 period: selected_period
 baseline: previousEquivalentPeriod
 measure:
@@ -72,6 +86,78 @@ dependencies:
 condition:
   operator: gt
   left: absoluteChange
+  value: "0"
+severity: info
+''');
+
+    expect(result.definition, isNull);
+    expect(
+      result.diagnostics.map((diagnostic) => diagnostic.code),
+      contains('semantic'),
+    );
+  });
+
+  test('presentation requires all three declarative fields', () {
+    final result = validate('''
+schemaVersion: "1.0.0"
+ruleId: ANL-R027
+ruleVersion: "1.0.0"
+enabled: true
+surface: insights
+type: insight
+nameKey: analysis.rule.r027.name
+descriptionKey: analysis.rule.r027.description
+period: selected_period
+baseline: previousEquivalentPeriod
+presentation:
+  semantic_type: positive
+  visualization_type: comparison
+measure:
+  operation: sum
+  field: amount
+  currencyBasis: baseCurrency
+filters:
+  direction: expense
+condition:
+  operator: gt
+  left: currentTotal
+  value: "0"
+severity: info
+''');
+
+    expect(result.definition, isNull);
+    expect(
+      result.diagnostics.map((diagnostic) => diagnostic.code),
+      contains('semantic'),
+    );
+  });
+
+  test('presentation rejects unknown fields', () {
+    final result = validate('''
+schemaVersion: "1.0.0"
+ruleId: ANL-R027
+ruleVersion: "1.0.0"
+enabled: true
+surface: insights
+type: insight
+nameKey: analysis.rule.r027.name
+descriptionKey: analysis.rule.r027.description
+period: selected_period
+baseline: previousEquivalentPeriod
+presentation:
+  semantic_type: positive
+  visualization_type: comparison
+  primary_metric: amount
+  color: green
+measure:
+  operation: sum
+  field: amount
+  currencyBasis: baseCurrency
+filters:
+  direction: expense
+condition:
+  operator: gt
+  left: currentTotal
   value: "0"
 severity: info
 ''');
