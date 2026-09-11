@@ -1,6 +1,5 @@
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/features/insights/presentation/insight_visualization.dart';
-import 'package:butlerly/features/insights/presentation/insights_localizations.dart';
 import 'package:butlerly/features/insights/presentation/insights_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -37,7 +36,11 @@ void main() {
       severity: RuleSeverity.info,
       definitionHash: RuleDefinitionHash('1' * 64),
       surface: AnalysisSurface.insights,
-      role: 'positive',
+      presentation: const InsightPresentation(
+        semanticType: InsightSemanticType.positive,
+        visualizationType: InsightVisualizationType.comparison,
+        primaryMetric: InsightPrimaryMetric.amount,
+      ),
     );
     final context = AnalysisContext(
       period: AnalysisPeriod(
@@ -133,6 +136,11 @@ void main() {
     expect(find.text('积极变化'), findsOneWidget);
     expect(find.text('储蓄改善'), findsOneWidget);
   });
+
+  test('insight strings participate in localization completeness checks', () {
+    expect(AppLocalizations.missingKeysFor('es'), isEmpty);
+    expect(AppLocalizations.missingKeysFor('zh'), isEmpty);
+  });
 }
 
 class _LocalizedProbe extends StatelessWidget {
@@ -141,8 +149,8 @@ class _LocalizedProbe extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Column(
     children: [
-      Text(insightText(context, 'insightsPositiveChanges')),
-      Text(insightText(context, 'analysis.rule.r029.name')),
+      Text(context.l10n.text('insightsPositiveChanges')),
+      Text(context.l10n.text('analysis.rule.r029.name')),
     ],
   );
 }
