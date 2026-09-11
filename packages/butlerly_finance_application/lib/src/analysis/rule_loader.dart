@@ -260,8 +260,10 @@ final class RuleDefinitionValidator {
         throw const FormatException('Only amount can be summed.');
       }
       if (operationValue == RuleOperation.difference &&
-          typeValue != AnalysisRuleType.metric) {
-        throw const FormatException('Difference is only valid for metrics.');
+          typeValue == AnalysisRuleType.dataQuality) {
+        throw const FormatException(
+          'Difference is not valid for data-quality rules.',
+        );
       }
       if (groupingValue != RuleGrouping.none &&
           operationValue == RuleOperation.difference) {
@@ -312,6 +314,12 @@ final class RuleDefinitionValidator {
             );
           }
         }
+      }
+      if (operationValue == RuleOperation.difference &&
+          dependencies.length < 2) {
+        throw const FormatException(
+          'Difference requires at least two metric dependencies.',
+        );
       }
       final result = values['result'];
       final resultMap = result is Map ? result : const <Object?, Object?>{};
