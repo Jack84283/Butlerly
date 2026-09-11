@@ -71,9 +71,6 @@ class LocalDatabase {
     final migrationV6ToV7 = await rootBundle.loadString(
       'packages/butlerly_database/database/migrations/v6_to_v7.sql',
     );
-    final migrationV7ToV8 = await rootBundle.loadString(
-      'packages/butlerly_database/database/migrations/v7_to_v8.sql',
-    );
     final catalogSql = await rootBundle.loadString(
       'packages/butlerly_database/database/seed/catalog.sql',
     );
@@ -89,12 +86,50 @@ class LocalDatabase {
         5: migrationV4ToV5,
         6: migrationV5ToV6,
         7: migrationV6ToV7,
-        8: migrationV7ToV8,
       },
     );
     await _database!.open();
+    await _restoreLegacyDismissedInsights();
     status = DatabaseStatus.ready;
     _logger.info('Local database initialized.');
+  }
+
+  Future<void> _restoreLegacyDismissedInsights() async {
+    final db = _database?.connection;
+    if (db == null) return;
+
+    const insightRuleIds = [
+      'ANL-R014',
+      'ANL-R020',
+      'ANL-R021',
+      'ANL-R022',
+      'ANL-R023',
+      'ANL-R024',
+      'ANL-R025',
+      'ANL-R026',
+    ];
+    final placeholders = List.filled(insightRuleIds.length, '?').join(', ');
+    final dismissed = await db.rawQuery(
+      'SELECT 1 FROM analysis_findings '
+      'WHERE lifecycle = ? AND rule_id IN ($placeholders) LIMIT 1',
+      ['dismissed', ...insightRuleIds],
+    );
+    if (dismissed.isEmpty) return;
+
+    await db.transaction((tx) async {
+      await tx.rawDelete(
+        'DELETE FROM analysis_findings WHERE rule_id IN ($placeholders)',
+        insightRuleIds,
+      );
+      await tx.delete(
+        'analysis_rule_results',
+        where: 'surface = ?',
+        whereArgs: ['insights'],
+      );
+    });
+    _logger.info(
+      'Cleared legacy dismissed Insight state; derived Insights will rebuild.',
+    );
   }
 
   Future<void> close() async {
