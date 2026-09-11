@@ -85,7 +85,7 @@ class _ComparisonRow extends StatelessWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(ButlerlyRadius.small),
           child: LinearProgressIndicator(
-            value: fraction.clamp(0, 1),
+            value: fraction.clamp(0.0, 1.0).toDouble(),
             minHeight: 8,
             backgroundColor: context.colors.subtleSurface,
             valueColor: AlwaysStoppedAnimation<Color>(color),
