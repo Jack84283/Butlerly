@@ -13,7 +13,9 @@ void main() {
   Widget testApp({
     required List<InsightResult> results,
     required TransactionMasterData masterData,
+    Locale? locale,
   }) => MaterialApp(
+    locale: locale,
     theme: ThemeData(
       extensions: const [ButlerlySemanticColors.light],
     ),
@@ -132,11 +134,72 @@ void main() {
       expect(find.text('Food'), findsOneWidget);
       expect(find.text('Rent'), findsOneWidget);
       expect(find.text('Other'), findsOneWidget);
-      expect(find.text('60%'), findsOneWidget);
-      expect(find.text('25%'), findsOneWidget);
-      expect(find.text('15%'), findsOneWidget);
+      expect(find.text('60.00%'), findsOneWidget);
+      expect(find.text('25.00%'), findsOneWidget);
+      expect(find.text('15.00%'), findsOneWidget);
     },
   );
+
+  testWidgets('uses locale-aware decimal separators in chart values', (
+    tester,
+  ) async {
+    final rule = AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R099'),
+      version: RuleVersion('1.0.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.insight,
+      nameKey: 'analysisSummary',
+      descriptionKey: 'analysisSummary',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(
+        operation: RuleOperation.sum,
+        field: 'amount',
+        currencyBasis: CurrencyBasis.baseCurrency,
+      ),
+      grouping: RuleGrouping.paymentSource,
+      baseline: RuleBaseline.none,
+      condition: const RuleCondition(operator: 'none'),
+      severity: RuleSeverity.info,
+      definitionHash: RuleDefinitionHash('9' * 64),
+      surface: AnalysisSurface.insights,
+      presentation: const InsightPresentation(
+        semanticType: InsightSemanticType.neutral,
+        visualizationType: InsightVisualizationType.bar,
+        primaryMetric: InsightPrimaryMetric.amount,
+      ),
+    );
+    final analysisContext = context();
+    InsightResult result(String dimension, String value) => InsightResult(
+      outputType: InsightOutputType.pattern,
+      rule: rule,
+      context: analysisContext,
+      currentValue: DecimalValue.parse(value),
+      currency: CurrencyCode('USD'),
+      dimension: '$dimension:value',
+    );
+
+    await tester.pumpWidget(
+      testApp(
+        locale: const Locale('es'),
+        results: [
+          result('source.visa', '1234.5'),
+          result('source.cash', '30'),
+        ],
+        masterData: const TransactionMasterData(
+          paymentSourceNames: {
+            'source.visa': 'Personal Visa',
+            'source.cash': 'Cash',
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('1.234,50'), findsOneWidget);
+    expect(find.textContaining('30,00'), findsOneWidget);
+  });
 
   testWidgets('resolves payment-source chart labels from master data', (
     tester,
