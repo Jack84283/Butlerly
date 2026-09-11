@@ -128,16 +128,28 @@ final appRouter = GoRouter(
       builder: (_, state) {
         final parameters = state.uri.queryParameters;
         final locked = parameters['locked'] == 'true';
+        final hasInitialQuery = locked ||
+            const {
+              'ids',
+              'from',
+              'to',
+              'category',
+              'paymentSource',
+              'currency',
+              'direction',
+            }.any(parameters.containsKey);
         return SearchPage(
-          initialQuery: ListTransactionsQuery(
-            transactionIds: _queryIds(parameters['ids']),
-            from: _queryDate(parameters['from']),
-            to: _queryDate(parameters['to']),
-            categoryId: parameters['category'],
-            paymentSourceId: parameters['paymentSource'],
-            currency: parameters['currency'],
-            direction: _queryDirection(parameters['direction']),
-          ),
+          initialQuery: hasInitialQuery
+              ? ListTransactionsQuery(
+                  transactionIds: _queryIds(parameters['ids']),
+                  from: _queryDate(parameters['from']),
+                  to: _queryDate(parameters['to']),
+                  categoryId: parameters['category'],
+                  paymentSourceId: parameters['paymentSource'],
+                  currency: parameters['currency'],
+                  direction: _queryDirection(parameters['direction']),
+                )
+              : null,
           readOnly: locked,
         );
       },
