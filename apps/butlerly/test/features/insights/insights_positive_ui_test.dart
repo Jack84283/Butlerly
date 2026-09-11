@@ -27,6 +27,7 @@ void main() {
         field: 'amount',
         currencyBasis: CurrencyBasis.baseCurrency,
       ),
+      grouping: RuleGrouping.none,
       baseline: RuleBaseline.previousEquivalentPeriod,
       condition: RuleCondition(
         operator: 'gt',
