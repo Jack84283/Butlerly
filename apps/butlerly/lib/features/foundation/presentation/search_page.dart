@@ -455,6 +455,7 @@ class _SearchPageState extends State<SearchPage>
             paymentSourceId: _paymentSourceId,
             currency: _currency,
             direction: _direction,
+            uncategorized: _uncategorized,
             presentation: _presentation,
             paymentSourceNames: _paymentSourceNames,
           ),
@@ -533,6 +534,7 @@ class _LockedSearchCriteria extends StatelessWidget {
     required this.paymentSourceId,
     required this.currency,
     required this.direction,
+    required this.uncategorized,
     required this.presentation,
     required this.paymentSourceNames,
   });
@@ -544,6 +546,7 @@ class _LockedSearchCriteria extends StatelessWidget {
   final String? paymentSourceId;
   final String? currency;
   final TransactionDirection? direction;
+  final bool uncategorized;
   final TransactionMasterData presentation;
   final Map<String, String> paymentSourceNames;
 
@@ -552,7 +555,9 @@ class _LockedSearchCriteria extends StatelessWidget {
     final criteria = <String>[
       if (from != null || to != null)
         '${from == null ? '…' : _searchDate(from!)} – ${to == null ? '…' : _searchDate(to!)}',
-      if (categoryId != null)
+      if (uncategorized)
+        '${context.l10n.text('category')}: ${context.l10n.text('uncategorized')}'
+      else if (categoryId != null)
         '${context.l10n.text('category')}: ${presentation.categoryName(categoryId!) ?? categoryId!}',
       if (paymentSourceId != null)
         '${context.l10n.text('paymentSource')}: ${paymentSourceNames[paymentSourceId!] ?? paymentSourceId!}',
