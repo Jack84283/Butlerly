@@ -5,7 +5,6 @@ import 'package:butlerly/features/insights/presentation/insight_presentation.dar
 import 'package:butlerly/features/insights/presentation/insight_visualization.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
-import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 
