@@ -21,6 +21,7 @@ class InsightComparisonVisualization extends StatelessWidget {
     required this.currentValueLabel,
     required this.baselineValueLabel,
     required this.semanticColor,
+    this.signed = false,
   });
 
   final String currentLabel;
@@ -30,6 +31,7 @@ class InsightComparisonVisualization extends StatelessWidget {
   final String currentValueLabel;
   final String baselineValueLabel;
   final Color semanticColor;
+  final bool signed;
 
   @override
   Widget build(BuildContext context) {
@@ -41,19 +43,37 @@ class InsightComparisonVisualization extends StatelessWidget {
       child: ExcludeSemantics(
         child: Column(
           children: [
-            _ComparisonRow(
-              label: baselineLabel,
-              valueLabel: baselineValueLabel,
-              fraction: baselineValue.abs() / denominator,
-              color: context.colors.secondaryText,
-            ),
+            if (signed)
+              _SignedComparisonRow(
+                label: baselineLabel,
+                valueLabel: baselineValueLabel,
+                value: baselineValue,
+                denominator: denominator,
+                color: context.colors.secondaryText,
+              )
+            else
+              _ComparisonRow(
+                label: baselineLabel,
+                valueLabel: baselineValueLabel,
+                fraction: baselineValue.abs() / denominator,
+                color: context.colors.secondaryText,
+              ),
             const SizedBox(height: ButlerlySpacing.compact),
-            _ComparisonRow(
-              label: currentLabel,
-              valueLabel: currentValueLabel,
-              fraction: currentValue.abs() / denominator,
-              color: semanticColor,
-            ),
+            if (signed)
+              _SignedComparisonRow(
+                label: currentLabel,
+                valueLabel: currentValueLabel,
+                value: currentValue,
+                denominator: denominator,
+                color: semanticColor,
+              )
+            else
+              _ComparisonRow(
+                label: currentLabel,
+                valueLabel: currentValueLabel,
+                fraction: currentValue.abs() / denominator,
+                color: semanticColor,
+              ),
           ],
         ),
       ),
@@ -105,6 +125,92 @@ class _ComparisonRow extends StatelessWidget {
   );
 }
 
+class _SignedComparisonRow extends StatelessWidget {
+  const _SignedComparisonRow({
+    required this.label,
+    required this.valueLabel,
+    required this.value,
+    required this.denominator,
+    required this.color,
+  });
+
+  final String label;
+  final String valueLabel;
+  final double value;
+  final double denominator;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final fraction = (value.abs() / denominator).clamp(0.0, 1.0).toDouble();
+    return Row(
+      children: [
+        SizedBox(
+          width: 76,
+          child: Text(label, style: Theme.of(context).textTheme.labelMedium),
+        ),
+        Expanded(
+          child: SizedBox(
+            height: 12,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final half = constraints.maxWidth / 2;
+                final width = half * fraction;
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: context.colors.subtleSurface,
+                        borderRadius: BorderRadius.circular(
+                          ButlerlyRadius.small,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: half,
+                      top: 0,
+                      bottom: 0,
+                      child: Container(
+                        width: 1,
+                        color: context.colors.secondaryText,
+                      ),
+                    ),
+                    Positioned(
+                      left: value < 0 ? half - width : half,
+                      width: width,
+                      top: 2,
+                      bottom: 2,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(
+                            ButlerlyRadius.small,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+        const SizedBox(width: ButlerlySpacing.small),
+        ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 72),
+          child: Text(
+            valueLabel,
+            textAlign: TextAlign.end,
+            style: Theme.of(context).textTheme.labelMedium,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class InsightBarVisualization extends StatelessWidget {
   const InsightBarVisualization({
     super.key,
@@ -154,7 +260,7 @@ class InsightDonutVisualization extends StatelessWidget {
   Widget build(BuildContext context) {
     final usable = data.where((item) => item.value > 0).toList(growable: false);
     final total = usable.fold<double>(0, (sum, item) => sum + item.value);
-    if (usable.isEmpty || total <= 0) return const SizedBox.shrink();
+    if (usable.length < 2 || total <= 0) return const SizedBox.shrink();
     final palette = <Color>[
       context.colors.info,
       context.colors.success,
@@ -221,6 +327,40 @@ class InsightDonutVisualization extends StatelessWidget {
   }
 }
 
+class InsightTrendVisualization extends StatelessWidget {
+  const InsightTrendVisualization({
+    super.key,
+    required this.data,
+    required this.valueLabel,
+  });
+
+  final List<InsightChartDatum> data;
+  final String Function(double value) valueLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    if (data.length < 2) return const SizedBox.shrink();
+    return Semantics(
+      label: data
+          .map((item) => '${item.label}: ${valueLabel(item.value)}')
+          .join(', '),
+      child: ExcludeSemantics(
+        child: SizedBox(
+          height: 96,
+          width: double.infinity,
+          child: CustomPaint(
+            painter: _TrendPainter(
+              values: data.map((item) => item.value).toList(growable: false),
+              lineColor: context.colors.info,
+              axisColor: context.colors.cardDivider,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _DonutPainter extends CustomPainter {
   const _DonutPainter({required this.values, required this.colors});
 
@@ -249,4 +389,57 @@ class _DonutPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _DonutPainter oldDelegate) =>
       oldDelegate.values != values || oldDelegate.colors != colors;
+}
+
+class _TrendPainter extends CustomPainter {
+  const _TrendPainter({
+    required this.values,
+    required this.lineColor,
+    required this.axisColor,
+  });
+
+  final List<double> values;
+  final Color lineColor;
+  final Color axisColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final minValue = values.reduce(math.min);
+    final maxValue = values.reduce(math.max);
+    final range = maxValue == minValue ? 1.0 : maxValue - minValue;
+    final axisPaint = Paint()
+      ..color = axisColor
+      ..strokeWidth = 1;
+    canvas.drawLine(
+      Offset(0, size.height - 1),
+      Offset(size.width, size.height - 1),
+      axisPaint,
+    );
+    final path = Path();
+    for (var index = 0; index < values.length; index++) {
+      final x = values.length == 1
+          ? 0.0
+          : size.width * index / (values.length - 1);
+      final normalized = (values[index] - minValue) / range;
+      final y = size.height - 8 - normalized * (size.height - 16);
+      if (index == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = lineColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _TrendPainter oldDelegate) =>
+      oldDelegate.values != values ||
+      oldDelegate.lineColor != lineColor ||
+      oldDelegate.axisColor != axisColor;
 }
