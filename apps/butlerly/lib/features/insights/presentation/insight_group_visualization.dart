@@ -1,7 +1,9 @@
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/insights/presentation/insight_presentation.dart';
 import 'package:butlerly/features/insights/presentation/insight_visualization.dart';
+import 'package:butlerly/features/insights/presentation/insights_localizations.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
@@ -66,9 +68,9 @@ class InsightGroupVisualizations extends StatelessWidget {
       };
       widgets.add(
         Padding(
-          padding: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.only(bottom: ButlerlySpacing.standard),
           child: ButlerlyVisualizationCard(
-            title: context.l10n.text(first.rule.nameKey),
+            title: insightText(context, first.rule.nameKey),
             child: visualization,
           ),
         ),
