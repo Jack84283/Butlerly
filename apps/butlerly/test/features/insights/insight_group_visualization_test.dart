@@ -79,7 +79,7 @@ void main() {
           finding: finding,
           currentValue: parsed,
           currency: CurrencyCode('USD'),
-          dimension: dimension,
+          dimension: active ? dimension : '$dimension:value',
         );
       }
 
