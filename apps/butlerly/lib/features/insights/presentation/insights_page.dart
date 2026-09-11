@@ -538,10 +538,10 @@ class _InsightCard extends StatelessWidget {
         : double.tryParse(insight.baselineValue.toString());
     return ButlerlyCard(
       semanticLabel: [
-        semantic.label,
         context.l10n.text(rule.nameKey),
         ...?dimensionLabel == null ? null : [dimensionLabel],
       ].join(': '),
+      color: semantic.color.withValues(alpha: 0.06),
       onTap: onViewTransactions,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -627,24 +627,21 @@ class _InsightValue extends StatelessWidget {
   );
 }
 
-({IconData icon, Color color, String label}) _semanticPresentation(
+({IconData icon, Color color}) _semanticPresentation(
   BuildContext context,
   InsightSemanticType semanticType,
 ) => switch (semanticType) {
   InsightSemanticType.positive => (
     icon: Icons.check_circle_outline,
     color: context.colors.success,
-    label: 'Positive',
   ),
   InsightSemanticType.attention => (
     icon: Icons.priority_high,
     color: context.colors.warning,
-    label: context.l10n.text('needsAttention'),
   ),
   InsightSemanticType.neutral => (
     icon: Icons.info_outline,
     color: context.colors.info,
-    label: context.l10n.text('otherInsights'),
   ),
 };
 
