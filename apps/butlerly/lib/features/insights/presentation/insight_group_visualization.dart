@@ -4,6 +4,7 @@ import 'package:butlerly/features/foundation/presentation/transaction_master_dat
 import 'package:butlerly/features/insights/presentation/insight_presentation.dart';
 import 'package:butlerly/features/insights/presentation/insight_visualization.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
@@ -51,11 +52,16 @@ class InsightGroupVisualizations extends StatelessWidget {
       }
       final currency = first.currency?.value ?? '';
       final isShare = first.presentation.primaryMetric == InsightPrimaryMetric.share;
+      String decimal(double value) => localizedDecimal(context, value.toString());
+      String percentage(double value) => '${decimal(value)}%';
       String valueLabel(double value) => isShare
-          ? '${value.toStringAsFixed(1)}%'
-          : '${value.toStringAsFixed(2)}${currency.isEmpty ? '' : ' $currency'}';
+          ? percentage(value)
+          : '${decimal(value)}${currency.isEmpty ? '' : ' $currency'}';
       final visualization = switch (type) {
-        InsightVisualizationType.pie => InsightDonutVisualization(data: data),
+        InsightVisualizationType.pie => InsightDonutVisualization(
+            data: data,
+            percentageLabel: percentage,
+          ),
         InsightVisualizationType.bar => InsightBarVisualization(
             data: data,
             valueLabel: valueLabel,
