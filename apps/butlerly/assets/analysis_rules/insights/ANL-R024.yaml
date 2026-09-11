@@ -6,6 +6,7 @@ surface: insights
 type: insight
 nameKey: analysis.rule.r024.name
 descriptionKey: analysis.rule.r024.description
+role: attention
 period: selected_period
 baseline: previousEquivalentPeriod
 measure:
