@@ -131,8 +131,10 @@ void main() {
         definitions: [insight.copyWith(type: AnalysisRuleType.insight)],
       );
       expect(result.single.finding, isNull);
-      expect(result.single.metric, isNull);
+      expect(result.single.metric, isNotNull);
+      expect(result.single.metric!.value, DecimalValue.parse('35'));
       expect(result.single.comparison, isNotNull);
+      expect(result.single.comparison!.baselineValue, DecimalValue.parse('0'));
       expect(result.single.comparison!.percentageChange, isNull);
     },
   );
@@ -987,7 +989,7 @@ void main() {
     },
   );
 
-  test('insights require sufficient current and baseline data', () {
+  test('empty insights keep deterministic metrics and comparisons', () {
     final insight = AnalysisRuleDefinition(
       identity: RuleIdentity('ANL-R020'),
       version: RuleVersion('1.2.0'),
@@ -1017,7 +1019,12 @@ void main() {
       definitions: [insight],
     );
     expect(empty.single.finding, isNull);
-    expect(empty.single.metric, isNull);
+    expect(empty.single.metric, isNotNull);
+    expect(empty.single.metric!.value, DecimalValue.parse('0'));
+    expect(empty.single.metric!.availability, AnalysisDataAvailability.empty);
+    expect(empty.single.comparison, isNotNull);
+    expect(empty.single.comparison!.baselineValue, DecimalValue.parse('0'));
+    expect(empty.single.comparison!.percentageChange, isNull);
   });
 
   test(
