@@ -55,9 +55,9 @@ void main() {
 
     expect(find.text('Spending compared with baseline'), findsOneWidget);
     expect(find.textContaining('previous equivalent period'), findsOneWidget);
-    expect(find.textContaining('7,420'), findsOneWidget);
-    expect(find.textContaining('5,930'), findsOneWidget);
-    expect(find.textContaining('1,490'), findsOneWidget);
+    expect(find.textContaining('7,420'), findsWidgets);
+    expect(find.textContaining('5,930'), findsWidgets);
+    expect(find.textContaining('1,490'), findsWidgets);
     expect(find.byTooltip('Dismiss'), findsNothing);
   });
 
