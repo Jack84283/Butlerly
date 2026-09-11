@@ -3,7 +3,6 @@ import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/insights/presentation/insight_presentation.dart';
 import 'package:butlerly/features/insights/presentation/insight_visualization.dart';
-import 'package:butlerly/features/insights/presentation/insights_localizations.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -12,24 +11,24 @@ import 'package:flutter/material.dart';
 class InsightGroupVisualizations extends StatelessWidget {
   const InsightGroupVisualizations({
     super.key,
-    required this.findings,
+    required this.results,
     required this.masterData,
   });
 
-  final List<InsightResult> findings;
+  final List<InsightResult> results;
   final TransactionMasterData masterData;
 
   @override
   Widget build(BuildContext context) {
     final grouped = <String, List<InsightResult>>{};
-    for (final finding in findings) {
-      final type = finding.presentation.visualizationType;
+    for (final result in results) {
+      final type = result.presentation.visualizationType;
       if (type != InsightVisualizationType.pie &&
           type != InsightVisualizationType.bar &&
           type != InsightVisualizationType.trend) {
         continue;
       }
-      grouped.putIfAbsent(finding.rule.identity.value, () => []).add(finding);
+      grouped.putIfAbsent(result.rule.identity.value, () => []).add(result);
     }
 
     final widgets = <Widget>[];
@@ -71,7 +70,7 @@ class InsightGroupVisualizations extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(bottom: ButlerlySpacing.standard),
           child: ButlerlyVisualizationCard(
-            title: insightText(context, first.rule.nameKey),
+            title: context.l10n.text(first.rule.nameKey),
             child: visualization,
           ),
         ),
