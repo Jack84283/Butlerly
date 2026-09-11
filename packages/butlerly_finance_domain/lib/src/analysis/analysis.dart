@@ -37,6 +37,7 @@ enum RuleOperation {
 
 enum RuleGrouping {
   none,
+  transaction,
   category,
   subcategory,
   merchant,

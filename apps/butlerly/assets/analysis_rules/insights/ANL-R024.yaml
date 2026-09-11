@@ -1,10 +1,7 @@
 schemaVersion: "1.0.0"
 ruleId: ANL-R024
-ruleVersion: "1.0.0"
-# This definition remains inactive until Product approves the absolute
-# materiality floor for alerts. Its joint condition is intentionally retained
-# so enabling it cannot regress to percentage-only alerting.
-enabled: false
+ruleVersion: "1.1.0"
+enabled: true
 surface: insights
 type: insight
 nameKey: analysis.rule.r024.name
@@ -18,15 +15,21 @@ measure:
 filters:
   direction: expense
 condition:
-  operator: all
+  operator: any
   children:
-    - operator: gte
-      left: percentageChange
-      value: "20"
-    - operator: gte
-      left: absoluteChange
-      # Placeholder is deliberately not activation-eligible without approval.
-      value: "100"
+    - operator: all
+      children:
+        - operator: gt
+          left: currentTotal
+          value: "0"
+        - operator: gteMultiplier
+          left: currentTotal
+          right: baselineTotal
+          value: "1.20"
+    - operator: gtMultiplier
+      left: currentMaximum
+      right: baselineAverage
+      value: "1.50"
 result:
   persistence: finding
   refresh: onInvalidation

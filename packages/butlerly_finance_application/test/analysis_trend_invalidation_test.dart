@@ -12,7 +12,7 @@ final class _Clock implements ApplicationClock {
 
 void main() {
   test(
-    'CalculateInsights returns a period summary without a finding',
+    'CalculateInsights treats an empty previous period as a zero baseline',
     () async {
       final now = DateTime.utc(2026, 9, 5, 12);
       final calculate = CalculateAnalysisOverview(
@@ -46,12 +46,9 @@ void main() {
       expect(evaluation.summary.income, DecimalValue.parse('250'));
       expect(evaluation.summary.netCashFlow, DecimalValue.parse('150'));
       expect(evaluation.summary.eligibleTransactionCount, 2);
-      expect(
-        evaluation.summary.limitations.map((issue) => issue.code),
-        contains('missingBaseline'),
-      );
-      expect(evaluation.activeFindings, isEmpty);
-      expect(evaluation.hasSufficientHistory, isFalse);
+      expect(evaluation.summary.limitations, isEmpty);
+      expect(evaluation.activeFindings, hasLength(1));
+      expect(evaluation.hasSufficientHistory, isTrue);
     },
   );
 
@@ -565,7 +562,7 @@ AnalysisRuleDefinition _countRule() => AnalysisRuleDefinition(
 
 AnalysisRuleDefinition _insightRule() => AnalysisRuleDefinition(
   identity: RuleIdentity('ANL-R020'),
-  version: RuleVersion('1.2.0'),
+  version: RuleVersion('1.3.0'),
   schemaVersion: '1.0.0',
   type: AnalysisRuleType.insight,
   nameKey: 'analysis.rule.r020.name',
@@ -581,8 +578,20 @@ AnalysisRuleDefinition _insightRule() => AnalysisRuleDefinition(
   grouping: RuleGrouping.none,
   baseline: RuleBaseline.previousEquivalentPeriod,
   condition: RuleCondition(
-    operator: 'gte',
-    value: DecimalValue.fromParts(coefficient: BigInt.from(20), scale: 0),
+    operator: 'all',
+    children: [
+      RuleCondition(
+        operator: 'gt',
+        left: 'currentTotal',
+        value: DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0),
+      ),
+      RuleCondition(
+        operator: 'gteMultiplier',
+        left: 'currentTotal',
+        right: 'baselineTotal',
+        value: DecimalValue.parse('1.20'),
+      ),
+    ],
   ),
   severity: RuleSeverity.attention,
   surface: AnalysisSurface.insights,
@@ -609,8 +618,20 @@ AnalysisRuleDefinition _groupedInsightRule() => AnalysisRuleDefinition(
   grouping: RuleGrouping.category,
   baseline: RuleBaseline.previousEquivalentPeriod,
   condition: RuleCondition(
-    operator: 'gte',
-    value: DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0),
+    operator: 'all',
+    children: [
+      RuleCondition(
+        operator: 'gt',
+        left: 'currentTotal',
+        value: DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0),
+      ),
+      RuleCondition(
+        operator: 'gteMultiplier',
+        left: 'currentTotal',
+        right: 'baselineTotal',
+        value: DecimalValue.parse('1.20'),
+      ),
+    ],
   ),
   severity: RuleSeverity.attention,
   surface: AnalysisSurface.insights,

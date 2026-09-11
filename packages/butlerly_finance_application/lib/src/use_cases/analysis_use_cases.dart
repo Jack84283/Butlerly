@@ -356,16 +356,13 @@ final class CalculateInsights {
         .map((result) => _insightResult(result, context, baselineContext))
         .toList();
     insightResults.sort(_compareInsights);
-    // History sufficiency is about whether at least one insight comparison
-    // has a usable baseline, not merely whether the selected period contains
-    // transactions. A selected-period-only dataset must not present an
-    // all-clear state when there is nothing meaningful to compare against.
+    // Empty previous-period data is a valid zero baseline. History is usable
+    // whenever an insight comparison produced a baseline value, including 0.
     final hasSufficientHistory = results.any(
       (result) =>
           result.rule.surface == AnalysisSurface.insights &&
           result.rule.type == AnalysisRuleType.insight &&
-          result.comparison?.availability ==
-              AnalysisDataAvailability.sufficient,
+          result.comparison?.baselineValue != null,
     );
     return InsightsEvaluation(
       summary: summary,

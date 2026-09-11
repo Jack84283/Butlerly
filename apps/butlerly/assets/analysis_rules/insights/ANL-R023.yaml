@@ -16,9 +16,15 @@ grouping: merchant
 filters:
   direction: expense
 condition:
-  operator: gte
-  left: percentageChange
-  value: "20"
+  operator: all
+  children:
+    - operator: gt
+      left: currentTotal
+      value: "0"
+    - operator: gteMultiplier
+      left: currentTotal
+      right: baselineTotal
+      value: "1.20"
 result:
   persistence: finding
   refresh: onInvalidation

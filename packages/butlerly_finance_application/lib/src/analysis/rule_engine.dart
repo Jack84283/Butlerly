@@ -200,6 +200,10 @@ final class AnalysisRuleEngine {
                     metric.value,
                     candidate.percentageChange,
                     candidate.absoluteChange,
+                    rule: rule,
+                    dataset: dataset,
+                    dimension: entry.key,
+                    currentValues: entry.value,
                   )) {
                 finding = candidate;
               }
@@ -300,9 +304,49 @@ final class AnalysisRuleEngine {
     AnalysisMetric current,
     DateTime at,
   ) {
-    final baselineValues =
-        dataset.baselineTransactionsByPeriod[rule.period] ??
-        dataset.baselineTransactions;
+    final baselineGroup = _baselineGroup(rule, dataset, dimension);
+    final baselineContext = _baselineContext(rule, dataset);
+    final baseline = rule.baseline == RuleBaseline.none
+        ? null
+        : _metric(
+            rule,
+            _baselineMeasure(rule),
+            dataset,
+            baselineGroup,
+            const <String, AnalysisMetric>{},
+            dimension,
+            at,
+            contextOverride: baselineContext,
+          );
+    final usableBaseline =
+        baseline?.availability == AnalysisDataAvailability.insufficient
+        ? null
+        : baseline;
+    final baselineValue = usableBaseline?.value;
+    final absolute = baselineValue == null
+        ? null
+        : _subtract(current.value, baselineValue);
+    final percentage = baselineValue == null
+        ? null
+        : calculatePercentageChange(absolute!, baselineValue);
+    return AnalysisComparison(
+      currentValue: current.value,
+      baselineValue: baselineValue,
+      absoluteChange: absolute,
+      percentageChange: percentage,
+      baselineMetricId: usableBaseline?.id,
+      availability: usableBaseline == null
+          ? AnalysisDataAvailability.insufficient
+          : baselineGroup.isEmpty
+          ? AnalysisDataAvailability.empty
+          : AnalysisDataAvailability.sufficient,
+    );
+  }
+
+  AnalysisContext? _baselineContext(
+    AnalysisRuleDefinition rule,
+    AnalysisDataset dataset,
+  ) {
     final baselineResolution = rule.period == 'selected_period'
         ? AnalysisPeriodResolved(_windowForContext(dataset.context))
         : periodResolver.resolvePrimary(
@@ -319,9 +363,19 @@ final class AnalysisRuleEngine {
                   ).add(const Duration(days: 1)),
           )
         : null;
-    final baselineContext = baselineWindow is AnalysisPeriodResolved
+    return baselineWindow is AnalysisPeriodResolved
         ? _contextForWindow(dataset.context, baselineWindow.window)
         : null;
+  }
+
+  List<AnalysisEconomicTransaction> _baselineGroup(
+    AnalysisRuleDefinition rule,
+    AnalysisDataset dataset,
+    String dimension,
+  ) {
+    final baselineValues =
+        dataset.baselineTransactionsByPeriod[rule.period] ??
+        dataset.baselineTransactions;
     final baselineEligible = baselineValues
         .where(
           (value) =>
@@ -329,43 +383,14 @@ final class AnalysisRuleEngine {
               _matchesQualityField(value, rule),
         )
         .toList(growable: false);
-    final baselineGroup = rule.grouping == RuleGrouping.none
+    // Transaction-grouped rules compare each current transaction against the
+    // full previous-period population rather than looking for the same ID in
+    // the baseline period.
+    return rule.grouping == RuleGrouping.none ||
+            rule.grouping == RuleGrouping.transaction
         ? baselineEligible
         : _group(baselineEligible, rule.grouping)[dimension] ??
               const <AnalysisEconomicTransaction>[];
-    final baseline = rule.baseline == RuleBaseline.none || baselineGroup.isEmpty
-        ? null
-        : _metric(
-            rule,
-            _baselineMeasure(rule),
-            dataset,
-            baselineGroup,
-            const <String, AnalysisMetric>{},
-            dimension,
-            at,
-            contextOverride: baselineContext,
-          );
-    final usableBaseline =
-        baseline?.availability == AnalysisDataAvailability.sufficient
-        ? baseline
-        : null;
-    final baselineValue = usableBaseline?.value;
-    final absolute = baselineValue == null
-        ? null
-        : _subtract(current.value, baselineValue);
-    final percentage = baselineValue == null
-        ? null
-        : calculatePercentageChange(absolute!, baselineValue);
-    return AnalysisComparison(
-      currentValue: current.value,
-      baselineValue: baselineValue,
-      absoluteChange: absolute,
-      percentageChange: percentage,
-      baselineMetricId: usableBaseline?.id,
-      availability: usableBaseline == null
-          ? AnalysisDataAvailability.insufficient
-          : AnalysisDataAvailability.sufficient,
-    );
   }
 
   DecimalValue _subtract(DecimalValue left, DecimalValue right) {
@@ -396,10 +421,14 @@ final class AnalysisRuleEngine {
 
   bool _conditionMatches(
     RuleCondition condition,
-    DecimalValue value, [
+    DecimalValue value,
     DecimalValue? percentageChange,
-    DecimalValue? absoluteChange,
-  ]) {
+    DecimalValue? absoluteChange, {
+    AnalysisRuleDefinition? rule,
+    AnalysisDataset? dataset,
+    String dimension = '',
+    List<AnalysisEconomicTransaction> currentValues = const [],
+  }) {
     if (condition.operator == 'none') return true;
     if (condition.children.isNotEmpty) {
       final matches = condition.children
@@ -409,21 +438,72 @@ final class AnalysisRuleEngine {
               value,
               percentageChange,
               absoluteChange,
+              rule: rule,
+              dataset: dataset,
+              dimension: dimension,
+              currentValues: currentValues,
             ),
           )
           .toList(growable: false);
       return switch (condition.operator) {
         'all' => matches.every((item) => item),
         'any' => matches.any((item) => item),
-        'not' => !matches.first,
+        'not' => matches.isNotEmpty && !matches.first,
         _ => false,
       };
     }
-    final targetValue = switch (condition.left) {
-      'percentageChange' => percentageChange,
-      'absoluteChange' => absoluteChange,
-      _ => value,
-    };
+
+    if (condition.operator == 'gtMultiplier' ||
+        condition.operator == 'gteMultiplier') {
+      if (rule == null || dataset == null || condition.right == null) {
+        return false;
+      }
+      final left = _conditionOperand(
+        condition.left,
+        rule,
+        dataset,
+        dimension,
+        currentValues,
+        value,
+        percentageChange,
+        absoluteChange,
+      );
+      final right = _conditionOperand(
+        condition.right,
+        rule,
+        dataset,
+        dimension,
+        currentValues,
+        value,
+        percentageChange,
+        absoluteChange,
+      );
+      final multiplier = condition.value;
+      if (left == null || right == null || multiplier == null) return false;
+      final threshold = _multiply(right, multiplier);
+      return condition.operator == 'gtMultiplier'
+          ? left.compareTo(threshold) > 0
+          : left.compareTo(threshold) >= 0;
+    }
+
+    if (condition.left == null) return false;
+    final targetValue = rule != null && dataset != null
+        ? _conditionOperand(
+            condition.left,
+            rule,
+            dataset,
+            dimension,
+            currentValues,
+            value,
+            percentageChange,
+            absoluteChange,
+          )
+        : switch (condition.left) {
+            'percentageChange' => percentageChange,
+            'absoluteChange' => absoluteChange,
+            'value' || 'currentValue' => value,
+            _ => null,
+          };
     final target = condition.value;
     if (target == null || targetValue == null) return false;
     return switch (condition.operator) {
@@ -435,6 +515,142 @@ final class AnalysisRuleEngine {
       _ => false,
     };
   }
+
+  DecimalValue? _conditionOperand(
+    String? name,
+    AnalysisRuleDefinition rule,
+    AnalysisDataset dataset,
+    String dimension,
+    List<AnalysisEconomicTransaction> currentValues,
+    DecimalValue currentMetricValue,
+    DecimalValue? percentageChange,
+    DecimalValue? absoluteChange,
+  ) {
+    return switch (name) {
+      null => null,
+      'value' || 'currentValue' => currentMetricValue,
+      'percentageChange' => percentageChange,
+      'absoluteChange' => absoluteChange,
+      'currentTotal' => _conditionAggregate(
+          rule,
+          dataset,
+          currentValues,
+          RuleOperation.sum,
+        ),
+      'currentAverage' => _conditionAggregate(
+          rule,
+          dataset,
+          currentValues,
+          RuleOperation.average,
+        ),
+      'currentMinimum' => _conditionAggregate(
+          rule,
+          dataset,
+          currentValues,
+          RuleOperation.minimum,
+        ),
+      'currentMaximum' => _conditionAggregate(
+          rule,
+          dataset,
+          currentValues,
+          RuleOperation.maximum,
+        ),
+      'currentCount' => _conditionAggregate(
+          rule,
+          dataset,
+          currentValues,
+          RuleOperation.count,
+        ),
+      'baselineTotal' => _conditionAggregate(
+          rule,
+          dataset,
+          _baselineGroup(rule, dataset, dimension),
+          RuleOperation.sum,
+          baseline: true,
+        ),
+      'baselineAverage' => _conditionAggregate(
+          rule,
+          dataset,
+          _baselineGroup(rule, dataset, dimension),
+          RuleOperation.average,
+          baseline: true,
+        ),
+      'baselineMinimum' => _conditionAggregate(
+          rule,
+          dataset,
+          _baselineGroup(rule, dataset, dimension),
+          RuleOperation.minimum,
+          baseline: true,
+        ),
+      'baselineMaximum' => _conditionAggregate(
+          rule,
+          dataset,
+          _baselineGroup(rule, dataset, dimension),
+          RuleOperation.maximum,
+          baseline: true,
+        ),
+      'baselineCount' => _conditionAggregate(
+          rule,
+          dataset,
+          _baselineGroup(rule, dataset, dimension),
+          RuleOperation.count,
+          baseline: true,
+        ),
+      _ => null,
+    };
+  }
+
+  DecimalValue _conditionAggregate(
+    AnalysisRuleDefinition rule,
+    AnalysisDataset dataset,
+    List<AnalysisEconomicTransaction> values,
+    RuleOperation operation, {
+    bool baseline = false,
+  }) {
+    final context = baseline
+        ? _baselineContext(rule, dataset) ?? dataset.context
+        : dataset.context;
+    final selected = values
+        .where((value) => _matchesFilters(value, rule.measure.filters))
+        .where(
+          (value) => rule.measure.currencyBasis == CurrencyBasis.baseCurrency
+              ? value.normalizedMoney != null ||
+                    value.money.currency == context.baseCurrency
+              : true,
+        )
+        .toList(growable: false);
+    if (operation == RuleOperation.count) {
+      return DecimalValue.fromParts(
+        coefficient: BigInt.from(selected.length),
+        scale: 0,
+      );
+    }
+    final amounts = selected
+        .map(
+          (value) => rule.measure.currencyBasis == CurrencyBasis.baseCurrency
+              ? (value.normalizedMoney ?? value.money).amount
+              : value.money.amount,
+        )
+        .toList(growable: false);
+    return switch (operation) {
+      RuleOperation.sum => _sum(amounts),
+      RuleOperation.average =>
+        amounts.isEmpty ? _zero() : _sum(amounts).divideBy(amounts.length),
+      RuleOperation.minimum => amounts.isEmpty
+          ? _zero()
+          : amounts.reduce((a, b) => a.compareTo(b) <= 0 ? a : b),
+      RuleOperation.maximum => amounts.isEmpty
+          ? _zero()
+          : amounts.reduce((a, b) => a.compareTo(b) >= 0 ? a : b),
+      _ => throw StateError('Unsupported condition aggregate: $operation.'),
+    };
+  }
+
+  DecimalValue _multiply(DecimalValue left, DecimalValue right) =>
+      DecimalValue.fromParts(
+        coefficient: left.coefficient * right.coefficient,
+        scale: left.scale + right.scale,
+      );
 
   int _compareVersions(RuleVersion left, RuleVersion right) {
     final a = left.value.split('.').map(int.parse).toList(growable: false);
@@ -455,6 +671,7 @@ final class AnalysisRuleEngine {
   }) {
     if (grouping == RuleGrouping.none) return {'': values};
     String key(AnalysisEconomicTransaction value) => switch (grouping) {
+      RuleGrouping.transaction => value.id.value,
       RuleGrouping.category => value.categoryId?.value ?? 'uncategorized',
       RuleGrouping.subcategory => value.subcategoryId?.value ?? 'uncategorized',
       RuleGrouping.merchant => value.merchantId?.value ?? 'unresolved',
@@ -715,9 +932,6 @@ final class AnalysisRuleEngine {
         : measure.currencyBasis == CurrencyBasis.baseCurrency
         ? AnalysisDataAvailability.insufficient
         : AnalysisDataAvailability.empty;
-    // An empty direction-specific metric is a valid result (for example an
-    // expense-only period has zero income). Genuine data-quality issues are
-    // supplied by the dataset builder and are not inferred from a zero value.
     final qualityIssues = [...dataset.qualityIssues];
     return AnalysisMetric(
       id: AnalysisResultIdentity.forRule(

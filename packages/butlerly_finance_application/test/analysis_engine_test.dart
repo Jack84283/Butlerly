@@ -352,7 +352,11 @@ void main() {
           .copyWithType(AnalysisRuleType.insight)
           .copyWithBaseline(RuleBaseline.previousEquivalentPeriod)
           .copyWithCondition(
-            RuleCondition(operator: 'gt', value: DecimalValue.parse('0')),
+            RuleCondition(
+              operator: 'gt',
+              left: 'value',
+              value: DecimalValue.parse('0'),
+            ),
           );
       final finding = const AnalysisRuleEngine()
           .execute(
@@ -797,7 +801,11 @@ void main() {
       measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
       grouping: grouping,
       baseline: RuleBaseline.previousEquivalentPeriod,
-      condition: RuleCondition(operator: 'gt', value: DecimalValue.parse('0')),
+      condition: RuleCondition(
+        operator: 'gt',
+        left: 'value',
+        value: DecimalValue.parse('0'),
+      ),
       severity: RuleSeverity.info,
       definitionHash: RuleDefinitionHash('d' * 64),
     );
@@ -821,27 +829,25 @@ void main() {
       dataset: dataset,
       definitions: [insight(RuleGrouping.category)],
     );
-    final dining = categoryResults
+    final findings = categoryResults
         .map((result) => result.finding)
         .whereType<AnalysisFinding>()
-        .singleWhere((finding) => finding.dimension == 'dining');
+        .toList(growable: false);
+    final dining = findings.singleWhere(
+      (finding) => finding.dimension == 'dining',
+    );
     expect(dining.currentValue, DecimalValue.parse('600'));
     expect(dining.baselineValue, DecimalValue.parse('400'));
     expect(dining.absoluteChange, DecimalValue.parse('200'));
     expect(dining.supportingMetrics, hasLength(2));
     expect(dining.supportingMetrics[0], isNot(dining.supportingMetrics[1]));
-    expect(
-      categoryResults.map((result) => result.finding),
-      isNot(
-        contains(
-          isA<AnalysisFinding>().having(
-            (finding) => finding.dimension,
-            'dimension',
-            'groceries',
-          ),
-        ),
-      ),
+    final groceries = findings.singleWhere(
+      (finding) => finding.dimension == 'groceries',
     );
+    expect(groceries.currentValue, DecimalValue.parse('50'));
+    expect(groceries.baselineValue, DecimalValue.parse('0'));
+    expect(groceries.absoluteChange, DecimalValue.parse('50'));
+    expect(groceries.percentageChange, isNull);
 
     final merchantCurrent = [
       transaction('merchant-current', '200', merchant: 'merchant-a'),
