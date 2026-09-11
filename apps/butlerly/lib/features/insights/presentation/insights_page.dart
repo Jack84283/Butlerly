@@ -9,8 +9,10 @@ import 'package:butlerly/features/analysis/presentation/widgets/analysis_custom_
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_period_selector.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
+import 'package:butlerly/features/insights/presentation/insight_group_visualization.dart';
 import 'package:butlerly/features/insights/presentation/insight_presentation.dart';
 import 'package:butlerly/features/insights/presentation/insight_visualization.dart';
+import 'package:butlerly/features/insights/presentation/insights_localizations.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -341,6 +343,7 @@ class _InsightsContent extends StatelessWidget {
         ],
         if (alerts.isNotEmpty) ...[
           ButlerlySectionHeader(title: context.l10n.text('needsAttention')),
+          InsightGroupVisualizations(findings: alerts, masterData: masterData),
           for (final insight in alerts)
             Padding(
               padding: const EdgeInsets.only(
@@ -356,7 +359,10 @@ class _InsightsContent extends StatelessWidget {
             ),
         ],
         if (positives.isNotEmpty) ...[
-          ButlerlySectionHeader(title: context.l10n.text('otherInsights')),
+          ButlerlySectionHeader(
+            title: insightText(context, 'insightsPositiveChanges'),
+          ),
+          InsightGroupVisualizations(findings: positives, masterData: masterData),
           for (final insight in positives)
             Padding(
               padding: const EdgeInsets.only(
@@ -372,8 +378,8 @@ class _InsightsContent extends StatelessWidget {
             ),
         ],
         if (patterns.isNotEmpty) ...[
-          if (positives.isEmpty)
-            ButlerlySectionHeader(title: context.l10n.text('otherInsights')),
+          ButlerlySectionHeader(title: context.l10n.text('otherInsights')),
+          InsightGroupVisualizations(findings: patterns, masterData: masterData),
           for (final insight in patterns)
             Padding(
               padding: const EdgeInsets.only(
@@ -538,7 +544,7 @@ class _InsightCard extends StatelessWidget {
         : double.tryParse(insight.baselineValue.toString());
     return ButlerlyCard(
       semanticLabel: [
-        context.l10n.text(rule.nameKey),
+        insightText(context, rule.nameKey),
         ...?dimensionLabel == null ? null : [dimensionLabel],
       ].join(': '),
       color: semantic.color.withValues(alpha: 0.06),
@@ -552,14 +558,14 @@ class _InsightCard extends StatelessWidget {
               const SizedBox(width: ButlerlySpacing.small),
               Expanded(
                 child: Text(
-                  context.l10n.text(rule.nameKey),
+                  insightText(context, rule.nameKey),
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
             ],
           ),
           const SizedBox(height: ButlerlySpacing.small),
-          Text(context.l10n.text(rule.descriptionKey)),
+          Text(insightText(context, rule.descriptionKey)),
           if (presentation.visualizationType ==
                   InsightVisualizationType.comparison &&
               currentAmount != null &&
@@ -573,6 +579,7 @@ class _InsightCard extends StatelessWidget {
               currentValueLabel: amount(insight.currentValue)!,
               baselineValueLabel: amount(insight.baselineValue)!,
               semanticColor: semantic.color,
+              signed: rule.measure.operation == RuleOperation.difference,
             ),
           ],
           const SizedBox(height: ButlerlySpacing.standard),
