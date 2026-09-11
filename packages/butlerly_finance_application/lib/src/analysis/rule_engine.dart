@@ -216,11 +216,7 @@ final class AnalysisRuleEngine {
             }
             final result = RuleExecutionResult(
               rule: rule,
-              metric:
-                  rule.type == AnalysisRuleType.metric ||
-                      rule.type == AnalysisRuleType.dataQuality
-                  ? metric
-                  : null,
+              metric: metric,
               finding: finding,
               comparison: comparison,
               issues: resultIssues,
