@@ -140,6 +140,7 @@ final class RuleDefinitionValidator {
       'measures',
       'result',
       'role',
+      'presentation',
     };
     for (final key in values.keys) {
       if (!supported.contains(key)) {
@@ -338,6 +339,12 @@ final class RuleDefinitionValidator {
       final refresh = RefreshPolicy.values.byName(
         resultMap['refresh']?.toString() ?? 'onInvalidation',
       );
+      final presentation = _presentation(values['presentation']);
+      if (presentation != null && typeValue != AnalysisRuleType.insight) {
+        throw const FormatException(
+          'Presentation metadata is only valid for insight rules.',
+        );
+      }
       final condition = _condition(values['condition']);
       if (typeValue == AnalysisRuleType.insight &&
           condition.operator == 'none') {
@@ -377,6 +384,7 @@ final class RuleDefinitionValidator {
         definitionHash: hash,
         role: values['role']?.toString(),
         outputType: outputType,
+        presentation: presentation,
       );
     } on Object catch (error) {
       diagnostics.add(
@@ -532,6 +540,36 @@ RuleMeasure _measure(Map<Object?, Object?> raw) {
       raw['currencyBasis'] as String? ?? 'original',
     ),
     filters: filters,
+  );
+}
+
+InsightPresentation? _presentation(Object? raw) {
+  if (raw == null) return null;
+  if (raw is! Map) {
+    throw const FormatException('Presentation must be a mapping.');
+  }
+  const supported = {
+    'semantic_type',
+    'visualization_type',
+    'primary_metric',
+  };
+  for (final key in raw.keys.map((value) => value.toString())) {
+    if (!supported.contains(key)) {
+      throw FormatException('Unsupported presentation field: $key.');
+    }
+  }
+  final semantic = raw['semantic_type']?.toString();
+  final visualization = raw['visualization_type']?.toString();
+  final primaryMetric = raw['primary_metric']?.toString();
+  if (semantic == null || visualization == null || primaryMetric == null) {
+    throw const FormatException(
+      'Presentation requires semantic_type, visualization_type, and primary_metric.',
+    );
+  }
+  return InsightPresentation(
+    semanticType: InsightSemanticType.values.byName(semantic),
+    visualizationType: InsightVisualizationType.values.byName(visualization),
+    primaryMetric: InsightPrimaryMetric.values.byName(primaryMetric),
   );
 }
 
