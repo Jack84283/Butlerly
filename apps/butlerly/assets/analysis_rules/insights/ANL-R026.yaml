@@ -6,6 +6,7 @@ surface: insights
 type: insight
 nameKey: analysis.rule.r026.name
 descriptionKey: analysis.rule.r026.description
+role: neutral
 period: selected_period
 # Concentration is a current-period structural insight. A category must be
 # eligible even when it did not exist in the previous comparison period.
