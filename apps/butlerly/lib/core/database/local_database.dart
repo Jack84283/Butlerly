@@ -89,8 +89,47 @@ class LocalDatabase {
       },
     );
     await _database!.open();
+    await _restoreLegacyDismissedInsights();
     status = DatabaseStatus.ready;
     _logger.info('Local database initialized.');
+  }
+
+  Future<void> _restoreLegacyDismissedInsights() async {
+    final db = _database?.connection;
+    if (db == null) return;
+
+    const insightRuleIds = [
+      'ANL-R014',
+      'ANL-R020',
+      'ANL-R021',
+      'ANL-R022',
+      'ANL-R023',
+      'ANL-R024',
+      'ANL-R025',
+      'ANL-R026',
+    ];
+    final placeholders = List.filled(insightRuleIds.length, '?').join(', ');
+    final dismissed = await db.rawQuery(
+      'SELECT 1 FROM analysis_findings '
+      'WHERE lifecycle = ? AND rule_id IN ($placeholders) LIMIT 1',
+      ['dismissed', ...insightRuleIds],
+    );
+    if (dismissed.isEmpty) return;
+
+    await db.transaction((tx) async {
+      await tx.rawDelete(
+        'DELETE FROM analysis_findings WHERE rule_id IN ($placeholders)',
+        insightRuleIds,
+      );
+      await tx.delete(
+        'analysis_rule_results',
+        where: 'surface = ?',
+        whereArgs: ['insights'],
+      );
+    });
+    _logger.info(
+      'Cleared legacy dismissed Insight state; derived Insights will rebuild.',
+    );
   }
 
   Future<void> close() async {
