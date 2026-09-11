@@ -19,6 +19,7 @@ import 'package:butlerly/features/insights/presentation/insights_page.dart';
 import 'package:butlerly/features/tools/presentation/tools_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -124,10 +125,22 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/search',
-      builder: (_, state) => SearchPage(
-        initialFrom: _queryDate(state.uri.queryParameters['from']),
-        initialTo: _queryDate(state.uri.queryParameters['to']),
-      ),
+      builder: (_, state) {
+        final parameters = state.uri.queryParameters;
+        final locked = parameters['locked'] == 'true';
+        return SearchPage(
+          initialQuery: ListTransactionsQuery(
+            transactionIds: _queryIds(parameters['ids']),
+            from: _queryDate(parameters['from']),
+            to: _queryDate(parameters['to']),
+            categoryId: parameters['category'],
+            paymentSourceId: parameters['paymentSource'],
+            currency: parameters['currency'],
+            direction: _queryDirection(parameters['direction']),
+          ),
+          readOnly: locked,
+        );
+      },
     ),
     GoRoute(path: '/analysis', builder: (_, _) => const AnalysisPage()),
     GoRoute(path: '/insights', builder: (_, _) => const InsightsPage()),
@@ -194,3 +207,11 @@ DateTime? _queryDate(String? value) =>
 
 List<String>? _queryIds(String? value) =>
     value?.split(',').where((id) => id.isNotEmpty).toList(growable: false);
+
+TransactionDirection? _queryDirection(String? value) {
+  if (value == null) return null;
+  for (final direction in TransactionDirection.values) {
+    if (direction.name == value) return direction;
+  }
+  return null;
+}
