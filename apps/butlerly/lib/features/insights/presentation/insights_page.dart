@@ -20,14 +20,12 @@ class InsightsPage extends StatefulWidget {
   const InsightsPage({
     super.key,
     this.loadEvaluation,
-    this.dismissFinding,
     this.onNavigationRequested,
     this.masterData,
   });
 
   final Future<ApplicationResult<InsightsEvaluation>> Function(String)?
   loadEvaluation;
-  final Future<ApplicationResult<void>> Function(String)? dismissFinding;
   final ValueChanged<String>? onNavigationRequested;
   final TransactionMasterData? masterData;
 
@@ -228,6 +226,7 @@ class _InsightsPageState extends State<InsightsPage> {
               ? _chooseCustomPeriod()
               : _selectPeriod(value),
           onViewTransactions: (insight) {
+            if (!_hasPreciseDrillDown(insight)) return;
             final period = insight.context.period;
             final dimension = insight.dimension;
             final path = Uri(
@@ -241,6 +240,7 @@ class _InsightsPageState extends State<InsightsPage> {
                       .map((evidence) => evidence.transactionId.value)
                       .join(','),
                 if (dimension != null &&
+                    dimension != 'uncategorized' &&
                     insight.rule.grouping == RuleGrouping.category)
                   'category': dimension,
                 if (dimension != null &&
@@ -331,7 +331,9 @@ class _InsightsContent extends StatelessWidget {
               child: _InsightCard(
                 insight: insight,
                 masterData: masterData,
-                onViewTransactions: () => onViewTransactions(insight),
+                onViewTransactions: _hasPreciseDrillDown(insight)
+                    ? () => onViewTransactions(insight)
+                    : null,
               ),
             ),
         ],
@@ -345,7 +347,9 @@ class _InsightsContent extends StatelessWidget {
               child: _InsightCard(
                 insight: insight,
                 masterData: masterData,
-                onViewTransactions: () => onViewTransactions(insight),
+                onViewTransactions: _hasPreciseDrillDown(insight)
+                    ? () => onViewTransactions(insight)
+                    : null,
               ),
             ),
         ],
@@ -446,7 +450,7 @@ class _InsightCard extends StatelessWidget {
   });
 
   final InsightResult insight;
-  final VoidCallback onViewTransactions;
+  final VoidCallback? onViewTransactions;
   final TransactionMasterData masterData;
 
   @override
@@ -523,18 +527,31 @@ class _InsightCard extends StatelessWidget {
               }),
             ),
           ],
-          const SizedBox(height: ButlerlySpacing.small),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: onViewTransactions,
-              child: Text(context.l10n.text('viewTransactions')),
+          if (onViewTransactions != null) ...[
+            const SizedBox(height: ButlerlySpacing.small),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: onViewTransactions,
+                child: Text(context.l10n.text('viewTransactions')),
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
   }
+}
+
+bool _hasPreciseDrillDown(InsightResult insight) {
+  if (insight.evidence.isNotEmpty) return true;
+  final dimension = insight.dimension;
+  return switch (insight.rule.grouping) {
+    RuleGrouping.none => true,
+    RuleGrouping.category => dimension != null && dimension != 'uncategorized',
+    RuleGrouping.paymentSource => dimension != null,
+    _ => false,
+  };
 }
 
 class _InsightValue extends StatelessWidget {
