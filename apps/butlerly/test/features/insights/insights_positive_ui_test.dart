@@ -1,4 +1,5 @@
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/features/insights/presentation/insight_visualization.dart';
 import 'package:butlerly/features/insights/presentation/insights_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -116,7 +117,108 @@ void main() {
     expect(find.text('↔'), findsOneWidget);
     expect(find.text('vs'), findsNothing);
     expect(find.text('-250 USD'), findsOneWidget);
+    expect(find.byIcon(Icons.trending_down), findsNothing);
+    expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
     expect(find.textContaining('2026-09-01 – 2026-09-10'), findsOneWidget);
+  });
+
+  testWidgets('keeps bar visualizations in the grouped presentation', (
+    tester,
+  ) async {
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-09-01',
+        endDate: '2026-09-10',
+        timeZoneId: 'America/Los_Angeles',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+      baseCurrency: CurrencyCode('USD'),
+    );
+    final rule = AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R998'),
+      version: RuleVersion('1.0.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.insight,
+      nameKey: 'analysisSummary',
+      descriptionKey: 'analysisSummary',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(
+        operation: RuleOperation.sum,
+        field: 'amount',
+        currencyBasis: CurrencyBasis.baseCurrency,
+      ),
+      grouping: RuleGrouping.category,
+      baseline: RuleBaseline.previousEquivalentPeriod,
+      severity: RuleSeverity.info,
+      definitionHash: RuleDefinitionHash('8' * 64),
+      surface: AnalysisSurface.insights,
+      presentation: const InsightPresentation(
+        semanticType: InsightSemanticType.neutral,
+        visualizationType: InsightVisualizationType.bar,
+        primaryMetric: InsightPrimaryMetric.amount,
+      ),
+    );
+    final finding = AnalysisFinding(
+      id: 'category-pattern',
+      rule: rule,
+      context: context,
+      severity: RuleSeverity.info,
+      lifecycle: FindingLifecycle.active,
+      currentValue: DecimalValue.parse('100'),
+      generatedAt: DateTime.utc(2026, 9, 10),
+    );
+    final evaluation = InsightsEvaluation(
+      summary: PeriodSummary(
+        context: context,
+        currency: CurrencyCode('USD'),
+        comparisonAvailable: true,
+      ),
+      results: [
+        InsightResult(
+          outputType: InsightOutputType.pattern,
+          rule: rule,
+          context: context,
+          finding: finding,
+          dimension: 'food',
+          currentValue: DecimalValue.parse('100'),
+          currency: CurrencyCode('USD'),
+        ),
+        InsightResult(
+          outputType: InsightOutputType.pattern,
+          rule: rule,
+          context: context,
+          dimension: 'travel',
+          currentValue: DecimalValue.parse('200'),
+          currency: CurrencyCode('USD'),
+        ),
+      ],
+      hasSufficientHistory: true,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(
+          extensions: const [ButlerlySemanticColors.light],
+        ),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: InsightsPage(
+          loadEvaluation: (_) async => ApplicationSuccess(evaluation),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Categories'), findsOneWidget);
+    expect(find.byType(InsightBarVisualization), findsOneWidget);
   });
 
   testWidgets('positive insight copy is localized in Chinese', (tester) async {
