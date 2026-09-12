@@ -60,6 +60,65 @@ void main() {
     );
   });
 
+  testWidgets('category drill-down uses live criteria instead of evidence IDs', (
+    tester,
+  ) async {
+    String? path;
+    await tester.pumpWidget(
+      app(
+        _categoryInsight(
+          'category.dining',
+          evidence: [
+            EvidenceReference(transactionId: TransactionId('old-support')),
+          ],
+          filters: const [
+            AnalysisFilter(
+              kind: AnalysisFilterKind.direction,
+              values: ['expense'],
+            ),
+          ],
+        ),
+        onNavigationRequested: (value) => path = value,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('View transactions'));
+    expect(
+      path,
+      '/search?locked=true&from=2026-09-01&to=2026-09-05&category=category.dining&direction=expense',
+    );
+    expect(path, isNot(contains('ids=')));
+  });
+
+  testWidgets('overall spending drill-down carries the expense rule filter', (
+    tester,
+  ) async {
+    String? path;
+    await tester.pumpWidget(
+      app(
+        _overallInsight(
+          evidence: [
+            EvidenceReference(transactionId: TransactionId('old-support')),
+          ],
+        ),
+        onNavigationRequested: (value) => path = value,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('View transactions'));
+    expect(
+      path,
+      '/search?locked=true&from=2026-09-01&to=2026-09-05&direction=expense',
+    );
+    expect(path, isNot(contains('ids=')));
+  });
+
   testWidgets('offers precise uncategorized category drill-down', (
     tester,
   ) async {
@@ -92,21 +151,44 @@ InsightResult _merchantInsight({List<EvidenceReference> evidence = const []}) =>
       evidence: evidence,
     );
 
-InsightResult _categoryInsight(String dimension) => _insight(
+InsightResult _categoryInsight(
+  String dimension, {
+  List<EvidenceReference> evidence = const [],
+  List<AnalysisFilter> filters = const [],
+}) => _insight(
   grouping: RuleGrouping.category,
   dimension: dimension,
   ruleId: 'ANL-R021',
   nameKey: 'analysis.rule.r021.name',
   descriptionKey: 'analysis.rule.r021.description',
+  evidence: evidence,
+  filters: filters,
 );
+
+InsightResult _overallInsight({List<EvidenceReference> evidence = const []}) =>
+    _insight(
+      grouping: RuleGrouping.none,
+      dimension: null,
+      ruleId: 'ANL-R020',
+      nameKey: 'analysis.rule.r020.name',
+      descriptionKey: 'analysis.rule.r020.description',
+      evidence: evidence,
+      filters: const [
+        AnalysisFilter(
+          kind: AnalysisFilterKind.direction,
+          values: ['expense'],
+        ),
+      ],
+    );
 
 InsightResult _insight({
   required RuleGrouping grouping,
-  required String dimension,
+  required String? dimension,
   required String ruleId,
   required String nameKey,
   required String descriptionKey,
   List<EvidenceReference> evidence = const [],
+  List<AnalysisFilter> filters = const [],
 }) {
   final context = _context();
   final rule = AnalysisRuleDefinition(
@@ -126,6 +208,7 @@ InsightResult _insight({
     severity: RuleSeverity.attention,
     definitionHash: RuleDefinitionHash('c' * 64),
     surface: AnalysisSurface.insights,
+    filters: filters,
   );
   final finding = AnalysisFinding(
     id: '$ruleId-finding',
