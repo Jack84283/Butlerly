@@ -115,6 +115,9 @@ class _SearchPageState extends State<SearchPage>
       ? services<FinanceServices>()
       : null;
 
+  bool get _retriesInsightDrillDown =>
+      widget.readOnly && widget.insightRuleId != null;
+
   @override
   void initState() {
     super.initState();
@@ -578,7 +581,9 @@ class _SearchPageState extends State<SearchPage>
                   message: context.l10n.text('tryAgain'),
                   preserved: context.l10n.text('dataPreserved'),
                   actionLabel: context.l10n.text('tryAgain'),
-                  onAction: _submit,
+                  onAction: _retriesInsightDrillDown
+                      ? _refreshAfterTransactionChange
+                      : _submit,
                 );
               }
               final values = snapshot.requireData;
