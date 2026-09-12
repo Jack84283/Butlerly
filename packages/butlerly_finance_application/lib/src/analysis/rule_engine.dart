@@ -323,11 +323,12 @@ final class AnalysisRuleEngine {
     AnalysisFinding finding,
     _ConditionEvidence conditionEvidence,
   ) {
-    final evidence = conditionEvidence.values.isEmpty
-        ? finding.evidence
-        : conditionEvidence.values
+    final evidence = conditionEvidence.selective &&
+            conditionEvidence.values.isNotEmpty
+        ? conditionEvidence.values
               .map((value) => EvidenceReference(transactionId: value.id))
-              .toList(growable: false);
+              .toList(growable: false)
+        : finding.evidence;
     return AnalysisFinding(
       id: finding.id,
       rule: finding.rule,
