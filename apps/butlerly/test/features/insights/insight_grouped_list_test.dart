@@ -52,11 +52,12 @@ void main() {
     );
   });
 
-  test('derives unusually large purchase section from rule semantics', () {
+  test('uses authored presentation role for unusually large purchase section', () {
     expect(
       insightPresentationGroup(
         _insight(
           RuleGrouping.transaction,
+          role: 'largePurchase',
           operation: RuleOperation.maximum,
           visualizationType: InsightVisualizationType.comparison,
           semanticType: InsightSemanticType.attention,
@@ -68,7 +69,7 @@ void main() {
       insightPresentationGroup(
         _insight(
           RuleGrouping.transaction,
-          operation: RuleOperation.sum,
+          operation: RuleOperation.maximum,
           visualizationType: InsightVisualizationType.comparison,
           semanticType: InsightSemanticType.attention,
         ),
@@ -113,6 +114,7 @@ InsightResult _insight(
   InsightSemanticType semanticType = InsightSemanticType.neutral,
   RuleOperation operation = RuleOperation.sum,
   InsightVisualizationType visualizationType = InsightVisualizationType.none,
+  String? role,
 }) {
   final context = AnalysisContext(
     period: AnalysisPeriod(
@@ -145,6 +147,7 @@ InsightResult _insight(
     severity: RuleSeverity.info,
     definitionHash: RuleDefinitionHash('9' * 64),
     surface: AnalysisSurface.insights,
+    role: role,
     presentation: InsightPresentation(
       semanticType: semanticType,
       visualizationType: visualizationType,
