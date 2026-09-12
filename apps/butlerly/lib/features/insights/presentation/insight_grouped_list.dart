@@ -174,7 +174,7 @@ class _InsightItem extends StatelessWidget {
                         ),
                       if (current != null && baseline != null)
                         Text(
-                          'vs',
+                          '↔',
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       if (baseline != null)
