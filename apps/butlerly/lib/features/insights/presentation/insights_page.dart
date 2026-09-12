@@ -315,6 +315,7 @@ class _InsightsContent extends StatelessWidget {
         if (activeFindings.isNotEmpty)
           InsightGroupedList(
             results: activeFindings,
+            visualizationResults: evaluation.results,
             masterData: masterData,
             canViewTransactions: _hasPreciseDrillDown,
             onViewTransactions: onViewTransactions,
