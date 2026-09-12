@@ -63,9 +63,6 @@ void main() {
         hasLength(3),
       );
 
-      // Change the transaction so only the 10% rule remains true. Generic
-      // invalidation still supersedes all old findings; recalculation must
-      // reactivate the one current finding rather than hiding every card.
       transactions.values[0] = _transaction('current', '2026-09-01', '100');
       await InvalidateAnalysis(
         findings,
@@ -337,5 +334,5 @@ AnalysisFinding _withLifecycle(
 );
 
 extension on Iterable<Transaction> {
-  Transaction? get firstOrNull => isEmpty ? null : first;
+  Transaction? get firstOrNull => this.isEmpty ? null : first;
 }
