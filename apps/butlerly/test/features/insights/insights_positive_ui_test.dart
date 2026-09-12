@@ -220,7 +220,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Category movement'), findsOneWidget);
+    expect(find.text('Categories'), findsOneWidget);
     expect(find.byType(InsightBarVisualization), findsOneWidget);
   });
 
