@@ -52,6 +52,19 @@ void main() {
     );
   });
 
+  test('puts unusually large purchase in its own section', () {
+    expect(
+      insightPresentationGroup(
+        _insight(
+          RuleGrouping.transaction,
+          ruleId: 'ANL-R025',
+          semanticType: InsightSemanticType.attention,
+        ),
+      ),
+      InsightPresentationGroup.largePurchase,
+    );
+  });
+
   test('recognizes an all-positive fallback group', () {
     expect(
       insightGroupIsPositiveOnly([
@@ -85,6 +98,7 @@ void main() {
 
 InsightResult _insight(
   RuleGrouping grouping, {
+  String ruleId = 'ANL-R999',
   InsightSemanticType semanticType = InsightSemanticType.neutral,
 }) {
   final context = AnalysisContext(
@@ -98,7 +112,7 @@ InsightResult _insight(
     baseCurrency: CurrencyCode('USD'),
   );
   final rule = AnalysisRuleDefinition(
-    identity: RuleIdentity('ANL-R999'),
+    identity: RuleIdentity(ruleId),
     version: RuleVersion('1.0.0'),
     schemaVersion: '1.0.0',
     type: AnalysisRuleType.insight,
