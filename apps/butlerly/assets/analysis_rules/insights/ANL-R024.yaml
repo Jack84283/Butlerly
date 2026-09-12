@@ -8,6 +8,7 @@ nameKey: analysis.rule.r024.name
 descriptionKey: analysis.rule.r024.description
 period: selected_period
 baseline: previousEquivalentPeriod
+role: escalation:spending
 presentation:
   semantic_type: attention
   visualization_type: comparison
