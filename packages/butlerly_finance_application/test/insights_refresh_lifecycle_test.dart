@@ -179,7 +179,13 @@ AnalysisRuleDefinition _insightRule(String id, String multiplier) =>
           values: ['expense'],
         ),
       ],
-      definitionHash: RuleDefinitionHash(id.padRight(64, '0')),
+      definitionHash: RuleDefinitionHash(
+        switch (id) {
+          'ANL-R020' => 'a' * 64,
+          'ANL-R021' => 'b' * 64,
+          _ => 'c' * 64,
+        },
+      ),
       resultPersistence: ResultPersistencePolicy.finding,
       refreshPolicy: RefreshPolicy.onInvalidation,
     );
