@@ -107,18 +107,8 @@ class InsightGroupedList extends StatelessWidget {
       children: [
         for (final group in order)
           if (grouped[group] case final items? when items.isNotEmpty) ...[
-            ButlerlySectionHeader(
-              title: _groupTitle(
-                context,
-                group,
-                items.map((item) => item.primary).toList(growable: false),
-              ),
-            ),
-            if (_groupSubtitle(
-              context,
-              group,
-              items.map((item) => item.primary).toList(growable: false),
-            ) case final subtitle?) ...[
+            ButlerlySectionHeader(title: _groupTitle(context, group, items)),
+            if (_groupSubtitle(context, group, items) case final subtitle?) ...[
               const SizedBox(height: ButlerlySpacing.micro),
               Text(
                 subtitle,
@@ -152,7 +142,7 @@ class InsightGroupedList extends StatelessWidget {
                           escalation: escalation,
                           drillDownInsight: drillDownInsight,
                           masterData: masterData,
-                          showRuleCopy: !_groupOwnsRuleCopy(group),
+                          showRuleCopy: !_groupOwnsRuleCopy(group, items),
                           onViewTransactions:
                               canViewTransactions(drillDownInsight)
                                   ? () => onViewTransactions(drillDownInsight)
@@ -501,44 +491,54 @@ String? _categoryIconId(InsightResult insight, TransactionMasterData masterData)
 String _groupTitle(
   BuildContext context,
   InsightPresentationGroup group,
-  List<InsightResult> items,
-) => switch (group) {
-  InsightPresentationGroup.unusual => context.l10n.text('needsAttention'),
-  InsightPresentationGroup.largePurchase =>
-    context.l10n.text(items.first.rule.nameKey),
-  InsightPresentationGroup.category =>
-    context.l10n.text('analysis.rule.r021.name'),
-  InsightPresentationGroup.subcategory =>
-    context.l10n.text('analysis.rule.r022.name'),
-  InsightPresentationGroup.tag => context.l10n.text('tags'),
-  InsightPresentationGroup.merchant =>
-    context.l10n.text('analysis.rule.r023.name'),
-  InsightPresentationGroup.paymentSource => context.l10n.text('paymentSources'),
-  InsightPresentationGroup.other when insightGroupIsPositiveOnly(items) =>
-    context.l10n.text('insightsPositiveChanges'),
-  InsightPresentationGroup.other => context.l10n.text('otherInsights'),
-};
+  List<_PresentedInsight> items,
+) {
+  if (_groupOwnsRuleCopy(group, items)) {
+    return context.l10n.text(items.first.primary.rule.nameKey);
+  }
+  final primaryItems = items.map((item) => item.primary).toList(growable: false);
+  return switch (group) {
+    InsightPresentationGroup.unusual => context.l10n.text('needsAttention'),
+    InsightPresentationGroup.largePurchase =>
+      context.l10n.text(items.first.primary.rule.nameKey),
+    InsightPresentationGroup.category => context.l10n.text('categories'),
+    InsightPresentationGroup.subcategory => context.l10n.text('subcategories'),
+    InsightPresentationGroup.tag => context.l10n.text('tags'),
+    InsightPresentationGroup.merchant => context.l10n.text('merchant'),
+    InsightPresentationGroup.paymentSource => context.l10n.text('paymentSources'),
+    InsightPresentationGroup.other when insightGroupIsPositiveOnly(primaryItems) =>
+      context.l10n.text('insightsPositiveChanges'),
+    InsightPresentationGroup.other => context.l10n.text('otherInsights'),
+  };
+}
 
 String? _groupSubtitle(
   BuildContext context,
   InsightPresentationGroup group,
-  List<InsightResult> items,
-) => switch (group) {
-  InsightPresentationGroup.category ||
-  InsightPresentationGroup.subcategory ||
-  InsightPresentationGroup.merchant ||
-  InsightPresentationGroup.largePurchase =>
-    context.l10n.text(items.first.rule.descriptionKey),
-  _ => null,
-};
+  List<_PresentedInsight> items,
+) => _groupOwnsRuleCopy(group, items)
+    ? context.l10n.text(items.first.primary.rule.descriptionKey)
+    : null;
 
-bool _groupOwnsRuleCopy(InsightPresentationGroup group) => switch (group) {
-  InsightPresentationGroup.category ||
-  InsightPresentationGroup.subcategory ||
-  InsightPresentationGroup.merchant ||
-  InsightPresentationGroup.largePurchase => true,
-  _ => false,
-};
+bool _groupOwnsRuleCopy(
+  InsightPresentationGroup group,
+  List<_PresentedInsight> items,
+) {
+  final structural = switch (group) {
+    InsightPresentationGroup.category ||
+    InsightPresentationGroup.subcategory ||
+    InsightPresentationGroup.merchant ||
+    InsightPresentationGroup.largePurchase => true,
+    _ => false,
+  };
+  if (!structural || items.isEmpty) return false;
+  final first = items.first.primary.rule;
+  return items.every(
+    (item) =>
+        item.primary.rule.nameKey == first.nameKey &&
+        item.primary.rule.descriptionKey == first.descriptionKey,
+  );
+}
 
 String? _identityLabel(
   BuildContext context,
