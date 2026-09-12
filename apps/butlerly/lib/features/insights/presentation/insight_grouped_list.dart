@@ -350,12 +350,12 @@ String _groupTitle(
   InsightPresentationGroup.largePurchase =>
     context.l10n.text(items.first.rule.nameKey),
   InsightPresentationGroup.category =>
-    context.l10n.text(items.first.rule.nameKey),
+    context.l10n.text('analysis.rule.r021.name'),
   InsightPresentationGroup.subcategory =>
-    context.l10n.text(items.first.rule.nameKey),
+    context.l10n.text('analysis.rule.r022.name'),
   InsightPresentationGroup.tag => context.l10n.text('tags'),
   InsightPresentationGroup.merchant =>
-    context.l10n.text(items.first.rule.nameKey),
+    context.l10n.text('analysis.rule.r023.name'),
   InsightPresentationGroup.paymentSource => context.l10n.text('paymentSources'),
   InsightPresentationGroup.other when insightGroupIsPositiveOnly(items) =>
     context.l10n.text('insightsPositiveChanges'),
