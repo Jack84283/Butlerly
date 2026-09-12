@@ -654,10 +654,14 @@ Map<String, String> _drillDownQueryParameters(InsightResult insight) {
     'to': period.endDate,
   };
 
-  String? singleFilter(AnalysisFilterKind kind) => insight.rule.filters
-      .where((filter) => filter.kind == kind)
-      .map((filter) => filter.values.single)
-      .firstOrNull;
+  String? singleFilter(AnalysisFilterKind kind) {
+    for (final filter in insight.rule.filters) {
+      if (filter.kind == kind && filter.values.length == 1) {
+        return filter.values.single;
+      }
+    }
+    return null;
+  }
 
   final direction = singleFilter(AnalysisFilterKind.direction);
   final currency = singleFilter(AnalysisFilterKind.currency);
