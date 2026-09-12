@@ -23,7 +23,10 @@ enum InsightPresentationGroup {
 InsightPresentationGroup insightPresentationGroup(InsightResult insight) =>
     switch (insight.rule.grouping) {
       RuleGrouping.transaction
-          when insight.rule.measure.operation == RuleOperation.maximum &&
+          when insight.outputType == InsightOutputType.pattern &&
+              insight.rule.measure.operation == RuleOperation.maximum &&
+              insight.presentation.visualizationType ==
+                  InsightVisualizationType.comparison &&
               insight.presentation.primaryMetric == InsightPrimaryMetric.amount =>
         InsightPresentationGroup.largePurchase,
       RuleGrouping.transaction
@@ -214,10 +217,16 @@ List<_PresentedInsight> _consolidateEquivalentComparisons(
 
 bool _sameComparison(InsightResult pattern, InsightResult alert) {
   if (pattern.rule.grouping != alert.rule.grouping ||
+      pattern.rule.period != alert.rule.period ||
+      pattern.rule.surface != alert.rule.surface ||
       pattern.rule.measure.operation != alert.rule.measure.operation ||
       pattern.rule.measure.field != alert.rule.measure.field ||
+      pattern.rule.measure.key != alert.rule.measure.key ||
       pattern.rule.measure.currencyBasis != alert.rule.measure.currencyBasis ||
+      !_sameFilters(pattern.rule.measure.filters, alert.rule.measure.filters) ||
+      !_sameFilters(pattern.rule.filters, alert.rule.filters) ||
       pattern.rule.baseline != alert.rule.baseline ||
+      pattern.presentation.semanticType != alert.presentation.semanticType ||
       pattern.presentation.visualizationType !=
           alert.presentation.visualizationType ||
       pattern.presentation.primaryMetric != alert.presentation.primaryMetric ||
@@ -231,6 +240,25 @@ bool _sameComparison(InsightResult pattern, InsightResult alert) {
   }
   return _sameContext(pattern.context, alert.context) &&
       _sameOptionalContext(pattern.baselineContext, alert.baselineContext);
+}
+
+bool _sameFilters(List<AnalysisFilter> left, List<AnalysisFilter> right) {
+  if (left.length != right.length) return false;
+  for (var index = 0; index < left.length; index++) {
+    if (left[index].kind != right[index].kind ||
+        !_sameStrings(left[index].values, right[index].values)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool _sameStrings(List<String> left, List<String> right) {
+  if (left.length != right.length) return false;
+  for (var index = 0; index < left.length; index++) {
+    if (left[index] != right[index]) return false;
+  }
+  return true;
 }
 
 bool _sameDecimal(DecimalValue? left, DecimalValue? right) =>
@@ -334,7 +362,11 @@ class _InsightItem extends StatelessWidget {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.warning_amber_rounded, size: 16, color: semantic.color),
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        size: 16,
+                        color: semantic.color,
+                      ),
                       const SizedBox(width: ButlerlySpacing.micro),
                       Flexible(
                         child: Text(
