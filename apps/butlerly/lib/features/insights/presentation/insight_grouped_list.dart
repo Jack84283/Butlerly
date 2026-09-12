@@ -147,14 +147,11 @@ class _InsightItem extends StatelessWidget {
     final percent = insight.percentageChange == null
         ? null
         : '${localizedDecimal(context, insight.percentageChange.toString())}%';
+    final ruleName = context.l10n.text(insight.rule.nameKey);
 
     return Semantics(
       container: true,
-      label: [
-        identity,
-        context.l10n.text(insight.rule.nameKey),
-        context.l10n.text(insight.rule.descriptionKey),
-      ].whereType<String>().join('. '),
+      label: [ruleName, if (identity != null) identity].join(': '),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -169,7 +166,7 @@ class _InsightItem extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        identity ?? context.l10n.text(insight.rule.nameKey),
+                        identity ?? ruleName,
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                     ),
@@ -179,7 +176,7 @@ class _InsightItem extends StatelessWidget {
                 if (identity != null) ...[
                   const SizedBox(height: ButlerlySpacing.micro),
                   Text(
-                    context.l10n.text(insight.rule.nameKey),
+                    ruleName,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],
@@ -219,6 +216,14 @@ class _InsightItem extends StatelessWidget {
                     ),
                   ),
                 ],
+                if (insight.evidence.isNotEmpty) ...[
+                  const SizedBox(height: ButlerlySpacing.small),
+                  Text(
+                    context.l10n.text('supportingTransactions', {
+                      'count': '${insight.evidence.length}',
+                    }),
+                  ),
+                ],
                 if (onViewTransactions != null) ...[
                   const SizedBox(height: ButlerlySpacing.small),
                   TextButton.icon(
@@ -230,7 +235,7 @@ class _InsightItem extends StatelessWidget {
                     ),
                     iconAlignment: IconAlignment.end,
                     icon: const Icon(Icons.chevron_right),
-                    label: Text(_drillDownLabel(context, insight)),
+                    label: Text(context.l10n.text('viewTransactions')),
                   ),
                 ],
               ],
@@ -342,14 +347,6 @@ String? _formattedValue(
   if (insight.rule.measure.operation == RuleOperation.share) return '$formatted%';
   final currency = insight.currency?.value;
   return currency == null || currency.isEmpty ? formatted : '$formatted $currency';
-}
-
-String _drillDownLabel(BuildContext context, InsightResult insight) {
-  if (insight.evidence.isEmpty) return context.l10n.text('viewTransactions');
-  final supporting = context.l10n.text('supportingTransactions', {
-    'count': '${insight.evidence.length}',
-  });
-  return '${context.l10n.text('viewTransactions')} · $supporting';
 }
 
 ({IconData icon, Color color}) _semanticPresentation(
