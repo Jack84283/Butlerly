@@ -13,6 +13,7 @@ enum InsightPresentationGroup {
   unusual,
   category,
   subcategory,
+  tag,
   merchant,
   paymentSource,
   other,
@@ -23,6 +24,7 @@ InsightPresentationGroup insightPresentationGroup(InsightResult insight) =>
       RuleGrouping.transaction => InsightPresentationGroup.unusual,
       RuleGrouping.category => InsightPresentationGroup.category,
       RuleGrouping.subcategory => InsightPresentationGroup.subcategory,
+      RuleGrouping.tag => InsightPresentationGroup.tag,
       RuleGrouping.merchant => InsightPresentationGroup.merchant,
       RuleGrouping.paymentSource => InsightPresentationGroup.paymentSource,
       _ => InsightPresentationGroup.other,
@@ -60,6 +62,7 @@ class InsightGroupedList extends StatelessWidget {
       InsightPresentationGroup.unusual,
       InsightPresentationGroup.category,
       InsightPresentationGroup.subcategory,
+      InsightPresentationGroup.tag,
       InsightPresentationGroup.merchant,
       InsightPresentationGroup.paymentSource,
       InsightPresentationGroup.other,
@@ -235,6 +238,7 @@ class _IdentityIcon extends StatelessWidget {
       InsightPresentationGroup.unusual => Icons.priority_high_rounded,
       InsightPresentationGroup.merchant => Icons.storefront_outlined,
       InsightPresentationGroup.paymentSource => Icons.credit_card_outlined,
+      InsightPresentationGroup.tag => Icons.sell_outlined,
       InsightPresentationGroup.category ||
       InsightPresentationGroup.subcategory =>
         Icons.category_outlined,
@@ -265,6 +269,7 @@ String _groupTitle(
   InsightPresentationGroup.unusual => context.l10n.text('needsAttention'),
   InsightPresentationGroup.category => context.l10n.text('categories'),
   InsightPresentationGroup.subcategory => context.l10n.text('subcategories'),
+  InsightPresentationGroup.tag => context.l10n.text('tags'),
   InsightPresentationGroup.merchant => context.l10n.text('merchant'),
   InsightPresentationGroup.paymentSource => context.l10n.text('paymentSource'),
   InsightPresentationGroup.other when insightGroupIsPositiveOnly(items) =>
