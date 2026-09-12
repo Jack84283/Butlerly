@@ -31,7 +31,9 @@ void main() {
 
     expect(find.text('Category movement'), findsOneWidget);
     expect(
-      find.text('A category changed materially compared with equivalent period.'),
+      find.text(
+        'A category changed materially compared with the equivalent period.',
+      ),
       findsOneWidget,
     );
     expect(find.text('Food & Dining'), findsOneWidget);
@@ -102,7 +104,8 @@ InsightResult _categoryInsight({
   required String dimension,
   RuleOperation operation = RuleOperation.sum,
   InsightSemanticType semanticType = InsightSemanticType.attention,
-  InsightVisualizationType visualizationType = InsightVisualizationType.comparison,
+  InsightVisualizationType visualizationType =
+      InsightVisualizationType.comparison,
   InsightPrimaryMetric primaryMetric = InsightPrimaryMetric.amount,
 }) {
   final context = AnalysisContext(
