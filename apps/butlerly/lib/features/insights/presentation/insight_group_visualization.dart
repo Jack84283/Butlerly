@@ -8,15 +8,19 @@ import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 
+export 'package:butlerly/features/insights/presentation/insight_presentation.dart';
+
 class InsightGroupVisualizations extends StatelessWidget {
   const InsightGroupVisualizations({
     super.key,
     required this.results,
     required this.masterData,
+    this.embedded = false,
   });
 
   final List<InsightResult> results;
   final TransactionMasterData masterData;
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
@@ -71,13 +75,26 @@ class InsightGroupVisualizations extends StatelessWidget {
           ),
         _ => const SizedBox.shrink(),
       };
+      final child = embedded
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.l10n.text(first.rule.nameKey),
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: ButlerlySpacing.small),
+                visualization,
+              ],
+            )
+          : ButlerlyVisualizationCard(
+              title: context.l10n.text(first.rule.nameKey),
+              child: visualization,
+            );
       widgets.add(
         Padding(
           padding: const EdgeInsets.only(bottom: ButlerlySpacing.standard),
-          child: ButlerlyVisualizationCard(
-            title: context.l10n.text(first.rule.nameKey),
-            child: visualization,
-          ),
+          child: child,
         ),
       );
     }
