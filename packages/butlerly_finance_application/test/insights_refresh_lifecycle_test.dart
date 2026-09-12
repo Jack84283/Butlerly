@@ -3,53 +3,104 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('superseded finding becomes active again when recalculation still qualifies', () async {
-    final now = DateTime.utc(2026, 9, 5, 12);
-    final transactions = _Transactions([
-      _transaction('current', '2026-09-01', '120'),
-      _transaction('baseline', '2026-08-01', '90'),
-    ]);
-    final rules = _Rules([_insightRule()]);
-    final findings = _Findings();
-    final calculate = CalculateAnalysisOverview(
-      rules,
-      AnalysisDatasetBuilder(transactions, _Preferences(), null),
-      const AnalysisRuleEngine(),
-      findings: findings,
-    );
+  test(
+    'generic transaction invalidation keeps every still-qualifying card active',
+    () async {
+      final now = DateTime.utc(2026, 9, 5, 12);
+      final transactions = _Transactions([
+        _transaction('current', '2026-09-01', '120'),
+        _transaction('baseline', '2026-08-01', '90'),
+      ]);
+      final rules = _Rules([
+        _insightRule('ANL-R020', '1.10'),
+        _insightRule('ANL-R021', '1.20'),
+        _insightRule('ANL-R022', '1.30'),
+      ]);
+      final findings = _Findings();
+      final calculate = CalculateAnalysisOverview(
+        rules,
+        AnalysisDatasetBuilder(transactions, _Preferences(), null),
+        const AnalysisRuleEngine(),
+        findings: findings,
+      );
 
-    final first = await calculate.currentMonth(now);
-    final firstFinding =
-        (first as ApplicationSuccess<List<RuleExecutionResult>>)
-            .value
-            .single
-            .finding!;
-    expect(firstFinding.lifecycle, FindingLifecycle.active);
-    expect(findings.values.single.lifecycle, FindingLifecycle.active);
+      final first = await calculate.currentMonth(now);
+      final firstResults =
+          (first as ApplicationSuccess<List<RuleExecutionResult>>).value;
+      expect(firstResults.where((result) => result.finding != null), hasLength(3));
+      expect(
+        findings.values.where(
+          (finding) => finding.lifecycle == FindingLifecycle.active,
+        ),
+        hasLength(3),
+      );
 
-    final invalidated = await InvalidateAnalysis(
-      findings,
-      rules: rules,
-    ).call(AnalysisInvalidationReason.transactionChanged, now);
-    expect(invalidated, isA<ApplicationSuccess<void>>());
-    expect(findings.values.single.lifecycle, FindingLifecycle.superseded);
+      final invalidated = await InvalidateAnalysis(
+        findings,
+        rules: rules,
+      ).call(AnalysisInvalidationReason.transactionChanged, now);
+      expect(invalidated, isA<ApplicationSuccess<void>>());
+      expect(
+        findings.values.where(
+          (finding) => finding.lifecycle == FindingLifecycle.superseded,
+        ),
+        hasLength(3),
+      );
 
-    final recalculated = await calculate.currentMonth(now);
-    final recalculatedFinding =
-        (recalculated as ApplicationSuccess<List<RuleExecutionResult>>)
-            .value
-            .single
-            .finding!;
+      final recalculated = await calculate.currentMonth(now);
+      final recalculatedResults =
+          (recalculated as ApplicationSuccess<List<RuleExecutionResult>>).value;
+      expect(
+        recalculatedResults
+            .where((result) => result.finding != null)
+            .map((result) => result.finding!.lifecycle),
+        everyElement(FindingLifecycle.active),
+      );
+      expect(
+        findings.values.where(
+          (finding) => finding.lifecycle == FindingLifecycle.active,
+        ),
+        hasLength(3),
+      );
 
-    expect(recalculatedFinding.lifecycle, FindingLifecycle.active);
-    expect(findings.values.single.lifecycle, FindingLifecycle.active);
-  });
+      // Change the transaction so only the 10% rule remains true. Generic
+      // invalidation still supersedes all old findings; recalculation must
+      // reactivate the one current finding rather than hiding every card.
+      transactions.values[0] = _transaction('current', '2026-09-01', '100');
+      await InvalidateAnalysis(
+        findings,
+        rules: rules,
+      ).call(AnalysisInvalidationReason.transactionChanged, now);
+
+      final changed = await calculate.currentMonth(now);
+      final changedResults =
+          (changed as ApplicationSuccess<List<RuleExecutionResult>>).value;
+      final activeResults = changedResults
+          .where((result) => result.finding != null)
+          .toList(growable: false);
+      expect(activeResults, hasLength(1));
+      expect(activeResults.single.rule.identity.value, 'ANL-R020');
+      expect(activeResults.single.finding!.lifecycle, FindingLifecycle.active);
+      expect(
+        findings.values.where(
+          (finding) => finding.lifecycle == FindingLifecycle.active,
+        ),
+        hasLength(1),
+      );
+      expect(
+        findings.values.where(
+          (finding) => finding.lifecycle == FindingLifecycle.superseded,
+        ),
+        hasLength(2),
+      );
+    },
+  );
 
   test('dismissed finding remains dismissed across recalculation', () async {
     final now = DateTime.utc(2026, 9, 5, 12);
     final findings = _Findings();
     final calculate = CalculateAnalysisOverview(
-      _Rules([_insightRule()]),
+      _Rules([_insightRule('ANL-R020', '1.20')]),
       AnalysisDatasetBuilder(
         _Transactions([
           _transaction('current', '2026-09-01', '120'),
@@ -86,51 +137,52 @@ void main() {
   });
 }
 
-AnalysisRuleDefinition _insightRule() => AnalysisRuleDefinition(
-  identity: RuleIdentity('ANL-R020'),
-  version: RuleVersion('1.3.0'),
-  schemaVersion: '1.0.0',
-  type: AnalysisRuleType.insight,
-  nameKey: 'analysis.rule.r020.name',
-  descriptionKey: 'analysis.rule.r020.description',
-  enabled: true,
-  status: AnalysisRuleStatus.active,
-  period: 'selected_period',
-  measure: const RuleMeasure(
-    operation: RuleOperation.sum,
-    field: 'amount',
-    currencyBasis: CurrencyBasis.baseCurrency,
-  ),
-  grouping: RuleGrouping.none,
-  baseline: RuleBaseline.previousEquivalentPeriod,
-  condition: RuleCondition(
-    operator: 'all',
-    children: [
-      RuleCondition(
-        operator: 'gt',
-        left: 'currentTotal',
-        value: DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0),
+AnalysisRuleDefinition _insightRule(String id, String multiplier) =>
+    AnalysisRuleDefinition(
+      identity: RuleIdentity(id),
+      version: RuleVersion('1.3.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.insight,
+      nameKey: 'analysis.rule.${id.toLowerCase()}.name',
+      descriptionKey: 'analysis.rule.${id.toLowerCase()}.description',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(
+        operation: RuleOperation.sum,
+        field: 'amount',
+        currencyBasis: CurrencyBasis.baseCurrency,
       ),
-      RuleCondition(
-        operator: 'gteMultiplier',
-        left: 'currentTotal',
-        right: 'baselineTotal',
-        value: DecimalValue.parse('1.20'),
+      grouping: RuleGrouping.none,
+      baseline: RuleBaseline.previousEquivalentPeriod,
+      condition: RuleCondition(
+        operator: 'all',
+        children: [
+          RuleCondition(
+            operator: 'gt',
+            left: 'currentTotal',
+            value: DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0),
+          ),
+          RuleCondition(
+            operator: 'gteMultiplier',
+            left: 'currentTotal',
+            right: 'baselineTotal',
+            value: DecimalValue.parse(multiplier),
+          ),
+        ],
       ),
-    ],
-  ),
-  severity: RuleSeverity.attention,
-  surface: AnalysisSurface.insights,
-  filters: const [
-    AnalysisFilter(
-      kind: AnalysisFilterKind.direction,
-      values: ['expense'],
-    ),
-  ],
-  definitionHash: RuleDefinitionHash('d' * 64),
-  resultPersistence: ResultPersistencePolicy.finding,
-  refreshPolicy: RefreshPolicy.onInvalidation,
-);
+      severity: RuleSeverity.attention,
+      surface: AnalysisSurface.insights,
+      filters: const [
+        AnalysisFilter(
+          kind: AnalysisFilterKind.direction,
+          values: ['expense'],
+        ),
+      ],
+      definitionHash: RuleDefinitionHash(id.padRight(64, '0')),
+      resultPersistence: ResultPersistencePolicy.finding,
+      refreshPolicy: RefreshPolicy.onInvalidation,
+    );
 
 Transaction _transaction(String id, String date, String amount) => Transaction(
   id: TransactionId(id),
@@ -237,7 +289,12 @@ final class _Findings implements AnalysisFindingRepository {
       return;
     }
     final existing = values[index];
-    values[index] = _withLifecycle(finding, existing.lifecycle);
+    final lifecycle = switch (existing.lifecycle) {
+      FindingLifecycle.acknowledged || FindingLifecycle.dismissed =>
+        existing.lifecycle,
+      _ => finding.lifecycle,
+    };
+    values[index] = _withLifecycle(finding, lifecycle);
   }
 
   @override
