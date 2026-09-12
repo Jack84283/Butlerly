@@ -52,6 +52,32 @@ void main() {
     );
   });
 
+  test('uses authored presentation role for unusually large purchase section', () {
+    expect(
+      insightPresentationGroup(
+        _insight(
+          RuleGrouping.transaction,
+          role: 'largePurchase',
+          operation: RuleOperation.maximum,
+          visualizationType: InsightVisualizationType.comparison,
+          semanticType: InsightSemanticType.attention,
+        ),
+      ),
+      InsightPresentationGroup.largePurchase,
+    );
+    expect(
+      insightPresentationGroup(
+        _insight(
+          RuleGrouping.transaction,
+          operation: RuleOperation.maximum,
+          visualizationType: InsightVisualizationType.comparison,
+          semanticType: InsightSemanticType.attention,
+        ),
+      ),
+      InsightPresentationGroup.unusual,
+    );
+  });
+
   test('recognizes an all-positive fallback group', () {
     expect(
       insightGroupIsPositiveOnly([
@@ -86,6 +112,9 @@ void main() {
 InsightResult _insight(
   RuleGrouping grouping, {
   InsightSemanticType semanticType = InsightSemanticType.neutral,
+  RuleOperation operation = RuleOperation.sum,
+  InsightVisualizationType visualizationType = InsightVisualizationType.none,
+  String? role,
 }) {
   final context = AnalysisContext(
     period: AnalysisPeriod(
@@ -107,8 +136,8 @@ InsightResult _insight(
     enabled: true,
     status: AnalysisRuleStatus.active,
     period: 'selected_period',
-    measure: const RuleMeasure(
-      operation: RuleOperation.sum,
+    measure: RuleMeasure(
+      operation: operation,
       field: 'amount',
       currencyBasis: CurrencyBasis.baseCurrency,
     ),
@@ -118,9 +147,10 @@ InsightResult _insight(
     severity: RuleSeverity.info,
     definitionHash: RuleDefinitionHash('9' * 64),
     surface: AnalysisSurface.insights,
+    role: role,
     presentation: InsightPresentation(
       semanticType: semanticType,
-      visualizationType: InsightVisualizationType.none,
+      visualizationType: visualizationType,
       primaryMetric: InsightPrimaryMetric.amount,
     ),
   );

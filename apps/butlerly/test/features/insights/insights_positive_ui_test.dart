@@ -114,9 +114,11 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('500.00 USD'), findsOneWidget);
-    expect(find.text('↔'), findsOneWidget);
+    expect(find.text('→'), findsOneWidget);
+    expect(find.text('↔'), findsNothing);
     expect(find.text('vs'), findsNothing);
     expect(find.text('-250.00 USD'), findsOneWidget);
+    expect(find.textContaining('↑'), findsOneWidget);
     expect(find.byIcon(Icons.trending_down), findsNothing);
     expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
     expect(find.textContaining('2026-09-01 – 2026-09-10'), findsWidgets);
@@ -218,7 +220,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Categories'), findsOneWidget);
+    expect(find.text('Financial summary'), findsWidgets);
     expect(find.byType(InsightBarVisualization), findsOneWidget);
   });
 
@@ -244,6 +246,11 @@ void main() {
   test('new insight strings participate in localization completeness checks', () {
     const keys = {
       'insightsPositiveChanges',
+      'insightsCategoryMovementSection',
+      'insightsSubcategoryMovementSection',
+      'insightsMerchantMovementSection',
+      'viewOneSupportingTransaction',
+      'viewManySupportingTransactions',
       'analysis.rule.r027.name',
       'analysis.rule.r027.description',
       'analysis.rule.r028.name',

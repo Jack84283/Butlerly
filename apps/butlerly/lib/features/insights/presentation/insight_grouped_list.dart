@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 
 enum InsightPresentationGroup {
   unusual,
+  largePurchase,
   category,
   subcategory,
   tag,
@@ -21,6 +22,8 @@ enum InsightPresentationGroup {
 
 InsightPresentationGroup insightPresentationGroup(InsightResult insight) =>
     switch (insight.rule.grouping) {
+      RuleGrouping.transaction when insight.rule.role == 'largePurchase' =>
+        InsightPresentationGroup.largePurchase,
       RuleGrouping.transaction
           when insight.presentation.semanticType == InsightSemanticType.attention =>
         InsightPresentationGroup.unusual,
@@ -57,10 +60,16 @@ class InsightGroupedList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final grouped = <InsightPresentationGroup, List<InsightResult>>{};
-    for (final result in results) {
-      if (result.outputType == InsightOutputType.dataQuality) continue;
-      grouped.putIfAbsent(insightPresentationGroup(result), () => []).add(result);
+    final presented = _consolidateEquivalentComparisons(
+      results
+          .where((result) => result.outputType != InsightOutputType.dataQuality)
+          .toList(growable: false),
+    );
+    final grouped = <InsightPresentationGroup, List<_PresentedInsight>>{};
+    for (final item in presented) {
+      grouped
+          .putIfAbsent(insightPresentationGroup(item.primary), () => [])
+          .add(item);
     }
 
     final groupedVisualizations =
@@ -79,6 +88,7 @@ class InsightGroupedList extends StatelessWidget {
 
     const order = [
       InsightPresentationGroup.unusual,
+      InsightPresentationGroup.largePurchase,
       InsightPresentationGroup.category,
       InsightPresentationGroup.subcategory,
       InsightPresentationGroup.tag,
@@ -93,6 +103,16 @@ class InsightGroupedList extends StatelessWidget {
         for (final group in order)
           if (grouped[group] case final items? when items.isNotEmpty) ...[
             ButlerlySectionHeader(title: _groupTitle(context, group, items)),
+            if (_groupSubtitle(context, group, items) case final subtitle?) ...[
+              const SizedBox(height: ButlerlySpacing.micro),
+              Text(
+                subtitle,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: ButlerlySpacing.small),
+            ],
             if (groupedVisualizations[group] case final chartResults?
                 when chartResults.isNotEmpty)
               InsightGroupVisualizations(
@@ -104,12 +124,26 @@ class InsightGroupedList extends StatelessWidget {
               child: Column(
                 children: [
                   for (var index = 0; index < items.length; index++) ...[
-                    _InsightItem(
-                      insight: items[index],
-                      masterData: masterData,
-                      onViewTransactions: canViewTransactions(items[index])
-                          ? () => onViewTransactions(items[index])
-                          : null,
+                    Builder(
+                      builder: (context) {
+                        final item = items[index];
+                        final escalation = item.escalation;
+                        final drillDownInsight = escalation != null &&
+                                canViewTransactions(escalation)
+                            ? escalation
+                            : item.primary;
+                        return _InsightItem(
+                          insight: item.primary,
+                          escalation: escalation,
+                          drillDownInsight: drillDownInsight,
+                          masterData: masterData,
+                          showRuleCopy: !_groupOwnsRuleCopy(group, items),
+                          onViewTransactions:
+                              canViewTransactions(drillDownInsight)
+                                  ? () => onViewTransactions(drillDownInsight)
+                                  : null,
+                        );
+                      },
                     ),
                     if (index != items.length - 1)
                       const Divider(height: ButlerlySpacing.section),
@@ -123,22 +157,161 @@ class InsightGroupedList extends StatelessWidget {
   }
 }
 
+final class _PresentedInsight {
+  const _PresentedInsight({required this.primary, this.escalation});
+
+  final InsightResult primary;
+  final InsightResult? escalation;
+}
+
+List<_PresentedInsight> _consolidateEquivalentComparisons(
+  List<InsightResult> results,
+) {
+  final escalations = <InsightResult>{};
+  final escalationByPattern = <InsightResult, InsightResult>{};
+
+  for (final pattern in results) {
+    if (pattern.outputType != InsightOutputType.pattern ||
+        pattern.presentation.visualizationType !=
+            InsightVisualizationType.comparison) {
+      continue;
+    }
+    final escalation = results
+        .where(
+          (candidate) =>
+              candidate.outputType == InsightOutputType.alert &&
+              !escalations.contains(candidate) &&
+              _declaredEscalationMatches(pattern, candidate) &&
+              _sameComparison(pattern, candidate),
+        )
+        .firstOrNull;
+    if (escalation != null) {
+      escalations.add(escalation);
+      escalationByPattern[pattern] = escalation;
+    }
+  }
+
+  return [
+    for (final result in results)
+      if (!escalations.contains(result))
+        _PresentedInsight(
+          primary: result,
+          escalation: escalationByPattern[result],
+        ),
+  ];
+}
+
+bool _declaredEscalationMatches(InsightResult pattern, InsightResult alert) {
+  const comparisonPrefix = 'comparison:';
+  const escalationPrefix = 'escalation:';
+  final patternRole = pattern.rule.role;
+  final alertRole = alert.rule.role;
+  if (patternRole == null ||
+      alertRole == null ||
+      !patternRole.startsWith(comparisonPrefix) ||
+      !alertRole.startsWith(escalationPrefix)) {
+    return false;
+  }
+  return patternRole.substring(comparisonPrefix.length) ==
+      alertRole.substring(escalationPrefix.length);
+}
+
+bool _sameComparison(InsightResult pattern, InsightResult alert) {
+  if (pattern.rule.grouping != alert.rule.grouping ||
+      pattern.rule.period != alert.rule.period ||
+      pattern.rule.surface != alert.rule.surface ||
+      pattern.rule.measure.operation != alert.rule.measure.operation ||
+      pattern.rule.measure.field != alert.rule.measure.field ||
+      pattern.rule.measure.key != alert.rule.measure.key ||
+      pattern.rule.measure.currencyBasis != alert.rule.measure.currencyBasis ||
+      !_sameFilters(pattern.rule.measure.filters, alert.rule.measure.filters) ||
+      !_sameFilters(pattern.rule.filters, alert.rule.filters) ||
+      pattern.rule.baseline != alert.rule.baseline ||
+      pattern.presentation.semanticType != alert.presentation.semanticType ||
+      pattern.presentation.visualizationType !=
+          alert.presentation.visualizationType ||
+      pattern.presentation.primaryMetric != alert.presentation.primaryMetric ||
+      pattern.dimension != alert.dimension ||
+      pattern.currency?.value != alert.currency?.value ||
+      !_sameDecimal(pattern.currentValue, alert.currentValue) ||
+      !_sameDecimal(pattern.baselineValue, alert.baselineValue) ||
+      !_sameDecimal(pattern.absoluteChange, alert.absoluteChange) ||
+      !_sameDecimal(pattern.percentageChange, alert.percentageChange)) {
+    return false;
+  }
+  return _sameContext(pattern.context, alert.context) &&
+      _sameOptionalContext(pattern.baselineContext, alert.baselineContext);
+}
+
+bool _sameFilters(List<AnalysisFilter> left, List<AnalysisFilter> right) {
+  if (left.length != right.length) return false;
+  final leftSignatures = left.map(_filterSignature).toList()..sort();
+  final rightSignatures = right.map(_filterSignature).toList()..sort();
+  return _sameStrings(leftSignatures, rightSignatures);
+}
+
+String _filterSignature(AnalysisFilter filter) {
+  final values = [...filter.values]..sort();
+  return '${filter.kind.name}:${values.join('|')}';
+}
+
+bool _sameStrings(List<String> left, List<String> right) {
+  if (left.length != right.length) return false;
+  for (var index = 0; index < left.length; index++) {
+    if (left[index] != right[index]) return false;
+  }
+  return true;
+}
+
+bool _sameDecimal(DecimalValue? left, DecimalValue? right) =>
+    _normalizedDecimal(left) == _normalizedDecimal(right);
+
+String? _normalizedDecimal(DecimalValue? value) {
+  if (value == null) return null;
+  var text = value.toString();
+  if (text.contains('.')) {
+    text = text.replaceFirst(RegExp(r'0+$'), '');
+    text = text.replaceFirst(RegExp(r'\.$'), '');
+  }
+  return text == '-0' ? '0' : text;
+}
+
+bool _sameOptionalContext(AnalysisContext? left, AnalysisContext? right) {
+  if (left == null || right == null) return left == right;
+  return _sameContext(left, right);
+}
+
+bool _sameContext(AnalysisContext left, AnalysisContext right) =>
+    left.period.startDate == right.period.startDate &&
+    left.period.endDate == right.period.endDate &&
+    left.period.timeZoneId == right.period.timeZoneId &&
+    left.periodType == right.periodType &&
+    left.datasetMode == right.datasetMode &&
+    left.currencyBasis == right.currencyBasis &&
+    left.baseCurrency?.value == right.baseCurrency?.value;
+
 class _InsightItem extends StatelessWidget {
   const _InsightItem({
     required this.insight,
+    required this.escalation,
+    required this.drillDownInsight,
     required this.masterData,
+    required this.showRuleCopy,
     required this.onViewTransactions,
   });
 
   final InsightResult insight;
+  final InsightResult? escalation;
+  final InsightResult drillDownInsight;
   final TransactionMasterData masterData;
+  final bool showRuleCopy;
   final VoidCallback? onViewTransactions;
 
   @override
   Widget build(BuildContext context) {
     final semantic = _semanticPresentation(
       context,
-      insight.presentation.semanticType,
+      escalation?.presentation.semanticType ?? insight.presentation.semanticType,
     );
     final identity = _identityLabel(context, insight, masterData);
     final current = _formattedValue(context, insight, insight.currentValue);
@@ -147,12 +320,17 @@ class _InsightItem extends StatelessWidget {
     final percent = insight.percentageChange == null
         ? null
         : '${localizedDecimal(context, insight.percentageChange.toString())}%';
+    final direction = _changeDirection(insight);
     final ruleName = context.l10n.text(insight.rule.nameKey);
+    final escalationName = escalation == null
+        ? null
+        : context.l10n.text(escalation!.rule.nameKey);
+    final showHeading = identity != null || showRuleCopy;
 
     return Semantics(
       container: true,
       explicitChildNodes: true,
-      label: [ruleName, ?identity].join(': '),
+      label: [ruleName, ?identity, ?escalationName].join(': '),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -162,27 +340,58 @@ class _InsightItem extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        identity ?? ruleName,
-                        style: Theme.of(context).textTheme.titleMedium,
+                if (showHeading)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          identity ?? ruleName,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
                       ),
-                    ),
-                    Icon(semantic.icon, color: semantic.color, size: 18),
-                  ],
-                ),
-                if (identity != null) ...[
+                      Icon(semantic.icon, color: semantic.color, size: 18),
+                    ],
+                  )
+                else
+                  Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: Icon(semantic.icon, color: semantic.color, size: 18),
+                  ),
+                if (showRuleCopy && identity != null) ...[
                   const SizedBox(height: ButlerlySpacing.micro),
                   Text(
                     ruleName,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],
-                const SizedBox(height: ButlerlySpacing.micro),
-                Text(context.l10n.text(insight.rule.descriptionKey)),
+                if (showRuleCopy) ...[
+                  const SizedBox(height: ButlerlySpacing.micro),
+                  Text(context.l10n.text(insight.rule.descriptionKey)),
+                ],
+                if (escalationName != null) ...[
+                  const SizedBox(height: ButlerlySpacing.micro),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        size: 16,
+                        color: semantic.color,
+                      ),
+                      const SizedBox(width: ButlerlySpacing.micro),
+                      Flexible(
+                        child: Text(
+                          escalationName,
+                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            color: semantic.color,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 if (current != null || baseline != null) ...[
                   const SizedBox(height: ButlerlySpacing.small),
                   Wrap(
@@ -190,19 +399,19 @@ class _InsightItem extends StatelessWidget {
                     runSpacing: ButlerlySpacing.micro,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      if (current != null)
-                        Text(
-                          current,
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      if (current != null && baseline != null)
-                        Text(
-                          '↔',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
                       if (baseline != null)
                         Text(
                           baseline,
+                          style: Theme.of(context).textTheme.bodyLarge,
+                        ),
+                      if (baseline != null && current != null)
+                        Text(
+                          '→',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      if (current != null)
+                        Text(
+                          current,
                           style: Theme.of(context).textTheme.bodyLarge,
                         ),
                     ],
@@ -211,18 +420,12 @@ class _InsightItem extends StatelessWidget {
                 if (difference != null || percent != null) ...[
                   const SizedBox(height: ButlerlySpacing.micro),
                   Text(
-                    [difference, percent].whereType<String>().join(' · '),
+                    [direction, difference, percent]
+                        .whereType<String>()
+                        .join(' · '),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: semantic.color,
                     ),
-                  ),
-                ],
-                if (insight.evidence.isNotEmpty) ...[
-                  const SizedBox(height: ButlerlySpacing.small),
-                  Text(
-                    context.l10n.text('supportingTransactions', {
-                      'count': '${insight.evidence.length}',
-                    }),
                   ),
                 ],
                 if (onViewTransactions != null) ...[
@@ -236,7 +439,23 @@ class _InsightItem extends StatelessWidget {
                     ),
                     iconAlignment: IconAlignment.end,
                     icon: const Icon(Icons.chevron_right),
-                    label: Text(context.l10n.text('viewTransactions')),
+                    label: Text(
+                      drillDownInsight.evidence.isEmpty
+                          ? context.l10n.text('viewTransactions')
+                          : context.l10n.text(
+                              drillDownInsight.evidence.length == 1
+                                  ? 'viewOneSupportingTransaction'
+                                  : 'viewManySupportingTransactions',
+                              {'count': '${drillDownInsight.evidence.length}'},
+                            ),
+                    ),
+                  ),
+                ] else if (drillDownInsight.evidence.isNotEmpty) ...[
+                  const SizedBox(height: ButlerlySpacing.small),
+                  Text(
+                    context.l10n.text('supportingTransactions', {
+                      'count': '${drillDownInsight.evidence.length}',
+                    }),
                   ),
                 ],
               ],
@@ -267,6 +486,7 @@ class _IdentityIcon extends StatelessWidget {
 
     final icon = switch (insightPresentationGroup(insight)) {
       InsightPresentationGroup.unusual => Icons.priority_high_rounded,
+      InsightPresentationGroup.largePurchase => Icons.shopping_bag_outlined,
       InsightPresentationGroup.merchant => Icons.storefront_outlined,
       InsightPresentationGroup.paymentSource => Icons.credit_card_outlined,
       InsightPresentationGroup.tag => Icons.sell_outlined,
@@ -295,18 +515,63 @@ String? _categoryIconId(InsightResult insight, TransactionMasterData masterData)
 String _groupTitle(
   BuildContext context,
   InsightPresentationGroup group,
-  List<InsightResult> items,
-) => switch (group) {
-  InsightPresentationGroup.unusual => context.l10n.text('needsAttention'),
-  InsightPresentationGroup.category => context.l10n.text('categories'),
-  InsightPresentationGroup.subcategory => context.l10n.text('subcategories'),
-  InsightPresentationGroup.tag => context.l10n.text('tags'),
-  InsightPresentationGroup.merchant => context.l10n.text('merchant'),
-  InsightPresentationGroup.paymentSource => context.l10n.text('paymentSources'),
-  InsightPresentationGroup.other when insightGroupIsPositiveOnly(items) =>
-    context.l10n.text('insightsPositiveChanges'),
-  InsightPresentationGroup.other => context.l10n.text('otherInsights'),
-};
+  List<_PresentedInsight> items,
+) {
+  if (_groupOwnsRuleCopy(group, items)) {
+    return context.l10n.text(items.first.primary.rule.nameKey);
+  }
+  final primaryItems = items.map((item) => item.primary).toList(growable: false);
+  return switch (group) {
+    InsightPresentationGroup.unusual => context.l10n.text('needsAttention'),
+    InsightPresentationGroup.largePurchase =>
+      context.l10n.text(items.first.primary.rule.nameKey),
+    InsightPresentationGroup.category => context.l10n.text('categories'),
+    InsightPresentationGroup.subcategory => context.l10n.text('subcategories'),
+    InsightPresentationGroup.tag => context.l10n.text('tags'),
+    InsightPresentationGroup.merchant => context.l10n.text('merchant'),
+    InsightPresentationGroup.paymentSource => context.l10n.text('paymentSources'),
+    InsightPresentationGroup.other when insightGroupIsPositiveOnly(primaryItems) =>
+      context.l10n.text('insightsPositiveChanges'),
+    InsightPresentationGroup.other => context.l10n.text('otherInsights'),
+  };
+}
+
+String? _groupSubtitle(
+  BuildContext context,
+  InsightPresentationGroup group,
+  List<_PresentedInsight> items,
+) {
+  if (!_groupOwnsRuleCopy(group, items)) return null;
+  final rule = items.first.primary.rule;
+  return switch (rule.role) {
+    'categoryMovement' => context.l10n.text('insightsCategoryMovementSection'),
+    'subcategoryMovement' =>
+      context.l10n.text('insightsSubcategoryMovementSection'),
+    'merchantMovement' => context.l10n.text('insightsMerchantMovementSection'),
+    _ => context.l10n.text(rule.descriptionKey),
+  };
+}
+
+bool _groupOwnsRuleCopy(
+  InsightPresentationGroup group,
+  List<_PresentedInsight> items,
+) {
+  final structural = switch (group) {
+    InsightPresentationGroup.category ||
+    InsightPresentationGroup.subcategory ||
+    InsightPresentationGroup.merchant ||
+    InsightPresentationGroup.largePurchase => true,
+    _ => false,
+  };
+  if (!structural || items.isEmpty) return false;
+  final first = items.first.primary.rule;
+  return items.every(
+    (item) =>
+        item.primary.rule.nameKey == first.nameKey &&
+        item.primary.rule.descriptionKey == first.descriptionKey &&
+        item.primary.rule.role == first.role,
+  );
+}
 
 String? _identityLabel(
   BuildContext context,
@@ -348,6 +613,12 @@ String? _formattedValue(
   if (insight.rule.measure.operation == RuleOperation.share) return '$formatted%';
   final currency = insight.currency?.value;
   return currency == null || currency.isEmpty ? formatted : '$formatted $currency';
+}
+
+String? _changeDirection(InsightResult insight) {
+  final change = double.tryParse(insight.absoluteChange?.toString() ?? '');
+  if (change == null || change == 0) return null;
+  return change > 0 ? '↑' : '↓';
 }
 
 ({IconData icon, Color color}) _semanticPresentation(

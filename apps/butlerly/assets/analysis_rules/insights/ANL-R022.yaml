@@ -8,6 +8,7 @@ nameKey: analysis.rule.r022.name
 descriptionKey: analysis.rule.r022.description
 period: selected_period
 baseline: previousEquivalentPeriod
+role: subcategoryMovement
 presentation:
   semantic_type: attention
   visualization_type: comparison

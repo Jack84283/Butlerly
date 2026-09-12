@@ -115,7 +115,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('View transactions'));
+    await tester.tap(find.textContaining('2 supporting transactions'));
     expect(
       path,
       '/search?locked=true&from=2026-09-01&to=2026-09-05',

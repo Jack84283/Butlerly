@@ -55,7 +55,7 @@ void main() {
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('View transactions'));
+    await tester.tap(find.textContaining('1 supporting transaction'));
     expect(
       path,
       '/search?locked=true&from=2026-09-01&to=2026-09-05&ids=support-1',
@@ -87,7 +87,7 @@ void main() {
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('View transactions'));
+    await tester.tap(find.textContaining('1 supporting transaction'));
     expect(
       path,
       '/search?locked=true&from=2026-09-01&to=2026-09-05&direction=expense&category=category.dining',
@@ -113,7 +113,7 @@ void main() {
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('View transactions'));
+    await tester.tap(find.textContaining('1 supporting transaction'));
     expect(
       path,
       '/search?locked=true&from=2026-09-01&to=2026-09-05&direction=expense',
@@ -139,7 +139,7 @@ void main() {
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('View transactions'));
+    await tester.tap(find.textContaining('1 supporting transaction'));
     expect(
       path,
       '/search?locked=true&from=2026-09-01&to=2026-09-05&direction=expense&ids=large-expense&insightRule=ANL-R024',
@@ -158,6 +158,7 @@ void main() {
           ruleId: 'ANL-R024',
           nameKey: 'analysis.rule.r024.name',
           descriptionKey: 'analysis.rule.r024.description',
+          outputType: InsightOutputType.alert,
           evidence: [
             EvidenceReference(transactionId: TransactionId('support-1')),
           ],
@@ -175,7 +176,7 @@ void main() {
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('View transactions'));
+    await tester.tap(find.textContaining('1 supporting transaction'));
     expect(
       path,
       '/search?locked=true&from=2026-09-01&to=2026-09-05&ids=support-1',
@@ -252,6 +253,7 @@ InsightResult _selectiveOverallInsight({
   ruleId: 'ANL-R024',
   nameKey: 'analysis.rule.r024.name',
   descriptionKey: 'analysis.rule.r024.description',
+  outputType: InsightOutputType.alert,
   evidence: evidence,
   supportingMetrics: const [selectiveMarker],
   filters: const [
@@ -268,6 +270,7 @@ InsightResult _insight({
   required String ruleId,
   required String nameKey,
   required String descriptionKey,
+  InsightOutputType outputType = InsightOutputType.pattern,
   List<EvidenceReference> evidence = const [],
   List<AnalysisFilter> filters = const [],
   List<String> supportingMetrics = const [],
@@ -308,7 +311,7 @@ InsightResult _insight({
     generatedAt: DateTime.utc(2026, 9, 5),
   );
   return InsightResult(
-    outputType: InsightOutputType.pattern,
+    outputType: outputType,
     rule: rule,
     context: context,
     finding: finding,
