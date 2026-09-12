@@ -113,10 +113,10 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('500 USD'), findsOneWidget);
+    expect(find.text('500.00 USD'), findsOneWidget);
     expect(find.text('↔'), findsOneWidget);
     expect(find.text('vs'), findsNothing);
-    expect(find.text('-250 USD'), findsOneWidget);
+    expect(find.text('-250.00 USD'), findsOneWidget);
     expect(find.byIcon(Icons.trending_down), findsNothing);
     expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
     expect(find.textContaining('2026-09-01 – 2026-09-10'), findsOneWidget);
