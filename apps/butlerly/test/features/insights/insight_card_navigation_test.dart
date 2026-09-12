@@ -8,7 +8,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('only View Transactions triggers insight drill-down', (tester) async {
+  testWidgets('only supporting-transactions action triggers insight drill-down', (
+    tester,
+  ) async {
     final rule = AnalysisRuleDefinition(
       identity: RuleIdentity('ANL-R020'),
       version: RuleVersion('1.5.0'),
@@ -111,7 +113,7 @@ void main() {
 
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('View transactions'));
+    await tester.tap(find.text('View 1 supporting transaction'));
     expect(
       navigation,
       '/search?locked=true&from=2026-09-01&to=2026-09-05',
