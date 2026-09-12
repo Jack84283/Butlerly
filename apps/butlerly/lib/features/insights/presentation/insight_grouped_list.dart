@@ -4,6 +4,7 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
+import 'package:butlerly/features/insights/presentation/insight_group_visualization.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -21,7 +22,10 @@ enum InsightPresentationGroup {
 
 InsightPresentationGroup insightPresentationGroup(InsightResult insight) =>
     switch (insight.rule.grouping) {
-      RuleGrouping.transaction => InsightPresentationGroup.unusual,
+      RuleGrouping.transaction
+          when insight.presentation.semanticType == InsightSemanticType.attention =>
+        InsightPresentationGroup.unusual,
+      RuleGrouping.transaction => InsightPresentationGroup.other,
       RuleGrouping.category => InsightPresentationGroup.category,
       RuleGrouping.subcategory => InsightPresentationGroup.subcategory,
       RuleGrouping.tag => InsightPresentationGroup.tag,
@@ -40,12 +44,14 @@ class InsightGroupedList extends StatelessWidget {
   const InsightGroupedList({
     super.key,
     required this.results,
+    this.visualizationResults = const [],
     required this.masterData,
     required this.canViewTransactions,
     required this.onViewTransactions,
   });
 
   final List<InsightResult> results;
+  final List<InsightResult> visualizationResults;
   final TransactionMasterData masterData;
   final bool Function(InsightResult) canViewTransactions;
   final ValueChanged<InsightResult> onViewTransactions;
@@ -56,6 +62,20 @@ class InsightGroupedList extends StatelessWidget {
     for (final result in results) {
       if (result.outputType == InsightOutputType.dataQuality) continue;
       grouped.putIfAbsent(insightPresentationGroup(result), () => []).add(result);
+    }
+
+    final groupedVisualizations =
+        <InsightPresentationGroup, List<InsightResult>>{};
+    for (final result in visualizationResults) {
+      if (result.outputType == InsightOutputType.dataQuality) continue;
+      final type = result.presentation.visualizationType;
+      if (type != InsightVisualizationType.bar &&
+          type != InsightVisualizationType.trend) {
+        continue;
+      }
+      groupedVisualizations
+          .putIfAbsent(insightPresentationGroup(result), () => [])
+          .add(result);
     }
 
     const order = [
@@ -74,6 +94,12 @@ class InsightGroupedList extends StatelessWidget {
         for (final group in order)
           if (grouped[group] case final items? when items.isNotEmpty) ...[
             ButlerlySectionHeader(title: _groupTitle(context, group, items)),
+            if (groupedVisualizations[group] case final chartResults?
+                when chartResults.isNotEmpty)
+              InsightGroupVisualizations(
+                results: chartResults,
+                masterData: masterData,
+              ),
             ButlerlyCard(
               color: Theme.of(context).scaffoldBackgroundColor,
               child: Column(
@@ -271,7 +297,7 @@ String _groupTitle(
   InsightPresentationGroup.subcategory => context.l10n.text('subcategories'),
   InsightPresentationGroup.tag => context.l10n.text('tags'),
   InsightPresentationGroup.merchant => context.l10n.text('merchant'),
-  InsightPresentationGroup.paymentSource => context.l10n.text('paymentSource'),
+  InsightPresentationGroup.paymentSource => context.l10n.text('paymentSources'),
   InsightPresentationGroup.other when insightGroupIsPositiveOnly(items) =>
     context.l10n.text('insightsPositiveChanges'),
   InsightPresentationGroup.other => context.l10n.text('otherInsights'),
@@ -332,7 +358,7 @@ String _drillDownLabel(BuildContext context, InsightResult insight) {
   InsightSemanticType semanticType,
 ) => switch (semanticType) {
   InsightSemanticType.positive => (
-    icon: Icons.trending_down,
+    icon: Icons.check_circle_outline,
     color: context.colors.success,
   ),
   InsightSemanticType.attention => (
