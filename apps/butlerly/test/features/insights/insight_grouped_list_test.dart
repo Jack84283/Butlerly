@@ -114,10 +114,11 @@ InsightResult _insight(
     ),
     grouping: grouping,
     baseline: RuleBaseline.previousEquivalentPeriod,
+    condition: const RuleCondition(operator: 'always'),
     severity: RuleSeverity.info,
     definitionHash: RuleDefinitionHash('9' * 64),
     surface: AnalysisSurface.insights,
-    presentation: InsightPresentationMetadata(
+    presentation: InsightPresentation(
       semanticType: semanticType,
       visualizationType: InsightVisualizationType.none,
       primaryMetric: InsightPrimaryMetric.amount,
