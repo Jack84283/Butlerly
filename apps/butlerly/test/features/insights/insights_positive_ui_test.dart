@@ -152,6 +152,7 @@ void main() {
       ),
       grouping: RuleGrouping.category,
       baseline: RuleBaseline.previousEquivalentPeriod,
+      condition: const RuleCondition(operator: 'always'),
       severity: RuleSeverity.info,
       definitionHash: RuleDefinitionHash('8' * 64),
       surface: AnalysisSurface.insights,
