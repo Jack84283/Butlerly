@@ -52,16 +52,28 @@ void main() {
     );
   });
 
-  test('puts unusually large purchase in its own section', () {
+  test('derives unusually large purchase section from rule semantics', () {
     expect(
       insightPresentationGroup(
         _insight(
           RuleGrouping.transaction,
-          ruleId: 'ANL-R025',
+          operation: RuleOperation.maximum,
+          visualizationType: InsightVisualizationType.comparison,
           semanticType: InsightSemanticType.attention,
         ),
       ),
       InsightPresentationGroup.largePurchase,
+    );
+    expect(
+      insightPresentationGroup(
+        _insight(
+          RuleGrouping.transaction,
+          operation: RuleOperation.sum,
+          visualizationType: InsightVisualizationType.comparison,
+          semanticType: InsightSemanticType.attention,
+        ),
+      ),
+      InsightPresentationGroup.unusual,
     );
   });
 
@@ -98,8 +110,9 @@ void main() {
 
 InsightResult _insight(
   RuleGrouping grouping, {
-  String ruleId = 'ANL-R999',
   InsightSemanticType semanticType = InsightSemanticType.neutral,
+  RuleOperation operation = RuleOperation.sum,
+  InsightVisualizationType visualizationType = InsightVisualizationType.none,
 }) {
   final context = AnalysisContext(
     period: AnalysisPeriod(
@@ -112,7 +125,7 @@ InsightResult _insight(
     baseCurrency: CurrencyCode('USD'),
   );
   final rule = AnalysisRuleDefinition(
-    identity: RuleIdentity(ruleId),
+    identity: RuleIdentity('ANL-R999'),
     version: RuleVersion('1.0.0'),
     schemaVersion: '1.0.0',
     type: AnalysisRuleType.insight,
@@ -121,8 +134,8 @@ InsightResult _insight(
     enabled: true,
     status: AnalysisRuleStatus.active,
     period: 'selected_period',
-    measure: const RuleMeasure(
-      operation: RuleOperation.sum,
+    measure: RuleMeasure(
+      operation: operation,
       field: 'amount',
       currencyBasis: CurrencyBasis.baseCurrency,
     ),
@@ -134,7 +147,7 @@ InsightResult _insight(
     surface: AnalysisSurface.insights,
     presentation: InsightPresentation(
       semanticType: semanticType,
-      visualizationType: InsightVisualizationType.none,
+      visualizationType: visualizationType,
       primaryMetric: InsightPrimaryMetric.amount,
     ),
   );
