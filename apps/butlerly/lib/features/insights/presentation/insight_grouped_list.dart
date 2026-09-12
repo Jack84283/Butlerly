@@ -28,6 +28,12 @@ InsightPresentationGroup insightPresentationGroup(InsightResult insight) =>
       _ => InsightPresentationGroup.other,
     };
 
+bool insightGroupIsPositiveOnly(List<InsightResult> items) =>
+    items.isNotEmpty &&
+    items.every(
+      (item) => item.presentation.semanticType == InsightSemanticType.positive,
+    );
+
 class InsightGroupedList extends StatelessWidget {
   const InsightGroupedList({
     super.key,
@@ -64,7 +70,7 @@ class InsightGroupedList extends StatelessWidget {
       children: [
         for (final group in order)
           if (grouped[group] case final items? when items.isNotEmpty) ...[
-            ButlerlySectionHeader(title: _groupTitle(context, group)),
+            ButlerlySectionHeader(title: _groupTitle(context, group, items)),
             ButlerlyCard(
               color: Theme.of(context).scaffoldBackgroundColor,
               child: Column(
@@ -102,7 +108,10 @@ class _InsightItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final semantic = _semanticPresentation(context, insight.presentation.semanticType);
+    final semantic = _semanticPresentation(
+      context,
+      insight.presentation.semanticType,
+    );
     final identity = _identityLabel(context, insight, masterData);
     final current = _formattedValue(context, insight, insight.currentValue);
     final baseline = _formattedValue(context, insight, insight.baselineValue);
@@ -226,7 +235,8 @@ class _IdentityIcon extends StatelessWidget {
       InsightPresentationGroup.unusual => Icons.priority_high_rounded,
       InsightPresentationGroup.merchant => Icons.storefront_outlined,
       InsightPresentationGroup.paymentSource => Icons.credit_card_outlined,
-      InsightPresentationGroup.category || InsightPresentationGroup.subcategory =>
+      InsightPresentationGroup.category ||
+      InsightPresentationGroup.subcategory =>
         Icons.category_outlined,
       InsightPresentationGroup.other => Icons.insights_outlined,
     };
@@ -247,15 +257,20 @@ String? _categoryIconId(InsightResult insight, TransactionMasterData masterData)
   };
 }
 
-String _groupTitle(BuildContext context, InsightPresentationGroup group) =>
-    switch (group) {
-      InsightPresentationGroup.unusual => context.l10n.text('needsAttention'),
-      InsightPresentationGroup.category => context.l10n.text('categories'),
-      InsightPresentationGroup.subcategory => context.l10n.text('subcategories'),
-      InsightPresentationGroup.merchant => context.l10n.text('merchant'),
-      InsightPresentationGroup.paymentSource => context.l10n.text('paymentSource'),
-      InsightPresentationGroup.other => context.l10n.text('otherInsights'),
-    };
+String _groupTitle(
+  BuildContext context,
+  InsightPresentationGroup group,
+  List<InsightResult> items,
+) => switch (group) {
+  InsightPresentationGroup.unusual => context.l10n.text('needsAttention'),
+  InsightPresentationGroup.category => context.l10n.text('categories'),
+  InsightPresentationGroup.subcategory => context.l10n.text('subcategories'),
+  InsightPresentationGroup.merchant => context.l10n.text('merchant'),
+  InsightPresentationGroup.paymentSource => context.l10n.text('paymentSource'),
+  InsightPresentationGroup.other when insightGroupIsPositiveOnly(items) =>
+    context.l10n.text('insightsPositiveChanges'),
+  InsightPresentationGroup.other => context.l10n.text('otherInsights'),
+};
 
 String? _identityLabel(
   BuildContext context,
