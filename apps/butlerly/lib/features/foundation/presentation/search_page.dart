@@ -15,12 +15,65 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 
+const _selectiveConditionEvidenceMarker = 'conditionEvidence:selective';
+
+final class InsightDrillDownRefreshDecision {
+  const InsightDrillDownRefreshDecision({
+    required this.forceNoResults,
+    required this.transactionIds,
+  });
+
+  final bool forceNoResults;
+  final List<String>? transactionIds;
+}
+
+InsightDrillDownRefreshDecision resolveInsightDrillDownRefresh(
+  InsightsEvaluation evaluation, {
+  required String ruleId,
+  String? dimension,
+}) {
+  InsightResult? refreshed;
+  for (final insight in evaluation.activeFindings) {
+    if (insight.rule.identity.value == ruleId && insight.dimension == dimension) {
+      refreshed = insight;
+      break;
+    }
+  }
+  if (refreshed == null) {
+    return const InsightDrillDownRefreshDecision(
+      forceNoResults: true,
+      transactionIds: null,
+    );
+  }
+
+  final remainsSelective = refreshed.finding?.supportingMetrics.contains(
+        _selectiveConditionEvidenceMarker,
+      ) ??
+      false;
+  if (!remainsSelective) {
+    return const InsightDrillDownRefreshDecision(
+      forceNoResults: false,
+      transactionIds: null,
+    );
+  }
+
+  final transactionIds = refreshed.evidence
+      .map((evidence) => evidence.transactionId.value)
+      .toList(growable: false);
+  return InsightDrillDownRefreshDecision(
+    forceNoResults: transactionIds.isEmpty,
+    transactionIds: transactionIds,
+  );
+}
+
 class SearchPage extends StatefulWidget {
   const SearchPage({
     this.initialFrom,
     this.initialTo,
     this.initialQuery,
     this.readOnly = false,
+    this.insightRuleId,
+    this.insightDimension,
     super.key,
   });
 
@@ -28,6 +81,8 @@ class SearchPage extends StatefulWidget {
   final DateTime? initialTo;
   final ListTransactionsQuery? initialQuery;
   final bool readOnly;
+  final String? insightRuleId;
+  final String? insightDimension;
 
   @override
   State<SearchPage> createState() => _SearchPageState();
@@ -44,6 +99,7 @@ class _SearchPageState extends State<SearchPage>
   TransactionStatus? _status;
   bool? _needsReview;
   bool _uncategorized = false;
+  bool _forceNoResults = false;
   DateTime? _from;
   DateTime? _to;
   Future<List<TransactionDto>>? _results;
@@ -58,6 +114,9 @@ class _SearchPageState extends State<SearchPage>
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
       : null;
+
+  bool get _retriesInsightDrillDown =>
+      widget.readOnly && widget.insightRuleId != null;
 
   @override
   void initState() {
@@ -118,6 +177,7 @@ class _SearchPageState extends State<SearchPage>
   }
 
   Future<List<TransactionDto>> _search() async {
+    if (_forceNoResults) return const [];
     final finance = _finance;
     if (finance == null) return const [];
     final result = await finance.listTransactions(
@@ -209,6 +269,7 @@ class _SearchPageState extends State<SearchPage>
       _status = null;
       _needsReview = null;
       _uncategorized = false;
+      _forceNoResults = false;
       _from = null;
       _to = null;
     });
@@ -220,21 +281,61 @@ class _SearchPageState extends State<SearchPage>
     _clearFilters();
   }
 
+  Future<void> _refreshInsightEvidence() async {
+    final ruleId = widget.insightRuleId;
+    final from = _from;
+    final to = _to;
+    if (ruleId == null || from == null || to == null) return;
+
+    final calculateInsights = _finance?.calculateInsights;
+    if (calculateInsights == null) {
+      throw StateError('Insight analysis is unavailable.');
+    }
+    final contextResult = await calculateInsights.contextForDates(
+      startDate: _searchDate(from),
+      endDate: _searchDate(to),
+    );
+    if (contextResult is! ApplicationSuccess<AnalysisContext>) {
+      throw StateError('Unable to resolve Insight drill-down period.');
+    }
+    final evaluationResult = await calculateInsights.call(contextResult.value);
+    if (evaluationResult is! ApplicationSuccess<InsightsEvaluation>) {
+      throw StateError('Unable to refresh Insight drill-down.');
+    }
+
+    final decision = resolveInsightDrillDownRefresh(
+      evaluationResult.value,
+      ruleId: ruleId,
+      dimension: widget.insightDimension,
+    );
+    _forceNoResults = decision.forceNoResults;
+    _transactionIds = decision.transactionIds;
+  }
+
   Future<void> _refreshAfterTransactionChange() async {
     _searchDebounce?.cancel();
     _searchGeneration++;
     final languageCode =
         _loadedLanguageCode ?? Localizations.localeOf(context).languageCode;
-    final results = _search();
-    final masterData = _loadMasterData(languageCode);
-    final currencies = _loadCurrencies();
-    setState(() {
-      _results = results;
-      _masterData = masterData;
-      _currencies = currencies;
-    });
-    _updatePresentation(masterData, languageCode);
-    await Future.wait([results, masterData, currencies]);
+    try {
+      await _refreshInsightEvidence();
+      final results = _search();
+      final masterData = _loadMasterData(languageCode);
+      final currencies = _loadCurrencies();
+      if (!mounted) return;
+      setState(() {
+        _results = results;
+        _masterData = masterData;
+        _currencies = currencies;
+      });
+      _updatePresentation(masterData, languageCode);
+      await Future.wait([results, masterData, currencies]);
+    } on Object catch (error, stackTrace) {
+      if (!mounted) return;
+      setState(() {
+        _results = Future<List<TransactionDto>>.error(error, stackTrace);
+      });
+    }
   }
 
   int get _activeFilterCount => [
@@ -480,7 +581,9 @@ class _SearchPageState extends State<SearchPage>
                   message: context.l10n.text('tryAgain'),
                   preserved: context.l10n.text('dataPreserved'),
                   actionLabel: context.l10n.text('tryAgain'),
-                  onAction: _submit,
+                  onAction: _retriesInsightDrillDown
+                      ? _refreshAfterTransactionChange
+                      : _submit,
                 );
               }
               final values = snapshot.requireData;

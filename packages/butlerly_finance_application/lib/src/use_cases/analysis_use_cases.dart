@@ -159,10 +159,20 @@ final class CalculateAnalysisOverview {
       definitions: definitions,
       availableResults: available,
     );
+    // Only persistent user intent may carry forward into a fresh calculation.
+    // Superseded belongs to an older calculation and must never suppress a
+    // newly calculated active finding with the same identity.
     final persistedLifecycles = findings == null
         ? const <String, FindingLifecycle>{}
         : {
-            for (final finding in await findings!.list())
+            for (final finding in [
+              ...await findings!.list(
+                lifecycle: FindingLifecycle.acknowledged,
+              ),
+              ...await findings!.list(
+                lifecycle: FindingLifecycle.dismissed,
+              ),
+            ])
               finding.id: finding.lifecycle,
           };
     final executionResults = calculatedResults

@@ -153,6 +153,8 @@ final appRouter = GoRouter(
                 )
               : null,
           readOnly: locked,
+          insightRuleId: parameters['insightRule'],
+          insightDimension: parameters['insightDimension'],
         );
       },
     ),

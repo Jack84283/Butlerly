@@ -118,7 +118,7 @@ void main() {
     await tester.tap(find.text('View transactions'));
     expect(
       path,
-      '/search?locked=true&from=2026-09-01&to=2026-09-05&ids=support-1%2Csupport-2',
+      '/search?locked=true&from=2026-09-01&to=2026-09-05',
     );
   });
 

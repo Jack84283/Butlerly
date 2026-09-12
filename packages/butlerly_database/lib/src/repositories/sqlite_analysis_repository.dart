@@ -533,8 +533,8 @@ final class SqliteAnalysisFindingRepository
       'generated_at': finding.generatedAt.toUtc().toIso8601String(),
       'updated_at': DateTime.now().toUtc().toIso8601String(),
     };
-    // Recalculation may update the derived payload, but viewing Analysis must
-    // never reactivate a finding that the user acknowledged or dismissed.
+    // Recalculation updates derived payload and may reactivate a superseded
+    // finding. User-owned lifecycle states remain sticky across recalculation.
     await database.connection.rawInsert(
       '''
       INSERT INTO analysis_findings
@@ -549,6 +549,11 @@ final class SqliteAnalysisFindingRepository
         period_end = excluded.period_end,
         time_zone_id = excluded.time_zone_id,
         payload = excluded.payload,
+        lifecycle = CASE
+          WHEN analysis_findings.lifecycle IN ('acknowledged', 'dismissed')
+            THEN analysis_findings.lifecycle
+          ELSE excluded.lifecycle
+        END,
         generated_at = excluded.generated_at,
         updated_at = excluded.updated_at
       ''',
