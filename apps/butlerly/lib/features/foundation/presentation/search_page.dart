@@ -315,10 +315,10 @@ class _SearchPageState extends State<SearchPage>
   Future<void> _refreshAfterTransactionChange() async {
     _searchDebounce?.cancel();
     _searchGeneration++;
+    final languageCode =
+        _loadedLanguageCode ?? Localizations.localeOf(context).languageCode;
     try {
       await _refreshInsightEvidence();
-      final languageCode =
-          _loadedLanguageCode ?? Localizations.localeOf(context).languageCode;
       final results = _search();
       final masterData = _loadMasterData(languageCode);
       final currencies = _loadCurrencies();
