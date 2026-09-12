@@ -198,16 +198,7 @@ final class CalculateAnalysisOverview {
     if (findings != null || results != null) {
       for (final result in executionResults) {
         final finding = result.finding;
-        if (finding != null && findings != null) {
-          await findings!.save(finding);
-          if (finding.lifecycle == FindingLifecycle.active) {
-            await findings!.updateLifecycle(
-              finding.id,
-              FindingLifecycle.active,
-              DateTime.now().toUtc(),
-            );
-          }
-        }
+        if (finding != null && findings != null) await findings!.save(finding);
       }
       if (results != null) {
         final materialized = executionResults.where(
