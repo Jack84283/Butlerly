@@ -103,7 +103,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Other insights'), findsOneWidget);
+    expect(find.text('Positive changes'), findsOneWidget);
+    expect(find.text('Other insights'), findsNothing);
     expect(find.text('Savings improved'), findsOneWidget);
     expect(
       find.text(
