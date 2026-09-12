@@ -279,22 +279,23 @@ class _SearchPageState extends State<SearchPage>
   }
 
   Future<void> _refreshInsightEvidence() async {
-    final finance = _finance;
     final ruleId = widget.insightRuleId;
     final from = _from;
     final to = _to;
-    if (finance == null || ruleId == null || from == null || to == null) return;
+    if (ruleId == null || from == null || to == null) return;
 
-    final contextResult = await finance.calculateInsights.contextForDates(
+    final calculateInsights = _finance?.calculateInsights;
+    if (calculateInsights == null) {
+      throw StateError('Insight analysis is unavailable.');
+    }
+    final contextResult = await calculateInsights.contextForDates(
       startDate: _searchDate(from),
       endDate: _searchDate(to),
     );
     if (contextResult is! ApplicationSuccess<AnalysisContext>) {
       throw StateError('Unable to resolve Insight drill-down period.');
     }
-    final evaluationResult = await finance.calculateInsights.call(
-      contextResult.value,
-    );
+    final evaluationResult = await calculateInsights.call(contextResult.value);
     if (evaluationResult is! ApplicationSuccess<InsightsEvaluation>) {
       throw StateError('Unable to refresh Insight drill-down.');
     }
