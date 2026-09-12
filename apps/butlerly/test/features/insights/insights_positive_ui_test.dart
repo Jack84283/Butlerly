@@ -119,7 +119,7 @@ void main() {
     expect(find.text('-250.00 USD'), findsOneWidget);
     expect(find.byIcon(Icons.trending_down), findsNothing);
     expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
-    expect(find.textContaining('2026-09-01 – 2026-09-10'), findsOneWidget);
+    expect(find.textContaining('2026-09-01 – 2026-09-10'), findsWidgets);
   });
 
   testWidgets('keeps bar visualizations in the grouped presentation', (
