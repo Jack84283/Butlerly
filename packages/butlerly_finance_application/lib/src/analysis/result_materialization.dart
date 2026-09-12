@@ -111,6 +111,10 @@ List<AnalysisRuleResult> materializeResults(
         result.comparison == null) {
       continue;
     }
+    if (result.rule.resultPersistence == ResultPersistencePolicy.finding &&
+        result.finding == null) {
+      continue;
+    }
     groups.putIfAbsent(result.rule.identity.value, () => []).add(result);
   }
   return [

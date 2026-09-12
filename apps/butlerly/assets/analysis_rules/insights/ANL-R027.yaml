@@ -1,34 +1,33 @@
 schemaVersion: "1.0.0"
-ruleId: ANL-R021
-ruleVersion: "1.3.0"
+ruleId: ANL-R027
+ruleVersion: "1.0.0"
 enabled: true
 surface: insights
 type: insight
-nameKey: analysis.rule.r021.name
-descriptionKey: analysis.rule.r021.description
+nameKey: analysis.rule.r027.name
+descriptionKey: analysis.rule.r027.description
 period: selected_period
 baseline: previousEquivalentPeriod
 presentation:
-  semantic_type: attention
+  semantic_type: positive
   visualization_type: comparison
   primary_metric: amount
 measure:
   operation: sum
   field: amount
   currencyBasis: baseCurrency
-grouping: category
 filters:
   direction: expense
 condition:
   operator: all
   children:
     - operator: gt
-      left: currentTotal
+      left: baselineTotal
       value: "0"
-    - operator: gteMultiplier
-      left: currentTotal
-      right: baselineTotal
-      value: "1.20"
+    - operator: lte
+      left: percentageChange
+      value: "-20"
+severity: info
 result:
   persistence: finding
   refresh: onInvalidation

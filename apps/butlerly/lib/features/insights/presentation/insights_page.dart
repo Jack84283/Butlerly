@@ -9,6 +9,9 @@ import 'package:butlerly/features/analysis/presentation/widgets/analysis_custom_
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_period_selector.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
+import 'package:butlerly/features/insights/presentation/insight_group_visualization.dart';
+import 'package:butlerly/features/insights/presentation/insight_presentation.dart';
+import 'package:butlerly/features/insights/presentation/insight_visualization.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -282,12 +285,41 @@ class _InsightsContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activeFindings = evaluation.activeFindings;
-    final alerts = activeFindings
-        .where((result) => result.outputType == InsightOutputType.alert)
+    List<InsightResult> semanticResults(
+      Iterable<InsightResult> source,
+      InsightSemanticType semanticType,
+    ) => source
+        .where(
+          (result) =>
+              result.outputType != InsightOutputType.dataQuality &&
+              result.presentation.semanticType == semanticType,
+        )
         .toList(growable: false);
-    final patterns = activeFindings
-        .where((result) => result.outputType == InsightOutputType.pattern)
-        .toList(growable: false);
+
+    final alerts = semanticResults(
+      activeFindings,
+      InsightSemanticType.attention,
+    );
+    final positives = semanticResults(
+      activeFindings,
+      InsightSemanticType.positive,
+    );
+    final patterns = semanticResults(
+      activeFindings,
+      InsightSemanticType.neutral,
+    );
+    final attentionChartResults = semanticResults(
+      evaluation.results,
+      InsightSemanticType.attention,
+    );
+    final positiveChartResults = semanticResults(
+      evaluation.results,
+      InsightSemanticType.positive,
+    );
+    final neutralChartResults = semanticResults(
+      evaluation.results,
+      InsightSemanticType.neutral,
+    );
     return ButlerlyPage(
       title: context.l10n.text('insights'),
       subtitle: analysisPeriodDescription(
@@ -327,7 +359,33 @@ class _InsightsContent extends StatelessWidget {
         ],
         if (alerts.isNotEmpty) ...[
           ButlerlySectionHeader(title: context.l10n.text('needsAttention')),
+          InsightGroupVisualizations(
+            results: attentionChartResults,
+            masterData: masterData,
+          ),
           for (final insight in alerts)
+            Padding(
+              padding: const EdgeInsets.only(
+                bottom: ButlerlySpacing.standard,
+              ),
+              child: _InsightCard(
+                insight: insight,
+                masterData: masterData,
+                onViewTransactions: _hasPreciseDrillDown(insight)
+                    ? () => onViewTransactions(insight)
+                    : null,
+              ),
+            ),
+        ],
+        if (positives.isNotEmpty) ...[
+          ButlerlySectionHeader(
+            title: context.l10n.text('insightsPositiveChanges'),
+          ),
+          InsightGroupVisualizations(
+            results: positiveChartResults,
+            masterData: masterData,
+          ),
+          for (final insight in positives)
             Padding(
               padding: const EdgeInsets.only(
                 bottom: ButlerlySpacing.standard,
@@ -343,6 +401,10 @@ class _InsightsContent extends StatelessWidget {
         ],
         if (patterns.isNotEmpty) ...[
           ButlerlySectionHeader(title: context.l10n.text('otherInsights')),
+          InsightGroupVisualizations(
+            results: neutralChartResults,
+            masterData: masterData,
+          ),
           for (final insight in patterns)
             Padding(
               padding: const EdgeInsets.only(
@@ -467,7 +529,8 @@ class _InsightCard extends StatelessWidget {
         ? null
         : '${localizedDecimal(context, value.toString())}${isShare ? '%' : ' $currency'}'
               .trim();
-    final severity = _severityPresentation(context, insight.finding!.severity);
+    final presentation = insight.presentation;
+    final semantic = _semanticPresentation(context, presentation.semanticType);
     final values = <Widget>[
       _InsightValue(
         label: context.l10n.text('currentPeriod'),
@@ -498,18 +561,24 @@ class _InsightCard extends StatelessWidget {
             '${insight.context.period.startDate} – ${insight.context.period.endDate}',
       ),
     ].whereType<_InsightValue>().where((value) => value.value != null).toList();
+    final currentAmount = insight.currentValue == null
+        ? null
+        : double.tryParse(insight.currentValue.toString());
+    final baselineAmount = insight.baselineValue == null
+        ? null
+        : double.tryParse(insight.baselineValue.toString());
     return ButlerlyCard(
       semanticLabel: [
         context.l10n.text(rule.nameKey),
         ...?dimensionLabel == null ? null : [dimensionLabel],
       ].join(': '),
-      onTap: onViewTransactions,
+      color: semantic.color.withValues(alpha: 0.06),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(severity.icon, color: severity.color),
+              Icon(semantic.icon, color: semantic.color),
               const SizedBox(width: ButlerlySpacing.small),
               Expanded(
                 child: Text(
@@ -521,6 +590,22 @@ class _InsightCard extends StatelessWidget {
           ),
           const SizedBox(height: ButlerlySpacing.small),
           Text(context.l10n.text(rule.descriptionKey)),
+          if (presentation.visualizationType ==
+                  InsightVisualizationType.comparison &&
+              currentAmount != null &&
+              baselineAmount != null) ...[
+            const SizedBox(height: ButlerlySpacing.standard),
+            InsightComparisonVisualization(
+              currentLabel: context.l10n.text('currentPeriod'),
+              baselineLabel: context.l10n.text('previousPeriod'),
+              currentValue: currentAmount,
+              baselineValue: baselineAmount,
+              currentValueLabel: amount(insight.currentValue)!,
+              baselineValueLabel: amount(insight.baselineValue)!,
+              semanticColor: semantic.color,
+              signed: rule.measure.operation == RuleOperation.difference,
+            ),
+          ],
           const SizedBox(height: ButlerlySpacing.standard),
           ...values,
           if (insight.evidence.isNotEmpty) ...[
@@ -573,23 +658,22 @@ class _InsightValue extends StatelessWidget {
   );
 }
 
-({IconData icon, Color color}) _severityPresentation(
+({IconData icon, Color color}) _semanticPresentation(
   BuildContext context,
-  RuleSeverity severity,
-) => switch (severity) {
-  RuleSeverity.critical => (
-    icon: Icons.error_outline,
-    color: context.colors.error,
+  InsightSemanticType semanticType,
+) => switch (semanticType) {
+  InsightSemanticType.positive => (
+    icon: Icons.check_circle_outline,
+    color: context.colors.success,
   ),
-  RuleSeverity.warning => (
-    icon: Icons.warning_amber_outlined,
-    color: context.colors.warning,
-  ),
-  RuleSeverity.attention => (
+  InsightSemanticType.attention => (
     icon: Icons.priority_high,
     color: context.colors.warning,
   ),
-  RuleSeverity.info => (icon: Icons.info_outline, color: context.colors.info),
+  InsightSemanticType.neutral => (
+    icon: Icons.info_outline,
+    color: context.colors.info,
+  ),
 };
 
 String _qualityIssueText(BuildContext context, String code) => switch (code) {
@@ -633,7 +717,9 @@ String? _dimensionLabel(
     RuleGrouping.merchant =>
       masterData.merchantName(dimension) ??
           context.l10n.text('unavailableMerchant'),
-    RuleGrouping.paymentSource => context.l10n.text('unavailablePaymentSource'),
+    RuleGrouping.paymentSource =>
+      masterData.paymentSourceName(dimension) ??
+          context.l10n.text('unavailablePaymentSource'),
     RuleGrouping.tag =>
       masterData.tagName(dimension) ?? context.l10n.text('unavailableTag'),
     _ => null,

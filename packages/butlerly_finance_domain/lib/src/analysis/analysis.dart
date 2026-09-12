@@ -76,6 +76,24 @@ enum AnalysisDataAvailability { sufficient, empty, insufficient }
 /// property of a rule, rather than a presentation decision based on a rule ID.
 enum InsightOutputType { summary, pattern, alert, dataQuality, unresolved }
 
+enum InsightSemanticType { positive, attention, neutral }
+
+enum InsightVisualizationType { none, comparison, bar, pie, trend }
+
+enum InsightPrimaryMetric { amount, percentage, count, share }
+
+final class InsightPresentation {
+  const InsightPresentation({
+    required this.semanticType,
+    required this.visualizationType,
+    required this.primaryMetric,
+  });
+
+  final InsightSemanticType semanticType;
+  final InsightVisualizationType visualizationType;
+  final InsightPrimaryMetric primaryMetric;
+}
+
 enum AnalysisFilterKind {
   direction,
   category,
@@ -350,6 +368,7 @@ final class AnalysisRuleDefinition {
     this.refreshPolicy = RefreshPolicy.onInvalidation,
     this.role,
     this.outputType = InsightOutputType.pattern,
+    this.presentation,
   });
   final RuleIdentity identity;
   final RuleVersion version;
@@ -374,6 +393,7 @@ final class AnalysisRuleDefinition {
   final RuleDefinitionHash definitionHash;
   final String? role;
   final InsightOutputType outputType;
+  final InsightPresentation? presentation;
 }
 
 final class EvidenceReference {

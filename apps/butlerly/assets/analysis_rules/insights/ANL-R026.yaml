@@ -1,6 +1,6 @@
 schemaVersion: "1.0.0"
 ruleId: ANL-R026
-ruleVersion: "1.1.0"
+ruleVersion: "1.3.0"
 enabled: true
 surface: insights
 type: insight
@@ -10,6 +10,10 @@ period: selected_period
 # Concentration is a current-period structural insight. A category must be
 # eligible even when it did not exist in the previous comparison period.
 baseline: none
+presentation:
+  semantic_type: neutral
+  visualization_type: pie
+  primary_metric: share
 measure:
   operation: share
   field: amount

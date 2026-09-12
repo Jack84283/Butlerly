@@ -184,7 +184,7 @@ result:
             .where((file) => !file.path.endsWith('catalog.yaml'))
             .toList()
           ..sort((a, b) => a.path.compareTo(b.path));
-    expect(files, hasLength(17));
+    expect(files, hasLength(20));
     final ids = <String>{};
     final definitions = <String, dynamic>{};
     for (final file in files) {

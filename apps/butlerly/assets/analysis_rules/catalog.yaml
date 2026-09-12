@@ -22,26 +22,35 @@ rules:
     ruleVersion: "1.1.0"
     file: metrics/ANL-R016.yaml
   - ruleId: ANL-R020
-    ruleVersion: "1.3.0"
+    ruleVersion: "1.5.0"
     file: insights/ANL-R020.yaml
   - ruleId: ANL-R021
-    ruleVersion: "1.1.0"
+    ruleVersion: "1.3.0"
     file: insights/ANL-R021.yaml
   - ruleId: ANL-R022
-    ruleVersion: "1.1.0"
+    ruleVersion: "1.3.0"
     file: insights/ANL-R022.yaml
   - ruleId: ANL-R023
-    ruleVersion: "1.1.0"
+    ruleVersion: "1.3.0"
     file: insights/ANL-R023.yaml
   - ruleId: ANL-R024
-    ruleVersion: "1.1.0"
+    ruleVersion: "1.3.0"
     file: insights/ANL-R024.yaml
   - ruleId: ANL-R025
-    ruleVersion: "1.1.0"
+    ruleVersion: "1.3.0"
     file: insights/ANL-R025.yaml
   - ruleId: ANL-R026
-    ruleVersion: "1.1.0"
+    ruleVersion: "1.3.0"
     file: insights/ANL-R026.yaml
+  - ruleId: ANL-R027
+    ruleVersion: "1.0.0"
+    file: insights/ANL-R027.yaml
+  - ruleId: ANL-R028
+    ruleVersion: "1.0.0"
+    file: insights/ANL-R028.yaml
+  - ruleId: ANL-R029
+    ruleVersion: "1.1.0"
+    file: insights/ANL-R029.yaml
   - ruleId: ANL-R090
     ruleVersion: "1.1.0"
     file: data_quality/ANL-R090.yaml

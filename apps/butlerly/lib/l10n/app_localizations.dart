@@ -111,6 +111,7 @@ class AppLocalizations {
       'homeSubtitle': 'Your private financial record, stored on this device.',
       'needsAttention': 'Needs attention',
       'otherInsights': 'Other insights',
+      'insightsPositiveChanges': 'Positive changes',
       'nothingNeedsAttention': 'Nothing needs attention',
       'nothingNeedsAttentionBody':
           'Incomplete or uncertain records will appear here without being changed automatically.',
@@ -501,6 +502,15 @@ class AppLocalizations {
       'analysis.rule.r026.name': 'Spending concentration',
       'analysis.rule.r026.description':
           'One category represents a materially high share of spending in this period.',
+      'analysis.rule.r027.name': 'Spending decreased',
+      'analysis.rule.r027.description':
+          'You spent at least 20% less than in the previous equivalent period.',
+      'analysis.rule.r028.name': 'Category spending decreased',
+      'analysis.rule.r028.description':
+          'Spending in this category fell by at least 20% from the previous equivalent period.',
+      'analysis.rule.r029.name': 'Savings improved',
+      'analysis.rule.r029.description':
+          'Net savings improved compared with the previous equivalent period.',
       'analysis.rule.r090.name': 'Data quality issues',
       'analysis.rule.r091.name': 'Missing exchange rates',
       'analysis.rule.r092.name': 'Unresolved reconciliation',
@@ -741,6 +751,7 @@ class AppLocalizations {
       'homeSubtitle': '您的私密财务记录存储在此设备上。',
       'needsAttention': '需要处理',
       'otherInsights': '其他洞察',
+      'insightsPositiveChanges': '积极变化',
       'nothingNeedsAttention': '暂无待处理事项',
       'nothingNeedsAttentionBody': '不完整或不确定的记录会显示在这里，系统不会自动修改。',
       'quickActions': '快捷操作',
@@ -1090,6 +1101,12 @@ class AppLocalizations {
       'analysis.rule.r025.description': '某笔购买明显高于可比较的支出基准。',
       'analysis.rule.r026.name': '支出集中度',
       'analysis.rule.r026.description': '某个类别占本期间支出的比例明显偏高。',
+      'analysis.rule.r027.name': '支出下降',
+      'analysis.rule.r027.description': '与上一等效期间相比，你的支出至少下降了 20%。',
+      'analysis.rule.r028.name': '分类支出下降',
+      'analysis.rule.r028.description': '该分类的支出较上一等效期间至少下降了 20%。',
+      'analysis.rule.r029.name': '储蓄改善',
+      'analysis.rule.r029.description': '净储蓄较上一等效期间有所改善。',
       'analysis.rule.r090.name': '数据质量问题',
       'analysis.rule.r091.name': '缺少汇率',
       'analysis.rule.r092.name': '未解决的对账',
@@ -1310,6 +1327,7 @@ class AppLocalizations {
           'Tu registro financiero privado está en este dispositivo.',
       'needsAttention': 'Requiere atención',
       'otherInsights': 'Otras perspectivas',
+      'insightsPositiveChanges': 'Cambios positivos',
       'nothingNeedsAttention': 'Nada requiere atención',
       'nothingNeedsAttentionBody':
           'Los registros inciertos aparecerán aquí sin cambios automáticos.',
@@ -1709,6 +1727,15 @@ class AppLocalizations {
       'analysis.rule.r026.name': 'Concentración del gasto',
       'analysis.rule.r026.description':
           'Una categoría representa una proporción materialmente alta del gasto del período.',
+      'analysis.rule.r027.name': 'El gasto disminuyó',
+      'analysis.rule.r027.description':
+          'Gastaste al menos un 20 % menos que en el período equivalente anterior.',
+      'analysis.rule.r028.name': 'El gasto por categoría disminuyó',
+      'analysis.rule.r028.description':
+          'El gasto en esta categoría bajó al menos un 20 % frente al período equivalente anterior.',
+      'analysis.rule.r029.name': 'El ahorro mejoró',
+      'analysis.rule.r029.description':
+          'El ahorro neto mejoró frente al período equivalente anterior.',
       'analysis.rule.r090.name': 'Problemas de calidad de datos',
       'analysis.rule.r091.name': 'Tipos de cambio ausentes',
       'analysis.rule.r092.name': 'Conciliación sin resolver',

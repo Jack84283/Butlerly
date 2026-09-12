@@ -12,12 +12,14 @@ final class TransactionMasterData {
     this.categoryNames = const {},
     this.categoryParentIds = const {},
     this.tagNames = const {},
+    this.paymentSourceNames = const {},
   });
 
   final Map<String, String> merchantNames;
   final Map<String, String> categoryNames;
   final Map<String, String?> categoryParentIds;
   final Map<String, String> tagNames;
+  final Map<String, String> paymentSourceNames;
 
   String? merchantName(String? id) => id == null ? null : merchantNames[id];
 
@@ -29,6 +31,9 @@ final class TransactionMasterData {
       id == null ? null : categoryParentIds[id];
 
   String? tagName(String id) => tagNames[id];
+
+  String? paymentSourceName(String? id) =>
+      id == null ? null : paymentSourceNames[id];
 
   String? summary(TransactionDto transaction) {
     final labels = <String>[
@@ -50,6 +55,7 @@ final class TransactionMasterData {
     required List<Merchant> merchants,
     required List<Category> categories,
     required List<Tag> tags,
+    List<PaymentSource> paymentSources = const [],
     required Map<String, String> categoryLabels,
     required Map<String, String> tagLabels,
     Map<String, String> englishCategoryLabels = const {},
@@ -74,6 +80,9 @@ final class TransactionMasterData {
             englishTagLabels[value.id.value] ??
             value.name,
     },
+    paymentSourceNames: {
+      for (final value in paymentSources) value.id.value: value.name,
+    },
   );
 
   static Future<TransactionMasterData> load(
@@ -83,6 +92,7 @@ final class TransactionMasterData {
     final merchantsResult = await finance.listMerchants();
     final categoriesResult = await finance.listCategories();
     final tagsResult = await finance.listTags();
+    final paymentSourcesResult = await finance.listPaymentSources();
 
     final merchants = switch (merchantsResult) {
       ApplicationSuccess<List<Merchant>>(:final value) => value,
@@ -95,6 +105,10 @@ final class TransactionMasterData {
     final tags = switch (tagsResult) {
       ApplicationSuccess<List<Tag>>(:final value) => value,
       _ => const <Tag>[],
+    };
+    final paymentSources = switch (paymentSourcesResult) {
+      ApplicationSuccess<List<PaymentSource>>(:final value) => value,
+      _ => const <PaymentSource>[],
     };
     final translations = await Future.wait([
       finance.loadMasterTranslations(
@@ -117,6 +131,7 @@ final class TransactionMasterData {
       merchants: merchants,
       categories: categories,
       tags: tags,
+      paymentSources: paymentSources,
       categoryLabels: labelsAt(0),
       tagLabels: labelsAt(2),
       englishCategoryLabels: labelsAt(1),
@@ -171,11 +186,13 @@ final class TransactionMasterDataProvider {
       ApplicationSuccess<List<T>>(:final value) => value,
       _ => const <Never>[] as List<T>,
     };
+    final paymentSources = valueOf<PaymentSource>(3);
     return TransactionMasterDataSnapshot(
       presentation: TransactionMasterData.fromEntities(
         merchants: valueOf<Merchant>(0),
         categories: valueOf<Category>(1),
         tags: valueOf<Tag>(2),
+        paymentSources: paymentSources,
         categoryLabels: results[4] is ApplicationSuccess<Map<String, String>>
             ? (results[4] as ApplicationSuccess<Map<String, String>>).value
             : const {},
@@ -187,7 +204,7 @@ final class TransactionMasterDataProvider {
       merchants: valueOf<Merchant>(0),
       categories: valueOf<Category>(1),
       tags: valueOf<Tag>(2),
-      paymentSources: valueOf<PaymentSource>(3),
+      paymentSources: paymentSources,
     );
   }
 }

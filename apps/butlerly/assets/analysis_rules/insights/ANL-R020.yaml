@@ -1,6 +1,6 @@
 schemaVersion: "1.0.0"
 ruleId: ANL-R020
-ruleVersion: "1.3.0"
+ruleVersion: "1.5.0"
 enabled: true
 surface: insights
 type: insight
@@ -8,6 +8,10 @@ nameKey: analysis.rule.r020.name
 descriptionKey: analysis.rule.r020.description
 period: selected_period
 baseline: previousEquivalentPeriod
+presentation:
+  semantic_type: attention
+  visualization_type: comparison
+  primary_metric: amount
 measure:
   operation: sum
   field: amount

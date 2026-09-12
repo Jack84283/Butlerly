@@ -378,24 +378,31 @@ final class CalculateInsights {
     AnalysisContext? baselineContext,
   ) {
     final finding = result.finding;
+    final metric = result.metric;
     final comparison = result.comparison;
-    final evidence = finding?.evidence ?? const <EvidenceReference>[];
+    final evidence =
+        finding?.evidence ?? metric?.evidence ?? const <EvidenceReference>[];
     return InsightResult(
       outputType: result.rule.outputType,
       rule: result.rule,
       context: context,
       baselineContext: baselineContext,
       finding: finding,
-      currentValue: finding?.currentValue ?? comparison?.currentValue,
+      currentValue:
+          finding?.currentValue ?? metric?.value ?? comparison?.currentValue,
       baselineValue: finding?.baselineValue ?? comparison?.baselineValue,
       absoluteChange: finding?.absoluteChange ?? comparison?.absoluteChange,
       percentageChange:
           finding?.percentageChange ?? comparison?.percentageChange,
-      currency: context.baseCurrency,
-      dimension: finding?.dimension,
-      impactValue: finding?.impactValue,
+      currency: metric?.currency ?? context.baseCurrency,
+      dimension: finding?.dimension ?? metric?.dimension,
+      impactValue: finding?.impactValue ?? metric?.impactValue,
       evidence: evidence,
-      limitations: [...result.issues, ...?finding?.qualityIssues],
+      limitations: [
+        ...result.issues,
+        ...?metric?.qualityIssues,
+        ...?finding?.qualityIssues,
+      ],
       failure: result.failure,
     );
   }
