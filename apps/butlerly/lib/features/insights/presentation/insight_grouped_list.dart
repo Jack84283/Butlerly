@@ -151,7 +151,7 @@ class _InsightItem extends StatelessWidget {
 
     return Semantics(
       container: true,
-      label: [ruleName, if (identity != null) identity].join(': '),
+      label: [ruleName, ?identity].join(': '),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
