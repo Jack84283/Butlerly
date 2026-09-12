@@ -2,6 +2,8 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
 import 'period_resolver.dart';
 
+const _selectiveConditionEvidenceMarker = 'conditionEvidence:selective';
+
 final class AnalysisRuleEngine {
   const AnalysisRuleEngine({
     this.periodResolver = const AnalysisPeriodResolver(),
@@ -211,7 +213,17 @@ final class AnalysisRuleEngine {
                     dimension: entry.key,
                     currentValues: entry.value,
                   )) {
-                finding = candidate;
+                final conditionEvidence = _conditionEvidence(
+                  rule.condition,
+                  metric.value,
+                  candidate.percentageChange,
+                  candidate.absoluteChange,
+                  rule: rule,
+                  dataset: dataset,
+                  dimension: entry.key,
+                  currentValues: entry.value,
+                );
+                finding = _withConditionEvidence(candidate, conditionEvidence);
               }
             }
             final result = RuleExecutionResult(
@@ -304,6 +316,37 @@ final class AnalysisRuleEngine {
           ),
       ],
       generatedAt: at,
+    );
+  }
+
+  AnalysisFinding _withConditionEvidence(
+    AnalysisFinding finding,
+    _ConditionEvidence conditionEvidence,
+  ) {
+    final evidence = conditionEvidence.values.isEmpty
+        ? finding.evidence
+        : conditionEvidence.values
+              .map((value) => EvidenceReference(transactionId: value.id))
+              .toList(growable: false);
+    return AnalysisFinding(
+      id: finding.id,
+      rule: finding.rule,
+      context: finding.context,
+      severity: finding.severity,
+      lifecycle: finding.lifecycle,
+      currentValue: finding.currentValue,
+      baselineValue: finding.baselineValue,
+      absoluteChange: finding.absoluteChange,
+      percentageChange: finding.percentageChange,
+      dimension: finding.dimension,
+      impactValue: finding.impactValue,
+      supportingMetrics: [
+        ...finding.supportingMetrics,
+        if (conditionEvidence.selective) _selectiveConditionEvidenceMarker,
+      ],
+      evidence: evidence,
+      qualityIssues: finding.qualityIssues,
+      generatedAt: finding.generatedAt,
     );
   }
 
@@ -566,6 +609,114 @@ final class AnalysisRuleEngine {
       'eq' => targetValue == target,
       _ => false,
     };
+  }
+
+  _ConditionEvidence _conditionEvidence(
+    RuleCondition condition,
+    DecimalValue value,
+    DecimalValue? percentageChange,
+    DecimalValue? absoluteChange, {
+    required AnalysisRuleDefinition rule,
+    required AnalysisDataset dataset,
+    required String dimension,
+    required List<AnalysisEconomicTransaction> currentValues,
+  }) {
+    final matches = _conditionMatches(
+      condition,
+      value,
+      percentageChange,
+      absoluteChange,
+      rule: rule,
+      dataset: dataset,
+      dimension: dimension,
+      currentValues: currentValues,
+    );
+    if (!matches) return const _ConditionEvidence([], false);
+
+    if (condition.children.isNotEmpty) {
+      final matchingChildren = condition.children
+          .map(
+            (child) => _conditionEvidence(
+              child,
+              value,
+              percentageChange,
+              absoluteChange,
+              rule: rule,
+              dataset: dataset,
+              dimension: dimension,
+              currentValues: currentValues,
+            ),
+          )
+          .where((evidence) => evidence.values.isNotEmpty)
+          .toList(growable: false);
+      if (matchingChildren.isEmpty) {
+        return _ConditionEvidence(
+          _conditionSelectedCurrentValues(rule, dataset, currentValues),
+          false,
+        );
+      }
+      final combined = _mergeConditionEvidence(matchingChildren);
+      final selective = condition.operator == 'any'
+          ? matchingChildren.every((evidence) => evidence.selective)
+          : matchingChildren.any((evidence) => evidence.selective);
+      return _ConditionEvidence(combined, selective);
+    }
+
+    final selected = _conditionSelectedCurrentValues(
+      rule,
+      dataset,
+      currentValues,
+    );
+    if (selected.isEmpty) return const _ConditionEvidence([], false);
+    final operation = switch (condition.left) {
+      'currentMaximum' => RuleOperation.maximum,
+      'currentMinimum' => RuleOperation.minimum,
+      _ => null,
+    };
+    if (operation == null) return _ConditionEvidence(selected, false);
+    final amounts = selected
+        .map(
+          (item) => rule.measure.currencyBasis == CurrencyBasis.baseCurrency
+              ? (item.normalizedMoney ?? item.money).amount
+              : item.money.amount,
+        )
+        .toList(growable: false);
+    final target = operation == RuleOperation.maximum
+        ? amounts.reduce((a, b) => a.compareTo(b) >= 0 ? a : b)
+        : amounts.reduce((a, b) => a.compareTo(b) <= 0 ? a : b);
+    return _ConditionEvidence(
+      [
+        for (var index = 0; index < selected.length; index++)
+          if (amounts[index] == target) selected[index],
+      ],
+      true,
+    );
+  }
+
+  List<AnalysisEconomicTransaction> _conditionSelectedCurrentValues(
+    AnalysisRuleDefinition rule,
+    AnalysisDataset dataset,
+    List<AnalysisEconomicTransaction> values,
+  ) => values
+      .where((value) => _matchesFilters(value, rule.measure.filters))
+      .where(
+        (value) => rule.measure.currencyBasis == CurrencyBasis.baseCurrency
+            ? value.normalizedMoney != null ||
+                  value.money.currency == dataset.context.baseCurrency
+            : true,
+      )
+      .toList(growable: false);
+
+  List<AnalysisEconomicTransaction> _mergeConditionEvidence(
+    List<_ConditionEvidence> groups,
+  ) {
+    final byId = <String, AnalysisEconomicTransaction>{};
+    for (final group in groups) {
+      for (final value in group.values) {
+        byId.putIfAbsent(value.id.value, () => value);
+      }
+    }
+    return byId.values.toList(growable: false);
   }
 
   DecimalValue? _conditionOperand(
@@ -1162,8 +1313,7 @@ final class AnalysisRuleEngine {
       coefficient:
           income.value.coefficient *
               BigInt.from(10).pow(scale - income.value.scale) -
-          expense.value.coefficient *
-              BigInt.from(10).pow(scale - expense.value.scale),
+          expense.value.coefficient * BigInt.from(10).pow(scale - expense.value.scale),
       scale: scale,
     );
   }
@@ -1214,6 +1364,12 @@ extension on DecimalValue {
       scale: scale + precision,
     );
   }
+}
+
+final class _ConditionEvidence {
+  const _ConditionEvidence(this.values, this.selective);
+  final List<AnalysisEconomicTransaction> values;
+  final bool selective;
 }
 
 final class _RuleOrdering {
