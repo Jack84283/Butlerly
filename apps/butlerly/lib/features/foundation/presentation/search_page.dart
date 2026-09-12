@@ -17,6 +17,55 @@ import 'package:flutter/material.dart';
 
 const _selectiveConditionEvidenceMarker = 'conditionEvidence:selective';
 
+final class InsightDrillDownRefreshDecision {
+  const InsightDrillDownRefreshDecision({
+    required this.forceNoResults,
+    required this.transactionIds,
+  });
+
+  final bool forceNoResults;
+  final List<String>? transactionIds;
+}
+
+InsightDrillDownRefreshDecision resolveInsightDrillDownRefresh(
+  InsightsEvaluation evaluation, {
+  required String ruleId,
+  String? dimension,
+}) {
+  InsightResult? refreshed;
+  for (final insight in evaluation.activeFindings) {
+    if (insight.rule.identity.value == ruleId && insight.dimension == dimension) {
+      refreshed = insight;
+      break;
+    }
+  }
+  if (refreshed == null) {
+    return const InsightDrillDownRefreshDecision(
+      forceNoResults: true,
+      transactionIds: null,
+    );
+  }
+
+  final remainsSelective = refreshed.finding?.supportingMetrics.contains(
+        _selectiveConditionEvidenceMarker,
+      ) ??
+      false;
+  if (!remainsSelective) {
+    return const InsightDrillDownRefreshDecision(
+      forceNoResults: false,
+      transactionIds: null,
+    );
+  }
+
+  final transactionIds = refreshed.evidence
+      .map((evidence) => evidence.transactionId.value)
+      .toList(growable: false);
+  return InsightDrillDownRefreshDecision(
+    forceNoResults: transactionIds.isEmpty,
+    transactionIds: transactionIds,
+  );
+}
+
 class SearchPage extends StatefulWidget {
   const SearchPage({
     this.initialFrom,
@@ -250,33 +299,13 @@ class _SearchPageState extends State<SearchPage>
       throw StateError('Unable to refresh Insight drill-down.');
     }
 
-    InsightResult? refreshed;
-    for (final insight in evaluationResult.value.activeFindings) {
-      if (insight.rule.identity.value == ruleId &&
-          insight.dimension == widget.insightDimension) {
-        refreshed = insight;
-        break;
-      }
-    }
-    if (refreshed == null) {
-      _forceNoResults = true;
-      _transactionIds = null;
-      return;
-    }
-
-    final remainsSelective = refreshed.finding?.supportingMetrics.contains(
-          _selectiveConditionEvidenceMarker,
-        ) ??
-        false;
-    _forceNoResults = false;
-    _transactionIds = remainsSelective
-        ? refreshed.evidence
-              .map((evidence) => evidence.transactionId.value)
-              .toList(growable: false)
-        : null;
-    if (remainsSelective && (_transactionIds?.isEmpty ?? true)) {
-      _forceNoResults = true;
-    }
+    final decision = resolveInsightDrillDownRefresh(
+      evaluationResult.value,
+      ruleId: ruleId,
+      dimension: widget.insightDimension,
+    );
+    _forceNoResults = decision.forceNoResults;
+    _transactionIds = decision.transactionIds;
   }
 
   Future<void> _refreshAfterTransactionChange() async {
