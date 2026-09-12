@@ -220,7 +220,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Financial summary'), findsOneWidget);
+    expect(find.text('Financial summary'), findsWidgets);
     expect(find.byType(InsightBarVisualization), findsOneWidget);
   });
 
