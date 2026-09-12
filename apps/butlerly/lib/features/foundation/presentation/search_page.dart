@@ -15,12 +15,16 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 
+const _selectiveConditionEvidenceMarker = 'conditionEvidence:selective';
+
 class SearchPage extends StatefulWidget {
   const SearchPage({
     this.initialFrom,
     this.initialTo,
     this.initialQuery,
     this.readOnly = false,
+    this.insightRuleId,
+    this.insightDimension,
     super.key,
   });
 
@@ -28,6 +32,8 @@ class SearchPage extends StatefulWidget {
   final DateTime? initialTo;
   final ListTransactionsQuery? initialQuery;
   final bool readOnly;
+  final String? insightRuleId;
+  final String? insightDimension;
 
   @override
   State<SearchPage> createState() => _SearchPageState();
@@ -44,6 +50,7 @@ class _SearchPageState extends State<SearchPage>
   TransactionStatus? _status;
   bool? _needsReview;
   bool _uncategorized = false;
+  bool _forceNoResults = false;
   DateTime? _from;
   DateTime? _to;
   Future<List<TransactionDto>>? _results;
@@ -118,6 +125,7 @@ class _SearchPageState extends State<SearchPage>
   }
 
   Future<List<TransactionDto>> _search() async {
+    if (_forceNoResults) return const [];
     final finance = _finance;
     if (finance == null) return const [];
     final result = await finance.listTransactions(
@@ -209,6 +217,7 @@ class _SearchPageState extends State<SearchPage>
       _status = null;
       _needsReview = null;
       _uncategorized = false;
+      _forceNoResults = false;
       _from = null;
       _to = null;
     });
@@ -220,9 +229,64 @@ class _SearchPageState extends State<SearchPage>
     _clearFilters();
   }
 
+  Future<void> _refreshInsightEvidence() async {
+    final finance = _finance;
+    final ruleId = widget.insightRuleId;
+    final from = _from;
+    final to = _to;
+    if (finance == null || ruleId == null || from == null || to == null) return;
+
+    final contextResult = await finance.calculateInsights.contextForDates(
+      startDate: _searchDate(from),
+      endDate: _searchDate(to),
+    );
+    if (contextResult is! ApplicationSuccess<AnalysisContext>) {
+      _forceNoResults = true;
+      _transactionIds = null;
+      return;
+    }
+    final evaluationResult = await finance.calculateInsights.call(
+      contextResult.value,
+    );
+    if (evaluationResult is! ApplicationSuccess<InsightsEvaluation>) {
+      _forceNoResults = true;
+      _transactionIds = null;
+      return;
+    }
+
+    InsightResult? refreshed;
+    for (final insight in evaluationResult.value.activeFindings) {
+      if (insight.rule.identity.value == ruleId &&
+          insight.dimension == widget.insightDimension) {
+        refreshed = insight;
+        break;
+      }
+    }
+    if (refreshed == null) {
+      _forceNoResults = true;
+      _transactionIds = null;
+      return;
+    }
+
+    final remainsSelective = refreshed.finding?.supportingMetrics.contains(
+          _selectiveConditionEvidenceMarker,
+        ) ??
+        false;
+    _forceNoResults = false;
+    _transactionIds = remainsSelective
+        ? refreshed.evidence
+              .map((evidence) => evidence.transactionId.value)
+              .toList(growable: false)
+        : null;
+    if (remainsSelective && (_transactionIds?.isEmpty ?? true)) {
+      _forceNoResults = true;
+    }
+  }
+
   Future<void> _refreshAfterTransactionChange() async {
     _searchDebounce?.cancel();
     _searchGeneration++;
+    await _refreshInsightEvidence();
     final languageCode =
         _loadedLanguageCode ?? Localizations.localeOf(context).languageCode;
     final results = _search();
