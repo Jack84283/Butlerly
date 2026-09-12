@@ -5,8 +5,26 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('maps rule grouping to presentation section without semantic coupling', () {
     expect(
-      insightPresentationGroup(_insight(RuleGrouping.transaction)),
+      insightPresentationGroup(
+        _insight(
+          RuleGrouping.transaction,
+          semanticType: InsightSemanticType.attention,
+        ),
+      ),
       InsightPresentationGroup.unusual,
+    );
+    expect(
+      insightPresentationGroup(_insight(RuleGrouping.transaction)),
+      InsightPresentationGroup.other,
+    );
+    expect(
+      insightPresentationGroup(
+        _insight(
+          RuleGrouping.transaction,
+          semanticType: InsightSemanticType.positive,
+        ),
+      ),
+      InsightPresentationGroup.other,
     );
     expect(
       insightPresentationGroup(_insight(RuleGrouping.category)),
