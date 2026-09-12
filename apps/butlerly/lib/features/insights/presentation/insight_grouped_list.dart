@@ -181,6 +181,7 @@ List<_PresentedInsight> _consolidateEquivalentComparisons(
           (candidate) =>
               candidate.outputType == InsightOutputType.alert &&
               !escalations.contains(candidate) &&
+              _declaredEscalationMatches(pattern, candidate) &&
               _sameComparison(pattern, candidate),
         )
         .firstOrNull;
@@ -198,6 +199,21 @@ List<_PresentedInsight> _consolidateEquivalentComparisons(
           escalation: escalationByPattern[result],
         ),
   ];
+}
+
+bool _declaredEscalationMatches(InsightResult pattern, InsightResult alert) {
+  const comparisonPrefix = 'comparison:';
+  const escalationPrefix = 'escalation:';
+  final patternRole = pattern.rule.role;
+  final alertRole = alert.rule.role;
+  if (patternRole == null ||
+      alertRole == null ||
+      !patternRole.startsWith(comparisonPrefix) ||
+      !alertRole.startsWith(escalationPrefix)) {
+    return false;
+  }
+  return patternRole.substring(comparisonPrefix.length) ==
+      alertRole.substring(escalationPrefix.length);
 }
 
 bool _sameComparison(InsightResult pattern, InsightResult alert) {
@@ -229,13 +245,14 @@ bool _sameComparison(InsightResult pattern, InsightResult alert) {
 
 bool _sameFilters(List<AnalysisFilter> left, List<AnalysisFilter> right) {
   if (left.length != right.length) return false;
-  for (var index = 0; index < left.length; index++) {
-    if (left[index].kind != right[index].kind ||
-        !_sameStrings(left[index].values, right[index].values)) {
-      return false;
-    }
-  }
-  return true;
+  final leftSignatures = left.map(_filterSignature).toList()..sort();
+  final rightSignatures = right.map(_filterSignature).toList()..sort();
+  return _sameStrings(leftSignatures, rightSignatures);
+}
+
+String _filterSignature(AnalysisFilter filter) {
+  final values = [...filter.values]..sort();
+  return '${filter.kind.name}:${values.join('|')}';
 }
 
 bool _sameStrings(List<String> left, List<String> right) {
@@ -247,7 +264,17 @@ bool _sameStrings(List<String> left, List<String> right) {
 }
 
 bool _sameDecimal(DecimalValue? left, DecimalValue? right) =>
-    left?.toString() == right?.toString();
+    _normalizedDecimal(left) == _normalizedDecimal(right);
+
+String? _normalizedDecimal(DecimalValue? value) {
+  if (value == null) return null;
+  var text = value.toString();
+  if (text.contains('.')) {
+    text = text.replaceFirst(RegExp(r'0+$'), '');
+    text = text.replaceFirst(RegExp(r'\.$'), '');
+  }
+  return text == '-0' ? '0' : text;
+}
 
 bool _sameOptionalContext(AnalysisContext? left, AnalysisContext? right) {
   if (left == null || right == null) return left == right;
@@ -415,9 +442,11 @@ class _InsightItem extends StatelessWidget {
                     label: Text(
                       drillDownInsight.evidence.isEmpty
                           ? context.l10n.text('viewTransactions')
-                          : _viewSupportingTransactionsLabel(
-                              context,
-                              drillDownInsight.evidence.length,
+                          : context.l10n.text(
+                              drillDownInsight.evidence.length == 1
+                                  ? 'viewOneSupportingTransaction'
+                                  : 'viewManySupportingTransactions',
+                              {'count': '${drillDownInsight.evidence.length}'},
                             ),
                     ),
                   ),
@@ -511,9 +540,17 @@ String? _groupSubtitle(
   BuildContext context,
   InsightPresentationGroup group,
   List<_PresentedInsight> items,
-) => _groupOwnsRuleCopy(group, items)
-    ? context.l10n.text(items.first.primary.rule.descriptionKey)
-    : null;
+) {
+  if (!_groupOwnsRuleCopy(group, items)) return null;
+  final rule = items.first.primary.rule;
+  return switch (rule.role) {
+    'categoryMovement' => context.l10n.text('insightsCategoryMovementSection'),
+    'subcategoryMovement' =>
+      context.l10n.text('insightsSubcategoryMovementSection'),
+    'merchantMovement' => context.l10n.text('insightsMerchantMovementSection'),
+    _ => context.l10n.text(rule.descriptionKey),
+  };
+}
 
 bool _groupOwnsRuleCopy(
   InsightPresentationGroup group,
@@ -531,7 +568,8 @@ bool _groupOwnsRuleCopy(
   return items.every(
     (item) =>
         item.primary.rule.nameKey == first.nameKey &&
-        item.primary.rule.descriptionKey == first.descriptionKey,
+        item.primary.rule.descriptionKey == first.descriptionKey &&
+        item.primary.rule.role == first.role,
   );
 }
 
@@ -581,12 +619,6 @@ String? _changeDirection(InsightResult insight) {
   final change = double.tryParse(insight.absoluteChange?.toString() ?? '');
   if (change == null || change == 0) return null;
   return change > 0 ? '↑' : '↓';
-}
-
-String _viewSupportingTransactionsLabel(BuildContext context, int count) {
-  final l10n = context.l10n;
-  return '${l10n.text('viewTransactions')} '
-      '(${l10n.text('supportingTransactions', {'count': '$count'})})';
 }
 
 ({IconData icon, Color color}) _semanticPresentation(
