@@ -1,5 +1,4 @@
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
-import 'package:butlerly/features/insights/presentation/insight_visualization.dart';
 import 'package:butlerly/features/insights/presentation/insights_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -9,7 +8,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('shows dedicated positive copy for savings improvement', (
+  testWidgets('shows positive savings result in grouped presentation', (
     tester,
   ) async {
     final rule = AnalysisRuleDefinition(
@@ -104,7 +103,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Positive changes'), findsOneWidget);
+    expect(find.text('Other insights'), findsOneWidget);
     expect(find.text('Savings improved'), findsOneWidget);
     expect(
       find.text(
@@ -112,11 +111,9 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.byType(InsightComparisonVisualization), findsOneWidget);
-    final visualization = tester.widget<InsightComparisonVisualization>(
-      find.byType(InsightComparisonVisualization),
-    );
-    expect(visualization.signed, isTrue);
+    expect(find.text('500 USD'), findsOneWidget);
+    expect(find.text('-250 USD'), findsOneWidget);
+    expect(find.textContaining('2026-09-01 – 2026-09-10'), findsOneWidget);
   });
 
   testWidgets('positive insight copy is localized in Chinese', (tester) async {
