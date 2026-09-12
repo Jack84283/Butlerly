@@ -17,6 +17,10 @@ void main() {
       InsightPresentationGroup.subcategory,
     );
     expect(
+      insightPresentationGroup(_insight(RuleGrouping.tag)),
+      InsightPresentationGroup.tag,
+    );
+    expect(
       insightPresentationGroup(_insight(RuleGrouping.merchant)),
       InsightPresentationGroup.merchant,
     );
