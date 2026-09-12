@@ -220,7 +220,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Analysis summary'), findsOneWidget);
+    expect(find.text('Financial summary'), findsOneWidget);
     expect(find.byType(InsightBarVisualization), findsOneWidget);
   });
 
@@ -246,6 +246,11 @@ void main() {
   test('new insight strings participate in localization completeness checks', () {
     const keys = {
       'insightsPositiveChanges',
+      'insightsCategoryMovementSection',
+      'insightsSubcategoryMovementSection',
+      'insightsMerchantMovementSection',
+      'viewOneSupportingTransaction',
+      'viewManySupportingTransactions',
       'analysis.rule.r027.name',
       'analysis.rule.r027.description',
       'analysis.rule.r028.name',
