@@ -55,7 +55,7 @@ void main() {
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('View 1 supporting transactions'));
+    await tester.tap(find.textContaining('1 supporting transaction'));
     expect(
       path,
       '/search?locked=true&from=2026-09-01&to=2026-09-05&ids=support-1',
@@ -87,7 +87,7 @@ void main() {
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('View 1 supporting transactions'));
+    await tester.tap(find.textContaining('1 supporting transaction'));
     expect(
       path,
       '/search?locked=true&from=2026-09-01&to=2026-09-05&direction=expense&category=category.dining',
@@ -113,7 +113,7 @@ void main() {
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('View 1 supporting transactions'));
+    await tester.tap(find.textContaining('1 supporting transaction'));
     expect(
       path,
       '/search?locked=true&from=2026-09-01&to=2026-09-05&direction=expense',
@@ -139,7 +139,7 @@ void main() {
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('View 1 supporting transactions'));
+    await tester.tap(find.textContaining('1 supporting transaction'));
     expect(
       path,
       '/search?locked=true&from=2026-09-01&to=2026-09-05&direction=expense&ids=large-expense&insightRule=ANL-R024',
@@ -176,7 +176,7 @@ void main() {
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('View 1 supporting transactions'));
+    await tester.tap(find.textContaining('1 supporting transaction'));
     expect(
       path,
       '/search?locked=true&from=2026-09-01&to=2026-09-05&ids=support-1',
