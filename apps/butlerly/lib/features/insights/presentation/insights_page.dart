@@ -19,6 +19,8 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+const _selectiveConditionEvidenceMarker = 'conditionEvidence:selective';
+
 class InsightsPage extends StatefulWidget {
   const InsightsPage({
     super.key,
@@ -616,7 +618,14 @@ bool _hasPreciseDrillDown(InsightResult insight) {
   return insight.evidence.isNotEmpty;
 }
 
+bool _usesSelectiveConditionEvidence(InsightResult insight) =>
+    insight.finding?.supportingMetrics.contains(
+      _selectiveConditionEvidenceMarker,
+    ) ??
+    false;
+
 bool _canUseCriteriaDrillDown(InsightResult insight) {
+  if (_usesSelectiveConditionEvidence(insight)) return false;
   final dimension = insight.dimension;
   final groupingSupported = switch (insight.rule.grouping) {
     RuleGrouping.none => true,
@@ -644,19 +653,31 @@ Map<String, String> _drillDownQueryParameters(InsightResult insight) {
     'from': period.startDate,
     'to': period.endDate,
   };
+
+  String? singleFilter(AnalysisFilterKind kind) => insight.rule.filters
+      .where((filter) => filter.kind == kind)
+      .map((filter) => filter.values.single)
+      .firstOrNull;
+
+  final direction = singleFilter(AnalysisFilterKind.direction);
+  final currency = singleFilter(AnalysisFilterKind.currency);
+  if (direction != null) parameters['direction'] = direction;
+  if (currency != null) parameters['currency'] = currency;
+
   if (!_canUseCriteriaDrillDown(insight)) {
     if (insight.evidence.isNotEmpty) {
       parameters['ids'] = insight.evidence
           .map((evidence) => evidence.transactionId.value)
           .join(',');
     }
+    if (_usesSelectiveConditionEvidence(insight)) {
+      parameters['insightRule'] = insight.rule.identity.value;
+      if (insight.dimension != null) {
+        parameters['insightDimension'] = insight.dimension!;
+      }
+    }
     return parameters;
   }
-
-  String? singleFilter(AnalysisFilterKind kind) => insight.rule.filters
-      .where((filter) => filter.kind == kind)
-      .map((filter) => filter.values.single)
-      .firstOrNull;
 
   final dimension = insight.dimension;
   final isUncategorized =
@@ -668,8 +689,6 @@ Map<String, String> _drillDownQueryParameters(InsightResult insight) {
   final paymentSource = insight.rule.grouping == RuleGrouping.paymentSource
       ? dimension
       : singleFilter(AnalysisFilterKind.paymentSource);
-  final direction = singleFilter(AnalysisFilterKind.direction);
-  final currency = singleFilter(AnalysisFilterKind.currency);
 
   if (isUncategorized) {
     parameters['uncategorized'] = 'true';
@@ -677,8 +696,6 @@ Map<String, String> _drillDownQueryParameters(InsightResult insight) {
     parameters['category'] = category;
   }
   if (paymentSource != null) parameters['paymentSource'] = paymentSource;
-  if (direction != null) parameters['direction'] = direction;
-  if (currency != null) parameters['currency'] = currency;
   return parameters;
 }
 
