@@ -146,6 +146,42 @@ void main() {
     );
   });
 
+  testWidgets('multi-value filters fall back to exact evidence without throwing', (
+    tester,
+  ) async {
+    String? path;
+    await tester.pumpWidget(
+      app(
+        _insight(
+          grouping: RuleGrouping.none,
+          dimension: null,
+          ruleId: 'ANL-R024',
+          nameKey: 'analysis.rule.r024.name',
+          descriptionKey: 'analysis.rule.r024.description',
+          evidence: [
+            EvidenceReference(transactionId: TransactionId('support-1')),
+          ],
+          filters: const [
+            AnalysisFilter(
+              kind: AnalysisFilterKind.direction,
+              values: ['expense', 'income'],
+            ),
+          ],
+        ),
+        onNavigationRequested: (value) => path = value,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('View transactions'));
+    expect(
+      path,
+      '/search?locked=true&from=2026-09-01&to=2026-09-05&ids=support-1',
+    );
+  });
+
   testWidgets('offers precise uncategorized category drill-down', (
     tester,
   ) async {
