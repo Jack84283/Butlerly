@@ -28,10 +28,10 @@ void main() {
 
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('View 1 supporting transactions'));
+    await tester.tap(find.textContaining('1 supporting transaction'));
     expect(
       navigation,
-      '/search?locked=true&from=2026-09-01&to=2026-09-05',
+      '/search?locked=true&from=2026-09-01&to=2026-09-05&direction=expense',
     );
   });
 
@@ -61,12 +61,12 @@ void main() {
 
       expect(find.text('Spending compared with baseline'), findsOneWidget);
       expect(find.text('Material spending alert'), findsOneWidget);
-      expect(find.text('View 1 supporting transactions'), findsOneWidget);
+      expect(find.textContaining('1 supporting transaction'), findsOneWidget);
 
-      await tester.tap(find.text('View 1 supporting transactions'));
+      await tester.tap(find.textContaining('1 supporting transaction'));
       expect(
         navigation,
-        '/search?locked=true&from=2026-09-01&to=2026-09-05&ids=large-expense&insightRule=ANL-R024',
+        '/search?locked=true&from=2026-09-01&to=2026-09-05&direction=expense&ids=large-expense&insightRule=ANL-R024',
       );
     },
   );
