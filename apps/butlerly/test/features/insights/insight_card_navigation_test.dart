@@ -12,15 +12,10 @@ void main() {
     tester,
   ) async {
     final context = _context();
-    final rule = _rule('ANL-R020');
+    final rule = _rule('ANL-R020', InsightOutputType.pattern);
     final finding = _finding(rule, context, evidenceIds: const ['support-1']);
     final evaluation = _evaluation([
-      _result(
-        rule,
-        context,
-        finding,
-        outputType: InsightOutputType.pattern,
-      ),
+      _result(rule, context, finding),
     ]);
     String? navigation;
 
@@ -44,8 +39,8 @@ void main() {
     'equivalent pattern and alert consolidate while preserving escalation',
     (tester) async {
       final context = _context();
-      final baselineRule = _rule('ANL-R020');
-      final materialRule = _rule('ANL-R024');
+      final baselineRule = _rule('ANL-R020', InsightOutputType.pattern);
+      final materialRule = _rule('ANL-R024', InsightOutputType.alert);
       final baselineFinding = _finding(baselineRule, context);
       final materialFinding = _finding(
         materialRule,
@@ -54,18 +49,8 @@ void main() {
         supportingMetrics: const ['conditionEvidence:selective'],
       );
       final evaluation = _evaluation([
-        _result(
-          baselineRule,
-          context,
-          baselineFinding,
-          outputType: InsightOutputType.pattern,
-        ),
-        _result(
-          materialRule,
-          context,
-          materialFinding,
-          outputType: InsightOutputType.alert,
-        ),
+        _result(baselineRule, context, baselineFinding),
+        _result(materialRule, context, materialFinding),
       ]);
       String? navigation;
 
@@ -88,8 +73,8 @@ void main() {
 
   testWidgets('non-equivalent alert is not consolidated', (tester) async {
     final context = _context();
-    final baselineRule = _rule('ANL-R020');
-    final materialRule = _rule('ANL-R024');
+    final baselineRule = _rule('ANL-R020', InsightOutputType.pattern);
+    final materialRule = _rule('ANL-R024', InsightOutputType.alert);
     final baselineFinding = _finding(baselineRule, context);
     final materialFinding = _finding(
       materialRule,
@@ -99,18 +84,8 @@ void main() {
       percentageChange: '100',
     );
     final evaluation = _evaluation([
-      _result(
-        baselineRule,
-        context,
-        baselineFinding,
-        outputType: InsightOutputType.pattern,
-      ),
-      _result(
-        materialRule,
-        context,
-        materialFinding,
-        outputType: InsightOutputType.alert,
-      ),
+      _result(baselineRule, context, baselineFinding),
+      _result(materialRule, context, materialFinding),
     ]);
 
     await tester.pumpWidget(_app(evaluation, (_) {}));
@@ -154,43 +129,47 @@ AnalysisContext _context() => AnalysisContext(
   baseCurrency: CurrencyCode('USD'),
 );
 
-AnalysisRuleDefinition _rule(String id) => AnalysisRuleDefinition(
-  identity: RuleIdentity(id),
-  version: RuleVersion('1.5.0'),
-  schemaVersion: '1.0.0',
-  type: AnalysisRuleType.insight,
-  nameKey: id == 'ANL-R024'
-      ? 'analysis.rule.r024.name'
-      : 'analysis.rule.r020.name',
-  descriptionKey: id == 'ANL-R024'
-      ? 'analysis.rule.r024.description'
-      : 'analysis.rule.r020.description',
-  enabled: true,
-  status: AnalysisRuleStatus.active,
-  period: 'selected_period',
-  measure: const RuleMeasure(
-    operation: RuleOperation.sum,
-    field: 'amount',
-    currencyBasis: CurrencyBasis.baseCurrency,
-  ),
-  grouping: RuleGrouping.none,
-  baseline: RuleBaseline.previousEquivalentPeriod,
-  condition: const RuleCondition(operator: 'none'),
-  severity: RuleSeverity.attention,
-  definitionHash: RuleDefinitionHash(id == 'ANL-R024' ? 'b' * 64 : 'a' * 64),
-  surface: AnalysisSurface.insights,
-  filters: const [
-    AnalysisFilter(
-      kind: AnalysisFilterKind.direction,
-      values: ['expense'],
-    ),
-  ],
-  presentation: const InsightPresentation(
-    semanticType: InsightSemanticType.attention,
-    visualizationType: InsightVisualizationType.comparison,
-    primaryMetric: InsightPrimaryMetric.amount,
-  ),
-);
+AnalysisRuleDefinition _rule(String id, InsightOutputType outputType) =>
+    AnalysisRuleDefinition(
+      identity: RuleIdentity(id),
+      version: RuleVersion('1.5.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.insight,
+      nameKey: id == 'ANL-R024'
+          ? 'analysis.rule.r024.name'
+          : 'analysis.rule.r020.name',
+      descriptionKey: id == 'ANL-R024'
+          ? 'analysis.rule.r024.description'
+          : 'analysis.rule.r020.description',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(
+        operation: RuleOperation.sum,
+        field: 'amount',
+        currencyBasis: CurrencyBasis.baseCurrency,
+      ),
+      grouping: RuleGrouping.none,
+      baseline: RuleBaseline.previousEquivalentPeriod,
+      condition: const RuleCondition(operator: 'none'),
+      severity: RuleSeverity.attention,
+      definitionHash: RuleDefinitionHash(
+        id == 'ANL-R024' ? 'b' * 64 : 'a' * 64,
+      ),
+      surface: AnalysisSurface.insights,
+      filters: const [
+        AnalysisFilter(
+          kind: AnalysisFilterKind.direction,
+          values: ['expense'],
+        ),
+      ],
+      outputType: outputType,
+      presentation: const InsightPresentation(
+        semanticType: InsightSemanticType.attention,
+        visualizationType: InsightVisualizationType.comparison,
+        primaryMetric: InsightPrimaryMetric.amount,
+      ),
+    );
 
 AnalysisFinding _finding(
   AnalysisRuleDefinition rule,
@@ -223,10 +202,9 @@ AnalysisFinding _finding(
 InsightResult _result(
   AnalysisRuleDefinition rule,
   AnalysisContext context,
-  AnalysisFinding finding, {
-  required InsightOutputType outputType,
-}) => InsightResult(
-  outputType: outputType,
+  AnalysisFinding finding,
+) => InsightResult(
+  outputType: rule.outputType,
   rule: rule,
   context: context,
   finding: finding,
