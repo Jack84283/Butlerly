@@ -230,30 +230,9 @@ class _InsightsPageState extends State<InsightsPage> {
               : _selectPeriod(value),
           onViewTransactions: (insight) {
             if (!_hasPreciseDrillDown(insight)) return;
-            final period = insight.context.period;
-            final dimension = insight.dimension;
-            final isUncategorized =
-                insight.rule.grouping == RuleGrouping.category &&
-                dimension == 'uncategorized';
             final path = Uri(
               path: '/search',
-              queryParameters: {
-                'locked': 'true',
-                'from': period.startDate,
-                'to': period.endDate,
-                if (insight.evidence.isNotEmpty)
-                  'ids': insight.evidence
-                      .map((evidence) => evidence.transactionId.value)
-                      .join(','),
-                if (dimension != null &&
-                    !isUncategorized &&
-                    insight.rule.grouping == RuleGrouping.category)
-                  'category': dimension,
-                if (isUncategorized) 'uncategorized': 'true',
-                if (dimension != null &&
-                    insight.rule.grouping == RuleGrouping.paymentSource)
-                  'paymentSource': dimension,
-              },
+              queryParameters: _drillDownQueryParameters(insight),
             ).toString();
             if (widget.onNavigationRequested case final callback?) {
               callback(path);
@@ -633,14 +612,74 @@ class _InsightCard extends StatelessWidget {
 }
 
 bool _hasPreciseDrillDown(InsightResult insight) {
-  if (insight.evidence.isNotEmpty) return true;
+  if (_canUseCriteriaDrillDown(insight)) return true;
+  return insight.evidence.isNotEmpty;
+}
+
+bool _canUseCriteriaDrillDown(InsightResult insight) {
   final dimension = insight.dimension;
-  return switch (insight.rule.grouping) {
+  final groupingSupported = switch (insight.rule.grouping) {
     RuleGrouping.none => true,
     RuleGrouping.category => dimension != null,
     RuleGrouping.paymentSource => dimension != null,
     _ => false,
   };
+  if (!groupingSupported) return false;
+  return insight.rule.filters.every(
+    (filter) =>
+        filter.values.length == 1 &&
+        const {
+          AnalysisFilterKind.direction,
+          AnalysisFilterKind.category,
+          AnalysisFilterKind.paymentSource,
+          AnalysisFilterKind.currency,
+        }.contains(filter.kind),
+  );
+}
+
+Map<String, String> _drillDownQueryParameters(InsightResult insight) {
+  final period = insight.context.period;
+  final parameters = <String, String>{
+    'locked': 'true',
+    'from': period.startDate,
+    'to': period.endDate,
+  };
+  if (!_canUseCriteriaDrillDown(insight)) {
+    if (insight.evidence.isNotEmpty) {
+      parameters['ids'] = insight.evidence
+          .map((evidence) => evidence.transactionId.value)
+          .join(',');
+    }
+    return parameters;
+  }
+
+  String? singleFilter(AnalysisFilterKind kind) => insight.rule.filters
+      .where((filter) => filter.kind == kind)
+      .map((filter) => filter.values.single)
+      .firstOrNull;
+
+  final dimension = insight.dimension;
+  final isUncategorized =
+      insight.rule.grouping == RuleGrouping.category &&
+      dimension == 'uncategorized';
+  final category = insight.rule.grouping == RuleGrouping.category
+      ? dimension
+      : singleFilter(AnalysisFilterKind.category);
+  final paymentSource = insight.rule.grouping == RuleGrouping.paymentSource
+      ? dimension
+      : singleFilter(AnalysisFilterKind.paymentSource);
+  final direction = singleFilter(AnalysisFilterKind.direction);
+  final currency = singleFilter(AnalysisFilterKind.currency);
+
+  if (isUncategorized) {
+    parameters['uncategorized'] = 'true';
+  } else if (category != null) {
+    parameters['category'] = category;
+  }
+  if (paymentSource != null) parameters['paymentSource'] = paymentSource;
+  if (direction != null) parameters['direction'] = direction;
+  if (currency != null) parameters['currency'] = currency;
+  return parameters;
 }
 
 class _InsightValue extends StatelessWidget {
