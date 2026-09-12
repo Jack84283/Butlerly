@@ -22,12 +22,7 @@ enum InsightPresentationGroup {
 
 InsightPresentationGroup insightPresentationGroup(InsightResult insight) =>
     switch (insight.rule.grouping) {
-      RuleGrouping.transaction
-          when insight.outputType == InsightOutputType.pattern &&
-              insight.rule.measure.operation == RuleOperation.maximum &&
-              insight.presentation.visualizationType ==
-                  InsightVisualizationType.comparison &&
-              insight.presentation.primaryMetric == InsightPrimaryMetric.amount =>
+      RuleGrouping.transaction when insight.rule.role == 'largePurchase' =>
         InsightPresentationGroup.largePurchase,
       RuleGrouping.transaction
           when insight.presentation.semanticType == InsightSemanticType.attention =>
@@ -590,13 +585,8 @@ String? _changeDirection(InsightResult insight) {
 
 String _viewSupportingTransactionsLabel(BuildContext context, int count) {
   final l10n = context.l10n;
-  final action = l10n.text('viewTransactions');
-  final noun = l10n.text('transactions');
-  final supporting = l10n.text('supportingTransactions', {'count': '$count'});
-  return action.replaceFirst(
-    RegExp(RegExp.escape(noun), caseSensitive: false),
-    supporting,
-  );
+  return '${l10n.text('viewTransactions')} '
+      '(${l10n.text('supportingTransactions', {'count': '$count'})})';
 }
 
 ({IconData icon, Color color}) _semanticPresentation(
