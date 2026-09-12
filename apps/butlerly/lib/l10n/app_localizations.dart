@@ -112,6 +112,12 @@ class AppLocalizations {
       'needsAttention': 'Needs attention',
       'otherInsights': 'Other insights',
       'insightsPositiveChanges': 'Positive changes',
+      'insightsCategoryMovementSection':
+          'Categories changed materially compared with the equivalent period.',
+      'insightsSubcategoryMovementSection':
+          'Subcategories changed materially compared with the equivalent period.',
+      'insightsMerchantMovementSection':
+          'Merchants changed materially compared with the equivalent period.',
       'nothingNeedsAttention': 'Nothing needs attention',
       'nothingNeedsAttentionBody':
           'Incomplete or uncertain records will appear here without being changed automatically.',
@@ -518,6 +524,8 @@ class AppLocalizations {
       'baselineAvailable':
           'Compared with an independently calculated baseline.',
       'supportingTransactions': '{count} supporting transactions',
+      'viewOneSupportingTransaction': 'View 1 supporting transaction',
+      'viewManySupportingTransactions': 'View {count} supporting transactions',
       'currentPeriod': 'Current period',
       'previousPeriod': 'Previous period',
       'difference': 'Difference',
@@ -752,6 +760,9 @@ class AppLocalizations {
       'needsAttention': '需要处理',
       'otherInsights': '其他洞察',
       'insightsPositiveChanges': '积极变化',
+      'insightsCategoryMovementSection': '类别与等效期间相比发生了显著变化。',
+      'insightsSubcategoryMovementSection': '子类别与等效期间相比发生了显著变化。',
+      'insightsMerchantMovementSection': '商户与等效期间相比发生了显著变化。',
       'nothingNeedsAttention': '暂无待处理事项',
       'nothingNeedsAttentionBody': '不完整或不确定的记录会显示在这里，系统不会自动修改。',
       'quickActions': '快捷操作',
@@ -1113,6 +1124,8 @@ class AppLocalizations {
       'baselineUnavailable': '没有可比较的基准。',
       'baselineAvailable': '与独立计算的基准进行比较。',
       'supportingTransactions': '支持的交易：{count}',
+      'viewOneSupportingTransaction': '查看 1 笔支持交易',
+      'viewManySupportingTransactions': '查看 {count} 笔支持交易',
       'currentPeriod': '当前期间',
       'previousPeriod': '上一期间',
       'difference': '差额',
@@ -1258,8 +1271,7 @@ class AppLocalizations {
       'addStatement': 'Añadir extracto',
       'statementsEmptyBody':
           'Añade un extracto bancario o de tarjeta. El original permanece en este dispositivo y cada fila espera tu revisión.',
-      'choosePaymentSourceToContinue':
-          'Elige una fuente de pago para continuar',
+      'choosePaymentSourceToContinue': 'Elige una fuente de pago para continuar',
       'reviewInProgress': 'Revisión en curso',
       'statementRows': 'Filas',
       'statementSaved': 'Guardadas',
@@ -1290,31 +1302,23 @@ class AppLocalizations {
       'cannotEditBuiltin': 'Los registros de Butlerly no se pueden renombrar.',
       'tools': 'Herramientas',
       'toolsSubtitle': 'Formas útiles de explorar y comprender tus registros.',
-      'toolsSearchDescription':
-          'Busca transacciones con palabras clave y filtros.',
-      'toolsReviewDescription':
-          'Resuelve registros incompletos, inciertos o en conflicto.',
-      'toolsAnalysisDescription':
-          'Explora cálculos locales y patrones financieros.',
-      'toolsInsightsDescription':
-          'Consulta observaciones útiles de tus registros confirmados.',
+      'toolsSearchDescription': 'Busca transacciones con palabras clave y filtros.',
+      'toolsReviewDescription': 'Resuelve registros incompletos, inciertos o en conflicto.',
+      'toolsAnalysisDescription': 'Explora cálculos locales y patrones financieros.',
+      'toolsInsightsDescription': 'Consulta observaciones útiles de tus registros confirmados.',
       'addTransactionAction': 'Añadir transacción',
-      'addTransactionActionSubtitle':
-          'Añade una transacción tú mismo, desde un recibo, un extracto o un archivo local',
+      'addTransactionActionSubtitle': 'Añade una transacción tú mismo, desde un recibo, un extracto o un archivo local',
       'welcomeTitle': 'Te damos la bienvenida a Butlerly',
       'welcomeSubtitle': 'Tu registro financiero privado, bajo tu control.',
       'privateByDefault': 'Privado de forma predeterminada',
-      'privateByDefaultBody':
-          'Tus registros principales permanecen en este dispositivo.',
+      'privateByDefaultBody': 'Tus registros principales permanecen en este dispositivo.',
       'worksOffline': 'Funciona sin conexión',
       'worksOfflineBody': 'Crea, revisa y busca sin conexión.',
       'optionalAssistance': 'La asistencia es opcional',
-      'optionalAssistanceBody':
-          'Los procesos manuales siempre están disponibles.',
+      'optionalAssistanceBody': 'Los procesos manuales siempre están disponibles.',
       'getStarted': 'Comenzar',
       'firstUseTitle': 'Configura tu espacio local',
-      'firstUseBody':
-          'No necesitas una cuenta. Estos valores permanecen en este dispositivo y puedes cambiarlos después en Ajustes.',
+      'firstUseBody': 'No necesitas una cuenta. Estos valores permanecen en este dispositivo y puedes cambiarlos después en Ajustes.',
       'preferences': 'Preferencias',
       'continueLocally': 'Continuar localmente',
       'skip': 'Omitir',
@@ -1323,40 +1327,34 @@ class AppLocalizations {
       'greetingMorning': 'Buenos días',
       'greetingAfternoon': 'Buenas tardes',
       'greetingEvening': 'Buenas noches',
-      'homeSubtitle':
-          'Tu registro financiero privado está en este dispositivo.',
+      'homeSubtitle': 'Tu registro financiero privado está en este dispositivo.',
       'needsAttention': 'Requiere atención',
       'otherInsights': 'Otras perspectivas',
       'insightsPositiveChanges': 'Cambios positivos',
+      'insightsCategoryMovementSection': 'Las categorías cambiaron de forma significativa frente al período equivalente.',
+      'insightsSubcategoryMovementSection': 'Las subcategorías cambiaron de forma significativa frente al período equivalente.',
+      'insightsMerchantMovementSection': 'Los comercios cambiaron de forma significativa frente al período equivalente.',
       'nothingNeedsAttention': 'Nada requiere atención',
-      'nothingNeedsAttentionBody':
-          'Los registros inciertos aparecerán aquí sin cambios automáticos.',
+      'nothingNeedsAttentionBody': 'Los registros inciertos aparecerán aquí sin cambios automáticos.',
       'quickActions': 'Acciones rápidas',
       'add': 'Añadir',
-      'addSubtitle':
-          'Añade transacciones, recibos, extractos y otra información financiera a Butlerly.',
+      'addSubtitle': 'Añade transacciones, recibos, extractos y otra información financiera a Butlerly.',
       'addData': 'Añadir datos',
       'addTransaction': 'Añadir transacción',
       'addTransactionSubtitle': 'Introduce una transacción manualmente',
       'addTransactionManually': 'Añadir transacción manualmente',
-      'addTransactionManuallySubtitle':
-          'Introduce los detalles de la transacción',
+      'addTransactionManuallySubtitle': 'Introduce los detalles de la transacción',
       'addTransactionFromReceipt': 'Escanear recibo',
-      'addTransactionFromReceiptSubtitle':
-          'Escanea un recibo para extraer los detalles de la transacción',
+      'addTransactionFromReceiptSubtitle': 'Escanea un recibo para extraer los detalles de la transacción',
       'addTransactionFromStatement': 'Importar extracto',
-      'addTransactionFromStatementSubtitle':
-          'Escanea un extracto para revisar y añadir transacciones',
+      'addTransactionFromStatementSubtitle': 'Escanea un extracto para revisar y añadir transacciones',
       'addTransactionFromLocalFile': 'Importar archivo',
-      'addTransactionFromLocalFileSubtitle':
-          'Importa transacciones desde un archivo compatible',
+      'addTransactionFromLocalFileSubtitle': 'Importa transacciones desde un archivo compatible',
       'scanReceipt': 'Escanear recibo',
-      'scanReceiptSubtitle':
-          'Captura un recibo y extrae los detalles de la transacción',
+      'scanReceiptSubtitle': 'Captura un recibo y extrae los detalles de la transacción',
       'scanStatement': 'Escanear extracto',
       'scanStatementSubtitle': 'Importa transacciones desde un extracto',
-      'paymentSourcesSubtitle':
-          'Añade y gestiona tarjetas, cuentas y otras fuentes de pago',
+      'paymentSourcesSubtitle': 'Añade y gestiona tarjetas, cuentas y otras fuentes de pago',
       'importData': 'Importar datos',
       'recentTransactions': 'Transacciones recientes',
       'viewAll': 'Ver todo',
@@ -1367,8 +1365,7 @@ class AppLocalizations {
       'recordsOnDevice': 'Registros en este dispositivo',
       'attentionItems': 'Elementos pendientes',
       'noTransactions': 'Aún no hay transacciones',
-      'noTransactionsBody':
-          'Añade una transacción para crear un registro local privado.',
+      'noTransactionsBody': 'Añade una transacción para crear un registro local privado.',
       'loadTransactionsError': 'No se pudieron cargar las transacciones',
       'dataPreserved': 'Tus datos locales no cambiaron.',
       'tryAgain': 'Intentar de nuevo',
@@ -1412,30 +1409,23 @@ class AppLocalizations {
       'attachEvidence': 'Adjuntar recibo o archivo',
       'evidenceAttached': 'La evidencia se guardó localmente.',
       'evidenceAttachFailed': 'No se pudo guardar la evidencia.',
-      'evidenceCleanupFailed':
-          'La transacción no se eliminó porque la evidencia vinculada no pudo borrarse de forma segura.',
+      'evidenceCleanupFailed': 'La transacción no se eliminó porque la evidencia vinculada no pudo borrarse de forma segura.',
       'evidencePreview': 'Vista previa de evidencia',
       'viewImage': 'Ver imagen',
-      'evidenceFileMissing':
-          'No se pudo encontrar el archivo local de evidencia.',
-      'evidenceStoredLocally':
-          'Este archivo se guarda de forma privada en este dispositivo. No se muestra su ruta local.',
+      'evidenceFileMissing': 'No se pudo encontrar el archivo local de evidencia.',
+      'evidenceStoredLocally': 'Este archivo se guarda de forma privada en este dispositivo. No se muestra su ruta local.',
       'removeEvidenceTitle': '¿Eliminar esta evidencia?',
-      'removeEvidenceBody':
-          'Esto elimina permanentemente el archivo local y su vínculo con la transacción.',
+      'removeEvidenceBody': 'Esto elimina permanentemente el archivo local y su vínculo con la transacción.',
       'remove': 'Eliminar',
-      'evidenceLoadError':
-          'No se pudieron cargar los metadatos de evidencia. Tus registros locales no cambiaron.',
-      'referenceAmounts':
-          'Importes de referencia (el importe original sigue siendo el canónico)',
+      'evidenceLoadError': 'No se pudieron cargar los metadatos de evidencia. Tus registros locales no cambiaron.',
+      'referenceAmounts': 'Importes de referencia (el importe original sigue siendo el canónico)',
       'referenceCurrency': 'Referencia {currency}',
       'reviewState': 'Revisión',
       'origin': 'Origen',
       'merchant': 'Comercio',
       'category': 'Categoría',
       'tags': 'Etiquetas',
-      'tagSaveFailed':
-          'No se pudo guardar la etiqueta. La transacción no cambió.',
+      'tagSaveFailed': 'No se pudo guardar la etiqueta. La transacción no cambió.',
       'unavailableMerchant': 'Comercio no disponible',
       'unavailableCategory': 'Categoría no disponible',
       'unavailableSubcategory': 'Subcategoría no disponible',
@@ -1473,46 +1463,37 @@ class AppLocalizations {
       'continueAnyway': 'Continuar de todos modos',
       'useExistingTransaction': 'Usar existente',
       'statementReconciliationTitle': 'Posible transacción existente',
-      'statementReconciliationPrompt':
-          'Selecciona una transacción existente para vincular:',
+      'statementReconciliationPrompt': 'Selecciona una transacción existente para vincular:',
       'createSeparately': 'Crear por separado',
       'reconciliationScore': 'Puntuación {score}',
       'statementInProgress': 'En curso',
-      'reconciliationReasonAmountCurrencyMatch':
-          'El importe y la moneda coinciden',
-      'reconciliationReasonAmountWithinTenPercent':
-          'El importe está dentro del 10 % (posible propina o ajuste)',
+      'reconciliationReasonAmountCurrencyMatch': 'El importe y la moneda coinciden',
+      'reconciliationReasonAmountWithinTenPercent': 'El importe está dentro del 10 % (posible propina o ajuste)',
       'reconciliationReasonDateMatches': 'La fecha de la transacción coincide',
-      'reconciliationReasonDateWithinOneDay':
-          'La fecha de la transacción está dentro de un día',
+      'reconciliationReasonDateWithinOneDay': 'La fecha de la transacción está dentro de un día',
       'reconciliationReasonMerchantMatches': 'El texto del comercio coincide',
       'reconciliationReasonMerchantSimilar': 'El texto del comercio es similar',
       'reconciliationReasonPaymentSourceMatches': 'La fuente de pago coincide',
       'reconciliationReasonOther': 'Otra evidencia coincidente',
-      'reconciliationConflictDirection':
-          'Hay un conflicto en la dirección de la transacción',
+      'reconciliationConflictDirection': 'Hay un conflicto en la dirección de la transacción',
       'reconciliationConflictCurrency': 'Hay un conflicto de moneda',
       'reconciliationConflictAmount': 'El importe es diferente',
       'reconciliationConflictDate': 'La fecha de la transacción es diferente',
       'reconciliationConflictMerchant': 'El texto del comercio es diferente',
       'reconciliationConflictPaymentSource': 'La fuente de pago es diferente',
       'reconciliationConflictOther': 'Otra evidencia en conflicto',
-      'statementExtractionDiagnostics':
-          'Diagnóstico de extracción del extracto',
+      'statementExtractionDiagnostics': 'Diagnóstico de extracción del extracto',
       'copy': 'Copiar',
       'createPaymentSource': 'Crear fuente de pago',
       'lastFourOptional': 'Últimos cuatro dígitos (opcional)',
       'createAndUse': 'Crear y usar',
-      'fourDigitsOrEmpty':
-          'Introduce exactamente cuatro dígitos o deja el campo vacío.',
+      'fourDigitsOrEmpty': 'Introduce exactamente cuatro dígitos o deja el campo vacío.',
       'statementCouldNotBeStored': 'No se pudo guardar el extracto.',
       'statementCouldNotBeCreated': 'No se pudo crear el extracto.',
       'paymentSourceCouldNotBeCreated': 'No se pudo crear la fuente de pago.',
-      'sourceCreatedCouldNotBeLinked':
-          'La fuente se creó, pero no se pudo vincular. Selecciónala para volver a intentarlo.',
+      'sourceCreatedCouldNotBeLinked': 'La fuente se creó, pero no se pudo vincular. Selecciónala para volver a intentarlo.',
       'addRowsFromStatement': 'Añadir filas del extracto',
-      'rowsFormatHint':
-          'Una por línea: YYYY-MM-DD | descripción | importe con signo | moneda',
+      'rowsFormatHint': 'Una por línea: YYYY-MM-DD | descripción | importe con signo | moneda',
       'addForReview': 'Añadir para revisar',
       'correctExtractedRow': 'Corregir fila extraída',
       'dateFormat': 'Fecha (YYYY-MM-DD)',
@@ -1524,8 +1505,7 @@ class AppLocalizations {
       'amountNeedsReview': 'El importe necesita revisión',
       'directionNeedsReview': 'La dirección necesita revisión',
       'receiptImages': 'Imágenes de recibos',
-      'receiptTextReadFailed':
-          'El recibo se guardó localmente, pero no se pudo leer su texto. Puedes reintentarlo o introducir los campos manualmente.',
+      'receiptTextReadFailed': 'El recibo se guardó localmente, pero no se pudo leer su texto. Puedes reintentarlo o introducir los campos manualmente.',
       'archiveTitle': '¿Archivar esta transacción?',
       'archiveBody': 'Puedes restaurarla más tarde.',
       'deleteTitle': '¿Eliminar permanentemente esta transacción?',
@@ -1534,11 +1514,9 @@ class AppLocalizations {
       'undo': 'Deshacer',
       'reviewSubtitle': 'Resuelve solo los registros que requieren atención.',
       'reviewEmpty': 'Todo está al día',
-      'reviewEmptyBody':
-          'Los registros incompletos o inciertos aparecerán aquí.',
+      'reviewEmptyBody': 'Los registros incompletos o inciertos aparecerán aquí.',
       'reviewLoadError': 'No se pudieron cargar las revisiones',
-      'reviewRecommendation':
-          'Abre el registro y confirma los detalles correctos.',
+      'reviewRecommendation': 'Abre el registro y confirma los detalles correctos.',
       'reviewRecord': 'Revisar registro',
       'resolve': 'Resolver',
       'dismiss': 'Descartar',
@@ -1557,13 +1535,11 @@ class AppLocalizations {
       'possibleDuplicateGroup': 'Grupo de posibles duplicados',
       'keepBoth': 'Conservar ambos',
       'consolidateUseOne': 'Consolidar / usar uno',
-      'consolidateUseOneHint':
-          'Selecciona la transacción que conservarás. No se elimina ningún registro.',
+      'consolidateUseOneHint': 'Selecciona la transacción que conservarás. No se elimina ningún registro.',
       'reviewLater': 'Revisar más tarde',
       'rescanPossibleDuplicates': 'Volver a escanear posibles duplicados',
       'noPossibleDuplicates': 'No se encontraron posibles duplicados',
-      'possibleDuplicatesScanComplete':
-          'Escaneo de posibles duplicados completado',
+      'possibleDuplicatesScanComplete': 'Escaneo de posibles duplicados completado',
       'possibleDuplicatesScanFailed': 'Error al escanear posibles duplicados',
       'searchHint': 'Buscar transacciones, comercios, notas…',
       'searchIntro': 'Busca por comercio, fecha, importe, categoría o notas.',
@@ -1584,11 +1560,9 @@ class AppLocalizations {
       'toDate': 'Fecha final',
       'paymentSources': 'Fuentes de pago',
       'scanCard': 'Escanear tarjeta',
-      'cardScanFailed':
-          'No se pudo escanear la tarjeta. Puedes introducir los datos manualmente.',
+      'cardScanFailed': 'No se pudo escanear la tarjeta. Puedes introducir los datos manualmente.',
       'multiplePaymentSourcesMatch': 'Coinciden varias fuentes de pago',
-      'selectPaymentSource':
-          'Selecciona la fuente de pago que termina en estos cuatro dígitos.',
+      'selectPaymentSource': 'Selecciona la fuente de pago que termina en estos cuatro dígitos.',
       'existingTransactionFound': 'Se encontró una transacción existente',
       'notThisTransaction': 'No es esta transacción',
       'matchConfidence': 'confianza de coincidencia',
@@ -1596,15 +1570,12 @@ class AppLocalizations {
       'payment': 'Pago',
       'unavailableTransaction': 'Transacción no disponible',
       'duplicatePaymentSource': 'La fuente de pago ya existe',
-      'duplicatePaymentSourceBody':
-          'Ya existe una fuente activa con el mismo tipo de tarjeta, emisor y últimos cuatro dígitos.',
+      'duplicatePaymentSourceBody': 'Ya existe una fuente activa con el mismo tipo de tarjeta, emisor y últimos cuatro dígitos.',
       'useExisting': 'Usar existente',
       'createAnyway': 'Crear de todos modos',
-      'paymentSourcesBody':
-          'Gestiona tarjetas, efectivo y otras fuentes locales.',
+      'paymentSourcesBody': 'Gestiona tarjetas, efectivo y otras fuentes locales.',
       'addPaymentSource': 'Añadir fuente de pago',
-      'paymentSourcesUnavailable':
-          'Las fuentes de pago estarán disponibles con el almacenamiento local.',
+      'paymentSourcesUnavailable': 'Las fuentes de pago estarán disponibles con el almacenamiento local.',
       'noPaymentSourcesYet': 'Aún no hay fuentes de pago.',
       'paymentSourceSaveFailed': 'No se pudo guardar la fuente de pago.',
       'archivePaymentSource': 'Archivar fuente de pago',
@@ -1636,16 +1607,14 @@ class AppLocalizations {
       'ianaTimeZone': 'Zona horaria IANA',
       'ianaTimeZoneHelp': 'Por ejemplo, America/Los_Angeles o UTC',
       'externalAiConsent': 'Permitir IA externa',
-      'externalAiConsentBody':
-          'Desactivado de forma predeterminada. Activarlo solo registra el consentimiento; nunca se envían datos sin una acción explícita adicional.',
+      'externalAiConsentBody': 'Desactivado de forma predeterminada. Activarlo solo registra el consentimiento; nunca se envían datos sin una acción explícita adicional.',
       'english': 'Inglés',
       'spanish': 'Español',
       'chinese': 'Chino simplificado',
       'privacyAndData': 'Privacidad y datos',
       'privacyAndDataBody': 'Consulta, exporta o elimina tus datos locales.',
       'importExport': 'Importar y exportar',
-      'importExportBody':
-          'Mueve registros compatibles dentro o fuera del dispositivo.',
+      'importExportBody': 'Mueve registros compatibles dentro o fuera del dispositivo.',
       'optionalFeatures': 'Funciones opcionales',
       'insights': 'Información',
       'analysis': 'Análisis',
@@ -1663,8 +1632,7 @@ class AppLocalizations {
       'netCashFlow': 'Flujo de caja neto',
       'notAvailable': 'No disponible',
       'spendingTrend': 'Tendencia de gastos',
-      'insufficientTrendData':
-          'Se necesita más actividad para mostrar una tendencia.',
+      'insufficientTrendData': 'Se necesita más actividad para mostrar una tendencia.',
       'noSpendingInPeriod': 'No hay gastos registrados en este período.',
       'noActivityInPeriod': 'No hay actividad financiera en este período.',
       'notable': 'Destacado',
@@ -1680,8 +1648,7 @@ class AppLocalizations {
       'overview': 'Resumen',
       'spending': 'Gastos',
       'trends': 'Tendencias',
-      'trendsDescription':
-          'Consulta cómo cambian tus gastos durante el período seleccionado.',
+      'trendsDescription': 'Consulta cómo cambian tus gastos durante el período seleccionado.',
       'spendingDistribution': 'Distribución de gastos',
       'otherCategories': 'Otros',
       'financialCalendar': 'Calendario financiero',
@@ -1689,16 +1656,12 @@ class AppLocalizations {
       'nextMonth': 'Mes siguiente',
       'dataQuality': 'Calidad de datos',
       'analysisUnavailable': 'El análisis no está disponible',
-      'analysisUnavailableBody':
-          'No se pudieron completar los cálculos locales. No se cambió ningún registro.',
-      'offlineAnalysisStatus':
-          'Calculado de forma privada en este dispositivo y disponible sin conexión.',
+      'analysisUnavailableBody': 'No se pudieron completar los cálculos locales. No se cambió ningún registro.',
+      'offlineAnalysisStatus': 'Calculado de forma privada en este dispositivo y disponible sin conexión.',
       'allClear': 'Sin hallazgos',
-      'allClearBody':
-          'Ninguna información habilitada requiere tu atención en este período.',
+      'allClearBody': 'Ninguna información habilitada requiere tu atención en este período.',
       'insightsUnavailable': 'La información no está disponible',
-      'insightsUnavailableBody':
-          'No se pudo calcular una o más funciones de información habilitadas.',
+      'insightsUnavailableBody': 'No se pudo calcular una o más funciones de información habilitadas.',
       'analysis.rule.r001.name': 'Gastos',
       'analysis.rule.r002.name': 'Ingresos',
       'analysis.rule.r003.name': 'Flujo de caja neto',
@@ -1707,42 +1670,33 @@ class AppLocalizations {
       'analysis.rule.r014.name': 'Información de gastos mensuales',
       'analysis.rule.r016.name': 'Transacciones por día',
       'analysis.rule.r020.name': 'Gastos comparados con la base',
-      'analysis.rule.r020.description':
-          'Compara los gastos del período seleccionado con el período equivalente anterior.',
+      'analysis.rule.r020.description': 'Compara los gastos del período seleccionado con el período equivalente anterior.',
       'analysis.rule.r021.name': 'Cambio por categoría',
-      'analysis.rule.r021.description':
-          'Una categoría cambió de forma significativa frente al período equivalente.',
+      'analysis.rule.r021.description': 'Una categoría cambió de forma significativa frente al período equivalente.',
       'analysis.rule.r022.name': 'Cambio por subcategoría',
-      'analysis.rule.r022.description':
-          'Una subcategoría cambió de forma significativa frente al período equivalente.',
+      'analysis.rule.r022.description': 'Una subcategoría cambió de forma significativa frente al período equivalente.',
       'analysis.rule.r023.name': 'Cambio por comercio',
-      'analysis.rule.r023.description':
-          'Un comercio cambió de forma significativa frente al período equivalente.',
+      'analysis.rule.r023.description': 'Un comercio cambió de forma significativa frente al período equivalente.',
       'analysis.rule.r024.name': 'Alerta de gasto material',
-      'analysis.rule.r024.description':
-          'El gasto total superó los umbrales porcentual y absoluto de materialidad.',
+      'analysis.rule.r024.description': 'El gasto total superó los umbrales porcentual y absoluto de materialidad.',
       'analysis.rule.r025.name': 'Compra inusualmente grande',
-      'analysis.rule.r025.description':
-          'Una compra es considerablemente mayor que la base de gasto comparable.',
+      'analysis.rule.r025.description': 'Una compra es considerablemente mayor que la base de gasto comparable.',
       'analysis.rule.r026.name': 'Concentración del gasto',
-      'analysis.rule.r026.description':
-          'Una categoría representa una proporción materialmente alta del gasto del período.',
+      'analysis.rule.r026.description': 'Una categoría representa una proporción materialmente alta del gasto del período.',
       'analysis.rule.r027.name': 'El gasto disminuyó',
-      'analysis.rule.r027.description':
-          'Gastaste al menos un 20 % menos que en el período equivalente anterior.',
+      'analysis.rule.r027.description': 'Gastaste al menos un 20 % menos que en el período equivalente anterior.',
       'analysis.rule.r028.name': 'El gasto por categoría disminuyó',
-      'analysis.rule.r028.description':
-          'El gasto en esta categoría bajó al menos un 20 % frente al período equivalente anterior.',
+      'analysis.rule.r028.description': 'El gasto en esta categoría bajó al menos un 20 % frente al período equivalente anterior.',
       'analysis.rule.r029.name': 'El ahorro mejoró',
-      'analysis.rule.r029.description':
-          'El ahorro neto mejoró frente al período equivalente anterior.',
+      'analysis.rule.r029.description': 'El ahorro neto mejoró frente al período equivalente anterior.',
       'analysis.rule.r090.name': 'Problemas de calidad de datos',
       'analysis.rule.r091.name': 'Tipos de cambio ausentes',
       'analysis.rule.r092.name': 'Conciliación sin resolver',
       'baselineUnavailable': 'No hay una base comparable disponible.',
-      'baselineAvailable':
-          'Comparado con una base calculada de forma independiente.',
+      'baselineAvailable': 'Comparado con una base calculada de forma independiente.',
       'supportingTransactions': '{count} transacciones de respaldo',
+      'viewOneSupportingTransaction': 'Ver 1 transacción de respaldo',
+      'viewManySupportingTransactions': 'Ver {count} transacciones de respaldo',
       'currentPeriod': 'Período actual',
       'previousPeriod': 'Período anterior',
       'difference': 'Diferencia',
@@ -1751,36 +1705,25 @@ class AppLocalizations {
       'totalSpending': 'Gasto total',
       'eligibleTransactions': 'Transacciones elegibles',
       'comparisonUnavailable': 'Comparación no disponible',
-      'comparisonUnavailableBody':
-          'No hay una base comparable disponible para este período.',
+      'comparisonUnavailableBody': 'No hay una base comparable disponible para este período.',
       'noNotablePatterns': 'No hay patrones destacables en este período',
       'dataQualityLimitations': 'Calidad y limitaciones de los datos',
-      'analysisDataQualityIssueMissingFx':
-          'No se pudieron convertir algunas transacciones en moneda extranjera.',
-      'analysisDataQualityIssueInsufficient':
-          'No hay suficientes datos elegibles para este cálculo.',
-      'analysisDataQualityIssueBaseline':
-          'No hay una base comparable disponible.',
-      'analysisDataQualityIssueCoverage':
-          'Esta comparación usa una cobertura de período incompleta.',
-      'analysisDataQualityIssueReconciliation':
-          'Algunas transacciones aún requieren revisión de conciliación.',
-      'analysisDataQualityIssueRuleFailure':
-          'No se pudo evaluar una perspectiva; los demás resultados siguen disponibles.',
-      'analysisDataQualityIssueGeneric':
-          'Algunos datos de análisis tienen limitaciones.',
+      'analysisDataQualityIssueMissingFx': 'No se pudieron convertir algunas transacciones en moneda extranjera.',
+      'analysisDataQualityIssueInsufficient': 'No hay suficientes datos elegibles para este cálculo.',
+      'analysisDataQualityIssueBaseline': 'No hay una base comparable disponible.',
+      'analysisDataQualityIssueCoverage': 'Esta comparación usa una cobertura de período incompleta.',
+      'analysisDataQualityIssueReconciliation': 'Algunas transacciones aún requieren revisión de conciliación.',
+      'analysisDataQualityIssueRuleFailure': 'No se pudo evaluar una perspectiva; los demás resultados siguen disponibles.',
+      'analysisDataQualityIssueGeneric': 'Algunos datos de análisis tienen limitaciones.',
       'insightRuleFailed': 'No se pudo evaluar esta perspectiva.',
       'insightsInsufficientHistory': 'Aún no hay suficiente historial',
-      'insightsInsufficientHistoryBody':
-          'Las perspectivas comparan tu actividad financiera a lo largo del tiempo. Sigue añadiendo transacciones y Butlerly mostrará cambios relevantes.',
+      'insightsInsufficientHistoryBody': 'Las perspectivas comparan tu actividad financiera a lo largo del tiempo. Sigue añadiendo transacciones y Butlerly mostrará cambios relevantes.',
       'insightsNothingNoteworthy': 'Nada requiere tu atención',
-      'insightsNothingNoteworthyBody':
-          'Tu actividad financiera reciente no activa ninguna perspectiva en este momento.',
+      'insightsNothingNoteworthyBody': 'Tu actividad financiera reciente no activa ninguna perspectiva en este momento.',
       'insightActionFailed': 'No se pudo actualizar esta perspectiva.',
       'assistant': 'Asistente',
       'assistantUnavailable': 'El Asistente no está configurado',
-      'assistantUnavailableBody':
-          'Tus registros locales siguen disponibles. No se enviaron datos.',
+      'assistantUnavailableBody': 'Tus registros locales siguen disponibles. No se enviaron datos.',
       'notifications': 'Notificaciones',
       'noNotifications': 'No hay notificaciones',
       'noNotificationsBody': 'La actividad local importante aparecerá aquí.',
@@ -1788,15 +1731,12 @@ class AppLocalizations {
       'importFromFileBody': 'Elige un archivo de transacciones compatible.',
       'importSummary': 'Resumen de importación',
       'importFailed': 'No se puede importar este archivo.',
-      'importSummaryBody':
-          'Importados: {imported}\nDuplicados omitidos: {duplicates}\nFallidos: {failed}',
+      'importSummaryBody': 'Importados: {imported}\nDuplicados omitidos: {duplicates}\nFallidos: {failed}',
       'importReceipts': 'Importar recibos',
       'importReceiptsBody': 'Adjunta imágenes o PDF de recibos.',
-      'receiptAttachGuide':
-          'Elige una transacción y usa Adjuntar recibo o archivo en su detalle. El archivo permanece en este dispositivo.',
+      'receiptAttachGuide': 'Elige una transacción y usa Adjuntar recibo o archivo en su detalle. El archivo permanece en este dispositivo.',
       'viewTransactions': 'Ver transacciones',
-      'importOfflineBanner':
-          'La importación y exportación CSV permanecen en este dispositivo.',
+      'importOfflineBanner': 'La importación y exportación CSV permanecen en este dispositivo.',
       'exportToFile': 'Exportar a archivo',
       'exportToFileBody': 'Crea una copia portátil de tus registros.',
       'createBackup': 'Crear copia local',
@@ -1808,43 +1748,32 @@ class AppLocalizations {
       'extractedTextUnavailable': 'El texto extraído aún no está disponible.',
       'sourceData': 'Fuente original',
       'referenceAmount': 'Importe de referencia',
-      'originalAmountCanonical':
-          'El importe original sigue siendo autoritativo.',
+      'originalAmountCanonical': 'El importe original sigue siendo autoritativo.',
       'localSummary': 'Resumen local',
       'notEnoughInsightData': 'No hay suficientes datos',
-      'notEnoughInsightDataBody':
-          'Añade más transacciones confirmadas para ver un resumen.',
+      'notEnoughInsightDataBody': 'Añade más transacciones confirmadas para ver un resumen.',
       'resetAllData': 'Borrar todos los datos locales',
       'localDataControls': 'Controles de datos locales',
-      'privacyScopeBody':
-          'Tus registros financieros y comprobantes permanecen en este dispositivo. Revisa el alcance antes de exportarlos o borrarlos.',
-      'exportScopeBody':
-          'Exporta registros, preferencias, procedencia y comprobantes locales a la carpeta Documentos de Butlerly.',
-      'eraseScopeBody':
-          'Elimina permanentemente los registros, preferencias y todos los comprobantes almacenados localmente.',
+      'privacyScopeBody': 'Tus registros financieros y comprobantes permanecen en este dispositivo. Revisa el alcance antes de exportarlos o borrarlos.',
+      'exportScopeBody': 'Exporta registros, preferencias, procedencia y comprobantes locales a la carpeta Documentos de Butlerly.',
+      'eraseScopeBody': 'Elimina permanentemente los registros, preferencias y todos los comprobantes almacenados localmente.',
       'eraseAllTitle': '¿Borrar todos los datos locales de Butlerly?',
-      'eraseAllBody':
-          'Esto elimina permanentemente todos los registros, preferencias y comprobantes de este dispositivo. No se puede deshacer.',
+      'eraseAllBody': 'Esto elimina permanentemente todos los registros, preferencias y comprobantes de este dispositivo. No se puede deshacer.',
       'eraseAllConfirm': 'Borrar todo',
       'eraseComplete': 'Se borraron todos los datos locales de Butlerly.',
-      'eraseFailed':
-          'No se pudieron borrar los datos locales. No se cambió nada más.',
+      'eraseFailed': 'No se pudieron borrar los datos locales. No se cambió nada más.',
       'exportComplete': 'Exportación completa',
-      'exportCompleteBody':
-          'Se exportaron {count} registros locales a:\n{path}',
+      'exportCompleteBody': 'Se exportaron {count} registros locales a:\n{path}',
       'exportFailed': 'No se pudo crear la exportación local.',
       'done': 'Listo',
       'eraseNotAvailable': 'La eliminación total aún no está disponible aquí.',
       'about': 'Acerca de Butlerly',
       'legalLicenses': 'Avisos legales y licencias',
-      'legalLicensesBody':
-          'Términos, privacidad, avisos e información de la aplicación.',
+      'legalLicensesBody': 'Términos, privacidad, avisos e información de la aplicación.',
       'termsOfUse': 'Términos de uso',
       'privacyPolicy': 'Política de privacidad',
-      'softwareLicenseThirdPartyNotices':
-          'Licencia de software y avisos de terceros',
-      'aiProfessionalAdviceDisclosures':
-          'Declaraciones sobre IA y asesoramiento profesional',
+      'softwareLicenseThirdPartyNotices': 'Licencia de software y avisos de terceros',
+      'aiProfessionalAdviceDisclosures': 'Declaraciones sobre IA y asesoramiento profesional',
       'legalDocumentLoadError': 'No se pudo cargar este documento legal.',
       'addSource': 'Añadir fuente',
       'name': 'Nombre',
@@ -1853,8 +1782,7 @@ class AppLocalizations {
       'receiptUseTitle': '¿Usar este recibo?',
       'receiptRetakeReplace': 'Repetir / Reemplazar',
       'receiptUse': 'Usar recibo',
-      'receiptStoreFailed':
-          'No se pudo guardar el recibo localmente. Inténtalo de nuevo.',
+      'receiptStoreFailed': 'No se pudo guardar el recibo localmente. Inténtalo de nuevo.',
       'captureReceipt': 'Capturar recibo',
       'addReceipt': 'Añadir un recibo',
       'takePhoto': 'Tomar foto',
@@ -1867,14 +1795,11 @@ class AppLocalizations {
       'extractedSourceText': 'Texto fuente extraído',
       'originalOcrPreserved': 'El texto OCR original se conserva sin traducir.',
       'addPaymentTransaction': 'Añadir transacción de pago',
-      'addPaymentTransactionBody':
-          'Introduce una transacción de tarjeta cuando no haya un extracto.',
+      'addPaymentTransactionBody': 'Introduce una transacción de tarjeta cuando no haya un extracto.',
       'addPaymentNotification': 'Añadir notificación de pago',
-      'addPaymentNotificationBody':
-          'Registra una notificación de tarjeta con procedencia de integración.',
+      'addPaymentNotificationBody': 'Registra una notificación de tarjeta con procedencia de integración.',
       'reviewStatementImport': 'Revisar importación del extracto',
-      'reviewStatementImportBody':
-          'Conserva y revisa localmente los extractos bancarios o de tarjeta.',
+      'reviewStatementImportBody': 'Conserva y revisa localmente los extractos bancarios o de tarjeta.',
       'validRowsReady': '{count} fila(s) válida(s) listas para importar.',
       'candidateTransactions': 'Transacciones candidatas',
       'aggregateAmount': 'Importe total',
@@ -1883,26 +1808,18 @@ class AppLocalizations {
       'deleteStatement': 'Eliminar extracto',
       'extractionDiagnostics': 'Diagnóstico de extracción',
       'deleteStatementTitle': '¿Eliminar este extracto?',
-      'deleteStatementBody':
-          'No se crearon transacciones desde este extracto. El archivo y los datos extraídos se eliminarán permanentemente.',
+      'deleteStatementBody': 'No se crearon transacciones desde este extracto. El archivo y los datos extraídos se eliminarán permanentemente.',
       'statementDeleted': 'Extracto eliminado.',
-      'statementDeleteFailed':
-          'No se pudo eliminar el extracto de forma segura.',
-      'statementHasTransactions':
-          'Este extracto tiene transacciones guardadas y no se puede eliminar aquí.',
-      'statementDeletionProtected':
-          'Este extracto está vinculado a registros financieros o evidencia necesaria y no se puede eliminar.',
+      'statementDeleteFailed': 'No se pudo eliminar el extracto de forma segura.',
+      'statementHasTransactions': 'Este extracto tiene transacciones guardadas y no se puede eliminar aquí.',
+      'statementDeletionProtected': 'Este extracto está vinculado a registros financieros o evidencia necesaria y no se puede eliminar.',
       'statementNoText': 'No se encontró texto legible en esta imagen.',
-      'statementNoRows':
-          'Se reconoció texto, pero no se identificaron filas de transacciones.',
-      'statementUnresolvedEvidence':
-          'Hay evidencia similar a una transacción que requiere revisión.',
-      'statementProcessingFailed':
-          'El procesamiento del extracto falló por un error técnico de OCR.',
+      'statementNoRows': 'Se reconoció texto, pero no se identificaron filas de transacciones.',
+      'statementUnresolvedEvidence': 'Hay evidencia similar a una transacción que requiere revisión.',
+      'statementProcessingFailed': 'El procesamiento del extracto falló por un error técnico de OCR.',
       'abandonStatementImport': 'Abandonar importación',
       'abandonStatementImportTitle': '¿Abandonar esta importación?',
-      'abandonStatementImportBody':
-          'Se eliminarán el extracto escaneado y sus datos extraídos. El archivo original no se modificará.',
+      'abandonStatementImportBody': 'Se eliminarán el extracto escaneado y sus datos extraídos. El archivo original no se modificará.',
       'rowsNeedCorrection': '{count} fila(s) necesitan corrección.',
       'importValidRows': 'Importar filas válidas',
       'debitExpense': 'Débito / gasto',
