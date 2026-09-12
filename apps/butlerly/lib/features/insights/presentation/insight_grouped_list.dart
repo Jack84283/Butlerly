@@ -3,6 +3,7 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
+import 'package:butlerly/features/insights/presentation/insight_copy.dart';
 import 'package:butlerly/features/insights/presentation/insight_group_visualization.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
@@ -62,6 +63,9 @@ class InsightGroupedList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final materialAlert = results
+        .where((result) => result.rule.identity.value == 'ANL-R024')
+        .firstOrNull;
     final hasBaselineComparison = results.any(
       (result) => result.rule.identity.value == 'ANL-R020',
     );
@@ -131,13 +135,26 @@ class InsightGroupedList extends StatelessWidget {
               child: Column(
                 children: [
                   for (var index = 0; index < items.length; index++) ...[
-                    _InsightItem(
-                      insight: items[index],
-                      masterData: masterData,
-                      showRuleCopy: !_groupOwnsRuleCopy(group),
-                      onViewTransactions: canViewTransactions(items[index])
-                          ? () => onViewTransactions(items[index])
-                          : null,
+                    Builder(
+                      builder: (context) {
+                        final item = items[index];
+                        final drillDownInsight =
+                            item.rule.identity.value == 'ANL-R020' &&
+                                    materialAlert != null &&
+                                    materialAlert.evidence.isNotEmpty
+                                ? materialAlert
+                                : item;
+                        return _InsightItem(
+                          insight: item,
+                          drillDownInsight: drillDownInsight,
+                          masterData: masterData,
+                          showRuleCopy: !_groupOwnsRuleCopy(group),
+                          onViewTransactions:
+                              canViewTransactions(drillDownInsight)
+                                  ? () => onViewTransactions(drillDownInsight)
+                                  : null,
+                        );
+                      },
                     ),
                     if (index != items.length - 1)
                       const Divider(height: ButlerlySpacing.section),
@@ -154,12 +171,14 @@ class InsightGroupedList extends StatelessWidget {
 class _InsightItem extends StatelessWidget {
   const _InsightItem({
     required this.insight,
+    required this.drillDownInsight,
     required this.masterData,
     required this.showRuleCopy,
     required this.onViewTransactions,
   });
 
   final InsightResult insight;
+  final InsightResult drillDownInsight;
   final TransactionMasterData masterData;
   final bool showRuleCopy;
   final VoidCallback? onViewTransactions;
@@ -271,19 +290,19 @@ class _InsightItem extends StatelessWidget {
                     iconAlignment: IconAlignment.end,
                     icon: const Icon(Icons.chevron_right),
                     label: Text(
-                      insight.evidence.isEmpty
+                      drillDownInsight.evidence.isEmpty
                           ? context.l10n.text('viewTransactions')
                           : _viewSupportingTransactionsLabel(
                               context,
-                              insight.evidence.length,
+                              drillDownInsight.evidence.length,
                             ),
                     ),
                   ),
-                ] else if (insight.evidence.isNotEmpty) ...[
+                ] else if (drillDownInsight.evidence.isNotEmpty) ...[
                   const SizedBox(height: ButlerlySpacing.small),
                   Text(
                     context.l10n.text('supportingTransactions', {
-                      'count': '${insight.evidence.length}',
+                      'count': '${drillDownInsight.evidence.length}',
                     }),
                   ),
                 ],
@@ -367,61 +386,16 @@ String? _groupSubtitle(
   InsightPresentationGroup group,
   List<InsightResult> items,
 ) => switch (group) {
-  InsightPresentationGroup.category => _structuralGroupSubtitle(
-    context,
-    group,
-    items.first,
-  ),
-  InsightPresentationGroup.subcategory => _structuralGroupSubtitle(
-    context,
-    group,
-    items.first,
-  ),
-  InsightPresentationGroup.merchant => _structuralGroupSubtitle(
-    context,
-    group,
-    items.first,
-  ),
+  InsightPresentationGroup.category =>
+    insightCopy(context, InsightCopyKey.categoryMovementSubtitle),
+  InsightPresentationGroup.subcategory =>
+    insightCopy(context, InsightCopyKey.subcategoryMovementSubtitle),
+  InsightPresentationGroup.merchant =>
+    insightCopy(context, InsightCopyKey.merchantMovementSubtitle),
   InsightPresentationGroup.largePurchase =>
     context.l10n.text(items.first.rule.descriptionKey),
   _ => null,
 };
-
-String _structuralGroupSubtitle(
-  BuildContext context,
-  InsightPresentationGroup group,
-  InsightResult representative,
-) {
-  final locale = Localizations.localeOf(context).languageCode;
-  if (locale == 'zh') {
-    return switch (group) {
-      InsightPresentationGroup.category => '类别与上一等效期间相比发生了显著变化。',
-      InsightPresentationGroup.subcategory => '子类别与上一等效期间相比发生了显著变化。',
-      InsightPresentationGroup.merchant => '商户支出与上一等效期间相比发生了显著变化。',
-      _ => context.l10n.text(representative.rule.descriptionKey),
-    };
-  }
-  if (locale == 'es') {
-    return switch (group) {
-      InsightPresentationGroup.category =>
-        'Las categorías cambiaron de forma significativa respecto al período equivalente anterior.',
-      InsightPresentationGroup.subcategory =>
-        'Las subcategorías cambiaron de forma significativa respecto al período equivalente anterior.',
-      InsightPresentationGroup.merchant =>
-        'El gasto por comercio cambió de forma significativa respecto al período equivalente anterior.',
-      _ => context.l10n.text(representative.rule.descriptionKey),
-    };
-  }
-  return switch (group) {
-    InsightPresentationGroup.category =>
-      'Categories changed materially compared with the previous equivalent period.',
-    InsightPresentationGroup.subcategory =>
-      'Subcategories changed materially compared with the previous equivalent period.',
-    InsightPresentationGroup.merchant =>
-      'Merchant spending changed materially compared with the previous equivalent period.',
-    _ => context.l10n.text(representative.rule.descriptionKey),
-  };
-}
 
 bool _groupOwnsRuleCopy(InsightPresentationGroup group) => switch (group) {
   InsightPresentationGroup.category ||
@@ -479,14 +453,14 @@ String? _changeDirection(InsightResult insight) {
   return change > 0 ? '↑' : '↓';
 }
 
-String _viewSupportingTransactionsLabel(BuildContext context, int count) {
-  final locale = Localizations.localeOf(context).languageCode;
-  if (locale == 'zh') return '查看 $count 笔支持交易';
-  if (locale == 'es') return 'Ver $count transacciones de respaldo';
-  return count == 1
-      ? 'View 1 supporting transaction'
-      : 'View $count supporting transactions';
-}
+String _viewSupportingTransactionsLabel(BuildContext context, int count) =>
+    insightCopy(
+      context,
+      count == 1
+          ? InsightCopyKey.viewSupportingTransaction
+          : InsightCopyKey.viewSupportingTransactions,
+      count: count,
+    );
 
 ({IconData icon, Color color}) _semanticPresentation(
   BuildContext context,
