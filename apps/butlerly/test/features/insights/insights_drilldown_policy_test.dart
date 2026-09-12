@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+const selectiveMarker = 'conditionEvidence:selective';
+
 void main() {
   Widget app(
     InsightResult insight, {
@@ -88,7 +90,7 @@ void main() {
     await tester.tap(find.text('View transactions'));
     expect(
       path,
-      '/search?locked=true&from=2026-09-01&to=2026-09-05&category=category.dining&direction=expense',
+      '/search?locked=true&from=2026-09-01&to=2026-09-05&direction=expense&category=category.dining',
     );
     expect(path, isNot(contains('ids=')));
   });
@@ -117,6 +119,31 @@ void main() {
       '/search?locked=true&from=2026-09-01&to=2026-09-05&direction=expense',
     );
     expect(path, isNot(contains('ids=')));
+  });
+
+  testWidgets('selective R024 branch drills into evidence and carries refresh context', (
+    tester,
+  ) async {
+    String? path;
+    await tester.pumpWidget(
+      app(
+        _selectiveOverallInsight(
+          evidence: [
+            EvidenceReference(transactionId: TransactionId('large-expense')),
+          ],
+        ),
+        onNavigationRequested: (value) => path = value,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('View transactions'));
+    expect(
+      path,
+      '/search?locked=true&from=2026-09-01&to=2026-09-05&direction=expense&ids=large-expense&insightRule=ANL-R024',
+    );
   });
 
   testWidgets('offers precise uncategorized category drill-down', (
@@ -181,6 +208,24 @@ InsightResult _overallInsight({List<EvidenceReference> evidence = const []}) =>
       ],
     );
 
+InsightResult _selectiveOverallInsight({
+  List<EvidenceReference> evidence = const [],
+}) => _insight(
+  grouping: RuleGrouping.none,
+  dimension: null,
+  ruleId: 'ANL-R024',
+  nameKey: 'analysis.rule.r024.name',
+  descriptionKey: 'analysis.rule.r024.description',
+  evidence: evidence,
+  supportingMetrics: const [selectiveMarker],
+  filters: const [
+    AnalysisFilter(
+      kind: AnalysisFilterKind.direction,
+      values: ['expense'],
+    ),
+  ],
+);
+
 InsightResult _insight({
   required RuleGrouping grouping,
   required String? dimension,
@@ -189,6 +234,7 @@ InsightResult _insight({
   required String descriptionKey,
   List<EvidenceReference> evidence = const [],
   List<AnalysisFilter> filters = const [],
+  List<String> supportingMetrics = const [],
 }) {
   final context = _context();
   final rule = AnalysisRuleDefinition(
@@ -221,6 +267,7 @@ InsightResult _insight({
     absoluteChange: DecimalValue.parse('100'),
     percentageChange: DecimalValue.parse('100'),
     dimension: dimension,
+    supportingMetrics: supportingMetrics,
     evidence: evidence,
     generatedAt: DateTime.utc(2026, 9, 5),
   );
