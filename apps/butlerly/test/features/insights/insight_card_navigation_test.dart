@@ -15,7 +15,12 @@ void main() {
     final rule = _rule('ANL-R020');
     final finding = _finding(rule, context, evidenceIds: const ['support-1']);
     final evaluation = _evaluation([
-      _result(rule, context, finding),
+      _result(
+        rule,
+        context,
+        finding,
+        outputType: InsightOutputType.pattern,
+      ),
     ]);
     String? navigation;
 
@@ -28,7 +33,7 @@ void main() {
 
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('View 1 supporting transaction'));
+    await tester.tap(find.text('View 1 supporting transactions'));
     expect(
       navigation,
       '/search?locked=true&from=2026-09-01&to=2026-09-05',
@@ -36,7 +41,7 @@ void main() {
   });
 
   testWidgets(
-    'R020 presentation keeps R024 selective evidence and drill-down context',
+    'equivalent pattern and alert consolidate while preserving escalation',
     (tester) async {
       final context = _context();
       final baselineRule = _rule('ANL-R020');
@@ -49,8 +54,18 @@ void main() {
         supportingMetrics: const ['conditionEvidence:selective'],
       );
       final evaluation = _evaluation([
-        _result(baselineRule, context, baselineFinding),
-        _result(materialRule, context, materialFinding),
+        _result(
+          baselineRule,
+          context,
+          baselineFinding,
+          outputType: InsightOutputType.pattern,
+        ),
+        _result(
+          materialRule,
+          context,
+          materialFinding,
+          outputType: InsightOutputType.alert,
+        ),
       ]);
       String? navigation;
 
@@ -60,16 +75,54 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Spending compared with baseline'), findsOneWidget);
-      expect(find.text('Material spending alert'), findsNothing);
-      expect(find.text('View 1 supporting transaction'), findsOneWidget);
+      expect(find.text('Material spending alert'), findsOneWidget);
+      expect(find.text('View 1 supporting transactions'), findsOneWidget);
 
-      await tester.tap(find.text('View 1 supporting transaction'));
+      await tester.tap(find.text('View 1 supporting transactions'));
       expect(
         navigation,
         '/search?locked=true&from=2026-09-01&to=2026-09-05&ids=large-expense&insightRule=ANL-R024',
       );
     },
   );
+
+  testWidgets('non-equivalent alert is not consolidated', (tester) async {
+    final context = _context();
+    final baselineRule = _rule('ANL-R020');
+    final materialRule = _rule('ANL-R024');
+    final baselineFinding = _finding(baselineRule, context);
+    final materialFinding = _finding(
+      materialRule,
+      context,
+      currentValue: '160',
+      absoluteChange: '80',
+      percentageChange: '100',
+    );
+    final evaluation = _evaluation([
+      _result(
+        baselineRule,
+        context,
+        baselineFinding,
+        outputType: InsightOutputType.pattern,
+      ),
+      _result(
+        materialRule,
+        context,
+        materialFinding,
+        outputType: InsightOutputType.alert,
+      ),
+    ]);
+
+    await tester.pumpWidget(_app(evaluation, (_) {}));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Spending compared with baseline'), findsOneWidget);
+    expect(find.text('Material spending alert'), findsOneWidget);
+    expect(find.text('80.00 USD'), findsWidgets);
+    expect(find.text('160.00 USD'), findsOneWidget);
+  });
 }
 
 Widget _app(InsightsEvaluation evaluation, ValueChanged<String> onNavigation) =>
@@ -144,16 +197,20 @@ AnalysisFinding _finding(
   AnalysisContext context, {
   List<String> evidenceIds = const [],
   List<String> supportingMetrics = const [],
+  String currentValue = '120',
+  String baselineValue = '80',
+  String absoluteChange = '40',
+  String percentageChange = '50',
 }) => AnalysisFinding(
   id: '${rule.identity.value}-finding',
   rule: rule,
   context: context,
   severity: RuleSeverity.attention,
   lifecycle: FindingLifecycle.active,
-  currentValue: DecimalValue.parse('120'),
-  baselineValue: DecimalValue.parse('80'),
-  absoluteChange: DecimalValue.parse('40'),
-  percentageChange: DecimalValue.parse('50'),
+  currentValue: DecimalValue.parse(currentValue),
+  baselineValue: DecimalValue.parse(baselineValue),
+  absoluteChange: DecimalValue.parse(absoluteChange),
+  percentageChange: DecimalValue.parse(percentageChange),
   supportingMetrics: supportingMetrics,
   evidence: evidenceIds
       .map(
@@ -166,9 +223,10 @@ AnalysisFinding _finding(
 InsightResult _result(
   AnalysisRuleDefinition rule,
   AnalysisContext context,
-  AnalysisFinding finding,
-) => InsightResult(
-  outputType: InsightOutputType.alert,
+  AnalysisFinding finding, {
+  required InsightOutputType outputType,
+}) => InsightResult(
+  outputType: outputType,
   rule: rule,
   context: context,
   finding: finding,
