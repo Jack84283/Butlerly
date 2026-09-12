@@ -29,9 +29,42 @@ void main() {
       InsightPresentationGroup.other,
     );
   });
+
+  test('recognizes an all-positive fallback group', () {
+    expect(
+      insightGroupIsPositiveOnly([
+        _insight(
+          RuleGrouping.none,
+          semanticType: InsightSemanticType.positive,
+        ),
+        _insight(
+          RuleGrouping.none,
+          semanticType: InsightSemanticType.positive,
+        ),
+      ]),
+      isTrue,
+    );
+    expect(
+      insightGroupIsPositiveOnly([
+        _insight(
+          RuleGrouping.none,
+          semanticType: InsightSemanticType.positive,
+        ),
+        _insight(
+          RuleGrouping.none,
+          semanticType: InsightSemanticType.attention,
+        ),
+      ]),
+      isFalse,
+    );
+    expect(insightGroupIsPositiveOnly(const []), isFalse);
+  });
 }
 
-InsightResult _insight(RuleGrouping grouping) {
+InsightResult _insight(
+  RuleGrouping grouping, {
+  InsightSemanticType semanticType = InsightSemanticType.neutral,
+}) {
   final context = AnalysisContext(
     period: AnalysisPeriod(
       startDate: '2026-09-01',
@@ -62,6 +95,11 @@ InsightResult _insight(RuleGrouping grouping) {
     severity: RuleSeverity.info,
     definitionHash: RuleDefinitionHash('9' * 64),
     surface: AnalysisSurface.insights,
+    presentation: InsightPresentationMetadata(
+      semanticType: semanticType,
+      visualizationType: InsightVisualizationType.none,
+      primaryMetric: InsightPrimaryMetric.amount,
+    ),
   );
   return InsightResult(
     outputType: InsightOutputType.pattern,
