@@ -241,17 +241,13 @@ class _SearchPageState extends State<SearchPage>
       endDate: _searchDate(to),
     );
     if (contextResult is! ApplicationSuccess<AnalysisContext>) {
-      _forceNoResults = true;
-      _transactionIds = null;
-      return;
+      throw StateError('Unable to resolve Insight drill-down period.');
     }
     final evaluationResult = await finance.calculateInsights.call(
       contextResult.value,
     );
     if (evaluationResult is! ApplicationSuccess<InsightsEvaluation>) {
-      _forceNoResults = true;
-      _transactionIds = null;
-      return;
+      throw StateError('Unable to refresh Insight drill-down.');
     }
 
     InsightResult? refreshed;
@@ -286,19 +282,27 @@ class _SearchPageState extends State<SearchPage>
   Future<void> _refreshAfterTransactionChange() async {
     _searchDebounce?.cancel();
     _searchGeneration++;
-    await _refreshInsightEvidence();
-    final languageCode =
-        _loadedLanguageCode ?? Localizations.localeOf(context).languageCode;
-    final results = _search();
-    final masterData = _loadMasterData(languageCode);
-    final currencies = _loadCurrencies();
-    setState(() {
-      _results = results;
-      _masterData = masterData;
-      _currencies = currencies;
-    });
-    _updatePresentation(masterData, languageCode);
-    await Future.wait([results, masterData, currencies]);
+    try {
+      await _refreshInsightEvidence();
+      final languageCode =
+          _loadedLanguageCode ?? Localizations.localeOf(context).languageCode;
+      final results = _search();
+      final masterData = _loadMasterData(languageCode);
+      final currencies = _loadCurrencies();
+      if (!mounted) return;
+      setState(() {
+        _results = results;
+        _masterData = masterData;
+        _currencies = currencies;
+      });
+      _updatePresentation(masterData, languageCode);
+      await Future.wait([results, masterData, currencies]);
+    } on Object catch (error, stackTrace) {
+      if (!mounted) return;
+      setState(() {
+        _results = Future<List<TransactionDto>>.error(error, stackTrace);
+      });
+    }
   }
 
   int get _activeFilterCount => [
