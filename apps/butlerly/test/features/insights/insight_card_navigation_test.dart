@@ -28,7 +28,7 @@ void main() {
 
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
     await tester.pumpAndSettle();
-    await tester.tap(find.textContaining('1 supporting transaction'));
+    await tester.tap(find.text('View 1 supporting transaction'));
     expect(
       navigation,
       '/search?locked=true&from=2026-09-01&to=2026-09-05&direction=expense',
@@ -36,7 +36,7 @@ void main() {
   });
 
   testWidgets(
-    'equivalent pattern and alert consolidate while preserving escalation',
+    'equivalent declared pattern and alert consolidate while preserving escalation',
     (tester) async {
       final context = _context();
       final baselineRule = _rule('ANL-R020', InsightOutputType.pattern);
@@ -61,15 +61,43 @@ void main() {
 
       expect(find.text('Spending compared with baseline'), findsOneWidget);
       expect(find.text('Material spending alert'), findsOneWidget);
-      expect(find.textContaining('1 supporting transaction'), findsOneWidget);
+      expect(find.text('120.00 USD'), findsOneWidget);
+      expect(find.text('View 1 supporting transaction'), findsOneWidget);
 
-      await tester.tap(find.textContaining('1 supporting transaction'));
+      await tester.tap(find.text('View 1 supporting transaction'));
       expect(
         navigation,
         '/search?locked=true&from=2026-09-01&to=2026-09-05&direction=expense&ids=large-expense&insightRule=ANL-R024',
       );
     },
   );
+
+  testWidgets('same comparison without declared relationship stays separate', (
+    tester,
+  ) async {
+    final context = _context();
+    final baselineRule = _rule(
+      'ANL-R020',
+      InsightOutputType.pattern,
+      includeRelationship: false,
+    );
+    final materialRule = _rule(
+      'ANL-R024',
+      InsightOutputType.alert,
+      includeRelationship: false,
+    );
+    final evaluation = _evaluation([
+      _result(baselineRule, context, _finding(baselineRule, context)),
+      _result(materialRule, context, _finding(materialRule, context)),
+    ]);
+
+    await tester.pumpWidget(_app(evaluation, (_) {}));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    expect(find.text('120.00 USD'), findsNWidgets(2));
+  });
 
   testWidgets('non-equivalent alert is not consolidated', (tester) async {
     final context = _context();
@@ -129,47 +157,51 @@ AnalysisContext _context() => AnalysisContext(
   baseCurrency: CurrencyCode('USD'),
 );
 
-AnalysisRuleDefinition _rule(String id, InsightOutputType outputType) =>
-    AnalysisRuleDefinition(
-      identity: RuleIdentity(id),
-      version: RuleVersion('1.5.0'),
-      schemaVersion: '1.0.0',
-      type: AnalysisRuleType.insight,
-      nameKey: id == 'ANL-R024'
-          ? 'analysis.rule.r024.name'
-          : 'analysis.rule.r020.name',
-      descriptionKey: id == 'ANL-R024'
-          ? 'analysis.rule.r024.description'
-          : 'analysis.rule.r020.description',
-      enabled: true,
-      status: AnalysisRuleStatus.active,
-      period: 'selected_period',
-      measure: const RuleMeasure(
-        operation: RuleOperation.sum,
-        field: 'amount',
-        currencyBasis: CurrencyBasis.baseCurrency,
-      ),
-      grouping: RuleGrouping.none,
-      baseline: RuleBaseline.previousEquivalentPeriod,
-      condition: const RuleCondition(operator: 'none'),
-      severity: RuleSeverity.attention,
-      definitionHash: RuleDefinitionHash(
-        id == 'ANL-R024' ? 'b' * 64 : 'a' * 64,
-      ),
-      surface: AnalysisSurface.insights,
-      filters: const [
-        AnalysisFilter(
-          kind: AnalysisFilterKind.direction,
-          values: ['expense'],
-        ),
-      ],
-      outputType: outputType,
-      presentation: const InsightPresentation(
-        semanticType: InsightSemanticType.attention,
-        visualizationType: InsightVisualizationType.comparison,
-        primaryMetric: InsightPrimaryMetric.amount,
-      ),
-    );
+AnalysisRuleDefinition _rule(
+  String id,
+  InsightOutputType outputType, {
+  bool includeRelationship = true,
+}) => AnalysisRuleDefinition(
+  identity: RuleIdentity(id),
+  version: RuleVersion('1.5.0'),
+  schemaVersion: '1.0.0',
+  type: AnalysisRuleType.insight,
+  nameKey: id == 'ANL-R024'
+      ? 'analysis.rule.r024.name'
+      : 'analysis.rule.r020.name',
+  descriptionKey: id == 'ANL-R024'
+      ? 'analysis.rule.r024.description'
+      : 'analysis.rule.r020.description',
+  enabled: true,
+  status: AnalysisRuleStatus.active,
+  period: 'selected_period',
+  measure: const RuleMeasure(
+    operation: RuleOperation.sum,
+    field: 'amount',
+    currencyBasis: CurrencyBasis.baseCurrency,
+  ),
+  grouping: RuleGrouping.none,
+  baseline: RuleBaseline.previousEquivalentPeriod,
+  condition: const RuleCondition(operator: 'none'),
+  severity: RuleSeverity.attention,
+  definitionHash: RuleDefinitionHash(id == 'ANL-R024' ? 'b' * 64 : 'a' * 64),
+  surface: AnalysisSurface.insights,
+  filters: const [
+    AnalysisFilter(
+      kind: AnalysisFilterKind.direction,
+      values: ['expense'],
+    ),
+  ],
+  outputType: outputType,
+  role: includeRelationship
+      ? (id == 'ANL-R024' ? 'escalation:spending' : 'comparison:spending')
+      : null,
+  presentation: const InsightPresentation(
+    semanticType: InsightSemanticType.attention,
+    visualizationType: InsightVisualizationType.comparison,
+    primaryMetric: InsightPrimaryMetric.amount,
+  ),
+);
 
 AnalysisFinding _finding(
   AnalysisRuleDefinition rule,
@@ -192,9 +224,7 @@ AnalysisFinding _finding(
   percentageChange: DecimalValue.parse(percentageChange),
   supportingMetrics: supportingMetrics,
   evidence: evidenceIds
-      .map(
-        (id) => EvidenceReference(transactionId: TransactionId(id)),
-      )
+      .map((id) => EvidenceReference(transactionId: TransactionId(id)))
       .toList(growable: false),
   generatedAt: DateTime.utc(2026, 9, 5),
 );
