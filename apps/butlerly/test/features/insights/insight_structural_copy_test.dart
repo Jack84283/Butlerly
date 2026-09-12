@@ -8,7 +8,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('one structural rule owns section title and description', (
+  testWidgets('one structural movement rule owns plural section copy', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -18,12 +18,14 @@ void main() {
           nameKey: 'analysis.rule.r021.name',
           descriptionKey: 'analysis.rule.r021.description',
           dimension: 'category.food',
+          role: 'categoryMovement',
         ),
         _categoryInsight(
           id: 'ANL-R021',
           nameKey: 'analysis.rule.r021.name',
           descriptionKey: 'analysis.rule.r021.description',
           dimension: 'category.travel',
+          role: 'categoryMovement',
         ),
       ]),
     );
@@ -32,9 +34,15 @@ void main() {
     expect(find.text('Category movement'), findsOneWidget);
     expect(
       find.text(
-        'A category changed materially compared with the equivalent period.',
+        'Categories changed materially compared with the equivalent period.',
       ),
       findsOneWidget,
+    );
+    expect(
+      find.text(
+        'A category changed materially compared with the equivalent period.',
+      ),
+      findsNothing,
     );
     expect(find.text('Food & Dining'), findsOneWidget);
     expect(find.text('Travel'), findsOneWidget);
@@ -50,6 +58,7 @@ void main() {
           nameKey: 'analysis.rule.r021.name',
           descriptionKey: 'analysis.rule.r021.description',
           dimension: 'category.food',
+          role: 'categoryMovement',
         ),
         _categoryInsight(
           id: 'ANL-R026',
@@ -102,6 +111,7 @@ InsightResult _categoryInsight({
   required String nameKey,
   required String descriptionKey,
   required String dimension,
+  String? role,
   RuleOperation operation = RuleOperation.sum,
   InsightSemanticType semanticType = InsightSemanticType.attention,
   InsightVisualizationType visualizationType =
@@ -140,6 +150,7 @@ InsightResult _categoryInsight({
     definitionHash: RuleDefinitionHash(id == 'ANL-R021' ? '1' * 64 : '2' * 64),
     surface: AnalysisSurface.insights,
     outputType: InsightOutputType.pattern,
+    role: role,
     presentation: InsightPresentation(
       semanticType: semanticType,
       visualizationType: visualizationType,
