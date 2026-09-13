@@ -278,12 +278,18 @@ Future<_PreviousSelection> _selectPreviousDirectory({
 }
 
 Future<_OriginState> _readOriginState(File file) async {
-  if (await file.exists()) return _parseOriginState(file);
-
   final temporary = File('${file.path}.tmp');
   final previous = File('${file.path}.previous');
+  final mainExists = await file.exists();
   final temporaryExists = await temporary.exists();
   final previousExists = await previous.exists();
+
+  // Main + tmp proves a replacement started but did not complete. The main file
+  // may describe the prior restore operation, so trusting it could select the
+  // wrong safety snapshot. Fail closed instead. Main + previous (without tmp)
+  // means the atomic rename completed and only rollback cleanup was interrupted.
+  if (mainExists && temporaryExists) return const _OriginState.invalid();
+  if (mainExists) return _parseOriginState(file);
   if (!temporaryExists && !previousExists) return const _OriginState.absent();
   if (temporaryExists && previousExists) return const _OriginState.invalid();
   return _parseOriginState(temporaryExists ? temporary : previous);
@@ -365,7 +371,7 @@ Future<void> _deleteOriginStateArtifacts(File file) async {
   ]) {
     try {
       if (await candidate.exists()) await candidate.delete();
-    } on Exception {
+    } catch (_) {
       // A stale wrapper intent is harmless once one coherent state is proven.
     }
   }
