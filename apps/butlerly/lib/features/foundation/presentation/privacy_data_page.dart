@@ -56,7 +56,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       if (mounted) _message(context.l10n.backupText('backupComplete'));
     } on BackupPasswordTooShortException {
       if (mounted) _message(context.l10n.backupText('backupPasswordTooShort'));
-    } on Exception {
+    } catch (_) {
       if (mounted) _message(context.l10n.backupText('backupFailed'));
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -115,7 +115,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     } on RestoreRecoveryRequiredException {
       // RestoreRecoveryState immediately replaces normal navigation with the
       // recovery-only surface. Do not add a competing generic snackbar here.
-    } on Exception {
+    } catch (_) {
       if (mounted) _message(context.l10n.backupText('restoreFailed'));
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -363,7 +363,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           ],
         ),
       );
-    } on Exception {
+    } catch (_) {
       if (mounted) _message(context.l10n.text('exportFailed'));
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -399,7 +399,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       ref.invalidate(userPreferenceProvider);
       notifyTransactionChanged();
       if (mounted) _message(context.l10n.text('eraseComplete'));
-    } on Exception {
+    } catch (_) {
       if (mounted) _message(context.l10n.text('eraseFailed'));
     } finally {
       if (mounted) setState(() => _busy = false);
