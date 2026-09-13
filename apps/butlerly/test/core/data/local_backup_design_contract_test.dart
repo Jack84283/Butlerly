@@ -53,7 +53,7 @@ void main() {
     );
   });
 
-  test('refresh failure rolls live data back to the safety snapshot', () async {
+  test('persistent refresh failure rolls back and requires recovery', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
     final timestamp = DateTime.utc(2026, 1, 1);
@@ -84,7 +84,7 @@ void main() {
           throw StateError('synthetic refresh failure');
         },
       ),
-      throwsA(isA<StateError>()),
+      throwsA(isA<RestoreRecoveryRequiredException>()),
     );
 
     final restored = await fixture.database.database.query(
@@ -95,6 +95,11 @@ void main() {
     expect(restored, hasLength(1));
     expect(restored.single['amount_coefficient'], '200');
     expect(refreshCalls, 2);
+    expect(fixture.manager.recoveryState.isRecoveryRequired, isTrue);
+    expect(
+      fixture.manager.recoveryState.incident?.reason,
+      'activation-rollback-failed',
+    );
   });
 
   test('isolated restore staging is removed after successful activation', () async {
