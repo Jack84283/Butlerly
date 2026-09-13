@@ -80,10 +80,7 @@ class LocalDatabase {
     _database = persistence.ButlerlyDatabase(
       factory: factory,
       path: path.join(directory, 'butlerly.db'),
-      // v1.sql represents the current baseline through v7. Append the v8
-      // merge metadata so a fresh database is born at the same shape that an
-      // upgraded database reaches through migration 8.
-      schemaSql: '$schemaSql\n$migrationV7ToV8',
+      schemaSql: schemaSql,
       seedSql: [catalogSql],
       migrations: {
         2: migrationV1ToV2,
