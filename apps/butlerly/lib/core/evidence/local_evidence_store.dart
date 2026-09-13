@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/di/finance_services.dart';
@@ -32,14 +33,29 @@ final class LocalEvidenceStore {
       await attachAndReturn(transactionId: transactionId, source: source) !=
       null;
 
+  /// Preserves evidence under a new immutable local path.
+  ///
+  /// Once an evidence path is published to SQLite its bytes are never replaced
+  /// in place. A new capture gets a new path. This lets a SQLite backup snapshot
+  /// safely reference evidence while later captures proceed concurrently: old
+  /// rows continue to identify the same bytes for their whole lifetime.
   Future<PreservedEvidenceSource> preserve(XFile source) async {
     final directory = await data.evidenceDirectory();
     await directory.create(recursive: true);
-    final token = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
     final extension = path.extension(source.name).toLowerCase();
-    final localFileName = 'pending-$token$extension';
+    final localFileName = _newImmutableFileName(extension);
     final destination = File(path.join(directory.path, localFileName));
-    await destination.writeAsBytes(await source.readAsBytes(), flush: true);
+
+    // Exclusive creation turns the immutable-path rule into a filesystem
+    // invariant as well as a naming convention. It must never truncate an
+    // existing evidence binary.
+    await destination.create(exclusive: true);
+    try {
+      await destination.writeAsBytes(await source.readAsBytes(), flush: true);
+    } catch (_) {
+      if (await destination.exists()) await destination.delete();
+      rethrow;
+    }
     return PreservedEvidenceSource(
       originalName: source.name,
       localFileName: localFileName,
@@ -171,6 +187,15 @@ final class LocalEvidenceStore {
     return File(
       path.join((await data.evidenceDirectory()).path, source.localFileName),
     );
+  }
+
+  static String _newImmutableFileName(String extension) {
+    final random = Random.secure();
+    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+    final token = bytes
+        .map((value) => value.toRadixString(16).padLeft(2, '0'))
+        .join();
+    return 'evidence-$token$extension';
   }
 
   static EvidenceType _type(String extension) => switch (extension) {
