@@ -198,6 +198,8 @@ final class BackupEncryption {
     );
     await destination.parent.create(recursive: true);
     final output = destination.openWrite();
+    Object? failure;
+    StackTrace? failureStack;
     try {
       final clearText = _cipher.decryptStream(
         source.openRead(cipherStart, cipherEnd),
@@ -208,16 +210,24 @@ final class BackupEncryption {
       );
       await output.addStream(clearText);
       await output.flush();
-    } on SecretBoxAuthenticationError {
-      await output.close();
-      if (await destination.exists()) await destination.delete();
-      throw const BackupPasswordOrIntegrityException();
-    } catch (_) {
-      await output.close();
-      if (await destination.exists()) await destination.delete();
-      rethrow;
+    } catch (error, stack) {
+      failure = error;
+      failureStack = stack;
     }
-    await output.close();
+    try {
+      await output.close();
+    } catch (error, stack) {
+      failure ??= error;
+      failureStack ??= stack;
+    }
+
+    if (failure != null) {
+      if (await destination.exists()) await destination.delete();
+      if (failure is SecretBoxAuthenticationError) {
+        throw const BackupPasswordOrIntegrityException();
+      }
+      Error.throwWithStackTrace(failure!, failureStack ?? StackTrace.current);
+    }
     return destination;
   }
 
