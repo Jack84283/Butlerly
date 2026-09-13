@@ -45,8 +45,12 @@ jobs:
       - run: ./tool/setup.sh
       - run: ./tool/validate.sh flutter_application
 
+  # Native iOS validation needs Xcode and Apple's simulator tooling. Keep these
+  # checks on macOS, but run them after changes land on main so PR validation is
+  # not held open while waiting for limited GitHub-hosted macOS capacity.
   ios_simulator:
     name: iOS Simulator
+    if: github.event_name == 'push'
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -57,6 +61,7 @@ jobs:
 
   ios_integration:
     name: iOS Integration Journeys
+    if: github.event_name == 'push'
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
