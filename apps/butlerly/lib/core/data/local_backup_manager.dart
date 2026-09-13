@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:butlerly/core/data/backup_encryption.dart';
 import 'package:butlerly/core/data/local_backup_engine.dart' as engine;
 import 'package:butlerly/core/data/local_backup_snapshot_writer.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/data/local_restore_recovery.dart';
+import 'package:butlerly/core/data/restore_recovery_state.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
@@ -13,6 +15,11 @@ import 'package:butlerly_database/butlerly_database.dart'
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common/sqlite_api.dart';
 
+export 'backup_encryption.dart'
+    show
+        BackupPasswordOrIntegrityException,
+        BackupPasswordRequiredException,
+        BackupPasswordTooShortException;
 export 'local_backup_engine.dart'
     show
         BackupChangeSummary,
@@ -20,6 +27,8 @@ export 'local_backup_engine.dart'
         LocalRestoreMode,
         LocalRestoreResult;
 export 'local_restore_recovery.dart';
+export 'restore_recovery_state.dart'
+    show RestoreRecoveryIncident, RestoreRecoveryRequiredException;
 
 /// Public backup/restore boundary for Butlerly.
 ///
@@ -27,25 +36,101 @@ export 'local_restore_recovery.dart';
 /// transactional merge/replace semantics, and restore crash recovery markers.
 /// [LocalBackupSnapshotWriter] owns creation from one SQLite read snapshot.
 /// This class adds the IMP-0010 orchestration contract: pre-restore safety
-/// preservation, isolated database/evidence staging, integrity validation, and
-/// activation of only a validated candidate state.
+/// preservation, isolated database/evidence staging, integrity validation,
+/// protected portable backups, and activation of only a validated candidate.
 final class LocalBackupManager {
-  LocalBackupManager(this.database, this.localDataManager)
-    : _engine = engine.LocalBackupManager(database, localDataManager),
-      _snapshotWriter = LocalBackupSnapshotWriter(localDataManager);
+  LocalBackupManager(
+    this.database,
+    this.localDataManager, {
+    RestoreRecoveryState? recoveryState,
+  }) : recoveryState = recoveryState ?? RestoreRecoveryState(localDataManager),
+       _engine = engine.LocalBackupManager(database, localDataManager),
+       _snapshotWriter = LocalBackupSnapshotWriter(localDataManager);
 
   final LocalDatabase database;
   final LocalDataManager localDataManager;
+  final RestoreRecoveryState recoveryState;
   final engine.LocalBackupManager _engine;
   final LocalBackupSnapshotWriter _snapshotWriter;
+  final BackupEncryption _encryption = const BackupEncryption();
 
   static final _backupMagic = utf8.encode('BUTLERLYBACKUP2');
   static const _supportedSchemaVersion = 8;
 
-  /// Creates one logical database snapshot without rejecting concurrent app
-  /// writes. WAL lets a dedicated reader keep its established snapshot while
-  /// the primary application connection commits newer changes independently.
-  Future<File> createBackup(File destination) async {
+  /// Creates an application-managed plaintext backup package.
+  ///
+  /// This path exists for internal recovery snapshots and tests. User-selected
+  /// portable destinations must use [createPortableBackup], which encrypts the
+  /// completed inner package before it leaves application-controlled storage.
+  Future<File> createBackup(File destination) => EvidenceMutationLock.runExclusive(
+    () => _createBackupUnlocked(destination),
+  );
+
+  /// Creates a password-protected portable backup for a user-selected path.
+  ///
+  /// The coherent plaintext snapshot is produced only in application-controlled
+  /// storage, then wrapped with authenticated encryption. The encrypted package
+  /// is decrypted and structurally inspected once before safe destination swap.
+  Future<File> createPortableBackup(
+    File destination, {
+    required String password,
+  }) async {
+    final operationId = DateTime.now().microsecondsSinceEpoch;
+    final privateDirectory = Directory(path.dirname(database.persistenceDatabase.path));
+    final plain = File(
+      path.join(
+        privateDirectory.path,
+        '.portable-backup-$operationId.butlerlybackup',
+      ),
+    );
+    final encryptedCandidate = File(
+      '${destination.path}.encrypted-candidate-$operationId',
+    );
+    final verificationPlain = File(
+      path.join(
+        privateDirectory.path,
+        '.portable-backup-verify-$operationId.butlerlybackup',
+      ),
+    );
+
+    try {
+      // Receipt/statement publication and evidence removal use the same lock.
+      // Holding it until the inner package is complete guarantees the database
+      // snapshot and managed files come from one governed logical boundary.
+      await EvidenceMutationLock.runExclusive(
+        () => _createBackupUnlocked(plain),
+      );
+      await _encryption.encrypt(
+        plain,
+        encryptedCandidate,
+        password: password,
+      );
+
+      // Authentication is not merely assumed because encryption completed.
+      // Decrypt and inspect the finished candidate before replacing a known-good
+      // destination backup.
+      await _encryption.decrypt(
+        encryptedCandidate,
+        verificationPlain,
+        password: password,
+      );
+      await _assertSupportedBackupSchema(verificationPlain);
+      await _engine.inspect(verificationPlain);
+
+      await _recoverInterruptedBackupReplacement(destination);
+      await _replaceBackupFile(encryptedCandidate, destination, operationId);
+      return destination;
+    } finally {
+      await _deleteFileBestEffort(plain);
+      await _deleteFileBestEffort(verificationPlain);
+      await _deleteFileBestEffort(encryptedCandidate);
+      await _cleanupCandidateArtifacts(plain);
+    }
+  }
+
+  /// Creates one coherent database/evidence snapshot while the caller already
+  /// owns [EvidenceMutationLock].
+  Future<File> _createBackupUnlocked(File destination) async {
     await _recoverInterruptedBackupReplacement(destination);
 
     final operationId = DateTime.now().microsecondsSinceEpoch;
@@ -54,7 +139,9 @@ final class LocalBackupManager {
     await persistence.prepareForConsistentBackup();
 
     // WAL is persistent for the database file. It is selected before the
-    // snapshot connection opens so readers and writers can overlap safely.
+    // snapshot connection opens so readers and unrelated non-evidence writers
+    // can overlap safely. Evidence publication/removal is serialized by the
+    // caller's EvidenceMutationLock boundary.
     await database.database.rawQuery('PRAGMA journal_mode = WAL');
     await database.database.execute('PRAGMA busy_timeout = 30000');
     final snapshot = await persistence.factory.openDatabase(
@@ -71,9 +158,6 @@ final class LocalBackupManager {
     try {
       await snapshot.execute('BEGIN');
       transactionOpen = true;
-      // The timestamp is deliberately taken no later than the first read. If a
-      // writer races this tiny boundary, Merge becomes conservatively biased
-      // toward preserving the newer local row rather than overwriting it.
       final createdAtUtc = DateTime.now().toUtc();
       await snapshot.rawQuery('SELECT COUNT(*) FROM sqlite_master');
       await _snapshotWriter.write(
@@ -111,16 +195,11 @@ final class LocalBackupManager {
       return;
     }
 
-    // Never delete a known-good backup before the replacement has been
-    // activated. Keep it under a deterministic sibling name so a process death
-    // between the two renames is recoverable on the next backup attempt.
     final previous = File('${destination.path}.previous-$operationId');
     await destination.rename(previous.path);
     try {
       await candidate.rename(destination.path);
     } catch (_) {
-      // Best-effort synchronous rollback. If this process is interrupted here,
-      // _recoverInterruptedBackupReplacement preserves the previous package.
       try {
         if (await destination.exists()) await destination.delete();
         if (await previous.exists()) await previous.rename(destination.path);
@@ -131,9 +210,6 @@ final class LocalBackupManager {
       rethrow;
     }
 
-    // Cleanup after successful activation is deliberately best-effort. A stale
-    // previous file is recognized and removed the next time this destination is
-    // used, while the newly activated backup remains valid and available.
     try {
       if (await previous.exists()) await previous.delete();
     } on Exception {
@@ -153,8 +229,6 @@ final class LocalBackupManager {
     }
 
     if (await destination.exists()) {
-      // The destination itself is authoritative after activation. Any sibling
-      // rollback packages are stale cleanup residue from a successful swap.
       for (final file in previous) {
         try {
           await file.delete();
@@ -170,8 +244,6 @@ final class LocalBackupManager {
       return;
     }
     if (previous.length > 1) {
-      // More than one rollback candidate cannot be ordered safely. Preserve all
-      // packages rather than guessing which financial backup should win.
       throw StateError(
         'Multiple interrupted backup replacements require manual recovery.',
       );
@@ -199,41 +271,71 @@ final class LocalBackupManager {
     }
   }
 
-  Future<engine.BackupInspection> inspect(File file) async {
-    await _assertSupportedBackupSchema(file);
-    final base = await _engine.inspect(file);
-    final cutoff = base.createdAtUtc.toIso8601String();
-    final additional = await _countOtherNewerData(cutoff);
-    if (additional == 0) return base;
-    return engine.BackupInspection(
-      createdAtUtc: base.createdAtUtc,
-      recordCount: base.recordCount,
-      evidenceCount: base.evidenceCount,
-      changes: engine.BackupChangeSummary(
-        transactionsAdded: base.changes.transactionsAdded,
-        transactionsChanged: base.changes.transactionsChanged,
-        masterDataChanged: base.changes.masterDataChanged + additional,
-        deletedEntities: base.changes.deletedEntities,
-      ),
-    );
+  Future<bool> isEncryptedBackup(File file) => _encryption.isEncrypted(file);
+
+  Future<engine.BackupInspection> inspect(
+    File file, {
+    String? password,
+  }) async {
+    final readable = await _openReadableBackup(file, password: password);
+    try {
+      await _assertSupportedBackupSchema(readable.file);
+      final base = await _engine.inspect(readable.file);
+      final cutoff = base.createdAtUtc.toIso8601String();
+      final additional = await _countOtherNewerData(cutoff);
+      if (additional == 0) return base;
+      return engine.BackupInspection(
+        createdAtUtc: base.createdAtUtc,
+        recordCount: base.recordCount,
+        evidenceCount: base.evidenceCount,
+        changes: engine.BackupChangeSummary(
+          transactionsAdded: base.changes.transactionsAdded,
+          transactionsChanged: base.changes.transactionsChanged,
+          masterDataChanged: base.changes.masterDataChanged + additional,
+          deletedEntities: base.changes.deletedEntities,
+        ),
+      );
+    } finally {
+      await readable.dispose();
+    }
   }
 
-  Future<void> recoverInterruptedRestore() =>
-      EvidenceMutationLock.runExclusive(
-        () => recoverInterruptedLocalRestore(database, localDataManager),
-      );
+  Future<void> recoverInterruptedRestore() => EvidenceMutationLock.runExclusive(
+    () => recoverInterruptedLocalRestore(database, localDataManager),
+  );
 
   Future<engine.LocalRestoreResult> restore(
     File file, {
     required engine.LocalRestoreMode mode,
+    String? password,
     Future<void> Function()? postActivationRefresh,
-  }) => EvidenceMutationLock.runExclusive(() async {
+  }) async {
+    if (recoveryState.isRecoveryRequired) {
+      throw const RestoreRecoveryRequiredException();
+    }
+    final readable = await _openReadableBackup(file, password: password);
+    try {
+      return await EvidenceMutationLock.runExclusive(
+        () => _restoreReadableBackup(
+          readable.file,
+          mode: mode,
+          postActivationRefresh: postActivationRefresh,
+        ),
+      );
+    } finally {
+      await readable.dispose();
+    }
+  }
+
+  Future<engine.LocalRestoreResult> _restoreReadableBackup(
+    File file, {
+    required engine.LocalRestoreMode mode,
+    Future<void> Function()? postActivationRefresh,
+  }) async {
     await recoverInterruptedLocalRestore(database, localDataManager);
     await _assertSupportedBackupSchema(file);
 
-    // IMP-0010 requires a recovery snapshot before activation for both Merge
-    // and Replace. Keep it even after success so the user has an explicit local
-    // rollback artifact for the restore event.
+    final operationId = 'restore-${DateTime.now().microsecondsSinceEpoch}';
     final safetyBackup = await _createPreRestoreSafetyBackup(mode);
     final staging = await _createStagingWorkspace();
     var liveActivated = false;
@@ -243,15 +345,8 @@ final class LocalBackupManager {
         staging.dataManager,
       );
       final stagedResult = await stagedEngine.restore(file, mode: mode);
-
-      // Candidate database and relationships must be valid before live state is
-      // touched. The evidence engine has already verified every binary checksum.
       await _validateDatabase(staging.database.database);
 
-      // Serialize the validated candidate as one portable state and activate it
-      // through the existing transactional/crash-recovery engine. This keeps
-      // structured data and evidence on the already-tested activation path while
-      // ensuring the merge itself happened entirely outside live storage.
       final candidatePackage = File(
         path.join(staging.root.path, 'validated-candidate.butlerlybackup'),
       );
@@ -259,7 +354,7 @@ final class LocalBackupManager {
         staging.database,
         staging.dataManager,
       );
-      await stagingManager.createBackup(candidatePackage);
+      await stagingManager._createBackupUnlocked(candidatePackage);
 
       await _engine.restore(
         candidatePackage,
@@ -273,9 +368,6 @@ final class LocalBackupManager {
       return stagedResult;
     } catch (_) {
       if (liveActivated) {
-        // A validation or runtime-refresh failure after activation must not leave
-        // the user in a state that the UI reports as failed but that is actually
-        // committed. Restore the pre-operation snapshot and refresh best-effort.
         try {
           await _engine.restore(
             safetyBackup,
@@ -290,15 +382,77 @@ final class LocalBackupManager {
             }
           }
         } on Exception {
-          // Preserve the original failure. Existing engine recovery markers and
-          // the retained safety package provide controlled-recovery material.
+          await recoveryState.markRequired(
+            operationId: operationId,
+            safetyBackup: safetyBackup,
+            reason: 'activation-rollback-failed',
+          );
+          throw const RestoreRecoveryRequiredException();
         }
       }
       rethrow;
     } finally {
       await staging.dispose();
     }
-  });
+  }
+
+  /// Attempts explicit recovery from the retained pre-restore safety snapshot.
+  ///
+  /// This is the only write action exposed while the application is in
+  /// controlled recovery mode. The marker is cleared only after the safety
+  /// package, database validation, and runtime refresh all succeed.
+  Future<void> recoverControlledState({
+    Future<void> Function()? postActivationRefresh,
+  }) async {
+    final incident = recoveryState.incident;
+    if (incident == null) return;
+    if (incident.safetyBackupPath.isEmpty) {
+      throw const RestoreRecoveryRequiredException();
+    }
+    final safetyBackup = File(incident.safetyBackupPath);
+    if (!await safetyBackup.exists()) {
+      throw const RestoreRecoveryRequiredException();
+    }
+
+    await EvidenceMutationLock.runExclusive(() async {
+      await _assertSupportedBackupSchema(safetyBackup);
+      await _engine.restore(
+        safetyBackup,
+        mode: engine.LocalRestoreMode.replace,
+      );
+      await _validateDatabase(database.database);
+      if (postActivationRefresh != null) {
+        await postActivationRefresh();
+      }
+      await recoveryState.clear();
+    });
+  }
+
+  Future<_ReadableBackup> _openReadableBackup(
+    File file, {
+    String? password,
+  }) async {
+    if (!await _encryption.isEncrypted(file)) {
+      return _ReadableBackup(file, false);
+    }
+    if (password == null || password.isEmpty) {
+      throw const BackupPasswordRequiredException();
+    }
+    final directory = Directory(path.dirname(database.persistenceDatabase.path));
+    final temporary = File(
+      path.join(
+        directory.path,
+        '.backup-decrypt-${DateTime.now().microsecondsSinceEpoch}.butlerlybackup',
+      ),
+    );
+    try {
+      await _encryption.decrypt(file, temporary, password: password);
+      return _ReadableBackup(temporary, true);
+    } catch (_) {
+      await _deleteFileBestEffort(temporary);
+      rethrow;
+    }
+  }
 
   Future<_RestoreStagingWorkspace> _createStagingWorkspace() async {
     final livePersistence = database.persistenceDatabase;
@@ -312,8 +466,6 @@ final class LocalBackupManager {
     await root.create(recursive: true);
     final stagingDatabasePath = path.join(root.path, 'butlerly.db');
 
-    // VACUUM INTO creates a consistent, standalone SQLite snapshot while the
-    // live connection remains open. Quote the path as an SQLite string literal.
     final escaped = stagingDatabasePath.replaceAll("'", "''");
     await database.database.execute("VACUUM INTO '$escaped'");
 
@@ -405,7 +557,7 @@ final class LocalBackupManager {
     final label = mode == engine.LocalRestoreMode.merge
         ? 'Before Merge'
         : 'Before Restore';
-    return createBackup(
+    return _createBackupUnlocked(
       File(path.join(directory.path, '$label $timestamp.butlerlybackup')),
     );
   }
@@ -450,6 +602,31 @@ final class LocalBackupManager {
       count += Sqflite.firstIntValue(rows) ?? 0;
     }
     return count;
+  }
+
+  Future<void> _deleteFileBestEffort(File file) async {
+    try {
+      if (await file.exists()) await file.delete();
+    } on Exception {
+      // Sensitive temporary files are retried by normal platform cleanup. Do not
+      // mask the primary backup/restore outcome with cleanup failures.
+    }
+  }
+}
+
+final class _ReadableBackup {
+  const _ReadableBackup(this.file, this.temporary);
+
+  final File file;
+  final bool temporary;
+
+  Future<void> dispose() async {
+    if (!temporary) return;
+    try {
+      if (await file.exists()) await file.delete();
+    } on Exception {
+      // Best-effort cleanup of decrypted application-private staging content.
+    }
   }
 }
 
