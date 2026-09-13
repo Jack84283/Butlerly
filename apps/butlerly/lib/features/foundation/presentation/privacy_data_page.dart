@@ -50,6 +50,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         'replaceTitle': 'Replace current Butlerly data?',
         'replaceBody': 'Current local Butlerly data will be replaced by the backup. This cannot be undone unless you have another backup.',
         'restoreComplete': 'Restore completed.',
+        'restoreResult': '{restored} restored • {kept} newer local records kept',
         'backupSummary': '{records} records • {evidence} evidence files',
       },
       'es': {
@@ -68,6 +69,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         'replaceTitle': '¿Reemplazar los datos actuales de Butlerly?',
         'replaceBody': 'Los datos locales actuales de Butlerly serán reemplazados por la copia. No se puede deshacer salvo que tenga otra copia.',
         'restoreComplete': 'Restauración completada.',
+        'restoreResult': '{restored} restaurados • {kept} registros locales más recientes conservados',
         'backupSummary': '{records} registros • {evidence} archivos de evidencia',
       },
       'zh': {
@@ -86,6 +88,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         'replaceTitle': '替换当前 Butlerly 数据？',
         'replaceBody': '当前本地 Butlerly 数据将被备份替换。除非您还有其他备份，否则此操作无法撤销。',
         'restoreComplete': '恢复完成。',
+        'restoreResult': '已恢复 {restored} 条 • 保留 {kept} 条较新的本地记录',
         'backupSummary': '{records} 条记录 • {evidence} 个凭证文件',
       },
     };
@@ -93,7 +96,10 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
   }
 
   Future<void> _backup() async {
-    final timestamp = DateTime.now().toUtc().toIso8601String().replaceAll(':', '-');
+    final timestamp = DateTime.now().toUtc().toIso8601String().replaceAll(
+      ':',
+      '-',
+    );
     final location = await getSaveLocation(
       suggestedName: 'Butlerly Backup $timestamp.butlerlybackup',
       acceptedTypeGroups: const [_backupType],
@@ -126,15 +132,16 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       if (!mounted) return;
       setState(() => _busy = true);
       final result = await manager.restore(file, mode: mode);
-      await services<FinanceServices>().seedInitialMasterData(buildInitialMasterData());
+      await services<FinanceServices>().seedInitialMasterData(
+        buildInitialMasterData(),
+      );
       ref.invalidate(userPreferenceProvider);
       notifyTransactionChanged();
       if (!mounted) return;
-      _message(
-        '${_backupText('restoreComplete')} '
-        '${result.restoredRows} restored, '
-        '${result.keptNewerLocalRows} newer local records kept.',
-      );
+      final summary = _backupText('restoreResult')
+          .replaceAll('{restored}', '${result.restoredRows}')
+          .replaceAll('{kept}', '${result.keptNewerLocalRows}');
+      _message('${_backupText('restoreComplete')} $summary');
     } on Exception {
       if (mounted) _message(_backupText('restoreFailed'));
     } finally {
@@ -162,7 +169,8 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
                 child: Text(context.l10n.text('cancel')),
               ),
               TextButton(
-                onPressed: () => Navigator.pop(context, LocalRestoreMode.replace),
+                onPressed: () =>
+                    Navigator.pop(context, LocalRestoreMode.replace),
                 child: Text(_backupText('replace')),
               ),
               FilledButton(
