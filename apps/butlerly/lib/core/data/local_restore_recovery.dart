@@ -9,6 +9,8 @@ Future<void> recoverInterruptedLocalRestore(
   LocalDatabase database,
   LocalDataManager localDataManager,
 ) async {
+  // A process termination can leave merge-only trigger context behind. Never
+  // allow that context to affect ordinary user edits after startup.
   await database.database.delete('restore_context');
 
   final root = await localDataManager.evidenceDirectory();
@@ -20,8 +22,9 @@ Future<void> recoverInterruptedLocalRestore(
     final decoded = jsonDecode(await journal.readAsString());
     if (decoded is Map) data = decoded.cast<String, Object?>();
   } on Exception {
-    // A torn journal is recoverable from the durable DB marker and the
-    // deterministic recovery-directory names below.
+    // A torn journal is recoverable from durable DB state and deterministic
+    // recovery-directory names. Never treat a parse failure as permission to
+    // delete the live evidence tree.
   }
 
   final committedRows = await database.database.query('restore_commits');
@@ -39,25 +42,28 @@ Future<void> recoverInterruptedLocalRestore(
     ...recovery.staging,
   ];
   final previous = await _newestExisting(previousCandidates);
-  final stagingExists = await _anyExists(stagingCandidates);
 
   if (committed) {
+    // DB commit is authoritative: keep the live evidence tree and only remove
+    // recovery artifacts. The commit marker is intentionally removed last.
     for (final directory in {...previousCandidates, ...stagingCandidates}) {
       if (await directory.exists()) await directory.delete(recursive: true);
     }
-    await database.database.delete('restore_commits');
     if (await journal.exists()) await journal.delete();
+    await database.database.delete('restore_commits');
     return;
   }
 
   if (previous != null) {
+    // An original evidence tree exists and the DB did not commit. Restore it.
     if (await root.exists()) await root.delete(recursive: true);
     await previous.rename(root.path);
-  } else if (!stagingExists && await root.exists()) {
-    // A journal exists, no DB commit exists, no original tree was retained,
-    // and the staging path no longer exists. The only possible live root is
-    // the uncommitted restored tree, so remove it.
-    await root.delete(recursive: true);
+  } else {
+    // Ambiguous state: the original tree may legitimately have been empty, or
+    // the DB may already have committed and only its marker cleanup completed
+    // before the process died. Preserve the live tree rather than risk deleting
+    // evidence that belongs to committed financial records. Any unreferenced
+    // files are harmless and can be cleaned by a later integrity sweep.
   }
 
   for (final directory in {...previousCandidates, ...stagingCandidates}) {
@@ -98,14 +104,6 @@ Future<Directory?> _newestExisting(Iterable<Directory> candidates) async {
     }
   }
   return newest;
-}
-
-Future<bool> _anyExists(Iterable<Directory> candidates) async {
-  final seen = <String>{};
-  for (final candidate in candidates) {
-    if (seen.add(candidate.path) && await candidate.exists()) return true;
-  }
-  return false;
 }
 
 final class _RecoveryDirectories {
