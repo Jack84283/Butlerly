@@ -5,6 +5,7 @@ import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
+import 'package:butlerly_database/butlerly_database.dart' show sha256Bytes;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -119,6 +120,157 @@ void main() {
     expect(rows, hasLength(1));
     expect(rows.single['name'], 'Before backup');
   });
+
+  test('merge purges newer unresolved duplicate state before merge context', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final old = DateTime.utc(2025, 1, 1);
+    await fixture.insertTransaction('tx-generated', old);
+    final backup = File(path.join(fixture.root.path, 'generated.butlerlybackup'));
+    await fixture.manager.createBackup(backup);
+
+    final future = DateTime.now().toUtc().add(const Duration(minutes: 5));
+    await fixture.database.database.insert('duplicate_candidate_groups', {
+      'id': 'generated-group',
+      'transaction_date': '2025-01-01',
+      'amount_coefficient': '100',
+      'amount_scale': 2,
+      'currency': 'USD',
+      'direction': 'expense',
+      'status': 'unresolved',
+      'created_at': future.toIso8601String(),
+      'updated_at': future.toIso8601String(),
+    });
+    await fixture.database.database.insert(
+      'duplicate_candidate_group_transactions',
+      {
+        'group_id': 'generated-group',
+        'transaction_id': 'tx-generated',
+        'created_at': future.toIso8601String(),
+      },
+    );
+
+    await fixture.manager.restore(backup, mode: LocalRestoreMode.merge);
+
+    expect(
+      await fixture.database.database.query(
+        'duplicate_candidate_groups',
+        where: 'id = ?',
+        whereArgs: ['generated-group'],
+      ),
+      isEmpty,
+    );
+    expect(
+      await fixture.database.database.query(
+        'duplicate_candidate_group_transactions',
+        where: 'group_id = ?',
+        whereArgs: ['generated-group'],
+      ),
+      isEmpty,
+    );
+  });
+
+  test('corrupt evidence fails before generated local state is purged', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final old = DateTime.utc(2025, 1, 1);
+    await fixture.insertTransaction('tx-corrupt', old);
+    await fixture.database.database.insert('provenances', {
+      'id': 'prov-corrupt',
+      'source_type': 'manual',
+      'captured_at': old.toIso8601String(),
+    });
+    await fixture.database.database.insert('evidence_items', {
+      'id': 'evidence-corrupt',
+      'type': 'receipt',
+      'original_name': 'corrupt.bin',
+      'media_type': 'application/octet-stream',
+      'provenance_id': 'prov-corrupt',
+      'created_at': old.toIso8601String(),
+      'local_file_name': 'corrupt.bin',
+    });
+    await File(path.join(fixture.evidence.path, 'corrupt.bin'))
+        .writeAsString('evidence-before-corruption', flush: true);
+    final backup = File(path.join(fixture.root.path, 'corrupt.butlerlybackup'));
+    await fixture.manager.createBackup(backup);
+
+    await fixture.database.database.insert('review_issues', {
+      'id': 'generated-review-after-backup',
+      'transaction_id': 'tx-corrupt',
+      'reason': 'generated',
+      'status': 'active',
+      'created_at': DateTime.now().toUtc().toIso8601String(),
+    });
+
+    final raf = await backup.open(mode: FileMode.append);
+    final length = await backup.length();
+    await raf.setPosition(length - 1);
+    final original = await raf.readByte();
+    await raf.setPosition(length - 1);
+    await raf.writeByte(original ^ 0xff);
+    await raf.close();
+
+    await expectLater(
+      fixture.manager.restore(backup, mode: LocalRestoreMode.merge),
+      throwsFormatException,
+    );
+
+    expect(
+      await fixture.database.database.query(
+        'review_issues',
+        where: 'id = ?',
+        whereArgs: ['generated-review-after-backup'],
+      ),
+      hasLength(1),
+    );
+  });
+
+  test('merge refuses an occupied evidence remap target with different bytes', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final old = DateTime.utc(2025, 1, 1).toIso8601String();
+    await fixture.database.database.insert('provenances', {
+      'id': 'prov-remap',
+      'source_type': 'manual',
+      'captured_at': old,
+    });
+    await fixture.database.database.insert('evidence_items', {
+      'id': 'evidence-remap',
+      'type': 'receipt',
+      'original_name': 'receipt.bin',
+      'media_type': 'application/octet-stream',
+      'provenance_id': 'prov-remap',
+      'created_at': old,
+      'local_file_name': 'receipt.bin',
+    });
+    const backupBytes = 'backup-evidence';
+    await File(path.join(fixture.evidence.path, 'receipt.bin'))
+        .writeAsString(backupBytes, flush: true);
+    final backup = File(path.join(fixture.root.path, 'remap.butlerlybackup'));
+    await fixture.manager.createBackup(backup);
+
+    await File(path.join(fixture.evidence.path, 'receipt.bin'))
+        .writeAsString('newer-local-evidence', flush: true);
+    final hash = sha256Bytes(utf8.encode(backupBytes));
+    final remap = File(
+      path.join(
+        fixture.evidence.path,
+        'receipt.backup-${hash.substring(0, 8)}.bin',
+      ),
+    );
+    await remap.writeAsString('unrelated-local-evidence', flush: true);
+
+    await expectLater(
+      fixture.manager.restore(backup, mode: LocalRestoreMode.merge),
+      throwsStateError,
+    );
+
+    expect(await remap.readAsString(), 'unrelated-local-evidence');
+    expect(
+      await File(path.join(fixture.evidence.path, 'receipt.bin')).readAsString(),
+      'newer-local-evidence',
+    );
+  });
 }
 
 final class _Fixture {
@@ -145,6 +297,21 @@ final class _Fixture {
       localEvidenceDirectory: evidence,
     );
     return _Fixture(root, evidence, database, LocalBackupManager(database, data));
+  }
+
+  Future<void> insertTransaction(String id, DateTime timestamp) async {
+    await database.database.insert('transactions', {
+      'id': id,
+      'unknown_time_reason': 'unknown',
+      'amount_coefficient': '100',
+      'amount_scale': 2,
+      'currency': 'USD',
+      'direction': 'expense',
+      'source_type': 'manual',
+      'status': 'active',
+      'created_at': timestamp.toIso8601String(),
+      'updated_at': timestamp.toIso8601String(),
+    });
   }
 
   Future<void> dispose() async {
