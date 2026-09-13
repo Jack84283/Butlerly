@@ -1,6 +1,7 @@
 import 'package:butlerly/app/butlerly_app.dart';
 import 'package:butlerly/core/config/app_configuration.dart';
 import 'package:butlerly/core/data/local_backup_manager.dart';
+import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
@@ -33,8 +34,11 @@ Future<void> bootstrap() async {
   );
 
   if (database.status == DatabaseStatus.ready &&
-      services.isRegistered<LocalBackupManager>()) {
-    await services<LocalBackupManager>().recoverInterruptedRestore();
+      services.isRegistered<LocalDataManager>()) {
+    await recoverInterruptedLocalRestore(
+      database,
+      services<LocalDataManager>(),
+    );
   }
 
   if (services.isRegistered<FinanceServices>()) {
