@@ -68,10 +68,6 @@ final class LocalBackupManager {
       );
 
   /// Creates a password-protected portable backup for a user-selected path.
-  ///
-  /// The coherent plaintext snapshot is produced only in application-controlled
-  /// storage, then wrapped with authenticated encryption. The encrypted package
-  /// is decrypted and structurally inspected once before safe destination swap.
   Future<File> createPortableBackup(
     File destination, {
     required String password,
@@ -97,9 +93,6 @@ final class LocalBackupManager {
     );
 
     try {
-      // Receipt/statement publication and evidence removal use the same lock.
-      // Holding it until the inner package is complete guarantees the database
-      // snapshot and managed files come from one governed logical boundary.
       await EvidenceMutationLock.runExclusive(
         () => _createBackupUnlocked(plain),
       );
@@ -108,10 +101,6 @@ final class LocalBackupManager {
         encryptedCandidate,
         password: password,
       );
-
-      // Authentication is not merely assumed because encryption completed.
-      // Decrypt and inspect the finished candidate before replacing a known-good
-      // destination backup.
       await _encryption.decrypt(
         encryptedCandidate,
         verificationPlain,
@@ -138,13 +127,8 @@ final class LocalBackupManager {
     final candidate = File('${destination.path}.candidate-$operationId');
 
     try {
-      // Queue the SQLite transaction before the first await. Butlerly's ordinary
-      // repositories share this connection, so writes submitted after backup()
-      // are ordered behind this read transaction instead of racing the snapshot
-      // boundary. This intentionally favors correctness over write concurrency.
       final snapshotFuture = database.database.transaction((snapshot) async {
-        // Pin the SQLite snapshot first, then derive the manifest timestamp from
-        // that already-established state and validate the exact same snapshot.
+        // Pin the SQLite snapshot before any integrity check or manifest time.
         await snapshot.rawQuery('SELECT COUNT(*) FROM sqlite_master');
         final createdAtUtc = DateTime.now().toUtc();
         await _validateDatabase(snapshot);
@@ -182,16 +166,15 @@ final class LocalBackupManager {
       try {
         if (await destination.exists()) await destination.delete();
         if (await previous.exists()) await previous.rename(destination.path);
-      } on Exception {
-        // Preserve the original replacement failure and leave the rollback file
-        // for deterministic recovery on the next attempt.
+      } catch (_) {
+        // Preserve the original replacement failure and leave rollback material.
       }
       rethrow;
     }
 
     try {
       if (await previous.exists()) await previous.delete();
-    } on Exception {
+    } catch (_) {
       // Leave the rollback artifact for later cleanup.
     }
   }
@@ -211,7 +194,7 @@ final class LocalBackupManager {
       for (final file in previous) {
         try {
           await file.delete();
-        } on Exception {
+        } catch (_) {
           // Cleanup must never make a valid destination unusable.
         }
       }
@@ -232,7 +215,7 @@ final class LocalBackupManager {
   Future<void> _cleanupCandidateArtifacts(File candidate) async {
     try {
       if (await candidate.exists()) await candidate.delete();
-    } on Exception {
+    } catch (_) {
       // Continue with best-effort cleanup of the writer's temporary files.
     }
     final parent = candidate.parent;
@@ -244,7 +227,7 @@ final class LocalBackupManager {
       }
       try {
         await entity.delete();
-      } on Exception {
+      } catch (_) {
         // A failed backup must not mask its original error during cleanup.
       }
     }
@@ -279,10 +262,49 @@ final class LocalBackupManager {
     }
   }
 
+  /// Deletes only orphaned application-private working copies that can never be
+  /// authoritative recovery material. Live evidence trees, engine journals, and
+  /// safety snapshots are intentionally excluded.
+  Future<void> cleanupOrphanedPrivateArtifacts() async {
+    final databaseDirectory = Directory(
+      path.dirname(database.persistenceDatabase.path),
+    );
+    if (await databaseDirectory.exists()) {
+      await for (final entity in databaseDirectory.list(followLinks: false)) {
+        final name = path.basename(entity.path);
+        final privateStage =
+            entity is Directory && name.startsWith('.butlerly-restore-stage-');
+        final plaintextTemporary =
+            entity is File &&
+            (name.startsWith('.backup-decrypt-') ||
+                name.startsWith('.portable-backup-') ||
+                name.startsWith('.portable-backup-verify-'));
+        if (!privateStage && !plaintextTemporary) continue;
+        try {
+          if (entity is Directory) {
+            await entity.delete(recursive: true);
+          } else if (entity is File) {
+            await entity.delete();
+          }
+        } catch (_) {
+          // Startup recovery must continue even if OS cleanup is temporarily
+          // unable to remove an orphaned private working copy.
+        }
+      }
+    }
+
+    await _pruneSafetyBackupsBestEffort(
+      preservePath: recoveryState.incident?.safetyBackupPath,
+    );
+  }
+
   Future<void> recoverInterruptedRestore() =>
       EvidenceMutationLock.runExclusive(() async {
-        await recoverInterruptedLocalRestore(database, localDataManager);
-        await recoveryState.initialize();
+        await recoverInterruptedLocalRestore(
+          database,
+          localDataManager,
+          recoveryState: recoveryState,
+        );
         if (recoveryState.isRecoveryRequired) {
           throw const RestoreRecoveryRequiredException();
         }
@@ -300,10 +322,6 @@ final class LocalBackupManager {
       );
     }
 
-    // Reserve the evidence mutation boundary synchronously when restore is
-    // requested. Password inspection/decryption is part of that reservation so
-    // a later capture/erase cannot jump ahead while this operation is opening
-    // its input package.
     return EvidenceMutationLock.runExclusive(() async {
       final readable = await _openReadableBackup(file, password: password);
       try {
@@ -323,67 +341,74 @@ final class LocalBackupManager {
     required engine.LocalRestoreMode mode,
     Future<void> Function()? postActivationRefresh,
   }) async {
-    await recoverInterruptedLocalRestore(database, localDataManager);
-    await recoveryState.initialize();
+    await recoverInterruptedLocalRestore(
+      database,
+      localDataManager,
+      recoveryState: recoveryState,
+    );
     if (recoveryState.isRecoveryRequired) {
       throw const RestoreRecoveryRequiredException();
     }
     await _assertSupportedBackupSchema(file);
 
     final operationId = 'restore-${DateTime.now().microsecondsSinceEpoch}';
-    final safetyBackup = await _createPreRestoreSafetyBackup(mode);
     final staging = await _createStagingWorkspace();
+    File? safetyBackup;
     var liveActivated = false;
     try {
       final stagedEngine = engine.LocalBackupManager(
         staging.database,
         staging.dataManager,
       );
-      // Staging is validation-only. It proves the requested operation can be
-      // applied to a coherent copy, but is never used as a replacement snapshot
-      // for the live database because live data may change while validation runs.
+      // Staging proves the requested operation can be applied to a coherent copy
+      // but is never used as the live replacement snapshot.
       await stagedEngine.restore(file, mode: mode);
       await _validateDatabase(staging.database.database);
 
-      // Re-apply the original, already validated package to the current live
-      // state. Merge therefore evaluates newer-local timestamps at activation
-      // time instead of replacing the database with a stale staging snapshot.
-      final liveResult = await _restoreLivePackage(file, mode: mode);
+      // Capture the latest local state immediately before activation, after the
+      // potentially long validation phase. This includes edits made while the
+      // isolated staging pass was running.
+      safetyBackup = await _createPreRestoreSafetyBackup(mode);
+
+      final liveResult = await _restoreLivePackage(
+        file,
+        mode: mode,
+        operationId: operationId,
+        safetyBackup: safetyBackup,
+      );
       liveActivated = true;
       await _validateDatabase(database.database);
+      await _validateLiveEvidenceReferences();
       if (postActivationRefresh != null) {
         await postActivationRefresh();
       }
+
+      await _clearRestoreOriginState();
+      await _pruneSafetyBackupsBestEffort();
       return liveResult;
     } catch (error, stack) {
-      if (liveActivated) {
+      if (liveActivated && safetyBackup != null) {
+        // Do not automatically replace the just-activated state. A concurrent
+        // local edit may have landed after the engine commit. Gate normal use and
+        // let controlled recovery validate/retry the current state first; only a
+        // validation failure permits fallback to the pre-activation safety copy.
         try {
-          await _restoreLivePackage(
-            safetyBackup,
-            mode: engine.LocalRestoreMode.replace,
+          await recoveryState.markRequired(
+            operationId: operationId,
+            safetyBackup: safetyBackup,
+            reason: 'post-activation-validation-or-refresh-failed',
+            retryCurrentState: true,
           );
-          await _validateDatabase(database.database);
-          if (postActivationRefresh != null) {
-            await postActivationRefresh();
-          }
-        } catch (_, rollbackStack) {
-          // Catch Errors as well as Exceptions. A failed refresh/validation after
-          // rollback means the process cannot prove a coherent runtime state.
-          try {
-            await recoveryState.markRequired(
-              operationId: operationId,
-              safetyBackup: safetyBackup,
-              reason: 'activation-rollback-failed',
-            );
-          } catch (_) {
-            // markRequired fails closed in memory before persisting and leaves
-            // temp/previous marker sentinels for restart recovery.
-          }
-          Error.throwWithStackTrace(
-            const RestoreRecoveryRequiredException(),
-            rollbackStack,
-          );
+        } catch (_) {
+          // The durable restore-origin sidecar was written before activation and
+          // remains until final success, so restart still fails closed even if
+          // the separate recovery marker cannot be persisted (for example disk
+          // pressure during this failure path).
         }
+        Error.throwWithStackTrace(
+          const RestoreRecoveryRequiredException(),
+          stack,
+        );
       }
       Error.throwWithStackTrace(error, stack);
     } finally {
@@ -394,67 +419,165 @@ final class LocalBackupManager {
   Future<engine.LocalRestoreResult> _restoreLivePackage(
     File file, {
     required engine.LocalRestoreMode mode,
+    required String operationId,
+    required File safetyBackup,
   }) async {
     final root = await localDataManager.evidenceDirectory();
-    final originState = File('${root.path}.restore-origin.json');
-    final temporary = File('${originState.path}.tmp');
     final journal = File('${root.path}.restore-journal.json');
 
-    await temporary.writeAsString(
-      jsonEncode({'rootExisted': await root.exists()}),
-      flush: true,
+    await _writeRestoreOriginState(
+      operationId: operationId,
+      rootExisted: await root.exists(),
+      safetyBackup: safetyBackup,
     );
-    if (await originState.exists()) await originState.delete();
-    await temporary.rename(originState.path);
 
     try {
-      final result = await _engine.restore(file, mode: mode);
-      await _deleteFileBestEffort(originState);
-      await _deleteFileBestEffort(temporary);
-      return result;
+      return await _engine.restore(file, mode: mode);
     } catch (_) {
       // The engine removes its journal after a successful pre-commit rollback.
-      // In that case the sidecar is stale and can be discarded. If the journal
-      // remains, retain the sidecar so startup recovery knows the original root
-      // state without guessing.
+      // Only then can the wrapper intent be discarded. If the journal remains,
+      // startup recovery needs both the origin state and its safety backup path.
       if (!await journal.exists()) {
-        await _deleteFileBestEffort(originState);
-        await _deleteFileBestEffort(temporary);
+        await _clearRestoreOriginState();
       }
       rethrow;
     }
   }
 
-  /// Attempts explicit recovery from the retained pre-restore safety snapshot.
+  Future<void> _writeRestoreOriginState({
+    required String operationId,
+    required bool rootExisted,
+    required File safetyBackup,
+  }) async {
+    final root = await localDataManager.evidenceDirectory();
+    final origin = File('${root.path}.restore-origin.json');
+    final temporary = File('${origin.path}.tmp');
+    final previous = File('${origin.path}.previous');
+    await temporary.writeAsString(
+      jsonEncode({
+        'operationId': operationId,
+        'rootExisted': rootExisted,
+        'safetyBackupPath': safetyBackup.path,
+        'activationPending': true,
+      }),
+      flush: true,
+    );
+    if (await previous.exists()) await previous.delete();
+    if (await origin.exists()) await origin.rename(previous.path);
+    try {
+      await temporary.rename(origin.path);
+      if (await previous.exists()) await previous.delete();
+    } catch (_) {
+      // Leave atomic-replacement sentinels for startup to fail closed.
+      rethrow;
+    }
+  }
+
+  Future<void> _clearRestoreOriginState() async {
+    final root = await localDataManager.evidenceDirectory();
+    final origin = File('${root.path}.restore-origin.json');
+    for (final file in <File>[
+      origin,
+      File('${origin.path}.tmp'),
+      File('${origin.path}.previous'),
+    ]) {
+      try {
+        if (await file.exists()) await file.delete();
+      } catch (_) {
+        // A stale intent is fail-safe: startup may request recovery again rather
+        // than reopening ordinary writes without proof.
+      }
+    }
+  }
+
+  /// Attempts controlled recovery.
   ///
-  /// This is the only write action exposed while the application is in
-  /// controlled recovery mode. The marker is cleared only after the safety
-  /// package, database validation, and runtime refresh all succeed.
+  /// When the engine committed and only post-activation validation/refresh was
+  /// interrupted, validate and keep the current live state first. A safety-copy
+  /// Replace is only used when current data validation itself fails.
   Future<void> recoverControlledState({
     Future<void> Function()? postActivationRefresh,
   }) async {
     final incident = recoveryState.incident;
     if (incident == null) return;
-    if (incident.safetyBackupPath.isEmpty) {
-      throw const RestoreRecoveryRequiredException();
-    }
-    final safetyBackup = File(incident.safetyBackupPath);
-    if (!await safetyBackup.exists()) {
-      throw const RestoreRecoveryRequiredException();
-    }
 
     await EvidenceMutationLock.runExclusive(() async {
+      if (incident.retryCurrentState) {
+        var currentStateValid = false;
+        try {
+          await _validateDatabase(database.database);
+          await _validateLiveEvidenceReferences();
+          currentStateValid = true;
+        } catch (_) {
+          currentStateValid = false;
+        }
+
+        if (currentStateValid) {
+          // If refresh itself fails, keep the recovery marker and current data so
+          // the user can retry without silently discarding post-activation edits.
+          if (postActivationRefresh != null) {
+            await postActivationRefresh();
+          }
+          await _clearRestoreOriginState();
+          await recoveryState.clear();
+          await _pruneSafetyBackupsBestEffort();
+          return;
+        }
+      }
+
+      if (incident.safetyBackupPath.isEmpty) {
+        throw const RestoreRecoveryRequiredException();
+      }
+      final safetyBackup = File(incident.safetyBackupPath);
+      if (!await safetyBackup.exists()) {
+        throw const RestoreRecoveryRequiredException();
+      }
+
       await _assertSupportedBackupSchema(safetyBackup);
       await _restoreLivePackage(
         safetyBackup,
         mode: engine.LocalRestoreMode.replace,
+        operationId: 'recovery-${DateTime.now().microsecondsSinceEpoch}',
+        safetyBackup: safetyBackup,
       );
       await _validateDatabase(database.database);
+      await _validateLiveEvidenceReferences();
       if (postActivationRefresh != null) {
         await postActivationRefresh();
       }
+      await _clearRestoreOriginState();
       await recoveryState.clear();
+      await _pruneSafetyBackupsBestEffort();
     });
+  }
+
+  /// Last-resort recovery path when no trustworthy safety snapshot exists.
+  ///
+  /// The recovery marker remains durable until erase, system-data reseeding and
+  /// runtime refresh all succeed, so a crash during reset cannot silently reopen
+  /// an incompletely initialized workspace.
+  Future<void> resetControlledRecovery({
+    Future<void> Function()? postResetRefresh,
+  }) async {
+    final incident = recoveryState.incident;
+    if (incident == null) return;
+
+    await localDataManager.eraseAll(preserveRecoveryMarker: true);
+    try {
+      if (postResetRefresh != null) await postResetRefresh();
+      await _clearRestoreOriginState();
+      await recoveryState.clear();
+    } catch (error, stack) {
+      try {
+        await recoveryState.markUnknownRequired(
+          operationId: incident.operationId,
+          reason: 'recovery-reset-incomplete',
+        );
+      } catch (_) {
+        // The preserved pre-reset marker still fails closed on restart.
+      }
+      Error.throwWithStackTrace(error, stack);
+    }
   }
 
   Future<_ReadableBackup> _openReadableBackup(
@@ -538,6 +661,27 @@ final class LocalBackupManager {
       throw StateError(
         'Restored database contains broken foreign-key relationships.',
       );
+    }
+  }
+
+  Future<void> _validateLiveEvidenceReferences() async {
+    final root = await localDataManager.evidenceDirectory();
+    final rows = await database.database.query(
+      'evidence_items',
+      columns: ['local_file_name'],
+    );
+    for (final row in rows) {
+      final raw = row['local_file_name'];
+      if (raw is! String || raw.trim().isEmpty) continue;
+      final relative = path.normalize(raw);
+      if (path.isAbsolute(relative) ||
+          relative == '..' ||
+          relative.startsWith('../')) {
+        throw StateError('Restored evidence contains an unsafe local path.');
+      }
+      if (!await File(path.join(root.path, relative)).exists()) {
+        throw StateError('Restored database references missing evidence.');
+      }
     }
   }
 
@@ -635,12 +779,22 @@ final class LocalBackupManager {
     return count;
   }
 
+  Future<void> _pruneSafetyBackupsBestEffort({String? preservePath}) async {
+    try {
+      await localDataManager.pruneSafetyBackups(
+        keep: 2,
+        preservePath: preservePath,
+      );
+    } catch (_) {
+      // Retention cleanup must never change a restore/recovery outcome.
+    }
+  }
+
   Future<void> _deleteFileBestEffort(File file) async {
     try {
       if (await file.exists()) await file.delete();
-    } on Exception {
-      // Sensitive temporary files are retried by normal platform cleanup. Do not
-      // mask the primary backup/restore outcome with cleanup failures.
+    } catch (_) {
+      // Sensitive temporary files are retried by startup cleanup.
     }
   }
 }
@@ -655,8 +809,8 @@ final class _ReadableBackup {
     if (!temporary) return;
     try {
       if (await file.exists()) await file.delete();
-    } on Exception {
-      // Best-effort cleanup of decrypted application-private staging content.
+    } catch (_) {
+      // Startup cleanup removes orphaned private decrypted packages.
     }
   }
 }
@@ -671,13 +825,13 @@ final class _RestoreStagingWorkspace {
   Future<void> dispose() async {
     try {
       await database.close();
-    } on Exception {
+    } catch (_) {
       // Continue cleaning the isolated staging directory.
     }
     try {
       if (await root.exists()) await root.delete(recursive: true);
-    } on Exception {
-      // Staging cleanup is best-effort after live state has been decided.
+    } catch (_) {
+      // Startup cleanup removes orphaned staging workspaces.
     }
   }
 }
