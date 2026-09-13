@@ -30,14 +30,6 @@ export 'local_restore_recovery.dart';
 export 'restore_recovery_state.dart'
     show RestoreRecoveryIncident, RestoreRecoveryRequiredException;
 
-/// Public backup/restore boundary for Butlerly.
-///
-/// [local_backup_engine.dart] owns package validation, evidence preparation,
-/// transactional merge/replace semantics, and restore crash recovery markers.
-/// [LocalBackupSnapshotWriter] owns creation from one SQLite read snapshot.
-/// This class adds the IMP-0010 orchestration contract: pre-restore safety
-/// preservation, isolated database/evidence staging, integrity validation,
-/// protected portable backups, and activation only after validation succeeds.
 final class LocalBackupManager {
   LocalBackupManager(
     this.database,
@@ -157,17 +149,13 @@ final class LocalBackupManager {
       try {
         if (await destination.exists()) await destination.delete();
         if (await previous.exists()) await previous.rename(destination.path);
-      } catch (_) {
-        // Preserve the original replacement failure and leave rollback material.
-      }
+      } catch (_) {}
       rethrow;
     }
 
     try {
       if (await previous.exists()) await previous.delete();
-    } catch (_) {
-      // Leave the rollback artifact for later cleanup.
-    }
+    } catch (_) {}
   }
 
   Future<void> _recoverInterruptedBackupReplacement(File destination) async {
@@ -185,9 +173,7 @@ final class LocalBackupManager {
       for (final file in previous) {
         try {
           await file.delete();
-        } catch (_) {
-          // Cleanup must never make a valid destination unusable.
-        }
+        } catch (_) {}
       }
       return;
     }
@@ -206,9 +192,7 @@ final class LocalBackupManager {
   Future<void> _cleanupCandidateArtifacts(File candidate) async {
     try {
       if (await candidate.exists()) await candidate.delete();
-    } catch (_) {
-      // Continue with best-effort cleanup of the writer's temporary files.
-    }
+    } catch (_) {}
     final parent = candidate.parent;
     if (!await parent.exists()) return;
     final prefix = '${path.basename(candidate.path)}.tmp-';
@@ -218,9 +202,7 @@ final class LocalBackupManager {
       }
       try {
         await entity.delete();
-      } catch (_) {
-        // A failed backup must not mask its original error during cleanup.
-      }
+      } catch (_) {}
     }
   }
 
@@ -274,9 +256,7 @@ final class LocalBackupManager {
           } else if (entity is File) {
             await entity.delete();
           }
-        } catch (_) {
-          // Startup recovery must continue if cleanup is temporarily blocked.
-        }
+        } catch (_) {}
       }
     }
 
@@ -377,9 +357,7 @@ final class LocalBackupManager {
             reason: 'post-activation-validation-or-refresh-failed',
             retryCurrentState: true,
           );
-        } catch (_) {
-          // restore-origin remains as a durable fail-closed fallback.
-        }
+        } catch (_) {}
         Error.throwWithStackTrace(
           const RestoreRecoveryRequiredException(),
           stack,
@@ -428,20 +406,18 @@ final class LocalBackupManager {
         Error.throwWithStackTrace(error, stack);
       }
 
-      // The engine could not prove that its pre-commit evidence activation was
-      // rolled back. Keep all engine artifacts and the wrapper safety snapshot;
-      // controlled recovery validates the current state first and falls back to
-      // the safety copy only when needed.
+      // An uncertain engine rollback can retain a stale journal or a partially
+      // activated evidence tree. Do not accept it merely because a subset of
+      // current references validates; replay the exact pre-activation safety
+      // snapshot instead.
       try {
         await recoveryState.markRequired(
           operationId: operationId,
           safetyBackup: safetyBackup,
           reason: 'engine-restore-recovery-pending',
-          retryCurrentState: true,
+          retryCurrentState: false,
         );
-      } catch (_) {
-        // restore-origin and any engine journal remain for restart recovery.
-      }
+      } catch (_) {}
       Error.throwWithStackTrace(
         const RestoreRecoveryRequiredException(),
         stack,
@@ -487,9 +463,7 @@ final class LocalBackupManager {
     ]) {
       try {
         if (await file.exists()) await file.delete();
-      } catch (_) {
-        // Stale intent causes a safe recovery prompt on restart.
-      }
+      } catch (_) {}
     }
   }
 
@@ -564,9 +538,7 @@ final class LocalBackupManager {
           operationId: incident.operationId,
           reason: 'recovery-reset-incomplete',
         );
-      } catch (_) {
-        // The preserved pre-reset marker still fails closed on restart.
-      }
+      } catch (_) {}
       Error.throwWithStackTrace(error, stack);
     }
   }
@@ -776,17 +748,13 @@ final class LocalBackupManager {
         keep: 2,
         preservePath: preservePath,
       );
-    } catch (_) {
-      // Retention cleanup must never change a restore/recovery outcome.
-    }
+    } catch (_) {}
   }
 
   Future<void> _deleteFileBestEffort(File file) async {
     try {
       if (await file.exists()) await file.delete();
-    } catch (_) {
-      // Sensitive temporary files are retried by startup cleanup.
-    }
+    } catch (_) {}
   }
 }
 
@@ -800,9 +768,7 @@ final class _ReadableBackup {
     if (!temporary) return;
     try {
       if (await file.exists()) await file.delete();
-    } catch (_) {
-      // Startup cleanup removes orphaned private decrypted packages.
-    }
+    } catch (_) {}
   }
 }
 
@@ -816,13 +782,9 @@ final class _RestoreStagingWorkspace {
   Future<void> dispose() async {
     try {
       await database.close();
-    } catch (_) {
-      // Continue cleaning the isolated staging directory.
-    }
+    } catch (_) {}
     try {
       if (await root.exists()) await root.delete(recursive: true);
-    } catch (_) {
-      // Startup cleanup removes orphaned staging workspaces.
-    }
+    } catch (_) {}
   }
 }
