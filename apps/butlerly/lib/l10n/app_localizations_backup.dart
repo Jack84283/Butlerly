@@ -64,10 +64,17 @@ const _backupStrings = <String, Map<String, String>>{
         'The password is incorrect or the encrypted backup is damaged.',
     'recoveryRequiredTitle': 'Butlerly recovery is required',
     'recoveryRequiredBody':
-        'A restore could not be safely rolled back. Normal editing is paused. Butlerly kept the pre-restore safety copy so it can restore and validate the last known local state.',
-    'recoverSafetyBackup': 'Restore safety copy',
+        'Butlerly has paused normal editing until the current restore state is validated. A pre-restore safety copy is available if the current state cannot be kept safely.',
+    'recoveryUnavailableBody':
+        'Butlerly cannot prove a safe recovery state and no trustworthy safety copy is available. Normal editing remains paused. You can erase local Butlerly data and start again.',
+    'recoverButlerly': 'Recover Butlerly',
+    'eraseLocalRecoveryData': 'Erase local data and start over',
+    'recoveryResetTitle': 'Erase local Butlerly data?',
+    'recoveryResetBody':
+        'This permanently deletes local Butlerly financial data, evidence, and recovery copies on this device. Use this only when recovery cannot be completed.',
+    'recoveryResetConfirm': 'Erase and restart',
     'recoveryStillRequired':
-        'Recovery is still required. Your safety copy has been kept; normal editing remains disabled.',
+        'Recovery is still required. Normal editing remains disabled and available recovery material has been preserved.',
   },
   'es': {
     'backup': 'Crear copia de Butlerly',
@@ -112,10 +119,17 @@ const _backupStrings = <String, Map<String, String>>{
         'La contraseña es incorrecta o la copia cifrada está dañada.',
     'recoveryRequiredTitle': 'Butlerly requiere recuperación',
     'recoveryRequiredBody':
-        'No se pudo revertir una restauración de forma segura. La edición normal está pausada. Butlerly conservó la copia de seguridad previa a la restauración para recuperar y validar el último estado local conocido.',
-    'recoverSafetyBackup': 'Restaurar copia de seguridad',
+        'Butlerly ha pausado la edición normal hasta validar el estado actual de restauración. Hay una copia de seguridad previa disponible si no es seguro conservar el estado actual.',
+    'recoveryUnavailableBody':
+        'Butlerly no puede demostrar un estado de recuperación seguro y no hay una copia de seguridad confiable disponible. La edición normal sigue pausada. Puede borrar los datos locales de Butlerly y comenzar de nuevo.',
+    'recoverButlerly': 'Recuperar Butlerly',
+    'eraseLocalRecoveryData': 'Borrar datos locales y empezar de nuevo',
+    'recoveryResetTitle': '¿Borrar los datos locales de Butlerly?',
+    'recoveryResetBody':
+        'Esto elimina permanentemente los datos financieros locales de Butlerly, la evidencia y las copias de recuperación de este dispositivo. Úselo solo cuando no sea posible completar la recuperación.',
+    'recoveryResetConfirm': 'Borrar y reiniciar',
     'recoveryStillRequired':
-        'La recuperación sigue siendo necesaria. La copia de seguridad se conserva y la edición normal continúa deshabilitada.',
+        'La recuperación sigue siendo necesaria. La edición normal continúa deshabilitada y se ha conservado el material de recuperación disponible.',
   },
   'zh': {
     'backup': '备份 Butlerly',
@@ -153,8 +167,15 @@ const _backupStrings = <String, Map<String, String>>{
     'passwordOrIntegrityFailed': '密码不正确，或加密备份已损坏。',
     'recoveryRequiredTitle': 'Butlerly 需要恢复',
     'recoveryRequiredBody':
-        '一次恢复操作无法安全回滚。正常编辑已暂停。Butlerly 已保留恢复前的安全副本，可用于恢复并验证最后一个已知的本地状态。',
-    'recoverSafetyBackup': '恢复安全副本',
-    'recoveryStillRequired': '仍需要执行恢复。安全副本已保留，正常编辑仍未重新启用。',
+        'Butlerly 已暂停正常编辑，直到当前恢复状态通过验证。如果无法安全保留当前状态，可以使用恢复前的安全副本。',
+    'recoveryUnavailableBody':
+        'Butlerly 无法确认一个安全的恢复状态，并且没有可信的安全副本可用。正常编辑仍处于暂停状态。您可以清除本机 Butlerly 数据并重新开始。',
+    'recoverButlerly': '恢复 Butlerly',
+    'eraseLocalRecoveryData': '清除本地数据并重新开始',
+    'recoveryResetTitle': '清除本机 Butlerly 数据？',
+    'recoveryResetBody':
+        '这将永久删除此设备上的 Butlerly 本地财务数据、凭证和恢复副本。仅在无法完成恢复时使用此操作。',
+    'recoveryResetConfirm': '清除并重新开始',
+    'recoveryStillRequired': '仍需要执行恢复。正常编辑仍未启用，可用的恢复材料已保留。',
   },
 };
