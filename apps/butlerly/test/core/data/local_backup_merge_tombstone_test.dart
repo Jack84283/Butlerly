@@ -53,7 +53,7 @@ void main() {
     );
   });
 
-  test('merge keeps a duplicate membership re-added after backup', () async {
+  test('merge keeps a durable duplicate membership re-added after backup', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
     final old = DateTime.utc(2026, 1, 1);
@@ -65,7 +65,9 @@ void main() {
       'amount_scale': 2,
       'currency': 'USD',
       'direction': 'expense',
-      'status': 'unresolved',
+      // keepBoth is a durable user decision; unresolved groups are derived and
+      // intentionally regenerated rather than merged.
+      'status': 'keepBoth',
       'created_at': old.toIso8601String(),
       'updated_at': old.toIso8601String(),
     });
