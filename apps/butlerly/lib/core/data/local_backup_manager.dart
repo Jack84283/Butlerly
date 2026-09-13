@@ -4,6 +4,7 @@ import 'package:butlerly/core/data/local_backup_engine.dart' as engine;
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/data/local_restore_recovery.dart';
 import 'package:butlerly/core/database/local_database.dart';
+import 'package:butlerly_database/butlerly_database.dart' show Sqflite;
 import 'package:sqflite_common/sqlite_api.dart';
 
 export 'local_backup_engine.dart'
