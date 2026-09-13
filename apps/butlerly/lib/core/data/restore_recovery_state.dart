@@ -25,11 +25,6 @@ final class RestoreRecoveryIncident {
 
 /// Persistent, process-visible gate for a restore whose final state has not yet
 /// been proven safe for ordinary application writes.
-///
-/// The marker lives outside SQLite so it remains readable even when database
-/// state itself is uncertain. Presentation observes this object and replaces
-/// the normal product UI with recovery-only actions until validation or a
-/// retained safety snapshot establishes one coherent state.
 final class RestoreRecoveryState extends ChangeNotifier {
   RestoreRecoveryState(this.localDataManager);
 
@@ -45,11 +40,23 @@ final class RestoreRecoveryState extends ChangeNotifier {
     final marker = await _markerFile();
     final temporary = File('${marker.path}.tmp');
     final previous = File('${marker.path}.previous');
+    final markerExists = await marker.exists();
+    final temporaryExists = await temporary.exists();
+    final previousExists = await previous.exists();
 
-    if (!await marker.exists()) {
-      if (await temporary.exists() || await previous.exists()) {
+    if (!markerExists) {
+      if (temporaryExists || previousExists) {
         _setGenericIncident('recovery-marker-interrupted');
       }
+      return;
+    }
+
+    // A main marker plus a new .tmp means replacement started but never reached
+    // its atomic rename. The main file can therefore describe an older incident;
+    // do not automatically recover from it. A main marker plus only .previous
+    // means the rename completed and cleanup was interrupted, so main is current.
+    if (temporaryExists) {
+      _setGenericIncident('recovery-marker-interrupted');
       return;
     }
 
@@ -78,9 +85,14 @@ final class RestoreRecoveryState extends ChangeNotifier {
         retryCurrentState: retryCurrentState as bool? ?? false,
       );
       notifyListeners();
+      if (previousExists) {
+        try {
+          await previous.delete();
+        } catch (_) {
+          // Main marker is already authoritative; stale rollback cleanup is best effort.
+        }
+      }
     } on Exception {
-      // Any existing but malformed/incomplete marker must fail closed. Preserve
-      // all marker artifacts so later recovery or diagnostics can inspect them.
       _setGenericIncident('recovery-marker-unreadable');
     }
   }
@@ -112,8 +124,6 @@ final class RestoreRecoveryState extends ChangeNotifier {
   );
 
   Future<void> _persistIncident(RestoreRecoveryIncident incident) async {
-    // Fail closed in-process before touching disk. Even if persistence itself
-    // fails, normal writes remain blocked for the rest of this process.
     _incident = incident;
     notifyListeners();
 
@@ -138,9 +148,6 @@ final class RestoreRecoveryState extends ChangeNotifier {
       await temporary.rename(marker.path);
       if (await previous.exists()) await previous.delete();
     } catch (_) {
-      // Leave .tmp and/or .previous in place. initialize() treats either as a
-      // recovery-required sentinel, so a crash during replacement cannot reopen
-      // normal financial writes on the next launch.
       rethrow;
     }
   }
