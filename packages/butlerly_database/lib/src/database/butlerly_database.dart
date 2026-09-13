@@ -20,6 +20,11 @@ final class ButlerlyDatabase {
   final List<String> seedSql;
 
   /// Database-owned migration SQL keyed by its target schema version.
+  ///
+  /// Supplying a partial migration map intentionally caps the target version
+  /// at the highest supplied migration. This keeps historical migration tests
+  /// and recovery tools able to stop at a known intermediate schema. The app
+  /// supplies every migration through [databaseVersion].
   final Map<int, String> migrations;
   Database? _database;
 
@@ -34,12 +39,22 @@ final class ButlerlyDatabase {
     return database;
   }
 
+  int get _targetVersion {
+    if (migrations.isEmpty) return databaseVersion;
+    var highest = 1;
+    for (final version in migrations.keys) {
+      if (version > highest) highest = version;
+    }
+    return highest > databaseVersion ? databaseVersion : highest;
+  }
+
   Future<void> open() async {
+    final targetVersion = _targetVersion;
     try {
       _database = await factory.openDatabase(
         path,
         options: OpenDatabaseOptions(
-          version: databaseVersion,
+          version: targetVersion,
           onConfigure: (database) =>
               database.execute('PRAGMA foreign_keys = ON'),
           onCreate: (database, _) => _executeSql(database, schemaSql),
@@ -63,7 +78,7 @@ final class ButlerlyDatabase {
                 await _backfillNormalizedDescriptions(database);
               }
             }
-            if (newVersion != databaseVersion) {
+            if (newVersion != targetVersion) {
               throw const RepositoryException(
                 RepositoryFailureCode.migration,
                 'unsupported database version',
