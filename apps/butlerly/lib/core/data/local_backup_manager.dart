@@ -62,9 +62,10 @@ final class LocalBackupManager {
   /// This path exists for internal recovery snapshots and tests. User-selected
   /// portable destinations must use [createPortableBackup], which encrypts the
   /// completed inner package before it leaves application-controlled storage.
-  Future<File> createBackup(File destination) => EvidenceMutationLock.runExclusive(
-    () => _createBackupUnlocked(destination),
-  );
+  Future<File> createBackup(File destination) =>
+      EvidenceMutationLock.runExclusive(
+        () => _createBackupUnlocked(destination),
+      );
 
   /// Creates a password-protected portable backup for a user-selected path.
   ///
@@ -76,7 +77,9 @@ final class LocalBackupManager {
     required String password,
   }) async {
     final operationId = DateTime.now().microsecondsSinceEpoch;
-    final privateDirectory = Directory(path.dirname(database.persistenceDatabase.path));
+    final privateDirectory = Directory(
+      path.dirname(database.persistenceDatabase.path),
+    );
     final plain = File(
       path.join(
         privateDirectory.path,
@@ -300,31 +303,39 @@ final class LocalBackupManager {
     }
   }
 
-  Future<void> recoverInterruptedRestore() => EvidenceMutationLock.runExclusive(
-    () => recoverInterruptedLocalRestore(database, localDataManager),
-  );
+  Future<void> recoverInterruptedRestore() =>
+      EvidenceMutationLock.runExclusive(
+        () => recoverInterruptedLocalRestore(database, localDataManager),
+      );
 
   Future<engine.LocalRestoreResult> restore(
     File file, {
     required engine.LocalRestoreMode mode,
     String? password,
     Future<void> Function()? postActivationRefresh,
-  }) async {
+  }) {
     if (recoveryState.isRecoveryRequired) {
-      throw const RestoreRecoveryRequiredException();
+      return Future<engine.LocalRestoreResult>.error(
+        const RestoreRecoveryRequiredException(),
+      );
     }
-    final readable = await _openReadableBackup(file, password: password);
-    try {
-      return await EvidenceMutationLock.runExclusive(
-        () => _restoreReadableBackup(
+
+    // Reserve the evidence mutation boundary synchronously when restore is
+    // requested. Password inspection/decryption is part of that reservation so
+    // a later capture/erase cannot jump ahead while this operation is opening
+    // its input package.
+    return EvidenceMutationLock.runExclusive(() async {
+      final readable = await _openReadableBackup(file, password: password);
+      try {
+        return await _restoreReadableBackup(
           readable.file,
           mode: mode,
           postActivationRefresh: postActivationRefresh,
-        ),
-      );
-    } finally {
-      await readable.dispose();
-    }
+        );
+      } finally {
+        await readable.dispose();
+      }
+    });
   }
 
   Future<engine.LocalRestoreResult> _restoreReadableBackup(
@@ -375,11 +386,7 @@ final class LocalBackupManager {
           );
           await _validateDatabase(database.database);
           if (postActivationRefresh != null) {
-            try {
-              await postActivationRefresh();
-            } on Exception {
-              // Preserve the original restore failure after rollback.
-            }
+            await postActivationRefresh();
           }
         } on Exception {
           await recoveryState.markRequired(
@@ -438,7 +445,9 @@ final class LocalBackupManager {
     if (password == null || password.isEmpty) {
       throw const BackupPasswordRequiredException();
     }
-    final directory = Directory(path.dirname(database.persistenceDatabase.path));
+    final directory = Directory(
+      path.dirname(database.persistenceDatabase.path),
+    );
     final temporary = File(
       path.join(
         directory.path,
