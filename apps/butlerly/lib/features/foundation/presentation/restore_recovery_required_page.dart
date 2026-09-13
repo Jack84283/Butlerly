@@ -1,4 +1,5 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
+import 'package:butlerly/core/application/application_result_guard.dart';
 import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/database/initial_master_data.dart';
 import 'package:butlerly/core/di/finance_services.dart';
@@ -25,8 +26,10 @@ class _RestoreRecoveryRequiredPageState
   bool _failed = false;
 
   Future<void> _refreshRuntime() async {
-    await services<FinanceServices>().seedInitialMasterData(
-      buildInitialMasterData(),
+    await requireApplicationSuccess(
+      services<FinanceServices>().seedInitialMasterData(
+        buildInitialMasterData(),
+      ),
     );
     ref.invalidate(userPreferenceProvider);
     notifyTransactionChanged();
