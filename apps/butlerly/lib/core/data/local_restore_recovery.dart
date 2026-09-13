@@ -8,6 +8,11 @@ Future<void> recoverInterruptedLocalRestore(
   LocalDatabase database,
   LocalDataManager localDataManager,
 ) async {
+  // A restore cutoff is valid only while one Merge operation is actively
+  // running. Clear any value left behind by a process termination before
+  // normal application work can delete relationship rows.
+  await database.database.delete('restore_context');
+
   final root = await localDataManager.evidenceDirectory();
   final journal = File('${root.path}.restore-journal.json');
   if (!await journal.exists()) return;
