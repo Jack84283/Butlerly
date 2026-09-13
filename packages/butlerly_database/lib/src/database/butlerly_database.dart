@@ -142,8 +142,13 @@ final class ButlerlyDatabase {
     return result.length == 1 && result.single.values.single == 'ok';
   }
 
+  /// Validates the live database before a logical backup begins.
+  ///
+  /// The backup manager owns the actual snapshot transaction. A WAL checkpoint
+  /// is intentionally not performed here because checkpointing from inside an
+  /// active snapshot transaction is unsafe and unnecessary for logical row
+  /// serialization.
   Future<void> prepareForConsistentBackup() async {
-    await connection.rawQuery('PRAGMA wal_checkpoint(FULL)');
     if (!await passesIntegrityCheck()) {
       throw const RepositoryException(
         RepositoryFailureCode.integrity,
