@@ -39,18 +39,18 @@ Future<void> bootstrap() async {
       : null;
   await recoveryState?.initialize();
 
-  // A previously persisted controlled-recovery incident is authoritative. Do
-  // not run automatic filesystem reconciliation over a state already declared
-  // unsafe for normal use.
-  if (!(recoveryState?.isRecoveryRequired ?? false) &&
-      database.status == DatabaseStatus.ready &&
+  if (database.status == DatabaseStatus.ready &&
       services.isRegistered<LocalDataManager>()) {
+    // Always reconcile an interrupted engine operation, including one that may
+    // have occurred while the user was already in controlled recovery mode.
+    // The durable recovery marker itself is outside this engine journal and is
+    // never cleared by this reconciliation routine.
     await recoverInterruptedLocalRestore(
       database,
       services<LocalDataManager>(),
     );
-    // Automatic recovery may itself discover ambiguity and persist a fail-closed
-    // marker. Reload the process-visible gate before any ordinary startup writes.
+    // Automatic recovery may discover ambiguity and persist a new fail-closed
+    // marker. Reload before any ordinary startup writes or normal UI appears.
     await recoveryState?.initialize();
   }
 
