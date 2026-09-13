@@ -38,7 +38,7 @@ void main() {
       hasLength(1),
     );
     final safetyDirectory = Directory(
-      path.join(fixture.documents.path, 'Butlerly Safety Backups'),
+      path.join(fixture.root.path, '.butlerly-recovery', 'safety-backups'),
     );
     final safetyFiles = await safetyDirectory
         .list()
@@ -50,6 +50,10 @@ void main() {
         (file) => path.basename(file.path).startsWith('Before Merge '),
       ),
       isTrue,
+    );
+    expect(
+      Directory(path.join(fixture.documents.path, 'Butlerly Safety Backups')).existsSync(),
+      isFalse,
     );
   });
 
