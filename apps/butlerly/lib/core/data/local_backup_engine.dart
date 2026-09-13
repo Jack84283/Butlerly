@@ -262,14 +262,13 @@ final class LocalBackupManager {
     File file, {
     required LocalRestoreMode mode,
   }) async {
+    // Package parsing, evidence integrity verification, and construction of the
+    // final staging tree all finish before the live database is mutated.
     final package = await _readPackage(file);
     final backupTime = DateTime.parse(
       package.manifest['createdAtUtc']! as String,
     ).toUtc();
     final tablePayload = <String, Object?>{...package.tables};
-    final protectedTransactions = mode == LocalRestoreMode.merge
-        ? await _protectedTransactionIds(tablePayload, backupTime)
-        : <String>{};
     final prepared = await _prepareEvidence(package, mode: mode);
     _applyEvidenceRemaps(tablePayload, prepared.pathRemaps);
 
@@ -308,70 +307,107 @@ final class LocalBackupManager {
           prepared.directory.path,
           'dbWriting',
         );
+
+        Set<String> protectedTransactions = const <String>{};
         if (mode == LocalRestoreMode.replace) {
           await _clearPortableState(tx);
         } else {
-          keptNewer += await _applyBackupTombstones(
+          // Generated workflow state is not authoritative. Purge it first, but
+          // keep the purge in this transaction so any later failure rolls it
+          // back together with the restore.
+          await _purgeGeneratedWorkflowState(tx);
+          protectedTransactions = await _protectedTransactionIds(
             tx,
             tablePayload,
             backupTime,
           );
+
+          // restore_context is strictly transaction-scoped. No user write can
+          // observe trigger suppression outside this SQLite writer transaction.
+          await tx.insert(
+            'restore_context',
+            {
+              'id': 1,
+              'backup_time': backupTime.toIso8601String(),
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
         }
-        for (final spec in _tables) {
-          final payload =
-              (tablePayload[spec.name] as List? ?? const <Object?>[])
-                  .cast<Map>()
-                  .map((row) => row.cast<String, Object?>());
-          for (final row in payload) {
-            if (_isSystemOwned(spec, row)) continue;
-            if (mode == LocalRestoreMode.merge) {
-              if (_referencesProtectedTransaction(
-                spec,
-                row,
-                protectedTransactions,
-              )) {
-                keptNewer++;
-                continue;
-              }
-              if (await _hasNewerLocalTombstone(
-                tx,
-                spec,
-                row,
-                backupTime,
-              )) {
-                keptNewer++;
-                continue;
-              }
-              final local = await _findRow(tx, spec, row);
-              if (local != null && _rowChangedAfter(local, spec, backupTime)) {
-                keptNewer++;
-                continue;
-              }
-            }
-            await _upsertRow(tx, spec, row);
-            await _clearTombstoneForRestoredRow(tx, spec, row);
-            restoredRows++;
-          }
-        }
-        if (mode == LocalRestoreMode.replace) {
-          final tombstones =
-              (tablePayload['entity_tombstones'] as List? ?? const <Object?>[])
-                  .cast<Map>();
-          for (final raw in tombstones) {
-            final row = raw.cast<String, Object?>();
-            if (_isSystemId(
-              row['entity_type'] as String?,
-              row['entity_id'],
-            )) {
-              continue;
-            }
-            await tx.insert(
-              'entity_tombstones',
-              row,
-              conflictAlgorithm: ConflictAlgorithm.replace,
+
+        try {
+          if (mode == LocalRestoreMode.merge) {
+            keptNewer += await _applyBackupTombstones(
+              tx,
+              tablePayload,
+              backupTime,
             );
           }
+          for (final spec in _tables) {
+            final payload =
+                (tablePayload[spec.name] as List? ?? const <Object?>[])
+                    .cast<Map>()
+                    .map((row) => row.cast<String, Object?>());
+            for (final row in payload) {
+              if (_isSystemOwned(spec, row)) continue;
+              if (mode == LocalRestoreMode.merge) {
+                if (_referencesProtectedTransaction(
+                  spec,
+                  row,
+                  protectedTransactions,
+                )) {
+                  keptNewer++;
+                  continue;
+                }
+                if (await _hasNewerLocalTombstone(
+                  tx,
+                  spec,
+                  row,
+                  backupTime,
+                )) {
+                  keptNewer++;
+                  continue;
+                }
+                final local = await _findRow(tx, spec, row);
+                if (local != null && _rowChangedAfter(local, spec, backupTime)) {
+                  keptNewer++;
+                  continue;
+                }
+              }
+              await _upsertRow(tx, spec, row);
+              await _clearTombstoneForRestoredRow(tx, spec, row);
+              restoredRows++;
+            }
+          }
+          if (mode == LocalRestoreMode.replace) {
+            final tombstones =
+                (tablePayload['entity_tombstones'] as List? ?? const <Object?>[])
+                    .cast<Map>();
+            for (final raw in tombstones) {
+              final row = raw.cast<String, Object?>();
+              if (_isSystemId(
+                row['entity_type'] as String?,
+                row['entity_id'],
+              )) {
+                continue;
+              }
+              await tx.insert(
+                'entity_tombstones',
+                row,
+                conflictAlgorithm: ConflictAlgorithm.replace,
+              );
+            }
+          }
+        } finally {
+          if (mode == LocalRestoreMode.merge) {
+            await tx.delete('restore_context', where: 'id = 1');
+          }
         }
+
+        // Older format-v2 packages may contain generated workflow rows. Purge
+        // again after restore_context is gone so trigger preservation cannot
+        // keep generated rows, while durable decisions remain intact.
+        await _purgeGeneratedWorkflowState(tx);
+
         for (final table in _derivedTables) {
           await tx.delete(table);
         }
@@ -509,12 +545,17 @@ final class LocalBackupManager {
       }
       var offset = _magic.length + 8 + 64 + metadataLength;
       final descriptors = <_EvidenceDescriptor>[];
+      final hashPattern = RegExp(r'^[0-9a-f]{64}$');
       for (final raw in evidenceRaw.cast<Map>()) {
         final item = raw.cast<String, Object?>();
         final relative = item['path'] as String?;
         final length = item['length'] as int?;
         final hash = item['sha256'] as String?;
-        if (relative == null || length == null || length < 0 || hash == null) {
+        if (relative == null ||
+            length == null ||
+            length < 0 ||
+            hash == null ||
+            !hashPattern.hasMatch(hash)) {
           throw const FormatException('Invalid evidence descriptor.');
         }
         descriptors.add(
@@ -579,14 +620,28 @@ final class LocalBackupManager {
         if (mode == LocalRestoreMode.merge && await destination.exists()) {
           final existingHash = await sha256FileRange(destination);
           if (existingHash == item.sha256) continue;
+
           final extension = path.extension(relative);
           final base = path.basenameWithoutExtension(relative);
-          relative = path.join(
-            path.dirname(relative),
-            '$base.backup-${item.sha256.substring(0, 8)}$extension',
-          );
-          destination = File(path.join(staging.path, relative));
+          final parent = path.dirname(relative);
+          var attempt = 0;
+          var reuseExisting = false;
+          while (true) {
+            final suffix = attempt == 0
+                ? item.sha256
+                : '${item.sha256}-$attempt';
+            final name = '$base.backup-$suffix$extension';
+            relative = parent == '.' ? name : path.join(parent, name);
+            destination = File(path.join(staging.path, relative));
+            if (!await destination.exists()) break;
+            if (await sha256FileRange(destination) == item.sha256) {
+              reuseExisting = true;
+              break;
+            }
+            attempt++;
+          }
           remaps[normalized] = relative;
+          if (reuseExisting) continue;
         }
         await destination.parent.create(recursive: true);
         final sink = destination.openWrite();
@@ -628,6 +683,7 @@ final class LocalBackupManager {
   }
 
   Future<Set<String>> _protectedTransactionIds(
+    DatabaseExecutor executor,
     Map<String, Object?> tablePayload,
     DateTime backupTime,
   ) async {
@@ -640,7 +696,7 @@ final class LocalBackupManager {
       final id = row['id'] as String?;
       if (id == null) continue;
       if (await _hasNewerLocalTombstone(
-        database.database,
+        executor,
         spec,
         row,
         backupTime,
@@ -648,7 +704,7 @@ final class LocalBackupManager {
         protected.add(id);
         continue;
       }
-      final local = await database.database.query(
+      final local = await executor.query(
         'transactions',
         where: 'id = ?',
         whereArgs: [id],
@@ -658,7 +714,7 @@ final class LocalBackupManager {
         protected.add(id);
       }
     }
-    final newer = await database.database.query(
+    final newer = await executor.query(
       'transactions',
       columns: ['id'],
       where: 'created_at > ?',
@@ -941,6 +997,32 @@ final class LocalBackupManager {
       'tags' => id.startsWith('tag.') || id.startsWith('system-tag-'),
       _ => false,
     };
+  }
+
+  Future<void> _purgeGeneratedWorkflowState(Transaction tx) async {
+    await tx.delete('review_issues', where: 'closed_at IS NULL');
+    await tx.delete('suggestions', where: 'decided_at IS NULL');
+    await tx.delete(
+      'reconciliation_candidates',
+      where: "status = 'proposed'",
+    );
+    await tx.rawDelete(
+      'DELETE FROM duplicate_candidate_group_transactions '
+      'WHERE group_id IN ('
+      "SELECT id FROM duplicate_candidate_groups WHERE status = 'unresolved'"
+      ')',
+    );
+    await tx.delete(
+      'duplicate_candidate_groups',
+      where: "status = 'unresolved'",
+    );
+    await tx.delete(
+      'entity_tombstones',
+      where:
+          "entity_type IN ('review_issues', 'suggestions', "
+          "'reconciliation_candidates', 'duplicate_candidate_groups', "
+          "'duplicate_candidate_group_transactions')",
+    );
   }
 
   Future<void> _clearPortableState(Transaction tx) async {
