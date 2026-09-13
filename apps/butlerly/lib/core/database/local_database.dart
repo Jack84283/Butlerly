@@ -85,6 +85,7 @@ class LocalDatabase {
       path: path.join(directory, 'butlerly.db'),
       schemaSql: '$schemaSql\n$backupRestoreHardening',
       seedSql: [catalogSql],
+      targetVersion: persistence.ButlerlyDatabase.databaseVersion,
       migrations: {
         2: migrationV1ToV2,
         3: migrationV2ToV3,
