@@ -45,11 +45,24 @@ Future<void> bootstrap() async {
     // leave the safety-backup reference only in restore-origin.json; pruning
     // history before reading that sidecar could delete the required recovery
     // snapshot.
-    await recoverInterruptedLocalRestore(
-      database,
-      services<LocalDataManager>(),
-      recoveryState: recoveryState,
-    );
+    try {
+      await recoverInterruptedLocalRestore(
+        database,
+        services<LocalDataManager>(),
+        recoveryState: recoveryState,
+      );
+    } catch (error, stack) {
+      // Recovery-state persistence deliberately closes the in-memory gate before
+      // touching disk. If persistence then fails (for example under storage
+      // pressure), continue into the recovery-only UI rather than aborting the
+      // whole app. Any failure before that gate is established remains fatal.
+      if (!(recoveryState?.isRecoveryRequired ?? false)) rethrow;
+      logger.severe(
+        'Restore recovery persistence failed after the recovery gate closed',
+        error,
+        stack,
+      );
+    }
 
     final backupManager = services.isRegistered<LocalBackupManager>()
         ? services<LocalBackupManager>()
