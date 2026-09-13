@@ -15,7 +15,13 @@ Future<void> recoverInterruptedLocalRestore(
 
   final root = await localDataManager.evidenceDirectory();
   final journal = File('${root.path}.restore-journal.json');
-  if (!await journal.exists()) return;
+  if (!await journal.exists()) {
+    // With no recovery journal there is no filesystem operation to reconcile.
+    // Any commit marker is therefore stale cleanup residue and must not make a
+    // later unrelated restore look committed.
+    await database.database.delete('restore_commits');
+    return;
+  }
 
   Map<String, Object?>? data;
   try {
@@ -27,7 +33,16 @@ Future<void> recoverInterruptedLocalRestore(
     // delete the live evidence tree.
   }
 
-  final committedRows = await database.database.query('restore_commits');
+  final operationId = data?['operationId'] as String?;
+  final committedRows = operationId == null
+      ? const <Map<String, Object?>>[]
+      : await database.database.query(
+          'restore_commits',
+          columns: ['operation_id'],
+          where: 'operation_id = ?',
+          whereArgs: [operationId],
+          limit: 1,
+        );
   final committed = committedRows.isNotEmpty;
   final recovery = await _discoverRecoveryDirectories(root);
 
@@ -45,12 +60,17 @@ Future<void> recoverInterruptedLocalRestore(
 
   if (committed) {
     // DB commit is authoritative: keep the live evidence tree and only remove
-    // recovery artifacts. The commit marker is intentionally removed last.
+    // recovery artifacts. Remove the journal before the commit marker so a
+    // crash can never leave "journal present, marker absent" after success.
     for (final directory in {...previousCandidates, ...stagingCandidates}) {
       if (await directory.exists()) await directory.delete(recursive: true);
     }
     if (await journal.exists()) await journal.delete();
-    await database.database.delete('restore_commits');
+    await database.database.delete(
+      'restore_commits',
+      where: 'operation_id = ?',
+      whereArgs: [operationId],
+    );
     return;
   }
 
@@ -71,6 +91,9 @@ Future<void> recoverInterruptedLocalRestore(
     if (await directory.exists()) await directory.delete(recursive: true);
   }
   if (await journal.exists()) await journal.delete();
+  // Once filesystem recovery is complete and no journal remains, no marker can
+  // be authoritative. This also clears residue from a torn/unparseable journal.
+  await database.database.delete('restore_commits');
 }
 
 Future<_RecoveryDirectories> _discoverRecoveryDirectories(Directory root) async {
