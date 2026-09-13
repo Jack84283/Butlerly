@@ -71,13 +71,19 @@ class LocalDatabase {
     final migrationV6ToV7 = await rootBundle.loadString(
       'packages/butlerly_database/database/migrations/v6_to_v7.sql',
     );
+    final migrationV7ToV8 = await rootBundle.loadString(
+      'packages/butlerly_database/database/migrations/v7_to_v8.sql',
+    );
     final catalogSql = await rootBundle.loadString(
       'packages/butlerly_database/database/seed/catalog.sql',
     );
     _database = persistence.ButlerlyDatabase(
       factory: factory,
       path: path.join(directory, 'butlerly.db'),
-      schemaSql: schemaSql,
+      // v1.sql represents the current baseline through v7. Append the v8
+      // merge metadata so a fresh database is born at the same shape that an
+      // upgraded database reaches through migration 8.
+      schemaSql: '$schemaSql\n$migrationV7ToV8',
       seedSql: [catalogSql],
       migrations: {
         2: migrationV1ToV2,
@@ -86,6 +92,7 @@ class LocalDatabase {
         5: migrationV4ToV5,
         6: migrationV5ToV6,
         7: migrationV6ToV7,
+        8: migrationV7ToV8,
       },
     );
     await _database!.open();
