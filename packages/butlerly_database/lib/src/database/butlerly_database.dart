@@ -10,9 +10,10 @@ final class ButlerlyDatabase {
     required this.schemaSql,
     this.seedSql = const [],
     this.migrations = const {},
-  });
+    this.targetVersion = databaseVersion,
+  }) : assert(targetVersion >= 1 && targetVersion <= databaseVersion);
 
-  static const databaseVersion = 7;
+  static const databaseVersion = 8;
 
   final DatabaseFactory factory;
   final String path;
@@ -21,6 +22,14 @@ final class ButlerlyDatabase {
 
   /// Database-owned migration SQL keyed by its target schema version.
   final Map<int, String> migrations;
+
+  /// Schema version this instance must open or migrate to.
+  ///
+  /// Application code should use the default current version. Historical
+  /// migration tests and recovery tools may explicitly request an older target.
+  /// Missing migration SQL below this target is an error rather than silently
+  /// lowering the schema Butlerly opens.
+  final int targetVersion;
   Database? _database;
 
   Database get connection {
@@ -39,7 +48,7 @@ final class ButlerlyDatabase {
       _database = await factory.openDatabase(
         path,
         options: OpenDatabaseOptions(
-          version: databaseVersion,
+          version: targetVersion,
           onConfigure: (database) =>
               database.execute('PRAGMA foreign_keys = ON'),
           onCreate: (database, _) => _executeSql(database, schemaSql),
@@ -57,13 +66,16 @@ final class ButlerlyDatabase {
                 );
               }
               for (final statement in splitSqlStatements(sql)) {
+                if (await _alreadyHasAddedColumn(database, statement)) {
+                  continue;
+                }
                 await database.execute(statement);
               }
               if (version == 5) {
                 await _backfillNormalizedDescriptions(database);
               }
             }
-            if (newVersion != databaseVersion) {
+            if (newVersion != targetVersion) {
               throw const RepositoryException(
                 RepositoryFailureCode.migration,
                 'unsupported database version',
@@ -90,6 +102,21 @@ final class ButlerlyDatabase {
       _database = null;
       rethrow;
     }
+  }
+
+  static Future<bool> _alreadyHasAddedColumn(
+    Database database,
+    String statement,
+  ) async {
+    final match = RegExp(
+      r'^ALTER\s+TABLE\s+([A-Za-z_][A-Za-z0-9_]*)\s+ADD\s+COLUMN\s+([A-Za-z_][A-Za-z0-9_]*)\b',
+      caseSensitive: false,
+    ).firstMatch(statement.trim());
+    if (match == null) return false;
+    final table = match.group(1)!;
+    final column = match.group(2)!;
+    final columns = await database.rawQuery('PRAGMA table_info($table)');
+    return columns.any((row) => row['name'] == column);
   }
 
   static Future<void> _backfillNormalizedDescriptions(Database database) async {
@@ -127,8 +154,13 @@ final class ButlerlyDatabase {
     return result.length == 1 && result.single.values.single == 'ok';
   }
 
+  /// Validates the live database before a logical backup begins.
+  ///
+  /// The backup manager owns the actual snapshot transaction. A WAL checkpoint
+  /// is intentionally not performed here because checkpointing from inside an
+  /// active snapshot transaction is unsafe and unnecessary for logical row
+  /// serialization.
   Future<void> prepareForConsistentBackup() async {
-    await connection.rawQuery('PRAGMA wal_checkpoint(FULL)');
     if (!await passesIntegrityCheck()) {
       throw const RepositoryException(
         RepositoryFailureCode.integrity,
@@ -152,7 +184,9 @@ final class ButlerlyDatabase {
 }
 
 /// Database assets use semicolon-delimited statements, line comments, and
-/// single-quoted SQL strings (including doubled quote escapes).
+/// single-quoted SQL strings (including doubled quote escapes). SQLite trigger
+/// bodies may themselves contain semicolon-delimited statements, so a trigger
+/// is emitted only after its terminating `END;`.
 List<String> splitSqlStatements(String sql) {
   final statements = <String>[];
   final buffer = StringBuffer();
@@ -178,13 +212,21 @@ List<String> splitSqlStatements(String sql) {
       } else {
         quote = !quote;
       }
-    } else if (char == ';' && !quote) {
-      final statement = buffer.toString().trim();
-      if (statement.isNotEmpty) statements.add(statement);
-      buffer.clear();
-    } else {
-      buffer.write(char);
+      continue;
     }
+    if (char == ';' && !quote) {
+      final pending = buffer.toString().trim();
+      final upper = pending.toUpperCase();
+      final isTrigger = upper.startsWith('CREATE TRIGGER');
+      if (isTrigger && !upper.endsWith('END')) {
+        buffer.write(char);
+        continue;
+      }
+      if (pending.isNotEmpty) statements.add(pending);
+      buffer.clear();
+      continue;
+    }
+    buffer.write(char);
   }
   final statement = buffer.toString().trim();
   if (statement.isNotEmpty) statements.add(statement);

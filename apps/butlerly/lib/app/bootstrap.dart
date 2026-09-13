@@ -1,5 +1,8 @@
 import 'package:butlerly/app/butlerly_app.dart';
 import 'package:butlerly/core/config/app_configuration.dart';
+import 'package:butlerly/core/data/local_backup_manager.dart';
+import 'package:butlerly/core/data/local_data_manager.dart';
+import 'package:butlerly/core/data/restore_recovery_state.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
@@ -31,7 +34,55 @@ Future<void> bootstrap() async {
     logger: logger,
   );
 
-  if (services.isRegistered<FinanceServices>()) {
+  final recoveryState = services.isRegistered<RestoreRecoveryState>()
+      ? services<RestoreRecoveryState>()
+      : null;
+  await recoveryState?.initialize();
+
+  if (database.status == DatabaseStatus.ready &&
+      services.isRegistered<LocalDataManager>()) {
+    // Analyze durable restore intent before any retention cleanup. A crash can
+    // leave the safety-backup reference only in restore-origin.json; pruning
+    // history before reading that sidecar could delete the required recovery
+    // snapshot.
+    try {
+      await recoverInterruptedLocalRestore(
+        database,
+        services<LocalDataManager>(),
+        recoveryState: recoveryState,
+      );
+    } catch (error, stack) {
+      // Recovery-state persistence deliberately closes the in-memory gate before
+      // touching disk. If persistence then fails (for example under storage
+      // pressure), continue into the recovery-only UI rather than aborting the
+      // whole app. Any failure before that gate is established remains fatal.
+      if (!(recoveryState?.isRecoveryRequired ?? false)) rethrow;
+      logger.severe(
+        'Restore recovery persistence failed after the recovery gate closed',
+        error,
+        stack,
+      );
+    }
+
+    final backupManager = services.isRegistered<LocalBackupManager>()
+        ? services<LocalBackupManager>()
+        : null;
+    final incident = recoveryState?.incident;
+    final recoveryIsUnknown =
+        incident != null && incident.safetyBackupPath.isEmpty;
+    // When recovery is unknown, preserve every safety snapshot. One of the old
+    // copies may be the only manual recovery option and there is no authoritative
+    // path yet to exempt from retention pruning. Cleanup resumes after recovery
+    // resolves or once a specific safety path has been established.
+    if (!recoveryIsUnknown) {
+      await backupManager?.cleanupOrphanedPrivateArtifacts();
+    }
+  }
+
+  // A controlled-recovery incident means the database/evidence pair or runtime
+  // refresh has not yet been proven safe. Do not perform normal startup writes.
+  if (services.isRegistered<FinanceServices>() &&
+      !(recoveryState?.isRecoveryRequired ?? false)) {
     final sources = <String, String>{};
     for (final path in _analysisRulePaths) {
       sources[path] = await rootBundle.loadString(path);

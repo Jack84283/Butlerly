@@ -52,6 +52,7 @@ final class SqliteUserPreferenceRepository implements UserPreferenceRepository {
         'first_use_completed': preference.firstUseCompleted ? 1 : 0,
         'appearance': preference.appearance,
         'color_theme': preference.colorTheme,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
       }, conflictAlgorithm: ConflictAlgorithm.replace);
     } on Exception catch (error) {
       if (error is RepositoryException) rethrow;

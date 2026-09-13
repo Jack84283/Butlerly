@@ -71,14 +71,21 @@ class LocalDatabase {
     final migrationV6ToV7 = await rootBundle.loadString(
       'packages/butlerly_database/database/migrations/v6_to_v7.sql',
     );
+    final migrationV7ToV8 = await rootBundle.loadString(
+      'packages/butlerly_database/database/migrations/v7_to_v8.sql',
+    );
+    final backupRestoreHardening = await rootBundle.loadString(
+      'packages/butlerly_database/database/migrations/v8_backup_restore_hardening.sql',
+    );
     final catalogSql = await rootBundle.loadString(
       'packages/butlerly_database/database/seed/catalog.sql',
     );
     _database = persistence.ButlerlyDatabase(
       factory: factory,
       path: path.join(directory, 'butlerly.db'),
-      schemaSql: schemaSql,
+      schemaSql: '$schemaSql\n$backupRestoreHardening',
       seedSql: [catalogSql],
+      targetVersion: persistence.ButlerlyDatabase.databaseVersion,
       migrations: {
         2: migrationV1ToV2,
         3: migrationV2ToV3,
@@ -86,6 +93,7 @@ class LocalDatabase {
         5: migrationV4ToV5,
         6: migrationV5ToV6,
         7: migrationV6ToV7,
+        8: '$migrationV7ToV8\n$backupRestoreHardening',
       },
     );
     await _database!.open();

@@ -168,10 +168,32 @@ Future<void> _write(
   Map<String, Object?> row,
 ) async {
   try {
-    await executor.insert(
+    final id = row['id'];
+    final existing = await executor.query(
       table,
-      row,
-      conflictAlgorithm: ConflictAlgorithm.replace,
+      columns: ['created_at'],
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    final now = DateTime.now().toUtc().toIso8601String();
+    if (existing.isEmpty) {
+      await executor.insert(table, {
+        ...row,
+        'created_at': now,
+        'updated_at': now,
+      });
+      return;
+    }
+    await executor.update(
+      table,
+      {
+        ...row,
+        'created_at': existing.single['created_at'],
+        'updated_at': now,
+      },
+      where: 'id = ?',
+      whereArgs: [id],
     );
   } on DatabaseException catch (error) {
     throw mapDatabaseException(error, 'save $table');

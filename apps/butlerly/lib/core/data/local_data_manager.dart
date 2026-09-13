@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:butlerly/core/database/local_database.dart';
+import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
@@ -51,6 +52,7 @@ final class LocalDataManager {
     'reference_data_translations',
     'duplicate_candidate_groups',
     'duplicate_candidate_group_transactions',
+    'entity_tombstones',
   ];
 
   static const _eraseOrder = <String>[
@@ -85,6 +87,10 @@ final class LocalDataManager {
     'reference_data',
     'tag_translations',
     'category_translations',
+    // Delete triggers above may have created tombstones. Erase-all means the
+    // local workspace is intentionally reset, so those tombstones must not
+    // survive and suppress records in a later restore.
+    'entity_tombstones',
   ];
 
   Future<Directory> evidenceDirectory() async {
@@ -93,9 +99,79 @@ final class LocalDataManager {
     return Directory(path.join(support.path, 'evidence'));
   }
 
+  /// Temporary home for captures that have not yet been published to SQLite.
+  ///
+  /// This must remain outside [evidenceDirectory] because restore is allowed to
+  /// replace the live evidence root while a receipt is still in OCR/review.
+  Future<Directory> pendingEvidenceDirectory() async =>
+      Directory('${(await evidenceDirectory()).path}.pending');
+
+  Future<Directory> documentsDirectory() async =>
+      _documentsDirectory ?? await getApplicationDocumentsDirectory();
+
+  /// Application-private recovery state. Unlike user exports, automatic safety
+  /// snapshots must never be written to the user-visible Documents location.
+  Future<Directory> recoveryDirectory() async {
+    final databaseDirectory = path.dirname(database.persistenceDatabase.path);
+    final directory = Directory(path.join(databaseDirectory, '.butlerly-recovery'));
+    await directory.create(recursive: true);
+    return directory;
+  }
+
+  Future<Directory> safetyBackupDirectory() async {
+    final recovery = await recoveryDirectory();
+    final directory = Directory(path.join(recovery.path, 'safety-backups'));
+    await directory.create(recursive: true);
+    return directory;
+  }
+
+  /// Keeps the newest validated safety snapshots and removes older recovery
+  /// copies after a restore has completed successfully.
+  Future<void> pruneSafetyBackups({int keep = 2, String? preservePath}) async {
+    if (keep < 0) throw ArgumentError.value(keep, 'keep');
+    final directory = await safetyBackupDirectory();
+    if (!await directory.exists()) return;
+    final files = <File>[];
+    await for (final entity in directory.list(followLinks: false)) {
+      if (entity is File && entity.path.endsWith('.butlerlybackup')) {
+        files.add(entity);
+      }
+    }
+    files.sort((left, right) {
+      final leftModified = left.lastModifiedSync();
+      final rightModified = right.lastModifiedSync();
+      return rightModified.compareTo(leftModified);
+    });
+
+    var retained = 0;
+    for (final file in files) {
+      if (preservePath != null && path.equals(file.path, preservePath)) {
+        continue;
+      }
+      if (retained < keep) {
+        retained++;
+        continue;
+      }
+      await file.delete();
+    }
+
+    // Interrupted internal package creation can leave only incomplete siblings;
+    // they are never valid safety snapshots and should not accumulate forever.
+    await for (final entity in directory.list(followLinks: false)) {
+      if (entity is! File) continue;
+      final name = path.basename(entity.path);
+      if (name.contains('.candidate-') || name.contains('.tmp-')) {
+        try {
+          await entity.delete();
+        } on Exception {
+          // Best-effort retention cleanup must not affect a completed restore.
+        }
+      }
+    }
+  }
+
   Future<LocalDataExport> exportAll() async {
-    final documents =
-        _documentsDirectory ?? await getApplicationDocumentsDirectory();
+    final documents = await documentsDirectory();
     final timestamp = DateTime.now().toUtc().toIso8601String().replaceAll(
       ':',
       '-',
@@ -143,23 +219,55 @@ final class LocalDataManager {
     return LocalDataExport(directory: destination, recordCount: recordCount);
   }
 
-  Future<void> eraseAll() async {
-    await database.persistenceDatabase.transaction((transaction) async {
-      for (final table in _eraseOrder) {
-        await transaction.delete(table);
-      }
-    });
-    final evidence = await evidenceDirectory();
-    if (await evidence.exists()) await evidence.delete(recursive: true);
-    final documents =
-        _documentsDirectory ?? await getApplicationDocumentsDirectory();
-    if (await documents.exists()) {
-      await for (final entity in documents.list()) {
-        if (entity is Directory &&
-            path.basename(entity.path).startsWith('Butlerly Export ')) {
-          await entity.delete(recursive: true);
+  Future<void> eraseAll({bool preserveRecoveryMarker = false}) =>
+      EvidenceMutationLock.runExclusive(() async {
+        // Privacy reset and restore share one evidence mutation boundary.
+        await database.persistenceDatabase.transaction((transaction) async {
+          for (final table in _eraseOrder) {
+            await transaction.delete(table);
+          }
+        });
+        final evidence = await evidenceDirectory();
+        if (await evidence.exists()) await evidence.delete(recursive: true);
+        final pendingEvidence = await pendingEvidenceDirectory();
+        if (await pendingEvidence.exists()) {
+          await pendingEvidence.delete(recursive: true);
         }
-      }
-    }
-  }
+
+        // Recovery snapshots contain user financial state and are part of an
+        // erase-all boundary. A recovery reset may intentionally keep the marker
+        // until system-data reseeding/runtime refresh also succeeds.
+        final recovery = Directory(
+          path.join(
+            path.dirname(database.persistenceDatabase.path),
+            '.butlerly-recovery',
+          ),
+        );
+        if (await recovery.exists()) await recovery.delete(recursive: true);
+        if (!preserveRecoveryMarker) {
+          final recoveryMarker = File(
+            '${evidence.path}.restore-recovery-required.json',
+          );
+          for (final file in <File>[
+            recoveryMarker,
+            File('${recoveryMarker.path}.tmp'),
+            File('${recoveryMarker.path}.previous'),
+          ]) {
+            if (await file.exists()) await file.delete();
+          }
+        }
+
+        final documents = await documentsDirectory();
+        if (await documents.exists()) {
+          await for (final entity in documents.list()) {
+            if (entity is Directory &&
+                (path.basename(entity.path).startsWith('Butlerly Export ') ||
+                    // Remove legacy safety-backup directories created by builds
+                    // before recovery data moved to application-private storage.
+                    path.basename(entity.path) == 'Butlerly Safety Backups')) {
+              await entity.delete(recursive: true);
+            }
+          }
+        }
+      });
 }
