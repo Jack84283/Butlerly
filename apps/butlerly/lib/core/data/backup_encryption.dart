@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
@@ -63,7 +64,12 @@ final class BackupEncryption {
       throw const BackupPasswordTooShortException();
     }
 
-    final salt = Cryptography.instance.randomBytes(_saltLength);
+    final random = Random.secure();
+    final salt = List<int>.generate(
+      _saltLength,
+      (_) => random.nextInt(256),
+      growable: false,
+    );
     final nonce = _cipher.newNonce();
     final header = <String, Object?>{
       'format': 'butlerly-encrypted-backup',
@@ -178,7 +184,9 @@ final class BackupEncryption {
       await input.setPosition(cipherEnd);
       macBytes = await input.read(_macLength);
       if (macBytes.length != _macLength) {
-        throw const FormatException('Incomplete encrypted backup authentication.');
+        throw const FormatException(
+          'Incomplete encrypted backup authentication.',
+        );
       }
     } finally {
       await input.close();
