@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/di/finance_services.dart';
+import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:file_selector/file_selector.dart';
@@ -36,39 +37,41 @@ final class LocalEvidenceStore {
   /// Preserves evidence under a new immutable local path.
   ///
   /// Once an evidence path is published to SQLite its bytes are never replaced
-  /// in place. A new capture gets a new path. This lets a SQLite backup snapshot
-  /// safely reference evidence while later captures proceed concurrently: old
-  /// rows continue to identify the same bytes for their whole lifetime.
-  Future<PreservedEvidenceSource> preserve(XFile source) async {
-    final directory = await data.evidenceDirectory();
-    await directory.create(recursive: true);
-    final extension = path.extension(source.name).toLowerCase();
-    final localFileName = _newImmutableFileName(extension);
-    final destination = File(path.join(directory.path, localFileName));
+  /// in place. A new capture gets a new path. Restore and normal evidence
+  /// mutations share one filesystem lock so the live evidence tree cannot
+  /// change while restore stages/activates it.
+  Future<PreservedEvidenceSource> preserve(XFile source) =>
+      EvidenceMutationLock.runExclusive(() async {
+        final directory = await data.evidenceDirectory();
+        await directory.create(recursive: true);
+        final extension = path.extension(source.name).toLowerCase();
+        final localFileName = _newImmutableFileName(extension);
+        final destination = File(path.join(directory.path, localFileName));
 
-    // Exclusive creation turns the immutable-path rule into a filesystem
-    // invariant as well as a naming convention. It must never truncate an
-    // existing evidence binary.
-    await destination.create(exclusive: true);
-    try {
-      await destination.writeAsBytes(await source.readAsBytes(), flush: true);
-    } catch (_) {
-      if (await destination.exists()) await destination.delete();
-      rethrow;
-    }
-    return PreservedEvidenceSource(
-      originalName: source.name,
-      localFileName: localFileName,
-      mediaType: source.mimeType ?? _mediaType(extension),
-    );
-  }
+        // Exclusive creation turns the immutable-path rule into a filesystem
+        // invariant as well as a naming convention. It must never truncate an
+        // existing evidence binary.
+        await destination.create(exclusive: true);
+        try {
+          await destination.writeAsBytes(await source.readAsBytes(), flush: true);
+        } catch (_) {
+          if (await destination.exists()) await destination.delete();
+          rethrow;
+        }
+        return PreservedEvidenceSource(
+          originalName: source.name,
+          localFileName: localFileName,
+          mediaType: source.mimeType ?? _mediaType(extension),
+        );
+      });
 
-  Future<void> discardPreserved(PreservedEvidenceSource source) async {
-    final file = File(
-      path.join((await data.evidenceDirectory()).path, source.localFileName),
-    );
-    if (await file.exists()) await file.delete();
-  }
+  Future<void> discardPreserved(PreservedEvidenceSource source) =>
+      EvidenceMutationLock.runExclusive(() async {
+        final file = File(
+          path.join((await data.evidenceDirectory()).path, source.localFileName),
+        );
+        if (await file.exists()) await file.delete();
+      });
 
   Future<EvidenceItem?> attachPreservedAndReturn({
     required String transactionId,
@@ -144,35 +147,38 @@ final class LocalEvidenceStore {
     return result;
   }
 
-  Future<bool> remove(EvidenceItem evidence) async {
-    final result = await finance.removeEvidence(evidence.id.value);
-    if (result is! ApplicationSuccess<void>) return false;
-    final file = await fileFor(evidence);
-    if (file != null && await file.exists()) await file.delete();
-    return true;
-  }
+  Future<bool> remove(EvidenceItem evidence) =>
+      EvidenceMutationLock.runExclusive(() async {
+        final result = await finance.removeEvidence(evidence.id.value);
+        if (result is! ApplicationSuccess<void>) return false;
+        final file = await fileFor(evidence);
+        if (file != null && await file.exists()) await file.delete();
+        return true;
+      });
 
-  Future<bool> removeUnprocessedStatement(String statementId) async {
-    final result = await finance.statementServices?.deleteStatement(
-      statementId,
-    );
-    if (result is! ApplicationSuccess<EvidenceItem?>) return false;
-    final evidence = result.value;
-    if (evidence == null) return true;
-    final file = await fileFor(evidence);
-    if (file != null && await file.exists()) await file.delete();
-    return true;
-  }
+  Future<bool> removeUnprocessedStatement(String statementId) =>
+      EvidenceMutationLock.runExclusive(() async {
+        final result = await finance.statementServices?.deleteStatement(
+          statementId,
+        );
+        if (result is! ApplicationSuccess<EvidenceItem?>) return false;
+        final evidence = result.value;
+        if (evidence == null) return true;
+        final file = await fileFor(evidence);
+        if (file != null && await file.exists()) await file.delete();
+        return true;
+      });
 
-  Future<bool> abandonStatementImport(String statementId) async {
-    final result = await finance.statementServices?.abandonImport(statementId);
-    if (result is! ApplicationSuccess<EvidenceItem?>) return false;
-    final evidence = result.value;
-    if (evidence == null) return true;
-    final file = await fileFor(evidence);
-    if (file != null && await file.exists()) await file.delete();
-    return true;
-  }
+  Future<bool> abandonStatementImport(String statementId) =>
+      EvidenceMutationLock.runExclusive(() async {
+        final result = await finance.statementServices?.abandonImport(statementId);
+        if (result is! ApplicationSuccess<EvidenceItem?>) return false;
+        final evidence = result.value;
+        if (evidence == null) return true;
+        final file = await fileFor(evidence);
+        if (file != null && await file.exists()) await file.delete();
+        return true;
+      });
 
   Future<File?> fileFor(EvidenceItem evidence) async {
     final name = evidence.localFileName;
