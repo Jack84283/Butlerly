@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:butlerly/core/data/local_data_manager.dart';
+import 'package:butlerly/core/data/restore_recovery_state.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:path/path.dart' as path;
 
@@ -51,6 +52,7 @@ Future<void> recoverInterruptedLocalRestore(
 
   final journalPrevious = data?['previousPath'] as String?;
   final journalStaging = data?['stagingPath'] as String?;
+  final journalPhase = data?['phase'] as String?;
   final journalPreviousDirectory =
       journalPrevious == null ? null : Directory(journalPrevious);
   final journalStagingDirectory =
@@ -87,13 +89,14 @@ Future<void> recoverInterruptedLocalRestore(
   );
 
   if (selection.ambiguous) {
-    // A torn/untrusted journal plus multiple previous trees has no safe ordering.
-    // Preserve the live tree and every recovery candidate rather than guessing
-    // which financial evidence state should replace another. Remove only the
-    // advisory journal/markers so startup can continue; retained directories are
-    // available to a later integrity/recovery workflow.
-    if (await journal.exists()) await journal.delete();
-    await database.database.delete('restore_commits');
+    // The application cannot prove which filesystem tree belongs with the live
+    // database. Preserve every candidate and persist a fail-closed marker. Do
+    // not delete the journal/commit evidence that a recovery workflow may need.
+    await _markRecoveryRequired(
+      localDataManager,
+      operationId: journalOperationId ?? 'unknown',
+      reason: 'ambiguous-restore-recovery',
+    );
     return;
   }
 
@@ -103,9 +106,32 @@ Future<void> recoverInterruptedLocalRestore(
     // commit. Restore exactly that tree.
     if (await root.exists()) await root.delete(recursive: true);
     await previous.rename(root.path);
+  } else if (_provesOriginalEvidenceWasAbsent(
+    root: root,
+    operationId: journalOperationId,
+    previous: journalPreviousDirectory,
+    staging: journalStagingDirectory,
+    phase: journalPhase,
+  )) {
+    // The engine activates staging only after renaming an existing root to the
+    // deterministic previous path. A trusted activated/dbWriting journal whose
+    // previous path does not exist therefore proves that the original root was
+    // absent. Roll back to that state instead of retaining uncommitted evidence.
+    if (await root.exists()) await root.delete(recursive: true);
+  } else if (data == null && recovery.previous.isEmpty) {
+    // A torn journal with no previous tree cannot distinguish "prepared before
+    // activation" from "activated when the original root was absent". Preserve
+    // all candidates and block normal writes rather than guessing.
+    await _markRecoveryRequired(
+      localDataManager,
+      operationId: 'unknown',
+      reason: 'indeterminate-restore-recovery',
+    );
+    return;
   } else {
-    // The original tree may legitimately have been empty. Preserve the live
-    // tree rather than risk deleting evidence that could belong to records.
+    // A valid prepared-phase journal means activation had not happened yet, so
+    // the live root remains the original state. Other valid no-previous states
+    // are left untouched unless the deterministic proof above applies.
   }
 
   // Clean only artifacts belonging to the identified operation. If the journal
@@ -124,9 +150,6 @@ Future<void> recoverInterruptedLocalRestore(
       if (directory.path == previous?.path) continue;
       if (await directory.exists()) await directory.delete(recursive: true);
     }
-  } else if (previous == null) {
-    // No previous tree and no operation identity: do not delete discovered
-    // recovery directories because they may belong to another interrupted run.
   }
 
   if (await journal.exists()) await journal.delete();
@@ -146,15 +169,17 @@ String? _committedOperationId({
 
   // If the journal is torn before its operation ID can be read, a durable DB
   // marker may still be matched safely to deterministic recovery directories.
+  // More than one match is ambiguous and must never be resolved by Set order.
+  final matches = <String>[];
   for (final operationId in markerIds) {
     final suffix = '-$operationId';
     final matchesRecoveryDirectory = <Directory>[
       ...recovery.previous,
       ...recovery.staging,
     ].any((directory) => directory.path.endsWith(suffix));
-    if (matchesRecoveryDirectory) return operationId;
+    if (matchesRecoveryDirectory) matches.add(operationId);
   }
-  return null;
+  return matches.length == 1 ? matches.single : null;
 }
 
 Future<_PreviousSelection> _selectPreviousDirectory({
@@ -187,6 +212,28 @@ Future<_PreviousSelection> _selectPreviousDirectory({
   if (existing.length == 1) return _PreviousSelection(existing.single, false);
   if (existing.length > 1) return const _PreviousSelection(null, true);
   return const _PreviousSelection(null, false);
+}
+
+bool _provesOriginalEvidenceWasAbsent({
+  required Directory root,
+  required String? operationId,
+  required Directory? previous,
+  required Directory? staging,
+  required String? phase,
+}) {
+  if (operationId == null || previous == null || staging == null) return false;
+  if (phase != 'evidenceActivated' && phase != 'dbWriting') return false;
+  return previous.path == '${root.path}.restore-previous-$operationId' &&
+      staging.path == '${root.path}.restore-$operationId';
+}
+
+Future<void> _markRecoveryRequired(
+  LocalDataManager localDataManager, {
+  required String operationId,
+  required String reason,
+}) async {
+  final state = RestoreRecoveryState(localDataManager);
+  await state.markUnknownRequired(operationId: operationId, reason: reason);
 }
 
 Set<Directory> _directoriesForOperation(
