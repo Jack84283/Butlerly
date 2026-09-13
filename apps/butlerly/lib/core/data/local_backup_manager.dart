@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:butlerly/core/data/local_backup_engine.dart' as engine;
@@ -6,7 +7,9 @@ import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/data/local_restore_recovery.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
-import 'package:butlerly_database/butlerly_database.dart' show Sqflite;
+import 'package:butlerly/core/logging/app_logger.dart';
+import 'package:butlerly_database/butlerly_database.dart'
+    show Sqflite, int64FromBytes;
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common/sqlite_api.dart';
 
@@ -23,6 +26,9 @@ export 'local_restore_recovery.dart';
 /// [local_backup_engine.dart] owns package validation, evidence preparation,
 /// transactional merge/replace semantics, and restore crash recovery markers.
 /// [LocalBackupSnapshotWriter] owns creation from one SQLite read snapshot.
+/// This class adds the IMP-0010 orchestration contract: pre-restore safety
+/// preservation, isolated database/evidence staging, integrity validation, and
+/// activation of only a validated candidate state.
 final class LocalBackupManager {
   LocalBackupManager(this.database, this.localDataManager)
     : _engine = engine.LocalBackupManager(database, localDataManager),
@@ -32,6 +38,9 @@ final class LocalBackupManager {
   final LocalDataManager localDataManager;
   final engine.LocalBackupManager _engine;
   final LocalBackupSnapshotWriter _snapshotWriter;
+
+  static final _backupMagic = utf8.encode('BUTLERLYBACKUP2');
+  static const _supportedSchemaVersion = 8;
 
   /// Creates one logical database snapshot without rejecting concurrent app
   /// writes. WAL lets a dedicated reader keep its established snapshot while
@@ -191,6 +200,7 @@ final class LocalBackupManager {
   }
 
   Future<engine.BackupInspection> inspect(File file) async {
+    await _assertSupportedBackupSchema(file);
     final base = await _engine.inspect(file);
     final cutoff = base.createdAtUtc.toIso8601String();
     final additional = await _countOtherNewerData(cutoff);
@@ -216,33 +226,206 @@ final class LocalBackupManager {
   Future<engine.LocalRestoreResult> restore(
     File file, {
     required engine.LocalRestoreMode mode,
+    Future<void> Function()? postActivationRefresh,
   }) => EvidenceMutationLock.runExclusive(() async {
-    // Recovery, the optional Replace safety snapshot, evidence staging, root
-    // activation, and the restore transaction all share the same evidence
-    // mutation boundary. Normal capture/removal waits until restore finishes,
-    // so a newly created immutable evidence file cannot be lost by a root swap.
     await recoverInterruptedLocalRestore(database, localDataManager);
+    await _assertSupportedBackupSchema(file);
 
-    if (mode == engine.LocalRestoreMode.replace) {
-      // Replace is destructive after it commits. Always preserve the current
-      // local workspace in a Butlerly-managed package before mutation starts.
-      await _createPreRestoreSafetyBackup();
+    // IMP-0010 requires a recovery snapshot before activation for both Merge
+    // and Replace. Keep it even after success so the user has an explicit local
+    // rollback artifact for the restore event.
+    final safetyBackup = await _createPreRestoreSafetyBackup(mode);
+    final staging = await _createStagingWorkspace();
+    var liveActivated = false;
+    try {
+      final stagedEngine = engine.LocalBackupManager(
+        staging.database,
+        staging.dataManager,
+      );
+      final stagedResult = await stagedEngine.restore(file, mode: mode);
+
+      // Candidate database and relationships must be valid before live state is
+      // touched. The evidence engine has already verified every binary checksum.
+      await _validateDatabase(staging.database.database);
+
+      // Serialize the validated candidate as one portable state and activate it
+      // through the existing transactional/crash-recovery engine. This keeps
+      // structured data and evidence on the already-tested activation path while
+      // ensuring the merge itself happened entirely outside live storage.
+      final candidatePackage = File(
+        path.join(staging.root.path, 'validated-candidate.butlerlybackup'),
+      );
+      final stagingManager = LocalBackupManager(
+        staging.database,
+        staging.dataManager,
+      );
+      await stagingManager.createBackup(candidatePackage);
+
+      await _engine.restore(
+        candidatePackage,
+        mode: engine.LocalRestoreMode.replace,
+      );
+      liveActivated = true;
+      await _validateDatabase(database.database);
+      if (postActivationRefresh != null) {
+        await postActivationRefresh();
+      }
+      return stagedResult;
+    } catch (_) {
+      if (liveActivated) {
+        // A validation or runtime-refresh failure after activation must not leave
+        // the user in a state that the UI reports as failed but that is actually
+        // committed. Restore the pre-operation snapshot and refresh best-effort.
+        try {
+          await _engine.restore(
+            safetyBackup,
+            mode: engine.LocalRestoreMode.replace,
+          );
+          await _validateDatabase(database.database);
+          if (postActivationRefresh != null) {
+            try {
+              await postActivationRefresh();
+            } on Exception {
+              // Preserve the original restore failure after rollback.
+            }
+          }
+        } on Exception {
+          // Preserve the original failure. Existing engine recovery markers and
+          // the retained safety package provide controlled-recovery material.
+        }
+      }
+      rethrow;
+    } finally {
+      await staging.dispose();
     }
-
-    // The engine owns one authoritative validation/staging/commit path. Nothing
-    // in the live database is changed before evidence preparation succeeds.
-    return _engine.restore(file, mode: mode);
   });
 
-  Future<File> _createPreRestoreSafetyBackup() async {
+  Future<_RestoreStagingWorkspace> _createStagingWorkspace() async {
+    final livePersistence = database.persistenceDatabase;
+    final operationId = DateTime.now().microsecondsSinceEpoch;
+    final root = Directory(
+      path.join(
+        path.dirname(livePersistence.path),
+        '.butlerly-restore-stage-$operationId',
+      ),
+    );
+    await root.create(recursive: true);
+    final stagingDatabasePath = path.join(root.path, 'butlerly.db');
+
+    // VACUUM INTO creates a consistent, standalone SQLite snapshot while the
+    // live connection remains open. Quote the path as an SQLite string literal.
+    final escaped = stagingDatabasePath.replaceAll("'", "''");
+    await database.database.execute("VACUUM INTO '$escaped'");
+
+    final stagingDatabase = LocalDatabase(
+      logger: AppLogger(),
+      factory: livePersistence.factory,
+      databaseDirectory: root.path,
+    );
+    await stagingDatabase.initialize();
+
+    final stagingEvidence = Directory(path.join(root.path, 'evidence'));
+    final liveEvidence = await localDataManager.evidenceDirectory();
+    if (await liveEvidence.exists()) {
+      await _copyDirectory(liveEvidence, stagingEvidence);
+    } else {
+      await stagingEvidence.create(recursive: true);
+    }
+    final stagingDocuments = Directory(path.join(root.path, 'documents'));
+    await stagingDocuments.create(recursive: true);
+    final stagingData = LocalDataManager(
+      stagingDatabase,
+      documentsDirectory: stagingDocuments,
+      localEvidenceDirectory: stagingEvidence,
+    );
+    return _RestoreStagingWorkspace(root, stagingDatabase, stagingData);
+  }
+
+  Future<void> _validateDatabase(Database db) async {
+    final integrity = await db.rawQuery('PRAGMA integrity_check');
+    final integrityValue = integrity.isEmpty
+        ? null
+        : integrity.first.values.firstOrNull?.toString().toLowerCase();
+    if (integrityValue != 'ok') {
+      throw StateError('Restored database failed SQLite integrity validation.');
+    }
+
+    final foreignKeys = await db.rawQuery('PRAGMA foreign_key_check');
+    if (foreignKeys.isNotEmpty) {
+      throw StateError(
+        'Restored database contains broken foreign-key relationships.',
+      );
+    }
+  }
+
+  Future<void> _assertSupportedBackupSchema(File file) async {
+    final raf = await file.open(mode: FileMode.read);
+    try {
+      final magic = await raf.read(_backupMagic.length);
+      if (!_listEquals(magic, _backupMagic)) return;
+      final lengthBytes = await raf.read(8);
+      if (lengthBytes.length != 8) return;
+      final metadataLength = int64FromBytes(lengthBytes);
+      if (metadataLength <= 0 || metadataLength > 128 * 1024 * 1024) return;
+      final checksum = await raf.read(64);
+      if (checksum.length != 64) return;
+      final metadataBytes = await raf.read(metadataLength);
+      if (metadataBytes.length != metadataLength) return;
+      final decoded = jsonDecode(utf8.decode(metadataBytes));
+      if (decoded is! Map) return;
+      final metadata = decoded.cast<String, Object?>();
+      final manifest = (metadata['manifest'] as Map?)?.cast<String, Object?>();
+      final sourceSchema = manifest?['schemaVersion'] as int?;
+      if (sourceSchema != null && sourceSchema != _supportedSchemaVersion) {
+        throw FormatException(
+          'Backup schema $sourceSchema is not supported by this Butlerly build.',
+        );
+      }
+    } finally {
+      await raf.close();
+    }
+  }
+
+  bool _listEquals(List<int> left, List<int> right) {
+    if (left.length != right.length) return false;
+    for (var index = 0; index < left.length; index++) {
+      if (left[index] != right[index]) return false;
+    }
+    return true;
+  }
+
+  Future<File> _createPreRestoreSafetyBackup(
+    engine.LocalRestoreMode mode,
+  ) async {
     final directory = await localDataManager.safetyBackupDirectory();
     final timestamp = DateTime.now().toUtc().toIso8601String().replaceAll(
       ':',
       '-',
     );
+    final label = mode == engine.LocalRestoreMode.merge
+        ? 'Before Merge'
+        : 'Before Restore';
     return createBackup(
-      File(path.join(directory.path, 'Before Restore $timestamp.butlerlybackup')),
+      File(path.join(directory.path, '$label $timestamp.butlerlybackup')),
     );
+  }
+
+  Future<void> _copyDirectory(
+    Directory source,
+    Directory destination,
+  ) async {
+    await destination.create(recursive: true);
+    await for (final entity in source.list(recursive: true, followLinks: false)) {
+      final relative = path.relative(entity.path, from: source.path);
+      final target = path.join(destination.path, relative);
+      if (entity is Directory) {
+        await Directory(target).create(recursive: true);
+      } else if (entity is File) {
+        final file = File(target);
+        await file.parent.create(recursive: true);
+        await entity.copy(file.path);
+      }
+    }
   }
 
   Future<int> _countOtherNewerData(String cutoff) async {
@@ -267,5 +450,26 @@ final class LocalBackupManager {
       count += Sqflite.firstIntValue(rows) ?? 0;
     }
     return count;
+  }
+}
+
+final class _RestoreStagingWorkspace {
+  const _RestoreStagingWorkspace(this.root, this.database, this.dataManager);
+
+  final Directory root;
+  final LocalDatabase database;
+  final LocalDataManager dataManager;
+
+  Future<void> dispose() async {
+    try {
+      await database.close();
+    } on Exception {
+      // Continue cleaning the isolated staging directory.
+    }
+    try {
+      if (await root.exists()) await root.delete(recursive: true);
+    } on Exception {
+      // Staging cleanup is best-effort after live state has been decided.
+    }
   }
 }
