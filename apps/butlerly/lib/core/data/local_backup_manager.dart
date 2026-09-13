@@ -163,9 +163,19 @@ final class LocalBackupManager {
     await database.database.transaction((tx) async {
       await tx.delete('review_issues', where: 'closed_at IS NULL');
       await tx.delete('suggestions', where: 'decided_at IS NULL');
+      // `proposed` is the generated reconciliation state. Confirmed, rejected,
+      // and undone candidates encode explicit user workflow decisions.
       await tx.delete(
         'reconciliation_candidates',
-        where: "status NOT IN ('confirmed', 'rejected')",
+        where: "status = 'proposed'",
+      );
+      // Delete membership rows explicitly before unresolved groups. Historical
+      // fixtures and partially migrated databases must not rely on FK cascades.
+      await tx.rawDelete(
+        'DELETE FROM duplicate_candidate_group_transactions '
+        'WHERE group_id IN ('
+        "SELECT id FROM duplicate_candidate_groups WHERE status = 'unresolved'"
+        ')',
       );
       await tx.delete(
         'duplicate_candidate_groups',
@@ -192,7 +202,7 @@ final class LocalBackupManager {
       'SELECT COUNT(*) FROM suggestions '
           'WHERE decided_at IS NOT NULL AND decided_at > ?',
       "SELECT COUNT(*) FROM reconciliation_candidates "
-          "WHERE status IN ('confirmed', 'rejected') AND updated_at > ?",
+          "WHERE status != 'proposed' AND updated_at > ?",
       "SELECT COUNT(*) FROM duplicate_candidate_groups "
           "WHERE status != 'unresolved' AND updated_at > ?",
       'SELECT COUNT(*) FROM analysis_rule_activations WHERE updated_at > ?',
