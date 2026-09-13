@@ -49,7 +49,24 @@ final class LocalBackupManager {
     required v2.LocalRestoreMode mode,
   }) async {
     await recoverInterruptedLocalRestore(database, localDataManager);
-    return _delegate.restore(file, mode: mode);
+    if (mode != v2.LocalRestoreMode.merge) {
+      return _delegate.restore(file, mode: mode);
+    }
+
+    final inspection = await _delegate.inspect(file);
+    await database.database.insert(
+      'restore_context',
+      {
+        'id': 1,
+        'backup_time': inspection.createdAtUtc.toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    try {
+      return await _delegate.restore(file, mode: mode);
+    } finally {
+      await database.database.delete('restore_context', where: 'id = 1');
+    }
   }
 
   Future<int> _countOtherNewerData(String cutoff) async {
