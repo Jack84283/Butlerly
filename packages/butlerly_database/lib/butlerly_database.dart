@@ -1,5 +1,6 @@
 library;
 
+export 'src/backup/backup_hash.dart';
 export 'src/database/butlerly_database.dart';
 export 'src/repositories/sqlite_analysis_repository.dart';
 export 'src/repositories/sqlite_duplicate_candidate_group_repository.dart';
