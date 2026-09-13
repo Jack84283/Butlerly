@@ -1,8 +1,8 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/core/data/local_backup_manager.dart';
+import 'package:butlerly/core/database/initial_master_data.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
-import 'package:butlerly/core/database/initial_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/app_localizations_backup.dart';
