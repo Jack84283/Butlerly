@@ -265,6 +265,7 @@ void main() {
       factory: databaseFactoryFfi,
       path: path,
       schemaSql: current,
+      targetVersion: 7,
       migrations: {
         2: migration,
         3: resultsMigration,
