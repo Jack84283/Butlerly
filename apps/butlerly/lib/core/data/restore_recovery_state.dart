@@ -34,17 +34,33 @@ final class RestoreRecoveryState extends ChangeNotifier {
   bool get isRecoveryRequired => _incident != null;
 
   Future<void> initialize() async {
+    _incident = null;
     final marker = await _markerFile();
-    if (!await marker.exists()) return;
+    final temporary = File('${marker.path}.tmp');
+    final previous = File('${marker.path}.previous');
+
+    if (!await marker.exists()) {
+      if (await temporary.exists() || await previous.exists()) {
+        _setGenericIncident('recovery-marker-interrupted');
+      }
+      return;
+    }
+
     try {
       final decoded = jsonDecode(await marker.readAsString());
-      if (decoded is! Map) return;
+      if (decoded is! Map) {
+        throw const FormatException('Invalid recovery marker payload.');
+      }
       final data = decoded.cast<String, Object?>();
-      final operationId = data['operationId'] as String?;
-      final safetyBackupPath = data['safetyBackupPath'] as String?;
-      final reason = data['reason'] as String?;
-      if (operationId == null || safetyBackupPath == null || reason == null) {
-        return;
+      final operationId = data['operationId'];
+      final safetyBackupPath = data['safetyBackupPath'];
+      final reason = data['reason'];
+      if (operationId is! String ||
+          operationId.isEmpty ||
+          safetyBackupPath is! String ||
+          reason is! String ||
+          reason.isEmpty) {
+        throw const FormatException('Incomplete recovery marker payload.');
       }
       _incident = RestoreRecoveryIncident(
         operationId: operationId,
@@ -53,14 +69,9 @@ final class RestoreRecoveryState extends ChangeNotifier {
       );
       notifyListeners();
     } on Exception {
-      // A malformed marker must fail closed. Preserve it and expose a generic
-      // incident rather than silently resuming normal financial writes.
-      _incident = const RestoreRecoveryIncident(
-        operationId: 'unknown',
-        safetyBackupPath: '',
-        reason: 'recovery-marker-unreadable',
-      );
-      notifyListeners();
+      // Any existing but malformed/incomplete marker must fail closed. Preserve
+      // all marker artifacts so later recovery or diagnostics can inspect them.
+      _setGenericIncident('recovery-marker-unreadable');
     }
   }
 
@@ -68,32 +79,77 @@ final class RestoreRecoveryState extends ChangeNotifier {
     required String operationId,
     required File safetyBackup,
     required String reason,
-  }) async {
-    final marker = await _markerFile();
-    await marker.parent.create(recursive: true);
-    final temporary = File('${marker.path}.tmp');
-    await temporary.writeAsString(
-      jsonEncode({
-        'operationId': operationId,
-        'safetyBackupPath': safetyBackup.path,
-        'reason': reason,
-      }),
-      flush: true,
-    );
-    if (await marker.exists()) await marker.delete();
-    await temporary.rename(marker.path);
-    _incident = RestoreRecoveryIncident(
+  }) => _persistIncident(
+    RestoreRecoveryIncident(
       operationId: operationId,
       safetyBackupPath: safetyBackup.path,
       reason: reason,
-    );
+    ),
+  );
+
+  Future<void> markUnknownRequired({
+    required String operationId,
+    required String reason,
+  }) => _persistIncident(
+    RestoreRecoveryIncident(
+      operationId: operationId.isEmpty ? 'unknown' : operationId,
+      safetyBackupPath: '',
+      reason: reason,
+    ),
+  );
+
+  Future<void> _persistIncident(RestoreRecoveryIncident incident) async {
+    // Fail closed in-process before touching disk. Even if persistence itself
+    // fails, normal writes remain blocked for the rest of this process.
+    _incident = incident;
     notifyListeners();
+
+    final marker = await _markerFile();
+    await marker.parent.create(recursive: true);
+    final temporary = File('${marker.path}.tmp');
+    final previous = File('${marker.path}.previous');
+
+    await temporary.writeAsString(
+      jsonEncode({
+        'operationId': incident.operationId,
+        'safetyBackupPath': incident.safetyBackupPath,
+        'reason': incident.reason,
+      }),
+      flush: true,
+    );
+
+    if (await previous.exists()) await previous.delete();
+    if (await marker.exists()) await marker.rename(previous.path);
+    try {
+      await temporary.rename(marker.path);
+      if (await previous.exists()) await previous.delete();
+    } catch (_) {
+      // Leave .tmp and/or .previous in place. initialize() treats either as a
+      // recovery-required sentinel, so a crash during replacement cannot reopen
+      // normal financial writes on the next launch.
+      rethrow;
+    }
   }
 
   Future<void> clear() async {
     final marker = await _markerFile();
-    if (await marker.exists()) await marker.delete();
+    for (final file in <File>[
+      marker,
+      File('${marker.path}.tmp'),
+      File('${marker.path}.previous'),
+    ]) {
+      if (await file.exists()) await file.delete();
+    }
     _incident = null;
+    notifyListeners();
+  }
+
+  void _setGenericIncident(String reason) {
+    _incident = RestoreRecoveryIncident(
+      operationId: 'unknown',
+      safetyBackupPath: '',
+      reason: reason,
+    );
     notifyListeners();
   }
 
