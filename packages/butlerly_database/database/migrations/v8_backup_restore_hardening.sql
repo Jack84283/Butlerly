@@ -43,7 +43,15 @@ BEGIN
   WHERE entity_type = 'duplicate_candidate_group_transactions'
     AND entity_id = NEW.group_id || '|' || NEW.transaction_id;
 END;
-CREATE TRIGGER IF NOT EXISTS duplicate_membership_preserve_newer BEFORE DELETE ON duplicate_candidate_group_transactions
+CREATE TRIGGER IF NOT EXISTS duplicate_membership_preserve_newer_delete BEFORE DELETE ON duplicate_candidate_group_transactions
+WHEN EXISTS (
+  SELECT 1 FROM restore_context
+  WHERE id = 1 AND OLD.created_at > backup_time
+)
+BEGIN
+  SELECT RAISE(IGNORE);
+END;
+CREATE TRIGGER IF NOT EXISTS duplicate_membership_preserve_newer_update BEFORE UPDATE ON duplicate_candidate_group_transactions
 WHEN EXISTS (
   SELECT 1 FROM restore_context
   WHERE id = 1 AND OLD.created_at > backup_time
@@ -71,7 +79,15 @@ BEGIN
   WHERE entity_type = 'transaction_provenances'
     AND entity_id = NEW.transaction_id || '|' || NEW.provenance_id;
 END;
-CREATE TRIGGER IF NOT EXISTS transaction_provenance_preserve_newer BEFORE DELETE ON transaction_provenances
+CREATE TRIGGER IF NOT EXISTS transaction_provenance_preserve_newer_delete BEFORE DELETE ON transaction_provenances
+WHEN EXISTS (
+  SELECT 1 FROM restore_context
+  WHERE id = 1 AND OLD.created_at > backup_time
+)
+BEGIN
+  SELECT RAISE(IGNORE);
+END;
+CREATE TRIGGER IF NOT EXISTS transaction_provenance_preserve_newer_update BEFORE UPDATE ON transaction_provenances
 WHEN EXISTS (
   SELECT 1 FROM restore_context
   WHERE id = 1 AND OLD.created_at > backup_time
