@@ -152,7 +152,9 @@ final class ButlerlyDatabase {
 }
 
 /// Database assets use semicolon-delimited statements, line comments, and
-/// single-quoted SQL strings (including doubled quote escapes).
+/// single-quoted SQL strings (including doubled quote escapes). SQLite trigger
+/// bodies may themselves contain semicolon-delimited statements, so a trigger
+/// is emitted only after its terminating `END;`.
 List<String> splitSqlStatements(String sql) {
   final statements = <String>[];
   final buffer = StringBuffer();
@@ -178,13 +180,21 @@ List<String> splitSqlStatements(String sql) {
       } else {
         quote = !quote;
       }
-    } else if (char == ';' && !quote) {
-      final statement = buffer.toString().trim();
-      if (statement.isNotEmpty) statements.add(statement);
-      buffer.clear();
-    } else {
-      buffer.write(char);
+      continue;
     }
+    if (char == ';' && !quote) {
+      final pending = buffer.toString().trim();
+      final upper = pending.toUpperCase();
+      final isTrigger = upper.startsWith('CREATE TRIGGER');
+      if (isTrigger && !upper.endsWith('END')) {
+        buffer.write(char);
+        continue;
+      }
+      if (pending.isNotEmpty) statements.add(pending);
+      buffer.clear();
+      continue;
+    }
+    buffer.write(char);
   }
   final statement = buffer.toString().trim();
   if (statement.isNotEmpty) statements.add(statement);
