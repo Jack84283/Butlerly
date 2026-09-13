@@ -77,9 +77,23 @@ void main() {
       'created_at': old,
       'updated_at': old,
     });
+    await fixture.database.database.insert('provenances', {
+      'id': 'prov-snapshot-review',
+      'source_type': 'manual',
+      'captured_at': old,
+    });
+    await fixture.database.database.insert('evidence_items', {
+      'id': 'evidence-snapshot-review',
+      'type': 'receipt',
+      'original_name': 'slow.bin',
+      'media_type': 'application/octet-stream',
+      'provenance_id': 'prov-snapshot-review',
+      'created_at': old,
+      'local_file_name': 'slow.bin',
+    });
 
     // Keep serialization active long enough for the competing write to be
-    // submitted while the manager owns its independent SQLite snapshot lock.
+    // submitted while the independent read transaction owns its WAL snapshot.
     final slowEvidence = File(path.join(fixture.evidence.path, 'slow.bin'));
     await slowEvidence.writeAsBytes(List<int>.filled(2 * 1024 * 1024, 7));
     final backup = File(path.join(fixture.root.path, 'snapshot.butlerlybackup'));
