@@ -57,17 +57,11 @@ final class LocalBackupManager {
   static final _backupMagic = utf8.encode('BUTLERLYBACKUP2');
   static const _supportedSchemaVersion = 8;
 
-  /// Creates an application-managed plaintext backup package.
-  ///
-  /// This path exists for internal recovery snapshots and tests. User-selected
-  /// portable destinations must use [createPortableBackup], which encrypts the
-  /// completed inner package before it leaves application-controlled storage.
   Future<File> createBackup(File destination) =>
       EvidenceMutationLock.runExclusive(
         () => _createBackupUnlocked(destination),
       );
 
-  /// Creates a password-protected portable backup for a user-selected path.
   Future<File> createPortableBackup(
     File destination, {
     required String password,
@@ -120,15 +114,12 @@ final class LocalBackupManager {
     }
   }
 
-  /// Creates one coherent database/evidence snapshot while the caller already
-  /// owns [EvidenceMutationLock].
   Future<File> _createBackupUnlocked(File destination) async {
     final operationId = DateTime.now().microsecondsSinceEpoch;
     final candidate = File('${destination.path}.candidate-$operationId');
 
     try {
       final snapshotFuture = database.database.transaction((snapshot) async {
-        // Pin the SQLite snapshot before any integrity check or manifest time.
         await snapshot.rawQuery('SELECT COUNT(*) FROM sqlite_master');
         final createdAtUtc = DateTime.now().toUtc();
         await _validateDatabase(snapshot);
@@ -262,9 +253,6 @@ final class LocalBackupManager {
     }
   }
 
-  /// Deletes only orphaned application-private working copies that can never be
-  /// authoritative recovery material. Live evidence trees, engine journals, and
-  /// safety snapshots are intentionally excluded.
   Future<void> cleanupOrphanedPrivateArtifacts() async {
     final databaseDirectory = Directory(
       path.dirname(database.persistenceDatabase.path),
@@ -287,8 +275,7 @@ final class LocalBackupManager {
             await entity.delete();
           }
         } catch (_) {
-          // Startup recovery must continue even if OS cleanup is temporarily
-          // unable to remove an orphaned private working copy.
+          // Startup recovery must continue if cleanup is temporarily blocked.
         }
       }
     }
@@ -360,14 +347,9 @@ final class LocalBackupManager {
         staging.database,
         staging.dataManager,
       );
-      // Staging proves the requested operation can be applied to a coherent copy
-      // but is never used as the live replacement snapshot.
       await stagedEngine.restore(file, mode: mode);
       await _validateDatabase(staging.database.database);
 
-      // Capture the latest local state immediately before activation, after the
-      // potentially long validation phase. This includes edits made while the
-      // isolated staging pass was running.
       safetyBackup = await _createPreRestoreSafetyBackup(mode);
 
       final liveResult = await _restoreLivePackage(
@@ -388,10 +370,6 @@ final class LocalBackupManager {
       return liveResult;
     } catch (error, stack) {
       if (liveActivated && safetyBackup != null) {
-        // Do not automatically replace the just-activated state. A concurrent
-        // local edit may have landed after the engine commit. Gate normal use and
-        // let controlled recovery validate/retry the current state first; only a
-        // validation failure permits fallback to the pre-activation safety copy.
         try {
           await recoveryState.markRequired(
             operationId: operationId,
@@ -400,10 +378,7 @@ final class LocalBackupManager {
             retryCurrentState: true,
           );
         } catch (_) {
-          // The durable restore-origin sidecar was written before activation and
-          // remains until final success, so restart still fails closed even if
-          // the separate recovery marker cannot be persisted (for example disk
-          // pressure during this failure path).
+          // restore-origin remains as a durable fail-closed fallback.
         }
         Error.throwWithStackTrace(
           const RestoreRecoveryRequiredException(),
@@ -424,23 +399,53 @@ final class LocalBackupManager {
   }) async {
     final root = await localDataManager.evidenceDirectory();
     final journal = File('${root.path}.restore-journal.json');
+    final rootExistedBeforeActivation = await root.exists();
 
     await _writeRestoreOriginState(
       operationId: operationId,
-      rootExisted: await root.exists(),
+      rootExisted: rootExistedBeforeActivation,
       safetyBackup: safetyBackup,
     );
 
     try {
       return await _engine.restore(file, mode: mode);
-    } catch (_) {
-      // The engine removes its journal after a successful pre-commit rollback.
-      // Only then can the wrapper intent be discarded. If the journal remains,
-      // startup recovery needs both the origin state and its safety backup path.
-      if (!await journal.exists()) {
-        await _clearRestoreOriginState();
+    } catch (error, stack) {
+      final journalExists = await journal.exists();
+      final rootExistsAfterFailure = await root.exists();
+      var rollbackProven =
+          !journalExists && rootExistsAfterFailure == rootExistedBeforeActivation;
+      if (rollbackProven) {
+        try {
+          await _validateDatabase(database.database);
+          await _validateLiveEvidenceReferences();
+        } catch (_) {
+          rollbackProven = false;
+        }
       }
-      rethrow;
+
+      if (rollbackProven) {
+        await _clearRestoreOriginState();
+        Error.throwWithStackTrace(error, stack);
+      }
+
+      // The engine could not prove that its pre-commit evidence activation was
+      // rolled back. Keep all engine artifacts and the wrapper safety snapshot;
+      // controlled recovery validates the current state first and falls back to
+      // the safety copy only when needed.
+      try {
+        await recoveryState.markRequired(
+          operationId: operationId,
+          safetyBackup: safetyBackup,
+          reason: 'engine-restore-recovery-pending',
+          retryCurrentState: true,
+        );
+      } catch (_) {
+        // restore-origin and any engine journal remain for restart recovery.
+      }
+      Error.throwWithStackTrace(
+        const RestoreRecoveryRequiredException(),
+        stack,
+      );
     }
   }
 
@@ -468,7 +473,6 @@ final class LocalBackupManager {
       await temporary.rename(origin.path);
       if (await previous.exists()) await previous.delete();
     } catch (_) {
-      // Leave atomic-replacement sentinels for startup to fail closed.
       rethrow;
     }
   }
@@ -484,17 +488,11 @@ final class LocalBackupManager {
       try {
         if (await file.exists()) await file.delete();
       } catch (_) {
-        // A stale intent is fail-safe: startup may request recovery again rather
-        // than reopening ordinary writes without proof.
+        // Stale intent causes a safe recovery prompt on restart.
       }
     }
   }
 
-  /// Attempts controlled recovery.
-  ///
-  /// When the engine committed and only post-activation validation/refresh was
-  /// interrupted, validate and keep the current live state first. A safety-copy
-  /// Replace is only used when current data validation itself fails.
   Future<void> recoverControlledState({
     Future<void> Function()? postActivationRefresh,
   }) async {
@@ -513,8 +511,6 @@ final class LocalBackupManager {
         }
 
         if (currentStateValid) {
-          // If refresh itself fails, keep the recovery marker and current data so
-          // the user can retry without silently discarding post-activation edits.
           if (postActivationRefresh != null) {
             await postActivationRefresh();
           }
@@ -551,11 +547,6 @@ final class LocalBackupManager {
     });
   }
 
-  /// Last-resort recovery path when no trustworthy safety snapshot exists.
-  ///
-  /// The recovery marker remains durable until erase, system-data reseeding and
-  /// runtime refresh all succeed, so a crash during reset cannot silently reopen
-  /// an incompletely initialized workspace.
   Future<void> resetControlledRecovery({
     Future<void> Function()? postResetRefresh,
   }) async {
