@@ -121,10 +121,25 @@ final class _Sha256Accumulator {
   void add(List<int> bytes) {
     if (_closed) throw StateError('SHA-256 accumulator is already closed.');
     _byteLength += bytes.length;
-    _buffer.addAll(bytes);
-    while (_buffer.length >= 64) {
-      _compress(_buffer.sublist(0, 64));
-      _buffer.removeRange(0, 64);
+    var offset = 0;
+
+    if (_buffer.isNotEmpty) {
+      final needed = 64 - _buffer.length;
+      final take = bytes.length < needed ? bytes.length : needed;
+      _buffer.addAll(bytes.sublist(0, take));
+      offset = take;
+      if (_buffer.length == 64) {
+        _compress(_buffer);
+        _buffer.clear();
+      }
+    }
+
+    while (offset + 64 <= bytes.length) {
+      _compress(bytes.sublist(offset, offset + 64));
+      offset += 64;
+    }
+    if (offset < bytes.length) {
+      _buffer.addAll(bytes.sublist(offset));
     }
   }
 
