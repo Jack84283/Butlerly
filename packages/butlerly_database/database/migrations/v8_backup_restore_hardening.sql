@@ -194,3 +194,57 @@ CREATE TRIGGER IF NOT EXISTS financial_statements_tombstone_clear AFTER INSERT O
 BEGIN
   DELETE FROM entity_tombstones WHERE entity_type = 'financial_statements' AND entity_id = NEW.id;
 END;
+
+-- Normal repository writes advance modification timestamps. Restore is the
+-- exception: historical timestamps from the backup are merge metadata and must
+-- be preserved exactly, so replace the v8 auto-touch triggers with guarded
+-- variants that are disabled while restore_context is active.
+DROP TRIGGER IF EXISTS payment_sources_merge_update;
+CREATE TRIGGER payment_sources_merge_update AFTER UPDATE ON payment_sources
+WHEN NEW.updated_at = OLD.updated_at
+  AND NOT EXISTS (SELECT 1 FROM restore_context WHERE id = 1)
+BEGIN
+  UPDATE payment_sources
+  SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+  WHERE id = NEW.id;
+END;
+
+DROP TRIGGER IF EXISTS merchants_merge_update;
+CREATE TRIGGER merchants_merge_update AFTER UPDATE ON merchants
+WHEN NEW.updated_at = OLD.updated_at
+  AND NOT EXISTS (SELECT 1 FROM restore_context WHERE id = 1)
+BEGIN
+  UPDATE merchants
+  SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+  WHERE id = NEW.id;
+END;
+
+DROP TRIGGER IF EXISTS categories_merge_update;
+CREATE TRIGGER categories_merge_update AFTER UPDATE ON categories
+WHEN NEW.updated_at = OLD.updated_at
+  AND NOT EXISTS (SELECT 1 FROM restore_context WHERE id = 1)
+BEGIN
+  UPDATE categories
+  SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+  WHERE id = NEW.id;
+END;
+
+DROP TRIGGER IF EXISTS tags_merge_update;
+CREATE TRIGGER tags_merge_update AFTER UPDATE ON tags
+WHEN NEW.updated_at = OLD.updated_at
+  AND NOT EXISTS (SELECT 1 FROM restore_context WHERE id = 1)
+BEGIN
+  UPDATE tags
+  SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+  WHERE id = NEW.id;
+END;
+
+DROP TRIGGER IF EXISTS user_preferences_merge_update;
+CREATE TRIGGER user_preferences_merge_update AFTER UPDATE ON user_preferences
+WHEN NEW.updated_at = OLD.updated_at
+  AND NOT EXISTS (SELECT 1 FROM restore_context WHERE id = 1)
+BEGIN
+  UPDATE user_preferences
+  SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+  WHERE id = NEW.id;
+END;
