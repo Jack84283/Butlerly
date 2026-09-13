@@ -41,22 +41,23 @@ Future<void> bootstrap() async {
 
   if (database.status == DatabaseStatus.ready &&
       services.isRegistered<LocalDataManager>()) {
-    // Always reconcile an interrupted engine operation, including one that may
-    // have occurred while the user was already in controlled recovery mode.
-    // The durable recovery marker itself is outside this engine journal and is
-    // never cleared by this reconciliation routine.
+    final backupManager = services.isRegistered<LocalBackupManager>()
+        ? services<LocalBackupManager>()
+        : null;
+    await backupManager?.cleanupOrphanedPrivateArtifacts();
+
+    // Reconcile the engine journal using the same process-visible recovery state
+    // observed by the app. If persistence fails under storage pressure, the
+    // in-memory gate still remains closed for this process.
     await recoverInterruptedLocalRestore(
       database,
       services<LocalDataManager>(),
+      recoveryState: recoveryState,
     );
-    // Automatic recovery may discover ambiguity and persist a new fail-closed
-    // marker. Reload before any ordinary startup writes or normal UI appears.
-    await recoveryState?.initialize();
   }
 
-  // A persisted controlled-recovery incident means the database/evidence pair
-  // has not yet been proven coherent. Do not perform normal startup writes such
-  // as bundled-rule installation until the safety snapshot is recovered.
+  // A controlled-recovery incident means the database/evidence pair or runtime
+  // refresh has not yet been proven safe. Do not perform normal startup writes.
   if (services.isRegistered<FinanceServices>() &&
       !(recoveryState?.isRecoveryRequired ?? false)) {
     final sources = <String, String>{};
