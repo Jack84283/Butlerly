@@ -121,7 +121,7 @@ void main() {
     expect(rows.single['name'], 'Before backup');
   });
 
-  test('merge purges newer unresolved duplicate state before merge context', () async {
+  test('merge purges newer unresolved duplicate state transactionally', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
     final old = DateTime.utc(2025, 1, 1);
@@ -168,6 +168,7 @@ void main() {
       ),
       isEmpty,
     );
+    expect(await fixture.database.database.query('restore_context'), isEmpty);
   });
 
   test('corrupt evidence fails before generated local state is purged', () async {
@@ -225,7 +226,103 @@ void main() {
     );
   });
 
-  test('merge refuses an occupied evidence remap target with different bytes', () async {
+  test('database failure rolls generated-state purge back with merge', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final old = DateTime.utc(2025, 1, 1);
+    await fixture.insertTransaction('tx-rollback', old);
+    final backup = File(path.join(fixture.root.path, 'rollback.butlerlybackup'));
+    await fixture.manager.createBackup(backup);
+
+    await fixture.database.database.insert('review_issues', {
+      'id': 'generated-review-rollback',
+      'transaction_id': 'tx-rollback',
+      'reason': 'generated',
+      'status': 'active',
+      'created_at': DateTime.now().toUtc().toIso8601String(),
+    });
+    await fixture.database.database.execute('''
+      CREATE TRIGGER fail_restore_commit
+      BEFORE INSERT ON restore_commits
+      BEGIN
+        SELECT RAISE(ABORT, 'forced restore failure');
+      END
+    ''');
+
+    await expectLater(
+      fixture.manager.restore(backup, mode: LocalRestoreMode.merge),
+      throwsA(anything),
+    );
+
+    expect(
+      await fixture.database.database.query(
+        'review_issues',
+        where: 'id = ?',
+        whereArgs: ['generated-review-rollback'],
+      ),
+      hasLength(1),
+    );
+    expect(await fixture.database.database.query('restore_context'), isEmpty);
+  });
+
+  test('concurrent edit during evidence staging keeps timestamp and wins merge', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final old = DateTime.utc(2025, 1, 1).toIso8601String();
+    await fixture.database.database.insert('merchants', {
+      'id': 'merchant-staging-race',
+      'name': 'Backup value',
+      'status': 'active',
+      'normalized_name': 'backup value',
+      'is_built_in': 0,
+      'created_at': old,
+      'updated_at': old,
+    });
+    await fixture.database.database.insert('provenances', {
+      'id': 'prov-staging-race',
+      'source_type': 'manual',
+      'captured_at': old,
+    });
+    await fixture.database.database.insert('evidence_items', {
+      'id': 'evidence-staging-race',
+      'type': 'receipt',
+      'original_name': 'staging-race.bin',
+      'media_type': 'application/octet-stream',
+      'provenance_id': 'prov-staging-race',
+      'created_at': old,
+      'local_file_name': 'staging-race.bin',
+    });
+    await File(path.join(fixture.evidence.path, 'staging-race.bin'))
+        .writeAsBytes(List<int>.filled(8 * 1024 * 1024, 11), flush: true);
+    final backup = File(path.join(fixture.root.path, 'staging-race.butlerlybackup'));
+    await fixture.manager.createBackup(backup);
+
+    final restoreFuture = fixture.manager.restore(
+      backup,
+      mode: LocalRestoreMode.merge,
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 1));
+    await fixture.database.database.update(
+      'merchants',
+      {'name': 'Concurrent local edit', 'normalized_name': 'concurrent local edit'},
+      where: 'id = ?',
+      whereArgs: ['merchant-staging-race'],
+    );
+    await restoreFuture;
+
+    final rows = await fixture.database.database.query(
+      'merchants',
+      columns: ['name', 'updated_at'],
+      where: 'id = ?',
+      whereArgs: ['merchant-staging-race'],
+    );
+    expect(rows, hasLength(1));
+    expect(rows.single['name'], 'Concurrent local edit');
+    expect(DateTime.parse(rows.single['updated_at']! as String), isAfter(DateTime.utc(2025, 1, 1)));
+    expect(await fixture.database.database.query('restore_context'), isEmpty);
+  });
+
+  test('merge chooses a safe suffix when evidence remap target is occupied', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
     final old = DateTime.utc(2025, 1, 1).toIso8601String();
@@ -252,24 +349,29 @@ void main() {
     await File(path.join(fixture.evidence.path, 'receipt.bin'))
         .writeAsString('newer-local-evidence', flush: true);
     final hash = sha256Bytes(utf8.encode(backupBytes));
-    final remap = File(
-      path.join(
-        fixture.evidence.path,
-        'receipt.backup-${hash.substring(0, 8)}.bin',
-      ),
+    final occupiedRemap = File(
+      path.join(fixture.evidence.path, 'receipt.backup-$hash.bin'),
     );
-    await remap.writeAsString('unrelated-local-evidence', flush: true);
+    await occupiedRemap.writeAsString('unrelated-local-evidence', flush: true);
 
-    await expectLater(
-      fixture.manager.restore(backup, mode: LocalRestoreMode.merge),
-      throwsStateError,
-    );
+    await fixture.manager.restore(backup, mode: LocalRestoreMode.merge);
 
-    expect(await remap.readAsString(), 'unrelated-local-evidence');
+    expect(await occupiedRemap.readAsString(), 'unrelated-local-evidence');
     expect(
       await File(path.join(fixture.evidence.path, 'receipt.bin')).readAsString(),
       'newer-local-evidence',
     );
+    final safeRemap = File(
+      path.join(fixture.evidence.path, 'receipt.backup-$hash-1.bin'),
+    );
+    expect(await safeRemap.readAsString(), backupBytes);
+    final rows = await fixture.database.database.query(
+      'evidence_items',
+      columns: ['local_file_name'],
+      where: 'id = ?',
+      whereArgs: ['evidence-remap'],
+    );
+    expect(rows.single['local_file_name'], 'receipt.backup-$hash-1.bin');
   });
 }
 
