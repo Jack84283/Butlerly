@@ -13,6 +13,15 @@ extension BackupAppLocalizations on AppLocalizations {
   }
 }
 
+/// Mirrors [AppLocalizations.missingKeysFor] so feature-scoped backup copy is
+/// covered by the same localization-completeness contract in CI.
+Set<String> missingBackupLocalizationKeysFor(String languageCode) =>
+    _backupStrings['en']!.keys.toSet().difference(
+      (_backupStrings[languageCode] ?? const <String, String>{}).keys.toSet(),
+    );
+
+Set<String> get backupLocalizationKeys => _backupStrings['en']!.keys.toSet();
+
 const _backupStrings = <String, Map<String, String>>{
   'en': {
     'backup': 'Back up Butlerly',
