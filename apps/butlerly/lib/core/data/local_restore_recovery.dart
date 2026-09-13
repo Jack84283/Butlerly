@@ -111,7 +111,8 @@ Future<void> recoverInterruptedLocalRestore(
   // Clean only artifacts belonging to the identified operation. If the journal
   // is torn and there was exactly one previous tree, its operation suffix is the
   // only identity we can trust; unrelated stale candidates remain untouched.
-  final operationId = journalOperationId ?? _operationIdFromPrevious(root, previous);
+  final operationId =
+      journalOperationId ?? _operationIdFromPrevious(root, previous);
   if (operationId != null) {
     final cleanup = _directoriesForOperation(
       operationId,
@@ -196,8 +197,8 @@ Set<Directory> _directoriesForOperation(
 ) {
   final suffix = '-$operationId';
   return <Directory>{
-    if (journalPrevious != null) journalPrevious,
-    if (journalStaging != null) journalStaging,
+    ?journalPrevious,
+    ?journalStaging,
     ...recovery.previous.where((directory) => directory.path.endsWith(suffix)),
     ...recovery.staging.where((directory) => directory.path.endsWith(suffix)),
   };
