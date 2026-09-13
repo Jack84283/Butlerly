@@ -28,9 +28,8 @@ Future<void> recoverInterruptedLocalRestore(
     final decoded = jsonDecode(await journal.readAsString());
     if (decoded is Map) data = decoded.cast<String, Object?>();
   } on Exception {
-    // A torn journal is recoverable from durable DB state and deterministic
-    // recovery-directory names. Never treat a parse failure as permission to
-    // delete the live evidence tree.
+    // A torn journal is recoverable only when durable state identifies one
+    // operation unambiguously. Never guess among multiple evidence trees.
   }
 
   final recovery = await _discoverRecoveryDirectories(root);
@@ -52,21 +51,24 @@ Future<void> recoverInterruptedLocalRestore(
 
   final journalPrevious = data?['previousPath'] as String?;
   final journalStaging = data?['stagingPath'] as String?;
-  final previousCandidates = <Directory>[
-    if (journalPrevious != null) Directory(journalPrevious),
-    ...recovery.previous,
-  ];
-  final stagingCandidates = <Directory>[
-    if (journalStaging != null) Directory(journalStaging),
-    ...recovery.staging,
-  ];
-  final previous = await _newestExisting(previousCandidates);
+  final journalPreviousDirectory =
+      journalPrevious == null ? null : Directory(journalPrevious);
+  final journalStagingDirectory =
+      journalStaging == null ? null : Directory(journalStaging);
 
   if (committed) {
-    // DB commit is authoritative: keep the live evidence tree and only remove
-    // recovery artifacts. Remove the journal before the matching commit marker
-    // so a crash can never leave "journal present, marker absent" after success.
-    for (final directory in {...previousCandidates, ...stagingCandidates}) {
+    // DB commit is authoritative: keep the live evidence tree. Cleanup is
+    // scoped to the committed operation so stale artifacts from another crash
+    // cannot be destroyed accidentally.
+    final cleanup = _directoriesForOperation(
+      committedOperationId,
+      recovery,
+      journalOperationId == committedOperationId
+          ? journalPreviousDirectory
+          : null,
+      journalOperationId == committedOperationId ? journalStagingDirectory : null,
+    );
+    for (final directory in cleanup) {
       if (await directory.exists()) await directory.delete(recursive: true);
     }
     if (await journal.exists()) await journal.delete();
@@ -78,22 +80,54 @@ Future<void> recoverInterruptedLocalRestore(
     return;
   }
 
+  final selection = await _selectPreviousDirectory(
+    journalOperationId: journalOperationId,
+    journalPrevious: journalPreviousDirectory,
+    recovery: recovery,
+  );
+
+  if (selection.ambiguous) {
+    // A torn/untrusted journal plus multiple previous trees has no safe ordering.
+    // Preserve the live tree and every recovery candidate rather than guessing
+    // which financial evidence state should replace another. Remove only the
+    // advisory journal/markers so startup can continue; retained directories are
+    // available to a later integrity/recovery workflow.
+    if (await journal.exists()) await journal.delete();
+    await database.database.delete('restore_commits');
+    return;
+  }
+
+  final previous = selection.directory;
   if (previous != null) {
-    // An original evidence tree exists and the DB did not commit. Restore it.
+    // An original evidence tree is identified unambiguously and the DB did not
+    // commit. Restore exactly that tree.
     if (await root.exists()) await root.delete(recursive: true);
     await previous.rename(root.path);
   } else {
-    // Ambiguous state: the original tree may legitimately have been empty, or
-    // the DB may already have committed and only its marker cleanup completed
-    // before the process died. Preserve the live tree rather than risk deleting
-    // evidence that belongs to committed financial records. Any unreferenced
-    // files are harmless and can be cleaned by a later integrity sweep.
+    // The original tree may legitimately have been empty. Preserve the live
+    // tree rather than risk deleting evidence that could belong to records.
   }
 
-  for (final directory in {...previousCandidates, ...stagingCandidates}) {
-    if (directory.path == previous?.path) continue;
-    if (await directory.exists()) await directory.delete(recursive: true);
+  // Clean only artifacts belonging to the identified operation. If the journal
+  // is torn and there was exactly one previous tree, its operation suffix is the
+  // only identity we can trust; unrelated stale candidates remain untouched.
+  final operationId = journalOperationId ?? _operationIdFromPrevious(root, previous);
+  if (operationId != null) {
+    final cleanup = _directoriesForOperation(
+      operationId,
+      recovery,
+      journalOperationId == operationId ? journalPreviousDirectory : null,
+      journalOperationId == operationId ? journalStagingDirectory : null,
+    );
+    for (final directory in cleanup) {
+      if (directory.path == previous?.path) continue;
+      if (await directory.exists()) await directory.delete(recursive: true);
+    }
+  } else if (previous == null) {
+    // No previous tree and no operation identity: do not delete discovered
+    // recovery directories because they may belong to another interrupted run.
   }
+
   if (await journal.exists()) await journal.delete();
   // Once filesystem recovery is complete and no journal remains, no marker can
   // be authoritative. This also clears residue from an unrelated stale marker.
@@ -111,8 +145,6 @@ String? _committedOperationId({
 
   // If the journal is torn before its operation ID can be read, a durable DB
   // marker may still be matched safely to deterministic recovery directories.
-  // This distinguishes a genuinely committed restore from an unrelated stale
-  // marker without trusting "any marker exists".
   for (final operationId in markerIds) {
     final suffix = '-$operationId';
     final matchesRecoveryDirectory = <Directory>[
@@ -122,6 +154,61 @@ String? _committedOperationId({
     if (matchesRecoveryDirectory) return operationId;
   }
   return null;
+}
+
+Future<_PreviousSelection> _selectPreviousDirectory({
+  required String? journalOperationId,
+  required Directory? journalPrevious,
+  required _RecoveryDirectories recovery,
+}) async {
+  if (journalPrevious != null && await journalPrevious.exists()) {
+    return _PreviousSelection(journalPrevious, false);
+  }
+
+  final existing = <Directory>[];
+  final seen = <String>{};
+  for (final directory in recovery.previous) {
+    if (seen.add(directory.path) && await directory.exists()) {
+      existing.add(directory);
+    }
+  }
+
+  if (journalOperationId != null) {
+    final suffix = '-$journalOperationId';
+    final matches = existing
+        .where((directory) => directory.path.endsWith(suffix))
+        .toList(growable: false);
+    if (matches.length == 1) return _PreviousSelection(matches.single, false);
+    if (matches.length > 1) return const _PreviousSelection(null, true);
+    return const _PreviousSelection(null, false);
+  }
+
+  if (existing.length == 1) return _PreviousSelection(existing.single, false);
+  if (existing.length > 1) return const _PreviousSelection(null, true);
+  return const _PreviousSelection(null, false);
+}
+
+Set<Directory> _directoriesForOperation(
+  String operationId,
+  _RecoveryDirectories recovery,
+  Directory? journalPrevious,
+  Directory? journalStaging,
+) {
+  final suffix = '-$operationId';
+  return <Directory>{
+    if (journalPrevious != null) journalPrevious,
+    if (journalStaging != null) journalStaging,
+    ...recovery.previous.where((directory) => directory.path.endsWith(suffix)),
+    ...recovery.staging.where((directory) => directory.path.endsWith(suffix)),
+  };
+}
+
+String? _operationIdFromPrevious(Directory root, Directory? previous) {
+  if (previous == null) return null;
+  final prefix = '${path.basename(root.path)}.restore-previous-';
+  final name = path.basename(previous.path);
+  if (!name.startsWith(prefix) || name.length == prefix.length) return null;
+  return name.substring(prefix.length);
 }
 
 Future<_RecoveryDirectories> _discoverRecoveryDirectories(Directory root) async {
@@ -142,19 +229,11 @@ Future<_RecoveryDirectories> _discoverRecoveryDirectories(Directory root) async 
   return _RecoveryDirectories(previous, staging);
 }
 
-Future<Directory?> _newestExisting(Iterable<Directory> candidates) async {
-  Directory? newest;
-  DateTime? newestModified;
-  final seen = <String>{};
-  for (final candidate in candidates) {
-    if (!seen.add(candidate.path) || !await candidate.exists()) continue;
-    final modified = (await candidate.stat()).modified;
-    if (newest == null || modified.isAfter(newestModified!)) {
-      newest = candidate;
-      newestModified = modified;
-    }
-  }
-  return newest;
+final class _PreviousSelection {
+  const _PreviousSelection(this.directory, this.ambiguous);
+
+  final Directory? directory;
+  final bool ambiguous;
 }
 
 final class _RecoveryDirectories {
