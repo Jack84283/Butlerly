@@ -9,11 +9,8 @@ import 'package:butlerly/l10n/app_localizations_backup.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Recovery-only surface shown when Butlerly cannot prove that an interrupted
-/// restore was rolled back to one coherent local state.
-///
-/// Normal navigation is intentionally unavailable until the retained safety
-/// snapshot is restored and validated.
+/// Recovery-only surface shown when Butlerly cannot yet prove one coherent
+/// database/evidence/runtime state.
 class RestoreRecoveryRequiredPage extends ConsumerStatefulWidget {
   const RestoreRecoveryRequiredPage({super.key});
 
@@ -27,6 +24,14 @@ class _RestoreRecoveryRequiredPageState
   bool _busy = false;
   bool _failed = false;
 
+  Future<void> _refreshRuntime() async {
+    await services<FinanceServices>().seedInitialMasterData(
+      buildInitialMasterData(),
+    );
+    ref.invalidate(userPreferenceProvider);
+    notifyTransactionChanged();
+  }
+
   Future<void> _recover() async {
     setState(() {
       _busy = true;
@@ -34,15 +39,44 @@ class _RestoreRecoveryRequiredPageState
     });
     try {
       await services<LocalBackupManager>().recoverControlledState(
-        postActivationRefresh: () async {
-          await services<FinanceServices>().seedInitialMasterData(
-            buildInitialMasterData(),
-          );
-          ref.invalidate(userPreferenceProvider);
-          notifyTransactionChanged();
-        },
+        postActivationRefresh: _refreshRuntime,
       );
-    } on Exception {
+    } catch (_) {
+      if (mounted) setState(() => _failed = true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _resetLocalData() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.l10n.backupText('recoveryResetTitle')),
+        content: Text(context.l10n.backupText('recoveryResetBody')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(context.l10n.text('cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(context.l10n.backupText('recoveryResetConfirm')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() {
+      _busy = true;
+      _failed = false;
+    });
+    try {
+      await services<LocalBackupManager>().resetControlledRecovery(
+        postResetRefresh: _refreshRuntime,
+      );
+    } catch (_) {
       if (mounted) setState(() => _failed = true);
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -50,61 +84,83 @@ class _RestoreRecoveryRequiredPageState
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: SafeArea(
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.health_and_safety_outlined,
-                  size: 52,
-                  color: Theme.of(context).colorScheme.error,
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  context.l10n.backupText('recoveryRequiredTitle'),
-                  style: Theme.of(context).textTheme.headlineSmall,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  context.l10n.backupText('recoveryRequiredBody'),
-                  style: Theme.of(context).textTheme.bodyLarge,
-                  textAlign: TextAlign.center,
-                ),
-                if (_failed) ...[
-                  const SizedBox(height: 12),
+  Widget build(BuildContext context) {
+    final manager = services<LocalBackupManager>();
+    final hasSafetyCopy =
+        manager.recoveryState.incident?.safetyBackupPath.isNotEmpty == true;
+
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.health_and_safety_outlined,
+                    size: 52,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                  const SizedBox(height: 20),
                   Text(
-                    context.l10n.backupText('recoveryStillRequired'),
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
+                    context.l10n.backupText('recoveryRequiredTitle'),
+                    style: Theme.of(context).textTheme.headlineSmall,
                     textAlign: TextAlign.center,
                   ),
-                ],
-                const SizedBox(height: 24),
-                FilledButton.icon(
-                  onPressed: _busy ? null : _recover,
-                  icon: _busy
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.restore),
-                  label: Text(
-                    context.l10n.backupText('recoverSafetyBackup'),
+                  const SizedBox(height: 12),
+                  Text(
+                    context.l10n.backupText(
+                      hasSafetyCopy
+                          ? 'recoveryRequiredBody'
+                          : 'recoveryUnavailableBody',
+                    ),
+                    style: Theme.of(context).textTheme.bodyLarge,
+                    textAlign: TextAlign.center,
                   ),
-                ),
-              ],
+                  if (_failed) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      context.l10n.backupText('recoveryStillRequired'),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  if (hasSafetyCopy)
+                    FilledButton.icon(
+                      onPressed: _busy ? null : _recover,
+                      icon: _busy
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.restore),
+                      label: Text(
+                        context.l10n.backupText('recoverButlerly'),
+                      ),
+                    ),
+                  if (hasSafetyCopy) const SizedBox(height: 12),
+                  TextButton.icon(
+                    onPressed: _busy ? null : _resetLocalData,
+                    icon: const Icon(Icons.delete_forever_outlined),
+                    label: Text(
+                      context.l10n.backupText('eraseLocalRecoveryData'),
+                    ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
