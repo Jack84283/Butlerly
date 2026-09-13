@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:butlerly/core/data/backup_encryption.dart';
 import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/data/restore_recovery_state.dart';
@@ -51,6 +53,46 @@ void main() {
       password: 'correct horse battery staple',
     );
     expect(inspection.recordCount, greaterThan(0));
+  });
+
+  test('restore accepts supported KDF parameters recorded in header', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    await fixture.insertTransaction('kdf-evolution');
+    final inner = File(path.join(fixture.root.path, 'inner.butlerlybackup'));
+    final encrypted = File(path.join(fixture.root.path, 'encrypted.butlerlybackup'));
+    final modified = File(path.join(fixture.root.path, 'modified.butlerlybackup'));
+    final output = File(path.join(fixture.root.path, 'modified-clear.butlerlybackup'));
+    const password = 'correct horse battery staple';
+    const encryption = BackupEncryption();
+
+    await fixture.manager.createBackup(inner);
+    await encryption.encrypt(inner, encrypted, password: password);
+
+    final bytes = await encrypted.readAsBytes();
+    final magicLength = BackupEncryption.magic.length;
+    final headerLength = _decodeInt64(bytes.sublist(magicLength, magicLength + 8));
+    final headerStart = magicLength + 8;
+    final headerEnd = headerStart + headerLength;
+    final header = (jsonDecode(utf8.decode(bytes.sublist(headerStart, headerEnd))) as Map)
+        .cast<String, Object?>();
+    // A future build may strengthen Argon2 without changing the wrapper format.
+    // Altering the authenticated header makes this package fail GCM validation,
+    // but it must reach authentication rather than being rejected as an
+    // unsupported format solely because the KDF value differs from today's.
+    header['kdfIterations'] = 3;
+    final headerBytes = utf8.encode(jsonEncode(header));
+    final rebuilt = BytesBuilder(copy: false)
+      ..add(BackupEncryption.magic)
+      ..add(_encodeInt64(headerBytes.length))
+      ..add(headerBytes)
+      ..add(bytes.sublist(headerEnd));
+    await modified.writeAsBytes(rebuilt.takeBytes(), flush: true);
+
+    await expectLater(
+      encryption.decrypt(modified, output, password: password),
+      throwsA(isA<BackupPasswordOrIntegrityException>()),
+    );
   });
 
   test('backup creation shares the evidence mutation boundary', () async {
@@ -134,6 +176,16 @@ void main() {
     expect(reloaded.incident?.reason, 'recovery-marker-interrupted');
     expect(await temporary.exists(), isTrue);
   });
+}
+
+Uint8List _encodeInt64(int value) {
+  final data = ByteData(8)..setUint64(0, value, Endian.big);
+  return data.buffer.asUint8List();
+}
+
+int _decodeInt64(List<int> bytes) {
+  final data = ByteData.sublistView(Uint8List.fromList(bytes));
+  return data.getUint64(0, Endian.big);
 }
 
 final class _Fixture {
