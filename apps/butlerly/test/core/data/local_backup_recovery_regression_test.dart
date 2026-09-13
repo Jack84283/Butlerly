@@ -240,6 +240,43 @@ void main() {
     expect(incident?.retryCurrentState, isTrue);
     expect(incident?.safetyBackupPath, safety.path);
   });
+
+  test('interrupted origin replacement never trusts the older main intent', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final oldSafety = File(path.join(fixture.root.path, 'old-safety.butlerlybackup'));
+    final newSafety = File(path.join(fixture.root.path, 'new-safety.butlerlybackup'));
+    await fixture.manager.createBackup(oldSafety);
+    await fixture.manager.createBackup(newSafety);
+
+    await _writeOrigin(
+      fixture.evidence,
+      operationId: 'old-operation',
+      rootExisted: true,
+      safetyBackupPath: oldSafety.path,
+    );
+    final origin = File('${fixture.evidence.path}.restore-origin.json');
+    await File('${origin.path}.tmp').writeAsString(
+      jsonEncode({
+        'operationId': 'new-operation',
+        'rootExisted': true,
+        'safetyBackupPath': newSafety.path,
+        'activationPending': true,
+      }),
+      flush: true,
+    );
+
+    await expectLater(
+      fixture.manager.recoverInterruptedRestore(),
+      throwsA(isA<RestoreRecoveryRequiredException>()),
+    );
+
+    final incident = fixture.manager.recoveryState.incident;
+    expect(incident?.reason, 'unreadable-restore-origin-state');
+    expect(incident?.safetyBackupPath, isEmpty);
+    expect(await origin.exists(), isTrue);
+    expect(await File('${origin.path}.tmp').exists(), isTrue);
+  });
 }
 
 Future<void> _writeOrigin(
