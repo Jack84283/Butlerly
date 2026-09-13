@@ -74,5 +74,27 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Butlerly Backup</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.butlerly.backup</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>butlerlybackup</string>
+				</array>
+				<key>public.mime-type</key>
+				<string>application/vnd.butlerly.backup</string>
+			</dict>
+		</dict>
+	</array>
 </dict>
 </plist>

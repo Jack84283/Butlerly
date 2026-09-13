@@ -17,6 +17,9 @@ import 'package:butlerly/l10n/app_localizations_backup.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart' as share;
 
 class PrivacyDataPage extends ConsumerStatefulWidget {
   const PrivacyDataPage({super.key});
@@ -29,18 +32,30 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
   static const _backupType = XTypeGroup(
     label: 'Butlerly backup',
     extensions: ['butlerlybackup'],
+    uniformTypeIdentifiers: ['com.butlerly.backup'],
   );
   static const _minimumBackupPasswordLength = 12;
 
   bool _busy = false;
+
+  bool get _usesNativeMobileShare => Platform.isIOS || Platform.isAndroid;
 
   Future<void> _backup() async {
     final timestamp = DateTime.now().toUtc().toIso8601String().replaceAll(
       ':',
       '-',
     );
+    final fileName = 'Butlerly Backup $timestamp.butlerlybackup';
+
+    if (_usesNativeMobileShare) {
+      final password = await _createBackupPassword();
+      if (password == null || !mounted) return;
+      await _createAndShareMobileBackup(fileName, password);
+      return;
+    }
+
     final location = await getSaveLocation(
-      suggestedName: 'Butlerly Backup $timestamp.butlerlybackup',
+      suggestedName: fileName,
       acceptedTypeGroups: const [_backupType],
     );
     if (location == null || !mounted) return;
@@ -60,6 +75,52 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     } catch (_) {
       if (mounted) _message(context.l10n.backupText('backupFailed'));
     } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _createAndShareMobileBackup(
+    String fileName,
+    String password,
+  ) async {
+    setState(() => _busy = true);
+    File? file;
+    try {
+      final temporaryDirectory = await getTemporaryDirectory();
+      file = File(path.join(temporaryDirectory.path, fileName));
+      await services<LocalBackupManager>().createPortableBackup(
+        file,
+        password: password,
+      );
+      if (!mounted) return;
+
+      final renderBox = context.findRenderObject();
+      final shareOrigin = renderBox is RenderBox
+          ? renderBox.localToGlobal(Offset.zero) & renderBox.size
+          : null;
+      final result = await share.SharePlus.instance.share(
+        share.ShareParams(
+          files: [
+            share.XFile(
+              file.path,
+              mimeType: 'application/vnd.butlerly.backup',
+            ),
+          ],
+          title: fileName,
+          sharePositionOrigin: shareOrigin,
+        ),
+      );
+      if (mounted && result.status == share.ShareResultStatus.success) {
+        _message(context.l10n.backupText('backupComplete'));
+      }
+    } on BackupPasswordTooShortException {
+      if (mounted) _message(context.l10n.backupText('backupPasswordTooShort'));
+    } catch (_) {
+      if (mounted) _message(context.l10n.backupText('backupFailed'));
+    } finally {
+      try {
+        if (file != null && await file.exists()) await file.delete();
+      } catch (_) {}
       if (mounted) setState(() => _busy = false);
     }
   }
@@ -348,6 +409,9 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     try {
       final result = await services<LocalDataManager>().exportAll();
       if (!mounted) return;
+      final displayPath = Platform.isIOS
+          ? 'Files → On My iPhone → Butlerly → ${path.basename(result.directory.path)}'
+          : result.directory.path;
       await showButlerlyBottomSheet<void>(
         context: context,
         builder: (context) => ButlerlySheet(
@@ -355,7 +419,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           content: Text(
             context.l10n.text('exportCompleteBody', {
               'count': '${result.recordCount}',
-              'path': result.directory.path,
+              'path': displayPath,
             }),
           ),
           actions: [
@@ -431,6 +495,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
             context.l10n.backupText('backupSubtitle'),
             style: _subtitleStyle(context),
           ),
+          trailing: const Icon(Icons.chevron_right),
           onTap: _backup,
         ),
         const Divider(),
@@ -442,6 +507,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
             context.l10n.backupText('restoreSubtitle'),
             style: _subtitleStyle(context),
           ),
+          trailing: const Icon(Icons.chevron_right),
           onTap: _restore,
         ),
         const Divider(),
@@ -453,6 +519,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
             context.l10n.text('exportScopeBody'),
             style: _subtitleStyle(context),
           ),
+          trailing: const Icon(Icons.chevron_right),
           onTap: _export,
         ),
         const Divider(),

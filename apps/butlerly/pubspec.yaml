@@ -33,6 +33,7 @@ dependencies:
   flutter_timezone: ^5.1.0
   flutter_svg: ^2.2.3
   cryptography: ^2.9.0
+  share_plus: ^13.3.0
 
 dev_dependencies:
   flutter_test:
