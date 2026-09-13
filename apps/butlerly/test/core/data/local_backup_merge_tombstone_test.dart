@@ -119,6 +119,63 @@ void main() {
     );
   });
 
+  test('merge preserves a newer local tombstone over backup deletion', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final old = DateTime.utc(2026, 1, 1);
+    await fixture.insertTransaction('tx-tombstone', old);
+    await fixture.database.database.delete(
+      'transactions',
+      where: 'id = ?',
+      whereArgs: ['tx-tombstone'],
+    );
+    final backupDeletedAt = DateTime.utc(2026, 1, 2);
+    await fixture.database.database.update(
+      'entity_tombstones',
+      {'deleted_at': backupDeletedAt.toIso8601String()},
+      where: 'entity_type = ? AND entity_id = ?',
+      whereArgs: ['transactions', 'tx-tombstone'],
+    );
+
+    final backup = File(path.join(fixture.root.path, 'tombstone.butlerlybackup'));
+    await fixture.manager.createBackup(backup);
+
+    final recreatedAt = DateTime.now().toUtc().add(const Duration(minutes: 1));
+    await fixture.insertTransaction('tx-tombstone', recreatedAt);
+    await fixture.database.database.delete(
+      'transactions',
+      where: 'id = ?',
+      whereArgs: ['tx-tombstone'],
+    );
+    final localDeletedAt = DateTime.now().toUtc().add(
+      const Duration(minutes: 5),
+    );
+    await fixture.database.database.update(
+      'entity_tombstones',
+      {'deleted_at': localDeletedAt.toIso8601String()},
+      where: 'entity_type = ? AND entity_id = ?',
+      whereArgs: ['transactions', 'tx-tombstone'],
+    );
+
+    await fixture.manager.restore(backup, mode: LocalRestoreMode.merge);
+
+    expect(
+      await fixture.database.database.query(
+        'transactions',
+        where: 'id = ?',
+        whereArgs: ['tx-tombstone'],
+      ),
+      isEmpty,
+    );
+    final tombstones = await fixture.database.database.query(
+      'entity_tombstones',
+      where: 'entity_type = ? AND entity_id = ?',
+      whereArgs: ['transactions', 'tx-tombstone'],
+    );
+    expect(tombstones, hasLength(1));
+    expect(tombstones.single['deleted_at'], localDeletedAt.toIso8601String());
+  });
+
   test('prepared-phase recovery uses directory state and clears restore context', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
