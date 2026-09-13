@@ -29,6 +29,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     label: 'Butlerly backup',
     extensions: ['butlerlybackup'],
   );
+  static const _minimumBackupPasswordLength = 12;
 
   bool _busy = false;
 
@@ -41,11 +42,20 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       suggestedName: 'Butlerly Backup $timestamp.butlerlybackup',
       acceptedTypeGroups: const [_backupType],
     );
-    if (location == null) return;
+    if (location == null || !mounted) return;
+
+    final password = await _createBackupPassword();
+    if (password == null || !mounted) return;
+
     setState(() => _busy = true);
     try {
-      await services<LocalBackupManager>().createBackup(File(location.path));
+      await services<LocalBackupManager>().createPortableBackup(
+        File(location.path),
+        password: password,
+      );
       if (mounted) _message(context.l10n.backupText('backupComplete'));
+    } on BackupPasswordTooShortException {
+      if (mounted) _message(context.l10n.backupText('backupPasswordTooShort'));
     } on Exception {
       if (mounted) _message(context.l10n.backupText('backupFailed'));
     } finally {
@@ -56,11 +66,19 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
   Future<void> _restore() async {
     final selected = await openFile(acceptedTypeGroups: const [_backupType]);
     if (selected == null) return;
-    setState(() => _busy = true);
+
+    final file = File(selected.path);
+    final manager = services<LocalBackupManager>();
+    String? password;
     try {
-      final file = File(selected.path);
-      final manager = services<LocalBackupManager>();
-      final inspection = await manager.inspect(file);
+      if (await manager.isEncryptedBackup(file)) {
+        if (!mounted) return;
+        password = await _requestRestorePassword();
+        if (password == null || !mounted) return;
+      }
+
+      setState(() => _busy = true);
+      final inspection = await manager.inspect(file, password: password);
       if (!mounted) return;
       setState(() => _busy = false);
       final mode = await _chooseRestoreMode(inspection);
@@ -71,6 +89,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       final result = await manager.restore(
         file,
         mode: mode,
+        password: password,
         postActivationRefresh: () async {
           await services<FinanceServices>().seedInitialMasterData(
             buildInitialMasterData(),
@@ -85,10 +104,152 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           .replaceAll('{restored}', '${result.restoredRows}')
           .replaceAll('{kept}', '${result.keptNewerLocalRows}');
       _message('${context.l10n.backupText('restoreComplete')} $summary');
+    } on BackupPasswordOrIntegrityException {
+      if (mounted) {
+        _message(context.l10n.backupText('passwordOrIntegrityFailed'));
+      }
+    } on BackupPasswordRequiredException {
+      if (mounted) {
+        _message(context.l10n.backupText('passwordOrIntegrityFailed'));
+      }
+    } on RestoreRecoveryRequiredException {
+      // RestoreRecoveryState immediately replaces normal navigation with the
+      // recovery-only surface. Do not add a competing generic snackbar here.
     } on Exception {
       if (mounted) _message(context.l10n.backupText('restoreFailed'));
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<String?> _createBackupPassword() async {
+    final password = TextEditingController();
+    final confirmation = TextEditingController();
+    String? error;
+    try {
+      return await showButlerlyBottomSheet<String>(
+        context: context,
+        builder: (sheetContext) => StatefulBuilder(
+          builder: (context, setSheetState) => ButlerlySheet(
+            title: Text(context.l10n.backupText('backupPasswordTitle')),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(context.l10n.backupText('backupPasswordBody')),
+                const SizedBox(height: ButlerlySpacing.standard),
+                TextField(
+                  controller: password,
+                  obscureText: true,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  textInputAction: TextInputAction.next,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.backupText('backupPasswordLabel'),
+                  ),
+                ),
+                const SizedBox(height: ButlerlySpacing.compact),
+                TextField(
+                  controller: confirmation,
+                  obscureText: true,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  textInputAction: TextInputAction.done,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.backupText(
+                      'backupPasswordConfirmLabel',
+                    ),
+                    errorText: error,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(sheetContext),
+                child: Text(context.l10n.text('cancel')),
+              ),
+              FilledButton(
+                onPressed: () {
+                  if (password.text.length < _minimumBackupPasswordLength) {
+                    setSheetState(
+                      () => error = context.l10n.backupText(
+                        'backupPasswordTooShort',
+                      ),
+                    );
+                    return;
+                  }
+                  if (password.text != confirmation.text) {
+                    setSheetState(
+                      () => error = context.l10n.backupText(
+                        'backupPasswordMismatch',
+                      ),
+                    );
+                    return;
+                  }
+                  Navigator.pop(sheetContext, password.text);
+                },
+                child: Text(
+                  context.l10n.backupText('createEncryptedBackup'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } finally {
+      password.dispose();
+      confirmation.dispose();
+    }
+  }
+
+  Future<String?> _requestRestorePassword() async {
+    final password = TextEditingController();
+    try {
+      return await showButlerlyBottomSheet<String>(
+        context: context,
+        builder: (sheetContext) => ButlerlySheet(
+          title: Text(context.l10n.backupText('restorePasswordTitle')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(context.l10n.backupText('restorePasswordBody')),
+              const SizedBox(height: ButlerlySpacing.standard),
+              TextField(
+                controller: password,
+                autofocus: true,
+                obscureText: true,
+                autocorrect: false,
+                enableSuggestions: false,
+                textInputAction: TextInputAction.done,
+                decoration: InputDecoration(
+                  labelText: context.l10n.backupText('backupPasswordLabel'),
+                ),
+                onSubmitted: (value) {
+                  if (value.isNotEmpty) Navigator.pop(sheetContext, value);
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(sheetContext),
+              child: Text(context.l10n.text('cancel')),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (password.text.isNotEmpty) {
+                  Navigator.pop(sheetContext, password.text);
+                }
+              },
+              child: Text(context.l10n.backupText('unlockBackup')),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      password.dispose();
     }
   }
 
