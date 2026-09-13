@@ -109,11 +109,18 @@ final class LocalDataManager {
   Future<Directory> documentsDirectory() async =>
       _documentsDirectory ?? await getApplicationDocumentsDirectory();
 
+  /// Application-private recovery state. Unlike user exports, automatic safety
+  /// snapshots must never be written to the user-visible Documents location.
+  Future<Directory> recoveryDirectory() async {
+    final databaseDirectory = path.dirname(database.persistenceDatabase.path);
+    final directory = Directory(path.join(databaseDirectory, '.butlerly-recovery'));
+    await directory.create(recursive: true);
+    return directory;
+  }
+
   Future<Directory> safetyBackupDirectory() async {
-    final documents = await documentsDirectory();
-    final directory = Directory(
-      path.join(documents.path, 'Butlerly Safety Backups'),
-    );
+    final recovery = await recoveryDirectory();
+    final directory = Directory(path.join(recovery.path, 'safety-backups'));
     await directory.create(recursive: true);
     return directory;
   }
@@ -183,11 +190,32 @@ final class LocalDataManager {
     if (await pendingEvidence.exists()) {
       await pendingEvidence.delete(recursive: true);
     }
+
+    // Recovery snapshots and fail-closed marker artifacts contain or protect
+    // user financial state and are part of an erase-all boundary.
+    final recovery = Directory(
+      path.join(
+        path.dirname(database.persistenceDatabase.path),
+        '.butlerly-recovery',
+      ),
+    );
+    if (await recovery.exists()) await recovery.delete(recursive: true);
+    final recoveryMarker = File('${evidence.path}.restore-recovery-required.json');
+    for (final file in <File>[
+      recoveryMarker,
+      File('${recoveryMarker.path}.tmp'),
+      File('${recoveryMarker.path}.previous'),
+    ]) {
+      if (await file.exists()) await file.delete();
+    }
+
     final documents = await documentsDirectory();
     if (await documents.exists()) {
       await for (final entity in documents.list()) {
         if (entity is Directory &&
             (path.basename(entity.path).startsWith('Butlerly Export ') ||
+                // Remove legacy safety-backup directories created by builds
+                // before recovery data moved to application-private storage.
                 path.basename(entity.path) == 'Butlerly Safety Backups')) {
           await entity.delete(recursive: true);
         }
