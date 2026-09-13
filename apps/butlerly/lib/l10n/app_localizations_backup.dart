@@ -25,10 +25,10 @@ Set<String> get backupLocalizationKeys => _backupStrings['en']!.keys.toSet();
 const _backupStrings = <String, Map<String, String>>{
   'en': {
     'backup': 'Back up Butlerly',
-    'backupSubtitle': 'Create one portable local backup file.',
+    'backupSubtitle': 'Create one encrypted portable local backup file.',
     'restoreBackup': 'Restore backup',
     'restoreSubtitle': 'Merge or replace data from a Butlerly backup.',
-    'backupComplete': 'Backup created successfully.',
+    'backupComplete': 'Encrypted backup created successfully.',
     'backupFailed': 'Backup could not be created.',
     'restoreFailed': 'Backup could not be restored.',
     'restoreTitle': 'Restore Butlerly backup?',
@@ -48,14 +48,34 @@ const _backupStrings = <String, Map<String, String>>{
     'changedTransactions': 'transactions changed after the backup',
     'changedMasterData': 'records changed after the backup',
     'deletedItems': 'items deleted after the backup',
+    'backupPasswordTitle': 'Protect this backup',
+    'backupPasswordBody':
+        'This backup contains sensitive financial data and receipt or document evidence. Butlerly will encrypt the file with your password. Butlerly cannot recover the backup if you lose this password.',
+    'backupPasswordLabel': 'Backup password',
+    'backupPasswordConfirmLabel': 'Confirm password',
+    'backupPasswordTooShort': 'Use at least 12 characters.',
+    'backupPasswordMismatch': 'The passwords do not match.',
+    'createEncryptedBackup': 'Create encrypted backup',
+    'restorePasswordTitle': 'Unlock backup',
+    'restorePasswordBody':
+        'Enter the password used when this Butlerly backup was created.',
+    'unlockBackup': 'Unlock',
+    'passwordOrIntegrityFailed':
+        'The password is incorrect or the encrypted backup is damaged.',
+    'recoveryRequiredTitle': 'Butlerly recovery is required',
+    'recoveryRequiredBody':
+        'A restore could not be safely rolled back. Normal editing is paused. Butlerly kept the pre-restore safety copy so it can restore and validate the last known local state.',
+    'recoverSafetyBackup': 'Restore safety copy',
+    'recoveryStillRequired':
+        'Recovery is still required. Your safety copy has been kept; normal editing remains disabled.',
   },
   'es': {
     'backup': 'Crear copia de Butlerly',
-    'backupSubtitle': 'Crea un único archivo de copia local portátil.',
+    'backupSubtitle': 'Crea un archivo de copia local portátil y cifrado.',
     'restoreBackup': 'Restaurar copia',
     'restoreSubtitle':
         'Combina o reemplaza datos desde una copia de Butlerly.',
-    'backupComplete': 'La copia se creó correctamente.',
+    'backupComplete': 'La copia cifrada se creó correctamente.',
     'backupFailed': 'No se pudo crear la copia.',
     'restoreFailed': 'No se pudo restaurar la copia.',
     'restoreTitle': '¿Restaurar la copia de Butlerly?',
@@ -76,13 +96,33 @@ const _backupStrings = <String, Map<String, String>>{
     'changedTransactions': 'transacciones modificadas después de la copia',
     'changedMasterData': 'registros modificados después de la copia',
     'deletedItems': 'elementos eliminados después de la copia',
+    'backupPasswordTitle': 'Proteger esta copia',
+    'backupPasswordBody':
+        'Esta copia contiene datos financieros confidenciales y comprobantes o documentos. Butlerly cifrará el archivo con su contraseña. Butlerly no puede recuperar la copia si pierde esta contraseña.',
+    'backupPasswordLabel': 'Contraseña de la copia',
+    'backupPasswordConfirmLabel': 'Confirmar contraseña',
+    'backupPasswordTooShort': 'Use al menos 12 caracteres.',
+    'backupPasswordMismatch': 'Las contraseñas no coinciden.',
+    'createEncryptedBackup': 'Crear copia cifrada',
+    'restorePasswordTitle': 'Desbloquear copia',
+    'restorePasswordBody':
+        'Introduzca la contraseña usada al crear esta copia de Butlerly.',
+    'unlockBackup': 'Desbloquear',
+    'passwordOrIntegrityFailed':
+        'La contraseña es incorrecta o la copia cifrada está dañada.',
+    'recoveryRequiredTitle': 'Butlerly requiere recuperación',
+    'recoveryRequiredBody':
+        'No se pudo revertir una restauración de forma segura. La edición normal está pausada. Butlerly conservó la copia de seguridad previa a la restauración para recuperar y validar el último estado local conocido.',
+    'recoverSafetyBackup': 'Restaurar copia de seguridad',
+    'recoveryStillRequired':
+        'La recuperación sigue siendo necesaria. La copia de seguridad se conserva y la edición normal continúa deshabilitada.',
   },
   'zh': {
     'backup': '备份 Butlerly',
-    'backupSubtitle': '创建一个可跨设备使用的本地备份文件。',
+    'backupSubtitle': '创建一个加密且可跨设备使用的本地备份文件。',
     'restoreBackup': '恢复备份',
     'restoreSubtitle': '从 Butlerly 备份合并或替换数据。',
-    'backupComplete': '备份创建成功。',
+    'backupComplete': '加密备份创建成功。',
     'backupFailed': '无法创建备份。',
     'restoreFailed': '无法恢复备份。',
     'restoreTitle': '恢复 Butlerly 备份？',
@@ -99,5 +139,22 @@ const _backupStrings = <String, Map<String, String>>{
     'changedTransactions': '笔交易是在备份之后修改的',
     'changedMasterData': '条记录是在备份之后修改的',
     'deletedItems': '项数据是在备份之后删除的',
+    'backupPasswordTitle': '保护此备份',
+    'backupPasswordBody':
+        '此备份包含敏感的财务数据以及收据或文档凭证。Butlerly 将使用您的密码加密该文件。如果密码丢失，Butlerly 无法恢复此备份。',
+    'backupPasswordLabel': '备份密码',
+    'backupPasswordConfirmLabel': '确认密码',
+    'backupPasswordTooShort': '请至少使用 12 个字符。',
+    'backupPasswordMismatch': '两次输入的密码不一致。',
+    'createEncryptedBackup': '创建加密备份',
+    'restorePasswordTitle': '解锁备份',
+    'restorePasswordBody': '请输入创建此 Butlerly 备份时使用的密码。',
+    'unlockBackup': '解锁',
+    'passwordOrIntegrityFailed': '密码不正确，或加密备份已损坏。',
+    'recoveryRequiredTitle': 'Butlerly 需要恢复',
+    'recoveryRequiredBody':
+        '一次恢复操作无法安全回滚。正常编辑已暂停。Butlerly 已保留恢复前的安全副本，可用于恢复并验证最后一个已知的本地状态。',
+    'recoverSafetyBackup': '恢复安全副本',
+    'recoveryStillRequired': '仍需要执行恢复。安全副本已保留，正常编辑仍未重新启用。',
   },
 };
