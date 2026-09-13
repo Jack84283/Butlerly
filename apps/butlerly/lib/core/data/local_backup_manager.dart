@@ -5,6 +5,7 @@ import 'package:butlerly/core/data/local_backup_snapshot_writer.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/data/local_restore_recovery.dart';
 import 'package:butlerly/core/database/local_database.dart';
+import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
 import 'package:butlerly_database/butlerly_database.dart' show Sqflite;
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common/sqlite_api.dart';
@@ -103,12 +104,18 @@ final class LocalBackupManager {
   }
 
   Future<void> recoverInterruptedRestore() =>
-      recoverInterruptedLocalRestore(database, localDataManager);
+      EvidenceMutationLock.runExclusive(
+        () => recoverInterruptedLocalRestore(database, localDataManager),
+      );
 
   Future<engine.LocalRestoreResult> restore(
     File file, {
     required engine.LocalRestoreMode mode,
-  }) async {
+  }) => EvidenceMutationLock.runExclusive(() async {
+    // Recovery, the optional Replace safety snapshot, evidence staging, root
+    // activation, and the restore transaction all share the same evidence
+    // mutation boundary. Normal capture/removal waits until restore finishes,
+    // so a newly created immutable evidence file cannot be lost by a root swap.
     await recoverInterruptedLocalRestore(database, localDataManager);
 
     if (mode == engine.LocalRestoreMode.replace) {
@@ -120,7 +127,7 @@ final class LocalBackupManager {
     // The engine owns one authoritative validation/staging/commit path. Nothing
     // in the live database is changed before evidence preparation succeeds.
     return _engine.restore(file, mode: mode);
-  }
+  });
 
   Future<File> _createPreRestoreSafetyBackup() async {
     final directory = await localDataManager.safetyBackupDirectory();
