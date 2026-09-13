@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:butlerly/app/locale/locale_provider.dart';
+import 'package:butlerly/core/application/application_result_guard.dart';
 import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/database/initial_master_data.dart';
@@ -91,8 +92,10 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         mode: mode,
         password: password,
         postActivationRefresh: () async {
-          await services<FinanceServices>().seedInitialMasterData(
-            buildInitialMasterData(),
+          await requireApplicationSuccess(
+            services<FinanceServices>().seedInitialMasterData(
+              buildInitialMasterData(),
+            ),
           );
           ref.invalidate(userPreferenceProvider);
           notifyTransactionChanged();
@@ -393,8 +396,10 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     setState(() => _busy = true);
     try {
       await services<LocalDataManager>().eraseAll();
-      await services<FinanceServices>().seedInitialMasterData(
-        buildInitialMasterData(),
+      await requireApplicationSuccess(
+        services<FinanceServices>().seedInitialMasterData(
+          buildInitialMasterData(),
+        ),
       );
       ref.invalidate(userPreferenceProvider);
       notifyTransactionChanged();
