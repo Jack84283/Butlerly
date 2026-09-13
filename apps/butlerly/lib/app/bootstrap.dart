@@ -34,9 +34,10 @@ Future<void> bootstrap() async {
     logger: logger,
   );
 
-  if (services.isRegistered<RestoreRecoveryState>()) {
-    await services<RestoreRecoveryState>().initialize();
-  }
+  final recoveryState = services.isRegistered<RestoreRecoveryState>()
+      ? services<RestoreRecoveryState>()
+      : null;
+  await recoveryState?.initialize();
 
   if (database.status == DatabaseStatus.ready &&
       services.isRegistered<LocalDataManager>()) {
@@ -46,7 +47,11 @@ Future<void> bootstrap() async {
     );
   }
 
-  if (services.isRegistered<FinanceServices>()) {
+  // A persisted controlled-recovery incident means the database/evidence pair
+  // has not yet been proven coherent. Do not perform normal startup writes such
+  // as bundled-rule installation until the safety snapshot is recovered.
+  if (services.isRegistered<FinanceServices>() &&
+      !(recoveryState?.isRecoveryRequired ?? false)) {
     final sources = <String, String>{};
     for (final path in _analysisRulePaths) {
       sources[path] = await rootBundle.loadString(path);
