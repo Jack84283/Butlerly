@@ -98,9 +98,20 @@ final class LocalDataManager {
     return Directory(path.join(support.path, 'evidence'));
   }
 
+  Future<Directory> documentsDirectory() async =>
+      _documentsDirectory ?? await getApplicationDocumentsDirectory();
+
+  Future<Directory> safetyBackupDirectory() async {
+    final documents = await documentsDirectory();
+    final directory = Directory(
+      path.join(documents.path, 'Butlerly Safety Backups'),
+    );
+    await directory.create(recursive: true);
+    return directory;
+  }
+
   Future<LocalDataExport> exportAll() async {
-    final documents =
-        _documentsDirectory ?? await getApplicationDocumentsDirectory();
+    final documents = await documentsDirectory();
     final timestamp = DateTime.now().toUtc().toIso8601String().replaceAll(
       ':',
       '-',
@@ -156,12 +167,12 @@ final class LocalDataManager {
     });
     final evidence = await evidenceDirectory();
     if (await evidence.exists()) await evidence.delete(recursive: true);
-    final documents =
-        _documentsDirectory ?? await getApplicationDocumentsDirectory();
+    final documents = await documentsDirectory();
     if (await documents.exists()) {
       await for (final entity in documents.list()) {
         if (entity is Directory &&
-            path.basename(entity.path).startsWith('Butlerly Export ')) {
+            (path.basename(entity.path).startsWith('Butlerly Export ') ||
+                path.basename(entity.path) == 'Butlerly Safety Backups')) {
           await entity.delete(recursive: true);
         }
       }
