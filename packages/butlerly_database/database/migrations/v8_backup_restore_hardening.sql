@@ -248,3 +248,35 @@ BEGIN
   SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
   WHERE id = NEW.id;
 END;
+
+-- Merge must not create new user deletion metadata merely because restore is
+-- replaying a backup deletion. Generated tombstone timestamps are necessarily
+-- later than the backup boundary, so ignore them while restore_context is
+-- active. Backup tombstones themselves are at or before the backup boundary.
+CREATE TRIGGER IF NOT EXISTS suppress_restore_generated_tombstone
+BEFORE INSERT ON entity_tombstones
+WHEN EXISTS (
+  SELECT 1 FROM restore_context rc
+  WHERE rc.id = 1 AND NEW.deleted_at > rc.backup_time
+)
+BEGIN
+  SELECT RAISE(IGNORE);
+END;
+
+-- If the local workspace already carries a deletion newer than the backup
+-- boundary, that deletion wins. Never let an older backup tombstone replace its
+-- timestamp, otherwise a later restore could resurrect an entity that was
+-- deleted locally after this backup was created.
+CREATE TRIGGER IF NOT EXISTS preserve_newer_local_tombstone
+BEFORE INSERT ON entity_tombstones
+WHEN EXISTS (
+  SELECT 1
+  FROM restore_context rc
+  JOIN entity_tombstones current
+    ON current.entity_type = NEW.entity_type
+   AND current.entity_id = NEW.entity_id
+  WHERE rc.id = 1 AND current.deleted_at > rc.backup_time
+)
+BEGIN
+  SELECT RAISE(IGNORE);
+END;
