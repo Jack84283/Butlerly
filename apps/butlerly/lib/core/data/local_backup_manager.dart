@@ -26,28 +26,44 @@ final class LocalBackupManager {
   final LocalDataManager localDataManager;
   final engine.LocalBackupManager _engine;
 
-  /// Creates a backup from one logical database snapshot.
+  /// Creates a backup while a separate SQLite connection holds a write-reserved
+  /// lock. Readers remain available, but no application writer can commit while
+  /// the engine walks tables, so every table belongs to one logical DB state.
   ///
-  /// BEGIN IMMEDIATE prevents application writers from changing authoritative
-  /// rows while the engine serializes the package and copies referenced local
-  /// evidence. The engine performs only reads during this boundary.
+  /// A separate connection is deliberate: a raw BEGIN on the app's primary
+  /// connection would allow unrelated queued operations to accidentally join
+  /// the backup transaction.
   Future<File> createBackup(File destination) async {
-    await database.database.execute('BEGIN IMMEDIATE');
-    var finished = false;
+    final persistence = database.persistenceDatabase;
+    final lock = await persistence.factory.openDatabase(
+      persistence.path,
+      options: OpenDatabaseOptions(
+        singleInstance: false,
+        onConfigure: (db) async {
+          await db.execute('PRAGMA foreign_keys = ON');
+          await db.execute('PRAGMA busy_timeout = 30000');
+        },
+      ),
+    );
+    var transactionOpen = false;
     try {
+      await lock.execute('BEGIN IMMEDIATE');
+      transactionOpen = true;
       final result = await _engine.createBackup(destination);
-      await database.database.execute('COMMIT');
-      finished = true;
+      await lock.execute('COMMIT');
+      transactionOpen = false;
       return result;
     } catch (_) {
-      if (!finished) {
+      if (transactionOpen) {
         try {
-          await database.database.execute('ROLLBACK');
+          await lock.execute('ROLLBACK');
         } on Exception {
           // Preserve the original backup failure.
         }
       }
       rethrow;
+    } finally {
+      await lock.close();
     }
   }
 
