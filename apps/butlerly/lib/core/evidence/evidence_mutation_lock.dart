@@ -11,7 +11,9 @@ import 'dart:collection';
 /// An uncontended operation starts synchronously. This is important for backup:
 /// calling createBackup establishes the SQLite read transaction immediately,
 /// rather than moving its snapshot boundary to a later microtask. Contended
-/// operations are queued FIFO and begin only after their predecessor completes.
+/// operations are queued FIFO. A queued action starts only after the prior
+/// caller's Future has been completed, so completion observers see the same
+/// serialization order as the underlying filesystem mutations.
 final class EvidenceMutationLock {
   EvidenceMutationLock._();
 
@@ -19,31 +21,41 @@ final class EvidenceMutationLock {
   static bool _locked = false;
 
   static Future<T> runExclusive<T>(Future<T> Function() action) {
+    final completer = Completer<T>();
+    void start() => _start(action, completer);
+
     if (!_locked) {
       _locked = true;
-      return _execute(action);
+      start();
+    } else {
+      _queue.add(start);
     }
-
-    final completer = Completer<T>();
-    _queue.add(() {
-      _execute(action).then(
-        completer.complete,
-        onError: completer.completeError,
-      );
-    });
     return completer.future;
   }
 
-  static Future<T> _execute<T>(Future<T> Function() action) async {
+  static Future<void> _start<T>(
+    Future<T> Function() action,
+    Completer<T> completer,
+  ) async {
     try {
-      return await action();
+      final result = await action();
+      completer.complete(result);
+    } catch (error, stack) {
+      completer.completeError(error, stack);
     } finally {
-      if (_queue.isEmpty) {
-        _locked = false;
-      } else {
-        final next = _queue.removeFirst();
-        next();
-      }
+      // complete()/completeError() schedules listeners before this microtask,
+      // so the current caller's completion observers run before the next queued
+      // mutation is allowed to begin.
+      scheduleMicrotask(_releaseNext);
     }
+  }
+
+  static void _releaseNext() {
+    if (_queue.isEmpty) {
+      _locked = false;
+      return;
+    }
+    final next = _queue.removeFirst();
+    next();
   }
 }
