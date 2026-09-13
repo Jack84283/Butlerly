@@ -32,7 +32,10 @@ void main() {
       <int>[],
       (value, chunk) => value..addAll(chunk),
     );
-    expect(utf8.decode(prefix, allowMalformed: true), isNot(contains('BUTLERLYBACKUP2')));
+    expect(
+      utf8.decode(prefix, allowMalformed: true),
+      isNot(contains('BUTLERLYBACKUP2')),
+    );
 
     await expectLater(
       fixture.manager.inspect(backup),
@@ -95,6 +98,41 @@ void main() {
     final afterClear = RestoreRecoveryState(fixture.data);
     await afterClear.initialize();
     expect(afterClear.isRecoveryRequired, isFalse);
+  });
+
+  test('syntactically valid malformed recovery marker fails closed', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final evidence = await fixture.data.evidenceDirectory();
+    final marker = File('${evidence.path}.restore-recovery-required.json');
+    await marker.writeAsString('{}', flush: true);
+
+    final reloaded = RestoreRecoveryState(fixture.data);
+    await reloaded.initialize();
+
+    expect(reloaded.isRecoveryRequired, isTrue);
+    expect(reloaded.incident?.reason, 'recovery-marker-unreadable');
+    expect(await marker.exists(), isTrue);
+  });
+
+  test('interrupted recovery marker replacement fails closed', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final evidence = await fixture.data.evidenceDirectory();
+    final marker = File('${evidence.path}.restore-recovery-required.json');
+    final temporary = File('${marker.path}.tmp');
+    await temporary.writeAsString(
+      '{"operationId":"restore-temp","safetyBackupPath":"",'
+      '"reason":"activation-rollback-failed"}',
+      flush: true,
+    );
+
+    final reloaded = RestoreRecoveryState(fixture.data);
+    await reloaded.initialize();
+
+    expect(reloaded.isRecoveryRequired, isTrue);
+    expect(reloaded.incident?.reason, 'recovery-marker-interrupted');
+    expect(await temporary.exists(), isTrue);
   });
 }
 
