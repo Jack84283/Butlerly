@@ -74,8 +74,9 @@ void main() {
     final headerLength = _decodeInt64(bytes.sublist(magicLength, magicLength + 8));
     final headerStart = magicLength + 8;
     final headerEnd = headerStart + headerLength;
-    final header = (jsonDecode(utf8.decode(bytes.sublist(headerStart, headerEnd))) as Map)
-        .cast<String, Object?>();
+    final header =
+        (jsonDecode(utf8.decode(bytes.sublist(headerStart, headerEnd))) as Map)
+            .cast<String, Object?>();
     header['kdfIterations'] = 3;
     final headerBytes = utf8.encode(jsonEncode(header));
     final rebuilt = BytesBuilder(copy: false)
@@ -175,6 +176,40 @@ void main() {
     expect(await temporary.exists(), isTrue);
   });
 
+  test('new marker temp prevents trusting an older main marker', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final oldSafety = File(path.join(fixture.root.path, 'old-safety.butlerlybackup'));
+    await fixture.manager.createBackup(oldSafety);
+    await fixture.manager.recoveryState.markRequired(
+      operationId: 'old-operation',
+      safetyBackup: oldSafety,
+      reason: 'old-incident',
+    );
+
+    final evidence = await fixture.data.evidenceDirectory();
+    final marker = File('${evidence.path}.restore-recovery-required.json');
+    final temporary = File('${marker.path}.tmp');
+    await temporary.writeAsString(
+      jsonEncode({
+        'operationId': 'new-operation',
+        'safetyBackupPath': '',
+        'reason': 'new-incident',
+        'retryCurrentState': false,
+      }),
+      flush: true,
+    );
+
+    final reloaded = RestoreRecoveryState(fixture.data);
+    await reloaded.initialize();
+
+    expect(reloaded.incident?.reason, 'recovery-marker-interrupted');
+    expect(reloaded.incident?.operationId, 'unknown');
+    expect(reloaded.incident?.safetyBackupPath, isEmpty);
+    expect(await marker.exists(), isTrue);
+    expect(await temporary.exists(), isTrue);
+  });
+
   test('startup cleanup removes private plaintext artifacts but keeps safety data', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
@@ -200,7 +235,9 @@ void main() {
     await File(path.join(stage.path, 'copy.db')).writeAsString('private-copy');
 
     final safetyDirectory = await fixture.data.safetyBackupDirectory();
-    final safety = File(path.join(safetyDirectory.path, 'Before Merge keep.butlerlybackup'));
+    final safety = File(
+      path.join(safetyDirectory.path, 'Before Merge keep.butlerlybackup'),
+    );
     await safety.writeAsString('safety');
 
     await fixture.manager.cleanupOrphanedPrivateArtifacts();
