@@ -3,6 +3,18 @@ CREATE TABLE IF NOT EXISTS restore_commits (
   committed_at TEXT NOT NULL
 );
 
+ALTER TABLE duplicate_candidate_group_transactions
+  ADD COLUMN created_at TEXT NOT NULL DEFAULT '';
+ALTER TABLE transaction_provenances
+  ADD COLUMN created_at TEXT NOT NULL DEFAULT '';
+
+UPDATE duplicate_candidate_group_transactions
+SET created_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+WHERE created_at = '';
+UPDATE transaction_provenances
+SET created_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+WHERE created_at = '';
+
 CREATE TRIGGER IF NOT EXISTS review_issues_tombstone AFTER DELETE ON review_issues
 BEGIN
   INSERT INTO entity_tombstones(entity_type, entity_id, deleted_at)
@@ -15,6 +27,18 @@ BEGIN
   DELETE FROM entity_tombstones WHERE entity_type = 'review_issues' AND entity_id = NEW.id;
 END;
 
+CREATE TRIGGER IF NOT EXISTS duplicate_membership_merge_insert AFTER INSERT ON duplicate_candidate_group_transactions
+BEGIN
+  UPDATE duplicate_candidate_group_transactions
+  SET created_at = CASE
+    WHEN NEW.created_at = '' THEN strftime('%Y-%m-%dT%H:%M:%fZ','now')
+    ELSE NEW.created_at
+  END
+  WHERE group_id = NEW.group_id AND transaction_id = NEW.transaction_id;
+  DELETE FROM entity_tombstones
+  WHERE entity_type = 'duplicate_candidate_group_transactions'
+    AND entity_id = NEW.group_id || '|' || NEW.transaction_id;
+END;
 CREATE TRIGGER IF NOT EXISTS duplicate_membership_tombstone AFTER DELETE ON duplicate_candidate_group_transactions
 BEGIN
   INSERT INTO entity_tombstones(entity_type, entity_id, deleted_at)
@@ -22,25 +46,25 @@ BEGIN
   ON CONFLICT(entity_type, entity_id)
   DO UPDATE SET deleted_at = excluded.deleted_at;
 END;
-CREATE TRIGGER IF NOT EXISTS duplicate_membership_tombstone_clear AFTER INSERT ON duplicate_candidate_group_transactions
-BEGIN
-  DELETE FROM entity_tombstones
-  WHERE entity_type = 'duplicate_candidate_group_transactions'
-    AND entity_id = NEW.group_id || '|' || NEW.transaction_id;
-END;
 
+CREATE TRIGGER IF NOT EXISTS transaction_provenance_merge_insert AFTER INSERT ON transaction_provenances
+BEGIN
+  UPDATE transaction_provenances
+  SET created_at = CASE
+    WHEN NEW.created_at = '' THEN strftime('%Y-%m-%dT%H:%M:%fZ','now')
+    ELSE NEW.created_at
+  END
+  WHERE transaction_id = NEW.transaction_id AND provenance_id = NEW.provenance_id;
+  DELETE FROM entity_tombstones
+  WHERE entity_type = 'transaction_provenances'
+    AND entity_id = NEW.transaction_id || '|' || NEW.provenance_id;
+END;
 CREATE TRIGGER IF NOT EXISTS transaction_provenance_tombstone AFTER DELETE ON transaction_provenances
 BEGIN
   INSERT INTO entity_tombstones(entity_type, entity_id, deleted_at)
   VALUES('transaction_provenances', OLD.transaction_id || '|' || OLD.provenance_id, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   ON CONFLICT(entity_type, entity_id)
   DO UPDATE SET deleted_at = excluded.deleted_at;
-END;
-CREATE TRIGGER IF NOT EXISTS transaction_provenance_tombstone_clear AFTER INSERT ON transaction_provenances
-BEGIN
-  DELETE FROM entity_tombstones
-  WHERE entity_type = 'transaction_provenances'
-    AND entity_id = NEW.transaction_id || '|' || NEW.provenance_id;
 END;
 
 CREATE TRIGGER IF NOT EXISTS suggestions_tombstone AFTER DELETE ON suggestions
