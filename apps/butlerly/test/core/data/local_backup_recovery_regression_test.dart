@@ -45,7 +45,7 @@ void main() {
     expect(leftovers, isEmpty);
   });
 
-  test('ambiguous torn restore preserves live and all previous trees', () async {
+  test('ambiguous torn restore fails closed and preserves every tree', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
     final live = File(path.join(fixture.evidence.path, 'receipt.bin'));
@@ -62,12 +62,20 @@ void main() {
     final journal = File('${fixture.evidence.path}.restore-journal.json');
     await journal.writeAsString('{"operationId":');
 
-    await fixture.manager.recoverInterruptedRestore();
+    await expectLater(
+      fixture.manager.recoverInterruptedRestore(),
+      throwsA(isA<RestoreRecoveryRequiredException>()),
+    );
 
     expect(await live.readAsString(), 'live');
     expect(await previousA.exists(), isTrue);
     expect(await previousB.exists(), isTrue);
-    expect(await journal.exists(), isFalse);
+    expect(await journal.exists(), isTrue);
+    expect(fixture.manager.recoveryState.isRecoveryRequired, isTrue);
+    expect(
+      fixture.manager.recoveryState.incident?.reason,
+      'ambiguous-restore-recovery',
+    );
   });
 
   test('valid restore journal ignores unrelated stale previous tree', () async {
@@ -101,6 +109,29 @@ void main() {
     expect(await live.readAsString(), 'expected-old');
     expect(await unrelated.exists(), isTrue);
     expect(await journal.exists(), isFalse);
+  });
+
+  test('pre-commit recovery returns to an originally absent evidence root', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    await fixture.evidence.delete(recursive: true);
+
+    const operation = 'restore-empty-origin';
+    await fixture.evidence.create(recursive: true);
+    await File(path.join(fixture.evidence.path, 'restored.bin')).writeAsString('new');
+    final journal = File('${fixture.evidence.path}.restore-journal.json');
+    await journal.writeAsString(
+      '{"operationId":"$operation",'
+      '"previousPath":"${fixture.evidence.path}.restore-previous-$operation",'
+      '"stagingPath":"${fixture.evidence.path}.restore-$operation",'
+      '"phase":"dbWriting"}',
+    );
+
+    await fixture.manager.recoverInterruptedRestore();
+
+    expect(await fixture.evidence.exists(), isFalse);
+    expect(await journal.exists(), isFalse);
+    expect(fixture.manager.recoveryState.isRecoveryRequired, isFalse);
   });
 }
 
