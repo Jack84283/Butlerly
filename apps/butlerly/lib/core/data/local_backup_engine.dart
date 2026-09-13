@@ -753,7 +753,9 @@ final class LocalBackupManager {
       'payment_sources',
       'user_preferences',
     ];
-    for (final table in childFirst) await tx.delete(table);
+    for (final table in childFirst) {
+      await tx.delete(table);
+    }
     await tx.delete('merchants', where: 'is_built_in = 0');
     await tx.delete('categories', where: "LOWER(origin) != 'system'");
     await tx.delete('tags', where: "id NOT LIKE 'tag.%' AND id NOT LIKE 'system-tag-%'");
