@@ -43,7 +43,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         'backupFailed': 'Backup could not be created.',
         'restoreFailed': 'Backup could not be restored.',
         'restoreTitle': 'Restore Butlerly backup?',
-        'newerData': 'This device has data changed after this backup was created. Merge keeps those newer local changes. Replace discards the current Butlerly data and restores the backup.',
+        'newerData': 'This device has newer local data. Merge keeps those changes. Replace discards current Butlerly data and restores the backup.',
         'noNewerData': 'The backup is valid. Merge is recommended and preserves any local records that are newer than the backup.',
         'merge': 'Merge',
         'replace': 'Replace',
@@ -52,6 +52,10 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         'restoreComplete': 'Restore completed.',
         'restoreResult': '{restored} restored • {kept} newer local records kept',
         'backupSummary': '{records} records • {evidence} evidence files',
+        'addedTransactions': 'transactions added after the backup',
+        'changedTransactions': 'transactions changed after the backup',
+        'changedMasterData': 'master-data records changed after the backup',
+        'deletedItems': 'items deleted after the backup',
       },
       'es': {
         'backup': 'Crear copia de Butlerly',
@@ -62,7 +66,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         'backupFailed': 'No se pudo crear la copia.',
         'restoreFailed': 'No se pudo restaurar la copia.',
         'restoreTitle': '¿Restaurar la copia de Butlerly?',
-        'newerData': 'Este dispositivo tiene datos modificados después de crear la copia. Combinar conserva esos cambios locales más recientes. Reemplazar descarta los datos actuales de Butlerly y restaura la copia.',
+        'newerData': 'Este dispositivo tiene datos locales más recientes. Combinar conserva esos cambios. Reemplazar descarta los datos actuales de Butlerly y restaura la copia.',
         'noNewerData': 'La copia es válida. Se recomienda combinar para conservar cualquier registro local más reciente que la copia.',
         'merge': 'Combinar',
         'replace': 'Reemplazar',
@@ -71,6 +75,10 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         'restoreComplete': 'Restauración completada.',
         'restoreResult': '{restored} restaurados • {kept} registros locales más recientes conservados',
         'backupSummary': '{records} registros • {evidence} archivos de evidencia',
+        'addedTransactions': 'transacciones añadidas después de la copia',
+        'changedTransactions': 'transacciones modificadas después de la copia',
+        'changedMasterData': 'registros maestros modificados después de la copia',
+        'deletedItems': 'elementos eliminados después de la copia',
       },
       'zh': {
         'backup': '备份 Butlerly',
@@ -81,7 +89,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         'backupFailed': '无法创建备份。',
         'restoreFailed': '无法恢复备份。',
         'restoreTitle': '恢复 Butlerly 备份？',
-        'newerData': '此设备包含在该备份创建之后修改的数据。合并会保留这些较新的本地更改；替换会丢弃当前 Butlerly 数据并恢复备份。',
+        'newerData': '此设备包含较新的本地数据。合并会保留这些更改；替换会丢弃当前 Butlerly 数据并恢复备份。',
         'noNewerData': '备份有效。建议使用“合并”，它会保留任何比备份更新的本地记录。',
         'merge': '合并',
         'replace': '替换',
@@ -90,16 +98,17 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         'restoreComplete': '恢复完成。',
         'restoreResult': '已恢复 {restored} 条 • 保留 {kept} 条较新的本地记录',
         'backupSummary': '{records} 条记录 • {evidence} 个凭证文件',
+        'addedTransactions': '笔交易是在备份之后新增的',
+        'changedTransactions': '笔交易是在备份之后修改的',
+        'changedMasterData': '条主数据是在备份之后修改的',
+        'deletedItems': '项数据是在备份之后删除的',
       },
     };
     return (strings[language] ?? strings['en']!)[key] ?? key;
   }
 
   Future<void> _backup() async {
-    final timestamp = DateTime.now().toUtc().toIso8601String().replaceAll(
-      ':',
-      '-',
-    );
+    final timestamp = DateTime.now().toUtc().toIso8601String().replaceAll(':', '-');
     final location = await getSaveLocation(
       suggestedName: 'Butlerly Backup $timestamp.butlerlybackup',
       acceptedTypeGroups: const [_backupType],
@@ -132,9 +141,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       if (!mounted) return;
       setState(() => _busy = true);
       final result = await manager.restore(file, mode: mode);
-      await services<FinanceServices>().seedInitialMasterData(
-        buildInitialMasterData(),
-      );
+      await services<FinanceServices>().seedInitialMasterData(buildInitialMasterData());
       ref.invalidate(userPreferenceProvider);
       notifyTransactionChanged();
       if (!mounted) return;
@@ -149,6 +156,25 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     }
   }
 
+  String _changeDetails(BackupInspection inspection) {
+    if (!inspection.hasNewerLocalData) return '';
+    final changes = inspection.changes;
+    final lines = <String>[];
+    if (changes.transactionsAdded > 0) {
+      lines.add('• ${changes.transactionsAdded} ${_backupText('addedTransactions')}');
+    }
+    if (changes.transactionsChanged > 0) {
+      lines.add('• ${changes.transactionsChanged} ${_backupText('changedTransactions')}');
+    }
+    if (changes.masterDataChanged > 0) {
+      lines.add('• ${changes.masterDataChanged} ${_backupText('changedMasterData')}');
+    }
+    if (changes.deletedEntities > 0) {
+      lines.add('• ${changes.deletedEntities} ${_backupText('deletedItems')}');
+    }
+    return lines.join('\n');
+  }
+
   Future<LocalRestoreMode?> _chooseRestoreMode(BackupInspection inspection) =>
       showButlerlyBottomSheet<LocalRestoreMode>(
         context: context,
@@ -157,20 +183,20 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
               .replaceAll('{records}', '${inspection.recordCount}')
               .replaceAll('{evidence}', '${inspection.evidenceCount}');
           final created = inspection.createdAtUtc.toLocal();
+          final details = _changeDetails(inspection);
+          final body = inspection.hasNewerLocalData
+              ? '${_backupText('newerData')}\n\n$details'
+              : _backupText('noNewerData');
           return ButlerlySheet(
             title: Text(_backupText('restoreTitle')),
-            content: Text(
-              '$summary\n${created.toString()}\n\n'
-              '${inspection.hasNewerLocalData ? _backupText('newerData') : _backupText('noNewerData')}',
-            ),
+            content: Text('$summary\n${created.toString()}\n\n$body'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: Text(context.l10n.text('cancel')),
               ),
               TextButton(
-                onPressed: () =>
-                    Navigator.pop(context, LocalRestoreMode.replace),
+                onPressed: () => Navigator.pop(context, LocalRestoreMode.replace),
                 child: Text(_backupText('replace')),
               ),
               FilledButton(
@@ -200,8 +226,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
             ),
           ],
         ),
-      )) ==
-      true;
+      )) == true;
 
   Future<void> _export() async {
     setState(() => _busy = true);
@@ -256,9 +281,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     setState(() => _busy = true);
     try {
       await services<LocalDataManager>().eraseAll();
-      await services<FinanceServices>().seedInitialMasterData(
-        buildInitialMasterData(),
-      );
+      await services<FinanceServices>().seedInitialMasterData(buildInitialMasterData());
       ref.invalidate(userPreferenceProvider);
       notifyTransactionChanged();
       if (mounted) _message(context.l10n.text('eraseComplete'));
@@ -269,9 +292,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     }
   }
 
-  void _message(String value) => ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(SnackBar(content: Text(value)));
+  void _message(String value) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value)));
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -285,10 +306,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           enabled: !_busy,
           leading: const Icon(Icons.backup_outlined),
           title: Text(_backupText('backup')),
-          subtitle: Text(
-            _backupText('backupSubtitle'),
-            style: _subtitleStyle(context),
-          ),
+          subtitle: Text(_backupText('backupSubtitle'), style: _subtitleStyle(context)),
           onTap: _backup,
         ),
         const Divider(),
@@ -296,10 +314,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           enabled: !_busy,
           leading: const Icon(Icons.restore_outlined),
           title: Text(_backupText('restoreBackup')),
-          subtitle: Text(
-            _backupText('restoreSubtitle'),
-            style: _subtitleStyle(context),
-          ),
+          subtitle: Text(_backupText('restoreSubtitle'), style: _subtitleStyle(context)),
           onTap: _restore,
         ),
         const Divider(),
@@ -307,10 +322,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           enabled: !_busy,
           leading: const Icon(Icons.download_outlined),
           title: Text(context.l10n.text('exportToFile')),
-          subtitle: Text(
-            context.l10n.text('exportScopeBody'),
-            style: _subtitleStyle(context),
-          ),
+          subtitle: Text(context.l10n.text('exportScopeBody'), style: _subtitleStyle(context)),
           onTap: _export,
         ),
         const Divider(),
@@ -318,10 +330,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           enabled: !_busy,
           leading: const Icon(Icons.delete_forever_outlined),
           title: Text(context.l10n.text('resetAllData')),
-          subtitle: Text(
-            context.l10n.text('eraseScopeBody'),
-            style: _subtitleStyle(context),
-          ),
+          subtitle: Text(context.l10n.text('eraseScopeBody'), style: _subtitleStyle(context)),
           textColor: Theme.of(context).colorScheme.error,
           iconColor: Theme.of(context).colorScheme.error,
           onTap: _confirmErase,
@@ -332,6 +341,5 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
   );
 }
 
-TextStyle? _subtitleStyle(BuildContext context) => Theme.of(
-  context,
-).textTheme.bodySmall?.copyWith(color: context.colors.secondaryText);
+TextStyle? _subtitleStyle(BuildContext context) =>
+    Theme.of(context).textTheme.bodySmall?.copyWith(color: context.colors.secondaryText);
