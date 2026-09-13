@@ -122,7 +122,10 @@ void main() {
           ",\n      period_type TEXT NOT NULL DEFAULT 'selected_period'",
           '',
         )
-        .replaceFirst(', status_before_skip TEXT', '')
+        .replaceFirst(
+          RegExp(r',\s*status_before_skip TEXT'),
+          '',
+        )
         .replaceFirst(
           ',\n      normalized_name TEXT NOT NULL DEFAULT \'\',\n      default_category_id TEXT REFERENCES categories(id),\n      default_subcategory_id TEXT REFERENCES categories(id),\n      is_built_in INTEGER NOT NULL DEFAULT 0',
           '',
