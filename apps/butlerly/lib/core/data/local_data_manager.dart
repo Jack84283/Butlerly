@@ -125,6 +125,51 @@ final class LocalDataManager {
     return directory;
   }
 
+  /// Keeps the newest validated safety snapshots and removes older recovery
+  /// copies after a restore has completed successfully.
+  Future<void> pruneSafetyBackups({int keep = 2, String? preservePath}) async {
+    if (keep < 0) throw ArgumentError.value(keep, 'keep');
+    final directory = await safetyBackupDirectory();
+    if (!await directory.exists()) return;
+    final files = <File>[];
+    await for (final entity in directory.list(followLinks: false)) {
+      if (entity is File && entity.path.endsWith('.butlerlybackup')) {
+        files.add(entity);
+      }
+    }
+    files.sort((left, right) {
+      final leftModified = left.lastModifiedSync();
+      final rightModified = right.lastModifiedSync();
+      return rightModified.compareTo(leftModified);
+    });
+
+    var retained = 0;
+    for (final file in files) {
+      if (preservePath != null && path.equals(file.path, preservePath)) {
+        continue;
+      }
+      if (retained < keep) {
+        retained++;
+        continue;
+      }
+      await file.delete();
+    }
+
+    // Interrupted internal package creation can leave only incomplete siblings;
+    // they are never valid safety snapshots and should not accumulate forever.
+    await for (final entity in directory.list(followLinks: false)) {
+      if (entity is! File) continue;
+      final name = path.basename(entity.path);
+      if (name.contains('.candidate-') || name.contains('.tmp-')) {
+        try {
+          await entity.delete();
+        } on Exception {
+          // Best-effort retention cleanup must not affect a completed restore.
+        }
+      }
+    }
+  }
+
   Future<LocalDataExport> exportAll() async {
     final documents = await documentsDirectory();
     final timestamp = DateTime.now().toUtc().toIso8601String().replaceAll(
@@ -174,52 +219,55 @@ final class LocalDataManager {
     return LocalDataExport(directory: destination, recordCount: recordCount);
   }
 
-  Future<void> eraseAll() => EvidenceMutationLock.runExclusive(() async {
-    // Privacy reset and restore share one evidence mutation boundary. Whichever
-    // operation acquires the lock first completes first; if erase follows an
-    // active restore, the final durable state is still erased and restore cannot
-    // repopulate the workspace after the reset returns.
-    await database.persistenceDatabase.transaction((transaction) async {
-      for (final table in _eraseOrder) {
-        await transaction.delete(table);
-      }
-    });
-    final evidence = await evidenceDirectory();
-    if (await evidence.exists()) await evidence.delete(recursive: true);
-    final pendingEvidence = await pendingEvidenceDirectory();
-    if (await pendingEvidence.exists()) {
-      await pendingEvidence.delete(recursive: true);
-    }
-
-    // Recovery snapshots and fail-closed marker artifacts contain or protect
-    // user financial state and are part of an erase-all boundary.
-    final recovery = Directory(
-      path.join(
-        path.dirname(database.persistenceDatabase.path),
-        '.butlerly-recovery',
-      ),
-    );
-    if (await recovery.exists()) await recovery.delete(recursive: true);
-    final recoveryMarker = File('${evidence.path}.restore-recovery-required.json');
-    for (final file in <File>[
-      recoveryMarker,
-      File('${recoveryMarker.path}.tmp'),
-      File('${recoveryMarker.path}.previous'),
-    ]) {
-      if (await file.exists()) await file.delete();
-    }
-
-    final documents = await documentsDirectory();
-    if (await documents.exists()) {
-      await for (final entity in documents.list()) {
-        if (entity is Directory &&
-            (path.basename(entity.path).startsWith('Butlerly Export ') ||
-                // Remove legacy safety-backup directories created by builds
-                // before recovery data moved to application-private storage.
-                path.basename(entity.path) == 'Butlerly Safety Backups')) {
-          await entity.delete(recursive: true);
+  Future<void> eraseAll({bool preserveRecoveryMarker = false}) =>
+      EvidenceMutationLock.runExclusive(() async {
+        // Privacy reset and restore share one evidence mutation boundary.
+        await database.persistenceDatabase.transaction((transaction) async {
+          for (final table in _eraseOrder) {
+            await transaction.delete(table);
+          }
+        });
+        final evidence = await evidenceDirectory();
+        if (await evidence.exists()) await evidence.delete(recursive: true);
+        final pendingEvidence = await pendingEvidenceDirectory();
+        if (await pendingEvidence.exists()) {
+          await pendingEvidence.delete(recursive: true);
         }
-      }
-    }
-  });
+
+        // Recovery snapshots contain user financial state and are part of an
+        // erase-all boundary. A recovery reset may intentionally keep the marker
+        // until system-data reseeding/runtime refresh also succeeds.
+        final recovery = Directory(
+          path.join(
+            path.dirname(database.persistenceDatabase.path),
+            '.butlerly-recovery',
+          ),
+        );
+        if (await recovery.exists()) await recovery.delete(recursive: true);
+        if (!preserveRecoveryMarker) {
+          final recoveryMarker = File(
+            '${evidence.path}.restore-recovery-required.json',
+          );
+          for (final file in <File>[
+            recoveryMarker,
+            File('${recoveryMarker.path}.tmp'),
+            File('${recoveryMarker.path}.previous'),
+          ]) {
+            if (await file.exists()) await file.delete();
+          }
+        }
+
+        final documents = await documentsDirectory();
+        if (await documents.exists()) {
+          await for (final entity in documents.list()) {
+            if (entity is Directory &&
+                (path.basename(entity.path).startsWith('Butlerly Export ') ||
+                    // Remove legacy safety-backup directories created by builds
+                    // before recovery data moved to application-private storage.
+                    path.basename(entity.path) == 'Butlerly Safety Backups')) {
+              await entity.delete(recursive: true);
+            }
+          }
+        }
+      });
 }
