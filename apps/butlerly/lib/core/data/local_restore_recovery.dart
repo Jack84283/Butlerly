@@ -16,11 +16,14 @@ Future<void> recoverInterruptedLocalRestore(
 
   final root = await localDataManager.evidenceDirectory();
   final journal = File('${root.path}.restore-journal.json');
+  final originStateFile = File('${root.path}.restore-origin.json');
   if (!await journal.exists()) {
     // With no recovery journal there is no filesystem operation to reconcile.
-    // Any commit marker is therefore stale cleanup residue and must not make a
-    // later unrelated restore look committed.
+    // Any commit marker/origin marker is stale cleanup residue and must not make
+    // a later unrelated restore look committed or inherit old recovery state.
     await database.database.delete('restore_commits');
+    await _deleteFileBestEffort(originStateFile);
+    await _deleteFileBestEffort(File('${originStateFile.path}.tmp'));
     return;
   }
 
@@ -33,6 +36,7 @@ Future<void> recoverInterruptedLocalRestore(
     // operation unambiguously. Never guess among multiple evidence trees.
   }
 
+  final originState = await _readOriginState(originStateFile);
   final recovery = await _discoverRecoveryDirectories(root);
   final markerRows = await database.database.query(
     'restore_commits',
@@ -74,6 +78,7 @@ Future<void> recoverInterruptedLocalRestore(
       if (await directory.exists()) await directory.delete(recursive: true);
     }
     if (await journal.exists()) await journal.delete();
+    await _deleteFileBestEffort(originStateFile);
     await database.database.delete(
       'restore_commits',
       where: 'operation_id = ?',
@@ -106,32 +111,54 @@ Future<void> recoverInterruptedLocalRestore(
     // commit. Restore exactly that tree.
     if (await root.exists()) await root.delete(recursive: true);
     await previous.rename(root.path);
-  } else if (_provesOriginalEvidenceWasAbsent(
+  } else if (originState.present && originState.rootExisted == false) {
+    // The wrapper persisted this fact before invoking the live engine. Returning
+    // to an absent evidence root is therefore deterministic, even when the
+    // restore crashed after staging activation but before the DB commit.
+    if (await root.exists()) await root.delete(recursive: true);
+  } else if (originState.present && originState.rootExisted == true) {
+    if (journalPhase == 'evidenceActivated' || journalPhase == 'dbWriting') {
+      // The original root existed, so an activated restore must have produced a
+      // deterministic previous directory. Its absence means evidence was lost
+      // or externally altered; never substitute the uncommitted live tree.
+      await _markRecoveryRequired(
+        localDataManager,
+        operationId: journalOperationId ?? 'unknown',
+        reason: 'missing-previous-evidence-recovery',
+      );
+      return;
+    }
+    // In prepared phase activation had not happened, so the live root is still
+    // the original tree and may be preserved safely.
+  } else if (originState.present && originState.rootExisted == null) {
+    // A sidecar exists but cannot be trusted. Its presence proves this build
+    // intended to record the original state, so do not fall back to inference.
+    await _markRecoveryRequired(
+      localDataManager,
+      operationId: journalOperationId ?? 'unknown',
+      reason: 'unreadable-restore-origin-state',
+    );
+    return;
+  } else if (_provesOriginalEvidenceWasAbsentForLegacyRestore(
     root: root,
     operationId: journalOperationId,
     previous: journalPreviousDirectory,
     staging: journalStagingDirectory,
     phase: journalPhase,
   )) {
-    // The engine activates staging only after renaming an existing root to the
-    // deterministic previous path. A trusted activated/dbWriting journal whose
-    // previous path does not exist therefore proves that the original root was
-    // absent. Roll back to that state instead of retaining uncommitted evidence.
+    // Compatibility for an interrupted restore started by an earlier build that
+    // did not persist restore-origin.json. The engine's deterministic paths and
+    // activated phase are the strongest evidence available for that legacy run.
     if (await root.exists()) await root.delete(recursive: true);
   } else if (data == null && recovery.previous.isEmpty) {
-    // A torn journal with no previous tree cannot distinguish "prepared before
-    // activation" from "activated when the original root was absent". Preserve
-    // all candidates and block normal writes rather than guessing.
+    // A torn legacy journal with no previous tree cannot distinguish "prepared
+    // before activation" from "activated when the original root was absent".
     await _markRecoveryRequired(
       localDataManager,
       operationId: 'unknown',
       reason: 'indeterminate-restore-recovery',
     );
     return;
-  } else {
-    // A valid prepared-phase journal means activation had not happened yet, so
-    // the live root remains the original state. Other valid no-previous states
-    // are left untouched unless the deterministic proof above applies.
   }
 
   // Clean only artifacts belonging to the identified operation. If the journal
@@ -153,6 +180,7 @@ Future<void> recoverInterruptedLocalRestore(
   }
 
   if (await journal.exists()) await journal.delete();
+  await _deleteFileBestEffort(originStateFile);
   // Once filesystem recovery is complete and no journal remains, no marker can
   // be authoritative. This also clears residue from an unrelated stale marker.
   await database.database.delete('restore_commits');
@@ -214,7 +242,7 @@ Future<_PreviousSelection> _selectPreviousDirectory({
   return const _PreviousSelection(null, false);
 }
 
-bool _provesOriginalEvidenceWasAbsent({
+bool _provesOriginalEvidenceWasAbsentForLegacyRestore({
   required Directory root,
   required String? operationId,
   required Directory? previous,
@@ -227,6 +255,20 @@ bool _provesOriginalEvidenceWasAbsent({
       staging.path == '${root.path}.restore-$operationId';
 }
 
+Future<_OriginState> _readOriginState(File file) async {
+  if (!await file.exists()) return const _OriginState(false, null);
+  try {
+    final decoded = jsonDecode(await file.readAsString());
+    if (decoded is! Map) return const _OriginState(true, null);
+    final value = decoded['rootExisted'];
+    return value is bool
+        ? _OriginState(true, value)
+        : const _OriginState(true, null);
+  } on Exception {
+    return const _OriginState(true, null);
+  }
+}
+
 Future<void> _markRecoveryRequired(
   LocalDataManager localDataManager, {
   required String operationId,
@@ -234,6 +276,14 @@ Future<void> _markRecoveryRequired(
 }) async {
   final state = RestoreRecoveryState(localDataManager);
   await state.markUnknownRequired(operationId: operationId, reason: reason);
+}
+
+Future<void> _deleteFileBestEffort(File file) async {
+  try {
+    if (await file.exists()) await file.delete();
+  } on Exception {
+    // Recovery outcome is authoritative; stale sidecar cleanup is best effort.
+  }
 }
 
 Set<Directory> _directoriesForOperation(
@@ -275,6 +325,13 @@ Future<_RecoveryDirectories> _discoverRecoveryDirectories(Directory root) async 
     }
   }
   return _RecoveryDirectories(previous, staging);
+}
+
+final class _OriginState {
+  const _OriginState(this.present, this.rootExisted);
+
+  final bool present;
+  final bool? rootExisted;
 }
 
 final class _PreviousSelection {
