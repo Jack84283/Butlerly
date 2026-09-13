@@ -108,11 +108,11 @@ final class LocalBackupSnapshotWriter {
     tables['suggestions'] = suggestions;
     recordCount += suggestions.length;
 
-    // Proposed/undone reconciliation candidates are recomputable. Confirmed
-    // and rejected candidates are durable user decisions.
+    // Only proposed reconciliation candidates are generated. Confirmed,
+    // rejected, and undone statuses all encode a user workflow decision.
     final reconciliationCandidates = await source.query(
       'reconciliation_candidates',
-      where: "status IN ('confirmed', 'rejected')",
+      where: "status != 'proposed'",
     );
     tables['reconciliation_candidates'] = reconciliationCandidates;
     recordCount += reconciliationCandidates.length;
@@ -155,11 +155,12 @@ final class LocalBackupSnapshotWriter {
     tables['entity_tombstones'] = portableTombstones;
     recordCount += portableTombstones.length;
 
-    final evidenceRows = (tables['evidence_items']! as List<Map<String, Object?>>);
+    final evidenceRows = tables['evidence_items']! as List<Map<String, Object?>>;
     final evidenceRoot = await localDataManager.evidenceDirectory();
-    final evidence = <Map<String, Object?>>[];
-    final sourceFiles = <File>[];
-    final seenPaths = <String>{};
+
+    // Every DB-referenced binary must exist. In addition, preserve unreferenced
+    // files conservatively: a partially completed metadata operation must never
+    // cause Backup to silently discard a user's receipt or statement.
     for (final row in evidenceRows) {
       final localName = row['local_file_name'] as String?;
       if (localName == null || localName.trim().isEmpty) continue;
@@ -169,14 +170,37 @@ final class LocalBackupSnapshotWriter {
           normalized.startsWith('../')) {
         throw const FormatException('Unsafe local evidence path.');
       }
-      if (!seenPaths.add(normalized)) continue;
-      final file = File(path.join(evidenceRoot.path, normalized));
-      if (!await file.exists()) {
+      if (!await File(path.join(evidenceRoot.path, normalized)).exists()) {
         throw StateError('Referenced evidence file is missing.');
+      }
+    }
+
+    final allEvidenceFiles = <File>[];
+    if (await evidenceRoot.exists()) {
+      await for (final entity in evidenceRoot.list(recursive: true)) {
+        if (entity is File) allEvidenceFiles.add(entity);
+      }
+    }
+    allEvidenceFiles.sort((left, right) {
+      final leftRelative = path.relative(left.path, from: evidenceRoot.path);
+      final rightRelative = path.relative(right.path, from: evidenceRoot.path);
+      return leftRelative.compareTo(rightRelative);
+    });
+
+    final evidence = <Map<String, Object?>>[];
+    final sourceFiles = <File>[];
+    for (final file in allEvidenceFiles) {
+      final relative = path.normalize(
+        path.relative(file.path, from: evidenceRoot.path),
+      );
+      if (path.isAbsolute(relative) ||
+          relative == '..' ||
+          relative.startsWith('../')) {
+        throw const FormatException('Unsafe local evidence path.');
       }
       final length = await file.length();
       evidence.add({
-        'path': normalized,
+        'path': relative,
         'length': length,
         'sha256': await sha256FileRange(file),
       });
