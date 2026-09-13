@@ -1,6 +1,7 @@
 import 'package:butlerly/core/config/app_configuration.dart';
 import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
+import 'package:butlerly/core/data/restore_recovery_state.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
@@ -24,10 +25,16 @@ void configureDependencies({
   services.registerSingleton<OcrRecognizer>(platformOcrRecognizer());
 
   final localDataManager = LocalDataManager(database);
+  final restoreRecoveryState = RestoreRecoveryState(localDataManager);
   services
     ..registerSingleton<LocalDataManager>(localDataManager)
+    ..registerSingleton<RestoreRecoveryState>(restoreRecoveryState)
     ..registerSingleton<LocalBackupManager>(
-      LocalBackupManager(database, localDataManager),
+      LocalBackupManager(
+        database,
+        localDataManager,
+        recoveryState: restoreRecoveryState,
+      ),
     );
 
   if (database.status == DatabaseStatus.ready) {
