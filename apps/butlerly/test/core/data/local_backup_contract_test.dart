@@ -83,6 +83,7 @@ void main() {
     final now = DateTime.utc(2026, 9, 1).toIso8601String();
     await fixture.insertTransaction('tx-a');
     await fixture.insertTransaction('tx-b');
+    await fixture.insertTransaction('tx-c');
     await fixture.database.database.insert('provenances', {
       'id': 'prov-workflow',
       'source_type': 'manual',
@@ -127,12 +128,16 @@ void main() {
     await _insertCandidate(
       fixture,
       id: 'candidate-proposed',
+      receiptId: 'tx-a',
+      paymentId: 'tx-b',
       status: 'proposed',
       now: now,
     );
     await _insertCandidate(
       fixture,
       id: 'candidate-rejected',
+      receiptId: 'tx-a',
+      paymentId: 'tx-c',
       status: 'rejected',
       now: now,
     );
@@ -188,12 +193,14 @@ void main() {
 Future<void> _insertCandidate(
   _Fixture fixture, {
   required String id,
+  required String receiptId,
+  required String paymentId,
   required String status,
   required String now,
 }) => fixture.database.database.insert('reconciliation_candidates', {
   'id': id,
-  'receipt_transaction_id': 'tx-a',
-  'payment_transaction_id': 'tx-b',
+  'receipt_transaction_id': receiptId,
+  'payment_transaction_id': paymentId,
   'score': 0.9,
   'reasons_json': '[]',
   'status': status,
