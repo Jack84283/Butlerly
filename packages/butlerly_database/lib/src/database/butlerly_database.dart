@@ -72,6 +72,9 @@ final class ButlerlyDatabase {
                 );
               }
               for (final statement in splitSqlStatements(sql)) {
+                if (await _alreadyHasAddedColumn(database, statement)) {
+                  continue;
+                }
                 await database.execute(statement);
               }
               if (version == 5) {
@@ -105,6 +108,21 @@ final class ButlerlyDatabase {
       _database = null;
       rethrow;
     }
+  }
+
+  static Future<bool> _alreadyHasAddedColumn(
+    Database database,
+    String statement,
+  ) async {
+    final match = RegExp(
+      r'^ALTER\s+TABLE\s+([A-Za-z_][A-Za-z0-9_]*)\s+ADD\s+COLUMN\s+([A-Za-z_][A-Za-z0-9_]*)\b',
+      caseSensitive: false,
+    ).firstMatch(statement.trim());
+    if (match == null) return false;
+    final table = match.group(1)!;
+    final column = match.group(2)!;
+    final columns = await database.rawQuery('PRAGMA table_info($table)');
+    return columns.any((row) => row['name'] == column);
   }
 
   static Future<void> _backfillNormalizedDescriptions(Database database) async {
