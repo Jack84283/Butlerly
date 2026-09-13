@@ -37,7 +37,7 @@ export 'restore_recovery_state.dart'
 /// [LocalBackupSnapshotWriter] owns creation from one SQLite read snapshot.
 /// This class adds the IMP-0010 orchestration contract: pre-restore safety
 /// preservation, isolated database/evidence staging, integrity validation,
-/// protected portable backups, and activation of only a validated candidate.
+/// protected portable backups, and activation only after validation succeeds.
 final class LocalBackupManager {
   LocalBackupManager(
     this.database,
@@ -134,56 +134,32 @@ final class LocalBackupManager {
   /// Creates one coherent database/evidence snapshot while the caller already
   /// owns [EvidenceMutationLock].
   Future<File> _createBackupUnlocked(File destination) async {
-    await _recoverInterruptedBackupReplacement(destination);
-
     final operationId = DateTime.now().microsecondsSinceEpoch;
     final candidate = File('${destination.path}.candidate-$operationId');
-    final persistence = database.persistenceDatabase;
-    await persistence.prepareForConsistentBackup();
 
-    // WAL is persistent for the database file. It is selected before the
-    // snapshot connection opens so readers and unrelated non-evidence writers
-    // can overlap safely. Evidence publication/removal is serialized by the
-    // caller's EvidenceMutationLock boundary.
-    await database.database.rawQuery('PRAGMA journal_mode = WAL');
-    await database.database.execute('PRAGMA busy_timeout = 30000');
-    final snapshot = await persistence.factory.openDatabase(
-      persistence.path,
-      options: OpenDatabaseOptions(
-        singleInstance: false,
-        onConfigure: (db) async {
-          await db.execute('PRAGMA foreign_keys = ON');
-          await db.execute('PRAGMA busy_timeout = 30000');
-        },
-      ),
-    );
-    var transactionOpen = false;
     try {
-      await snapshot.execute('BEGIN');
-      transactionOpen = true;
-      final createdAtUtc = DateTime.now().toUtc();
-      await snapshot.rawQuery('SELECT COUNT(*) FROM sqlite_master');
-      await _snapshotWriter.write(
-        candidate,
-        source: snapshot,
-        createdAtUtc: createdAtUtc,
-      );
-      await snapshot.execute('COMMIT');
-      transactionOpen = false;
+      // Queue the SQLite transaction before the first await. Butlerly's ordinary
+      // repositories share this connection, so writes submitted after backup()
+      // are ordered behind this read transaction instead of racing the snapshot
+      // boundary. This intentionally favors correctness over write concurrency.
+      final snapshotFuture = database.database.transaction((snapshot) async {
+        // Pin the SQLite snapshot first, then derive the manifest timestamp from
+        // that already-established state and validate the exact same snapshot.
+        await snapshot.rawQuery('SELECT COUNT(*) FROM sqlite_master');
+        final createdAtUtc = DateTime.now().toUtc();
+        await _validateDatabase(snapshot);
+        await _snapshotWriter.write(
+          candidate,
+          source: snapshot,
+          createdAtUtc: createdAtUtc,
+        );
+      });
+      await snapshotFuture;
 
+      await _recoverInterruptedBackupReplacement(destination);
       await _replaceBackupFile(candidate, destination, operationId);
       return destination;
-    } catch (_) {
-      if (transactionOpen) {
-        try {
-          await snapshot.execute('ROLLBACK');
-        } on Exception {
-          // Preserve the original backup failure.
-        }
-      }
-      rethrow;
     } finally {
-      await snapshot.close();
       await _cleanupCandidateArtifacts(candidate);
     }
   }
@@ -304,9 +280,13 @@ final class LocalBackupManager {
   }
 
   Future<void> recoverInterruptedRestore() =>
-      EvidenceMutationLock.runExclusive(
-        () => recoverInterruptedLocalRestore(database, localDataManager),
-      );
+      EvidenceMutationLock.runExclusive(() async {
+        await recoverInterruptedLocalRestore(database, localDataManager);
+        await recoveryState.initialize();
+        if (recoveryState.isRecoveryRequired) {
+          throw const RestoreRecoveryRequiredException();
+        }
+      });
 
   Future<engine.LocalRestoreResult> restore(
     File file, {
@@ -344,6 +324,10 @@ final class LocalBackupManager {
     Future<void> Function()? postActivationRefresh,
   }) async {
     await recoverInterruptedLocalRestore(database, localDataManager);
+    await recoveryState.initialize();
+    if (recoveryState.isRecoveryRequired) {
+      throw const RestoreRecoveryRequiredException();
+    }
     await _assertSupportedBackupSchema(file);
 
     final operationId = 'restore-${DateTime.now().microsecondsSinceEpoch}';
@@ -355,29 +339,23 @@ final class LocalBackupManager {
         staging.database,
         staging.dataManager,
       );
-      final stagedResult = await stagedEngine.restore(file, mode: mode);
+      // Staging is validation-only. It proves the requested operation can be
+      // applied to a coherent copy, but is never used as a replacement snapshot
+      // for the live database because live data may change while validation runs.
+      await stagedEngine.restore(file, mode: mode);
       await _validateDatabase(staging.database.database);
 
-      final candidatePackage = File(
-        path.join(staging.root.path, 'validated-candidate.butlerlybackup'),
-      );
-      final stagingManager = LocalBackupManager(
-        staging.database,
-        staging.dataManager,
-      );
-      await stagingManager._createBackupUnlocked(candidatePackage);
-
-      await _engine.restore(
-        candidatePackage,
-        mode: engine.LocalRestoreMode.replace,
-      );
+      // Re-apply the original, already validated package to the current live
+      // state. Merge therefore evaluates newer-local timestamps at activation
+      // time instead of replacing the database with a stale staging snapshot.
+      final liveResult = await _engine.restore(file, mode: mode);
       liveActivated = true;
       await _validateDatabase(database.database);
       if (postActivationRefresh != null) {
         await postActivationRefresh();
       }
-      return stagedResult;
-    } catch (_) {
+      return liveResult;
+    } catch (error, stack) {
       if (liveActivated) {
         try {
           await _engine.restore(
@@ -388,16 +366,26 @@ final class LocalBackupManager {
           if (postActivationRefresh != null) {
             await postActivationRefresh();
           }
-        } on Exception {
-          await recoveryState.markRequired(
-            operationId: operationId,
-            safetyBackup: safetyBackup,
-            reason: 'activation-rollback-failed',
+        } catch (rollbackError, rollbackStack) {
+          // Catch Errors as well as Exceptions. A failed refresh/validation after
+          // rollback means the process cannot prove a coherent runtime state.
+          try {
+            await recoveryState.markRequired(
+              operationId: operationId,
+              safetyBackup: safetyBackup,
+              reason: 'activation-rollback-failed',
+            );
+          } catch (_) {
+            // markRequired fails closed in memory before persisting and leaves
+            // temp/previous marker sentinels for restart recovery.
+          }
+          Error.throwWithStackTrace(
+            const RestoreRecoveryRequiredException(),
+            rollbackStack,
           );
-          throw const RestoreRecoveryRequiredException();
         }
       }
-      rethrow;
+      Error.throwWithStackTrace(error, stack);
     } finally {
       await staging.dispose();
     }
@@ -502,7 +490,7 @@ final class LocalBackupManager {
     return _RestoreStagingWorkspace(root, stagingDatabase, stagingData);
   }
 
-  Future<void> _validateDatabase(Database db) async {
+  Future<void> _validateDatabase(DatabaseExecutor db) async {
     final integrity = await db.rawQuery('PRAGMA integrity_check');
     final integrityValue = integrity.isEmpty
         ? null
