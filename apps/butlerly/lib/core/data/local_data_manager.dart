@@ -51,6 +51,7 @@ final class LocalDataManager {
     'reference_data_translations',
     'duplicate_candidate_groups',
     'duplicate_candidate_group_transactions',
+    'entity_tombstones',
   ];
 
   static const _eraseOrder = <String>[
@@ -85,6 +86,10 @@ final class LocalDataManager {
     'reference_data',
     'tag_translations',
     'category_translations',
+    // Delete triggers above may have created tombstones. Erase-all means the
+    // local workspace is intentionally reset, so those tombstones must not
+    // survive and suppress records in a later restore.
+    'entity_tombstones',
   ];
 
   Future<Directory> evidenceDirectory() async {
