@@ -67,9 +67,16 @@ Future<void> bootstrap() async {
     final backupManager = services.isRegistered<LocalBackupManager>()
         ? services<LocalBackupManager>()
         : null;
-    // Now that any active safety path is reflected in the shared recovery state,
-    // private working copies and old validated safety history can be cleaned.
-    await backupManager?.cleanupOrphanedPrivateArtifacts();
+    final incident = recoveryState?.incident;
+    final recoveryIsUnknown =
+        incident != null && incident.safetyBackupPath.isEmpty;
+    // When recovery is unknown, preserve every safety snapshot. One of the old
+    // copies may be the only manual recovery option and there is no authoritative
+    // path yet to exempt from retention pruning. Cleanup resumes after recovery
+    // resolves or once a specific safety path has been established.
+    if (!recoveryIsUnknown) {
+      await backupManager?.cleanupOrphanedPrivateArtifacts();
+    }
   }
 
   // A controlled-recovery incident means the database/evidence pair or runtime
