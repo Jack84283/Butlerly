@@ -126,6 +126,55 @@ void main() {
     expect(recovered.single['amount_coefficient'], '100');
   });
 
+  test('invalid current evidence falls back to safety snapshot', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final timestamp = DateTime.utc(2026, 1, 1);
+    await fixture.insertTransaction('tx-evidence', timestamp, amount: '100');
+    await fixture.database.database.insert('provenances', {
+      'id': 'prov-evidence',
+      'source_type': 'manual',
+      'captured_at': timestamp.toIso8601String(),
+    });
+    await fixture.database.database.insert('evidence_items', {
+      'id': 'evidence-fallback',
+      'type': 'receipt',
+      'original_name': 'receipt.bin',
+      'media_type': 'application/octet-stream',
+      'provenance_id': 'prov-evidence',
+      'created_at': timestamp.toIso8601String(),
+      'local_file_name': 'receipt.bin',
+    });
+    final receipt = File(path.join(fixture.evidence.path, 'receipt.bin'));
+    await receipt.writeAsString('safe-evidence', flush: true);
+
+    final safetyDirectory = await fixture.data.safetyBackupDirectory();
+    final safety = File(path.join(safetyDirectory.path, 'manual-safety.butlerlybackup'));
+    await fixture.manager.createBackup(safety);
+    await fixture.manager.recoveryState.markRequired(
+      operationId: 'engine-failure',
+      safetyBackup: safety,
+      reason: 'engine-restore-recovery-pending',
+      retryCurrentState: true,
+    );
+
+    await receipt.delete();
+    expect(await receipt.exists(), isFalse);
+
+    await fixture.manager.recoverControlledState();
+
+    expect(fixture.manager.recoveryState.isRecoveryRequired, isFalse);
+    expect(await receipt.readAsString(), 'safe-evidence');
+    expect(
+      await fixture.database.database.query(
+        'transactions',
+        where: 'id = ?',
+        whereArgs: ['tx-evidence'],
+      ),
+      hasLength(1),
+    );
+  });
+
   test('Merge preserves an edit made after staging snapshot', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
@@ -242,6 +291,7 @@ final class _Fixture {
     this.documents,
     this.evidence,
     this.database,
+    this.data,
     this.manager,
   );
 
@@ -249,6 +299,7 @@ final class _Fixture {
   final Directory documents;
   final Directory evidence;
   final LocalDatabase database;
+  final LocalDataManager data;
   final LocalBackupManager manager;
 
   static Future<_Fixture> create() async {
@@ -273,6 +324,7 @@ final class _Fixture {
       documents,
       evidence,
       database,
+      data,
       LocalBackupManager(database, data),
     );
   }
