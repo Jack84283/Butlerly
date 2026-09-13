@@ -42,7 +42,7 @@ void main() {
     expect(rows.single['updated_at'], old);
   });
 
-  test('post-commit cleanup ambiguity never deletes live evidence', () async {
+  test('unproven post-commit cleanup state fails closed without deleting evidence', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
     final live = File(path.join(fixture.evidence.path, 'committed.bin'));
@@ -58,11 +58,18 @@ void main() {
       flush: true,
     );
 
-    await fixture.manager.recoverInterruptedRestore();
+    await expectLater(
+      fixture.manager.recoverInterruptedRestore(),
+      throwsA(isA<RestoreRecoveryRequiredException>()),
+    );
 
     expect(await live.exists(), isTrue);
     expect(await live.readAsString(), 'committed-evidence');
-    expect(await journal.exists(), isFalse);
+    expect(await journal.exists(), isTrue);
+    expect(
+      fixture.manager.recoveryState.incident?.reason,
+      'indeterminate-restore-recovery',
+    );
   });
 
   test('backup package keeps pre-write database state', () async {
@@ -93,8 +100,6 @@ void main() {
       'local_file_name': 'slow.bin',
     });
 
-    // Keep serialization active long enough for the competing write to be
-    // submitted while the independent read transaction owns its WAL snapshot.
     final slowEvidence = File(path.join(fixture.evidence.path, 'slow.bin'));
     await slowEvidence.writeAsBytes(List<int>.filled(2 * 1024 * 1024, 7));
     final backup = File(path.join(fixture.root.path, 'snapshot.butlerlybackup'));
