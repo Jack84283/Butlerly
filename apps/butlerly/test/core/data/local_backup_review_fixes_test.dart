@@ -318,7 +318,8 @@ void main() {
     );
     expect(rows, hasLength(1));
     expect(rows.single['name'], 'Concurrent local edit');
-    expect(DateTime.parse(rows.single['updated_at']! as String), isAfter(DateTime.utc(2025, 1, 1)));
+    final updatedAt = DateTime.parse(rows.single['updated_at']! as String);
+    expect(updatedAt.isAfter(DateTime.utc(2025, 1, 1)), isTrue);
     expect(await fixture.database.database.query('restore_context'), isEmpty);
   });
 
