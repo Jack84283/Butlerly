@@ -10,7 +10,8 @@ final class ButlerlyDatabase {
     required this.schemaSql,
     this.seedSql = const [],
     this.migrations = const {},
-  });
+    this.targetVersion = databaseVersion,
+  }) : assert(targetVersion >= 1 && targetVersion <= databaseVersion);
 
   static const databaseVersion = 8;
 
@@ -20,12 +21,15 @@ final class ButlerlyDatabase {
   final List<String> seedSql;
 
   /// Database-owned migration SQL keyed by its target schema version.
-  ///
-  /// Supplying a partial migration map intentionally caps the target version
-  /// at the highest supplied migration. This keeps historical migration tests
-  /// and recovery tools able to stop at a known intermediate schema. The app
-  /// supplies every migration through [databaseVersion].
   final Map<int, String> migrations;
+
+  /// Schema version this instance must open or migrate to.
+  ///
+  /// Application code should use the default current version. Historical
+  /// migration tests and recovery tools may explicitly request an older target.
+  /// Missing migration SQL below this target is an error rather than silently
+  /// lowering the schema Butlerly opens.
+  final int targetVersion;
   Database? _database;
 
   Database get connection {
@@ -39,17 +43,7 @@ final class ButlerlyDatabase {
     return database;
   }
 
-  int get _targetVersion {
-    if (migrations.isEmpty) return databaseVersion;
-    var highest = 1;
-    for (final version in migrations.keys) {
-      if (version > highest) highest = version;
-    }
-    return highest > databaseVersion ? databaseVersion : highest;
-  }
-
   Future<void> open() async {
-    final targetVersion = _targetVersion;
     try {
       _database = await factory.openDatabase(
         path,
