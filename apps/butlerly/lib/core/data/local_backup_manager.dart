@@ -85,15 +85,17 @@ final class LocalBackupManager {
       updatedAt: 'updated_at',
       createdAt: 'created_at',
     ),
+    // Categories precede Merchants because a user Merchant may reference a
+    // user Category through its default classification.
     _TableSpec(
-      'merchants',
+      'categories',
       ['id'],
       updatedAt: 'updated_at',
       createdAt: 'created_at',
       systemOwned: true,
     ),
     _TableSpec(
-      'categories',
+      'merchants',
       ['id'],
       updatedAt: 'updated_at',
       createdAt: 'created_at',
@@ -122,7 +124,7 @@ final class LocalBackupManager {
     _TableSpec(
       'transaction_tags',
       ['transaction_id', 'tag_id'],
-      mergeUnion: true,
+      createdAt: 'created_at',
     ),
     _TableSpec('evidence_items', ['id'], createdAt: 'created_at'),
     _TableSpec(
@@ -274,86 +276,102 @@ final class LocalBackupManager {
     // Validate and stage every evidence file before modifying live state.
     final prepared = await _prepareEvidence(evidencePayload, mode: mode);
     Directory? previousEvidence;
-    var evidenceActivated = false;
+    var activated = false;
     var restoredRows = 0;
     var keptNewer = 0;
     try {
       previousEvidence = await _activatePreparedEvidence(prepared.directory);
-      evidenceActivated = true;
-
-      await database.database.transaction((tx) async {
-        if (mode == LocalRestoreMode.replace) {
-          await _clearPortableState(tx);
-        } else {
-          keptNewer += await _applyBackupTombstones(
-            tx,
-            tablePayload,
-            backupTime,
-          );
-        }
-
-        for (final spec in _tables) {
-          final payload = (tablePayload[spec.name] as List? ?? const <Object?>[])
-              .cast<Map>()
-              .map((row) => row.cast<String, Object?>());
-          for (final row in payload) {
-            if (_isSystemOwned(spec, row)) continue;
-            if (mode == LocalRestoreMode.merge) {
-              if (await _hasNewerLocalTombstone(tx, spec, row, backupTime)) {
-                keptNewer++;
-                continue;
-              }
-              final local = await _findRow(tx, spec, row);
-              if (local != null && _rowChangedAfter(local, spec, backupTime)) {
-                keptNewer++;
-                continue;
-              }
-            }
-            await _upsertRow(tx, spec, row, merge: mode == LocalRestoreMode.merge);
-            await _clearTombstoneForRestoredRow(tx, spec, row);
-            restoredRows++;
-          }
-        }
-
-        if (mode == LocalRestoreMode.replace) {
-          final tombstones = (tablePayload['entity_tombstones'] as List? ??
-                  const <Object?>[])
-              .cast<Map>();
-          for (final raw in tombstones) {
-            final row = raw.cast<String, Object?>();
-            if (_isSystemId(row['entity_type'] as String?, row['entity_id'])) {
-              continue;
-            }
-            await tx.insert(
-              'entity_tombstones',
-              row,
-              conflictAlgorithm: ConflictAlgorithm.replace,
+      activated = true;
+      try {
+        await database.database.transaction((tx) async {
+          if (mode == LocalRestoreMode.replace) {
+            await _clearPortableState(tx);
+          } else {
+            keptNewer += await _applyBackupTombstones(
+              tx,
+              tablePayload,
+              backupTime,
             );
           }
-        }
 
-        for (final table in _derivedTables) {
-          await tx.delete(table);
-        }
-      });
+          for (final spec in _tables) {
+            final payload =
+                (tablePayload[spec.name] as List? ?? const <Object?>[])
+                    .cast<Map>()
+                    .map((row) => row.cast<String, Object?>());
+            for (final row in payload) {
+              if (_isSystemOwned(spec, row)) continue;
+              if (mode == LocalRestoreMode.merge) {
+                if (await _hasNewerLocalTombstone(tx, spec, row, backupTime)) {
+                  keptNewer++;
+                  continue;
+                }
+                final local = await _findRow(tx, spec, row);
+                if (local != null &&
+                    _rowChangedAfter(local, spec, backupTime)) {
+                  keptNewer++;
+                  continue;
+                }
+              }
+              await _upsertRow(tx, spec, row);
+              await _clearTombstoneForRestoredRow(tx, spec, row);
+              restoredRows++;
+            }
+          }
 
-      if (previousEvidence != null && await previousEvidence.exists()) {
-        await previousEvidence.delete(recursive: true);
-      }
-      return LocalRestoreResult(
-        mode: mode,
-        restoredRows: restoredRows,
-        keptNewerLocalRows: keptNewer,
-        restoredEvidence: prepared.addedCount,
-      );
-    } catch (_) {
-      if (evidenceActivated) {
+          if (mode == LocalRestoreMode.replace) {
+            final tombstones =
+                (tablePayload['entity_tombstones'] as List? ??
+                        const <Object?>[])
+                    .cast<Map>();
+            for (final raw in tombstones) {
+              final row = raw.cast<String, Object?>();
+              if (_isSystemId(
+                row['entity_type'] as String?,
+                row['entity_id'],
+              )) {
+                continue;
+              }
+              await tx.insert(
+                'entity_tombstones',
+                row,
+                conflictAlgorithm: ConflictAlgorithm.replace,
+              );
+            }
+          }
+
+          for (final table in _derivedTables) {
+            await tx.delete(table);
+          }
+        });
+      } catch (_) {
         await _rollbackEvidence(previousEvidence);
-      } else if (await prepared.directory.exists()) {
+        activated = false;
+        rethrow;
+      }
+    } catch (_) {
+      if (!activated && await prepared.directory.exists()) {
         await prepared.directory.delete(recursive: true);
       }
       rethrow;
     }
+
+    // The old evidence tree is only a recovery snapshot at this point. Its
+    // cleanup must not turn an already committed restore into a reported
+    // failure or attempt to roll the database back after commit.
+    if (previousEvidence != null && await previousEvidence.exists()) {
+      try {
+        await previousEvidence.delete(recursive: true);
+      } on FileSystemException {
+        // Safe to leave the recovery copy for later cleanup.
+      }
+    }
+    return LocalRestoreResult(
+      mode: mode,
+      restoredRows: restoredRows,
+      keptNewerLocalRows: keptNewer,
+      restoredEvidence: prepared.addedCount,
+    );
   }
 
   Future<List<Map<String, Object?>>> _portableRows(_TableSpec spec) async {
@@ -367,10 +385,7 @@ final class LocalBackupManager {
           orderBy: 'CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END, id',
         );
       case 'merchants':
-        return database.database.query(
-          spec.name,
-          where: 'is_built_in = 0',
-        );
+        return database.database.query(spec.name, where: 'is_built_in = 0');
       case 'tags':
         return database.database.query(
           spec.name,
@@ -439,20 +454,22 @@ final class LocalBackupManager {
     DateTime backupTime,
   ) async {
     var keptNewer = 0;
-    final tombstones = (tablePayload['entity_tombstones'] as List? ??
-            const <Object?>[])
-        .cast<Map>();
+    final tombstones =
+        (tablePayload['entity_tombstones'] as List? ?? const <Object?>[])
+            .cast<Map>();
     for (final raw in tombstones) {
       final tombstone = raw.cast<String, Object?>();
       final entityType = tombstone['entity_type'] as String?;
       final entityId = tombstone['entity_id'];
       final spec = entityType == null ? null : _specByName[entityType];
-      if (spec == null || spec.keys.length != 1 || entityId == null) continue;
+      if (spec == null || entityId == null) continue;
       if (_isSystemId(entityType, entityId)) continue;
+      final values = _keyValuesFromTombstone(spec, '$entityId');
+      if (values == null) continue;
       final localRows = await tx.query(
-        entityType,
-        where: '${spec.keys.single} = ?',
-        whereArgs: [entityId],
+        entityType!,
+        where: _keyWhere(spec),
+        whereArgs: values,
         limit: 1,
       );
       if (localRows.isNotEmpty &&
@@ -461,11 +478,7 @@ final class LocalBackupManager {
         continue;
       }
       if (localRows.isNotEmpty) {
-        await tx.delete(
-          entityType,
-          where: '${spec.keys.single} = ?',
-          whereArgs: [entityId],
-        );
+        await tx.delete(entityType, where: _keyWhere(spec), whereArgs: values);
       }
       await tx.insert(
         'entity_tombstones',
@@ -482,13 +495,12 @@ final class LocalBackupManager {
     Map<String, Object?> row,
     DateTime backupTime,
   ) async {
-    if (spec.keys.length != 1) return false;
-    final id = row[spec.keys.single];
+    final id = _tombstoneId(spec, row);
     if (id == null) return false;
     final results = await tx.query(
       'entity_tombstones',
       where: 'entity_type = ? AND entity_id = ? AND deleted_at > ?',
-      whereArgs: [spec.name, '$id', backupTime.toIso8601String()],
+      whereArgs: [spec.name, id, backupTime.toIso8601String()],
       limit: 1,
     );
     return results.isNotEmpty;
@@ -499,26 +511,48 @@ final class LocalBackupManager {
     _TableSpec spec,
     Map<String, Object?> row,
   ) async {
-    if (spec.keys.length != 1) return;
-    final id = row[spec.keys.single];
+    final id = _tombstoneId(spec, row);
     if (id == null) return;
     await tx.delete(
       'entity_tombstones',
       where: 'entity_type = ? AND entity_id = ?',
-      whereArgs: [spec.name, '$id'],
+      whereArgs: [spec.name, id],
     );
   }
+
+  String? _tombstoneId(_TableSpec spec, Map<String, Object?> row) {
+    if (spec.name == 'transaction_tags') {
+      final transactionId = row['transaction_id'];
+      final tagId = row['tag_id'];
+      if (transactionId == null || tagId == null) return null;
+      return '$transactionId|$tagId';
+    }
+    if (spec.keys.length != 1) return null;
+    final id = row[spec.keys.single];
+    return id == null ? null : '$id';
+  }
+
+  List<Object?>? _keyValuesFromTombstone(_TableSpec spec, String id) {
+    if (spec.name == 'transaction_tags') {
+      final separator = id.indexOf('|');
+      if (separator <= 0 || separator == id.length - 1) return null;
+      return [id.substring(0, separator), id.substring(separator + 1)];
+    }
+    return spec.keys.length == 1 ? [id] : null;
+  }
+
+  String _keyWhere(_TableSpec spec) =>
+      spec.keys.map((key) => '$key = ?').join(' AND ');
 
   Future<Map<String, Object?>?> _findRow(
     Transaction tx,
     _TableSpec spec,
     Map<String, Object?> row,
   ) async {
-    final where = spec.keys.map((key) => '$key = ?').join(' AND ');
     final values = spec.keys.map((key) => row[key]).toList(growable: false);
     final matches = await tx.query(
       spec.name,
-      where: where,
+      where: _keyWhere(spec),
       whereArgs: values,
       limit: 1,
     );
@@ -528,9 +562,8 @@ final class LocalBackupManager {
   Future<void> _upsertRow(
     Transaction tx,
     _TableSpec spec,
-    Map<String, Object?> row, {
-    required bool merge,
-  }) async {
+    Map<String, Object?> row,
+  ) async {
     if (spec.mergeUnion) {
       await tx.insert(
         spec.name,
@@ -544,9 +577,13 @@ final class LocalBackupManager {
       await tx.insert(spec.name, row);
       return;
     }
-    final where = spec.keys.map((key) => '$key = ?').join(' AND ');
     final values = spec.keys.map((key) => row[key]).toList(growable: false);
-    await tx.update(spec.name, row, where: where, whereArgs: values);
+    await tx.update(
+      spec.name,
+      row,
+      where: _keyWhere(spec),
+      whereArgs: values,
+    );
   }
 
   bool _rowChangedAfter(
