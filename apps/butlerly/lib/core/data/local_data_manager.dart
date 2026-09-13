@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:butlerly/core/database/local_database.dart';
+import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
@@ -159,7 +160,11 @@ final class LocalDataManager {
     return LocalDataExport(directory: destination, recordCount: recordCount);
   }
 
-  Future<void> eraseAll() async {
+  Future<void> eraseAll() => EvidenceMutationLock.runExclusive(() async {
+    // Privacy reset and restore share one evidence mutation boundary. Whichever
+    // operation acquires the lock first completes first; if erase follows an
+    // active restore, the final durable state is still erased and restore cannot
+    // repopulate the workspace after the reset returns.
     await database.persistenceDatabase.transaction((transaction) async {
       for (final table in _eraseOrder) {
         await transaction.delete(table);
@@ -177,5 +182,5 @@ final class LocalDataManager {
         }
       }
     }
-  }
+  });
 }
