@@ -39,12 +39,19 @@ Future<void> bootstrap() async {
       : null;
   await recoveryState?.initialize();
 
-  if (database.status == DatabaseStatus.ready &&
+  // A previously persisted controlled-recovery incident is authoritative. Do
+  // not run automatic filesystem reconciliation over a state already declared
+  // unsafe for normal use.
+  if (!(recoveryState?.isRecoveryRequired ?? false) &&
+      database.status == DatabaseStatus.ready &&
       services.isRegistered<LocalDataManager>()) {
     await recoverInterruptedLocalRestore(
       database,
       services<LocalDataManager>(),
     );
+    // Automatic recovery may itself discover ambiguity and persist a fail-closed
+    // marker. Reload the process-visible gate before any ordinary startup writes.
+    await recoveryState?.initialize();
   }
 
   // A persisted controlled-recovery incident means the database/evidence pair
