@@ -35,6 +35,7 @@ final class LocalBackupManager {
   /// the backup transaction.
   Future<File> createBackup(File destination) async {
     final persistence = database.persistenceDatabase;
+    await database.database.execute('PRAGMA busy_timeout = 30000');
     final lock = await persistence.factory.openDatabase(
       persistence.path,
       options: OpenDatabaseOptions(
