@@ -4,8 +4,12 @@ import 'dart:io';
 import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/database/local_database.dart';
+import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
+import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
+import 'package:butlerly_database/butlerly_database.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -64,6 +68,78 @@ void main() {
     expect(await captured.exists(), isTrue);
     expect(await captured.readAsString(), 'new evidence');
   });
+
+  test(
+    'unpublished evidence survives restore and publishes file with metadata',
+    () async {
+      final root = await Directory.systemTemp.createTemp(
+        'butlerly-preserve-publish-restore-',
+      );
+      final documents = Directory(path.join(root.path, 'documents'))
+        ..createSync();
+      final evidence = Directory(path.join(root.path, 'evidence'))..createSync();
+      final database = LocalDatabase(
+        logger: AppLogger(),
+        factory: databaseFactoryFfi,
+        databaseDirectory: root.path,
+      );
+      await database.initialize();
+      addTearDown(() async {
+        await database.close();
+        if (await root.exists()) await root.delete(recursive: true);
+      });
+
+      final data = LocalDataManager(
+        database,
+        documentsDirectory: documents,
+        localEvidenceDirectory: evidence,
+      );
+      final finance = FinanceServices(
+        SqliteTransactionRepository(database.persistenceDatabase),
+        SqlitePaymentSourceRepository(database.persistenceDatabase),
+        SqliteMerchantRepository(database.persistenceDatabase),
+        SqliteCategoryRepository(database.persistenceDatabase),
+        SqliteTagRepository(database.persistenceDatabase),
+        SqliteEvidenceRepository(database.persistenceDatabase),
+        SqliteUserPreferenceRepository(database.persistenceDatabase),
+      );
+      final store = LocalEvidenceStore(data, finance);
+      final manager = LocalBackupManager(database, data);
+      final backup = File(path.join(root.path, 'before-capture.butlerlybackup'));
+      await manager.createBackup(backup);
+
+      final source = File(path.join(root.path, 'statement.pdf'));
+      await source.writeAsBytes(<int>[1, 2, 3, 4], flush: true);
+      final preserved = await store.preserve(
+        XFile(source.path, name: 'statement.pdf', mimeType: 'application/pdf'),
+      );
+      final pending = await store.fileForPreserved(preserved);
+      expect(pending, isNotNull);
+      expect(await pending!.exists(), isTrue);
+      expect(path.isWithin(evidence.path, pending.path), isFalse);
+
+      // Replace is allowed to swap/delete the live evidence root, but it must
+      // not destroy a capture that has not yet published its SQLite metadata.
+      await manager.restore(backup, mode: LocalRestoreMode.replace);
+      expect(await pending.exists(), isTrue);
+
+      final stored = await store.storePreservedStatement(preserved);
+      expect(stored, isNotNull);
+      expect(await pending.exists(), isFalse);
+      final live = await store.fileFor(stored!);
+      expect(live, isNotNull);
+      expect(await live!.exists(), isTrue);
+      expect(await live.readAsBytes(), <int>[1, 2, 3, 4]);
+
+      final rows = await database.database.query(
+        'evidence_items',
+        where: 'id = ?',
+        whereArgs: [stored.id.value],
+      );
+      expect(rows, hasLength(1));
+      expect(rows.single['local_file_name'], preserved.localFileName);
+    },
+  );
 
   test('erase all waits for restore and leaves final state erased', () async {
     final root = await Directory.systemTemp.createTemp(
