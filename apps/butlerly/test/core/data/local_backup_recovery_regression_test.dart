@@ -119,6 +119,8 @@ void main() {
     const operation = 'restore-empty-origin';
     await fixture.evidence.create(recursive: true);
     await File(path.join(fixture.evidence.path, 'restored.bin')).writeAsString('new');
+    final originState = File('${fixture.evidence.path}.restore-origin.json');
+    await originState.writeAsString('{"rootExisted":false}', flush: true);
     final journal = File('${fixture.evidence.path}.restore-journal.json');
     await journal.writeAsString(
       '{"operationId":"$operation",'
@@ -131,7 +133,39 @@ void main() {
 
     expect(await fixture.evidence.exists(), isFalse);
     expect(await journal.exists(), isFalse);
+    expect(await originState.exists(), isFalse);
     expect(fixture.manager.recoveryState.isRecoveryRequired, isFalse);
+  });
+
+  test('missing previous tree for an existing origin fails closed', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final live = File(path.join(fixture.evidence.path, 'receipt.bin'));
+    await live.writeAsString('uncommitted-live');
+
+    const operation = 'restore-missing-previous';
+    final originState = File('${fixture.evidence.path}.restore-origin.json');
+    await originState.writeAsString('{"rootExisted":true}', flush: true);
+    final journal = File('${fixture.evidence.path}.restore-journal.json');
+    await journal.writeAsString(
+      '{"operationId":"$operation",'
+      '"previousPath":"${fixture.evidence.path}.restore-previous-$operation",'
+      '"stagingPath":"${fixture.evidence.path}.restore-$operation",'
+      '"phase":"dbWriting"}',
+    );
+
+    await expectLater(
+      fixture.manager.recoverInterruptedRestore(),
+      throwsA(isA<RestoreRecoveryRequiredException>()),
+    );
+
+    expect(await live.readAsString(), 'uncommitted-live');
+    expect(await journal.exists(), isTrue);
+    expect(await originState.exists(), isTrue);
+    expect(
+      fixture.manager.recoveryState.incident?.reason,
+      'missing-previous-evidence-recovery',
+    );
   });
 }
 
