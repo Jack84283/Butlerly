@@ -31,17 +31,30 @@ final class BackupEncryption {
   static const minimumPasswordLength = 12;
   static const _maximumHeaderLength = 64 * 1024;
   static const _macLength = 16;
+
+  // Current creation defaults. Restore reads the authenticated values recorded
+  // in the package header instead of requiring them to equal today's defaults,
+  // so strengthening these values later does not strand older backups.
   static const _argonMemoryKiB = 19 * 1024;
   static const _argonIterations = 2;
   static const _argonParallelism = 1;
   static const _saltLength = 16;
 
+  // Header values are consumed before authentication, so bound them tightly to
+  // avoid malicious packages requesting unbounded CPU or memory. These ranges
+  // deliberately admit stronger future parameters while rejecting unsafe ones.
+  static const _minimumSupportedArgonMemoryKiB = 16 * 1024;
+  static const _maximumSupportedArgonMemoryKiB = 256 * 1024;
+  static const _minimumSupportedArgonIterations = 2;
+  static const _maximumSupportedArgonIterations = 10;
+  static const _minimumSupportedArgonParallelism = 1;
+  static const _maximumSupportedArgonParallelism = 4;
+
   static final _cipher = AesGcm.with256bits();
-  static final _kdf = Argon2id(
-    memory: _argonMemoryKiB,
-    parallelism: _argonParallelism,
+  static final _kdf = _argon2id(
+    memoryKiB: _argonMemoryKiB,
     iterations: _argonIterations,
-    hashLength: 32,
+    parallelism: _argonParallelism,
   );
 
   Future<bool> isEncrypted(File file) async {
@@ -135,6 +148,9 @@ final class BackupEncryption {
     late List<int> headerBytes;
     late List<int> nonce;
     late List<int> salt;
+    late int memoryKiB;
+    late int iterations;
+    late int parallelism;
     late int cipherStart;
     late int cipherEnd;
     late List<int> macBytes;
@@ -164,13 +180,36 @@ final class BackupEncryption {
           header['version'] != version ||
           header['cipher'] != 'AES-256-GCM' ||
           header['kdf'] != 'Argon2id' ||
-          header['kdfMemoryKiB'] != _argonMemoryKiB ||
-          header['kdfIterations'] != _argonIterations ||
-          header['kdfParallelism'] != _argonParallelism) {
+          header['innerFormat'] != 'butlerly-backup-v2') {
         throw const FormatException('Unsupported encrypted backup format.');
       }
-      salt = base64Decode(header['salt']! as String);
-      nonce = base64Decode(header['nonce']! as String);
+
+      memoryKiB = _boundedHeaderInt(
+        header['kdfMemoryKiB'],
+        min: _minimumSupportedArgonMemoryKiB,
+        max: _maximumSupportedArgonMemoryKiB,
+        name: 'Argon2 memory',
+      );
+      iterations = _boundedHeaderInt(
+        header['kdfIterations'],
+        min: _minimumSupportedArgonIterations,
+        max: _maximumSupportedArgonIterations,
+        name: 'Argon2 iterations',
+      );
+      parallelism = _boundedHeaderInt(
+        header['kdfParallelism'],
+        min: _minimumSupportedArgonParallelism,
+        max: _maximumSupportedArgonParallelism,
+        name: 'Argon2 parallelism',
+      );
+
+      final rawSalt = header['salt'];
+      final rawNonce = header['nonce'];
+      if (rawSalt is! String || rawNonce is! String) {
+        throw const FormatException('Invalid encrypted backup parameters.');
+      }
+      salt = base64Decode(rawSalt);
+      nonce = base64Decode(rawNonce);
       if (salt.length != _saltLength || nonce.length != _cipher.nonceLength) {
         throw const FormatException('Invalid encrypted backup parameters.');
       }
@@ -192,7 +231,12 @@ final class BackupEncryption {
       await input.close();
     }
 
-    final secretKey = await _kdf.deriveKeyFromPassword(
+    final kdf = _argon2id(
+      memoryKiB: memoryKiB,
+      iterations: iterations,
+      parallelism: parallelism,
+    );
+    final secretKey = await kdf.deriveKeyFromPassword(
       password: password,
       nonce: salt,
     );
@@ -229,6 +273,29 @@ final class BackupEncryption {
       Error.throwWithStackTrace(failure, failureStack ?? StackTrace.current);
     }
     return destination;
+  }
+
+  static Argon2id _argon2id({
+    required int memoryKiB,
+    required int iterations,
+    required int parallelism,
+  }) => Argon2id(
+    memory: memoryKiB,
+    parallelism: parallelism,
+    iterations: iterations,
+    hashLength: 32,
+  );
+
+  static int _boundedHeaderInt(
+    Object? value, {
+    required int min,
+    required int max,
+    required String name,
+  }) {
+    if (value is! int || value < min || value > max) {
+      throw FormatException('Unsupported $name parameter.');
+    }
+    return value;
   }
 
   static Uint8List _encodeInt64(int value) {
