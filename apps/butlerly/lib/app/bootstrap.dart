@@ -41,19 +41,22 @@ Future<void> bootstrap() async {
 
   if (database.status == DatabaseStatus.ready &&
       services.isRegistered<LocalDataManager>()) {
-    final backupManager = services.isRegistered<LocalBackupManager>()
-        ? services<LocalBackupManager>()
-        : null;
-    await backupManager?.cleanupOrphanedPrivateArtifacts();
-
-    // Reconcile the engine journal using the same process-visible recovery state
-    // observed by the app. If persistence fails under storage pressure, the
-    // in-memory gate still remains closed for this process.
+    // Analyze durable restore intent before any retention cleanup. A crash can
+    // leave the safety-backup reference only in restore-origin.json; pruning
+    // history before reading that sidecar could delete the required recovery
+    // snapshot.
     await recoverInterruptedLocalRestore(
       database,
       services<LocalDataManager>(),
       recoveryState: recoveryState,
     );
+
+    final backupManager = services.isRegistered<LocalBackupManager>()
+        ? services<LocalBackupManager>()
+        : null;
+    // Now that any active safety path is reflected in the shared recovery state,
+    // private working copies and old validated safety history can be cleaned.
+    await backupManager?.cleanupOrphanedPrivateArtifacts();
   }
 
   // A controlled-recovery incident means the database/evidence pair or runtime
