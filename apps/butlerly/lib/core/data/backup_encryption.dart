@@ -226,7 +226,7 @@ final class BackupEncryption {
       if (failure is SecretBoxAuthenticationError) {
         throw const BackupPasswordOrIntegrityException();
       }
-      Error.throwWithStackTrace(failure!, failureStack ?? StackTrace.current);
+      Error.throwWithStackTrace(failure, failureStack ?? StackTrace.current);
     }
     return destination;
   }
