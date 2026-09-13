@@ -41,9 +41,6 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
   bool get _usesNativeMobileShare => Platform.isIOS || Platform.isAndroid;
 
   Future<void> _backup() async {
-    final password = await _createBackupPassword();
-    if (password == null || !mounted) return;
-
     final timestamp = DateTime.now().toUtc().toIso8601String().replaceAll(
       ':',
       '-',
@@ -51,6 +48,8 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     final fileName = 'Butlerly Backup $timestamp.butlerlybackup';
 
     if (_usesNativeMobileShare) {
+      final password = await _createBackupPassword();
+      if (password == null || !mounted) return;
       await _createAndShareMobileBackup(fileName, password);
       return;
     }
@@ -60,6 +59,9 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       acceptedTypeGroups: const [_backupType],
     );
     if (location == null || !mounted) return;
+
+    final password = await _createBackupPassword();
+    if (password == null || !mounted) return;
 
     setState(() => _busy = true);
     try {
@@ -82,9 +84,10 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     String password,
   ) async {
     setState(() => _busy = true);
-    final temporaryDirectory = await getTemporaryDirectory();
-    final file = File(path.join(temporaryDirectory.path, fileName));
+    File? file;
     try {
+      final temporaryDirectory = await getTemporaryDirectory();
+      file = File(path.join(temporaryDirectory.path, fileName));
       await services<LocalBackupManager>().createPortableBackup(
         file,
         password: password,
@@ -116,7 +119,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       if (mounted) _message(context.l10n.backupText('backupFailed'));
     } finally {
       try {
-        if (await file.exists()) await file.delete();
+        if (file != null && await file.exists()) await file.delete();
       } catch (_) {}
       if (mounted) setState(() => _busy = false);
     }
