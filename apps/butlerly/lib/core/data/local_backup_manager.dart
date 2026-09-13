@@ -348,7 +348,7 @@ final class LocalBackupManager {
       // Re-apply the original, already validated package to the current live
       // state. Merge therefore evaluates newer-local timestamps at activation
       // time instead of replacing the database with a stale staging snapshot.
-      final liveResult = await _engine.restore(file, mode: mode);
+      final liveResult = await _restoreLivePackage(file, mode: mode);
       liveActivated = true;
       await _validateDatabase(database.database);
       if (postActivationRefresh != null) {
@@ -358,7 +358,7 @@ final class LocalBackupManager {
     } catch (error, stack) {
       if (liveActivated) {
         try {
-          await _engine.restore(
+          await _restoreLivePackage(
             safetyBackup,
             mode: engine.LocalRestoreMode.replace,
           );
@@ -366,7 +366,7 @@ final class LocalBackupManager {
           if (postActivationRefresh != null) {
             await postActivationRefresh();
           }
-        } catch (rollbackError, rollbackStack) {
+        } catch (_, rollbackStack) {
           // Catch Errors as well as Exceptions. A failed refresh/validation after
           // rollback means the process cannot prove a coherent runtime state.
           try {
@@ -391,6 +391,40 @@ final class LocalBackupManager {
     }
   }
 
+  Future<engine.LocalRestoreResult> _restoreLivePackage(
+    File file, {
+    required engine.LocalRestoreMode mode,
+  }) async {
+    final root = await localDataManager.evidenceDirectory();
+    final originState = File('${root.path}.restore-origin.json');
+    final temporary = File('${originState.path}.tmp');
+    final journal = File('${root.path}.restore-journal.json');
+
+    await temporary.writeAsString(
+      jsonEncode({'rootExisted': await root.exists()}),
+      flush: true,
+    );
+    if (await originState.exists()) await originState.delete();
+    await temporary.rename(originState.path);
+
+    try {
+      final result = await _engine.restore(file, mode: mode);
+      await _deleteFileBestEffort(originState);
+      await _deleteFileBestEffort(temporary);
+      return result;
+    } catch (_) {
+      // The engine removes its journal after a successful pre-commit rollback.
+      // In that case the sidecar is stale and can be discarded. If the journal
+      // remains, retain the sidecar so startup recovery knows the original root
+      // state without guessing.
+      if (!await journal.exists()) {
+        await _deleteFileBestEffort(originState);
+        await _deleteFileBestEffort(temporary);
+      }
+      rethrow;
+    }
+  }
+
   /// Attempts explicit recovery from the retained pre-restore safety snapshot.
   ///
   /// This is the only write action exposed while the application is in
@@ -411,7 +445,7 @@ final class LocalBackupManager {
 
     await EvidenceMutationLock.runExclusive(() async {
       await _assertSupportedBackupSchema(safetyBackup);
-      await _engine.restore(
+      await _restoreLivePackage(
         safetyBackup,
         mode: engine.LocalRestoreMode.replace,
       );
