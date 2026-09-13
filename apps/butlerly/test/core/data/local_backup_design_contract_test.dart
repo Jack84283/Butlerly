@@ -59,7 +59,7 @@ void main() {
     );
   });
 
-  test('persistent refresh failure rolls back and requires recovery', () async {
+  test('refresh failure preserves activated state and retries in recovery', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
     final timestamp = DateTime.utc(2026, 1, 1);
@@ -93,19 +93,37 @@ void main() {
       throwsA(isA<RestoreRecoveryRequiredException>()),
     );
 
-    final restored = await fixture.database.database.query(
+    final activated = await fixture.database.database.query(
       'transactions',
       where: 'id = ?',
       whereArgs: ['tx-1'],
     );
-    expect(restored, hasLength(1));
-    expect(restored.single['amount_coefficient'], '200');
-    expect(refreshCalls, 2);
+    expect(activated, hasLength(1));
+    expect(activated.single['amount_coefficient'], '100');
+    expect(refreshCalls, 1);
     expect(fixture.manager.recoveryState.isRecoveryRequired, isTrue);
+    expect(fixture.manager.recoveryState.incident?.retryCurrentState, isTrue);
     expect(
       fixture.manager.recoveryState.incident?.reason,
-      'activation-rollback-failed',
+      'post-activation-validation-or-refresh-failed',
     );
+    expect(
+      fixture.manager.recoveryState.incident?.safetyBackupPath,
+      isNotEmpty,
+    );
+
+    await fixture.manager.recoverControlledState(
+      postActivationRefresh: () async => refreshCalls++,
+    );
+
+    expect(refreshCalls, 2);
+    expect(fixture.manager.recoveryState.isRecoveryRequired, isFalse);
+    final recovered = await fixture.database.database.query(
+      'transactions',
+      where: 'id = ?',
+      whereArgs: ['tx-1'],
+    );
+    expect(recovered.single['amount_coefficient'], '100');
   });
 
   test('Merge preserves an edit made after staging snapshot', () async {
@@ -116,7 +134,6 @@ void main() {
     final backup = File(path.join(fixture.root.path, 'concurrent.butlerlybackup'));
     await fixture.manager.createBackup(backup);
 
-    // Slow the evidence-copy phase after VACUUM INTO has fixed the staging DB.
     final slowEvidence = File(path.join(fixture.evidence.path, 'slow-stage.bin'));
     await slowEvidence.writeAsBytes(
       List<int>.filled(24 * 1024 * 1024, 7),
@@ -173,6 +190,34 @@ void main() {
         )
         .toList();
     expect(stageDirectories, isEmpty);
+  });
+
+  test('successful restores retain at most two safety snapshots', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final timestamp = DateTime.utc(2026, 1, 1);
+    await fixture.insertTransaction('tx-retention', timestamp, amount: '100');
+    final backup = File(path.join(fixture.root.path, 'retention.butlerlybackup'));
+    await fixture.manager.createBackup(backup);
+
+    for (var index = 0; index < 4; index++) {
+      await fixture.database.database.update(
+        'transactions',
+        {'description': 'local-$index'},
+        where: 'id = ?',
+        whereArgs: ['tx-retention'],
+      );
+      await fixture.manager.restore(backup, mode: LocalRestoreMode.merge);
+    }
+
+    final safetyDirectory = Directory(
+      path.join(fixture.root.path, '.butlerly-recovery', 'safety-backups'),
+    );
+    final files = await safetyDirectory
+        .list(followLinks: false)
+        .where((entity) => entity is File && entity.path.endsWith('.butlerlybackup'))
+        .toList();
+    expect(files.length, lessThanOrEqualTo(2));
   });
 }
 
