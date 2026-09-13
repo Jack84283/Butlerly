@@ -68,12 +68,17 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       if (mode == LocalRestoreMode.replace && !await _confirmReplace()) return;
       if (!mounted) return;
       setState(() => _busy = true);
-      final result = await manager.restore(file, mode: mode);
-      await services<FinanceServices>().seedInitialMasterData(
-        buildInitialMasterData(),
+      final result = await manager.restore(
+        file,
+        mode: mode,
+        postActivationRefresh: () async {
+          await services<FinanceServices>().seedInitialMasterData(
+            buildInitialMasterData(),
+          );
+          ref.invalidate(userPreferenceProvider);
+          notifyTransactionChanged();
+        },
       );
-      ref.invalidate(userPreferenceProvider);
-      notifyTransactionChanged();
       if (!mounted) return;
       final summary = context.l10n
           .backupText('restoreResult')
