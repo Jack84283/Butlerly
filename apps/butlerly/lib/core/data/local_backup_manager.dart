@@ -132,7 +132,12 @@ final class LocalBackupManager {
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
     try {
+      // Generated rows are not authoritative and must not win a timestamp
+      // comparison against a durable decision carried by the backup.
+      await _purgeGeneratedWorkflowState();
       final result = await _engine.restore(file, mode: mode);
+      // Older format-v2 packages may still contain generated workflow rows.
+      // Purge again after restore so they are rebuilt from authoritative data.
       await _purgeGeneratedWorkflowState();
       return result;
     } finally {
