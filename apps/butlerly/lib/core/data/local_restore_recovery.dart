@@ -33,18 +33,22 @@ Future<void> recoverInterruptedLocalRestore(
     // delete the live evidence tree.
   }
 
-  final operationId = data?['operationId'] as String?;
-  final committedRows = operationId == null
-      ? const <Map<String, Object?>>[]
-      : await database.database.query(
-          'restore_commits',
-          columns: ['operation_id'],
-          where: 'operation_id = ?',
-          whereArgs: [operationId],
-          limit: 1,
-        );
-  final committed = committedRows.isNotEmpty;
   final recovery = await _discoverRecoveryDirectories(root);
+  final markerRows = await database.database.query(
+    'restore_commits',
+    columns: ['operation_id'],
+  );
+  final markerIds = markerRows
+      .map((row) => row['operation_id'])
+      .whereType<String>()
+      .toSet();
+  final journalOperationId = data?['operationId'] as String?;
+  final committedOperationId = _committedOperationId(
+    journalOperationId: journalOperationId,
+    markerIds: markerIds,
+    recovery: recovery,
+  );
+  final committed = committedOperationId != null;
 
   final journalPrevious = data?['previousPath'] as String?;
   final journalStaging = data?['stagingPath'] as String?;
@@ -60,8 +64,8 @@ Future<void> recoverInterruptedLocalRestore(
 
   if (committed) {
     // DB commit is authoritative: keep the live evidence tree and only remove
-    // recovery artifacts. Remove the journal before the commit marker so a
-    // crash can never leave "journal present, marker absent" after success.
+    // recovery artifacts. Remove the journal before the matching commit marker
+    // so a crash can never leave "journal present, marker absent" after success.
     for (final directory in {...previousCandidates, ...stagingCandidates}) {
       if (await directory.exists()) await directory.delete(recursive: true);
     }
@@ -69,7 +73,7 @@ Future<void> recoverInterruptedLocalRestore(
     await database.database.delete(
       'restore_commits',
       where: 'operation_id = ?',
-      whereArgs: [operationId],
+      whereArgs: [committedOperationId],
     );
     return;
   }
@@ -92,8 +96,32 @@ Future<void> recoverInterruptedLocalRestore(
   }
   if (await journal.exists()) await journal.delete();
   // Once filesystem recovery is complete and no journal remains, no marker can
-  // be authoritative. This also clears residue from a torn/unparseable journal.
+  // be authoritative. This also clears residue from an unrelated stale marker.
   await database.database.delete('restore_commits');
+}
+
+String? _committedOperationId({
+  required String? journalOperationId,
+  required Set<String> markerIds,
+  required _RecoveryDirectories recovery,
+}) {
+  if (journalOperationId != null && markerIds.contains(journalOperationId)) {
+    return journalOperationId;
+  }
+
+  // If the journal is torn before its operation ID can be read, a durable DB
+  // marker may still be matched safely to deterministic recovery directories.
+  // This distinguishes a genuinely committed restore from an unrelated stale
+  // marker without trusting "any marker exists".
+  for (final operationId in markerIds) {
+    final suffix = '-$operationId';
+    final matchesRecoveryDirectory = <Directory>[
+      ...recovery.previous,
+      ...recovery.staging,
+    ].any((directory) => directory.path.endsWith(suffix));
+    if (matchesRecoveryDirectory) return operationId;
+  }
+  return null;
 }
 
 Future<_RecoveryDirectories> _discoverRecoveryDirectories(Directory root) async {
