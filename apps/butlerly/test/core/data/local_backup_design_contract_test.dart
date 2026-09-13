@@ -52,7 +52,9 @@ void main() {
       isTrue,
     );
     expect(
-      Directory(path.join(fixture.documents.path, 'Butlerly Safety Backups')).existsSync(),
+      Directory(
+        path.join(fixture.documents.path, 'Butlerly Safety Backups'),
+      ).existsSync(),
       isFalse,
     );
   });
@@ -106,6 +108,52 @@ void main() {
     );
   });
 
+  test('Merge preserves an edit made after staging snapshot', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final old = DateTime.utc(2026, 1, 1);
+    await fixture.insertTransaction('tx-concurrent', old, amount: '100');
+    final backup = File(path.join(fixture.root.path, 'concurrent.butlerlybackup'));
+    await fixture.manager.createBackup(backup);
+
+    // Slow the evidence-copy phase after VACUUM INTO has fixed the staging DB.
+    final slowEvidence = File(path.join(fixture.evidence.path, 'slow-stage.bin'));
+    await slowEvidence.writeAsBytes(
+      List<int>.filled(24 * 1024 * 1024, 7),
+      flush: true,
+    );
+
+    final restoreFuture = fixture.manager.restore(
+      backup,
+      mode: LocalRestoreMode.merge,
+    );
+    final stageEvidence = await _waitForStagingEvidence(fixture.root);
+    expect(stageEvidence, isNotNull);
+
+    await fixture.database.database.update(
+      'transactions',
+      {
+        'amount_coefficient': '300',
+        'updated_at': DateTime.now()
+            .toUtc()
+            .add(const Duration(minutes: 5))
+            .toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: ['tx-concurrent'],
+    );
+
+    await restoreFuture;
+    final rows = await fixture.database.database.query(
+      'transactions',
+      columns: ['amount_coefficient'],
+      where: 'id = ?',
+      whereArgs: ['tx-concurrent'],
+    );
+    expect(rows, hasLength(1));
+    expect(rows.single['amount_coefficient'], '300');
+  });
+
   test('isolated restore staging is removed after successful activation', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
@@ -126,6 +174,21 @@ void main() {
         .toList();
     expect(stageDirectories, isEmpty);
   });
+}
+
+Future<Directory?> _waitForStagingEvidence(Directory root) async {
+  for (var attempt = 0; attempt < 5000; attempt++) {
+    await for (final entity in root.list(followLinks: false)) {
+      if (entity is! Directory ||
+          !path.basename(entity.path).startsWith('.butlerly-restore-stage-')) {
+        continue;
+      }
+      final evidence = Directory(path.join(entity.path, 'evidence'));
+      if (await evidence.exists()) return evidence;
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 1));
+  }
+  return null;
 }
 
 final class _Fixture {
