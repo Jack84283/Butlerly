@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:butlerly/core/data/local_backup_engine.dart' as engine;
@@ -5,7 +6,8 @@ import 'package:butlerly/core/data/local_backup_snapshot_writer.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/data/local_restore_recovery.dart';
 import 'package:butlerly/core/database/local_database.dart';
-import 'package:butlerly_database/butlerly_database.dart' show Sqflite;
+import 'package:butlerly_database/butlerly_database.dart'
+    show Sqflite, int64FromBytes, sha256Bytes, sha256FileRange;
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common/sqlite_api.dart';
 
@@ -30,6 +32,8 @@ final class LocalBackupManager {
   final LocalDataManager localDataManager;
   final engine.LocalBackupManager _engine;
   final LocalBackupSnapshotWriter _snapshotWriter;
+
+  static final _backupMagic = utf8.encode('BUTLERLYBACKUP2');
 
   /// Creates one logical database snapshot without rejecting concurrent app
   /// writes. WAL lets a dedicated reader keep its established snapshot while
@@ -114,13 +118,20 @@ final class LocalBackupManager {
       // Replace is destructive after it commits. Always preserve the current
       // local workspace in a Butlerly-managed package before mutation starts.
       await _createPreRestoreSafetyBackup();
-    }
-
-    if (mode != engine.LocalRestoreMode.merge) {
       final result = await _engine.restore(file, mode: mode);
       await _purgeGeneratedWorkflowState();
       return result;
     }
+
+    // Validate every evidence byte and prove the filesystem staging operation
+    // can complete before changing any local workflow state. This makes a
+    // corrupt/truncated package or a dangerous remap collision a no-op locally.
+    await _preflightMergeRestore(file);
+
+    // Generated rows are not authoritative. Purge them before restore_context
+    // is installed so the preserve-newer relationship triggers cannot protect
+    // a newly generated unresolved duplicate membership from this cleanup.
+    await _purgeGeneratedWorkflowState();
 
     final inspection = await _engine.inspect(file);
     await database.database.insert(
@@ -131,18 +142,19 @@ final class LocalBackupManager {
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+
+    late final engine.LocalRestoreResult result;
     try {
-      // Generated rows are not authoritative and must not win a timestamp
-      // comparison against a durable decision carried by the backup.
-      await _purgeGeneratedWorkflowState();
-      final result = await _engine.restore(file, mode: mode);
-      // Older format-v2 packages may still contain generated workflow rows.
-      // Purge again after restore so they are rebuilt from authoritative data.
-      await _purgeGeneratedWorkflowState();
-      return result;
+      result = await _engine.restore(file, mode: mode);
     } finally {
       await database.database.delete('restore_context', where: 'id = 1');
     }
+
+    // Older format-v2 packages may still contain generated workflow rows.
+    // Purge them only after restore_context is gone for the same reason as the
+    // pre-restore purge above.
+    await _purgeGeneratedWorkflowState();
+    return result;
   }
 
   Future<File> _createPreRestoreSafetyBackup() async {
@@ -154,6 +166,156 @@ final class LocalBackupManager {
     return createBackup(
       File(path.join(directory.path, 'Before Restore $timestamp.butlerlybackup')),
     );
+  }
+
+  /// Performs the expensive validation/staging phase without touching the live
+  /// database or evidence root. The actual restore intentionally repeats this
+  /// work so the engine remains the sole owner of activation and crash recovery.
+  Future<void> _preflightMergeRestore(File file) async {
+    final package = await _readPreflightPackage(file);
+    final root = await localDataManager.evidenceDirectory();
+    final staging = Directory(
+      '${root.path}.restore-preflight-${DateTime.now().microsecondsSinceEpoch}',
+    );
+    if (await staging.exists()) await staging.delete(recursive: true);
+    await staging.create(recursive: true);
+    try {
+      if (await root.exists()) await _copyDirectory(root, staging);
+      for (final item in package.evidence) {
+        final normalized = path.normalize(item.relativePath);
+        if (_unsafeRelativePath(normalized)) {
+          throw const FormatException('Unsafe evidence path.');
+        }
+        final actualHash = await sha256FileRange(
+          file,
+          start: item.offset,
+          endExclusive: item.offset + item.length,
+        );
+        if (actualHash != item.sha256) {
+          throw const FormatException('Evidence integrity validation failed.');
+        }
+
+        var destination = File(path.join(staging.path, normalized));
+        if (await destination.exists()) {
+          final existingHash = await sha256FileRange(destination);
+          if (existingHash == item.sha256) continue;
+
+          // Mirror the engine's current deterministic remap. The preflight must
+          // prove that target is either unused or already contains the exact
+          // backup bytes; otherwise the engine's later openWrite would truncate
+          // unrelated local evidence.
+          final extension = path.extension(normalized);
+          final base = path.basenameWithoutExtension(normalized);
+          final remapped = path.join(
+            path.dirname(normalized),
+            '$base.backup-${item.sha256.substring(0, 8)}$extension',
+          );
+          destination = File(path.join(staging.path, remapped));
+          if (await destination.exists()) {
+            final remapHash = await sha256FileRange(destination);
+            if (remapHash != item.sha256) {
+              throw StateError(
+                'Evidence collision remap target already contains different bytes.',
+              );
+            }
+            continue;
+          }
+        }
+
+        await destination.parent.create(recursive: true);
+        final sink = destination.openWrite();
+        try {
+          await sink.addStream(
+            file.openRead(item.offset, item.offset + item.length),
+          );
+          await sink.flush();
+        } finally {
+          await sink.close();
+        }
+      }
+    } finally {
+      if (await staging.exists()) await staging.delete(recursive: true);
+    }
+  }
+
+  Future<_PreflightPackage> _readPreflightPackage(File file) async {
+    final raf = await file.open(mode: FileMode.read);
+    try {
+      final magic = await raf.read(_backupMagic.length);
+      if (!_listEquals(magic, _backupMagic)) {
+        throw const FormatException('Unsupported Butlerly backup format.');
+      }
+      final lengthBytes = await raf.read(8);
+      if (lengthBytes.length != 8) {
+        throw const FormatException('Incomplete Butlerly backup header.');
+      }
+      final metadataLength = int64FromBytes(lengthBytes);
+      if (metadataLength <= 0 || metadataLength > 128 * 1024 * 1024) {
+        throw const FormatException('Invalid Butlerly backup metadata length.');
+      }
+      final expectedHashBytes = await raf.read(64);
+      if (expectedHashBytes.length != 64) {
+        throw const FormatException('Incomplete Butlerly backup checksum.');
+      }
+      final metadataBytes = await raf.read(metadataLength);
+      if (metadataBytes.length != metadataLength) {
+        throw const FormatException('Incomplete Butlerly backup metadata.');
+      }
+      if (sha256Bytes(metadataBytes) != ascii.decode(expectedHashBytes)) {
+        throw const FormatException(
+          'Backup metadata integrity validation failed.',
+        );
+      }
+      final decoded = jsonDecode(utf8.decode(metadataBytes));
+      if (decoded is! Map) {
+        throw const FormatException('Invalid Butlerly backup metadata.');
+      }
+      final metadata = decoded.cast<String, Object?>();
+      final manifest = (metadata['manifest'] as Map?)?.cast<String, Object?>();
+      final evidenceRaw = metadata['evidence'] as List?;
+      if (manifest == null || evidenceRaw == null) {
+        throw const FormatException('Incomplete Butlerly backup metadata.');
+      }
+      if (manifest['format'] != 'butlerly-backup' ||
+          manifest['formatVersion'] != 2) {
+        throw const FormatException('Unsupported Butlerly backup format.');
+      }
+      final sourceSchema = manifest['schemaVersion'] as int?;
+      if (sourceSchema == null || sourceSchema > 8) {
+        throw const FormatException(
+          'Backup was created by a newer Butlerly schema.',
+        );
+      }
+
+      var offset = _backupMagic.length + 8 + 64 + metadataLength;
+      final evidence = <_PreflightEvidence>[];
+      for (final raw in evidenceRaw.cast<Map>()) {
+        final item = raw.cast<String, Object?>();
+        final relative = item['path'] as String?;
+        final length = item['length'] as int?;
+        final hash = item['sha256'] as String?;
+        if (relative == null || length == null || length < 0 || hash == null) {
+          throw const FormatException('Invalid evidence descriptor.');
+        }
+        evidence.add(
+          _PreflightEvidence(
+            relativePath: relative,
+            length: length,
+            sha256: hash,
+            offset: offset,
+          ),
+        );
+        offset += length;
+      }
+      if (await file.length() != offset) {
+        throw const FormatException(
+          'Backup file length does not match its manifest.',
+        );
+      }
+      return _PreflightPackage(evidence);
+    } finally {
+      await raf.close();
+    }
   }
 
   /// Generated workflow candidates are rebuilt from the restored authoritative
@@ -214,4 +376,52 @@ final class LocalBackupManager {
     }
     return count;
   }
+
+  Future<void> _copyDirectory(
+    Directory source,
+    Directory destination,
+  ) async {
+    await for (final entity in source.list(recursive: true)) {
+      final relative = path.relative(entity.path, from: source.path);
+      final target = path.join(destination.path, relative);
+      if (entity is Directory) {
+        await Directory(target).create(recursive: true);
+      } else if (entity is File) {
+        final file = File(target);
+        await file.parent.create(recursive: true);
+        await entity.copy(file.path);
+      }
+    }
+  }
+
+  bool _unsafeRelativePath(String value) =>
+      path.isAbsolute(value) || value == '..' || value.startsWith('../');
+
+  bool _listEquals(List<int> left, List<int> right) {
+    if (left.length != right.length) return false;
+    for (var index = 0; index < left.length; index++) {
+      if (left[index] != right[index]) return false;
+    }
+    return true;
+  }
+}
+
+final class _PreflightPackage {
+  const _PreflightPackage(this.evidence);
+
+  final List<_PreflightEvidence> evidence;
+}
+
+final class _PreflightEvidence {
+  const _PreflightEvidence({
+    required this.relativePath,
+    required this.length,
+    required this.sha256,
+    required this.offset,
+  });
+
+  final String relativePath;
+  final int length;
+  final String sha256;
+  final int offset;
 }
