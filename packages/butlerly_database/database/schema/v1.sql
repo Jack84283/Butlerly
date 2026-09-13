@@ -79,8 +79,12 @@ CREATE TABLE attachment_links (
 CREATE TABLE categories (
       id TEXT PRIMARY KEY NOT NULL,
       name TEXT NOT NULL,
-      origin TEXT NOT NULL
-    , parent_id TEXT REFERENCES categories(id), status TEXT NOT NULL DEFAULT 'active');
+      origin TEXT NOT NULL,
+      parent_id TEXT REFERENCES categories(id),
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at TEXT NOT NULL DEFAULT '',
+      updated_at TEXT NOT NULL DEFAULT ''
+    );
 
 CREATE TABLE category_translations (
       category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
@@ -115,8 +119,16 @@ CREATE TABLE evidence_items (
       media_type TEXT NOT NULL,
       provenance_id TEXT NOT NULL REFERENCES provenances(id),
       created_at TEXT NOT NULL,
-      source_language TEXT
-    , local_file_name TEXT);
+      source_language TEXT,
+      local_file_name TEXT
+    );
+
+CREATE TABLE entity_tombstones (
+      entity_type TEXT NOT NULL,
+      entity_id TEXT NOT NULL,
+      deleted_at TEXT NOT NULL,
+      PRIMARY KEY(entity_type, entity_id)
+    );
 
 CREATE TABLE exchange_rates (
       id TEXT PRIMARY KEY NOT NULL,
@@ -147,27 +159,55 @@ CREATE TABLE financial_statements (
       period_end TEXT,
       extraction_message TEXT,
       created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL, statement_date TEXT, currency TEXT, opening_balance TEXT, closing_balance TEXT, original_filename TEXT, raw_text_reference TEXT,
+      updated_at TEXT NOT NULL,
+      statement_date TEXT,
+      currency TEXT,
+      opening_balance TEXT,
+      closing_balance TEXT,
+      original_filename TEXT,
+      raw_text_reference TEXT,
       CHECK ((period_start IS NULL) = (period_end IS NULL))
     );
 
 CREATE TABLE merchants (
       id TEXT PRIMARY KEY NOT NULL,
-      name TEXT NOT NULL
-    , status TEXT NOT NULL DEFAULT 'active', raw_name TEXT,
+      name TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      raw_name TEXT,
       normalized_name TEXT NOT NULL DEFAULT '',
       default_category_id TEXT REFERENCES categories(id),
       default_subcategory_id TEXT REFERENCES categories(id),
-      is_built_in INTEGER NOT NULL DEFAULT 0);
+      is_built_in INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT '',
+      updated_at TEXT NOT NULL DEFAULT ''
+    );
 
-CREATE TABLE normalized_money (transaction_id TEXT NOT NULL REFERENCES transactions(id) ON DELETE CASCADE, exchange_rate_id TEXT REFERENCES exchange_rates(id), amount_coefficient TEXT NOT NULL, amount_scale INTEGER NOT NULL CHECK(amount_scale >= 0), currency TEXT NOT NULL, normalization_source TEXT NOT NULL DEFAULT 'exchangeRate', base_currency TEXT NOT NULL, effective_date TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(transaction_id, exchange_rate_id));
+CREATE TABLE normalized_money (
+      transaction_id TEXT NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+      exchange_rate_id TEXT REFERENCES exchange_rates(id),
+      amount_coefficient TEXT NOT NULL,
+      amount_scale INTEGER NOT NULL CHECK(amount_scale >= 0),
+      currency TEXT NOT NULL,
+      normalization_source TEXT NOT NULL DEFAULT 'exchangeRate',
+      base_currency TEXT NOT NULL,
+      effective_date TEXT NOT NULL DEFAULT '',
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY(transaction_id, exchange_rate_id)
+    );
 
 CREATE TABLE payment_sources (
       id TEXT PRIMARY KEY NOT NULL,
       name TEXT NOT NULL,
       type TEXT NOT NULL,
-      status TEXT NOT NULL
-    , display_identity TEXT, last_four TEXT, issuer TEXT, currency TEXT, note TEXT);
+      status TEXT NOT NULL,
+      display_identity TEXT,
+      last_four TEXT,
+      issuer TEXT,
+      currency TEXT,
+      note TEXT,
+      created_at TEXT NOT NULL DEFAULT '',
+      updated_at TEXT NOT NULL DEFAULT ''
+    );
 
 CREATE TABLE provenances (
       id TEXT PRIMARY KEY NOT NULL,
@@ -241,7 +281,15 @@ CREATE TABLE statement_rows (
       status TEXT NOT NULL,
       transaction_id TEXT REFERENCES transactions(id),
       created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL, merchant_id TEXT REFERENCES merchants(id), category_id TEXT REFERENCES categories(id), tag_ids TEXT, payment_source_id TEXT REFERENCES payment_sources(id), source_reference_id TEXT, review_reason TEXT, disposition_reason TEXT, status_before_skip TEXT,
+      updated_at TEXT NOT NULL,
+      merchant_id TEXT REFERENCES merchants(id),
+      category_id TEXT REFERENCES categories(id),
+      tag_ids TEXT,
+      payment_source_id TEXT REFERENCES payment_sources(id),
+      source_reference_id TEXT,
+      review_reason TEXT,
+      disposition_reason TEXT,
+      status_before_skip TEXT,
       subcategory_id TEXT REFERENCES categories(id),
       UNIQUE(statement_id, position)
     );
@@ -271,8 +319,11 @@ CREATE TABLE tag_translations (
 
 CREATE TABLE tags (
       id TEXT PRIMARY KEY NOT NULL,
-      name TEXT NOT NULL
-    , status TEXT NOT NULL DEFAULT 'active');
+      name TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at TEXT NOT NULL DEFAULT '',
+      updated_at TEXT NOT NULL DEFAULT ''
+    );
 
 CREATE TABLE transaction_provenances (
       transaction_id TEXT NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
@@ -283,6 +334,7 @@ CREATE TABLE transaction_provenances (
 CREATE TABLE transaction_tags (
       transaction_id TEXT NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
       tag_id TEXT NOT NULL REFERENCES tags(id),
+      created_at TEXT NOT NULL DEFAULT '',
       PRIMARY KEY(transaction_id, tag_id)
     );
 
@@ -304,8 +356,13 @@ CREATE TABLE transactions (
       merchant_id TEXT REFERENCES merchants(id),
       category_id TEXT REFERENCES categories(id),
       created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL, transaction_date TEXT, occurred_at_utc TEXT, time_zone_id TEXT, external_reference TEXT,
-      subcategory_id TEXT REFERENCES categories(id), normalized_description TEXT NOT NULL DEFAULT '',
+      updated_at TEXT NOT NULL,
+      transaction_date TEXT,
+      occurred_at_utc TEXT,
+      time_zone_id TEXT,
+      external_reference TEXT,
+      subcategory_id TEXT REFERENCES categories(id),
+      normalized_description TEXT NOT NULL DEFAULT '',
       CHECK ((occurred_at IS NOT NULL) != (unknown_time_reason IS NOT NULL))
     );
 
@@ -314,53 +371,200 @@ CREATE TABLE user_preferences (
       locale TEXT NOT NULL,
       base_currency TEXT NOT NULL,
       time_zone_id TEXT NOT NULL,
-      external_ai_enabled INTEGER NOT NULL CHECK(external_ai_enabled IN (0, 1))
-    , first_use_completed INTEGER NOT NULL DEFAULT 0 CHECK(first_use_completed IN (0, 1)), formatting_locale TEXT, region_code TEXT, appearance TEXT NOT NULL DEFAULT 'system', color_theme TEXT NOT NULL DEFAULT 'butlerRed');
+      external_ai_enabled INTEGER NOT NULL CHECK(external_ai_enabled IN (0, 1)),
+      first_use_completed INTEGER NOT NULL DEFAULT 0 CHECK(first_use_completed IN (0, 1)),
+      formatting_locale TEXT,
+      region_code TEXT,
+      appearance TEXT NOT NULL DEFAULT 'system',
+      color_theme TEXT NOT NULL DEFAULT 'butlerRed',
+      updated_at TEXT NOT NULL DEFAULT ''
+    );
 
 CREATE INDEX idx_analysis_findings_lifecycle ON analysis_findings(lifecycle);
-
 CREATE INDEX idx_analysis_findings_rule ON analysis_findings(rule_id, rule_version);
-
 CREATE INDEX idx_analysis_rule_results_lookup
   ON analysis_rule_results(rule_id, rule_version, definition_hash,
                            period_start, period_end, time_zone_id,
                            dataset_mode, currency_basis, base_currency,
                            dimension, freshness);
-
 CREATE INDEX idx_attachment_links_transaction ON attachment_links(transaction_id);
-
 CREATE INDEX idx_categories_parent ON categories(parent_id);
-
 CREATE INDEX idx_duplicate_group_transactions_transaction ON duplicate_candidate_group_transactions(transaction_id);
-
 CREATE INDEX idx_duplicate_groups_status ON duplicate_candidate_groups(status);
-
+CREATE INDEX idx_entity_tombstones_deleted_at ON entity_tombstones(deleted_at);
 CREATE INDEX idx_reconciliation_candidates_status ON reconciliation_candidates(status);
-
 CREATE INDEX idx_reconciliation_links_payment ON reconciliation_links(payment_transaction_id);
-
 CREATE INDEX idx_reconciliation_links_receipt ON reconciliation_links(receipt_transaction_id);
-
 CREATE INDEX idx_reference_data_type ON reference_data(type);
-
 CREATE INDEX idx_review_issues_active ON review_issues(transaction_id, status);
-
 CREATE INDEX idx_statement_rows_status ON statement_rows(statement_id, status);
-
 CREATE INDEX idx_statements_period ON financial_statements(payment_source_id, period_start, period_end);
-
 CREATE INDEX idx_transactions_category ON transactions(category_id);
-
 CREATE INDEX idx_transactions_duplicate_group_lookup ON transactions(transaction_date, amount_coefficient, amount_scale, currency, direction, status);
-
 CREATE INDEX idx_transactions_external_reference ON transactions(external_reference);
-
 CREATE INDEX idx_transactions_merchant ON transactions(merchant_id);
-
 CREATE INDEX idx_transactions_classification_merchant ON transactions(merchant_id, status, category_id, subcategory_id);
-
 CREATE INDEX idx_transactions_classification_description ON transactions(normalized_description, status, category_id, subcategory_id);
-
 CREATE INDEX idx_transactions_occurred_at ON transactions(occurred_at);
-
 CREATE INDEX idx_transactions_transaction_date ON transactions(transaction_date);
+
+CREATE TRIGGER payment_sources_merge_insert AFTER INSERT ON payment_sources
+WHEN NEW.created_at = '' OR NEW.updated_at = ''
+BEGIN
+  UPDATE payment_sources
+  SET created_at = CASE WHEN NEW.created_at = '' THEN strftime('%Y-%m-%dT%H:%M:%fZ','now') ELSE NEW.created_at END,
+      updated_at = CASE WHEN NEW.updated_at = '' THEN strftime('%Y-%m-%dT%H:%M:%fZ','now') ELSE NEW.updated_at END
+  WHERE id = NEW.id;
+END;
+CREATE TRIGGER payment_sources_merge_update AFTER UPDATE ON payment_sources
+WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+  UPDATE payment_sources SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER merchants_merge_insert AFTER INSERT ON merchants
+WHEN NEW.created_at = '' OR NEW.updated_at = ''
+BEGIN
+  UPDATE merchants
+  SET created_at = CASE WHEN NEW.created_at = '' THEN strftime('%Y-%m-%dT%H:%M:%fZ','now') ELSE NEW.created_at END,
+      updated_at = CASE WHEN NEW.updated_at = '' THEN strftime('%Y-%m-%dT%H:%M:%fZ','now') ELSE NEW.updated_at END
+  WHERE id = NEW.id;
+END;
+CREATE TRIGGER merchants_merge_update AFTER UPDATE ON merchants
+WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+  UPDATE merchants SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER categories_merge_insert AFTER INSERT ON categories
+WHEN NEW.created_at = '' OR NEW.updated_at = ''
+BEGIN
+  UPDATE categories
+  SET created_at = CASE WHEN NEW.created_at = '' THEN strftime('%Y-%m-%dT%H:%M:%fZ','now') ELSE NEW.created_at END,
+      updated_at = CASE WHEN NEW.updated_at = '' THEN strftime('%Y-%m-%dT%H:%M:%fZ','now') ELSE NEW.updated_at END
+  WHERE id = NEW.id;
+END;
+CREATE TRIGGER categories_merge_update AFTER UPDATE ON categories
+WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+  UPDATE categories SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER tags_merge_insert AFTER INSERT ON tags
+WHEN NEW.created_at = '' OR NEW.updated_at = ''
+BEGIN
+  UPDATE tags
+  SET created_at = CASE WHEN NEW.created_at = '' THEN strftime('%Y-%m-%dT%H:%M:%fZ','now') ELSE NEW.created_at END,
+      updated_at = CASE WHEN NEW.updated_at = '' THEN strftime('%Y-%m-%dT%H:%M:%fZ','now') ELSE NEW.updated_at END
+  WHERE id = NEW.id;
+END;
+CREATE TRIGGER tags_merge_update AFTER UPDATE ON tags
+WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+  UPDATE tags SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER transaction_tags_merge_insert AFTER INSERT ON transaction_tags
+BEGIN
+  UPDATE transaction_tags
+  SET created_at = CASE WHEN NEW.created_at = '' THEN strftime('%Y-%m-%dT%H:%M:%fZ','now') ELSE NEW.created_at END
+  WHERE transaction_id = NEW.transaction_id AND tag_id = NEW.tag_id;
+  DELETE FROM entity_tombstones
+  WHERE entity_type = 'transaction_tags'
+    AND entity_id = NEW.transaction_id || '|' || NEW.tag_id;
+END;
+
+CREATE TRIGGER transactions_tombstone AFTER DELETE ON transactions
+BEGIN
+  INSERT INTO entity_tombstones(entity_type, entity_id, deleted_at)
+  VALUES('transactions', OLD.id, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  ON CONFLICT(entity_type, entity_id) DO UPDATE SET deleted_at = excluded.deleted_at;
+END;
+CREATE TRIGGER transactions_tombstone_clear AFTER INSERT ON transactions
+BEGIN
+  DELETE FROM entity_tombstones WHERE entity_type = 'transactions' AND entity_id = NEW.id;
+END;
+
+CREATE TRIGGER payment_sources_tombstone AFTER DELETE ON payment_sources
+BEGIN
+  INSERT INTO entity_tombstones(entity_type, entity_id, deleted_at)
+  VALUES('payment_sources', OLD.id, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  ON CONFLICT(entity_type, entity_id) DO UPDATE SET deleted_at = excluded.deleted_at;
+END;
+CREATE TRIGGER payment_sources_tombstone_clear AFTER INSERT ON payment_sources
+BEGIN
+  DELETE FROM entity_tombstones WHERE entity_type = 'payment_sources' AND entity_id = NEW.id;
+END;
+
+CREATE TRIGGER merchants_tombstone AFTER DELETE ON merchants
+BEGIN
+  INSERT INTO entity_tombstones(entity_type, entity_id, deleted_at)
+  VALUES('merchants', OLD.id, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  ON CONFLICT(entity_type, entity_id) DO UPDATE SET deleted_at = excluded.deleted_at;
+END;
+CREATE TRIGGER merchants_tombstone_clear AFTER INSERT ON merchants
+BEGIN
+  DELETE FROM entity_tombstones WHERE entity_type = 'merchants' AND entity_id = NEW.id;
+END;
+
+CREATE TRIGGER categories_tombstone AFTER DELETE ON categories
+BEGIN
+  INSERT INTO entity_tombstones(entity_type, entity_id, deleted_at)
+  VALUES('categories', OLD.id, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  ON CONFLICT(entity_type, entity_id) DO UPDATE SET deleted_at = excluded.deleted_at;
+END;
+CREATE TRIGGER categories_tombstone_clear AFTER INSERT ON categories
+BEGIN
+  DELETE FROM entity_tombstones WHERE entity_type = 'categories' AND entity_id = NEW.id;
+END;
+
+CREATE TRIGGER tags_tombstone AFTER DELETE ON tags
+BEGIN
+  INSERT INTO entity_tombstones(entity_type, entity_id, deleted_at)
+  VALUES('tags', OLD.id, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  ON CONFLICT(entity_type, entity_id) DO UPDATE SET deleted_at = excluded.deleted_at;
+END;
+CREATE TRIGGER tags_tombstone_clear AFTER INSERT ON tags
+BEGIN
+  DELETE FROM entity_tombstones WHERE entity_type = 'tags' AND entity_id = NEW.id;
+END;
+
+CREATE TRIGGER transaction_tags_tombstone AFTER DELETE ON transaction_tags
+BEGIN
+  INSERT INTO entity_tombstones(entity_type, entity_id, deleted_at)
+  VALUES('transaction_tags', OLD.transaction_id || '|' || OLD.tag_id, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  ON CONFLICT(entity_type, entity_id) DO UPDATE SET deleted_at = excluded.deleted_at;
+END;
+
+CREATE TRIGGER evidence_items_tombstone AFTER DELETE ON evidence_items
+BEGIN
+  INSERT INTO entity_tombstones(entity_type, entity_id, deleted_at)
+  VALUES('evidence_items', OLD.id, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  ON CONFLICT(entity_type, entity_id) DO UPDATE SET deleted_at = excluded.deleted_at;
+END;
+CREATE TRIGGER evidence_items_tombstone_clear AFTER INSERT ON evidence_items
+BEGIN
+  DELETE FROM entity_tombstones WHERE entity_type = 'evidence_items' AND entity_id = NEW.id;
+END;
+
+CREATE TRIGGER attachment_links_tombstone AFTER DELETE ON attachment_links
+BEGIN
+  INSERT INTO entity_tombstones(entity_type, entity_id, deleted_at)
+  VALUES('attachment_links', OLD.id, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  ON CONFLICT(entity_type, entity_id) DO UPDATE SET deleted_at = excluded.deleted_at;
+END;
+CREATE TRIGGER attachment_links_tombstone_clear AFTER INSERT ON attachment_links
+BEGIN
+  DELETE FROM entity_tombstones WHERE entity_type = 'attachment_links' AND entity_id = NEW.id;
+END;
+
+CREATE TRIGGER reconciliation_links_tombstone AFTER DELETE ON reconciliation_links
+BEGIN
+  INSERT INTO entity_tombstones(entity_type, entity_id, deleted_at)
+  VALUES('reconciliation_links', OLD.id, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  ON CONFLICT(entity_type, entity_id) DO UPDATE SET deleted_at = excluded.deleted_at;
+END;
+CREATE TRIGGER reconciliation_links_tombstone_clear AFTER INSERT ON reconciliation_links
+BEGIN
+  DELETE FROM entity_tombstones WHERE entity_type = 'reconciliation_links' AND entity_id = NEW.id;
+END;
