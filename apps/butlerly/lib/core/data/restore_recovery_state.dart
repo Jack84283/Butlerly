@@ -9,20 +9,27 @@ final class RestoreRecoveryIncident {
     required this.operationId,
     required this.safetyBackupPath,
     required this.reason,
+    required this.retryCurrentState,
   });
 
   final String operationId;
   final String safetyBackupPath;
   final String reason;
+
+  /// True only when the restore engine committed a coherent candidate and the
+  /// remaining uncertainty is post-activation validation/runtime refresh.
+  /// Recovery may validate and keep that live state before considering the
+  /// safety snapshot.
+  final bool retryCurrentState;
 }
 
-/// Persistent, process-visible gate for a restore whose rollback could not be
-/// proven complete.
+/// Persistent, process-visible gate for a restore whose final state has not yet
+/// been proven safe for ordinary application writes.
 ///
 /// The marker lives outside SQLite so it remains readable even when database
 /// state itself is uncertain. Presentation observes this object and replaces
-/// the normal product UI with recovery-only actions until a validated safety
-/// snapshot has been restored successfully.
+/// the normal product UI with recovery-only actions until validation or a
+/// retained safety snapshot establishes one coherent state.
 final class RestoreRecoveryState extends ChangeNotifier {
   RestoreRecoveryState(this.localDataManager);
 
@@ -55,17 +62,20 @@ final class RestoreRecoveryState extends ChangeNotifier {
       final operationId = data['operationId'];
       final safetyBackupPath = data['safetyBackupPath'];
       final reason = data['reason'];
+      final retryCurrentState = data['retryCurrentState'];
       if (operationId is! String ||
           operationId.isEmpty ||
           safetyBackupPath is! String ||
           reason is! String ||
-          reason.isEmpty) {
+          reason.isEmpty ||
+          (retryCurrentState != null && retryCurrentState is! bool)) {
         throw const FormatException('Incomplete recovery marker payload.');
       }
       _incident = RestoreRecoveryIncident(
         operationId: operationId,
         safetyBackupPath: safetyBackupPath,
         reason: reason,
+        retryCurrentState: retryCurrentState as bool? ?? false,
       );
       notifyListeners();
     } on Exception {
@@ -79,11 +89,13 @@ final class RestoreRecoveryState extends ChangeNotifier {
     required String operationId,
     required File safetyBackup,
     required String reason,
+    bool retryCurrentState = false,
   }) => _persistIncident(
     RestoreRecoveryIncident(
       operationId: operationId,
       safetyBackupPath: safetyBackup.path,
       reason: reason,
+      retryCurrentState: retryCurrentState,
     ),
   );
 
@@ -95,6 +107,7 @@ final class RestoreRecoveryState extends ChangeNotifier {
       operationId: operationId.isEmpty ? 'unknown' : operationId,
       safetyBackupPath: '',
       reason: reason,
+      retryCurrentState: false,
     ),
   );
 
@@ -114,6 +127,7 @@ final class RestoreRecoveryState extends ChangeNotifier {
         'operationId': incident.operationId,
         'safetyBackupPath': incident.safetyBackupPath,
         'reason': incident.reason,
+        'retryCurrentState': incident.retryCurrentState,
       }),
       flush: true,
     );
@@ -149,6 +163,7 @@ final class RestoreRecoveryState extends ChangeNotifier {
       operationId: 'unknown',
       safetyBackupPath: '',
       reason: reason,
+      retryCurrentState: false,
     );
     notifyListeners();
   }
