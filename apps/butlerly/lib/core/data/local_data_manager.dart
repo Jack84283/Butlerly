@@ -99,6 +99,13 @@ final class LocalDataManager {
     return Directory(path.join(support.path, 'evidence'));
   }
 
+  /// Temporary home for captures that have not yet been published to SQLite.
+  ///
+  /// This must remain outside [evidenceDirectory] because restore is allowed to
+  /// replace the live evidence root while a receipt is still in OCR/review.
+  Future<Directory> pendingEvidenceDirectory() async =>
+      Directory('${(await evidenceDirectory()).path}.pending');
+
   Future<Directory> documentsDirectory() async =>
       _documentsDirectory ?? await getApplicationDocumentsDirectory();
 
@@ -172,6 +179,10 @@ final class LocalDataManager {
     });
     final evidence = await evidenceDirectory();
     if (await evidence.exists()) await evidence.delete(recursive: true);
+    final pendingEvidence = await pendingEvidenceDirectory();
+    if (await pendingEvidence.exists()) {
+      await pendingEvidence.delete(recursive: true);
+    }
     final documents = await documentsDirectory();
     if (await documents.exists()) {
       await for (final entity in documents.list()) {
