@@ -22,7 +22,6 @@ environment:
 dependencies:
   butlerly_finance_domain:
     path: ../butlerly_finance_domain
-  crypto: ^3.0.7
   flutter:
     sdk: flutter
   sqflite_common: ^2.5.11
