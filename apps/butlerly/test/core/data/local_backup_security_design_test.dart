@@ -76,10 +76,6 @@ void main() {
     final headerEnd = headerStart + headerLength;
     final header = (jsonDecode(utf8.decode(bytes.sublist(headerStart, headerEnd))) as Map)
         .cast<String, Object?>();
-    // A future build may strengthen Argon2 without changing the wrapper format.
-    // Altering the authenticated header makes this package fail GCM validation,
-    // but it must reach authentication rather than being rejected as an
-    // unsupported format solely because the KDF value differs from today's.
     header['kdfIterations'] = 3;
     final headerBytes = utf8.encode(jsonEncode(header));
     final rebuilt = BytesBuilder(copy: false)
@@ -127,7 +123,8 @@ void main() {
     await fixture.manager.recoveryState.markRequired(
       operationId: 'restore-test',
       safetyBackup: safety,
-      reason: 'activation-rollback-failed',
+      reason: 'post-activation-validation-or-refresh-failed',
+      retryCurrentState: true,
     );
 
     final reloaded = RestoreRecoveryState(fixture.data);
@@ -135,6 +132,7 @@ void main() {
     expect(reloaded.isRecoveryRequired, isTrue);
     expect(reloaded.incident?.operationId, 'restore-test');
     expect(reloaded.incident?.safetyBackupPath, safety.path);
+    expect(reloaded.incident?.retryCurrentState, isTrue);
 
     await reloaded.clear();
     final afterClear = RestoreRecoveryState(fixture.data);
@@ -175,6 +173,65 @@ void main() {
     expect(reloaded.isRecoveryRequired, isTrue);
     expect(reloaded.incident?.reason, 'recovery-marker-interrupted');
     expect(await temporary.exists(), isTrue);
+  });
+
+  test('startup cleanup removes private plaintext artifacts but keeps safety data', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final decrypted = File(
+      path.join(fixture.root.path, '.backup-decrypt-orphan.butlerlybackup'),
+    );
+    final plain = File(
+      path.join(fixture.root.path, '.portable-backup-orphan.butlerlybackup'),
+    );
+    final verify = File(
+      path.join(
+        fixture.root.path,
+        '.portable-backup-verify-orphan.butlerlybackup',
+      ),
+    );
+    final stage = Directory(
+      path.join(fixture.root.path, '.butlerly-restore-stage-orphan'),
+    );
+    await decrypted.writeAsString('plaintext');
+    await plain.writeAsString('plaintext');
+    await verify.writeAsString('plaintext');
+    await stage.create();
+    await File(path.join(stage.path, 'copy.db')).writeAsString('private-copy');
+
+    final safetyDirectory = await fixture.data.safetyBackupDirectory();
+    final safety = File(path.join(safetyDirectory.path, 'Before Merge keep.butlerlybackup'));
+    await safety.writeAsString('safety');
+
+    await fixture.manager.cleanupOrphanedPrivateArtifacts();
+
+    expect(await decrypted.exists(), isFalse);
+    expect(await plain.exists(), isFalse);
+    expect(await verify.exists(), isFalse);
+    expect(await stage.exists(), isFalse);
+    expect(await safety.exists(), isTrue);
+  });
+
+  test('unrecoverable incident can reset local data without reopening early', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    await fixture.insertTransaction('reset-source');
+    await fixture.manager.recoveryState.markUnknownRequired(
+      operationId: 'restore-unrecoverable',
+      reason: 'indeterminate-restore-recovery',
+    );
+
+    var refreshSawRecoveryGate = false;
+    await fixture.manager.resetControlledRecovery(
+      postResetRefresh: () async {
+        refreshSawRecoveryGate =
+            fixture.manager.recoveryState.isRecoveryRequired;
+      },
+    );
+
+    expect(refreshSawRecoveryGate, isTrue);
+    expect(fixture.manager.recoveryState.isRecoveryRequired, isFalse);
+    expect(await fixture.database.database.query('transactions'), isEmpty);
   });
 }
 
