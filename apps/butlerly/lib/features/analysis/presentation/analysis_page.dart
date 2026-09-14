@@ -25,6 +25,7 @@ import 'package:go_router/go_router.dart';
 class AnalysisPage extends StatefulWidget {
   const AnalysisPage({
     super.key,
+    this.initialRange,
     this.load,
     this.loadForPeriod,
     this.loadCalendar,
@@ -33,6 +34,7 @@ class AnalysisPage extends StatefulWidget {
     this.onNavigationRequested,
     this.onTransactionRequested,
   });
+  final DateTimeRange? initialRange;
   final Future<ApplicationResult<List<RuleExecutionResult>>> Function()? load;
   final Future<ApplicationResult<List<RuleExecutionResult>>> Function(
     String period,
@@ -68,6 +70,8 @@ class _AnalysisPageState extends State<AnalysisPage> {
   @override
   void initState() {
     super.initState();
+    _customRange = widget.initialRange;
+    if (_customRange != null) _period = 'selected_period';
     _result = _load(_period);
     transactionChanges.addListener(_reload);
   }
