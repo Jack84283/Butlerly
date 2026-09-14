@@ -82,12 +82,61 @@ class _HomePageState extends State<HomePage> {
       finance,
       languageCode: activeLanguageCode,
     );
+    final preferenceFuture = finance.loadUserPreference();
+
+    final transactionResult = await transactionsFuture;
+    final reviewResult = await reviewFuture;
+    final masterData = await masterDataFuture;
+    final preferenceResult = await preferenceFuture;
+
+    final allTransactions = switch (transactionResult) {
+      ApplicationSuccess<List<TransactionDto>>(:final value) => value,
+      _ => const <TransactionDto>[],
+    };
+    final reviewItems = switch (reviewResult) {
+      ApplicationSuccess<List<ReviewItemDto>>(:final value) => value,
+      _ => const <ReviewItemDto>[],
+    };
+    final preference = switch (preferenceResult) {
+      ApplicationSuccess<UserPreference?>(:final value) => value,
+      _ => null,
+    };
+
+    final timeZoneId = preference?.timeZoneId ?? 'UTC';
+    var financialToday = DateTime.utc(now.year, now.month, now.day);
+    if (preference != null) {
+      try {
+        financialToday = financialDateAt(now, timeZoneId);
+      } on Object {
+        // Core local records remain usable even if a stored timezone can no
+        // longer be resolved. Analysis may separately report unavailable.
+      }
+    }
+    final currentFinancialMonth = _monthStart(financialToday);
+    final displayMonth = _monthStart(_selectedMonth ?? currentFinancialMonth);
+    final period = _homePeriodForMonth(
+      month: displayMonth,
+      currentMonth: currentFinancialMonth,
+      financialToday: financialToday,
+      timeZoneId: timeZoneId,
+    );
+
+    final periodTransactions = allTransactions
+        .where((transaction) => _transactionInPeriod(transaction, period))
+        .toList(growable: false);
+    final periodTransactionIds = periodTransactions
+        .map((transaction) => transaction.id)
+        .toSet();
+    final reviewCount = reviewItems
+        .where((item) => periodTransactionIds.contains(item.transactionId))
+        .length;
+    final recent = periodTransactions.take(4).toList(growable: false);
 
     final analysis = finance.calculateAnalysisOverview;
     AnalysisContext? selectedContext;
     AnalysisModel? model;
+    InsightResult? insight;
     var analysisUnavailable = false;
-    var currentFinancialMonth = DateTime(now.year, now.month, 1);
 
     if (analysis != null) {
       final currentContextResult = await analysis.contextFor(
@@ -96,19 +145,17 @@ class _HomePageState extends State<HomePage> {
       );
       if (currentContextResult
           case ApplicationSuccess<AnalysisContext>(:final value)) {
-        currentFinancialMonth = _monthFromPeriod(value.period);
-        final requestedMonth = _selectedMonth;
-        if (requestedMonth == null ||
-            _sameMonth(requestedMonth, currentFinancialMonth)) {
+        final analysisCurrentMonth = _monthFromPeriod(value.period);
+        if (_sameMonth(displayMonth, analysisCurrentMonth)) {
           selectedContext = value;
         } else {
-          final anchor = _monthStart(requestedMonth);
+          final anchor = _monthStart(displayMonth);
           final selectedContextResult = await analysis.contextFor(
             'selected_month',
             instant: now,
             customPeriod: AnalysisPeriod(
-              startDate: _dateOnly(anchor),
-              endDate: _dateOnly(anchor),
+              startDate: _date(anchor),
+              endDate: _date(anchor),
               timeZoneId: value.period.timeZoneId,
             ),
           );
@@ -128,44 +175,19 @@ class _HomePageState extends State<HomePage> {
         if (result
             case ApplicationSuccess<List<RuleExecutionResult>>(:final value)) {
           model = AnalysisModel.fromResults(value);
+          final insightUseCase = finance.calculateInsights;
+          if (insightUseCase != null) {
+            final active = insightUseCase
+                .fromResults(selectedContext, value)
+                .activeFindings;
+            if (active.isNotEmpty) insight = active.first;
+          }
         } else {
           analysisUnavailable = true;
         }
       }
     }
 
-    final transactionResult = await transactionsFuture;
-    final reviewResult = await reviewFuture;
-    final masterData = await masterDataFuture;
-
-    final allTransactions = switch (transactionResult) {
-      ApplicationSuccess<List<TransactionDto>>(:final value) => value,
-      _ => const <TransactionDto>[],
-    };
-    final reviewItems = switch (reviewResult) {
-      ApplicationSuccess<List<ReviewItemDto>>(:final value) => value,
-      _ => const <ReviewItemDto>[],
-    };
-
-    final periodTransactions = selectedContext == null
-        ? const <TransactionDto>[]
-        : allTransactions
-              .where(
-                (transaction) =>
-                    _transactionInPeriod(transaction, selectedContext!.period),
-              )
-              .toList(growable: false);
-    final periodTransactionIds = periodTransactions
-        .map((transaction) => transaction.id)
-        .toSet();
-    final reviewCount = reviewItems
-        .where((item) => periodTransactionIds.contains(item.transactionId))
-        .length;
-    final recent = periodTransactions.take(4).toList(growable: false);
-
-    final displayMonth = selectedContext == null
-        ? _monthStart(_selectedMonth ?? currentFinancialMonth)
-        : _monthFromPeriod(selectedContext.period);
     final trend =
         analysis == null ||
             selectedContext == null ||
@@ -181,9 +203,11 @@ class _HomePageState extends State<HomePage> {
       reviewCount: reviewCount,
       masterData: masterData,
       model: model,
+      insight: insight,
       trend: trend,
       displayMonth: displayMonth,
       currentFinancialMonth: currentFinancialMonth,
+      period: period,
       analysisUnavailable: analysisUnavailable,
     );
   }
@@ -280,7 +304,8 @@ class _HomePageState extends State<HomePage> {
                   ButlerlySectionHeader(
                     title: context.l10n.text('analysis.rule.r010.name'),
                     action: TextButton(
-                      onPressed: () => context.push('/analysis'),
+                      onPressed: () =>
+                          context.push(_periodRoute('/analysis', data.period)),
                       child: Text(context.l10n.text('viewAll')),
                     ),
                   ),
@@ -288,17 +313,19 @@ class _HomePageState extends State<HomePage> {
                     model: data.model,
                     masterData: data.masterData,
                   ),
-                  if (data.reviewCount > 0 || data.model?.insight != null) ...[
+                  if (data.reviewCount > 0 || data.insight != null) ...[
                     const SizedBox(height: ButlerlySpacing.section),
                     _AttentionSection(
                       reviewCount: data.reviewCount,
-                      insight: data.model?.insight,
+                      insight: data.insight,
+                      insightRoute: _periodRoute('/insights', data.period),
                     ),
                   ],
                   ButlerlySectionHeader(
                     title: context.l10n.text('recentTransactions'),
                     action: TextButton(
-                      onPressed: () => context.go('/transactions'),
+                      onPressed: () =>
+                          context.go(_periodRoute('/transactions', data.period)),
                       child: Text(context.l10n.text('viewAll')),
                     ),
                   ),
@@ -753,10 +780,12 @@ class _AttentionSection extends StatelessWidget {
   const _AttentionSection({
     required this.reviewCount,
     required this.insight,
+    required this.insightRoute,
   });
 
   final int reviewCount;
-  final AnalysisFinding? insight;
+  final InsightResult? insight;
+  final String insightRoute;
 
   @override
   Widget build(BuildContext context) {
@@ -772,7 +801,7 @@ class _AttentionSection extends StatelessWidget {
         : context.l10n.text(insight!.rule.nameKey);
     final onTap = hasReview
         ? () => context.push('/review')
-        : () => context.push('/insights');
+        : () => context.push(insightRoute);
     return Semantics(
       button: true,
       label: '${context.l10n.text('needsAttention')}. $title. $subtitle',
@@ -1047,30 +1076,43 @@ class _HomeData {
     required this.reviewCount,
     required this.masterData,
     required this.model,
+    required this.insight,
     required this.trend,
     required this.displayMonth,
     required this.currentFinancialMonth,
+    required this.period,
     required this.analysisUnavailable,
   });
 
-  factory _HomeData.empty(DateTime now) => _HomeData(
-    transactions: const [],
-    reviewCount: 0,
-    masterData: const TransactionMasterData(),
-    model: null,
-    trend: const [],
-    displayMonth: _monthStart(now),
-    currentFinancialMonth: _monthStart(now),
-    analysisUnavailable: false,
-  );
+  factory _HomeData.empty(DateTime now) {
+    final month = _monthStart(now);
+    return _HomeData(
+      transactions: const [],
+      reviewCount: 0,
+      masterData: const TransactionMasterData(),
+      model: null,
+      insight: null,
+      trend: const [],
+      displayMonth: month,
+      currentFinancialMonth: month,
+      period: AnalysisPeriod(
+        startDate: _date(month),
+        endDate: _date(DateTime(month.year, month.month + 1, 0)),
+        timeZoneId: 'UTC',
+      ),
+      analysisUnavailable: false,
+    );
+  }
 
   final List<TransactionDto> transactions;
   final int reviewCount;
   final TransactionMasterData masterData;
   final AnalysisModel? model;
+  final InsightResult? insight;
   final List<_HomeTrendPoint> trend;
   final DateTime displayMonth;
   final DateTime currentFinancialMonth;
+  final AnalysisPeriod period;
   final bool analysisUnavailable;
 }
 
@@ -1086,6 +1128,27 @@ class _HomeTrendPoint {
   final double value;
   final AnalysisMetric? metric;
   final bool selected;
+}
+
+AnalysisPeriod _homePeriodForMonth({
+  required DateTime month,
+  required DateTime currentMonth,
+  required DateTime financialToday,
+  required String timeZoneId,
+}) {
+  final start = DateTime.utc(month.year, month.month, 1);
+  final end = _sameMonth(month, currentMonth)
+      ? DateTime.utc(
+          financialToday.year,
+          financialToday.month,
+          financialToday.day,
+        )
+      : DateTime.utc(month.year, month.month + 1, 0);
+  return AnalysisPeriod(
+    startDate: _date(start),
+    endDate: _date(end),
+    timeZoneId: timeZoneId,
+  );
 }
 
 bool _transactionInPeriod(TransactionDto transaction, AnalysisPeriod period) {
@@ -1107,8 +1170,13 @@ DateTime _monthStart(DateTime value) => DateTime(value.year, value.month, 1);
 bool _sameMonth(DateTime left, DateTime right) =>
     left.year == right.year && left.month == right.month;
 
-String _dateOnly(DateTime value) =>
-    '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-01';
+String _date(DateTime value) =>
+    '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+
+String _periodRoute(String path, AnalysisPeriod period) => Uri(
+  path: path,
+  queryParameters: {'from': period.startDate, 'to': period.endDate},
+).toString();
 
 String _transactionTitle(BuildContext context, TransactionDto transaction) {
   for (final candidate in [
