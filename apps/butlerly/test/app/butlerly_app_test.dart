@@ -33,7 +33,7 @@ void main() {
       const Color(0xFFB8B2AA),
     );
     expect(AppTheme.light.textTheme.bodyMedium?.color, const Color(0xFF68635E));
-    expect(AppTheme.light.textTheme.bodySmall?.color, const Color(0xFF8A847D));
+    expect(AppTheme.light.textTheme.bodySmall?.color, const Color(0xFF68635E));
     expect(AppTheme.light.cardTheme.color, const Color(0xFFFFFFFF));
     expect(
       AppTheme.light.extension<ButlerlySemanticColors>()?.cardDivider,
