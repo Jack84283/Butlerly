@@ -499,7 +499,11 @@ class _AttentionCard extends StatelessWidget {
                     ),
                     const SizedBox(height: ButlerlySpacing.xxs),
                     Text(
-                      context.l10n.text('nothingNeedsAttentionBody'),
+                      context.l10n.text(
+                        active
+                            ? 'reviewRecommendation'
+                            : 'nothingNeedsAttentionBody',
+                      ),
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
