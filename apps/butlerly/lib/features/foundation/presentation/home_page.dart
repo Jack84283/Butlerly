@@ -166,7 +166,10 @@ class _HomePageState extends State<HomePage> {
     final displayMonth = selectedContext == null
         ? _monthStart(_selectedMonth ?? currentFinancialMonth)
         : _monthFromPeriod(selectedContext.period);
-    final trend = analysis == null || selectedContext == null
+    final trend =
+        analysis == null ||
+            selectedContext == null ||
+            allTransactions.isEmpty
         ? const <_HomeTrendPoint>[]
         : await _loadTrend(
             analysis: analysis,
@@ -375,13 +378,11 @@ class _HomeHeader extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Flexible(
-                    child: Text(
-                      monthLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
+                  Text(
+                    monthLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(width: ButlerlySpacing.micro),
                   const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
@@ -391,7 +392,8 @@ class _HomeHeader extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Flexible(
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 190),
                   child: Text(
                     context.l10n.text(greetingKey),
                     maxLines: 1,
@@ -451,7 +453,7 @@ class _SpendingHero extends StatelessWidget {
     return Semantics(
       container: true,
       label:
-          '${context.l10n.text('totalSpending')}, ${spending == null ? context.l10n.text('notAvailable') : amount}',
+          '${context.l10n.text('totalSpending')}, ${spending == null ? context.l10n.text('noSpendingInPeriod') : amount}',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
