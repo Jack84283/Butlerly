@@ -14,18 +14,24 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   setUp(() => appRouter.go('/'));
 
-  test('quiet-premium bodySmall meets the normal-text contrast target', () {
+  test('readable small and hint text meet the normal-text contrast target', () {
     final theme = AppTheme.light;
     final colors = theme.extension<ButlerlySemanticColors>()!;
     final bodySmallColor = theme.textTheme.bodySmall!.color!;
+    final hintColor = theme.inputDecorationTheme.hintStyle!.color!;
 
     expect(bodySmallColor, colors.secondaryText);
+    expect(hintColor, colors.secondaryText);
     expect(
       _contrastRatio(bodySmallColor, colors.background),
       greaterThanOrEqualTo(ButlerlyAccessibility.minimumContrastRatio),
     );
     expect(
       _contrastRatio(bodySmallColor, colors.subtleSurface),
+      greaterThanOrEqualTo(ButlerlyAccessibility.minimumContrastRatio),
+    );
+    expect(
+      _contrastRatio(hintColor, colors.subtleSurface),
       greaterThanOrEqualTo(ButlerlyAccessibility.minimumContrastRatio),
     );
   });
@@ -38,22 +44,30 @@ void main() {
     );
   });
 
-  test('phone navigation measures the actual label under nonlinear scaling', () {
+  test('phone navigation uses actual localized nonlinear label geometry', () {
     const scaler = _NavigationNonlinearTextScaler();
-    final height = phoneNavigationHeightForTextScaler(scaler);
+    final labelStyle = ButlerlyTypography.navigationLabel(
+      AppTheme.light.textTheme.labelSmall!,
+      color: Colors.black,
+      selected: true,
+    );
+    final height = phoneNavigationHeightForLabels(
+      textScaler: scaler,
+      itemWidth: 78,
+      labels: const ['Home', 'Transacciones', 'Add', 'Herramientas', 'Más'],
+      labelStyle: labelStyle,
+      textDirection: TextDirection.ltr,
+    );
 
-    // The test scaler barely scales a 1 px probe but doubles the real 10.5 px
-    // navigation label. This catches regressions back to scale(1).
+    // The test scaler barely scales a 1 px probe but triples the real 10.5 px
+    // navigation label. This catches regressions back to scale(1) and to the
+    // previous fixed 102 px accessibility cap.
     expect(scaler.scale(1), 1.1);
     expect(
       scaler.scale(ButlerlyTypography.navigationLabelFontSize),
-      ButlerlyTypography.navigationLabelFontSize * 2,
+      ButlerlyTypography.navigationLabelFontSize * 3,
     );
-    expect(
-      height,
-      ButlerlySize.navigationBarHeight +
-          ButlerlySize.navigationBarMaxAccessibilityGrowth,
-    );
+    expect(height, greaterThan(102));
   });
 
   testWidgets('transaction metadata uses the readable small-text color', (
@@ -103,7 +117,7 @@ void main() {
     expect(find.byType(ButlerlyActionRow), findsNWidgets(4));
   });
 
-  for (final textScale in const [1.3, 1.5, 2.0]) {
+  for (final textScale in const [1.3, 1.5, 2.0, 3.0]) {
     testWidgets(
       'phone navigation has no overflow at ${textScale}x text scale',
       (tester) async {
@@ -122,11 +136,12 @@ void main() {
         expect(find.bySemanticsLabel('Add transaction'), findsOneWidget);
         expect(find.text('Tools'), findsOneWidget);
         expect(find.text('More'), findsAtLeastNWidgets(1));
+        _expectNavigationLabelIsNotEllipsized(tester, 'Transactions');
       },
     );
   }
 
-  testWidgets('Spanish phone navigation has no overflow at 2x text scale', (
+  testWidgets('Spanish phone navigation remains readable at 3x text scale', (
     tester,
   ) async {
     _setPhoneViewport(tester);
@@ -134,7 +149,7 @@ void main() {
     await tester.pumpAndSettle();
     await _switchLanguage(tester, 'Spanish');
 
-    tester.view.platformDispatcher.textScaleFactorTestValue = 2.0;
+    tester.view.platformDispatcher.textScaleFactorTestValue = 3.0;
     addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
     await tester.pumpAndSettle();
 
@@ -143,9 +158,14 @@ void main() {
     expect(find.text('Transacciones'), findsOneWidget);
     expect(find.text('Herramientas'), findsOneWidget);
     expect(find.text('Más'), findsAtLeastNWidgets(1));
+    _expectNavigationLabelIsNotEllipsized(tester, 'Transacciones');
+    expect(
+      tester.getSize(find.text('Transacciones')).height,
+      greaterThan(ButlerlyTypography.navigationLabelFontSize * 3),
+    );
   });
 
-  testWidgets('Chinese phone navigation has no overflow at 2x text scale', (
+  testWidgets('Chinese phone navigation remains readable at 3x text scale', (
     tester,
   ) async {
     _setPhoneViewport(tester);
@@ -153,7 +173,7 @@ void main() {
     await tester.pumpAndSettle();
     await _switchLanguage(tester, 'Chinese (Simplified)');
 
-    tester.view.platformDispatcher.textScaleFactorTestValue = 2.0;
+    tester.view.platformDispatcher.textScaleFactorTestValue = 3.0;
     addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
     await tester.pumpAndSettle();
 
@@ -162,6 +182,7 @@ void main() {
     expect(find.text('交易'), findsAtLeastNWidgets(1));
     expect(find.text('工具'), findsOneWidget);
     expect(find.text('更多'), findsAtLeastNWidgets(1));
+    _expectNavigationLabelIsNotEllipsized(tester, '交易');
   });
 }
 
@@ -189,6 +210,16 @@ void _expectNoFlutterException(WidgetTester tester) {
   expect(exception, isNull);
 }
 
+void _expectNavigationLabelIsNotEllipsized(
+  WidgetTester tester,
+  String label,
+) {
+  final widget = tester.widget<Text>(find.text(label).last);
+  expect(widget.maxLines, isNull);
+  expect(widget.overflow, isNull);
+  expect(widget.softWrap, isNot(false));
+}
+
 double _contrastRatio(Color foreground, Color background) {
   final foregroundLuminance = foreground.computeLuminance();
   final backgroundLuminance = background.computeLuminance();
@@ -205,8 +236,8 @@ class _NavigationNonlinearTextScaler extends TextScaler {
   const _NavigationNonlinearTextScaler();
 
   @override
-  double scale(double fontSize) => fontSize < 2 ? fontSize * 1.1 : fontSize * 2;
+  double scale(double fontSize) => fontSize < 2 ? fontSize * 1.1 : fontSize * 3;
 
   @override
-  double get textScaleFactor => 2;
+  double get textScaleFactor => 3;
 }
