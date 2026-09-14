@@ -8,35 +8,48 @@ import 'package:go_router/go_router.dart';
 const primaryShellRouteNamePrefix = 'primary-shell:';
 const _phoneNavigationAddIconSize = 52.0;
 
-/// Computes phone navigation height from the actual localized label layout.
+/// Computes phone navigation height from each destination's actual geometry.
 ///
 /// This supports nonlinear [TextScaler] implementations and labels that wrap
 /// at large accessibility sizes without imposing a fixed maximum growth cap.
 /// The established 78 px baseline already includes its own vertical slack, so
-/// the bar only grows when icon + gap + scaled label geometry exceeds it.
+/// the bar only grows when a real destination's icon + gap + scaled label
+/// geometry exceeds it.
 double phoneNavigationHeightForLabels({
   required TextScaler textScaler,
   required double itemWidth,
-  required Iterable<String> labels,
+  required Iterable<String> standardLabels,
+  required String addLabel,
   required TextStyle labelStyle,
   required TextDirection textDirection,
 }) {
   final availableWidth = itemWidth > 0 ? itemWidth : 1.0;
-  var maxLabelHeight = 0.0;
-  for (final label in labels) {
+
+  double labelHeight(String label) {
     final painter = TextPainter(
       text: TextSpan(text: label, style: labelStyle),
       textScaler: textScaler,
       textDirection: textDirection,
       textAlign: TextAlign.center,
     )..layout(maxWidth: availableWidth);
-    if (painter.height > maxLabelHeight) {
-      maxLabelHeight = painter.height;
+    return painter.height;
+  }
+
+  var requiredHeight =
+      _phoneNavigationAddIconSize +
+      ButlerlySpacing.micro +
+      labelHeight(addLabel);
+
+  for (final label in standardLabels) {
+    final destinationHeight =
+        ButlerlySize.standardIcon +
+        ButlerlySize.navigationLabelGap +
+        labelHeight(label);
+    if (destinationHeight > requiredHeight) {
+      requiredHeight = destinationHeight;
     }
   }
 
-  final requiredHeight =
-      _phoneNavigationAddIconSize + ButlerlySpacing.micro + maxLabelHeight;
   return requiredHeight < ButlerlySize.navigationBarHeight
       ? ButlerlySize.navigationBarHeight
       : requiredHeight;
@@ -290,10 +303,11 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     return phoneNavigationHeightForLabels(
       textScaler: MediaQuery.textScalerOf(context),
       itemWidth: availableWidth / _visualBranchIndexes.length,
-      labels: [
+      standardLabels: [
         for (final branchIndex in _visualBranchIndexes)
-          destinations[branchIndex]!.label,
+          if (branchIndex != 1) destinations[branchIndex]!.label,
       ],
+      addLabel: destinations[1]!.label,
       labelStyle: labelStyle,
       textDirection: Directionality.of(context),
     );
