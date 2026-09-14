@@ -78,6 +78,8 @@ class AdaptiveShell extends StatefulWidget {
 }
 
 class _AdaptiveShellState extends State<AdaptiveShell> {
+  static const _visualBranchIndexes = <int>[0, 2, 1, 3, 4];
+
   int _previousPrimaryIndex = 0;
   int _lastPrimaryIndex = 0;
 
@@ -114,13 +116,16 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     if (mounted) setState(() {});
   }
 
-  void _selectDestination(int index) {
+  void _selectDestination(int branchIndex) {
     final current = navigationShell.currentIndex;
-    if (index != current) {
+    if (branchIndex != current) {
       _previousPrimaryIndex = current;
-      _lastPrimaryIndex = index;
+      _lastPrimaryIndex = branchIndex;
     }
-    navigationShell.goBranch(index, initialLocation: index == current);
+    navigationShell.goBranch(
+      branchIndex,
+      initialLocation: branchIndex == current,
+    );
   }
 
   void _handleSystemBack(bool didPop, Object? result) {
@@ -129,40 +134,41 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     }
   }
 
-  List<NavigationDestination> _destinations(BuildContext context) => [
-    NavigationDestination(
+  Map<int, NavigationDestination> _destinations(BuildContext context) => {
+    0: NavigationDestination(
       icon: const Icon(Icons.home_outlined),
       selectedIcon: const Icon(Icons.home_rounded),
       label: context.l10n.text('home'),
     ),
-    NavigationDestination(
-      icon: const Icon(Icons.add_circle_outline_rounded),
-      selectedIcon: const Icon(Icons.add_circle_rounded),
+    1: NavigationDestination(
+      icon: const Icon(Icons.add_rounded),
+      selectedIcon: const Icon(Icons.add_rounded),
       label: context.l10n.text('add'),
     ),
-    NavigationDestination(
-      icon: const Icon(Icons.receipt_long_outlined),
-      selectedIcon: const Icon(Icons.receipt_long_rounded),
+    2: NavigationDestination(
+      icon: const Icon(Icons.format_list_bulleted_rounded),
+      selectedIcon: const Icon(Icons.format_list_bulleted_rounded),
       label: context.l10n.text('transactions'),
     ),
-    NavigationDestination(
-      icon: const Icon(Icons.build_outlined),
-      selectedIcon: const Icon(Icons.build_rounded),
+    3: NavigationDestination(
+      icon: const Icon(Icons.bar_chart_rounded),
+      selectedIcon: const Icon(Icons.bar_chart_rounded),
       label: context.l10n.text('tools'),
     ),
-    NavigationDestination(
-      icon: const Icon(Icons.settings_outlined),
-      selectedIcon: const Icon(Icons.settings_rounded),
+    4: NavigationDestination(
+      icon: const Icon(Icons.more_horiz_rounded),
+      selectedIcon: const Icon(Icons.more_horiz_rounded),
       label: context.l10n.text('more'),
     ),
-  ];
+  };
 
   Widget _destination(
     BuildContext context,
     NavigationDestination destination,
-    int index,
+    int branchIndex,
   ) {
-    final selected = navigationShell.currentIndex == index;
+    final selected = navigationShell.currentIndex == branchIndex;
+    final add = branchIndex == 1;
     final labelStyle = ButlerlyTypography.navigationLabel(
       Theme.of(context).textTheme.labelSmall!,
       color: selected
@@ -170,47 +176,65 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
           : context.colors.secondaryText,
       selected: selected,
     );
-    final icon = IconTheme(
-      data: IconThemeData(
-        size: ButlerlySize.standardIcon,
-        color: selected
-            ? context.colors.interactive
-            : context.colors.secondaryText,
-      ),
-      child: selected
-          ? (destination.selectedIcon ?? destination.icon)
-          : destination.icon,
-    );
+    final baseIcon = selected
+        ? (destination.selectedIcon ?? destination.icon)
+        : destination.icon;
+    final icon = add
+        ? Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: selected
+                  ? context.colors.brandStrong
+                  : context.colors.selection,
+              border: Border.all(
+                color: context.colors.interactive.withValues(alpha: 0.55),
+              ),
+            ),
+            child: IconTheme(
+              data: IconThemeData(
+                size: 28,
+                color: selected ? Colors.white : context.colors.interactive,
+              ),
+              child: baseIcon,
+            ),
+          )
+        : IconTheme(
+            data: IconThemeData(
+              size: ButlerlySize.standardIcon,
+              color: selected
+                  ? context.colors.interactive
+                  : context.colors.secondaryText,
+            ),
+            child: baseIcon,
+          );
     return Semantics(
       button: true,
       selected: selected,
-      label: index == 1
+      label: add
           ? context.l10n.text('addTransactionAction')
           : destination.label,
       excludeSemantics: true,
       child: InkWell(
-        onTap: () => _selectDestination(index),
+        onTap: () => _selectDestination(branchIndex),
         child: SizedBox(
           height: double.infinity,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               icon,
-              const SizedBox(height: ButlerlySize.navigationLabelGap),
-              if (index == 1)
-                RichText(
-                  text: TextSpan(text: destination.label, style: labelStyle),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textScaler: MediaQuery.textScalerOf(context),
-                )
-              else
-                Text(
-                  destination.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: labelStyle,
-                ),
+              SizedBox(
+                height: add
+                    ? ButlerlySpacing.micro
+                    : ButlerlySize.navigationLabelGap,
+              ),
+              Text(
+                destination.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: labelStyle,
+              ),
             ],
           ),
         ),
@@ -220,17 +244,24 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
 
   Widget _phoneNavigation(BuildContext context) {
     final destinations = _destinations(context);
-    return Material(
-      color: Theme.of(context).navigationBarTheme.backgroundColor,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Theme.of(context).navigationBarTheme.backgroundColor,
+        border: Border(top: BorderSide(color: context.colors.cardDivider)),
+      ),
       child: SafeArea(
         top: false,
         child: SizedBox(
           height: ButlerlySize.navigationBarHeight,
           child: Row(
             children: [
-              for (var index = 0; index < destinations.length; index++)
+              for (final branchIndex in _visualBranchIndexes)
                 Expanded(
-                  child: _destination(context, destinations[index], index),
+                  child: _destination(
+                    context,
+                    destinations[branchIndex]!,
+                    branchIndex,
+                  ),
                 ),
             ],
           ),
@@ -262,40 +293,46 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
           final extended =
               constraints.maxWidth >= ButlerlySize.desktopBreakpoint;
           final destinations = _destinations(context);
+          final selectedVisualIndex = _visualBranchIndexes.indexOf(
+            navigationShell.currentIndex,
+          );
           return Scaffold(
             body: SafeArea(
               child: Row(
                 children: [
                   NavigationRail(
                     extended: extended,
-                    selectedIndex: navigationShell.currentIndex,
-                    onDestinationSelected: _selectDestination,
+                    selectedIndex: selectedVisualIndex,
+                    onDestinationSelected: (visualIndex) => _selectDestination(
+                      _visualBranchIndexes[visualIndex],
+                    ),
                     leading: Padding(
                       padding: const EdgeInsets.symmetric(
-                        vertical: ButlerlySpacing.standard,
+                        vertical: ButlerlySpacing.section,
                       ),
                       child: extended
                           ? Text(
                               context.l10n.text('appName'),
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(color: context.colors.brandStrong),
+                              style: Theme.of(context).textTheme.headlineMedium
+                                  ?.copyWith(color: context.colors.primaryText),
                             )
                           : Icon(
-                              Icons.shield_outlined,
-                              color: context.colors.brandStrong,
+                              Icons.circle,
+                              size: 14,
+                              color: context.colors.interactive,
                             ),
                     ),
-                    destinations: destinations
-                        .map(
-                          (destination) => NavigationRailDestination(
-                            icon: destination.icon,
-                            selectedIcon: destination.selectedIcon,
-                            label: Text(destination.label),
-                          ),
-                        )
-                        .toList(growable: false),
+                    destinations: [
+                      for (final branchIndex in _visualBranchIndexes)
+                        NavigationRailDestination(
+                          icon: destinations[branchIndex]!.icon,
+                          selectedIcon:
+                              destinations[branchIndex]!.selectedIcon,
+                          label: Text(destinations[branchIndex]!.label),
+                        ),
+                    ],
                   ),
-                  const VerticalDivider(width: 1),
+                  VerticalDivider(width: 1, color: context.colors.cardDivider),
                   Expanded(child: navigationShell),
                 ],
               ),
