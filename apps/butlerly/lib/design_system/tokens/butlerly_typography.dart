@@ -13,6 +13,7 @@ abstract final class ButlerlyTypography {
     'serif',
   ];
   static const financialAmountFeatures = [FontFeature.tabularFigures()];
+  static const navigationLabelFontSize = 10.5;
 
   static TextStyle _editorial(TextStyle? base) => (base ?? const TextStyle())
       .copyWith(
@@ -68,10 +69,13 @@ abstract final class ButlerlyTypography {
       height: 1.45,
       color: secondaryText,
     ),
+    // bodySmall is still normal readable copy at 12 px, so it must use the
+    // contrast-safe secondary text role. Tertiary text remains available for
+    // decorative affordances such as chevrons and non-essential icons.
     bodySmall: base.bodySmall?.copyWith(
       fontSize: 12,
       height: 17 / 12,
-      color: tertiaryText,
+      color: secondaryText,
     ),
     labelLarge: base.labelLarge?.copyWith(
       fontSize: 14,
@@ -91,13 +95,13 @@ abstract final class ButlerlyTypography {
     required Color color,
     required bool selected,
   }) => base.copyWith(
-    fontSize: 10.5,
+    fontSize: navigationLabelFontSize,
     color: color,
     fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
   );
 
-  /// Uses the compact body geometry while promoting important small copy to a
-  /// contrast-safe semantic color supplied by the caller.
+  /// Uses the compact body geometry with an explicit semantic color supplied
+  /// by the caller. Kept for contexts that need to opt into a stronger role.
   static TextStyle readableSmall(
     TextStyle base, {
     required Color color,
