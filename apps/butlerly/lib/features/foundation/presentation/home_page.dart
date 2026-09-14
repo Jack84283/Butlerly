@@ -345,26 +345,49 @@ class _QuickActions extends StatelessWidget {
         onTap: () => context.push('/notifications'),
       ),
     ];
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: context.colors.subtleSurface,
+
+    Widget divider() => SizedBox(
+      height: 46,
+      child: VerticalDivider(width: 1, color: context.colors.cardDivider),
+    );
+
+    Widget pair(int first, int second) => Row(
+      children: [
+        Expanded(child: actions[first]),
+        divider(),
+        Expanded(child: actions[second]),
+      ],
+    );
+
+    return Material(
+      color: context.colors.subtleSurface,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-        border: Border.all(color: context.colors.border),
+        side: BorderSide(color: context.colors.border),
       ),
-      child: Row(
-        children: [
-          for (var index = 0; index < actions.length; index++) ...[
-            Expanded(child: actions[index]),
-            if (index < actions.length - 1)
-              SizedBox(
-                height: 46,
-                child: VerticalDivider(
-                  width: 1,
-                  color: context.colors.cardDivider,
-                ),
-              ),
-          ],
-        ],
+      clipBehavior: Clip.antiAlias,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final textScale = MediaQuery.textScalerOf(context).scale(1);
+          final useTwoRows = constraints.maxWidth < 360 || textScale > 1.2;
+          if (useTwoRows) {
+            return Column(
+              children: [
+                pair(0, 1),
+                Divider(height: 1, color: context.colors.cardDivider),
+                pair(2, 3),
+              ],
+            );
+          }
+          return Row(
+            children: [
+              for (var index = 0; index < actions.length; index++) ...[
+                Expanded(child: actions[index]),
+                if (index < actions.length - 1) divider(),
+              ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -433,14 +456,15 @@ class _AttentionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final active = reviewCount > 0;
     final color = active ? context.colors.interactive : context.colors.success;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: active
-            ? context.colors.selection
-            : context.colors.success.withValues(alpha: 0.08),
+    return Material(
+      color: active
+          ? context.colors.selection
+          : context.colors.success.withValues(alpha: 0.08),
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-        border: Border.all(color: color.withValues(alpha: 0.32)),
+        side: BorderSide(color: color.withValues(alpha: 0.32)),
       ),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
         onTap: active ? () => context.go('/review') : null,
@@ -498,12 +522,13 @@ class _HomeEmptyTransactions extends StatelessWidget {
   const _HomeEmptyTransactions();
 
   @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(
-      color: context.colors.subtleSurface,
+  Widget build(BuildContext context) => Material(
+    color: context.colors.subtleSurface,
+    shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-      border: Border.all(color: context.colors.border),
+      side: BorderSide(color: context.colors.border),
     ),
+    clipBehavior: Clip.antiAlias,
     child: InkWell(
       borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
       onTap: () => context.push('/add'),
