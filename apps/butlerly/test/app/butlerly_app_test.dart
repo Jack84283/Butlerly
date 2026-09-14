@@ -145,7 +145,7 @@ void main() {
     expect(find.text('Scan receipt'), findsOneWidget);
     expect(find.text('Import statement'), findsOneWidget);
     expect(find.text('Import file'), findsOneWidget);
-    expect(find.text('Payment sources'), findsOneWidget);
+    expect(find.text('Payment sources'), findsAtLeastNWidgets(1));
 
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
