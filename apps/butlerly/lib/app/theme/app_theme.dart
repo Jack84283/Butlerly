@@ -32,7 +32,9 @@ abstract final class AppTheme {
       base.textTheme,
       primaryText: colors.primaryText,
       secondaryText: colors.secondaryText,
-      tertiaryText: colors.tertiaryText,
+      bodySmallText: brightness == Brightness.light
+          ? colors.secondaryText
+          : colors.tertiaryText,
     );
 
     final scheme = ColorScheme(
@@ -118,7 +120,11 @@ abstract final class AppTheme {
           borderSide: BorderSide(color: colors.error),
         ),
         labelStyle: TextStyle(color: colors.secondaryText),
-        hintStyle: TextStyle(color: colors.secondaryText),
+        hintStyle: TextStyle(
+          color: brightness == Brightness.light
+              ? colors.secondaryText
+              : colors.tertiaryText,
+        ),
       ),
       searchBarTheme: SearchBarThemeData(
         backgroundColor: WidgetStatePropertyAll(colors.subtleSurface),
