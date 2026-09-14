@@ -54,7 +54,14 @@ class TransactionRecordList extends StatelessWidget {
     if (!groupByFinancialDate) {
       final list = ButlerlyTransactionList(children: rows.values.toList());
       return wrapInCard
-          ? ButlerlyCard(padding: EdgeInsets.zero, child: list)
+          ? DecoratedBox(
+              decoration: BoxDecoration(
+                color: context.colors.subtleSurface,
+                borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+                border: Border.all(color: context.colors.border),
+              ),
+              child: list,
+            )
           : list;
     }
 
@@ -74,26 +81,29 @@ class TransactionRecordList extends StatelessWidget {
         for (final entry in groups.entries) ...[
           if (entry.key != groups.entries.first.key)
             const SizedBox(height: ButlerlySpacing.section),
-          Text(
-            transactionDateLabel(
-              entry.value.first,
-              pendingLabel: context.l10n.text('datePending'),
-              locale: locale,
-            ),
-            style: Theme.of(context).textTheme.titleMedium,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  transactionDateLabel(
+                    entry.value.first,
+                    pendingLabel: context.l10n.text('datePending'),
+                    locale: locale,
+                  ),
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              Text(
+                '${entry.value.length}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
           ),
-          const SizedBox(height: ButlerlySpacing.small),
-          ButlerlyCard(
-            // Keep the transaction group surface explicit.  Relying only on
-            // CardTheme makes this presentation appear flat when a host
-            // screen supplies an incomplete theme.
-            color: context.colors.surface,
-            padding: EdgeInsets.zero,
-            child: ButlerlyTransactionList(
-              children: [
-                for (final transaction in entry.value) rows[transaction]!,
-              ],
-            ),
+          const SizedBox(height: ButlerlySpacing.compact),
+          ButlerlyTransactionList(
+            children: [
+              for (final transaction in entry.value) rows[transaction]!,
+            ],
           ),
         ],
       ],
@@ -130,8 +140,6 @@ class TransactionRecordList extends StatelessWidget {
       ),
       currency: transaction.currency,
       categoryId: iconCategoryId,
-      // An empty label intentionally selects canonical mode so uncategorized
-      // rows still receive the neutral leading icon and signed amount layout.
       categoryLabel: parent ?? category ?? missingCategoryLabel ?? '',
       subcategoryLabel: parent == null ? null : category,
       paymentSource: sourceLabel,
