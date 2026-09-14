@@ -130,12 +130,13 @@ void main() {
     tester,
   ) async {
     _setPhoneViewport(tester);
-    tester.view.platformDispatcher.textScaleFactorTestValue = 2.0;
-    addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
-
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     await tester.pumpAndSettle();
     await _switchLanguage(tester, 'Spanish');
+
+    tester.view.platformDispatcher.textScaleFactorTestValue = 2.0;
+    addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
+    await tester.pumpAndSettle();
 
     _expectNoFlutterException(tester);
     expect(find.text('Inicio'), findsOneWidget);
@@ -148,12 +149,13 @@ void main() {
     tester,
   ) async {
     _setPhoneViewport(tester);
-    tester.view.platformDispatcher.textScaleFactorTestValue = 2.0;
-    addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
-
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     await tester.pumpAndSettle();
     await _switchLanguage(tester, 'Chinese (Simplified)');
+
+    tester.view.platformDispatcher.textScaleFactorTestValue = 2.0;
+    addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
+    await tester.pumpAndSettle();
 
     _expectNoFlutterException(tester);
     expect(find.text('首页'), findsOneWidget);
