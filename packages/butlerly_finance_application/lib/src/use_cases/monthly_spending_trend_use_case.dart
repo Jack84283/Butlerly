@@ -80,6 +80,21 @@ final class CalculateMonthlySpendingTrend {
       );
     }
 
+    // Build the canonical economic transaction source once. Each trend point
+    // reuses that normalized/reconciled source with a different authoritative
+    // period context, so a seven-month Home chart does not reread and rebuild
+    // the complete finance dataset seven times.
+    final sharedDatasetResult = await analysis.datasetBuilder.build(
+      currentContext,
+    );
+    if (sharedDatasetResult is! ApplicationDatasetSuccess) {
+      throw const RepositoryException(
+        RepositoryFailureCode.unavailable,
+        'monthly spending dataset is unavailable',
+      );
+    }
+    final sharedDataset = sharedDatasetResult.dataset;
+
     final points = <MonthlySpendingTrendPoint>[];
     for (var offset = monthCount - 1; offset >= 0; offset--) {
       final month = DateTime.utc(
@@ -94,15 +109,13 @@ final class CalculateMonthlySpendingTrend {
               currentContext.period.timeZoneId,
               instant,
             );
-      final datasetResult = await analysis.datasetBuilder.build(context);
-      if (datasetResult is! ApplicationDatasetSuccess) {
-        throw const RepositoryException(
-          RepositoryFailureCode.unavailable,
-          'monthly spending dataset is unavailable',
-        );
-      }
+      final dataset = AnalysisDataset(
+        transactions: sharedDataset.transactions,
+        context: context,
+        qualityIssues: sharedDataset.qualityIssues,
+      );
       final results = analysis.engine.execute(
-        dataset: datasetResult.dataset,
+        dataset: dataset,
         definitions: [expenseRule],
       );
       final spending = results
