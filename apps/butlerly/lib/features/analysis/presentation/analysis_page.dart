@@ -25,6 +25,7 @@ import 'package:go_router/go_router.dart';
 class AnalysisPage extends StatefulWidget {
   const AnalysisPage({
     super.key,
+    this.initialMonth,
     this.initialRange,
     this.load,
     this.loadForPeriod,
@@ -34,6 +35,7 @@ class AnalysisPage extends StatefulWidget {
     this.onNavigationRequested,
     this.onTransactionRequested,
   });
+  final DateTime? initialMonth;
   final DateTimeRange? initialRange;
   final Future<ApplicationResult<List<RuleExecutionResult>>> Function()? load;
   final Future<ApplicationResult<List<RuleExecutionResult>>> Function(
@@ -71,7 +73,11 @@ class _AnalysisPageState extends State<AnalysisPage> {
   void initState() {
     super.initState();
     _customRange = widget.initialRange;
-    if (_customRange != null) _period = 'selected_period';
+    if (widget.initialMonth != null) {
+      _period = 'selected_month';
+    } else if (_customRange != null) {
+      _period = 'selected_period';
+    }
     _result = _load(_period);
     transactionChanges.addListener(_reload);
   }
@@ -132,7 +138,22 @@ class _AnalysisPageState extends State<AnalysisPage> {
         return value;
       });
     }
-    final contextFuture = period == 'selected_period' && _customRange != null
+    final initialMonth = widget.initialMonth;
+    final contextFuture = period == 'selected_month' && initialMonth != null
+        ? useCase.contextFor(
+            'selected_month',
+            instant: DateTime.now(),
+            customPeriod: AnalysisPeriod(
+              startDate: analysisDate(
+                DateTime(initialMonth.year, initialMonth.month, 1),
+              ),
+              endDate: analysisDate(
+                DateTime(initialMonth.year, initialMonth.month, 1),
+              ),
+              timeZoneId: 'UTC',
+            ),
+          )
+        : period == 'selected_period' && _customRange != null
         ? useCase.contextForDates(
             startDate: analysisDate(_customRange!.start),
             endDate: analysisDate(_customRange!.end),
@@ -485,16 +506,23 @@ class _AnalysisContent extends StatelessWidget {
   }
 
   void _openInsights(BuildContext context) {
-    final selected = analysisContext?.period;
-    final path = selected == null
-        ? '/insights'
-        : Uri(
-            path: '/insights',
-            queryParameters: {
-              'from': selected.startDate,
-              'to': selected.endDate,
-            },
-          ).toString();
+    final selected = analysisContext;
+    final path = switch (selected?.periodType) {
+      'selected_month' => Uri(
+        path: '/insights',
+        queryParameters: {
+          'month': selected!.period.startDate.substring(0, 7),
+        },
+      ).toString(),
+      'selected_period' => Uri(
+        path: '/insights',
+        queryParameters: {
+          'from': selected!.period.startDate,
+          'to': selected.period.endDate,
+        },
+      ).toString(),
+      _ => '/insights',
+    };
     _navigate(context, path);
   }
 
