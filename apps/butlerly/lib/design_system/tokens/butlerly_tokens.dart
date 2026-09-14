@@ -146,3 +146,14 @@ abstract final class ButlerlyAccessibility {
   static const minimumContrastRatio = 4.5;
   static const minimumTouchTarget = ButlerlySize.minimumTarget;
 }
+
+abstract final class ButlerlyElevation {
+  static const base = 0.0;
+  static const raised = 0.0;
+  static const overlay = 4.0;
+  static const modal = 8.0;
+  static const card = raised;
+  static const dialog = modal;
+  static const bottomSheet = modal;
+  static const floating = overlay;
+}
