@@ -7,7 +7,11 @@ import 'package:flutter/material.dart';
 /// on the platform sans-serif for legibility and cross-platform familiarity.
 abstract final class ButlerlyTypography {
   static const editorialFontFamily = 'Georgia';
-  static const editorialFontFallback = <String>['Times New Roman'];
+  static const editorialFontFallback = <String>[
+    'Times New Roman',
+    'Noto Serif',
+    'serif',
+  ];
   static const financialAmountFeatures = [FontFeature.tabularFigures()];
 
   static TextStyle _editorial(TextStyle? base) => (base ?? const TextStyle())
@@ -91,6 +95,13 @@ abstract final class ButlerlyTypography {
     color: color,
     fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
   );
+
+  /// Uses the compact body geometry while promoting important small copy to a
+  /// contrast-safe semantic color supplied by the caller.
+  static TextStyle readableSmall(
+    TextStyle base, {
+    required Color color,
+  }) => base.copyWith(color: color);
 
   static TextStyle editorialTitle(TextStyle base) => _editorial(base).copyWith(
     fontWeight: FontWeight.w500,
