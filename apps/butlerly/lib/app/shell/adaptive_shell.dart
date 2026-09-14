@@ -7,12 +7,13 @@ import 'package:go_router/go_router.dart';
 
 const primaryShellRouteNamePrefix = 'primary-shell:';
 const _phoneNavigationAddIconSize = 52.0;
-const _phoneNavigationVerticalPadding = ButlerlySpacing.compact;
 
 /// Computes phone navigation height from the actual localized label layout.
 ///
 /// This supports nonlinear [TextScaler] implementations and labels that wrap
 /// at large accessibility sizes without imposing a fixed maximum growth cap.
+/// The established 78 px baseline already includes its own vertical slack, so
+/// the bar only grows when icon + gap + scaled label geometry exceeds it.
 double phoneNavigationHeightForLabels({
   required TextScaler textScaler,
   required double itemWidth,
@@ -35,10 +36,7 @@ double phoneNavigationHeightForLabels({
   }
 
   final requiredHeight =
-      _phoneNavigationAddIconSize +
-      ButlerlySpacing.micro +
-      maxLabelHeight +
-      (_phoneNavigationVerticalPadding * 2);
+      _phoneNavigationAddIconSize + ButlerlySpacing.micro + maxLabelHeight;
   return requiredHeight < ButlerlySize.navigationBarHeight
       ? ButlerlySize.navigationBarHeight
       : requiredHeight;
