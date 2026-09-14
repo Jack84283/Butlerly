@@ -161,14 +161,14 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/analysis',
       builder: (_, state) => AnalysisPage(
-        initialMonth: _queryMonth(state.uri.queryParameters['month']),
+        initialMonth: _queryInitialMonth(state.uri.queryParameters),
         initialRange: _queryRange(state.uri.queryParameters),
       ),
     ),
     GoRoute(
       path: '/insights',
       builder: (_, state) => InsightsPage(
-        initialMonth: _queryMonth(state.uri.queryParameters['month']),
+        initialMonth: _queryInitialMonth(state.uri.queryParameters),
         initialRange: _queryRange(state.uri.queryParameters),
       ),
     ),
@@ -237,6 +237,21 @@ DateTime? _queryMonth(String? value) {
   if (value == null || !RegExp(r'^\d{4}-\d{2}$').hasMatch(value)) return null;
   final date = DateTime.tryParse('$value-01');
   return date == null ? null : DateTime(date.year, date.month, 1);
+}
+
+DateTime? _queryInitialMonth(Map<String, String> parameters) {
+  final explicit = _queryMonth(parameters['month']);
+  if (explicit != null) return explicit;
+  final range = _queryRange(parameters);
+  if (range == null || range.start.day != 1) return null;
+  if (range.start.year != range.end.year ||
+      range.start.month != range.end.month) {
+    return null;
+  }
+  final last = DateTime(range.start.year, range.start.month + 1, 0);
+  return range.end.day == last.day
+      ? DateTime(range.start.year, range.start.month, 1)
+      : null;
 }
 
 DateTimeRange? _queryRange(Map<String, String> parameters) {
