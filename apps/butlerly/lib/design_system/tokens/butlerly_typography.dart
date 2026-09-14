@@ -26,7 +26,6 @@ abstract final class ButlerlyTypography {
     TextTheme base, {
     required Color primaryText,
     required Color secondaryText,
-    required Color tertiaryText,
   }) => base.copyWith(
     displaySmall: _editorial(base.displaySmall).copyWith(
       fontSize: 36,
