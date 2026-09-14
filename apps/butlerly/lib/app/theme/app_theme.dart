@@ -118,7 +118,7 @@ abstract final class AppTheme {
           borderSide: BorderSide(color: colors.error),
         ),
         labelStyle: TextStyle(color: colors.secondaryText),
-        hintStyle: TextStyle(color: colors.tertiaryText),
+        hintStyle: TextStyle(color: colors.secondaryText),
       ),
       searchBarTheme: SearchBarThemeData(
         backgroundColor: WidgetStatePropertyAll(colors.subtleSurface),
