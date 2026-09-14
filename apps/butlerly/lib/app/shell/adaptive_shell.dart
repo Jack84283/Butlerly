@@ -282,6 +282,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
   double _phoneNavigationHeight(
     BuildContext context,
     Map<int, NavigationDestination> destinations,
+    double availableWidth,
   ) {
     final labelStyle = ButlerlyTypography.navigationLabel(
       Theme.of(context).textTheme.labelSmall!,
@@ -290,7 +291,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     );
     return phoneNavigationHeightForLabels(
       textScaler: MediaQuery.textScalerOf(context),
-      itemWidth: MediaQuery.sizeOf(context).width / _visualBranchIndexes.length,
+      itemWidth: availableWidth / _visualBranchIndexes.length,
       labels: [
         for (final branchIndex in _visualBranchIndexes)
           destinations[branchIndex]!.label,
@@ -311,19 +312,25 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
         type: MaterialType.transparency,
         child: SafeArea(
           top: false,
-          child: SizedBox(
-            height: _phoneNavigationHeight(context, destinations),
-            child: Row(
-              children: [
-                for (final branchIndex in _visualBranchIndexes)
-                  Expanded(
-                    child: _destination(
-                      context,
-                      destinations[branchIndex]!,
-                      branchIndex,
+          child: LayoutBuilder(
+            builder: (context, constraints) => SizedBox(
+              height: _phoneNavigationHeight(
+                context,
+                destinations,
+                constraints.maxWidth,
+              ),
+              child: Row(
+                children: [
+                  for (final branchIndex in _visualBranchIndexes)
+                    Expanded(
+                      child: _destination(
+                        context,
+                        destinations[branchIndex]!,
+                        branchIndex,
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
