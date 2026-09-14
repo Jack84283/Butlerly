@@ -26,3 +26,4 @@ export 'src/analysis/invalidation.dart';
 export 'src/analysis/result_materialization.dart';
 export 'src/analysis/dataset_builder.dart';
 export 'src/use_cases/analysis_use_cases.dart';
+export 'src/use_cases/monthly_spending_trend_use_case.dart';

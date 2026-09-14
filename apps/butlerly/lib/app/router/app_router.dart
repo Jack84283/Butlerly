@@ -31,8 +31,13 @@ PrimaryShellNavigatorObserver _primaryObserver(int branchIndex) =>
       controller: _primaryShellVisibility,
     );
 
-NoTransitionPage<void> _primaryPage(String name, Widget child) =>
+NoTransitionPage<void> _primaryPage(
+  String name,
+  Widget child, {
+  LocalKey? key,
+}) =>
     NoTransitionPage<void>(
+      key: key,
       name: '$primaryShellRouteNamePrefix$name',
       child: child,
     );
@@ -77,17 +82,23 @@ final appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/transactions',
-              pageBuilder: (context, state) => _primaryPage(
-                'transactions',
-                TransactionsPage(
-                  query: ListTransactionsQuery(
-                    transactionIds: _queryIds(state.uri.queryParameters['ids']),
-                    from: _queryDate(state.uri.queryParameters['from']),
-                    to: _queryDate(state.uri.queryParameters['to']),
-                    categoryId: state.uri.queryParameters['category'],
-                  ),
-                ),
-              ),
+              pageBuilder: (context, state) {
+                final parameters = state.uri.queryParameters;
+                final query = ListTransactionsQuery(
+                  transactionIds: _queryIds(parameters['ids']),
+                  from: _queryDate(parameters['from']),
+                  to: _queryDate(parameters['to']),
+                  categoryId: parameters['category'],
+                );
+                return _primaryPage(
+                  'transactions',
+                  TransactionsPage(query: query),
+                  // StatefulShellRoute keeps branch widgets alive. A query
+                  // change represents a different transaction result set, so
+                  // give the page a semantic key and never retain stale state.
+                  key: ValueKey('transactions:${state.uri.query}'),
+                );
+              },
             ),
           ],
         ),
@@ -158,8 +169,20 @@ final appRouter = GoRouter(
         );
       },
     ),
-    GoRoute(path: '/analysis', builder: (_, _) => const AnalysisPage()),
-    GoRoute(path: '/insights', builder: (_, _) => const InsightsPage()),
+    GoRoute(
+      path: '/analysis',
+      builder: (_, state) => AnalysisPage(
+        initialMonth: _queryInitialMonth(state.uri.queryParameters),
+        initialRange: _queryRange(state.uri.queryParameters),
+      ),
+    ),
+    GoRoute(
+      path: '/insights',
+      builder: (_, state) => InsightsPage(
+        initialMonth: _queryInitialMonth(state.uri.queryParameters),
+        initialRange: _queryRange(state.uri.queryParameters),
+      ),
+    ),
     GoRoute(
       path: '/transactions/add',
       builder: (context, state) => services.isRegistered<FinanceServices>()
@@ -220,6 +243,22 @@ final appRouter = GoRouter(
 
 DateTime? _queryDate(String? value) =>
     value == null ? null : DateTime.tryParse(value);
+
+DateTime? _queryMonth(String? value) {
+  if (value == null || !RegExp(r'^\d{4}-\d{2}$').hasMatch(value)) return null;
+  final date = DateTime.tryParse('$value-01');
+  return date == null ? null : DateTime(date.year, date.month, 1);
+}
+
+DateTime? _queryInitialMonth(Map<String, String> parameters) =>
+    _queryMonth(parameters['month']);
+
+DateTimeRange? _queryRange(Map<String, String> parameters) {
+  final from = _queryDate(parameters['from']);
+  final to = _queryDate(parameters['to']);
+  if (from == null || to == null || from.isAfter(to)) return null;
+  return DateTimeRange(start: from, end: to);
+}
 
 List<String>? _queryIds(String? value) =>
     value?.split(',').where((id) => id.isNotEmpty).toList(growable: false);

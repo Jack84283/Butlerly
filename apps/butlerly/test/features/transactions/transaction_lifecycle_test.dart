@@ -443,6 +443,9 @@ void main() {
   testWidgets('Home refreshes when a transaction changes outside its route', (
     tester,
   ) async {
+    HomePage.debugCurrentDate = DateTime.utc(2026, 8, 15, 12);
+    addTearDown(() => HomePage.debugCurrentDate = null);
+
     await tester.pumpWidget(const MaterialApp(home: HomePage()));
     await tester.pumpAndSettle();
     expect(find.text('New global transaction'), findsNothing);
