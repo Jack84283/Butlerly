@@ -26,7 +26,7 @@ abstract final class ButlerlyTypography {
     TextTheme base, {
     required Color primaryText,
     required Color secondaryText,
-    required Color tertiaryText,
+    required Color bodySmallText,
   }) => base.copyWith(
     displaySmall: _editorial(base.displaySmall).copyWith(
       fontSize: 36,
@@ -69,13 +69,10 @@ abstract final class ButlerlyTypography {
       height: 1.45,
       color: secondaryText,
     ),
-    // bodySmall is still normal readable copy at 12 px, so it must use the
-    // contrast-safe secondary text role. The tertiary role remains available
-    // to callers for decorative affordances and non-essential indicators.
     bodySmall: base.bodySmall?.copyWith(
       fontSize: 12,
       height: 17 / 12,
-      color: secondaryText,
+      color: bodySmallText,
     ),
     labelLarge: base.labelLarge?.copyWith(
       fontSize: 14,
