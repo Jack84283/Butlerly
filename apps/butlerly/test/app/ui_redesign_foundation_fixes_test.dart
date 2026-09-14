@@ -60,6 +60,23 @@ void main() {
     );
   });
 
+  test('phone navigation preserves the established 78 px height at 1x', () {
+    final labelStyle = ButlerlyTypography.navigationLabel(
+      AppTheme.light.textTheme.labelSmall!,
+      color: Colors.black,
+      selected: true,
+    );
+    final height = phoneNavigationHeightForLabels(
+      textScaler: TextScaler.noScaling,
+      itemWidth: 78,
+      labels: const ['Home', 'Transactions', 'Add', 'Tools', 'More'],
+      labelStyle: labelStyle,
+      textDirection: TextDirection.ltr,
+    );
+
+    expect(height, ButlerlySize.navigationBarHeight);
+  });
+
   test('phone navigation uses actual localized nonlinear label geometry', () {
     const scaler = _NavigationNonlinearTextScaler();
     final labelStyle = ButlerlyTypography.navigationLabel(
@@ -133,7 +150,7 @@ void main() {
     expect(find.byType(ButlerlyActionRow), findsNWidgets(4));
   });
 
-  for (final textScale in const [1.3, 1.5, 2.0, 3.0]) {
+  for (final textScale in const [1.0, 1.3, 1.5, 2.0, 3.0]) {
     testWidgets(
       'phone navigation has no overflow at ${textScale}x text scale',
       (tester) async {
