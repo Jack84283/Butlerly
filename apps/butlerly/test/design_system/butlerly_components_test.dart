@@ -54,7 +54,10 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      expect(await contentWidth(const Size(390, 844)), 358);
+      expect(
+        await contentWidth(const Size(390, 844)),
+        390 - (2 * ButlerlySize.phoneGutter),
+      );
       expect(
         await contentWidth(const Size(1200, 900)),
         ButlerlySize.pageContentMaxWidth,
