@@ -1173,10 +1173,27 @@ bool _sameMonth(DateTime left, DateTime right) =>
 String _date(DateTime value) =>
     '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 
-String _periodRoute(String path, AnalysisPeriod period) => Uri(
-  path: path,
-  queryParameters: {'from': period.startDate, 'to': period.endDate},
-).toString();
+String _periodRoute(String path, AnalysisPeriod period) {
+  if (path == '/analysis' || path == '/insights') {
+    final start = DateTime.parse(period.startDate);
+    final end = DateTime.parse(period.endDate);
+    final last = DateTime(start.year, start.month + 1, 0);
+    if (end.year == start.year &&
+        end.month == start.month &&
+        end.day == last.day) {
+      final month =
+          '${start.year.toString().padLeft(4, '0')}-${start.month.toString().padLeft(2, '0')}';
+      return Uri(path: path, queryParameters: {'month': month}).toString();
+    }
+    // The only partial month produced by Home is the current month-to-date.
+    // Opening the default destination retains current_month comparison rules.
+    return path;
+  }
+  return Uri(
+    path: path,
+    queryParameters: {'from': period.startDate, 'to': period.endDate},
+  ).toString();
+}
 
 String _transactionTitle(BuildContext context, TransactionDto transaction) {
   for (final candidate in [
