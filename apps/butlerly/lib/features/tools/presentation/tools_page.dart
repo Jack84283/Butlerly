@@ -44,12 +44,13 @@ class ToolsPage extends StatelessWidget {
         builder: (context, constraints) {
           final tools = _tools(context);
           if (constraints.maxWidth < 640) {
-            return DecoratedBox(
-              decoration: BoxDecoration(
-                color: context.colors.subtleSurface,
+            return Material(
+              color: context.colors.subtleSurface,
+              shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-                border: Border.all(color: context.colors.border),
+                side: BorderSide(color: context.colors.border),
               ),
+              clipBehavior: Clip.antiAlias,
               child: Column(
                 children: [
                   for (var index = 0; index < tools.length; index++) ...[
