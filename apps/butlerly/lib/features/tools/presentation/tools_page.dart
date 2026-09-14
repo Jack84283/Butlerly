@@ -109,12 +109,7 @@ class _ToolPanel extends StatelessWidget {
           const SizedBox(height: ButlerlySpacing.standard),
           Text(tool.title, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: ButlerlySpacing.micro),
-          Text(
-            tool.description,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: context.colors.secondaryText,
-            ),
-          ),
+          Text(tool.description, style: Theme.of(context).textTheme.bodySmall),
         ],
       ),
     ),
