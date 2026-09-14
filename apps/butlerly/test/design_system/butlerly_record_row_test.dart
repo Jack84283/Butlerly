@@ -415,7 +415,10 @@ void main() {
       ButlerlySpacing.compact,
     );
     expect(ButlerlyTransactionItemTokens.dividerInset, ButlerlySpacing.micro);
-    expect(ButlerlyTransactionItemTokens.minTouchHeight, 72);
+    expect(
+      ButlerlyTransactionItemTokens.minTouchHeight,
+      ButlerlySize.recordRowMinHeight,
+    );
   });
 
   testWidgets(
