@@ -97,13 +97,6 @@ abstract final class ButlerlyTypography {
     fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
   );
 
-  /// Uses the compact body geometry with an explicit semantic color supplied
-  /// by the caller. Kept for contexts that need to opt into a stronger role.
-  static TextStyle readableSmall(
-    TextStyle base, {
-    required Color color,
-  }) => base.copyWith(color: color);
-
   static TextStyle editorialTitle(TextStyle base) => _editorial(base).copyWith(
     fontWeight: FontWeight.w500,
   );
