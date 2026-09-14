@@ -158,8 +158,18 @@ final appRouter = GoRouter(
         );
       },
     ),
-    GoRoute(path: '/analysis', builder: (_, _) => const AnalysisPage()),
-    GoRoute(path: '/insights', builder: (_, _) => const InsightsPage()),
+    GoRoute(
+      path: '/analysis',
+      builder: (_, state) => AnalysisPage(
+        initialRange: _queryRange(state.uri.queryParameters),
+      ),
+    ),
+    GoRoute(
+      path: '/insights',
+      builder: (_, state) => InsightsPage(
+        initialRange: _queryRange(state.uri.queryParameters),
+      ),
+    ),
     GoRoute(
       path: '/transactions/add',
       builder: (context, state) => services.isRegistered<FinanceServices>()
@@ -220,6 +230,13 @@ final appRouter = GoRouter(
 
 DateTime? _queryDate(String? value) =>
     value == null ? null : DateTime.tryParse(value);
+
+DateTimeRange? _queryRange(Map<String, String> parameters) {
+  final from = _queryDate(parameters['from']);
+  final to = _queryDate(parameters['to']);
+  if (from == null || to == null || from.isAfter(to)) return null;
+  return DateTimeRange(start: from, end: to);
+}
 
 List<String>? _queryIds(String? value) =>
     value?.split(',').where((id) => id.isNotEmpty).toList(growable: false);
