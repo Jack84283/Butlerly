@@ -4,25 +4,27 @@ import 'package:test/test.dart';
 
 void main() {
   late CalculateAnalysisOverview analysis;
+  late _Transactions transactions;
 
   setUp(() {
+    transactions = _Transactions([
+      _transaction('july', '2026-07-10', '30'),
+      _transaction('august-a', '2026-08-02', '40'),
+      _transaction('august-b', '2026-08-31', '60'),
+      _transaction('september-a', '2026-09-01', '100'),
+      _transaction('september-b', '2026-09-05', '50'),
+      _transaction('future', '2026-09-06', '999'),
+      _transaction(
+        'income',
+        '2026-09-03',
+        '500',
+        direction: TransactionDirection.income,
+      ),
+    ]);
     analysis = CalculateAnalysisOverview(
       _Rules([_expenseTotalRule()]),
       AnalysisDatasetBuilder(
-        _Transactions([
-          _transaction('july', '2026-07-10', '30'),
-          _transaction('august-a', '2026-08-02', '40'),
-          _transaction('august-b', '2026-08-31', '60'),
-          _transaction('september-a', '2026-09-01', '100'),
-          _transaction('september-b', '2026-09-05', '50'),
-          _transaction('future', '2026-09-06', '999'),
-          _transaction(
-            'income',
-            '2026-09-03',
-            '500',
-            direction: TransactionDirection.income,
-          ),
-        ]),
+        transactions,
         _Preferences(),
         null,
       ),
@@ -59,6 +61,17 @@ void main() {
       );
     },
   );
+
+  test('reads the canonical transaction source once for the whole trend', () async {
+    final result = await CalculateMonthlySpendingTrend(analysis)(
+      endingMonth: DateTime.utc(2026, 9, 1),
+      instant: DateTime.utc(2026, 9, 5, 12),
+      monthCount: 7,
+    );
+
+    expect(result, isA<ApplicationSuccess<List<MonthlySpendingTrendPoint>>>());
+    expect(transactions.listAllCalls, 1);
+  });
 
   test('historical ending month is resolved as a complete month', () async {
     final result = await CalculateMonthlySpendingTrend(analysis)(
@@ -149,13 +162,17 @@ final class _Transactions implements TransactionRepository {
   _Transactions(this.values);
 
   final List<Transaction> values;
+  int listAllCalls = 0;
 
   @override
   Future<Transaction?> findById(TransactionId id) async =>
       values.where((value) => value.id == id).firstOrNull;
 
   @override
-  Future<List<Transaction>> listAll() async => values;
+  Future<List<Transaction>> listAll() async {
+    listAllCalls++;
+    return values;
+  }
 
   @override
   Future<List<Transaction>> query(TransactionRepositoryQuery query) async =>
