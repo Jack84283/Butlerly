@@ -14,24 +14,40 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   setUp(() => appRouter.go('/'));
 
-  test('readable small and hint text meet the normal-text contrast target', () {
-    final theme = AppTheme.light;
-    final colors = theme.extension<ButlerlySemanticColors>()!;
-    final bodySmallColor = theme.textTheme.bodySmall!.color!;
-    final hintColor = theme.inputDecorationTheme.hintStyle!.color!;
+  test('small and hint text preserve accessible semantic roles', () {
+    final lightTheme = AppTheme.light;
+    final lightColors = lightTheme.extension<ButlerlySemanticColors>()!;
+    final lightBodySmallColor = lightTheme.textTheme.bodySmall!.color!;
+    final lightHintColor = lightTheme.inputDecorationTheme.hintStyle!.color!;
 
-    expect(bodySmallColor, colors.secondaryText);
-    expect(hintColor, colors.secondaryText);
+    expect(lightBodySmallColor, lightColors.secondaryText);
+    expect(lightHintColor, lightColors.secondaryText);
     expect(
-      _contrastRatio(bodySmallColor, colors.background),
+      _contrastRatio(lightBodySmallColor, lightColors.background),
       greaterThanOrEqualTo(ButlerlyAccessibility.minimumContrastRatio),
     );
     expect(
-      _contrastRatio(bodySmallColor, colors.subtleSurface),
+      _contrastRatio(lightBodySmallColor, lightColors.subtleSurface),
       greaterThanOrEqualTo(ButlerlyAccessibility.minimumContrastRatio),
     );
     expect(
-      _contrastRatio(hintColor, colors.subtleSurface),
+      _contrastRatio(lightHintColor, lightColors.subtleSurface),
+      greaterThanOrEqualTo(ButlerlyAccessibility.minimumContrastRatio),
+    );
+
+    final darkTheme = AppTheme.dark;
+    final darkColors = darkTheme.extension<ButlerlySemanticColors>()!;
+    final darkBodySmallColor = darkTheme.textTheme.bodySmall!.color!;
+    final darkHintColor = darkTheme.inputDecorationTheme.hintStyle!.color!;
+
+    expect(darkBodySmallColor, darkColors.tertiaryText);
+    expect(darkHintColor, darkColors.tertiaryText);
+    expect(
+      _contrastRatio(darkBodySmallColor, darkColors.background),
+      greaterThanOrEqualTo(ButlerlyAccessibility.minimumContrastRatio),
+    );
+    expect(
+      _contrastRatio(darkBodySmallColor, darkColors.subtleSurface),
       greaterThanOrEqualTo(ButlerlyAccessibility.minimumContrastRatio),
     );
   });
