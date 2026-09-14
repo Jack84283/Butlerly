@@ -31,8 +31,13 @@ PrimaryShellNavigatorObserver _primaryObserver(int branchIndex) =>
       controller: _primaryShellVisibility,
     );
 
-NoTransitionPage<void> _primaryPage(String name, Widget child) =>
+NoTransitionPage<void> _primaryPage(
+  String name,
+  Widget child, {
+  LocalKey? key,
+}) =>
     NoTransitionPage<void>(
+      key: key,
       name: '$primaryShellRouteNamePrefix$name',
       child: child,
     );
@@ -77,17 +82,23 @@ final appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/transactions',
-              pageBuilder: (context, state) => _primaryPage(
-                'transactions',
-                TransactionsPage(
-                  query: ListTransactionsQuery(
-                    transactionIds: _queryIds(state.uri.queryParameters['ids']),
-                    from: _queryDate(state.uri.queryParameters['from']),
-                    to: _queryDate(state.uri.queryParameters['to']),
-                    categoryId: state.uri.queryParameters['category'],
-                  ),
-                ),
-              ),
+              pageBuilder: (context, state) {
+                final parameters = state.uri.queryParameters;
+                final query = ListTransactionsQuery(
+                  transactionIds: _queryIds(parameters['ids']),
+                  from: _queryDate(parameters['from']),
+                  to: _queryDate(parameters['to']),
+                  categoryId: parameters['category'],
+                );
+                return _primaryPage(
+                  'transactions',
+                  TransactionsPage(query: query),
+                  // StatefulShellRoute keeps branch widgets alive. A query
+                  // change represents a different transaction result set, so
+                  // give the page a semantic key and never retain stale state.
+                  key: ValueKey('transactions:${state.uri.query}'),
+                );
+              },
             ),
           ],
         ),
@@ -239,20 +250,8 @@ DateTime? _queryMonth(String? value) {
   return date == null ? null : DateTime(date.year, date.month, 1);
 }
 
-DateTime? _queryInitialMonth(Map<String, String> parameters) {
-  final explicit = _queryMonth(parameters['month']);
-  if (explicit != null) return explicit;
-  final range = _queryRange(parameters);
-  if (range == null || range.start.day != 1) return null;
-  if (range.start.year != range.end.year ||
-      range.start.month != range.end.month) {
-    return null;
-  }
-  final last = DateTime(range.start.year, range.start.month + 1, 0);
-  return range.end.day == last.day
-      ? DateTime(range.start.year, range.start.month, 1)
-      : null;
-}
+DateTime? _queryInitialMonth(Map<String, String> parameters) =>
+    _queryMonth(parameters['month']);
 
 DateTimeRange? _queryRange(Map<String, String> parameters) {
   final from = _queryDate(parameters['from']);
