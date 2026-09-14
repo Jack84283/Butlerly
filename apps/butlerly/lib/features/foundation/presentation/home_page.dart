@@ -228,13 +228,17 @@ class _LocalSummary extends StatelessWidget {
                   color: context.colors.interactive,
                 ),
                 const SizedBox(width: ButlerlySpacing.compact),
-                Text(
-                  context.l10n.text('localRecords'),
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: context.colors.secondaryText,
+                Expanded(
+                  child: Text(
+                    context.l10n.text('localRecords'),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: context.colors.secondaryText,
+                    ),
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(width: ButlerlySpacing.compact),
                 Icon(
                   Icons.phonelink_lock_outlined,
                   size: 18,
