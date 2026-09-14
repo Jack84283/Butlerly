@@ -1,17 +1,23 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
+import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
+import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
-import 'package:butlerly/features/foundation/presentation/transaction_record_list.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -25,15 +31,18 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late Future<_HomeData> _data;
   String? _loadedLanguageCode;
+  DateTime? _selectedMonth;
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
       : null;
 
+  DateTime get _now => HomePage.debugCurrentDate ?? DateTime.now();
+
   @override
   void initState() {
     super.initState();
-    _data = Future.value(const _HomeData([], 0, 0));
+    _data = Future.value(_HomeData.empty(_now));
     transactionChanges.addListener(_handleTransactionChange);
   }
 
@@ -58,40 +67,145 @@ class _HomePageState extends State<HomePage> {
 
   Future<_HomeData> _load({String? languageCode}) async {
     final finance = _finance;
-    if (finance == null) return const _HomeData([], 0, 0);
+    final now = _now;
+    if (finance == null) return _HomeData.empty(now);
+
     final activeLanguageCode =
         languageCode ??
         _loadedLanguageCode ??
         Localizations.localeOf(context).languageCode;
-    final results = await Future.wait([
-      finance.listTransactions(const ListTransactionsQuery()),
-      finance.listReviewItems(),
-      TransactionMasterData.load(finance, languageCode: activeLanguageCode),
-      finance.listPaymentSources(),
-    ]);
-    final transactions = switch (results[0]) {
+    final transactionsFuture = finance.listTransactions(
+      const ListTransactionsQuery(status: TransactionStatus.active),
+    );
+    final reviewFuture = finance.listReviewItems();
+    final masterDataFuture = TransactionMasterData.load(
+      finance,
+      languageCode: activeLanguageCode,
+    );
+
+    final analysis = finance.calculateAnalysisOverview;
+    AnalysisContext? selectedContext;
+    AnalysisModel? model;
+    var analysisUnavailable = false;
+    var currentFinancialMonth = DateTime(now.year, now.month, 1);
+
+    if (analysis != null) {
+      final currentContextResult = await analysis.contextFor(
+        'current_month',
+        instant: now,
+      );
+      if (currentContextResult
+          case ApplicationSuccess<AnalysisContext>(:final value)) {
+        currentFinancialMonth = _monthFromPeriod(value.period);
+        final requestedMonth = _selectedMonth;
+        if (requestedMonth == null ||
+            _sameMonth(requestedMonth, currentFinancialMonth)) {
+          selectedContext = value;
+        } else {
+          final anchor = _monthStart(requestedMonth);
+          final selectedContextResult = await analysis.contextFor(
+            'selected_month',
+            instant: now,
+            customPeriod: AnalysisPeriod(
+              startDate: _dateOnly(anchor),
+              endDate: _dateOnly(anchor),
+              timeZoneId: value.period.timeZoneId,
+            ),
+          );
+          if (selectedContextResult
+              case ApplicationSuccess<AnalysisContext>(:final value)) {
+            selectedContext = value;
+          } else {
+            analysisUnavailable = true;
+          }
+        }
+      } else {
+        analysisUnavailable = true;
+      }
+
+      if (selectedContext != null) {
+        final result = await analysis.call(selectedContext);
+        if (result
+            case ApplicationSuccess<List<RuleExecutionResult>>(:final value)) {
+          model = AnalysisModel.fromResults(value);
+        } else {
+          analysisUnavailable = true;
+        }
+      }
+    }
+
+    final transactionResult = await transactionsFuture;
+    final reviewResult = await reviewFuture;
+    final masterData = await masterDataFuture;
+
+    final allTransactions = switch (transactionResult) {
       ApplicationSuccess<List<TransactionDto>>(:final value) => value,
       _ => const <TransactionDto>[],
     };
-    final reviewItems = switch (results[1]) {
+    final reviewItems = switch (reviewResult) {
       ApplicationSuccess<List<ReviewItemDto>>(:final value) => value,
       _ => const <ReviewItemDto>[],
     };
+
+    final periodTransactions = selectedContext == null
+        ? const <TransactionDto>[]
+        : allTransactions
+              .where(
+                (transaction) =>
+                    _transactionInPeriod(transaction, selectedContext!.period),
+              )
+              .toList(growable: false);
+    final periodTransactionIds = periodTransactions
+        .map((transaction) => transaction.id)
+        .toSet();
+    final reviewCount = reviewItems
+        .where((item) => periodTransactionIds.contains(item.transactionId))
+        .length;
+    final recent = periodTransactions.take(4).toList(growable: false);
+
+    final displayMonth = selectedContext == null
+        ? _monthStart(_selectedMonth ?? currentFinancialMonth)
+        : _monthFromPeriod(selectedContext.period);
+    final trend = analysis == null || selectedContext == null
+        ? const <_HomeTrendPoint>[]
+        : await _loadTrend(
+            analysis: analysis,
+            endingMonth: displayMonth,
+          );
+
     return _HomeData(
-      transactions.take(4).toList(growable: false),
-      transactions.length,
-      reviewItems.length,
-      results[2] as TransactionMasterData,
-      switch (results[3]) {
-        ApplicationSuccess<List<PaymentSource>>(:final value) => {
-          for (final source in value)
-            source.id.value: source.lastFour == null
-                ? source.name
-                : '${source.name} ••••${source.lastFour}',
-        },
-        _ => const {},
-      },
+      transactions: recent,
+      reviewCount: reviewCount,
+      masterData: masterData,
+      model: model,
+      trend: trend,
+      displayMonth: displayMonth,
+      currentFinancialMonth: currentFinancialMonth,
+      analysisUnavailable: analysisUnavailable,
     );
+  }
+
+  Future<List<_HomeTrendPoint>> _loadTrend({
+    required CalculateAnalysisOverview analysis,
+    required DateTime endingMonth,
+  }) async {
+    final result = await CalculateMonthlySpendingTrend(analysis)(
+      endingMonth: endingMonth,
+      instant: _now,
+    );
+    if (result
+        case ApplicationSuccess<List<MonthlySpendingTrendPoint>>(:final value)) {
+      return [
+        for (final point in value)
+          _HomeTrendPoint(
+            month: _monthStart(point.month),
+            value: point.spending == null ? 0 : analysisNumber(point.spending!),
+            metric: point.spending,
+            selected: _sameMonth(point.month, endingMonth),
+          ),
+      ];
+    }
+    return const [];
   }
 
   Future<void> _refresh() async {
@@ -100,6 +214,23 @@ class _HomePageState extends State<HomePage> {
       _data = refreshed;
     });
     await refreshed;
+  }
+
+  Future<void> _selectMonth(_HomeData data) async {
+    final selected = await showButlerlyBottomSheet<DateTime>(
+      context: context,
+      builder: (context) => _HomeMonthPicker(
+        selectedMonth: data.displayMonth,
+        currentMonth: data.currentFinancialMonth,
+      ),
+    );
+    if (!mounted || selected == null) return;
+    setState(() {
+      _selectedMonth = _sameMonth(selected, data.currentFinancialMonth)
+          ? null
+          : _monthStart(selected);
+      _data = _load();
+    });
   }
 
   Future<void> _open(TransactionDto transaction) async {
@@ -118,73 +249,66 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) => RefreshIndicator(
     onRefresh: _refresh,
     child: ButlerlyPage(
-      title: context.l10n.text('appName'),
-      actions: [
-        IconButton(
-          tooltip: context.l10n.text('notifications'),
-          onPressed: () => context.push('/notifications'),
-          icon: const Icon(Icons.notifications_none_rounded),
-        ),
-      ],
       children: [
-        Text(
-          context.l10n.text(
-            homeGreetingKey(HomePage.debugCurrentDate ?? DateTime.now()),
-          ),
-          style: Theme.of(context).textTheme.headlineLarge,
-        ),
-        const SizedBox(height: ButlerlySpacing.micro),
-        Text(
-          MaterialLocalizations.of(
-            context,
-          ).formatFullDate(HomePage.debugCurrentDate ?? DateTime.now()),
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        const SizedBox(height: ButlerlySpacing.section),
         FutureBuilder<_HomeData>(
           future: _data,
           builder: (context, snapshot) {
-            if (snapshot.connectionState != ConnectionState.done) {
-              return const _HomeLoading();
-            }
-            final data = snapshot.data ?? const _HomeData([], 0, 0);
+            final data = snapshot.data ?? _HomeData.empty(_now);
+            final loading = snapshot.connectionState != ConnectionState.done;
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _LocalSummary(data: data),
-                ButlerlySectionHeader(title: context.l10n.text('quickActions')),
-                _QuickActions(onRefresh: _refresh),
-                ButlerlySectionHeader(
-                  title: context.l10n.text('needsAttention'),
-                  action: data.reviewCount > 0
-                      ? Text(
-                          '${data.reviewCount}',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: context.colors.interactive,
-                          ),
-                        )
-                      : null,
+                _HomeHeader(
+                  month: data.displayMonth,
+                  greetingKey: homeGreetingKey(_now),
+                  onMonthTap: loading ? null : () => _selectMonth(data),
+                  onNotificationsTap: () => context.push('/notifications'),
                 ),
-                _AttentionCard(reviewCount: data.reviewCount),
-                ButlerlySectionHeader(
-                  title: context.l10n.text('recentTransactions'),
-                  action: TextButton(
-                    onPressed: () => context.go('/transactions'),
-                    child: Text(context.l10n.text('viewAll')),
+                const SizedBox(height: ButlerlySpacing.large),
+                if (loading)
+                  const _HomeLoading()
+                else ...[
+                  _SpendingHero(
+                    model: data.model,
+                    analysisUnavailable: data.analysisUnavailable,
                   ),
-                ),
-                if (data.transactions.isEmpty)
-                  const _HomeEmptyTransactions()
-                else
-                  TransactionRecordList(
-                    transactions: data.transactions,
+                  const SizedBox(height: ButlerlySpacing.section),
+                  _SpendingTrend(points: data.trend),
+                  ButlerlySectionHeader(
+                    title: context.l10n.text('analysis.rule.r010.name'),
+                    action: TextButton(
+                      onPressed: () => context.push('/analysis'),
+                      child: Text(context.l10n.text('viewAll')),
+                    ),
+                  ),
+                  _CategorySummary(
+                    model: data.model,
                     masterData: data.masterData,
-                    paymentSourceNames: data.paymentSourceNames,
-                    onTap: _open,
-                    navigates: true,
-                    showDateInRows: true,
                   ),
-                const SizedBox(height: ButlerlySpacing.structural),
+                  if (data.reviewCount > 0 || data.model?.insight != null) ...[
+                    const SizedBox(height: ButlerlySpacing.section),
+                    _AttentionSection(
+                      reviewCount: data.reviewCount,
+                      insight: data.model?.insight,
+                    ),
+                  ],
+                  ButlerlySectionHeader(
+                    title: context.l10n.text('recentTransactions'),
+                    action: TextButton(
+                      onPressed: () => context.go('/transactions'),
+                      child: Text(context.l10n.text('viewAll')),
+                    ),
+                  ),
+                  if (data.transactions.isEmpty)
+                    const _HomeEmptyTransactions()
+                  else
+                    _HomeRecentActivity(
+                      transactions: data.transactions,
+                      masterData: data.masterData,
+                      onTap: _open,
+                    ),
+                  const SizedBox(height: ButlerlySpacing.structural),
+                ],
               ],
             );
           },
@@ -200,330 +324,574 @@ String homeGreetingKey(DateTime localTime) {
   return 'greetingEvening';
 }
 
-class _LocalSummary extends StatelessWidget {
-  const _LocalSummary({required this.data});
+class _HomeHeader extends StatelessWidget {
+  const _HomeHeader({
+    required this.month,
+    required this.greetingKey,
+    required this.onMonthTap,
+    required this.onNotificationsTap,
+  });
 
-  final _HomeData data;
+  final DateTime month;
+  final String greetingKey;
+  final VoidCallback? onMonthTap;
+  final VoidCallback onNotificationsTap;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    container: true,
-    label: context.l10n.text('localOnlyStatus'),
-    child: DecoratedBox(
-      decoration: BoxDecoration(
-        color: context.colors.subtleSurface,
-        borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-        border: Border.all(color: context.colors.border),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(ButlerlySpacing.standard),
-        child: Column(
+  Widget build(BuildContext context) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final monthLabel = DateFormat.yMMMM(locale).format(month);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final textScale = MediaQuery.textScalerOf(context).scale(14);
+        final stacked = constraints.maxWidth < 360 || textScale > 18;
+        final brand = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text(
+              context.l10n.text('appName'),
+              style: Theme.of(context).textTheme.headlineLarge,
+            ),
+            const SizedBox(height: ButlerlySpacing.xxs),
+            Text(
+              context.l10n.text('homeSubtitle').toUpperCase(),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                letterSpacing: 2.2,
+                fontSize: 9.5,
+              ),
+            ),
+          ],
+        );
+        final contextBlock = Column(
+          crossAxisAlignment: stacked
+              ? CrossAxisAlignment.start
+              : CrossAxisAlignment.end,
+          children: [
+            TextButton(
+              key: const Key('home-month-selector'),
+              onPressed: onMonthTap,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      monthLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                  const SizedBox(width: ButlerlySpacing.micro),
+                  const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+                ],
+              ),
+            ),
             Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.lock_outline_rounded,
-                  size: 18,
-                  color: context.colors.interactive,
+                Flexible(
+                  child: Text(
+                    context.l10n.text(greetingKey),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
                 ),
                 const SizedBox(width: ButlerlySpacing.compact),
-                Expanded(
+                IconButton(
+                  tooltip: context.l10n.text('notifications'),
+                  onPressed: onNotificationsTap,
+                  icon: const Icon(Icons.notifications_none_rounded),
+                ),
+              ],
+            ),
+          ],
+        );
+        if (stacked) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              brand,
+              const SizedBox(height: ButlerlySpacing.standard),
+              contextBlock,
+            ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(flex: 5, child: brand),
+            const SizedBox(width: ButlerlySpacing.standard),
+            Flexible(flex: 4, child: contextBlock),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _SpendingHero extends StatelessWidget {
+  const _SpendingHero({
+    required this.model,
+    required this.analysisUnavailable,
+  });
+
+  final AnalysisModel? model;
+  final bool analysisUnavailable;
+
+  @override
+  Widget build(BuildContext context) {
+    final spending = model?.spending;
+    final amount = spending == null ? '—' : analysisMoney(context, spending);
+    final amountStyle = ButlerlyTypography.financialAmount(
+      Theme.of(context).textTheme.displaySmall ?? const TextStyle(),
+    ).copyWith(fontSize: 58, height: 1.0);
+    return Semantics(
+      container: true,
+      label:
+          '${context.l10n.text('totalSpending')}, ${spending == null ? context.l10n.text('notAvailable') : amount}',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.l10n.text('totalSpending'),
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: ButlerlySpacing.micro),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(amount, style: amountStyle),
+                ),
+              ),
+              if (spending != null) ...[
+                const SizedBox(width: ButlerlySpacing.compact),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: ButlerlySpacing.compact),
                   child: Text(
-                    context.l10n.text('localRecords'),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    context.l10n.text('spent'),
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       color: context.colors.secondaryText,
                     ),
                   ),
                 ),
-                const SizedBox(width: ButlerlySpacing.compact),
-                Icon(
-                  Icons.phonelink_lock_outlined,
-                  size: 18,
-                  color: context.colors.tertiaryText,
-                ),
-              ],
-            ),
-            const SizedBox(height: ButlerlySpacing.standard),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: _SummaryMetric(
-                    value: '${data.transactionCount}',
-                    label: context.l10n.text('recordsOnDevice'),
-                  ),
-                ),
-                Container(
-                  width: 1,
-                  height: 52,
-                  color: context.colors.cardDivider,
-                ),
-                Expanded(
-                  child: _SummaryMetric(
-                    value: '${data.reviewCount}',
-                    label: context.l10n.text('attentionItems'),
-                    accent: data.reviewCount > 0,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: ButlerlySpacing.small),
-            Text(
-              context.l10n.text('localOnlyBody'),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
-class _SummaryMetric extends StatelessWidget {
-  const _SummaryMetric({
-    required this.value,
-    required this.label,
-    this.accent = false,
-  });
-
-  final String value;
-  final String label;
-  final bool accent;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: ButlerlySpacing.small),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          value,
-          style: Theme.of(context).textTheme.displaySmall?.copyWith(
-            color: accent ? context.colors.interactive : null,
-          ),
-        ),
-        const SizedBox(height: ButlerlySpacing.micro),
-        Text(
-          label,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-      ],
-    ),
-  );
-}
-
-class _QuickActions extends StatelessWidget {
-  const _QuickActions({required this.onRefresh});
-
-  final Future<void> Function() onRefresh;
-
-  @override
-  Widget build(BuildContext context) {
-    final actions = [
-      _QuickAction(
-        icon: Icons.add_rounded,
-        label: context.l10n.text('addData'),
-        onTap: () async {
-          await context.push('/add');
-          await onRefresh();
-        },
-      ),
-      _QuickAction(
-        icon: Icons.analytics_outlined,
-        label: context.l10n.text('analysis'),
-        onTap: () => context.push('/analysis'),
-      ),
-      _QuickAction(
-        icon: Icons.lightbulb_outline_rounded,
-        label: context.l10n.text('insights'),
-        onTap: () => context.push('/insights'),
-      ),
-      _QuickAction(
-        icon: Icons.notifications_none_rounded,
-        label: context.l10n.text('notifications'),
-        onTap: () => context.push('/notifications'),
-      ),
-    ];
-
-    Widget divider() => SizedBox(
-      height: 46,
-      child: VerticalDivider(width: 1, color: context.colors.cardDivider),
-    );
-
-    Widget pair(int first, int second) => Row(
-      children: [
-        Expanded(child: actions[first]),
-        divider(),
-        Expanded(child: actions[second]),
-      ],
-    );
-
-    return Material(
-      color: context.colors.subtleSurface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-        side: BorderSide(color: context.colors.border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final textScale = MediaQuery.textScalerOf(context).scale(1);
-          final useTwoRows = constraints.maxWidth < 360 || textScale > 1.2;
-          if (useTwoRows) {
-            return Column(
-              children: [
-                pair(0, 1),
-                Divider(height: 1, color: context.colors.cardDivider),
-                pair(2, 3),
-              ],
-            );
-          }
-          return Row(
-            children: [
-              for (var index = 0; index < actions.length; index++) ...[
-                Expanded(child: actions[index]),
-                if (index < actions.length - 1) divider(),
               ],
             ],
-          );
-        },
+          ),
+          if (model?.comparison case final comparison?)
+            Padding(
+              padding: const EdgeInsets.only(top: ButlerlySpacing.compact),
+              child: Text(
+                analysisComparisonText(context, comparison),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: comparison.percentageChange?.isNegative == true
+                      ? context.colors.success
+                      : context.colors.interactive,
+                ),
+              ),
+            )
+          else if (spending == null)
+            Padding(
+              padding: const EdgeInsets.only(top: ButlerlySpacing.compact),
+              child: Text(
+                analysisUnavailable
+                    ? context.l10n.text('analysisUnavailable')
+                    : context.l10n.text('noSpendingInPeriod'),
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
+        ],
       ),
     );
   }
 }
 
-class _QuickAction extends StatelessWidget {
-  const _QuickAction({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
+class _SpendingTrend extends StatelessWidget {
+  const _SpendingTrend({required this.points});
 
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-    button: true,
-    label: label,
-    child: InkWell(
-      borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: ButlerlySpacing.micro,
-          vertical: ButlerlySpacing.small,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: context.colors.selection,
-              ),
-              child: Icon(
-                icon,
-                size: 20,
-                color: context.colors.interactive,
-              ),
-            ),
-            const SizedBox(height: ButlerlySpacing.compact),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelMedium,
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
-class _AttentionCard extends StatelessWidget {
-  const _AttentionCard({required this.reviewCount});
-
-  final int reviewCount;
+  final List<_HomeTrendPoint> points;
 
   @override
   Widget build(BuildContext context) {
-    final active = reviewCount > 0;
-    final color = active ? context.colors.interactive : context.colors.success;
-    return Material(
-      color: active
-          ? context.colors.selection
-          : context.colors.success.withValues(alpha: 0.08),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-        side: BorderSide(color: color.withValues(alpha: 0.32)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-        onTap: active ? () => context.go('/review') : null,
-        child: Padding(
-          padding: const EdgeInsets.all(ButlerlySpacing.standard),
-          child: Row(
-            children: [
-              Container(
-                width: ButlerlySize.preferredTarget,
-                height: ButlerlySize.preferredTarget,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: color.withValues(alpha: 0.13),
-                ),
-                child: Icon(
-                  active
-                      ? Icons.notifications_none_rounded
-                      : Icons.check_rounded,
-                  color: color,
-                ),
-              ),
-              const SizedBox(width: ButlerlySpacing.standard),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      active
-                          ? context.l10n.text('needsReview')
-                          : context.l10n.text('nothingNeedsAttention'),
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: ButlerlySpacing.xxs),
-                    Text(
-                      context.l10n.text(
-                        active
-                            ? 'reviewRecommendation'
-                            : 'nothingNeedsAttentionBody',
+    final meaningful = points.any((point) => point.value > 0);
+    if (points.isEmpty || !meaningful) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.l10n.text('spendingTrend'),
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: ButlerlySpacing.compact),
+          Text(
+            context.l10n.text('insufficientTrendData'),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      );
+    }
+    final maxValue = points
+        .map((point) => point.value)
+        .fold<double>(0, (left, right) => left > right ? left : right);
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    return Semantics(
+      container: true,
+      label: context.l10n.text('spendingTrend'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.l10n.text('spendingTrend'),
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: ButlerlySpacing.small),
+          SizedBox(
+            height: 156,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final point in points)
+                  Expanded(
+                    child: Semantics(
+                      label:
+                          '${DateFormat.yMMMM(locale).format(point.month)}, ${point.metric == null ? context.l10n.text('noSpendingInPeriod') : analysisMoney(context, point.metric!)}',
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.bottomCenter,
+                              child: FractionallySizedBox(
+                                heightFactor: maxValue <= 0
+                                    ? 0
+                                    : (point.value / maxValue)
+                                          .clamp(0.04, 1.0)
+                                          .toDouble(),
+                                widthFactor: 0.42,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    color: point.selected
+                                        ? context.colors.interactive
+                                        : context.colors.secondaryText
+                                              .withValues(alpha: 0.35),
+                                    borderRadius: const BorderRadius.vertical(
+                                      top: Radius.circular(ButlerlyRadius.small),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: ButlerlySpacing.compact),
+                          Text(
+                            DateFormat.MMM(locale)
+                                .format(point.month)
+                                .toUpperCase(),
+                            maxLines: 1,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: point.selected
+                                      ? context.colors.interactive
+                                      : null,
+                                  fontWeight: point.selected
+                                      ? FontWeight.w600
+                                      : null,
+                                ),
+                          ),
+                        ],
                       ),
-                      style: Theme.of(context).textTheme.bodySmall,
                     ),
-                  ],
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CategorySummary extends StatelessWidget {
+  const _CategorySummary({
+    required this.model,
+    required this.masterData,
+  });
+
+  final AnalysisModel? model;
+  final TransactionMasterData masterData;
+
+  @override
+  Widget build(BuildContext context) {
+    final categories =
+        model?.categories.take(4).toList(growable: false) ??
+        const <AnalysisMetric>[];
+    if (categories.isEmpty) {
+      return Text(
+        context.l10n.text('noSpendingInPeriod'),
+        style: Theme.of(context).textTheme.bodySmall,
+      );
+    }
+    final total = model?.spending == null
+        ? categories
+              .map(analysisNumber)
+              .fold<double>(0, (sum, value) => sum + value)
+        : analysisNumber(model!.spending!);
+    final textScale = MediaQuery.textScalerOf(context).scale(14);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final scroll = constraints.maxWidth < 360 || textScale > 18;
+        final itemWidth = scroll
+            ? 132.0
+            : constraints.maxWidth / categories.length;
+        final row = Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var index = 0; index < categories.length; index++) ...[
+              SizedBox(
+                width: itemWidth,
+                child: _CategorySummaryItem(
+                  metric: categories[index],
+                  masterData: masterData,
+                  total: total,
                 ),
               ),
-              if (active)
+              if (index < categories.length - 1 && !scroll)
+                SizedBox(
+                  height: 86,
+                  child: VerticalDivider(
+                    width: 1,
+                    color: context.colors.cardDivider,
+                  ),
+                ),
+            ],
+          ],
+        );
+        return scroll
+            ? SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: row,
+              )
+            : row;
+      },
+    );
+  }
+}
+
+class _CategorySummaryItem extends StatelessWidget {
+  const _CategorySummaryItem({
+    required this.metric,
+    required this.masterData,
+    required this.total,
+  });
+
+  final AnalysisMetric metric;
+  final TransactionMasterData masterData;
+  final double total;
+
+  @override
+  Widget build(BuildContext context) {
+    final categoryId = analysisCategoryId(metric);
+    final label = analysisDimension(context, metric, masterData);
+    final percentage = total <= 0 ? 0 : analysisNumber(metric) / total * 100;
+    final identity = ButlerlyCategoryIdentity.forBuiltInId(categoryId);
+    final color = ButlerlyChartColors.category(categoryId);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: ButlerlySpacing.compact),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          identity == null
+              ? Container(
+                  width: ButlerlySize.categoryIconContainer,
+                  height: ButlerlySize.categoryIconContainer,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: color.withValues(alpha: 0.16),
+                    border: Border.all(color: color.withValues(alpha: 0.55)),
+                  ),
+                  child: Icon(
+                    Icons.category_outlined,
+                    size: 22,
+                    color: color,
+                  ),
+                )
+              : ButlerlyCategoryIcon(
+                  categoryId: categoryId,
+                  semanticLabel: label,
+                ),
+          const SizedBox(height: ButlerlySpacing.compact),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+          Text(
+            analysisMoney(context, metric),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          Text(
+            '${percentage.toStringAsFixed(0)}%',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AttentionSection extends StatelessWidget {
+  const _AttentionSection({
+    required this.reviewCount,
+    required this.insight,
+  });
+
+  final int reviewCount;
+  final AnalysisFinding? insight;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasReview = reviewCount > 0;
+    final title = hasReview
+        ? context.l10n.text(
+            'dataQualityNeedsAttention',
+            {'count': '$reviewCount'},
+          )
+        : context.l10n.text('notable');
+    final subtitle = hasReview
+        ? context.l10n.text('reviewRecommendation')
+        : context.l10n.text(insight!.rule.nameKey);
+    final onTap = hasReview
+        ? () => context.push('/review')
+        : () => context.push('/insights');
+    return Semantics(
+      button: true,
+      label: '${context.l10n.text('needsAttention')}. $title. $subtitle',
+      child: Material(
+        color: context.colors.selection,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+          side: BorderSide(
+            color: context.colors.interactive.withValues(alpha: 0.42),
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(ButlerlySpacing.standard),
+            child: Row(
+              children: [
+                Container(
+                  width: ButlerlySize.preferredTarget,
+                  height: ButlerlySize.preferredTarget,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: context.colors.interactive.withValues(alpha: 0.13),
+                  ),
+                  child: Icon(
+                    hasReview
+                        ? Icons.notifications_none_rounded
+                        : Icons.insights_rounded,
+                    color: context.colors.interactive,
+                  ),
+                ),
+                const SizedBox(width: ButlerlySpacing.standard),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.l10n.text('needsAttention').toUpperCase(),
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: context.colors.interactive,
+                          letterSpacing: 1.6,
+                        ),
+                      ),
+                      const SizedBox(height: ButlerlySpacing.micro),
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: ButlerlySpacing.xxs),
+                      Text(
+                        subtitle,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
                 Icon(
                   Icons.chevron_right_rounded,
                   color: context.colors.tertiaryText,
                 ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
+}
+
+class _HomeRecentActivity extends StatelessWidget {
+  const _HomeRecentActivity({
+    required this.transactions,
+    required this.masterData,
+    required this.onTap,
+  });
+
+  final List<TransactionDto> transactions;
+  final TransactionMasterData masterData;
+  final ValueChanged<TransactionDto> onTap;
+
+  @override
+  Widget build(BuildContext context) => ButlerlyTransactionList(
+    children: [
+      for (final transaction in transactions)
+        ButlerlyRecordRow(
+          title:
+              masterData.merchantName(transaction.merchantId) ??
+              _transactionTitle(context, transaction),
+          amount: localizedTransactionAmount(
+            context,
+            transaction.amount.replaceFirst(RegExp(r'^[+-]'), ''),
+          ),
+          currency: transaction.currency,
+          categoryId:
+              transaction.categoryId != null &&
+                  ButlerlyCategoryIdentity.forBuiltInId(
+                        transaction.categoryId!,
+                      ) !=
+                      null
+              ? transaction.categoryId
+              : null,
+          categoryLabel:
+              masterData.categoryNameForParent(transaction.categoryId) ??
+              masterData.categoryName(transaction.categoryId) ??
+              '',
+          subcategoryLabel:
+              masterData.categoryNameForParent(transaction.categoryId) == null
+              ? null
+              : masterData.categoryName(transaction.categoryId),
+          paymentSource: masterData.paymentSourceName(
+            transaction.paymentSourceId,
+          ),
+          meta: _transactionDateLabel(context, transaction),
+          showDate: true,
+          isIncome: transaction.direction == TransactionDirection.income.name,
+          needsReview: transaction.reviewState == 'needsReview',
+          onTap: () => onTap(transaction),
+        ),
+    ],
+  );
 }
 
 class _HomeEmptyTransactions extends StatelessWidget {
@@ -582,23 +950,184 @@ class _HomeLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const SizedBox(
-    height: 240,
+    height: 320,
     child: Center(child: CircularProgressIndicator()),
   );
 }
 
+class _HomeMonthPicker extends StatefulWidget {
+  const _HomeMonthPicker({
+    required this.selectedMonth,
+    required this.currentMonth,
+  });
+
+  final DateTime selectedMonth;
+  final DateTime currentMonth;
+
+  @override
+  State<_HomeMonthPicker> createState() => _HomeMonthPickerState();
+}
+
+class _HomeMonthPickerState extends State<_HomeMonthPicker> {
+  late int _year;
+
+  @override
+  void initState() {
+    super.initState();
+    _year = widget.selectedMonth.year;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    return ButlerlySheet(
+      title: Row(
+        children: [
+          IconButton(
+            onPressed: () => setState(() => _year--),
+            icon: const Icon(Icons.chevron_left_rounded),
+          ),
+          Expanded(
+            child: Text(
+              '$_year',
+              textAlign: TextAlign.center,
+            ),
+          ),
+          IconButton(
+            onPressed: _year < widget.currentMonth.year
+                ? () => setState(() => _year++)
+                : null,
+            icon: const Icon(Icons.chevron_right_rounded),
+          ),
+        ],
+      ),
+      content: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: 12,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          childAspectRatio: 2.4,
+          crossAxisSpacing: ButlerlySpacing.compact,
+          mainAxisSpacing: ButlerlySpacing.compact,
+        ),
+        itemBuilder: (context, index) {
+          final candidate = DateTime(_year, index + 1, 1);
+          final future = _monthStart(candidate).isAfter(
+            _monthStart(widget.currentMonth),
+          );
+          final selected = _sameMonth(candidate, widget.selectedMonth);
+          final label = DateFormat.MMM(locale).format(candidate);
+          return selected
+              ? FilledButton(
+                  key: Key('home-month-${candidate.year}-${candidate.month}'),
+                  onPressed: future
+                      ? null
+                      : () => Navigator.of(context).pop(candidate),
+                  child: Text(label),
+                )
+              : OutlinedButton(
+                  key: Key('home-month-${candidate.year}-${candidate.month}'),
+                  onPressed: future
+                      ? null
+                      : () => Navigator.of(context).pop(candidate),
+                  child: Text(label),
+                );
+        },
+      ),
+    );
+  }
+}
+
 class _HomeData {
-  const _HomeData(
-    this.transactions,
-    this.transactionCount,
-    this.reviewCount, [
-    this.masterData = const TransactionMasterData(),
-    this.paymentSourceNames = const {},
-  ]);
+  const _HomeData({
+    required this.transactions,
+    required this.reviewCount,
+    required this.masterData,
+    required this.model,
+    required this.trend,
+    required this.displayMonth,
+    required this.currentFinancialMonth,
+    required this.analysisUnavailable,
+  });
+
+  factory _HomeData.empty(DateTime now) => _HomeData(
+    transactions: const [],
+    reviewCount: 0,
+    masterData: const TransactionMasterData(),
+    model: null,
+    trend: const [],
+    displayMonth: _monthStart(now),
+    currentFinancialMonth: _monthStart(now),
+    analysisUnavailable: false,
+  );
 
   final List<TransactionDto> transactions;
-  final int transactionCount;
   final int reviewCount;
   final TransactionMasterData masterData;
-  final Map<String, String> paymentSourceNames;
+  final AnalysisModel? model;
+  final List<_HomeTrendPoint> trend;
+  final DateTime displayMonth;
+  final DateTime currentFinancialMonth;
+  final bool analysisUnavailable;
+}
+
+class _HomeTrendPoint {
+  const _HomeTrendPoint({
+    required this.month,
+    required this.value,
+    required this.metric,
+    required this.selected,
+  });
+
+  final DateTime month;
+  final double value;
+  final AnalysisMetric? metric;
+  final bool selected;
+}
+
+bool _transactionInPeriod(TransactionDto transaction, AnalysisPeriod period) {
+  final date = transaction.transactionDate;
+  if (date == null) return false;
+  return date.compareTo(period.startDate) >= 0 &&
+      date.compareTo(period.endDate) <= 0;
+}
+
+DateTime _monthFromPeriod(AnalysisPeriod period) {
+  final parsed = DateTime.tryParse(period.startDate);
+  return parsed == null
+      ? DateTime.now()
+      : DateTime(parsed.year, parsed.month, 1);
+}
+
+DateTime _monthStart(DateTime value) => DateTime(value.year, value.month, 1);
+
+bool _sameMonth(DateTime left, DateTime right) =>
+    left.year == right.year && left.month == right.month;
+
+String _dateOnly(DateTime value) =>
+    '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-01';
+
+String _transactionTitle(BuildContext context, TransactionDto transaction) {
+  for (final candidate in [
+    transaction.description,
+    transaction.rawCounterparty,
+  ]) {
+    if (candidate != null && candidate.trim().isNotEmpty) {
+      return candidate.trim();
+    }
+  }
+  return context.l10n.text('untitledTransaction');
+}
+
+String _transactionDateLabel(
+  BuildContext context,
+  TransactionDto transaction,
+) {
+  final raw = transaction.transactionDate;
+  final date = raw == null ? null : DateTime.tryParse(raw);
+  if (date == null) return context.l10n.text('datePending');
+  return DateFormat.MMMd(
+    Localizations.localeOf(context).toLanguageTag(),
+  ).format(date);
 }
