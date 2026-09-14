@@ -103,23 +103,24 @@ class _HomePageState extends State<HomePage> {
     };
 
     final timeZoneId = preference?.timeZoneId ?? 'UTC';
-    var financialToday = DateTime.utc(now.year, now.month, now.day);
-    if (preference != null) {
-      try {
-        financialToday = financialDateAt(now, timeZoneId);
-      } on Object {
-        // Core local records remain usable even if a stored timezone can no
-        // longer be resolved. Analysis may separately report unavailable.
-      }
-    }
-    final currentFinancialMonth = _monthStart(financialToday);
-    final displayMonth = _monthStart(_selectedMonth ?? currentFinancialMonth);
-    final period = _homePeriodForMonth(
-      month: displayMonth,
-      currentMonth: currentFinancialMonth,
-      financialToday: financialToday,
+    final currentPeriod = _homePeriodForMonth(
+      month: _monthStart(now),
+      current: true,
+      instant: now,
       timeZoneId: timeZoneId,
+      baseCurrency: preference?.baseCurrency,
     );
+    final currentFinancialMonth = _monthFromPeriod(currentPeriod);
+    final displayMonth = _monthStart(_selectedMonth ?? currentFinancialMonth);
+    final period = _sameMonth(displayMonth, currentFinancialMonth)
+        ? currentPeriod
+        : _homePeriodForMonth(
+            month: displayMonth,
+            current: false,
+            instant: now,
+            timeZoneId: currentPeriod.timeZoneId,
+            baseCurrency: preference?.baseCurrency,
+          );
 
     final periodTransactions = allTransactions
         .where((transaction) => _transactionInPeriod(transaction, period))
@@ -282,6 +283,10 @@ class _HomePageState extends State<HomePage> {
           builder: (context, snapshot) {
             final data = snapshot.data ?? _HomeData.empty(_now);
             final loading = snapshot.connectionState != ConnectionState.done;
+            final currentMonth = _sameMonth(
+              data.displayMonth,
+              data.currentFinancialMonth,
+            );
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -304,8 +309,13 @@ class _HomePageState extends State<HomePage> {
                   ButlerlySectionHeader(
                     title: context.l10n.text('analysis.rule.r010.name'),
                     action: TextButton(
-                      onPressed: () =>
-                          context.push(_periodRoute('/analysis', data.period)),
+                      onPressed: () => context.push(
+                        _periodRoute(
+                          '/analysis',
+                          data.period,
+                          currentMonth: currentMonth,
+                        ),
+                      ),
                       child: Text(context.l10n.text('viewAll')),
                     ),
                   ),
@@ -318,14 +328,23 @@ class _HomePageState extends State<HomePage> {
                     _AttentionSection(
                       reviewCount: data.reviewCount,
                       insight: data.insight,
-                      insightRoute: _periodRoute('/insights', data.period),
+                      insightRoute: _periodRoute(
+                        '/insights',
+                        data.period,
+                        currentMonth: currentMonth,
+                      ),
                     ),
                   ],
                   ButlerlySectionHeader(
                     title: context.l10n.text('recentTransactions'),
                     action: TextButton(
-                      onPressed: () =>
-                          context.go(_periodRoute('/transactions', data.period)),
+                      onPressed: () => context.go(
+                        _periodRoute(
+                          '/transactions',
+                          data.period,
+                          currentMonth: currentMonth,
+                        ),
+                      ),
                       child: Text(context.l10n.text('viewAll')),
                     ),
                   ),
@@ -1085,7 +1104,13 @@ class _HomeData {
   });
 
   factory _HomeData.empty(DateTime now) {
-    final month = _monthStart(now);
+    final period = _homePeriodForMonth(
+      month: _monthStart(now),
+      current: true,
+      instant: now,
+      timeZoneId: 'UTC',
+    );
+    final month = _monthFromPeriod(period);
     return _HomeData(
       transactions: const [],
       reviewCount: 0,
@@ -1095,11 +1120,7 @@ class _HomeData {
       trend: const [],
       displayMonth: month,
       currentFinancialMonth: month,
-      period: AnalysisPeriod(
-        startDate: _date(month),
-        endDate: _date(DateTime(month.year, month.month + 1, 0)),
-        timeZoneId: 'UTC',
-      ),
+      period: period,
       analysisUnavailable: false,
     );
   }
@@ -1132,23 +1153,45 @@ class _HomeTrendPoint {
 
 AnalysisPeriod _homePeriodForMonth({
   required DateTime month,
-  required DateTime currentMonth,
-  required DateTime financialToday,
+  required bool current,
+  required DateTime instant,
   required String timeZoneId,
+  CurrencyCode? baseCurrency,
 }) {
-  final start = DateTime.utc(month.year, month.month, 1);
-  final end = _sameMonth(month, currentMonth)
-      ? DateTime.utc(
-          financialToday.year,
-          financialToday.month,
-          financialToday.day,
-        )
-      : DateTime.utc(month.year, month.month + 1, 0);
-  return AnalysisPeriod(
-    startDate: _date(start),
-    endDate: _date(end),
-    timeZoneId: timeZoneId,
-  );
+  AnalysisPeriod? resolve(String zone) {
+    final anchor = _date(month);
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: anchor,
+        endDate: anchor,
+        timeZoneId: zone,
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+      baseCurrency: baseCurrency,
+      periodType: current ? 'current_month' : 'selected_month',
+    );
+    final result = const AnalysisPeriodResolver().resolvePrimary(
+      type: current ? 'current_month' : 'selected_month',
+      context: context,
+      now: instant,
+    );
+    if (result case AnalysisPeriodResolved(:final window)) {
+      return AnalysisPeriod(
+        startDate: _date(window.start),
+        endDate: _date(
+          window.endExclusive.subtract(const Duration(days: 1)),
+        ),
+        timeZoneId: window.timeZoneId,
+      );
+    }
+    return null;
+  }
+
+  // Core local records remain usable if a persisted timezone can no longer be
+  // resolved, while all calendar-boundary calculations still stay inside the
+  // application-layer period resolver.
+  return resolve(timeZoneId) ?? resolve('UTC')!;
 }
 
 bool _transactionInPeriod(TransactionDto transaction, AnalysisPeriod period) {
@@ -1173,21 +1216,17 @@ bool _sameMonth(DateTime left, DateTime right) =>
 String _date(DateTime value) =>
     '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 
-String _periodRoute(String path, AnalysisPeriod period) {
+String _periodRoute(
+  String path,
+  AnalysisPeriod period, {
+  required bool currentMonth,
+}) {
   if (path == '/analysis' || path == '/insights') {
+    if (currentMonth) return path;
     final start = DateTime.parse(period.startDate);
-    final end = DateTime.parse(period.endDate);
-    final last = DateTime(start.year, start.month + 1, 0);
-    if (end.year == start.year &&
-        end.month == start.month &&
-        end.day == last.day) {
-      final month =
-          '${start.year.toString().padLeft(4, '0')}-${start.month.toString().padLeft(2, '0')}';
-      return Uri(path: path, queryParameters: {'month': month}).toString();
-    }
-    // The only partial month produced by Home is the current month-to-date.
-    // Opening the default destination retains current_month comparison rules.
-    return path;
+    final month =
+        '${start.year.toString().padLeft(4, '0')}-${start.month.toString().padLeft(2, '0')}';
+    return Uri(path: path, queryParameters: {'month': month}).toString();
   }
   return Uri(
     path: path,
