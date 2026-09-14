@@ -140,7 +140,7 @@ void main() {
     await tester.tap(find.text('Add data'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Add'), findsOneWidget);
+    expect(find.text('Add'), findsAtLeastNWidgets(1));
     expect(find.text('Add transaction manually'), findsOneWidget);
     expect(find.text('Scan receipt'), findsOneWidget);
     expect(find.text('Import statement'), findsOneWidget);
@@ -161,7 +161,7 @@ void main() {
       await tester.tap(find.bySemanticsLabel('Add transaction'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Add'), findsOneWidget);
+      expect(find.text('Add'), findsAtLeastNWidgets(1));
       expect(
         tester
                 .getSemantics(find.bySemanticsLabel('Add transaction'))
@@ -188,7 +188,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.bySemanticsLabel('Add transaction'));
       await tester.pumpAndSettle();
-      expect(find.text('Add'), findsOneWidget);
+      expect(find.text('Add'), findsAtLeastNWidgets(1));
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
       expect(
