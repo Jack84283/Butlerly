@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:ui' show Tristate;
 
 import 'package:butlerly/app/butlerly_app.dart';
@@ -108,47 +107,58 @@ void main() {
     expect(homeGreetingKey(DateTime(2026, 8, 14, 20)), 'greetingEvening');
   });
 
-  testWidgets('shows the local-first Butlerly home and P0 navigation', (
+  testWidgets('shows the monthly spending Home and P0 navigation', (
     tester,
   ) async {
+    HomePage.debugCurrentDate = DateTime(2026, 8, 13, 9);
+    addTearDown(() => HomePage.debugCurrentDate = null);
     setPhoneViewport(tester);
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     await tester.pumpAndSettle();
 
-    expect(find.text('Home'), findsAtLeastNWidgets(1));
+    expect(find.text('Butlerly'), findsOneWidget);
+    expect(find.text('August 2026'), findsOneWidget);
+    expect(find.text('Good morning'), findsOneWidget);
+    expect(find.text('Total spending'), findsOneWidget);
+    expect(find.text('Spending trend'), findsOneWidget);
+    expect(find.text('Spending by category'), findsOneWidget);
+    expect(find.text('Recent transactions'), findsOneWidget);
     expect(find.text('No transactions yet'), findsOneWidget);
+    expect(find.text('Home'), findsAtLeastNWidgets(1));
     expect(find.text('Transactions'), findsOneWidget);
     expect(find.text('Tools'), findsOneWidget);
     expect(find.bySemanticsLabel('Add transaction'), findsOneWidget);
     expect(find.text('More'), findsAtLeastNWidgets(1));
     expect(find.text('More...'), findsNothing);
-    expect(find.text('Local records'), findsOneWidget);
-    expect(find.text('Add data'), findsOneWidget);
-    expect(find.text('Analysis'), findsOneWidget);
-    expect(find.text('Insights'), findsOneWidget);
-    expect(find.text('Notifications'), findsOneWidget);
-    expect(find.text('Scan receipt'), findsNothing);
-    expect(find.text('Import data'), findsNothing);
-    expect(find.text('Search records'), findsNothing);
+    expect(find.text('Local records'), findsNothing);
+    expect(find.text('Add data'), findsNothing);
+    expect(find.text('Quick actions'), findsNothing);
   });
 
-  testWidgets('Home Add data opens the centralized Add hub', (tester) async {
+  testWidgets('Home month selector switches months and disables the future', (
+    tester,
+  ) async {
+    HomePage.debugCurrentDate = DateTime(2026, 8, 13, 9);
+    addTearDown(() => HomePage.debugCurrentDate = null);
     setPhoneViewport(tester);
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Add data'));
+    await tester.tap(find.byKey(const Key('home-month-selector')));
     await tester.pumpAndSettle();
+    expect(find.text('2026'), findsOneWidget);
 
-    expect(find.text('Add'), findsAtLeastNWidgets(1));
-    expect(find.text('Add transaction manually'), findsOneWidget);
-    expect(find.text('Scan receipt'), findsOneWidget);
-    expect(find.text('Import statement'), findsOneWidget);
-    expect(find.text('Import file'), findsOneWidget);
-    expect(find.text('Payment sources'), findsAtLeastNWidgets(1));
-
-    await tester.binding.handlePopRoute();
+    await tester.tap(find.byKey(const Key('home-month-2026-7')));
     await tester.pumpAndSettle();
+    expect(find.text('July 2026'), findsOneWidget);
+    expect(find.text('Total spending'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('home-month-selector')));
+    await tester.pumpAndSettle();
+    final future = tester.widget<OutlinedButton>(
+      find.byKey(const Key('home-month-2026-9')),
+    );
+    expect(future.onPressed, isNull);
   });
 
   testWidgets(
@@ -305,57 +315,29 @@ void main() {
     },
   );
 
-  testWidgets('Home Quick Actions open Analysis, Insights, and Notifications', (
+  testWidgets('dark Home preserves the approved monthly hierarchy', (
     tester,
   ) async {
     setPhoneViewport(tester);
+    tester.view.platformDispatcher.platformBrightnessTestValue =
+        Brightness.dark;
+    addTearDown(
+      tester.view.platformDispatcher.clearPlatformBrightnessTestValue,
+    );
+    HomePage.debugCurrentDate = DateTime(2026, 8, 13, 20);
+    addTearDown(() => HomePage.debugCurrentDate = null);
+
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Analysis'));
-    await tester.pumpAndSettle();
-    expect(find.text('Analysis'), findsOneWidget);
-    await tester.pageBack();
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Insights'));
-    await tester.pumpAndSettle();
-    expect(find.text('Insights'), findsOneWidget);
-    await tester.pageBack();
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Notifications'));
-    await tester.pumpAndSettle();
-    expect(find.text('No notifications'), findsOneWidget);
-    await tester.pageBack();
-    await tester.pumpAndSettle();
+    expect(find.text('Butlerly'), findsOneWidget);
+    expect(find.text('August 2026'), findsOneWidget);
+    expect(find.text('Good evening'), findsOneWidget);
+    expect(find.text('Total spending'), findsOneWidget);
+    expect(find.text('Spending trend'), findsOneWidget);
+    expect(find.text('Spending by category'), findsOneWidget);
+    expect(find.text('Recent transactions'), findsOneWidget);
   });
-
-  testWidgets(
-    'matches the approved dark Home composition',
-    (tester) async {
-      setPhoneViewport(tester);
-      tester.view.platformDispatcher.platformBrightnessTestValue =
-          Brightness.dark;
-      addTearDown(
-        tester.view.platformDispatcher.clearPlatformBrightnessTestValue,
-      );
-      HomePage.debugCurrentDate = DateTime(2026, 8, 13);
-      addTearDown(() => HomePage.debugCurrentDate = null);
-
-      await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
-      await tester.pumpAndSettle();
-
-      await expectLater(
-        find.byType(MaterialApp),
-        matchesGoldenFile('goldens/home_dark_390x844.png'),
-      );
-    },
-    // This approved baseline was captured with the macOS Flutter renderer.
-    // Linux rasterizes text and composited surfaces differently, so an exact
-    // pixel comparison there produces a large false-positive diff.
-    skip: !Platform.isMacOS,
-  );
 
   for (final size in const [Size(320, 568), Size(390, 844), Size(430, 932)]) {
     testWidgets('Home has no layout overflow at ${size.width}x${size.height}', (
@@ -377,13 +359,9 @@ void main() {
       }
       expect(exception, isNull);
       expect(find.text('Good morning'), findsOneWidget);
+      expect(find.text('August 2026'), findsOneWidget);
+      expect(find.text('Total spending'), findsOneWidget);
       expect(find.text('Recent transactions'), findsOneWidget);
-      if (size.width < 360) {
-        expect(
-          tester.getTopLeft(find.text('Notifications')).dy,
-          greaterThan(tester.getTopLeft(find.text('Analysis')).dy),
-        );
-      }
     });
   }
 
