@@ -242,6 +242,13 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     );
   }
 
+  double _phoneNavigationHeight(BuildContext context) {
+    final textScale = MediaQuery.textScalerOf(context).scale(1);
+    final growthFactor = (textScale - 1.0).clamp(0.0, 1.0).toDouble();
+    return ButlerlySize.navigationBarHeight +
+        ButlerlySize.navigationBarMaxAccessibilityGrowth * growthFactor;
+  }
+
   Widget _phoneNavigation(BuildContext context) {
     final destinations = _destinations(context);
     return DecoratedBox(
@@ -254,7 +261,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
         child: SafeArea(
           top: false,
           child: SizedBox(
-            height: ButlerlySize.navigationBarHeight,
+            height: _phoneNavigationHeight(context),
             child: Row(
               children: [
                 for (final branchIndex in _visualBranchIndexes)
