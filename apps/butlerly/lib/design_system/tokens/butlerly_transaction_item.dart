@@ -34,12 +34,18 @@ extension ButlerlyTransactionItemStyles on BuildContext {
   TextStyle get transactionItemAmount =>
       ButlerlyTypography.financialAmount(Theme.of(this).textTheme.titleMedium!);
 
-  TextStyle get transactionItemDate => Theme.of(this).textTheme.bodySmall!;
+  TextStyle get transactionItemDate => ButlerlyTypography.readableSmall(
+    Theme.of(this).textTheme.bodySmall!,
+    color: colors.secondaryText,
+  );
 
   TextStyle get transactionItemDescription =>
       Theme.of(this).textTheme.bodyMedium!.copyWith(color: colors.primaryText);
 
-  TextStyle get transactionItemMetadata => Theme.of(this).textTheme.bodySmall!;
+  TextStyle get transactionItemMetadata => ButlerlyTypography.readableSmall(
+    Theme.of(this).textTheme.bodySmall!,
+    color: colors.secondaryText,
+  );
 
   Color transactionItemDirectionIcon(bool isIncome) =>
       isIncome ? colors.success : colors.primaryText;
