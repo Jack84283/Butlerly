@@ -9,6 +9,7 @@ import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -676,7 +677,7 @@ class _SpendingTrend extends StatelessWidget {
                             child: Align(
                               alignment: Alignment.bottomCenter,
                               child: FractionallySizedBox(
-                                heightFactor: maxValue <= 0
+                                heightFactor: maxValue <= 0 || point.value <= 0
                                     ? 0
                                     : (point.value / maxValue)
                                           .clamp(0.04, 1.0)
@@ -754,9 +755,10 @@ class _CategorySummary extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final scroll = constraints.maxWidth < 360 || textScale > 18;
+        final dividerWidth = scroll ? 0.0 : (categories.length - 1).toDouble();
         final itemWidth = scroll
             ? 132.0
-            : constraints.maxWidth / categories.length;
+            : (constraints.maxWidth - dividerWidth) / categories.length;
         final row = Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1265,10 +1267,14 @@ AnalysisPeriod _homePeriodForMonth({
 }
 
 bool _transactionInPeriod(TransactionDto transaction, AnalysisPeriod period) {
-  final date = transaction.transactionDate;
+  final businessDate = transaction.transactionDate?.trim();
+  final date = businessDate != null && businessDate.isNotEmpty
+      ? DateTime.tryParse(businessDate)
+      : transaction.occurredAt?.toUtc();
   if (date == null) return false;
-  return date.compareTo(period.startDate) >= 0 &&
-      date.compareTo(period.endDate) <= 0;
+  final calendarDate = _date(date);
+  return calendarDate.compareTo(period.startDate) >= 0 &&
+      calendarDate.compareTo(period.endDate) <= 0;
 }
 
 DateTime _monthFromPeriod(AnalysisPeriod period) {
@@ -1319,11 +1325,8 @@ String _transactionTitle(BuildContext context, TransactionDto transaction) {
 String _transactionDateLabel(
   BuildContext context,
   TransactionDto transaction,
-) {
-  final raw = transaction.transactionDate;
-  final date = raw == null ? null : DateTime.tryParse(raw);
-  if (date == null) return context.l10n.text('datePending');
-  return DateFormat.MMMd(
-    Localizations.localeOf(context).toLanguageTag(),
-  ).format(date);
-}
+) => transactionDateLabel(
+  transaction,
+  pendingLabel: context.l10n.text('datePending'),
+  locale: Localizations.localeOf(context).toLanguageTag(),
+);
