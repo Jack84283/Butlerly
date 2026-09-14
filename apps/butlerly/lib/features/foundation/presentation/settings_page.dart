@@ -24,39 +24,7 @@ class SettingsPage extends ConsumerWidget {
     return ButlerlyPage(
       title: context.l10n.text('more'),
       children: [
-        ButlerlyCard(
-          color: context.colors.brand.withValues(alpha: 0.1),
-          child: Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: context.colors.brand,
-                foregroundColor: Colors.white,
-                child: const Icon(Icons.lock_outline_rounded),
-              ),
-              const SizedBox(width: ButlerlySpacing.standard),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      context.l10n.text('localOnlyStatus'),
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    Text(
-                      context.l10n.text('localOnlyBody'),
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
-              ),
-              ButlerlyStatusChip(
-                label: context.l10n.text('clear'),
-                status: ButlerlyStatus.success,
-                icon: Icons.check_rounded,
-              ),
-            ],
-          ),
-        ),
+        _LocalOnlyBanner(),
         ButlerlySectionHeader(title: context.l10n.text('appearance')),
         _SettingsSectionCard(
           children: [
@@ -229,7 +197,7 @@ class SettingsPage extends ConsumerWidget {
         _SettingsSectionCard(
           children: [
             SwitchListTile(
-              secondary: const Icon(Icons.cloud_off_outlined),
+              secondary: _SettingsIcon(icon: Icons.cloud_off_outlined),
               title: Text(context.l10n.text('externalAiConsent')),
               subtitle: Text(
                 context.l10n.text('externalAiConsentBody'),
@@ -241,6 +209,9 @@ class SettingsPage extends ConsumerWidget {
                   : (value) => ref
                         .read(userPreferenceProvider.notifier)
                         .saveChanges(externalAiEnabled: value),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: ButlerlySpacing.standard,
+              ),
             ),
             _SettingsRow(
               icon: Icons.auto_awesome_outlined,
@@ -269,6 +240,73 @@ class SettingsPage extends ConsumerWidget {
   }
 }
 
+class _LocalOnlyBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      color: context.colors.selection,
+      borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+      border: Border.all(
+        color: context.colors.interactive.withValues(alpha: 0.25),
+      ),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(ButlerlySpacing.standard),
+      child: Row(
+        children: [
+          Container(
+            width: ButlerlySize.preferredTarget,
+            height: ButlerlySize.preferredTarget,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: context.colors.brand.withValues(alpha: 0.2),
+            ),
+            child: Icon(
+              Icons.lock_outline_rounded,
+              color: context.colors.interactive,
+            ),
+          ),
+          const SizedBox(width: ButlerlySpacing.standard),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.l10n.text('localOnlyStatus'),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: ButlerlySpacing.xxs),
+                Text(
+                  context.l10n.text('localOnlyBody'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.check_rounded, color: context.colors.success),
+        ],
+      ),
+    ),
+  );
+}
+
+class _SettingsIcon extends StatelessWidget {
+  const _SettingsIcon({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 36,
+    height: 36,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: context.colors.selection,
+    ),
+    child: Icon(icon, size: 19, color: context.colors.interactive),
+  );
+}
+
 class _SettingsRow extends StatelessWidget {
   const _SettingsRow({
     required this.icon,
@@ -284,10 +322,17 @@ class _SettingsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTile(
-    leading: Icon(icon, color: context.colors.interactive),
-    title: Text(title),
+    contentPadding: const EdgeInsets.symmetric(
+      horizontal: ButlerlySpacing.standard,
+      vertical: ButlerlySpacing.xxs,
+    ),
+    leading: _SettingsIcon(icon: icon),
+    title: Text(title, style: Theme.of(context).textTheme.titleMedium),
     subtitle: Text(subtitle, style: _settingsSubtitleStyle(context)),
-    trailing: const Icon(Icons.chevron_right_rounded),
+    trailing: Icon(
+      Icons.chevron_right_rounded,
+      color: context.colors.tertiaryText,
+    ),
     onTap: onTap,
   );
 }
@@ -302,8 +347,13 @@ class _SettingsSectionCard extends StatelessWidget {
   final List<Widget> children;
 
   @override
-  Widget build(BuildContext context) => ButlerlyCard(
-    padding: EdgeInsets.zero,
+  Widget build(BuildContext context) => Material(
+    color: context.colors.subtleSurface,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+      side: BorderSide(color: context.colors.border),
+    ),
+    clipBehavior: Clip.antiAlias,
     child: ButlerlySeparatedList(children: children),
   );
 }
@@ -340,15 +390,19 @@ class _SettingsDropdownRow<T> extends StatelessWidget {
           PopupMenuItem<T>(value: item.value, child: item.child),
       ],
       child: ListTile(
-        leading: Icon(icon, color: context.colors.interactive),
-        title: Text(label, style: Theme.of(context).textTheme.bodySmall),
-        subtitle: _selectedItem(context),
-        trailing: const Icon(Icons.arrow_drop_down_rounded),
-        dense: true,
-        minVerticalPadding: ButlerlySpacing.compact,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: ButlerlySpacing.standard,
+          vertical: ButlerlySpacing.xxs,
         ),
+        leading: _SettingsIcon(icon: icon),
+        title: Text(label, style: Theme.of(context).textTheme.bodySmall),
+        subtitle: _selectedItem(context),
+        trailing: Icon(
+          Icons.keyboard_arrow_down_rounded,
+          color: context.colors.tertiaryText,
+        ),
+        dense: true,
+        minVerticalPadding: ButlerlySpacing.compact,
       ),
     ),
   );

@@ -140,7 +140,7 @@ class _HomePageState extends State<HomePage> {
           ).formatFullDate(HomePage.debugCurrentDate ?? DateTime.now()),
           style: Theme.of(context).textTheme.bodyMedium,
         ),
-        const SizedBox(height: ButlerlySpacing.standard),
+        const SizedBox(height: ButlerlySpacing.section),
         FutureBuilder<_HomeData>(
           future: _data,
           builder: (context, snapshot) {
@@ -157,10 +157,11 @@ class _HomePageState extends State<HomePage> {
                 ButlerlySectionHeader(
                   title: context.l10n.text('needsAttention'),
                   action: data.reviewCount > 0
-                      ? ButlerlyStatusChip(
-                          label: '${data.reviewCount}',
-                          status: ButlerlyStatus.review,
-                          icon: Icons.flag_outlined,
+                      ? Text(
+                          '${data.reviewCount}',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: context.colors.interactive,
+                          ),
                         )
                       : null,
                 ),
@@ -182,7 +183,6 @@ class _HomePageState extends State<HomePage> {
                     onTap: _open,
                     navigates: true,
                     showDateInRows: true,
-                    wrapInCard: true,
                   ),
                 const SizedBox(height: ButlerlySpacing.structural),
               ],
@@ -206,69 +206,92 @@ class _LocalSummary extends StatelessWidget {
   final _HomeData data;
 
   @override
-  Widget build(BuildContext context) => ButlerlyCard(
-    semanticLabel: context.l10n.text('localOnlyStatus'),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+  Widget build(BuildContext context) => Semantics(
+    container: true,
+    label: context.l10n.text('localOnlyStatus'),
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        color: context.colors.subtleSurface,
+        borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+        border: Border.all(color: context.colors.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(ButlerlySpacing.standard),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.lock_outline_rounded, color: context.colors.interactive),
-            const SizedBox(width: ButlerlySpacing.compact),
-            Expanded(
-              child: Text(
-                context.l10n.text('localRecords'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+            Row(
+              children: [
+                Icon(
+                  Icons.lock_outline_rounded,
+                  size: 18,
+                  color: context.colors.interactive,
+                ),
+                const SizedBox(width: ButlerlySpacing.compact),
+                Expanded(
+                  child: Text(
+                    context.l10n.text('localRecords'),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: context.colors.secondaryText,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: ButlerlySpacing.compact),
+                Icon(
+                  Icons.phonelink_lock_outlined,
+                  size: 18,
+                  color: context.colors.tertiaryText,
+                ),
+              ],
             ),
-            Tooltip(
-              message: context.l10n.text('localOnlyStatus'),
-              child: Icon(
-                Icons.phonelink_lock_outlined,
-                color: context.colors.secondaryText,
-              ),
+            const SizedBox(height: ButlerlySpacing.standard),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: _SummaryMetric(
+                    value: '${data.transactionCount}',
+                    label: context.l10n.text('recordsOnDevice'),
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 52,
+                  color: context.colors.cardDivider,
+                ),
+                Expanded(
+                  child: _SummaryMetric(
+                    value: '${data.reviewCount}',
+                    label: context.l10n.text('attentionItems'),
+                    accent: data.reviewCount > 0,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: ButlerlySpacing.small),
+            Text(
+              context.l10n.text('localOnlyBody'),
+              style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
         ),
-        const SizedBox(height: ButlerlySpacing.standard),
-        Row(
-          children: [
-            Expanded(
-              child: _SummaryMetric(
-                value: '${data.transactionCount}',
-                label: context.l10n.text('recordsOnDevice'),
-              ),
-            ),
-            Container(
-              width: 1,
-              height: ButlerlySize.preferredTarget,
-              color: context.colors.border,
-            ),
-            Expanded(
-              child: _SummaryMetric(
-                value: '${data.reviewCount}',
-                label: context.l10n.text('attentionItems'),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: ButlerlySpacing.small),
-        Text(
-          context.l10n.text('localOnlyBody'),
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-      ],
+      ),
     ),
   );
 }
 
 class _SummaryMetric extends StatelessWidget {
-  const _SummaryMetric({required this.value, required this.label});
+  const _SummaryMetric({
+    required this.value,
+    required this.label,
+    this.accent = false,
+  });
 
   final String value;
   final String label;
+  final bool accent;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -276,7 +299,13 @@ class _SummaryMetric extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(value, style: Theme.of(context).textTheme.headlineMedium),
+        Text(
+          value,
+          style: Theme.of(context).textTheme.displaySmall?.copyWith(
+            color: accent ? context.colors.interactive : null,
+          ),
+        ),
+        const SizedBox(height: ButlerlySpacing.micro),
         Text(
           label,
           maxLines: 2,
@@ -294,45 +323,78 @@ class _QuickActions extends StatelessWidget {
   final Future<void> Function() onRefresh;
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      const spacing = ButlerlySpacing.compact;
-      final columns = constraints.maxWidth < 350 ? 2 : 4;
-      final width = (constraints.maxWidth - spacing * (columns - 1)) / columns;
-      final actions = [
-        _QuickAction(
-          icon: Icons.add_rounded,
-          label: context.l10n.text('addData'),
-          onTap: () async {
-            await context.push('/add');
-            await onRefresh();
-          },
-        ),
-        _QuickAction(
-          icon: Icons.insights_outlined,
-          label: context.l10n.text('analysis'),
-          onTap: () => context.push('/analysis'),
-        ),
-        _QuickAction(
-          icon: Icons.insights_outlined,
-          label: context.l10n.text('insights'),
-          onTap: () => context.push('/insights'),
-        ),
-        _QuickAction(
-          icon: Icons.notifications_none_rounded,
-          label: context.l10n.text('notifications'),
-          onTap: () => context.push('/notifications'),
-        ),
-      ];
-      return Wrap(
-        spacing: spacing,
-        runSpacing: spacing,
-        children: actions
-            .map((action) => SizedBox(width: width, child: action))
-            .toList(growable: false),
-      );
-    },
-  );
+  Widget build(BuildContext context) {
+    final actions = [
+      _QuickAction(
+        icon: Icons.add_rounded,
+        label: context.l10n.text('addData'),
+        onTap: () async {
+          await context.push('/add');
+          await onRefresh();
+        },
+      ),
+      _QuickAction(
+        icon: Icons.analytics_outlined,
+        label: context.l10n.text('analysis'),
+        onTap: () => context.push('/analysis'),
+      ),
+      _QuickAction(
+        icon: Icons.lightbulb_outline_rounded,
+        label: context.l10n.text('insights'),
+        onTap: () => context.push('/insights'),
+      ),
+      _QuickAction(
+        icon: Icons.notifications_none_rounded,
+        label: context.l10n.text('notifications'),
+        onTap: () => context.push('/notifications'),
+      ),
+    ];
+
+    Widget divider() => SizedBox(
+      height: 46,
+      child: VerticalDivider(width: 1, color: context.colors.cardDivider),
+    );
+
+    Widget pair(int first, int second) => Row(
+      children: [
+        Expanded(child: actions[first]),
+        divider(),
+        Expanded(child: actions[second]),
+      ],
+    );
+
+    return Material(
+      color: context.colors.subtleSurface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+        side: BorderSide(color: context.colors.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final textScale = MediaQuery.textScalerOf(context).scale(1);
+          final useTwoRows = constraints.maxWidth < 360 || textScale > 1.2;
+          if (useTwoRows) {
+            return Column(
+              children: [
+                pair(0, 1),
+                Divider(height: 1, color: context.colors.cardDivider),
+                pair(2, 3),
+              ],
+            );
+          }
+          return Row(
+            children: [
+              for (var index = 0; index < actions.length; index++) ...[
+                Expanded(child: actions[index]),
+                if (index < actions.length - 1) divider(),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
 }
 
 class _QuickAction extends StatelessWidget {
@@ -347,30 +409,43 @@ class _QuickAction extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => ButlerlyCard(
-    onTap: onTap,
-    semanticLabel: label,
-    padding: const EdgeInsets.symmetric(
-      horizontal: ButlerlySpacing.micro,
-      vertical: ButlerlySpacing.small,
-    ),
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(
-        minHeight: ButlerlySize.recordRowMinHeight,
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: context.colors.interactive),
-          const SizedBox(height: ButlerlySpacing.compact),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelLarge,
-          ),
-        ],
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: label,
+    child: InkWell(
+      borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: ButlerlySpacing.micro,
+          vertical: ButlerlySpacing.small,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: context.colors.selection,
+              ),
+              child: Icon(
+                icon,
+                size: 20,
+                color: context.colors.interactive,
+              ),
+            ),
+            const SizedBox(height: ButlerlySpacing.compact),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
+          ],
+        ),
       ),
     ),
   );
@@ -382,71 +457,122 @@ class _AttentionCard extends StatelessWidget {
   final int reviewCount;
 
   @override
-  Widget build(BuildContext context) => ButlerlyCard(
-    onTap: reviewCount > 0 ? () => context.go('/review') : null,
-    child: Row(
-      children: [
-        Icon(
-          reviewCount > 0
-              ? Icons.flag_outlined
-              : Icons.check_circle_outline_rounded,
-          color: reviewCount > 0
-              ? context.colors.warning
-              : context.colors.success,
-        ),
-        const SizedBox(width: ButlerlySpacing.small),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context) {
+    final active = reviewCount > 0;
+    final color = active ? context.colors.interactive : context.colors.success;
+    return Material(
+      color: active
+          ? context.colors.selection
+          : context.colors.success.withValues(alpha: 0.08),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+        side: BorderSide(color: color.withValues(alpha: 0.32)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+        onTap: active ? () => context.go('/review') : null,
+        child: Padding(
+          padding: const EdgeInsets.all(ButlerlySpacing.standard),
+          child: Row(
             children: [
-              Text(
-                reviewCount > 0
-                    ? context.l10n.text('needsReview')
-                    : context.l10n.text('nothingNeedsAttention'),
-                style: Theme.of(context).textTheme.titleMedium,
+              Container(
+                width: ButlerlySize.preferredTarget,
+                height: ButlerlySize.preferredTarget,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: color.withValues(alpha: 0.13),
+                ),
+                child: Icon(
+                  active
+                      ? Icons.notifications_none_rounded
+                      : Icons.check_rounded,
+                  color: color,
+                ),
               ),
-              Text(
-                context.l10n.text('nothingNeedsAttentionBody'),
-                style: Theme.of(context).textTheme.bodySmall,
+              const SizedBox(width: ButlerlySpacing.standard),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      active
+                          ? context.l10n.text('needsReview')
+                          : context.l10n.text('nothingNeedsAttention'),
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: ButlerlySpacing.xxs),
+                    Text(
+                      context.l10n.text(
+                        active
+                            ? 'reviewRecommendation'
+                            : 'nothingNeedsAttentionBody',
+                      ),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
               ),
+              if (active)
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: context.colors.tertiaryText,
+                ),
             ],
           ),
         ),
-        if (reviewCount > 0) const Icon(Icons.chevron_right_rounded),
-      ],
-    ),
-  );
+      ),
+    );
+  }
 }
 
 class _HomeEmptyTransactions extends StatelessWidget {
   const _HomeEmptyTransactions();
 
   @override
-  Widget build(BuildContext context) => ButlerlyCard(
-    onTap: () => context.push('/add'),
-    child: Row(
-      children: [
-        Icon(Icons.receipt_long_outlined, color: context.colors.secondaryText),
-        const SizedBox(width: ButlerlySpacing.small),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                context.l10n.text('noTransactions'),
-                style: Theme.of(context).textTheme.titleMedium,
+  Widget build(BuildContext context) => Material(
+    color: context.colors.subtleSurface,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+      side: BorderSide(color: context.colors.border),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+      onTap: () => context.push('/add'),
+      child: Padding(
+        padding: const EdgeInsets.all(ButlerlySpacing.standard),
+        child: Row(
+          children: [
+            Icon(
+              Icons.receipt_long_outlined,
+              color: context.colors.secondaryText,
+            ),
+            const SizedBox(width: ButlerlySpacing.small),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.l10n.text('noTransactions'),
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  Text(
+                    context.l10n.text('noTransactionsBody'),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
               ),
-              Text(
-                context.l10n.text('noTransactionsBody'),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
-          ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: context.colors.tertiaryText,
+            ),
+          ],
         ),
-        const Icon(Icons.chevron_right_rounded),
-      ],
+      ),
     ),
   );
 }

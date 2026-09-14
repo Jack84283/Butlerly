@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 void main() {
-  testWidgets('shows five localized action cards and preserves navigation', (
+  testWidgets('shows five localized grouped actions and preserves navigation', (
     tester,
   ) async {
     final router = GoRouter(
@@ -42,7 +42,8 @@ void main() {
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await tester.pumpAndSettle();
 
-    expect(find.byType(ButlerlyCard), findsNWidgets(5));
+    expect(find.byType(ButlerlyCard), findsNothing);
+    expect(find.byType(Divider), findsNWidgets(3));
     expect(find.text('Add transaction manually'), findsOneWidget);
     expect(find.text('Enter transaction details yourself'), findsOneWidget);
     expect(find.text('Scan receipt'), findsOneWidget);

@@ -43,7 +43,7 @@ abstract final class AppTheme {
       onPrimaryContainer: colors.primaryText,
       secondary: colors.brand,
       onSecondary: _onColor(colors.brand),
-      secondaryContainer: colors.brand.withValues(alpha: 0.18),
+      secondaryContainer: colors.brand.withValues(alpha: 0.16),
       onSecondaryContainer: colors.primaryText,
       tertiary: colors.info,
       onTertiary: _onColor(colors.info),
@@ -53,7 +53,7 @@ abstract final class AppTheme {
       onSurface: colors.primaryText,
       surfaceContainerHighest: colors.elevatedSurface,
       outline: colors.border,
-      outlineVariant: colors.border,
+      outlineVariant: colors.cardDivider,
       shadow: Colors.black,
       scrim: Colors.black,
       inverseSurface: colors.primaryText,
@@ -78,27 +78,25 @@ abstract final class AppTheme {
       appBarTheme: AppBarTheme(
         elevation: 0,
         scrolledUnderElevation: 0,
-        centerTitle: true,
+        centerTitle: false,
         backgroundColor: colors.background,
         foregroundColor: colors.primaryText,
+        titleSpacing: ButlerlySize.phoneGutter,
         titleTextStyle: textTheme.titleLarge,
       ),
       cardTheme: CardThemeData(
-        elevation: ButlerlyElevation.raised,
+        elevation: 0,
         margin: EdgeInsets.zero,
         color: colors.surface,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-          side: BorderSide(
-            color: colors.border,
-            width: brightness == Brightness.light ? 0 : 1,
-          ),
+          side: BorderSide(color: colors.border.withValues(alpha: 0.8)),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: colors.surface,
+        fillColor: colors.subtleSurface,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: ButlerlySpacing.standard,
           vertical: ButlerlySpacing.standard,
@@ -113,7 +111,7 @@ abstract final class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-          borderSide: BorderSide(color: colors.interactive, width: 2),
+          borderSide: BorderSide(color: colors.interactive, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
@@ -123,8 +121,24 @@ abstract final class AppTheme {
         hintStyle: TextStyle(color: colors.tertiaryText),
       ),
       searchBarTheme: SearchBarThemeData(
+        backgroundColor: WidgetStatePropertyAll(colors.subtleSurface),
+        elevation: const WidgetStatePropertyAll(0),
+        side: WidgetStatePropertyAll(BorderSide(color: colors.border)),
         hintStyle: WidgetStatePropertyAll(
           TextStyle(color: colors.secondaryText),
+        ),
+      ),
+      tabBarTheme: TabBarThemeData(
+        dividerColor: Colors.transparent,
+        labelColor: colors.interactive,
+        unselectedLabelColor: colors.secondaryText,
+        labelStyle: textTheme.labelLarge,
+        unselectedLabelStyle: textTheme.labelLarge,
+        indicatorSize: TabBarIndicatorSize.tab,
+        indicator: BoxDecoration(
+          color: colors.selection,
+          borderRadius: BorderRadius.circular(ButlerlyRadius.full),
+          border: Border.all(color: colors.interactive.withValues(alpha: 0.28)),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
@@ -140,7 +154,7 @@ abstract final class AppTheme {
             ButlerlyButtonTokens.compactHeight,
             ButlerlyButtonTokens.height,
           ),
-          elevation: ButlerlyElevation.base,
+          elevation: 0,
           textStyle: textTheme.labelLarge,
         ),
       ),
@@ -188,13 +202,16 @@ abstract final class AppTheme {
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: colors.elevatedSurface,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(ButlerlyRadius.large),
+          side: BorderSide(color: colors.border),
         ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: colors.elevatedSurface,
         modalBackgroundColor: colors.elevatedSurface,
+        surfaceTintColor: Colors.transparent,
         showDragHandle: true,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(
@@ -204,8 +221,8 @@ abstract final class AppTheme {
       ),
       navigationBarTheme: NavigationBarThemeData(
         height: ButlerlySize.navigationBarHeight,
-        backgroundColor: colors.surface,
-        indicatorColor: colors.selection,
+        backgroundColor: colors.background,
+        indicatorColor: Colors.transparent,
         labelTextStyle: WidgetStateProperty.resolveWith(
           (states) => ButlerlyTypography.navigationLabel(
             textTheme.labelSmall!,
@@ -224,7 +241,7 @@ abstract final class AppTheme {
         ),
       ),
       navigationRailTheme: NavigationRailThemeData(
-        backgroundColor: colors.surface,
+        backgroundColor: colors.background,
         indicatorColor: colors.selection,
         selectedIconTheme: IconThemeData(color: colors.interactive),
         unselectedIconTheme: IconThemeData(color: colors.secondaryText),
@@ -238,7 +255,7 @@ abstract final class AppTheme {
         shape: standardShape,
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: colors.surface,
+        backgroundColor: colors.subtleSurface,
         selectedColor: colors.selection,
         side: BorderSide(color: colors.border),
         shape: RoundedRectangleBorder(

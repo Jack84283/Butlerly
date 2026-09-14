@@ -164,8 +164,8 @@ void main() {
     final amount = tester.widget<Text>(find.text('128.45 USD'));
     final description = tester.widget<Text>(find.text('Whole Foods Market'));
     expect(amount.textAlign, TextAlign.center);
-    expect(amount.style?.fontSize, 32);
-    expect(amount.style?.fontWeight, FontWeight.w700);
+    expect(amount.style?.fontSize, 38);
+    expect(amount.style?.fontWeight, FontWeight.w500);
     expect(description.textAlign, TextAlign.center);
   });
 
@@ -391,7 +391,6 @@ void main() {
     await tester.tap(find.text('Dining').last);
     await tester.pumpAndSettle();
 
-    // Dismiss the sheet without applying the staged selection.
     await tester.tapAt(const Offset(8, 8));
     await tester.pumpAndSettle();
 
@@ -521,7 +520,8 @@ void main() {
     expect(find.text('2 transactions'), findsOneWidget);
     expect(find.text('Aug 11, 2026'), findsOneWidget);
     expect(find.text('Aug 10, 2026'), findsOneWidget);
-    expect(find.byType(Card), findsNWidgets(2));
+    expect(find.byType(Card), findsNothing);
+    expect(find.byType(ButlerlyRecordRow), findsNWidgets(2));
     final filterBottom = tester.getBottomLeft(find.byType(TabBar));
     final firstRowTop = tester.getTopLeft(find.byType(ButlerlyRecordRow).first);
     expect(
@@ -732,7 +732,7 @@ void main() {
     await tester.ensureVisible(find.byType(Tab).at(2));
     await tester.tap(find.byType(Tab).at(2));
     await tester.pumpAndSettle();
-    expect(find.byType(ButlerlyCard), findsOneWidget);
+    expect(find.byType(ButlerlyCard), findsNothing);
     expect(find.byType(ButlerlyRecordRow), findsOneWidget);
     expect(find.text('Needs a category'), findsOneWidget);
     expect(find.text('Resolve'), findsNothing);
@@ -786,11 +786,11 @@ void main() {
       const MaterialApp(home: Scaffold(body: ReviewPage())),
     );
     await tester.pumpAndSettle();
-    expect(find.byType(ButlerlyCard), findsNWidgets(2));
+    expect(find.byType(ButlerlyCard), findsNothing);
     expect(find.text('Category and subcategory are missing'), findsNWidgets(3));
     await tester.tap(find.byType(Tab).at(2));
     await tester.pumpAndSettle();
-    expect(find.byType(ButlerlyCard), findsNWidgets(2));
+    expect(find.byType(ButlerlyCard), findsNothing);
     expect(find.byType(ButlerlyRecordRow), findsNWidgets(3));
     expect(
       find.text('Receipt amount differs from transaction'),
@@ -1737,7 +1737,6 @@ Future<void> _tapEditorSave(WidgetTester tester) async {
 
 Transaction _editorTransaction(String id) {
   final now = DateTime.now().toUtc();
-  // Match the new editor's local calendar date, even when UTC is tomorrow.
   final date = now.toLocal().toIso8601String().substring(0, 10);
   return Transaction(
     id: TransactionId(id),

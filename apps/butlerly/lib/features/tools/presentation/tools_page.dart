@@ -22,13 +22,13 @@ class ToolsPage extends StatelessWidget {
       '/review',
     ),
     _ToolDefinition(
-      Icons.analytics_rounded,
+      Icons.analytics_outlined,
       context.l10n.text('analysis'),
       context.l10n.text('toolsAnalysisDescription'),
       '/analysis',
     ),
     _ToolDefinition(
-      Icons.insights_rounded,
+      Icons.lightbulb_outline_rounded,
       context.l10n.text('insights'),
       context.l10n.text('toolsInsightsDescription'),
       '/insights',
@@ -42,24 +42,44 @@ class ToolsPage extends StatelessWidget {
     children: [
       LayoutBuilder(
         builder: (context, constraints) {
-          final columns = constraints.maxWidth >= 640 ? 2 : 1;
           final tools = _tools(context);
-          final cardWidth = columns == 1
-              ? constraints.maxWidth
-              : (constraints.maxWidth - ButlerlySpacing.cardGap) / 2;
+          if (constraints.maxWidth < 640) {
+            return Material(
+              color: context.colors.subtleSurface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+                side: BorderSide(color: context.colors.border),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  for (var index = 0; index < tools.length; index++) ...[
+                    _ToolRow(tool: tools[index]),
+                    if (index < tools.length - 1)
+                      Divider(
+                        height: 1,
+                        indent: 72,
+                        endIndent: ButlerlySpacing.standard,
+                        color: context.colors.cardDivider,
+                      ),
+                  ],
+                ],
+              ),
+            );
+          }
+          final cardWidth =
+              (constraints.maxWidth - ButlerlySpacing.cardGap) / 2;
           return Wrap(
             spacing: ButlerlySpacing.cardGap,
             runSpacing: ButlerlySpacing.cardGap,
             children: [
               for (final tool in tools)
-                SizedBox(
-                  width: cardWidth,
-                  child: _ToolCard(tool: tool),
-                ),
+                SizedBox(width: cardWidth, child: _ToolPanel(tool: tool)),
             ],
           );
         },
       ),
+      const SizedBox(height: ButlerlySpacing.structural),
     ],
   );
 }
@@ -72,38 +92,97 @@ class _ToolDefinition {
   final String route;
 }
 
-class _ToolCard extends StatelessWidget {
-  const _ToolCard({required this.tool});
+class _ToolRow extends StatelessWidget {
+  const _ToolRow({required this.tool});
+
+  final _ToolDefinition tool;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: '${tool.title}, ${tool.description}',
+    child: InkWell(
+      borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+      onTap: () => context.push(tool.route),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: ButlerlySpacing.standard,
+          vertical: ButlerlySpacing.small,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: ButlerlySize.preferredTarget,
+              height: ButlerlySize.preferredTarget,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: context.colors.selection,
+              ),
+              child: Icon(tool.icon, color: context.colors.interactive),
+            ),
+            const SizedBox(width: ButlerlySpacing.standard),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(tool.title, style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: ButlerlySpacing.xxs),
+                  Text(
+                    tool.description,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: context.colors.tertiaryText,
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _ToolPanel extends StatelessWidget {
+  const _ToolPanel({required this.tool});
   final _ToolDefinition tool;
 
   @override
   Widget build(BuildContext context) => ButlerlyCard(
+    color: context.colors.subtleSurface,
     onTap: () => context.push(tool.route),
     semanticLabel: '${tool.title}, ${tool.description}',
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          tool.icon,
-          color: context.colors.interactive,
-          size: ButlerlySize.standardIcon,
-        ),
-        const SizedBox(width: ButlerlySpacing.standard),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 112),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Text(tool.title, style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: ButlerlySpacing.compact),
-              Text(
-                tool.description,
-                style: Theme.of(context).textTheme.bodySmall,
+              Container(
+                width: ButlerlySize.preferredTarget,
+                height: ButlerlySize.preferredTarget,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: context.colors.selection,
+                ),
+                child: Icon(tool.icon, color: context.colors.interactive),
+              ),
+              const Spacer(),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: context.colors.tertiaryText,
               ),
             ],
           ),
-        ),
-        const Icon(Icons.chevron_right_rounded),
-      ],
+          const SizedBox(height: ButlerlySpacing.standard),
+          Text(tool.title, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: ButlerlySpacing.micro),
+          Text(tool.description, style: Theme.of(context).textTheme.bodySmall),
+        ],
+      ),
     ),
   );
 }

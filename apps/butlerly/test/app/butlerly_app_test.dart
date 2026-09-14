@@ -21,27 +21,27 @@ void main() {
     expect(AppLocalizations.missingKeysFor('zh'), isEmpty);
   });
 
-  test('theme surfaces use the approved palette', () {
-    expect(AppTheme.dark.scaffoldBackgroundColor, const Color(0xFF000000));
-    expect(AppTheme.dark.cardTheme.color, const Color(0xFF1C1C1E));
+  test('theme surfaces use the quiet-premium palette', () {
+    expect(AppTheme.dark.scaffoldBackgroundColor, const Color(0xFF0A0A0D));
+    expect(AppTheme.dark.cardTheme.color, const Color(0xFF111114));
     expect(
       AppTheme.dark.colorScheme.surfaceContainerHighest,
-      const Color(0xFF2C2C2E),
+      const Color(0xFF17171C),
     );
     expect(
       AppTheme.dark.textTheme.bodyMedium?.color,
-      const Color.fromRGBO(198, 198, 198, 1),
+      const Color(0xFFB8B2AA),
     );
-    expect(AppTheme.light.textTheme.bodyMedium?.color, const Color(0xFF6E6E73));
-    expect(AppTheme.light.textTheme.bodySmall?.color, const Color(0xFF6E6E73));
+    expect(AppTheme.light.textTheme.bodyMedium?.color, const Color(0xFF68635E));
+    expect(AppTheme.light.textTheme.bodySmall?.color, const Color(0xFF8A847D));
     expect(AppTheme.light.cardTheme.color, const Color(0xFFFFFFFF));
     expect(
       AppTheme.light.extension<ButlerlySemanticColors>()?.cardDivider,
-      const Color.fromRGBO(198, 198, 200, 0.6),
+      const Color(0xFFD9D4CE),
     );
     expect(
       AppTheme.dark.extension<ButlerlySemanticColors>()?.cardDivider,
-      const Color.fromRGBO(78, 78, 78, 1),
+      const Color(0xFF25252B),
     );
   });
 
@@ -140,12 +140,12 @@ void main() {
     await tester.tap(find.text('Add data'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Add'), findsOneWidget);
+    expect(find.text('Add'), findsAtLeastNWidgets(1));
     expect(find.text('Add transaction manually'), findsOneWidget);
     expect(find.text('Scan receipt'), findsOneWidget);
     expect(find.text('Import statement'), findsOneWidget);
     expect(find.text('Import file'), findsOneWidget);
-    expect(find.text('Payment sources'), findsOneWidget);
+    expect(find.text('Payment sources'), findsAtLeastNWidgets(1));
 
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
@@ -161,7 +161,7 @@ void main() {
       await tester.tap(find.bySemanticsLabel('Add transaction'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Add'), findsOneWidget);
+      expect(find.text('Add'), findsAtLeastNWidgets(1));
       expect(
         tester
                 .getSemantics(find.bySemanticsLabel('Add transaction'))
@@ -188,7 +188,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.bySemanticsLabel('Add transaction'));
       await tester.pumpAndSettle();
-      expect(find.text('Add'), findsOneWidget);
+      expect(find.text('Add'), findsAtLeastNWidgets(1));
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
       expect(
@@ -378,6 +378,12 @@ void main() {
       expect(exception, isNull);
       expect(find.text('Good morning'), findsOneWidget);
       expect(find.text('Recent transactions'), findsOneWidget);
+      if (size.width < 360) {
+        expect(
+          tester.getTopLeft(find.text('Notifications')).dy,
+          greaterThan(tester.getTopLeft(find.text('Analysis')).dy),
+        );
+      }
     });
   }
 

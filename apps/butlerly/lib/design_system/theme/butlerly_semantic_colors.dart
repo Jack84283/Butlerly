@@ -48,50 +48,52 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
   final Color selection;
   final Color review;
 
+  /// Quiet-premium neutral foundation. Brand palettes only replace the accent
+  /// roles so financial semantic colors remain stable and meaningful.
   static const dark = ButlerlySemanticColors(
-    background: Color(0xFF000000),
-    surface: Color(0xFF1C1C1E),
-    elevatedSurface: Color(0xFF2C2C2E),
-    subtleSurface: Color(0xFF1C1C1E),
-    primaryText: Color(0xFFFFFFFF),
-    secondaryText: Color.fromRGBO(198, 198, 198, 1),
-    tertiaryText: Color.fromRGBO(198, 198, 198, 1),
-    cardDivider: Color.fromRGBO(78, 78, 78, 1),
-    border: Color(0xFF2A2A31),
-    brand: Color(0xFFB42333),
-    brandStrong: Color(0xFF7A1825),
-    interactive: Color(0xFFFF6B70),
-    controlPrimary: Color(0xFF7A1825),
-    interactiveStrong: Color(0xFFB42333),
-    success: Color(0xFF2E9D64),
-    warning: Color(0xFFD6A84B),
-    error: Color(0xFFE06464),
-    info: Color(0xFF5A9BD5),
-    selection: Color(0xFF3A151B),
-    review: Color(0xFFFF6B70),
+    background: Color(0xFF0A0A0D),
+    surface: Color(0xFF111114),
+    elevatedSurface: Color(0xFF17171C),
+    subtleSurface: Color(0xFF0F1013),
+    primaryText: Color(0xFFF4F1EC),
+    secondaryText: Color(0xFFB8B2AA),
+    tertiaryText: Color(0xFF817C75),
+    cardDivider: Color(0xFF25252B),
+    border: Color(0xFF2F2F36),
+    brand: Color(0xFF7A1E3A),
+    brandStrong: Color(0xFF541127),
+    interactive: Color(0xFFC76F8B),
+    controlPrimary: Color(0xFF541127),
+    interactiveStrong: Color(0xFF9A3655),
+    success: Color(0xFF4DBA7A),
+    warning: Color(0xFFD4A85B),
+    error: Color(0xFFE16C72),
+    info: Color(0xFF6DA7D8),
+    selection: Color(0xFF24141A),
+    review: Color(0xFFC76F8B),
   );
 
   static const light = ButlerlySemanticColors(
-    background: Color(0xFFF2F2F7),
+    background: Color(0xFFF7F5F1),
     surface: Color(0xFFFFFFFF),
-    elevatedSurface: Color(0xFFF9F9FB),
-    subtleSurface: Color(0xFFF9F9FB),
-    primaryText: Color(0xFF000000),
-    secondaryText: Color(0xFF6E6E73),
-    tertiaryText: Color(0xFF6E6E73),
-    cardDivider: Color.fromRGBO(198, 198, 200, 0.6),
-    border: Color(0xFFDDDDE2),
-    brand: Color(0xFFA51F2E),
-    brandStrong: Color(0xFF741722),
-    interactive: Color(0xFFB42333),
-    controlPrimary: Color(0xFF741722),
-    interactiveStrong: Color(0xFFA51F2E),
-    success: Color(0xFF2F855A),
-    warning: Color(0xFF9A6A16),
-    error: Color(0xFFB83A3A),
-    info: Color(0xFF3278A8),
-    selection: Color(0xFFF5E1E4),
-    review: Color(0xFF741722),
+    elevatedSurface: Color(0xFFFCFAF7),
+    subtleSurface: Color(0xFFF1EEE8),
+    primaryText: Color(0xFF19181A),
+    secondaryText: Color(0xFF68635E),
+    tertiaryText: Color(0xFF8A847D),
+    cardDivider: Color(0xFFD9D4CE),
+    border: Color(0xFFE2DDD7),
+    brand: Color(0xFF7A1E3A),
+    brandStrong: Color(0xFF541127),
+    interactive: Color(0xFF7A1E3A),
+    controlPrimary: Color(0xFF541127),
+    interactiveStrong: Color(0xFF64162F),
+    success: Color(0xFF287A52),
+    warning: Color(0xFF916814),
+    error: Color(0xFFB5444C),
+    info: Color(0xFF356F9F),
+    selection: Color(0xFFF0E2E6),
+    review: Color(0xFF64162F),
   );
 
   static ButlerlySemanticColors palette(
@@ -103,49 +105,49 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
       ButlerlyColorTheme.butlerRed => base,
       ButlerlyColorTheme.skyBlue => base.copyWith(
         brand: brightness == Brightness.dark
-            ? const Color(0xFF4D9DE0)
-            : const Color(0xFF2878B5),
+            ? const Color(0xFF315B82)
+            : const Color(0xFF315B82),
         brandStrong: brightness == Brightness.dark
-            ? const Color(0xFF2D6FA3)
-            : const Color(0xFF1D5C8C),
+            ? const Color(0xFF1E3E5C)
+            : const Color(0xFF234563),
         interactive: brightness == Brightness.dark
-            ? const Color(0xFF69B4F0)
-            : const Color(0xFF2878B5),
+            ? const Color(0xFF7DB7E8)
+            : const Color(0xFF315B82),
         controlPrimary: brightness == Brightness.dark
-            ? const Color(0xFF2D6FA3)
-            : const Color(0xFF1D5C8C),
+            ? const Color(0xFF1E3E5C)
+            : const Color(0xFF234563),
         interactiveStrong: brightness == Brightness.dark
-            ? const Color(0xFF4D9DE0)
-            : const Color(0xFF1D5C8C),
+            ? const Color(0xFF4F82AF)
+            : const Color(0xFF284E70),
         selection: brightness == Brightness.dark
-            ? const Color(0xFF142B3D)
-            : const Color(0xFFE0F0FA),
+            ? const Color(0xFF111F2B)
+            : const Color(0xFFE2EAF1),
         review: brightness == Brightness.dark
-            ? const Color(0xFF69B4F0)
-            : const Color(0xFF1D5C8C),
+            ? const Color(0xFF7DB7E8)
+            : const Color(0xFF284E70),
       ),
       ButlerlyColorTheme.green => base.copyWith(
         brand: brightness == Brightness.dark
-            ? const Color(0xFF4CAF7A)
-            : const Color(0xFF287A52),
+            ? const Color(0xFF246B57)
+            : const Color(0xFF246B57),
         brandStrong: brightness == Brightness.dark
-            ? const Color(0xFF2F815A)
-            : const Color(0xFF1D5F3E),
+            ? const Color(0xFF16483B)
+            : const Color(0xFF16483B),
         interactive: brightness == Brightness.dark
-            ? const Color(0xFF65C58D)
-            : const Color(0xFF287A52),
+            ? const Color(0xFF66C7A0)
+            : const Color(0xFF246B57),
         controlPrimary: brightness == Brightness.dark
-            ? const Color(0xFF2F815A)
-            : const Color(0xFF1D5F3E),
+            ? const Color(0xFF16483B)
+            : const Color(0xFF16483B),
         interactiveStrong: brightness == Brightness.dark
-            ? const Color(0xFF4CAF7A)
-            : const Color(0xFF1D5F3E),
+            ? const Color(0xFF3B8E73)
+            : const Color(0xFF1D5B4B),
         selection: brightness == Brightness.dark
-            ? const Color(0xFF153326)
-            : const Color(0xFFE1F2E8),
+            ? const Color(0xFF10251F)
+            : const Color(0xFFE1EEE9),
         review: brightness == Brightness.dark
-            ? const Color(0xFF65C58D)
-            : const Color(0xFF1D5F3E),
+            ? const Color(0xFF66C7A0)
+            : const Color(0xFF1D5B4B),
       ),
     };
   }
