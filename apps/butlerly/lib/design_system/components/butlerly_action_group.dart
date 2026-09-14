@@ -1,6 +1,5 @@
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
-import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:flutter/material.dart';
 
 /// Reusable quiet-premium action model for hub-style rows.
@@ -87,10 +86,7 @@ class ButlerlyActionRow extends StatelessWidget {
                   const SizedBox(height: ButlerlySpacing.xxs),
                   Text(
                     action.subtitle,
-                    style: ButlerlyTypography.readableSmall(
-                      Theme.of(context).textTheme.bodySmall!,
-                      color: context.colors.secondaryText,
-                    ),
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
               ),
