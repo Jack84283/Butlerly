@@ -249,21 +249,24 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
         color: Theme.of(context).navigationBarTheme.backgroundColor,
         border: Border(top: BorderSide(color: context.colors.cardDivider)),
       ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: ButlerlySize.navigationBarHeight,
-          child: Row(
-            children: [
-              for (final branchIndex in _visualBranchIndexes)
-                Expanded(
-                  child: _destination(
-                    context,
-                    destinations[branchIndex]!,
-                    branchIndex,
+      child: Material(
+        type: MaterialType.transparency,
+        child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: ButlerlySize.navigationBarHeight,
+            child: Row(
+              children: [
+                for (final branchIndex in _visualBranchIndexes)
+                  Expanded(
+                    child: _destination(
+                      context,
+                      destinations[branchIndex]!,
+                      branchIndex,
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
