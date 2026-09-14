@@ -1,3 +1,4 @@
+import 'package:butlerly/design_system/components/butlerly_action_group.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -44,27 +45,16 @@ class ToolsPage extends StatelessWidget {
         builder: (context, constraints) {
           final tools = _tools(context);
           if (constraints.maxWidth < 640) {
-            return Material(
-              color: context.colors.subtleSurface,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-                side: BorderSide(color: context.colors.border),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                children: [
-                  for (var index = 0; index < tools.length; index++) ...[
-                    _ToolRow(tool: tools[index]),
-                    if (index < tools.length - 1)
-                      Divider(
-                        height: 1,
-                        indent: 72,
-                        endIndent: ButlerlySpacing.standard,
-                        color: context.colors.cardDivider,
-                      ),
-                  ],
-                ],
-              ),
+            return ButlerlyActionGroup(
+              actions: [
+                for (final tool in tools)
+                  ButlerlyActionItem(
+                    icon: tool.icon,
+                    title: tool.title,
+                    subtitle: tool.description,
+                    onTap: () => context.push(tool.route),
+                  ),
+              ],
             );
           }
           final cardWidth =
@@ -92,59 +82,6 @@ class _ToolDefinition {
   final String route;
 }
 
-class _ToolRow extends StatelessWidget {
-  const _ToolRow({required this.tool});
-
-  final _ToolDefinition tool;
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-    button: true,
-    label: '${tool.title}, ${tool.description}',
-    child: InkWell(
-      borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-      onTap: () => context.push(tool.route),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: ButlerlySpacing.standard,
-          vertical: ButlerlySpacing.small,
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: ButlerlySize.preferredTarget,
-              height: ButlerlySize.preferredTarget,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: context.colors.selection,
-              ),
-              child: Icon(tool.icon, color: context.colors.interactive),
-            ),
-            const SizedBox(width: ButlerlySpacing.standard),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(tool.title, style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: ButlerlySpacing.xxs),
-                  Text(
-                    tool.description,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.chevron_right_rounded,
-              color: context.colors.tertiaryText,
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
 class _ToolPanel extends StatelessWidget {
   const _ToolPanel({required this.tool});
   final _ToolDefinition tool;
@@ -161,15 +98,7 @@ class _ToolPanel extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: ButlerlySize.preferredTarget,
-                height: ButlerlySize.preferredTarget,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: context.colors.selection,
-                ),
-                child: Icon(tool.icon, color: context.colors.interactive),
-              ),
+              ButlerlyActionIcon(icon: tool.icon),
               const Spacer(),
               Icon(
                 Icons.chevron_right_rounded,
@@ -180,7 +109,12 @@ class _ToolPanel extends StatelessWidget {
           const SizedBox(height: ButlerlySpacing.standard),
           Text(tool.title, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: ButlerlySpacing.micro),
-          Text(tool.description, style: Theme.of(context).textTheme.bodySmall),
+          Text(
+            tool.description,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: context.colors.secondaryText,
+            ),
+          ),
         ],
       ),
     ),
