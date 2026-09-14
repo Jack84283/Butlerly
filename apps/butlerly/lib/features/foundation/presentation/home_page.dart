@@ -68,7 +68,9 @@ class _HomePageState extends State<HomePage> {
   Future<_HomeData> _load({String? languageCode}) async {
     final finance = _finance;
     final now = _now;
-    if (finance == null) return _HomeData.empty(now);
+    if (finance == null) {
+      return _HomeData.empty(now, selectedMonth: _selectedMonth);
+    }
 
     final activeLanguageCode =
         languageCode ??
@@ -281,7 +283,9 @@ class _HomePageState extends State<HomePage> {
         FutureBuilder<_HomeData>(
           future: _data,
           builder: (context, snapshot) {
-            final data = snapshot.data ?? _HomeData.empty(_now);
+            final data =
+                snapshot.data ??
+                _HomeData.empty(_now, selectedMonth: _selectedMonth);
             final loading = snapshot.connectionState != ConnectionState.done;
             final currentMonth = _sameMonth(
               data.displayMonth,
@@ -306,7 +310,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const SizedBox(height: ButlerlySpacing.section),
                   _SpendingTrend(points: data.trend),
-                  ButlerlySectionHeader(
+                  _HomeSectionHeader(
                     title: context.l10n.text('analysis.rule.r010.name'),
                     action: TextButton(
                       onPressed: () => context.push(
@@ -335,7 +339,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ],
-                  ButlerlySectionHeader(
+                  _HomeSectionHeader(
                     title: context.l10n.text('recentTransactions'),
                     action: TextButton(
                       onPressed: () => context.go(
@@ -392,8 +396,8 @@ class _HomeHeader extends StatelessWidget {
     final monthLabel = DateFormat.yMMMM(locale).format(month);
     return LayoutBuilder(
       builder: (context, constraints) {
-        final textScale = MediaQuery.textScalerOf(context).scale(14);
-        final stacked = constraints.maxWidth < 360 || textScale > 18;
+        final scaledBody = MediaQuery.textScalerOf(context).scale(14);
+        final stacked = constraints.maxWidth < 520 || scaledBody > 18;
         final brand = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -418,42 +422,55 @@ class _HomeHeader extends StatelessWidget {
               ? CrossAxisAlignment.start
               : CrossAxisAlignment.end,
           children: [
-            TextButton(
-              key: const Key('home-month-selector'),
-              onPressed: onMonthTap,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    monthLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(width: ButlerlySpacing.micro),
-                  const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
-                ],
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: stacked ? constraints.maxWidth : 260,
+              ),
+              child: TextButton(
+                key: const Key('home-month-selector'),
+                onPressed: onMonthTap,
+                style: TextButton.styleFrom(
+                  alignment: AlignmentDirectional.centerStart,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.max,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        monthLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    const SizedBox(width: ButlerlySpacing.micro),
+                    const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+                  ],
+                ),
               ),
             ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 190),
-                  child: Text(
-                    context.l10n.text(greetingKey),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium,
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: stacked ? constraints.maxWidth : 260,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      context.l10n.text(greetingKey),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
                   ),
-                ),
-                const SizedBox(width: ButlerlySpacing.compact),
-                IconButton(
-                  tooltip: context.l10n.text('notifications'),
-                  onPressed: onNotificationsTap,
-                  icon: const Icon(Icons.notifications_none_rounded),
-                ),
-              ],
+                  const SizedBox(width: ButlerlySpacing.compact),
+                  IconButton(
+                    tooltip: context.l10n.text('notifications'),
+                    onPressed: onNotificationsTap,
+                    icon: const Icon(Icons.notifications_none_rounded),
+                  ),
+                ],
+              ),
             ),
           ],
         );
@@ -478,6 +495,50 @@ class _HomeHeader extends StatelessWidget {
       },
     );
   }
+}
+
+class _HomeSectionHeader extends StatelessWidget {
+  const _HomeSectionHeader({required this.title, required this.action});
+
+  final String title;
+  final Widget action;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(
+      top: ButlerlySpacing.section,
+      bottom: ButlerlySpacing.small,
+    ),
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final scaledBody = MediaQuery.textScalerOf(context).scale(14);
+        final stacked = constraints.maxWidth < 420 || scaledBody > 20;
+        final titleWidget = Text(
+          title,
+          style: Theme.of(context).textTheme.titleLarge,
+        );
+        if (stacked) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              titleWidget,
+              const SizedBox(height: ButlerlySpacing.micro),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: action,
+              ),
+            ],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(child: titleWidget),
+            action,
+          ],
+        );
+      },
+    ),
+  );
 }
 
 class _SpendingHero extends StatelessWidget {
@@ -1103,14 +1164,23 @@ class _HomeData {
     required this.analysisUnavailable,
   });
 
-  factory _HomeData.empty(DateTime now) {
-    final period = _homePeriodForMonth(
+  factory _HomeData.empty(DateTime now, {DateTime? selectedMonth}) {
+    final currentPeriod = _homePeriodForMonth(
       month: _monthStart(now),
       current: true,
       instant: now,
       timeZoneId: 'UTC',
     );
-    final month = _monthFromPeriod(period);
+    final currentMonth = _monthFromPeriod(currentPeriod);
+    final displayMonth = _monthStart(selectedMonth ?? currentMonth);
+    final period = _sameMonth(displayMonth, currentMonth)
+        ? currentPeriod
+        : _homePeriodForMonth(
+            month: displayMonth,
+            current: false,
+            instant: now,
+            timeZoneId: currentPeriod.timeZoneId,
+          );
     return _HomeData(
       transactions: const [],
       reviewCount: 0,
@@ -1118,8 +1188,8 @@ class _HomeData {
       model: null,
       insight: null,
       trend: const [],
-      displayMonth: month,
-      currentFinancialMonth: month,
+      displayMonth: displayMonth,
+      currentFinancialMonth: currentMonth,
       period: period,
       analysisUnavailable: false,
     );
