@@ -80,12 +80,13 @@ class _AddActionGroup extends StatelessWidget {
   final List<_AddAction> actions;
 
   @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(
-      color: context.colors.subtleSurface,
+  Widget build(BuildContext context) => Material(
+    color: context.colors.subtleSurface,
+    shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-      border: Border.all(color: context.colors.border),
+      side: BorderSide(color: context.colors.border),
     ),
+    clipBehavior: Clip.antiAlias,
     child: Column(
       children: [
         for (var index = 0; index < actions.length; index++) ...[
