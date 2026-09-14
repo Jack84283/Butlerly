@@ -301,6 +301,14 @@ final class CalculateInsights {
     );
   }
 
+  /// Builds the presentation-ready Insights evaluation from an Analysis result
+  /// that has already been calculated for [context]. This preserves the single
+  /// ranking policy used by the Insights surface without recalculating rules.
+  InsightsEvaluation fromResults(
+    AnalysisContext context,
+    List<RuleExecutionResult> results,
+  ) => _build(context, results);
+
   Future<ApplicationResult<InsightsEvaluation>> _fromContext(
     Future<ApplicationResult<AnalysisContext>> contextResult, {
     required bool forceRefresh,
