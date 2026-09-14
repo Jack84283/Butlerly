@@ -129,7 +129,6 @@ abstract final class ButlerlySize {
   static const sourcePreviewWidth = 64.0;
   static const sourcePreviewHeight = 80.0;
   static const navigationBarHeight = 78.0;
-  static const navigationBarMaxAccessibilityGrowth = 24.0;
 }
 
 abstract final class ButlerlyMotion {
@@ -146,15 +145,4 @@ abstract final class ButlerlyMotion {
 abstract final class ButlerlyAccessibility {
   static const minimumContrastRatio = 4.5;
   static const minimumTouchTarget = ButlerlySize.minimumTarget;
-}
-
-abstract final class ButlerlyElevation {
-  static const base = 0.0;
-  static const raised = 0.0;
-  static const overlay = 4.0;
-  static const modal = 8.0;
-  static const card = raised;
-  static const dialog = modal;
-  static const bottomSheet = modal;
-  static const floating = overlay;
 }
