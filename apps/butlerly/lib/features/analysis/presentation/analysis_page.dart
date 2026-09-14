@@ -464,7 +464,7 @@ class _AnalysisContent extends StatelessWidget {
           _SectionHeader(title: context.l10n.text('insights')),
           AnalysisInsightPreview(
             finding: model.insight!,
-            onTap: () => _navigate(context, '/insights'),
+            onTap: () => _openInsights(context),
           ),
         ] else if (model.insightUnavailable) ...[
           _SectionHeader(title: context.l10n.text('insights')),
@@ -482,6 +482,20 @@ class _AnalysisContent extends StatelessWidget {
     } else {
       context.push(path);
     }
+  }
+
+  void _openInsights(BuildContext context) {
+    final selected = analysisContext?.period;
+    final path = selected == null
+        ? '/insights'
+        : Uri(
+            path: '/insights',
+            queryParameters: {
+              'from': selected.startDate,
+              'to': selected.endDate,
+            },
+          ).toString();
+    _navigate(context, path);
   }
 
   void _openTransactions(
