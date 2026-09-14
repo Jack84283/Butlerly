@@ -7,8 +7,13 @@ import 'package:flutter/material.dart';
 /// on the platform sans-serif for legibility and cross-platform familiarity.
 abstract final class ButlerlyTypography {
   static const editorialFontFamily = 'Georgia';
-  static const editorialFontFallback = <String>['Times New Roman'];
+  static const editorialFontFallback = <String>[
+    'Times New Roman',
+    'Noto Serif',
+    'serif',
+  ];
   static const financialAmountFeatures = [FontFeature.tabularFigures()];
+  static const navigationLabelFontSize = 10.5;
 
   static TextStyle _editorial(TextStyle? base) => (base ?? const TextStyle())
       .copyWith(
@@ -21,7 +26,7 @@ abstract final class ButlerlyTypography {
     TextTheme base, {
     required Color primaryText,
     required Color secondaryText,
-    required Color tertiaryText,
+    required Color bodySmallText,
   }) => base.copyWith(
     displaySmall: _editorial(base.displaySmall).copyWith(
       fontSize: 36,
@@ -67,7 +72,7 @@ abstract final class ButlerlyTypography {
     bodySmall: base.bodySmall?.copyWith(
       fontSize: 12,
       height: 17 / 12,
-      color: tertiaryText,
+      color: bodySmallText,
     ),
     labelLarge: base.labelLarge?.copyWith(
       fontSize: 14,
@@ -87,7 +92,7 @@ abstract final class ButlerlyTypography {
     required Color color,
     required bool selected,
   }) => base.copyWith(
-    fontSize: 10.5,
+    fontSize: navigationLabelFontSize,
     color: color,
     fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
   );

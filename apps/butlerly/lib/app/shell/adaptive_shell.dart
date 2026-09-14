@@ -6,6 +6,54 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 const primaryShellRouteNamePrefix = 'primary-shell:';
+const _phoneNavigationAddIconSize = 52.0;
+
+/// Computes phone navigation height from each destination's actual geometry.
+///
+/// This supports nonlinear [TextScaler] implementations and labels that wrap
+/// at large accessibility sizes without imposing a fixed maximum growth cap.
+/// The established 78 px baseline already includes its own vertical slack, so
+/// the bar only grows when a real destination's icon + gap + scaled label
+/// geometry exceeds it.
+double phoneNavigationHeightForLabels({
+  required TextScaler textScaler,
+  required double itemWidth,
+  required Iterable<String> standardLabels,
+  required String addLabel,
+  required TextStyle labelStyle,
+  required TextDirection textDirection,
+}) {
+  final availableWidth = itemWidth > 0 ? itemWidth : 1.0;
+
+  double labelHeight(String label) {
+    final painter = TextPainter(
+      text: TextSpan(text: label, style: labelStyle),
+      textScaler: textScaler,
+      textDirection: textDirection,
+      textAlign: TextAlign.center,
+    )..layout(maxWidth: availableWidth);
+    return painter.height;
+  }
+
+  var requiredHeight =
+      _phoneNavigationAddIconSize +
+      ButlerlySpacing.micro +
+      labelHeight(addLabel);
+
+  for (final label in standardLabels) {
+    final destinationHeight =
+        ButlerlySize.standardIcon +
+        ButlerlySize.navigationLabelGap +
+        labelHeight(label);
+    if (destinationHeight > requiredHeight) {
+      requiredHeight = destinationHeight;
+    }
+  }
+
+  return requiredHeight < ButlerlySize.navigationBarHeight
+      ? ButlerlySize.navigationBarHeight
+      : requiredHeight;
+}
 
 class PrimaryShellVisibilityController extends ChangeNotifier {
   final Map<int, bool> _secondaryRouteVisible = <int, bool>{};
@@ -181,8 +229,8 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
         : destination.icon;
     final icon = add
         ? Container(
-            width: 52,
-            height: 52,
+            width: _phoneNavigationAddIconSize,
+            height: _phoneNavigationAddIconSize,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: selected
@@ -231,14 +279,37 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
               ),
               Text(
                 destination.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                softWrap: true,
                 style: labelStyle,
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  double _phoneNavigationHeight(
+    BuildContext context,
+    Map<int, NavigationDestination> destinations,
+    double availableWidth,
+  ) {
+    final labelStyle = ButlerlyTypography.navigationLabel(
+      Theme.of(context).textTheme.labelSmall!,
+      color: context.colors.secondaryText,
+      selected: true,
+    );
+    return phoneNavigationHeightForLabels(
+      textScaler: MediaQuery.textScalerOf(context),
+      itemWidth: availableWidth / _visualBranchIndexes.length,
+      standardLabels: [
+        for (final branchIndex in _visualBranchIndexes)
+          if (branchIndex != 1) destinations[branchIndex]!.label,
+      ],
+      addLabel: destinations[1]!.label,
+      labelStyle: labelStyle,
+      textDirection: Directionality.of(context),
     );
   }
 
@@ -253,19 +324,25 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
         type: MaterialType.transparency,
         child: SafeArea(
           top: false,
-          child: SizedBox(
-            height: ButlerlySize.navigationBarHeight,
-            child: Row(
-              children: [
-                for (final branchIndex in _visualBranchIndexes)
-                  Expanded(
-                    child: _destination(
-                      context,
-                      destinations[branchIndex]!,
-                      branchIndex,
+          child: LayoutBuilder(
+            builder: (context, constraints) => SizedBox(
+              height: _phoneNavigationHeight(
+                context,
+                destinations,
+                constraints.maxWidth,
+              ),
+              child: Row(
+                children: [
+                  for (final branchIndex in _visualBranchIndexes)
+                    Expanded(
+                      child: _destination(
+                        context,
+                        destinations[branchIndex]!,
+                        branchIndex,
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
