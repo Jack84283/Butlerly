@@ -22,12 +22,14 @@ const _selectiveConditionEvidenceMarker = 'conditionEvidence:selective';
 class InsightsPage extends StatefulWidget {
   const InsightsPage({
     super.key,
+    this.initialMonth,
     this.initialRange,
     this.loadEvaluation,
     this.onNavigationRequested,
     this.masterData,
   });
 
+  final DateTime? initialMonth;
   final DateTimeRange? initialRange;
   final Future<ApplicationResult<InsightsEvaluation>> Function(String)?
   loadEvaluation;
@@ -51,7 +53,11 @@ class _InsightsPageState extends State<InsightsPage> {
   void initState() {
     super.initState();
     _customRange = widget.initialRange;
-    if (_customRange != null) _period = 'selected_period';
+    if (widget.initialMonth != null) {
+      _period = 'selected_month';
+    } else if (_customRange != null) {
+      _period = 'selected_period';
+    }
     _result = _load(_period);
     transactionChanges.addListener(_reload);
   }
@@ -109,6 +115,31 @@ class _InsightsPageState extends State<InsightsPage> {
     late final Future<ApplicationResult<InsightsEvaluation>> future;
     if (period == _defaultPeriod) {
       future = useCase.currentMonth(DateTime.now());
+    } else if (period == 'selected_month' && widget.initialMonth != null) {
+      final month = widget.initialMonth!;
+      final anchor = analysisDate(DateTime(month.year, month.month, 1));
+      future = useCase
+          .contextFor(
+            'selected_month',
+            instant: DateTime.now(),
+            customPeriod: AnalysisPeriod(
+              startDate: anchor,
+              endDate: anchor,
+              timeZoneId: 'UTC',
+            ),
+          )
+          .then((value) {
+            if (value is! ApplicationSuccess<AnalysisContext>) {
+              return const ApplicationFailure<InsightsEvaluation>(
+                ApplicationFailureDetail(
+                  operation: 'resolve insights month',
+                  code: ApplicationFailureCode.unavailable,
+                ),
+              );
+            }
+            _context = value.value;
+            return useCase.call(value.value);
+          });
     } else if (period == 'selected_period' && _customRange != null) {
       future = useCase
           .contextForDates(
