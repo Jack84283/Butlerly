@@ -1,5 +1,6 @@
 import 'package:butlerly/app/butlerly_app.dart';
 import 'package:butlerly/app/router/app_router.dart';
+import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,11 +24,10 @@ void main() {
     analysisButton.onPressed!();
     await tester.pumpAndSettle();
 
-    final uri = appRouter.routeInformationProvider.value.uri;
-    expect(uri.path, '/analysis');
-    expect(uri.queryParameters['month'], '2026-07');
-    expect(uri.queryParameters.containsKey('from'), isFalse);
-    expect(uri.queryParameters.containsKey('to'), isFalse);
+    expect(find.byType(AnalysisPage), findsOneWidget);
+    final page = tester.widget<AnalysisPage>(find.byType(AnalysisPage));
+    expect(page.initialMonth, DateTime(2026, 7, 1));
+    expect(page.initialRange, isNull);
   });
 
   testWidgets('current Home month opens current-month Analysis semantics', (
@@ -40,9 +40,10 @@ void main() {
     analysisButton.onPressed!();
     await tester.pumpAndSettle();
 
-    final uri = appRouter.routeInformationProvider.value.uri;
-    expect(uri.path, '/analysis');
-    expect(uri.queryParameters, isEmpty);
+    expect(find.byType(AnalysisPage), findsOneWidget);
+    final page = tester.widget<AnalysisPage>(find.byType(AnalysisPage));
+    expect(page.initialMonth, isNull);
+    expect(page.initialRange, isNull);
   });
 
   testWidgets('historical Home month is carried into Transactions', (
