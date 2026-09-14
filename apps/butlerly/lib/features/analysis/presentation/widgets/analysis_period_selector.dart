@@ -15,7 +15,10 @@ class AnalysisPeriodSelector extends StatelessWidget {
   Widget build(BuildContext context) => ButlerlySelectField<String>(
     key: const ValueKey('analysis-period-selector'),
     label: context.l10n.text('analysisPeriod'),
-    value: value,
+    // A month handed off from Home retains selected_month semantics in the
+    // application layer. The selector represents it through the existing
+    // custom control rather than exposing an incomplete standalone option.
+    value: value == 'selected_month' ? 'selected_period' : value,
     entries: [
       for (final item in const [
         ('current_month', 'thisMonth'),
