@@ -7,6 +7,18 @@ import 'package:go_router/go_router.dart';
 
 const primaryShellRouteNamePrefix = 'primary-shell:';
 
+/// Computes phone navigation height from the size of the text that is actually
+/// rendered. This remains correct for nonlinear [TextScaler] implementations,
+/// where scale factors can differ by font size.
+double phoneNavigationHeightForTextScaler(TextScaler textScaler) {
+  const labelFontSize = ButlerlyTypography.navigationLabelFontSize;
+  final scaledLabelFontSize = textScaler.scale(labelFontSize);
+  final effectiveScale = scaledLabelFontSize / labelFontSize;
+  final growthFactor = (effectiveScale - 1.0).clamp(0.0, 1.0).toDouble();
+  return ButlerlySize.navigationBarHeight +
+      ButlerlySize.navigationBarMaxAccessibilityGrowth * growthFactor;
+}
+
 class PrimaryShellVisibilityController extends ChangeNotifier {
   final Map<int, bool> _secondaryRouteVisible = <int, bool>{};
   bool _notificationScheduled = false;
@@ -242,12 +254,8 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     );
   }
 
-  double _phoneNavigationHeight(BuildContext context) {
-    final textScale = MediaQuery.textScalerOf(context).scale(1);
-    final growthFactor = (textScale - 1.0).clamp(0.0, 1.0).toDouble();
-    return ButlerlySize.navigationBarHeight +
-        ButlerlySize.navigationBarMaxAccessibilityGrowth * growthFactor;
-  }
+  double _phoneNavigationHeight(BuildContext context) =>
+      phoneNavigationHeightForTextScaler(MediaQuery.textScalerOf(context));
 
   Widget _phoneNavigation(BuildContext context) {
     final destinations = _destinations(context);
