@@ -33,6 +33,7 @@ void main() {
 
     expect(router.routeInformationProvider.value.uri.path, '/launch');
     expect(find.byKey(const ValueKey('test-launch')), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('pointer activity restarts the inactivity timeout', (
@@ -58,6 +59,7 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     await tester.pump();
     expect(router.routeInformationProvider.value.uri.path, '/launch');
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('short background interval preserves the current route', (
@@ -83,6 +85,7 @@ void main() {
 
     expect(router.routeInformationProvider.value.uri.path, '/work');
     expect(find.text('Work'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('resume after timeout starts a fresh launch flow', (tester) async {
@@ -106,6 +109,7 @@ void main() {
 
     expect(router.routeInformationProvider.value.uri.path, '/launch');
     expect(find.byKey(const ValueKey('test-launch')), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('Butlerly launch surface remains for five seconds then opens Home', (
@@ -145,6 +149,7 @@ void main() {
     await tester.pump();
     expect(router.routeInformationProvider.value.uri.path, '/');
     expect(find.text('Home'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 }
 
