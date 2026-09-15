@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 abstract final class ButlerlyTransactionItemTokens {
   /// Reference-inspired row geometry. Components consume these semantic values
   /// instead of embedding presentation numbers in individual transaction rows.
-  static const horizontalInset = ButlerlySpacing.small;
+  static const horizontalInset = ButlerlySpacing.compact;
   static const topPadding = ButlerlySpacing.small;
   static const bottomPadding = ButlerlySpacing.small;
   static const categoryIconLeadingInset = ButlerlySpacing.none;

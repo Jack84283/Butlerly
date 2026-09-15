@@ -16,7 +16,10 @@ class FirstUsePreferencesPage extends ConsumerWidget {
     return Scaffold(
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(ButlerlySpacing.section),
+          padding: const EdgeInsets.symmetric(
+            horizontal: ButlerlySize.phoneGutter,
+            vertical: ButlerlySpacing.section,
+          ),
           children: [
             const SizedBox(height: ButlerlySpacing.large),
             const Icon(Icons.lock_outline_rounded, size: 48),

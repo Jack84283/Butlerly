@@ -21,7 +21,7 @@ abstract final class ButlerlySpacing {
   static const modalBottom = standard;
   static const modalItem = standard;
 
-  static const pagePadding = standard;
+  static const pagePadding = small;
   static const contentPadding = standard;
   static const cardPadding = small;
   static const cardGap = small;
@@ -114,7 +114,7 @@ abstract final class ButlerlySize {
   static const preferredTarget = 48.0;
   static const phoneBreakpoint = 600.0;
   static const desktopBreakpoint = 1024.0;
-  static const phoneGutter = 20.0;
+  static const phoneGutter = 12.0;
   static const tabletGutter = 24.0;
   static const desktopGutter = 32.0;
   static const readableWidth = 760.0;

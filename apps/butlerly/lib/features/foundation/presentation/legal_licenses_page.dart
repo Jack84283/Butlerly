@@ -76,7 +76,10 @@ class LegalDocumentPage extends StatelessWidget {
         }
         return SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(ButlerlySpacing.section),
+            padding: const EdgeInsets.symmetric(
+              horizontal: ButlerlySize.phoneGutter,
+              vertical: ButlerlySpacing.section,
+            ),
             child: SelectableText(snapshot.requireData),
           ),
         );

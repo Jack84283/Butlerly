@@ -424,14 +424,17 @@ void main() {
     );
     expect(
       ButlerlyTransactionItemTokens.horizontalInset,
-      ButlerlySpacing.small,
+      ButlerlySpacing.compact,
     );
     expect(ButlerlyTransactionItemTokens.topPadding, ButlerlySpacing.small);
     expect(
       ButlerlyTransactionItemTokens.bottomPadding,
       ButlerlySpacing.small,
     );
-    expect(ButlerlyTransactionItemTokens.dividerInset, ButlerlySpacing.small);
+    expect(
+      ButlerlyTransactionItemTokens.dividerInset,
+      ButlerlySpacing.compact,
+    );
     expect(
       ButlerlyTransactionItemTokens.minTouchHeight,
       ButlerlyTransactionItemTokens.leadingIconSize +
