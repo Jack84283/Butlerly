@@ -180,8 +180,11 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('resume after timeout starts a fresh launch flow', (tester) async {
+  testWidgets('Android resume after timeout launches without re-closing', (
+    tester,
+  ) async {
     var now = DateTime(2026, 9, 15, 12);
+    var exits = 0;
     final router = _guardTestRouter();
     addTearDown(router.dispose);
     addTearDown(
@@ -190,7 +193,16 @@ void main() {
       ),
     );
 
-    await tester.pumpWidget(_guardedApp(router, () => now));
+    await tester.pumpWidget(
+      _guardedApp(
+        router,
+        () => now,
+        targetPlatform: TargetPlatform.android,
+        onPlatformExit: () async {
+          exits += 1;
+        },
+      ),
+    );
     await tester.pump();
 
     await tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
@@ -201,6 +213,7 @@ void main() {
 
     expect(router.routeInformationProvider.value.uri.path, '/launch');
     expect(find.byKey(const ValueKey('test-launch')), findsOneWidget);
+    expect(exits, 0);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
