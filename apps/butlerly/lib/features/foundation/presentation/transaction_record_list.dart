@@ -1,25 +1,18 @@
-import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_row.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
-import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
-import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-/// The shared transaction presentation for Transactions, Search, Home, and
-/// Review.
+/// Shared grouped-list presentation for Transactions, Search, and Review.
 ///
-/// Grouping is presentation-only; the input order inside each group is
-/// preserved so domain sorting and filtering remain owned by the caller.
-/// Transaction/Search ledger callers use [groupByFinancialDate] without
-/// [showDateInRows], which presents month section headers and moves the full
-/// transaction date into each row. Review callers that already set
-/// [showDateInRows] retain day-level grouping.
+/// Transaction-row semantics are centralized in [TransactionRow]. This widget
+/// owns only grouping, section headers, ordering, and list-level decoration.
 class TransactionRecordList extends StatelessWidget {
   const TransactionRecordList({
     required this.transactions,
@@ -58,10 +51,19 @@ class TransactionRecordList extends StatelessWidget {
     final effectiveShowDateInRows = showDateInRows || useMonthSections;
     final rows = <TransactionDto, Widget>{
       for (final transaction in transactions)
-        transaction: _row(
-          context,
-          transaction,
-          showDateInRow: effectiveShowDateInRows,
+        transaction: TransactionRow(
+          transaction: transaction,
+          masterData: masterData,
+          paymentSourceNames: paymentSourceNames,
+          missingCategoryLabel: missingCategoryLabel,
+          showDate: effectiveShowDateInRows,
+          showTags: true,
+          supportingContent: supportingContentBuilder?.call(context, transaction),
+          possibleDuplicate: possibleDuplicateIds.contains(transaction.id),
+          possibleDuplicateLabel: possibleDuplicateLabel,
+          onPossibleDuplicateTap: onPossibleDuplicateTap,
+          onTap: () => onTap(transaction),
+          showNavigationIndicator: navigates,
         ),
     };
     if (!groupByFinancialDate) {
@@ -202,62 +204,5 @@ class TransactionRecordList extends StatelessWidget {
     if (occurredAt == null) return null;
     final utc = occurredAt.toUtc();
     return DateTime(utc.year, utc.month);
-  }
-
-  Widget _row(
-    BuildContext context,
-    TransactionDto transaction, {
-    required bool showDateInRow,
-  }) {
-    final categoryId = transaction.categoryId;
-    final iconCategoryId =
-        categoryId != null &&
-            ButlerlyCategoryIdentity.forBuiltInId(categoryId) != null
-        ? categoryId
-        : null;
-    final parentId = masterData.categoryParentId(categoryId);
-    final category = masterData.categoryName(categoryId);
-    final parent = masterData.categoryName(parentId);
-    final source = transaction.paymentSourceId == null
-        ? null
-        : paymentSourceNames[transaction.paymentSourceId!];
-    final sourceLabel = source == null || source.trim().isEmpty ? null : source;
-    final tags = transaction.tagIds
-        .map(masterData.tagName)
-        .whereType<String>()
-        .where((value) => value.trim().isNotEmpty)
-        .toList(growable: false);
-    final title = transaction.description?.trim().isNotEmpty == true
-        ? transaction.description!.trim()
-        : context.l10n.text('untitledTransaction');
-    return ButlerlyRecordRow(
-      title: title,
-      amount: localizedTransactionAmount(
-        context,
-        transaction.amount.replaceFirst(RegExp(r'^[+-]'), ''),
-      ),
-      currency: transaction.currency,
-      categoryId: iconCategoryId,
-      categoryLabel: parent ?? category ?? missingCategoryLabel ?? '',
-      subcategoryLabel: parent == null ? null : category,
-      paymentSource: sourceLabel,
-      tags: tags,
-      supportingContent: supportingContentBuilder?.call(context, transaction),
-      meta: showDateInRow
-          ? transactionDateLabel(
-              transaction,
-              pendingLabel: context.l10n.text('datePending'),
-              locale: Localizations.localeOf(context).toLanguageTag(),
-            )
-          : null,
-      showDate: showDateInRow,
-      isIncome: transaction.direction == TransactionDirection.income.name,
-      needsReview: transaction.reviewState == 'needsReview',
-      possibleDuplicate: possibleDuplicateIds.contains(transaction.id),
-      possibleDuplicateLabel: possibleDuplicateLabel,
-      onPossibleDuplicateTap: onPossibleDuplicateTap,
-      onTap: () => onTap(transaction),
-      showNavigationIndicator: navigates,
-    );
   }
 }
