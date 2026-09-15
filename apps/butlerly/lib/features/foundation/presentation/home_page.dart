@@ -14,6 +14,7 @@ import 'package:butlerly/features/foundation/presentation/transaction_master_dat
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
+import 'package:butlerly/l10n/home_brand_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
@@ -383,7 +384,7 @@ class _HomePageState extends State<HomePage> {
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(
                 ButlerlySize.phoneGutter,
-                ButlerlySpacing.standard,
+                ButlerlySpacing.large,
                 ButlerlySize.phoneGutter,
                 ButlerlySpacing.large,
               ),
@@ -433,31 +434,43 @@ String homeGreetingKey(DateTime localTime) {
 double _homeHeaderExtent(BuildContext context) {
   final textTheme = Theme.of(context).textTheme;
   final scaler = MediaQuery.textScalerOf(context);
+  final availableWidth =
+      (MediaQuery.sizeOf(context).width - ButlerlySize.phoneGutter * 2)
+          .clamp(0.0, ButlerlySize.pageContentMaxWidth)
+          .toDouble();
+  final scaledBody = scaler.scale(14);
+  final stacked = scaledBody > 18 || availableWidth < 300;
 
   double lineHeight(TextStyle? style, double fallbackSize) {
     final size = scaler.scale(style?.fontSize ?? fallbackSize);
     return size * (style?.height ?? 1.2);
   }
 
+  final taglineLineHeight = scaler.scale(9.5) * 1.2;
   final brandHeight =
       lineHeight(textTheme.headlineLarge, 32) +
       ButlerlySpacing.xxs +
-      scaler.scale(9.5) * 1.2 * 2;
-  final monthTextHeight = lineHeight(textTheme.titleMedium, 16);
+      taglineLineHeight * (stacked ? 3 : 2);
+  final greetingHeight = lineHeight(textTheme.bodyMedium, 14);
+  final monthTextHeight =
+      lineHeight(textTheme.titleMedium, 16) * (stacked ? 2 : 1);
   final monthControlHeight = monthTextHeight + ButlerlySpacing.compact * 2;
   final effectiveMonthHeight = monthControlHeight > kMinInteractiveDimension
       ? monthControlHeight
       : kMinInteractiveDimension;
   final contextHeight =
-      lineHeight(textTheme.bodyMedium, 14) +
-      ButlerlySpacing.xxs +
-      effectiveMonthHeight;
+      greetingHeight + ButlerlySpacing.xxs + effectiveMonthHeight;
+  final fontMetricSlack = scaler.scale(4);
+  if (stacked) {
+    return brandHeight +
+        ButlerlySpacing.standard +
+        contextHeight +
+        ButlerlySpacing.small * 2 +
+        fontMetricSlack;
+  }
   final contentHeight = brandHeight > contextHeight
       ? brandHeight
       : contextHeight;
-  // Text metrics can round above the style-derived estimate at accessibility
-  // scales. Reserve a small scaled safety margin without changing typography.
-  final fontMetricSlack = scaler.scale(4);
   return contentHeight + ButlerlySpacing.small * 2 + fontMetricSlack;
 }
 
@@ -516,76 +529,89 @@ class _HomeHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final locale = Localizations.localeOf(context).toLanguageTag();
     final monthLabel = DateFormat.yMMMM(locale).format(month);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 5,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                context.l10n.text('appName'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.headlineLarge,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final scaledBody = MediaQuery.textScalerOf(context).scale(14);
+        final stacked = scaledBody > 18 || constraints.maxWidth < 300;
+        final brand = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              context.l10n.text('appName'),
+              maxLines: stacked ? null : 1,
+              overflow: stacked ? null : TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.headlineLarge,
+            ),
+            const SizedBox(height: ButlerlySpacing.xxs),
+            Text(
+              context.l10n.homeTagline,
+              maxLines: stacked ? null : 2,
+              overflow: stacked ? null : TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                letterSpacing: 2.2,
+                fontSize: 9.5,
               ),
-              const SizedBox(height: ButlerlySpacing.xxs),
-              Text(
-                'A CALMER WAY TO MONEY',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  letterSpacing: 2.2,
-                  fontSize: 9.5,
-                ),
+            ),
+          ],
+        );
+        final contextBlock = Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              context.l10n.text(greetingKey),
+              maxLines: stacked ? null : 1,
+              overflow: stacked ? null : TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: ButlerlySpacing.xxs),
+            TextButton(
+              key: const Key('home-month-selector'),
+              onPressed: onMonthTap,
+              style: TextButton.styleFrom(
+                alignment: AlignmentDirectional.centerEnd,
               ),
-            ],
-          ),
-        ),
-        const SizedBox(width: ButlerlySpacing.standard),
-        Flexible(
-          flex: 4,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                context.l10n.text(greetingKey),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.end,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: ButlerlySpacing.xxs),
-              TextButton(
-                key: const Key('home-month-selector'),
-                onPressed: onMonthTap,
-                style: TextButton.styleFrom(
-                  alignment: AlignmentDirectional.centerEnd,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        monthLabel,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.end,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      monthLabel,
+                      maxLines: stacked ? null : 1,
+                      overflow: stacked ? null : TextOverflow.ellipsis,
+                      textAlign: TextAlign.end,
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    const SizedBox(width: ButlerlySpacing.micro),
-                    const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: ButlerlySpacing.micro),
+                  const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+                ],
               ),
+            ),
+          ],
+        );
+        if (stacked) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              brand,
+              const SizedBox(height: ButlerlySpacing.standard),
+              contextBlock,
             ],
-          ),
-        ),
-      ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(flex: 5, child: brand),
+            const SizedBox(width: ButlerlySpacing.standard),
+            Flexible(flex: 4, child: contextBlock),
+          ],
+        );
+      },
     );
   }
 }
@@ -1355,9 +1381,6 @@ AnalysisPeriod _homePeriodForMonth({
     return null;
   }
 
-  // Core local records remain usable if a persisted timezone can no longer be
-  // resolved, while all calendar-boundary calculations still stay inside the
-  // application-layer period resolver.
   return resolve(timeZoneId) ?? resolve('UTC')!;
 }
 
