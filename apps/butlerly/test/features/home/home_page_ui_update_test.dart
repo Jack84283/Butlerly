@@ -84,37 +84,39 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Home View all actions stay right aligned in their header rows', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets(
+    'Home section actions stay right aligned and category dividers stay removed',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(_testApp(router));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(_testApp(router));
+      await tester.pumpAndSettle();
 
-    final categoryAction = find.byKey(const Key('home-category-view-all'));
-    final recentAction = find.byKey(const Key('home-recent-view-all'));
-    expect(categoryAction, findsOneWidget);
-    expect(recentAction, findsOneWidget);
+      final categoryAction = find.byKey(const Key('home-category-view-all'));
+      final recentAction = find.byKey(const Key('home-recent-view-all'));
+      expect(categoryAction, findsOneWidget);
+      expect(recentAction, findsOneWidget);
+      expect(find.byType(VerticalDivider), findsNothing);
 
-    expect(tester.getCenter(categoryAction).dx, greaterThan(300));
-    expect(tester.getCenter(recentAction).dx, greaterThan(300));
-    expect(
-      (tester.getCenter(categoryAction).dy -
-              tester.getCenter(find.text('Spending by category')).dy)
-          .abs(),
-      lessThan(12),
-    );
-    expect(
-      (tester.getCenter(recentAction).dy -
-              tester.getCenter(find.text('Recent transactions')).dy)
-          .abs(),
-      lessThan(12),
-    );
-  });
+      expect(tester.getCenter(categoryAction).dx, greaterThan(300));
+      expect(tester.getCenter(recentAction).dx, greaterThan(300));
+      expect(
+        (tester.getCenter(categoryAction).dy -
+                tester.getCenter(find.text('Spending by category')).dy)
+            .abs(),
+        lessThan(12),
+      );
+      expect(
+        (tester.getCenter(recentAction).dy -
+                tester.getCenter(find.text('Recent transactions')).dy)
+            .abs(),
+        lessThan(12),
+      );
+    },
+  );
 
   testWidgets('Recent View all opens Search with the selected Home period', (
     tester,
