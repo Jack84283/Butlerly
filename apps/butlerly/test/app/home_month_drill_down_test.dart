@@ -49,11 +49,13 @@ void main() {
   testWidgets('historical Home month is carried into Search', (
     tester,
   ) async {
-    await _openJulyHome(tester);
+    // A taller viewport keeps the recent-transactions action fully visible so
+    // this regression exercises the production push/back stack directly.
+    await _openJulyHome(tester, size: const Size(390, 1400));
 
-    final actions = find.widgetWithText(TextButton, 'View all');
-    final searchButton = tester.widget<TextButton>(actions.last);
-    searchButton.onPressed!();
+    final searchAction = find.widgetWithText(TextButton, 'View all').last;
+    expect(searchAction, findsOneWidget);
+    await tester.tap(searchAction);
     await tester.pumpAndSettle();
 
     final uri = appRouter.routeInformationProvider.value.uri;
@@ -69,8 +71,11 @@ void main() {
   });
 }
 
-Future<void> _openHome(WidgetTester tester) async {
-  tester.view.physicalSize = const Size(390, 844);
+Future<void> _openHome(
+  WidgetTester tester, {
+  Size size = const Size(390, 844),
+}) async {
+  tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
@@ -79,8 +84,11 @@ Future<void> _openHome(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-Future<void> _openJulyHome(WidgetTester tester) async {
-  await _openHome(tester);
+Future<void> _openJulyHome(
+  WidgetTester tester, {
+  Size size = const Size(390, 844),
+}) async {
+  await _openHome(tester, size: size);
   await tester.tap(find.byKey(const Key('home-month-selector')));
   await tester.pumpAndSettle();
   await tester.tap(find.byKey(const Key('home-month-2026-7')));
