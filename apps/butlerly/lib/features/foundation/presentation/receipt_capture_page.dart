@@ -432,6 +432,91 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       ..showSnackBar(SnackBar(content: Text(context.l10n.text(key))));
   }
 
+  Extraction? _buildExtraction(
+    EvidenceItem evidence,
+    ReceiptOcrResult? ocr,
+    String token,
+  ) {
+    if (ocr == null) return null;
+    return Extraction(
+      id: ExtractionId('extraction-$token'),
+      evidenceId: evidence.id,
+      values: {
+        ...ocr.toExtractionValues(),
+        'confirmedAmount': _amount.text.trim(),
+        'confirmedCurrency': _currency.text.trim(),
+        if (_date != null) 'confirmedDate': _iso(_date!),
+      },
+      provenance: Provenance(
+        id: ProvenanceId('extraction-provenance-$token'),
+        sourceType: ProvenanceSourceType.evidenceExtraction,
+        capturedAt: DateTime.now().toUtc(),
+        originalRepresentation: ocr.rawText,
+      ),
+      createdAt: DateTime.now().toUtc(),
+    );
+  }
+
+  Future<void> _persistExtractionBestEffort(
+    FinanceServices financeForSave,
+    Extraction extraction,
+  ) async {
+    try {
+      await financeForSave.saveExtraction(extraction);
+    } catch (_) {
+      // Transaction + receipt evidence are already durable. Extraction metadata
+      // is derived and must never make the canonical save appear to fail.
+    }
+  }
+
+  void _finishCommittedSave({
+    required EvidenceItem evidence,
+    required ReceiptOcrResult? ocr,
+    required String extractionToken,
+  }) {
+    final extraction = _buildExtraction(evidence, ocr, extractionToken);
+    final financeForSave = finance;
+    _committed = true;
+    notifyTransactionChanged();
+    if (extraction != null) {
+      unawaited(_persistExtractionBestEffort(financeForSave, extraction));
+    }
+    if (!mounted) return;
+    setState(() => _saving = false);
+    Navigator.pop(context, true);
+  }
+
+  Future<bool> _rollbackCreatedTransaction(String transactionId) async {
+    try {
+      final result = await finance.deleteTransactionPermanently(transactionId);
+      if (result is ApplicationSuccess<void>) return true;
+      if (result is ApplicationFailure<void> &&
+          result.failure.code == ApplicationFailureCode.notFound) {
+        return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _handleCreatedTransactionAttachFailure(
+    String transactionId,
+  ) async {
+    final rolledBack = await _rollbackCreatedTransaction(transactionId);
+    if (!rolledBack) {
+      // The transaction may already be durable. Refresh the rest of the app and
+      // leave this route so a retry cannot create a second transaction.
+      notifyTransactionChanged();
+    }
+    if (!mounted) return;
+    setState(() => _saving = false);
+    _showSaveMessage('evidenceAttachFailed');
+    if (!rolledBack) {
+      Navigator.pop(context, true);
+    }
+  }
+
   Future<void> _attachReceiptToExisting(TransactionDto transaction) async {
     final preserved = _preserved;
     final ocr = _ocrResult;
@@ -440,7 +525,12 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       return;
     }
     setState(() => _saving = true);
-    final evidence = await _attach(transaction.id, preserved);
+    EvidenceItem? evidence;
+    try {
+      evidence = await _attach(transaction.id, preserved);
+    } catch (_) {
+      evidence = null;
+    }
     if (evidence == null) {
       if (mounted) {
         setState(() => _saving = false);
@@ -448,30 +538,11 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       }
       return;
     }
-    if (ocr != null) {
-      await finance.saveExtraction(
-        Extraction(
-          id: ExtractionId('extraction-${evidence.id.value}'),
-          evidenceId: evidence.id,
-          values: {
-            ...ocr.toExtractionValues(),
-            'confirmedAmount': _amount.text.trim(),
-            'confirmedCurrency': _currency.text.trim(),
-            if (_date != null) 'confirmedDate': _iso(_date!),
-          },
-          provenance: Provenance(
-            id: ProvenanceId('extraction-provenance-${evidence.id.value}'),
-            sourceType: ProvenanceSourceType.evidenceExtraction,
-            capturedAt: DateTime.now().toUtc(),
-            originalRepresentation: ocr.rawText,
-          ),
-          createdAt: DateTime.now().toUtc(),
-        ),
-      );
-    }
-    _committed = true;
-    notifyTransactionChanged();
-    if (mounted) Navigator.pop(context, true);
+    _finishCommittedSave(
+      evidence: evidence,
+      ocr: ocr,
+      extractionToken: evidence.id.value,
+    );
   }
 
   String? _match(String? raw) {
@@ -523,6 +594,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     }
 
     setState(() => _saving = true);
+
+    TransactionDto? createdTransaction;
+    String? extractionToken;
     try {
       // Check strict duplicates immediately before creating anything so the
       // final decision uses the values the user actually approved.
@@ -639,50 +713,38 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         }
         return;
       }
-
-      final evidence = await _attach(result.value.id, preserved);
-      if (evidence == null) {
-        await finance.deleteTransactionPermanently(result.value.id);
-        if (mounted) {
-          setState(() => _saving = false);
-          _showSaveMessage('evidenceAttachFailed');
-        }
-        return;
-      }
-
-      final ocr = _ocrResult;
-      if (ocr != null) {
-        await finance.saveExtraction(
-          Extraction(
-            id: ExtractionId('extraction-$token'),
-            evidenceId: evidence.id,
-            values: {
-              ...ocr.toExtractionValues(),
-              'confirmedAmount': _amount.text.trim(),
-              'confirmedCurrency': _currency.text.trim(),
-              if (_date != null) 'confirmedDate': _iso(_date!),
-            },
-            provenance: Provenance(
-              id: ProvenanceId('extraction-provenance-$token'),
-              sourceType: ProvenanceSourceType.evidenceExtraction,
-              capturedAt: DateTime.now().toUtc(),
-              originalRepresentation: ocr.rawText,
-            ),
-            createdAt: DateTime.now().toUtc(),
-          ),
-        );
-      }
-
-      _committed = true;
-      notifyTransactionChanged();
-      if (!mounted) return;
-      setState(() => _saving = false);
-      Navigator.pop(context, true);
+      createdTransaction = result.value;
+      extractionToken = token.toString();
     } catch (_) {
       if (!mounted) return;
       setState(() => _saving = false);
       _showSaveMessage('dataPreserved');
+      return;
     }
+
+    if (createdTransaction == null || extractionToken == null) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      _showSaveMessage('dataPreserved');
+      return;
+    }
+
+    EvidenceItem? evidence;
+    try {
+      evidence = await _attach(createdTransaction.id, preserved);
+    } catch (_) {
+      evidence = null;
+    }
+    if (evidence == null) {
+      await _handleCreatedTransactionAttachFailure(createdTransaction.id);
+      return;
+    }
+
+    _finishCommittedSave(
+      evidence: evidence,
+      ocr: _ocrResult,
+      extractionToken: extractionToken,
+    );
   }
 
   @override
