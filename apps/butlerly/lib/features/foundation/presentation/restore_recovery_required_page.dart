@@ -4,6 +4,7 @@ import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/database/initial_master_data.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/app_localizations_backup.dart';
@@ -98,7 +99,10 @@ class _RestoreRecoveryRequiredPageState
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 520),
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.symmetric(
+                horizontal: ButlerlySize.phoneGutter,
+                vertical: ButlerlySpacing.section,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
