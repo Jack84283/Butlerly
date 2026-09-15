@@ -71,7 +71,11 @@ class _ButlerlyStartupGateState extends State<ButlerlyStartupGate> {
         });
       },
       onError: (Object error, StackTrace stackTrace) {
-        widget.logger.severe('Butlerly startup initialization failed', error, stackTrace);
+        widget.logger.severe(
+          'Butlerly startup initialization failed',
+          error,
+          stackTrace,
+        );
         if (!mounted || attempt != _attempt) return;
         setState(() => _failure = error);
       },
@@ -101,11 +105,7 @@ class _ButlerlyStartupGateState extends State<ButlerlyStartupGate> {
         useMaterial3: true,
         brightness: Brightness.dark,
         scaffoldBackgroundColor: background,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: brand,
-          brightness: Brightness.dark,
-          surface: background,
-        ),
+        colorSchemeSeed: brand,
       ),
       home: Scaffold(
         key: const ValueKey('butlerly-startup-screen'),
@@ -169,7 +169,8 @@ class _ButlerlyStartupGateState extends State<ButlerlyStartupGate> {
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        'Your local data has not been erased. You can try initialization again.',
+                        'Your local data has not been erased. '
+                        'You can try initialization again.',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: secondaryText),
                       ),
@@ -259,14 +260,21 @@ Future<void> initializeButlerly(AppLogger logger) async {
       final incident = recoveryState?.incident;
       final recoveryIsUnknown =
           incident != null && incident.safetyBackupPath.isEmpty;
-      // When recovery is unknown, preserve every safety snapshot. One of the old
-      // copies may be the only manual recovery option and there is no authoritative
-      // path yet to exempt from retention pruning. Cleanup resumes after recovery
-      // resolves or once a specific safety path has been established.
-      if (!recoveryIsUnknown) {
-        await backupManager?.cleanupOrphanedPrivateArtifacts();
+      // Cleanup is housekeeping, not a prerequisite for reading the local
+      // ledger. Preserve startup availability if it fails, while still keeping
+      // restore recovery itself blocking when integrity cannot be established.
+      if (!recoveryIsUnknown && backupManager != null) {
+        try {
+          await backupManager.cleanupOrphanedPrivateArtifacts();
+          logger.info('Startup: private artifact cleanup complete');
+        } catch (error, stackTrace) {
+          logger.severe(
+            'Startup maintenance cleanup failed; continuing',
+            error,
+            stackTrace,
+          );
+        }
       }
-      logger.info('Startup: private artifact cleanup complete');
     }
 
     // A controlled-recovery incident means the database/evidence pair or runtime
@@ -275,22 +283,33 @@ Future<void> initializeButlerly(AppLogger logger) async {
         !(recoveryState?.isRecoveryRequired ?? false)) {
       phase = 'analysis rule installation';
       logger.info('Startup: installing bundled analysis rules');
-      final sources = <String, String>{};
-      for (final path in _analysisRulePaths) {
-        sources[path] = await rootBundle.loadString(path);
-      }
-      final catalog = await rootBundle.loadString(
-        'assets/analysis_rules/catalog.yaml',
-      );
-      final installation = await services<FinanceServices>().installBuiltInRules
-          ?.call(sources, catalogSource: catalog);
-      if (installation != null && installation.diagnostics.isNotEmpty) {
-        logger.warning(
-          'Some bundled analysis rules were rejected: '
-          '${installation.diagnostics.length}',
+      try {
+        final sources = <String, String>{};
+        for (final path in _analysisRulePaths) {
+          sources[path] = await rootBundle.loadString(path);
+        }
+        final catalog = await rootBundle.loadString(
+          'assets/analysis_rules/catalog.yaml',
+        );
+        final installation = await services<FinanceServices>()
+            .installBuiltInRules
+            ?.call(sources, catalogSource: catalog);
+        if (installation != null && installation.diagnostics.isNotEmpty) {
+          logger.warning(
+            'Some bundled analysis rules were rejected: '
+            '${installation.diagnostics.length}',
+          );
+        }
+        logger.info('Startup: bundled analysis rules ready');
+      } catch (error, stackTrace) {
+        // Insights and analysis can report unavailable data later; they must not
+        // make the core local ledger impossible to open.
+        logger.severe(
+          'Bundled analysis rule installation failed; continuing',
+          error,
+          stackTrace,
         );
       }
-      logger.info('Startup: bundled analysis rules ready');
     }
 
     logger.info('Startup: application ready');
