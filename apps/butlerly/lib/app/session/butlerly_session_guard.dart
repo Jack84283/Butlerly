@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -13,8 +14,13 @@ abstract final class ButlerlySessionConfig {
 }
 
 typedef ButlerlyPlatformExit = Future<void> Function();
+typedef ButlerlyElapsedNow = Duration Function();
 
 /// Tracks inactivity and turns an expired session into a fresh Butlerly launch.
+///
+/// Elapsed inactivity is measured with a monotonic clock rather than wall-clock
+/// time so device clock and timezone changes cannot shorten or extend the
+/// privacy timeout.
 ///
 /// On Android, a timeout reached while Butlerly is in the foreground first
 /// switches to `/launch` and then asks the platform navigator to close the
@@ -33,7 +39,7 @@ class ButlerlySessionGuard extends StatefulWidget {
     required this.router,
     required this.child,
     this.inactivityTimeout = ButlerlySessionConfig.inactivityTimeout,
-    this.now = DateTime.now,
+    this.elapsedNow,
     this.targetPlatform,
     this.onPlatformExit,
     super.key,
@@ -42,7 +48,10 @@ class ButlerlySessionGuard extends StatefulWidget {
   final GoRouter router;
   final Widget child;
   final Duration inactivityTimeout;
-  final DateTime Function() now;
+
+  /// Injectable monotonic elapsed-time source for tests. Production owns a
+  /// [Stopwatch], which is unaffected by wall-clock or timezone changes.
+  final ButlerlyElapsedNow? elapsedNow;
 
   /// Injectable for tests. Production falls back to [defaultTargetPlatform].
   final TargetPlatform? targetPlatform;
@@ -57,19 +66,26 @@ class ButlerlySessionGuard extends StatefulWidget {
 class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
     with WidgetsBindingObserver {
   Timer? _inactivityTimer;
+  Stopwatch? _ownedElapsedClock;
+  late ButlerlyElapsedNow _elapsedNow;
   TextEditingController? _activeEditingController;
-  late DateTime _lastActivityAt;
+  late Duration _lastActivityAt;
   late bool _launchActive;
   late bool _foreground;
 
   @override
   void initState() {
     super.initState();
+    _installElapsedClock(widget.elapsedNow);
     WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addSemanticsActionListener(_handleSemanticsAction);
+    WidgetsBinding.instance.accessibilityFocus.addListener(
+      _handleAccessibilityFocusChanged,
+    );
     HardwareKeyboard.instance.addHandler(_handleKeyEvent);
     FocusManager.instance.addListener(_handleFocusChanged);
     widget.router.routeInformationProvider.addListener(_handleRouteChanged);
-    _lastActivityAt = widget.now();
+    _lastActivityAt = _elapsedNow();
     _launchActive = _isLaunchRoute;
     final lifecycleState = WidgetsBinding.instance.lifecycleState;
     _foreground =
@@ -90,10 +106,26 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
       widget.router.routeInformationProvider.addListener(_handleRouteChanged);
       _launchActive = _isLaunchRoute;
     }
-    // Keep the original activity timestamp across rebuilds. In particular,
-    // injected clocks are often closures whose identity changes even though
-    // no user activity occurred.
+    if (!identical(oldWidget.elapsedNow, widget.elapsedNow)) {
+      final elapsed = _elapsedSinceActivity;
+      _installElapsedClock(widget.elapsedNow);
+      _lastActivityAt = _elapsedNow() - elapsed;
+    }
+    // Keep the original activity point across rebuilds. Rebuilding the app
+    // shell is not evidence of user activity.
     _scheduleTimeout();
+  }
+
+  void _installElapsedClock(ButlerlyElapsedNow? injected) {
+    _ownedElapsedClock?.stop();
+    _ownedElapsedClock = null;
+    if (injected != null) {
+      _elapsedNow = injected;
+      return;
+    }
+    final stopwatch = Stopwatch()..start();
+    _ownedElapsedClock = stopwatch;
+    _elapsedNow = () => stopwatch.elapsed;
   }
 
   @override
@@ -125,7 +157,10 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
   bool get _isLaunchRoute =>
       widget.router.routeInformationProvider.value.uri.path == '/launch';
 
-  Duration get _elapsedSinceActivity => widget.now().difference(_lastActivityAt);
+  Duration get _elapsedSinceActivity {
+    final elapsed = _elapsedNow() - _lastActivityAt;
+    return elapsed.isNegative ? Duration.zero : elapsed;
+  }
 
   TargetPlatform get _targetPlatform =>
       widget.targetPlatform ?? defaultTargetPlatform;
@@ -142,7 +177,7 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
 
     // The launch flow has completed. Start the inactivity clock from the fresh
     // Home session rather than carrying pre-launch idle time forward.
-    _lastActivityAt = widget.now();
+    _lastActivityAt = _elapsedNow();
     _syncEditingController();
     _scheduleTimeout();
   }
@@ -150,6 +185,18 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
   bool _handleKeyEvent(KeyEvent event) {
     if (event is KeyDownEvent || event is KeyRepeatEvent) _recordActivity();
     return false;
+  }
+
+  void _handleSemanticsAction(ui.SemanticsActionEvent _) {
+    // VoiceOver and TalkBack activate controls through semantics rather than
+    // raw pointer or hardware-key events. Treat those actions as real activity.
+    _recordActivity();
+  }
+
+  void _handleAccessibilityFocusChanged() {
+    // Moving accessibility focus is user navigation even when no control is
+    // activated, so it must keep the session alive as well.
+    _recordActivity();
   }
 
   void _handleFocusChanged() {
@@ -189,7 +236,7 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
 
   void _recordActivity() {
     if (!_foreground || _launchActive) return;
-    _lastActivityAt = widget.now();
+    _lastActivityAt = _elapsedNow();
     _scheduleTimeout();
   }
 
@@ -242,10 +289,15 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
   @override
   void dispose() {
     _inactivityTimer?.cancel();
+    _ownedElapsedClock?.stop();
     _setEditingController(null);
     widget.router.routeInformationProvider.removeListener(_handleRouteChanged);
     FocusManager.instance.removeListener(_handleFocusChanged);
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
+    WidgetsBinding.instance.accessibilityFocus.removeListener(
+      _handleAccessibilityFocusChanged,
+    );
+    WidgetsBinding.instance.removeSemanticsActionListener(_handleSemanticsAction);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
