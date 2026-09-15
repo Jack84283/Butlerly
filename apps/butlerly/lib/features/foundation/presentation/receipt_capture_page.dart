@@ -474,12 +474,16 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     required ReceiptOcrResult? ocr,
     required String extractionToken,
   }) {
-    final extraction = _buildExtraction(evidence, ocr, extractionToken);
-    final financeForSave = finance;
     _committed = true;
     notifyTransactionChanged();
-    if (extraction != null) {
-      unawaited(_persistExtractionBestEffort(financeForSave, extraction));
+    try {
+      final extraction = _buildExtraction(evidence, ocr, extractionToken);
+      if (extraction != null) {
+        final financeForSave = finance;
+        unawaited(_persistExtractionBestEffort(financeForSave, extraction));
+      }
+    } catch (_) {
+      // Derived extraction must not invalidate an already committed receipt.
     }
     if (!mounted) return;
     setState(() => _saving = false);
