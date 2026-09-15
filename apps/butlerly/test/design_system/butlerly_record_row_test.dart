@@ -431,7 +431,10 @@ void main() {
       ButlerlyTransactionItemTokens.bottomPadding,
       ButlerlySpacing.small,
     );
-    expect(ButlerlyTransactionItemTokens.dividerInset, ButlerlySpacing.small);
+    expect(
+      ButlerlyTransactionItemTokens.dividerInset,
+      ButlerlySpacing.compact,
+    );
     expect(
       ButlerlyTransactionItemTokens.minTouchHeight,
       ButlerlyTransactionItemTokens.leadingIconSize +
