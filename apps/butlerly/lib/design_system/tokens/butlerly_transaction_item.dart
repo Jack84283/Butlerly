@@ -21,12 +21,12 @@ abstract final class ButlerlyTransactionItemTokens {
   static const metadataTrailingInset = ButlerlySpacing.none;
 
   /// Typography roles measured from the transaction-list reference.
-  static const titleFontSize = 17.0;
-  static const titleLineHeight = 20 / 17;
+  static const titleFontSize = 15.0;
+  static const titleLineHeight = 20 / 15;
   static const metadataFontSize = 14.0;
   static const metadataLineHeight = 18 / 14;
-  static const amountFontSize = titleFontSize;
-  static const amountLineHeight = titleLineHeight;
+  static const amountFontSize = 17.0;
+  static const amountLineHeight = 20 / 17;
 
   static const directionIconSize = 18.0;
   static const warningIconSize = 18.0;
