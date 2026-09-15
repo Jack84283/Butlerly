@@ -726,13 +726,6 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       return;
     }
 
-    if (createdTransaction == null || extractionToken == null) {
-      if (!mounted) return;
-      setState(() => _saving = false);
-      _showSaveMessage('dataPreserved');
-      return;
-    }
-
     EvidenceItem? evidence;
     try {
       evidence = await _attach(createdTransaction.id, preserved);
