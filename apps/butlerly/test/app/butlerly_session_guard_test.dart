@@ -62,6 +62,98 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('software text editing restarts the inactivity timeout', (
+    tester,
+  ) async {
+    var now = DateTime(2026, 9, 15, 12);
+    final router = _guardTestRouter();
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_guardedApp(router, () => now));
+    await tester.pump();
+
+    now = now.add(const Duration(minutes: 4, seconds: 50));
+    await tester.pump(const Duration(minutes: 4, seconds: 50));
+    await tester.tap(find.byKey(const ValueKey('activity-text-input')));
+    await tester.pump();
+
+    now = now.add(const Duration(minutes: 4, seconds: 50));
+    await tester.pump(const Duration(minutes: 4, seconds: 50));
+    await tester.enterText(
+      find.byKey(const ValueKey('activity-text-input')),
+      'still editing',
+    );
+    await tester.pump();
+
+    now = now.add(const Duration(minutes: 4, seconds: 59));
+    await tester.pump(const Duration(minutes: 4, seconds: 59));
+    expect(router.routeInformationProvider.value.uri.path, '/work');
+
+    now = now.add(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+    expect(router.routeInformationProvider.value.uri.path, '/launch');
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('Android inactivity closes the activity after selecting launch', (
+    tester,
+  ) async {
+    var now = DateTime(2026, 9, 15, 12);
+    var exits = 0;
+    final router = _guardTestRouter();
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      _guardedApp(
+        router,
+        () => now,
+        targetPlatform: TargetPlatform.android,
+        onPlatformExit: () async {
+          exits += 1;
+        },
+      ),
+    );
+    await tester.pump();
+
+    now = now.add(const Duration(minutes: 5));
+    await tester.pump(const Duration(minutes: 5));
+    await tester.pump();
+
+    expect(router.routeInformationProvider.value.uri.path, '/launch');
+    expect(exits, 1);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('iOS uses fresh-launch reset without unsupported forced exit', (
+    tester,
+  ) async {
+    var now = DateTime(2026, 9, 15, 12);
+    var exits = 0;
+    final router = _guardTestRouter();
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      _guardedApp(
+        router,
+        () => now,
+        targetPlatform: TargetPlatform.iOS,
+        onPlatformExit: () async {
+          exits += 1;
+        },
+      ),
+    );
+    await tester.pump();
+
+    now = now.add(const Duration(minutes: 5));
+    await tester.pump(const Duration(minutes: 5));
+    await tester.pump();
+
+    expect(router.routeInformationProvider.value.uri.path, '/launch');
+    expect(exits, 0);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('short background interval preserves the current route', (
     tester,
   ) async {
@@ -164,10 +256,21 @@ GoRouter _guardTestRouter() => GoRouter(
       path: '/work',
       builder: (_, _) => Scaffold(
         body: Center(
-          child: TextButton(
-            key: const ValueKey('activity-target'),
-            onPressed: () {},
-            child: const Text('Work'),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton(
+                key: const ValueKey('activity-target'),
+                onPressed: () {},
+                child: const Text('Work'),
+              ),
+              const SizedBox(
+                width: 220,
+                child: TextField(
+                  key: ValueKey('activity-text-input'),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -182,12 +285,18 @@ GoRouter _guardTestRouter() => GoRouter(
   ],
 );
 
-Widget _guardedApp(GoRouter router, DateTime Function() now) =>
-    MaterialApp.router(
-      routerConfig: router,
-      builder: (_, child) => ButlerlySessionGuard(
-        router: router,
-        now: now,
-        child: child ?? const SizedBox.shrink(),
-      ),
-    );
+Widget _guardedApp(
+  GoRouter router,
+  DateTime Function() now, {
+  TargetPlatform? targetPlatform,
+  ButlerlyPlatformExit? onPlatformExit,
+}) => MaterialApp.router(
+  routerConfig: router,
+  builder: (_, child) => ButlerlySessionGuard(
+    router: router,
+    now: now,
+    targetPlatform: targetPlatform,
+    onPlatformExit: onPlatformExit,
+    child: child ?? const SizedBox.shrink(),
+  ),
+);
