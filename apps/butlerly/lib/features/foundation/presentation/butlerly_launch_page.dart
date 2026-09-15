@@ -14,40 +14,98 @@ import 'package:go_router/go_router.dart';
 class ButlerlyLaunchPage extends StatefulWidget {
   const ButlerlyLaunchPage({
     this.duration = ButlerlySessionConfig.launchDuration,
+    this.now = DateTime.now,
     super.key,
   });
 
   final Duration duration;
+  final DateTime Function() now;
 
   @override
   State<ButlerlyLaunchPage> createState() => _ButlerlyLaunchPageState();
 }
 
-class _ButlerlyLaunchPageState extends State<ButlerlyLaunchPage> {
+class _ButlerlyLaunchPageState extends State<ButlerlyLaunchPage>
+    with WidgetsBindingObserver {
   Timer? _timer;
+  DateTime? _startedAt;
+  late Duration _remaining;
+  late bool _foreground;
 
   @override
   void initState() {
     super.initState();
-    _scheduleHome();
+    WidgetsBinding.instance.addObserver(this);
+    _remaining = widget.duration;
+    final lifecycleState = WidgetsBinding.instance.lifecycleState;
+    _foreground =
+        lifecycleState == null || lifecycleState == AppLifecycleState.resumed;
+    if (_foreground) _startCountdown();
   }
 
   @override
   void didUpdateWidget(covariant ButlerlyLaunchPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.duration != widget.duration) _scheduleHome();
+    if (oldWidget.duration == widget.duration) return;
+    _timer?.cancel();
+    _startedAt = null;
+    _remaining = widget.duration;
+    if (_foreground) _startCountdown();
   }
 
-  void _scheduleHome() {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _foreground = true;
+        if (_remaining <= Duration.zero) {
+          _finish();
+        } else {
+          _startCountdown();
+        }
+        return;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        _foreground = false;
+        _pauseCountdown();
+        return;
+    }
+  }
+
+  void _startCountdown() {
     _timer?.cancel();
-    _timer = Timer(widget.duration, () {
-      if (mounted) context.go('/');
-    });
+    if (!_foreground || _remaining <= Duration.zero) return;
+    _startedAt = widget.now();
+    _timer = Timer(_remaining, _finish);
+  }
+
+  void _pauseCountdown() {
+    _timer?.cancel();
+    _timer = null;
+    final startedAt = _startedAt;
+    _startedAt = null;
+    if (startedAt == null) return;
+    final elapsed = widget.now().difference(startedAt);
+    if (elapsed <= Duration.zero) return;
+    _remaining = elapsed >= _remaining
+        ? Duration.zero
+        : _remaining - elapsed;
+  }
+
+  void _finish() {
+    _timer?.cancel();
+    _timer = null;
+    _startedAt = null;
+    _remaining = Duration.zero;
+    if (mounted) context.go('/');
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
