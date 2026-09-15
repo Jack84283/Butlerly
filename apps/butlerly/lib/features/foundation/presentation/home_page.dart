@@ -326,7 +326,7 @@ class _HomePageState extends State<HomePage> {
           title: context.l10n.text('recentTransactions'),
           action: TextButton(
             key: const Key('home-recent-view-all'),
-            onPressed: () => context.go(
+            onPressed: () => context.push(
               _periodRoute(
                 '/search',
                 data.period,
@@ -455,7 +455,10 @@ double _homeHeaderExtent(BuildContext context) {
   final contentHeight = brandHeight > contextHeight
       ? brandHeight
       : contextHeight;
-  return contentHeight + ButlerlySpacing.small * 2;
+  // Text metrics can round above the style-derived estimate at accessibility
+  // scales. Reserve a small scaled safety margin without changing typography.
+  final fontMetricSlack = scaler.scale(4);
+  return contentHeight + ButlerlySpacing.small * 2 + fontMetricSlack;
 }
 
 class _HomePinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
@@ -599,13 +602,33 @@ class _HomeSectionHeader extends StatelessWidget {
       top: ButlerlySpacing.section,
       bottom: ButlerlySpacing.small,
     ),
-    child: Row(
-      children: [
-        Expanded(
-          child: Text(title, style: Theme.of(context).textTheme.titleLarge),
-        ),
-        action,
-      ],
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final scaledBody = MediaQuery.textScalerOf(context).scale(14);
+        if (scaledBody > 28) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(title, style: Theme.of(context).textTheme.titleLarge),
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: action,
+              ),
+            ],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            action,
+          ],
+        );
+      },
     ),
   );
 }
