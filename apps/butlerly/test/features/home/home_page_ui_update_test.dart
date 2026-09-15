@@ -14,25 +14,39 @@ void main() {
     router = GoRouter(
       initialLocation: '/',
       routes: [
-        GoRoute(path: '/', builder: (_, _) => const HomePage()),
+        GoRoute(
+          path: '/',
+          builder: (_, _) => const Scaffold(body: HomePage()),
+        ),
         GoRoute(
           path: '/search',
-          builder: (_, state) => Text(
-            state.uri.toString(),
-            key: const Key('search-uri'),
+          builder: (_, state) => Scaffold(
+            body: Text(
+              state.uri.toString(),
+              key: const Key('search-uri'),
+            ),
           ),
         ),
         GoRoute(
           path: '/analysis',
-          builder: (_, _) => const SizedBox.shrink(),
+          builder: (_, _) => const Scaffold(body: SizedBox.shrink()),
         ),
         GoRoute(
           path: '/notifications',
-          builder: (_, _) => const SizedBox.shrink(),
+          builder: (_, _) => const Scaffold(body: SizedBox.shrink()),
         ),
-        GoRoute(path: '/add', builder: (_, _) => const SizedBox.shrink()),
-        GoRoute(path: '/review', builder: (_, _) => const SizedBox.shrink()),
-        GoRoute(path: '/insights', builder: (_, _) => const SizedBox.shrink()),
+        GoRoute(
+          path: '/add',
+          builder: (_, _) => const Scaffold(body: SizedBox.shrink()),
+        ),
+        GoRoute(
+          path: '/review',
+          builder: (_, _) => const Scaffold(body: SizedBox.shrink()),
+        ),
+        GoRoute(
+          path: '/insights',
+          builder: (_, _) => const Scaffold(body: SizedBox.shrink()),
+        ),
       ],
     );
   });
