@@ -103,13 +103,17 @@ void main() {
     );
 
     expect(find.text('−82.47 USD'), findsOneWidget);
-    expect(find.text('Groceries · Supermarket'), findsOneWidget);
-    expect(find.text('Visa ••••8421'), findsOneWidget);
+    expect(
+      find.text('Groceries · Supermarket · Visa ••••8421'),
+      findsOneWidget,
+    );
     expect(find.text('Vacation · Family'), findsOneWidget);
     expect(find.text('Sep 2, 2026'), findsOneWidget);
     expect(
-      tester.getTopRight(find.text('−82.47 USD')).dx,
-      tester.getTopRight(find.text('Sep 2, 2026')).dx,
+      tester.getTopLeft(find.text('Sep 2, 2026')).dx,
+      tester.getTopLeft(
+        find.text('Groceries · Supermarket · Visa ••••8421'),
+      ).dx,
     );
     expect(find.byIcon(Icons.arrow_downward_rounded), findsNothing);
     expect(
@@ -122,43 +126,43 @@ void main() {
     );
   });
 
-  testWidgets('canonical item aligns amount and date with selection control', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.light,
-        home: Scaffold(
-          body: ButlerlyRecordRow(
-            title: 'Whole Foods',
-            amount: '82.47',
-            currency: 'USD',
-            categoryLabel: 'Groceries',
-            meta: 'Sep 2, 2026',
-            showDate: true,
-            selectionControl: const SizedBox(
-              width: ButlerlySize.minimumTarget,
-              height: ButlerlySize.minimumTarget,
-              child: Icon(Icons.check_box_outline_blank),
+  testWidgets(
+    'canonical item keeps amount trailing with selection control and date below',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: ButlerlyRecordRow(
+              title: 'Whole Foods',
+              amount: '82.47',
+              currency: 'USD',
+              categoryLabel: 'Groceries',
+              meta: 'Sep 2, 2026',
+              showDate: true,
+              selectionControl: const SizedBox(
+                width: ButlerlySize.minimumTarget,
+                height: ButlerlySize.minimumTarget,
+                child: Icon(Icons.check_box_outline_blank),
+              ),
             ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(
-      tester.getTopRight(find.text('−82.47 USD')).dx,
-      tester.getTopRight(find.text('Sep 2, 2026')).dx,
-    );
-    expect(
-      tester.getTopRight(find.text('−82.47 USD')).dx,
-      closeTo(
-        tester.getTopLeft(find.byIcon(Icons.check_box_outline_blank)).dx -
-            ButlerlySpacing.compact,
-        0.01,
-      ),
-    );
-  });
+      expect(
+        tester.getTopRight(find.text('−82.47 USD')).dx,
+        closeTo(
+          tester.getTopLeft(find.byIcon(Icons.check_box_outline_blank)).dx,
+          0.01,
+        ),
+      );
+      expect(
+        tester.getTopLeft(find.text('Sep 2, 2026')).dy,
+        greaterThan(tester.getBottomLeft(find.text('Groceries')).dy),
+      );
+    },
+  );
 
   testWidgets('long canonical titles stay on one line above date metadata', (
     tester,
@@ -195,12 +199,12 @@ void main() {
       lessThan(tester.getTopLeft(find.text('Sep 2, 2026')).dy),
     );
     expect(
-      tester.getTopRight(find.text('−82.47 USD')).dx,
-      tester.getTopRight(find.text('Sep 2, 2026')).dx,
+      tester.getTopLeft(find.text('Groceries')).dx,
+      tester.getTopLeft(find.text('Sep 2, 2026')).dx,
     );
     expect(
       tester.getSize(find.byType(ButlerlyRecordRow)).height,
-      greaterThan(ButlerlySize.recordRowMinHeight),
+      greaterThanOrEqualTo(ButlerlyTransactionItemTokens.minTouchHeight),
     );
   });
 
@@ -398,31 +402,46 @@ void main() {
       ),
     );
 
-    expect(tester.widget<Text>(find.text('1.00 USD')).style?.fontSize, 31);
-    expect(tester.widget<Text>(find.text('Description')).style?.fontSize, 23);
+    expect(
+      tester.widget<Text>(find.text('1.00 USD')).style?.fontSize,
+      ButlerlyTransactionItemTokens.amountFontSize,
+    );
+    expect(
+      tester.widget<Text>(find.text('Description')).style?.fontSize,
+      ButlerlyTransactionItemTokens.titleFontSize,
+    );
+    expect(
+      tester.widget<Text>(find.text('Description')).style?.fontWeight,
+      FontWeight.w600,
+    );
     expect(
       tester.widget<Text>(find.text('Description')).style?.color,
       AppTheme.light.extension<ButlerlySemanticColors>()!.primaryText,
     );
-    expect(tester.widget<Text>(find.text('Metadata')).style?.fontSize, 17);
+    expect(
+      tester.widget<Text>(find.text('Metadata')).style?.fontSize,
+      ButlerlyTransactionItemTokens.metadataFontSize,
+    );
     expect(
       ButlerlyTransactionItemTokens.horizontalInset,
-      ButlerlySpacing.micro,
+      ButlerlySpacing.small,
     );
-    expect(ButlerlyTransactionItemTokens.topPadding, ButlerlySpacing.compact);
+    expect(ButlerlyTransactionItemTokens.topPadding, ButlerlySpacing.small);
     expect(
       ButlerlyTransactionItemTokens.bottomPadding,
-      ButlerlySpacing.compact,
+      ButlerlySpacing.small,
     );
-    expect(ButlerlyTransactionItemTokens.dividerInset, ButlerlySpacing.micro);
+    expect(ButlerlyTransactionItemTokens.dividerInset, ButlerlySpacing.small);
     expect(
       ButlerlyTransactionItemTokens.minTouchHeight,
-      ButlerlySize.recordRowMinHeight,
+      ButlerlyTransactionItemTokens.leadingIconSize +
+          ButlerlyTransactionItemTokens.topPadding +
+          ButlerlyTransactionItemTokens.bottomPadding,
     );
   });
 
   testWidgets(
-    'metadata lines use four pixels between payment source and tags',
+    'combined metadata and tags use semantic compact spacing',
     (tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -440,12 +459,15 @@ void main() {
         ),
       );
 
-      final paymentSource = tester.getRect(find.text('Visa'));
+      final metadata = tester.getRect(find.text('Food · Visa'));
       final tags = tester.getRect(find.text('Groceries'));
-      expect(tags.top - paymentSource.bottom, ButlerlySpacing.micro);
+      expect(
+        tags.top - metadata.bottom,
+        ButlerlyTransactionItemTokens.metadataSpacing,
+      );
       expect(
         ButlerlyTransactionItemTokens.metadataSpacing,
-        ButlerlySpacing.micro,
+        ButlerlySpacing.xxs,
       );
     },
   );
