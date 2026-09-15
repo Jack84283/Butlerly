@@ -25,6 +25,15 @@ void main() {
       ButlerlyTypography.editorialFontFallback,
       const ['Times', 'Noto Serif', 'serif'],
     );
+    expect(
+      <String>[
+        ButlerlyTypography.editorialFontFamily,
+        ...ButlerlyTypography.editorialFontFallback,
+      ],
+      isNot(contains('Georgia')),
+      reason:
+          'Georgia must not reappear as a fallback because its numerals are the reason Butlerly prefers Times New Roman.',
+    );
     for (final theme in [AppTheme.light, AppTheme.dark]) {
       expect(
         theme.textTheme.displaySmall?.fontFamily,
