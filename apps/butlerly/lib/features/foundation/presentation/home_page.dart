@@ -356,16 +356,16 @@ class _HomePageState extends State<HomePage> {
       onRefresh: _refresh,
       child: ColoredBox(
         color: context.colors.background,
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverLayoutBuilder(
-              builder: (context, constraints) => SliverPersistentHeader(
+        child: LayoutBuilder(
+          builder: (context, constraints) => CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverPersistentHeader(
                 pinned: true,
                 delegate: _HomePinnedHeaderDelegate(
                   extent: _homeHeaderExtent(
                     context,
-                    crossAxisExtent: constraints.crossAxisExtent,
+                    crossAxisExtent: constraints.maxWidth,
                   ),
                   child: FutureBuilder<_HomeData>(
                     future: future,
@@ -384,45 +384,47 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
-                ButlerlySize.phoneGutter,
-                ButlerlySpacing.large,
-                ButlerlySize.phoneGutter,
-                ButlerlySpacing.large,
-              ),
-              sliver: SliverLayoutBuilder(
-                builder: (context, constraints) {
-                  final extraWidth =
-                      constraints.crossAxisExtent -
-                      ButlerlySize.pageContentMaxWidth;
-                  final horizontalInset = extraWidth > 0
-                      ? extraWidth / 2
-                      : 0.0;
-                  return SliverPadding(
-                    padding: EdgeInsets.symmetric(horizontal: horizontalInset),
-                    sliver: SliverToBoxAdapter(
-                      child: FutureBuilder<_HomeData>(
-                        future: future,
-                        builder: (context, snapshot) {
-                          final data =
-                              snapshot.data ??
-                              _HomeData.empty(
-                                _now,
-                                selectedMonth: _selectedMonth,
-                              );
-                          final loading =
-                              snapshot.connectionState != ConnectionState.done;
-                          return _homeContent(context, data, loading);
-                        },
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(
+                  ButlerlySize.phoneGutter,
+                  ButlerlySpacing.large,
+                  ButlerlySize.phoneGutter,
+                  ButlerlySpacing.large,
+                ),
+                sliver: SliverLayoutBuilder(
+                  builder: (context, constraints) {
+                    final extraWidth =
+                        constraints.crossAxisExtent -
+                        ButlerlySize.pageContentMaxWidth;
+                    final horizontalInset = extraWidth > 0
+                        ? extraWidth / 2
+                        : 0.0;
+                    return SliverPadding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: horizontalInset,
                       ),
-                    ),
-                  );
-                },
+                      sliver: SliverToBoxAdapter(
+                        child: FutureBuilder<_HomeData>(
+                          future: future,
+                          builder: (context, snapshot) {
+                            final data =
+                                snapshot.data ??
+                                _HomeData.empty(
+                                  _now,
+                                  selectedMonth: _selectedMonth,
+                                );
+                            final loading =
+                                snapshot.connectionState != ConnectionState.done;
+                            return _homeContent(context, data, loading);
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
