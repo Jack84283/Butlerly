@@ -71,6 +71,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Page unavailable'), findsOneWidget);
+    expect(find.text('Diagnostic: STARTUP-UNKNOWN'), findsOneWidget);
     expect(find.text('Try again'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('butlerly-startup-retry')));
@@ -86,6 +87,31 @@ void main() {
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
+  });
+
+  test('classifies database migration failures without exposing details', () {
+    final failure = classifyStartupFailure(
+      'database initialization',
+      const RepositoryException(
+        RepositoryFailureCode.migration,
+        'apply database migration',
+      ),
+    );
+
+    expect(failure.code, 'DB-MIGRATION');
+    expect(failure.phase, 'database initialization');
+    expect(startupDiagnosticCode(failure), 'DB-MIGRATION');
+    expect(failure.toString(), isNot(contains('apply database migration')));
+  });
+
+  test('classifies restore-state startup failures by phase', () {
+    final failure = classifyStartupFailure(
+      'restore recovery initialization',
+      StateError('simulated recovery failure'),
+    );
+
+    expect(failure.code, 'RECOVERY-STATE');
+    expect(startupDiagnosticCode(failure), 'RECOVERY-STATE');
   });
 
   test('storage availability failure becomes a retryable storage error', () async {
@@ -157,7 +183,35 @@ void main() {
     await tester.pump();
 
     expect(find.text('Local storage is unavailable'), findsOneWidget);
+    expect(find.text('Diagnostic: DB-UNAVAILABLE'), findsOneWidget);
     expect(find.text('ready'), findsNothing);
+  });
+
+  testWidgets('classified migration failure shows only the safe code', (
+    tester,
+  ) async {
+    const failure = ButlerlyStartupFailure(
+      code: 'DB-MIGRATION',
+      phase: 'database initialization',
+      cause: RepositoryException(
+        RepositoryFailureCode.migration,
+        'apply database migration',
+      ),
+    );
+
+    await tester.pumpWidget(
+      ButlerlyStartupGate(
+        logger: logger,
+        initialize: () async => throw failure,
+        minimumLaunchDuration: Duration.zero,
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Page unavailable'), findsOneWidget);
+    expect(find.text('Diagnostic: DB-MIGRATION'), findsOneWidget);
+    expect(find.textContaining('apply database migration'), findsNothing);
   });
 
   testWidgets('cold startup uses one five-second launch window', (tester) async {
