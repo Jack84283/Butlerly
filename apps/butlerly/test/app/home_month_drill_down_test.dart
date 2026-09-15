@@ -46,20 +46,26 @@ void main() {
     expect(page.initialRange, isNull);
   });
 
-  testWidgets('historical Home month is carried into Transactions', (
+  testWidgets('historical Home month is carried into Search', (
     tester,
   ) async {
     await _openJulyHome(tester);
 
     final actions = find.widgetWithText(TextButton, 'View all');
-    final transactionsButton = tester.widget<TextButton>(actions.last);
-    transactionsButton.onPressed!();
+    final searchButton = tester.widget<TextButton>(actions.last);
+    searchButton.onPressed!();
     await tester.pumpAndSettle();
 
     final uri = appRouter.routeInformationProvider.value.uri;
-    expect(uri.path, '/transactions');
+    expect(uri.path, '/search');
     expect(uri.queryParameters['from'], '2026-07-01');
     expect(uri.queryParameters['to'], '2026-07-31');
+    expect(appRouter.canPop(), isTrue);
+
+    appRouter.pop();
+    await tester.pumpAndSettle();
+    expect(appRouter.routeInformationProvider.value.uri.path, '/');
+    expect(find.byType(HomePage), findsOneWidget);
   });
 }
 
