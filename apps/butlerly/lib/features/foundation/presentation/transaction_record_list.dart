@@ -2,6 +2,7 @@ import 'package:butlerly/design_system/category/butlerly_category_identity.dart'
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -81,14 +82,16 @@ class TransactionRecordList extends StatelessWidget {
       children: [
         for (var index = 0; index < entries.length; index++) ...[
           if (index > 0) ...[
-            const SizedBox(height: ButlerlySpacing.compact),
+            const SizedBox(height: ButlerlySpacing.micro),
             Divider(
               key: ValueKey('transaction-group-divider-$index'),
               height: ButlerlyTransactionItemTokens.dividerThickness,
               thickness: ButlerlyTransactionItemTokens.dividerThickness,
+              indent: ButlerlyTransactionItemTokens.dividerInset,
+              endIndent: ButlerlyTransactionItemTokens.dividerInset,
               color: context.colors.cardDivider,
             ),
-            const SizedBox(height: ButlerlySpacing.compact),
+            const SizedBox(height: ButlerlySpacing.micro),
           ],
           Row(
             children: [
