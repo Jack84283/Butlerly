@@ -9,10 +9,17 @@ import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
-/// The shared transaction presentation for Transactions, Search, and Home.
-/// Grouping is presentation-only; the input order inside each date group is
+/// The shared transaction presentation for Transactions, Search, Home, and
+/// Review.
+///
+/// Grouping is presentation-only; the input order inside each group is
 /// preserved so domain sorting and filtering remain owned by the caller.
+/// Transaction/Search ledger callers use [groupByFinancialDate] without
+/// [showDateInRows], which presents month section headers and moves the full
+/// transaction date into each row. Review callers that already set
+/// [showDateInRows] retain day-level grouping.
 class TransactionRecordList extends StatelessWidget {
   const TransactionRecordList({
     required this.transactions,
@@ -47,9 +54,15 @@ class TransactionRecordList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final useMonthSections = groupByFinancialDate && !showDateInRows;
+    final effectiveShowDateInRows = showDateInRows || useMonthSections;
     final rows = <TransactionDto, Widget>{
       for (final transaction in transactions)
-        transaction: _row(context, transaction),
+        transaction: _row(
+          context,
+          transaction,
+          showDateInRow: effectiveShowDateInRows,
+        ),
     };
     if (!groupByFinancialDate) {
       final list = ButlerlyTransactionList(children: rows.values.toList());
@@ -65,6 +78,64 @@ class TransactionRecordList extends StatelessWidget {
           : list;
     }
 
+    if (useMonthSections) {
+      return _monthGroupedList(context, rows);
+    }
+    return _dayGroupedList(context, rows);
+  }
+
+  Widget _monthGroupedList(
+    BuildContext context,
+    Map<TransactionDto, Widget> rows,
+  ) {
+    final groups = <String, List<TransactionDto>>{};
+    for (final transaction in transactions) {
+      final month = _transactionMonth(transaction);
+      final key = month == null
+          ? 'pending'
+          : '${month.year}-${month.month.toString().padLeft(2, '0')}';
+      groups.putIfAbsent(key, () => []).add(transaction);
+    }
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final entry in groups.entries) ...[
+          if (entry.key != groups.entries.first.key)
+            const SizedBox(height: ButlerlySpacing.section),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _monthSectionLabel(
+                    context,
+                    entry.value.first,
+                    locale: locale,
+                  ),
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              Text(
+                '${entry.value.length}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+          const SizedBox(height: ButlerlySpacing.compact),
+          ButlerlyTransactionList(
+            children: [
+              for (final transaction in entry.value) rows[transaction]!,
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _dayGroupedList(
+    BuildContext context,
+    Map<TransactionDto, Widget> rows,
+  ) {
     final groups = <String, List<TransactionDto>>{};
     for (final transaction in transactions) {
       final date = transactionCalendarDate(
@@ -110,7 +181,34 @@ class TransactionRecordList extends StatelessWidget {
     );
   }
 
-  Widget _row(BuildContext context, TransactionDto transaction) {
+  String _monthSectionLabel(
+    BuildContext context,
+    TransactionDto transaction, {
+    required String locale,
+  }) {
+    final month = _transactionMonth(transaction);
+    if (month == null) return context.l10n.text('datePending');
+    return DateFormat.yMMMM(locale).format(month);
+  }
+
+  DateTime? _transactionMonth(TransactionDto transaction) {
+    final businessDate = transaction.transactionDate?.trim();
+    if (businessDate != null && businessDate.isNotEmpty) {
+      final parsed = DateTime.tryParse(businessDate);
+      if (parsed != null) return DateTime(parsed.year, parsed.month);
+    }
+
+    final occurredAt = transaction.occurredAt;
+    if (occurredAt == null) return null;
+    final utc = occurredAt.toUtc();
+    return DateTime(utc.year, utc.month);
+  }
+
+  Widget _row(
+    BuildContext context,
+    TransactionDto transaction, {
+    required bool showDateInRow,
+  }) {
     final categoryId = transaction.categoryId;
     final iconCategoryId =
         categoryId != null &&
@@ -145,14 +243,14 @@ class TransactionRecordList extends StatelessWidget {
       paymentSource: sourceLabel,
       tags: tags,
       supportingContent: supportingContentBuilder?.call(context, transaction),
-      meta: showDateInRows
+      meta: showDateInRow
           ? transactionDateLabel(
               transaction,
               pendingLabel: context.l10n.text('datePending'),
               locale: Localizations.localeOf(context).toLanguageTag(),
             )
           : null,
-      showDate: showDateInRows,
+      showDate: showDateInRow,
       isIncome: transaction.direction == TransactionDirection.income.name,
       needsReview: transaction.reviewState == 'needsReview',
       possibleDuplicate: possibleDuplicateIds.contains(transaction.id),
