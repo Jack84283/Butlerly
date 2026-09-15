@@ -117,13 +117,7 @@ void main() {
           attachedTransactionId = transactionId;
           return _receiptEvidence('evidence-success');
         },
-        ocr: (_) async => ReceiptOcrResult(
-          rawText: 'Test Merchant\n09/15/2026\nTOTAL 12.34 USD',
-          merchant: 'Test Merchant',
-          amount: '12.34',
-          currency: 'USD',
-          date: DateTime(2026, 9, 15),
-        ),
+        ocr: (_) async => _recognizedReceipt(),
         loadInitialData: _emptyInitialData,
       ),
       onResult: (value) => routeResult = value,
@@ -165,13 +159,7 @@ void main() {
           fileForPreserved: (_) async => File(fixturePath),
           discardPreserved: (_) async {},
           attachPreserved: (_, _) async => null,
-          ocr: (_) async => ReceiptOcrResult(
-            rawText: 'Test Merchant\n09/15/2026\nTOTAL 12.34 USD',
-            merchant: 'Test Merchant',
-            amount: '12.34',
-            currency: 'USD',
-            date: DateTime(2026, 9, 15),
-          ),
+          ocr: (_) async => _recognizedReceipt(),
           loadInitialData: _emptyInitialData,
         ),
       ),
@@ -214,13 +202,7 @@ void main() {
           fileForPreserved: (_) async => File(fixturePath),
           discardPreserved: (_) async {},
           attachPreserved: (_, _) async => null,
-          ocr: (_) async => ReceiptOcrResult(
-            rawText: 'Test Merchant\n09/15/2026\nTOTAL 12.34 USD',
-            merchant: 'Test Merchant',
-            amount: '12.34',
-            currency: 'USD',
-            date: DateTime(2026, 9, 15),
-          ),
+          ocr: (_) async => _recognizedReceipt(),
           loadInitialData: _emptyInitialData,
         ),
         onResult: (value) => routeResult = value,
@@ -241,6 +223,51 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets(
+    'post-commit extraction failure still closes with one saved transaction',
+    (tester) async {
+      final transactions = _ReceiptTransactionRepository();
+      final finance = _finance(
+        transactions,
+        evidence: _ThrowingExtractionEvidence(),
+      );
+      final fixturePath = _fixturePath();
+      final source = XFile(fixturePath, name: 'receipt.png');
+      bool? routeResult;
+
+      _resetView(tester);
+
+      await _openReceiptRoute(
+        tester,
+        ReceiptCapturePage(
+          finance: finance,
+          evidenceStore: _evidenceStore(finance),
+          pickImage: (_) async => source,
+          preserveEvidence: (_) async => _preservedReceipt,
+          fileForPreserved: (_) async => File(fixturePath),
+          discardPreserved: (_) async {},
+          attachPreserved: (_, _) async => _receiptEvidence('evidence-throw'),
+          ocr: (_) async => _recognizedReceipt(),
+          loadInitialData: _emptyInitialData,
+        ),
+        onResult: (value) => routeResult = value,
+      );
+      await _captureAndAcceptReceipt(tester);
+
+      final saveReceipt = find.widgetWithText(
+        FilledButton,
+        'Save receipt transaction',
+      );
+      await _scrollToAndTap(tester, saveReceipt);
+      await tester.pumpAndSettle();
+
+      expect(routeResult, isTrue);
+      expect(transactions.values, hasLength(1));
+      expect(find.byType(ReceiptCapturePage), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
 
 const _preservedReceipt = PreservedEvidenceSource(
@@ -252,13 +279,24 @@ const _preservedReceipt = PreservedEvidenceSource(
 String _fixturePath() =>
     '${Directory.current.path}/test/features/analysis/goldens/analysis_empty_390x844.png';
 
-FinanceServices _finance(TransactionRepository transactions) => FinanceServices(
+ReceiptOcrResult _recognizedReceipt() => ReceiptOcrResult(
+  rawText: 'Test Merchant\n09/15/2026\nTOTAL 12.34 USD',
+  merchant: 'Test Merchant',
+  amount: '12.34',
+  currency: 'USD',
+  date: DateTime(2026, 9, 15),
+);
+
+FinanceServices _finance(
+  TransactionRepository transactions, {
+  EvidenceRepository? evidence,
+}) => FinanceServices(
   transactions,
   MemoryPaymentSources(),
   MemoryMerchants(),
   MemoryCategories(),
   MemoryTags(),
-  MemoryEvidence(),
+  evidence ?? MemoryEvidence(),
   MemoryUserPreferences(),
 );
 
@@ -427,6 +465,29 @@ final class _ReceiptTransactionRepository implements TransactionRepository {
   @override
   Future<void> save(Transaction transaction) async {
     values[transaction.id.value] = transaction;
+  }
+}
+
+final class _ThrowingExtractionEvidence implements EvidenceRepository {
+  @override
+  Future<EvidenceItem?> findById(EvidenceId id) async => null;
+
+  @override
+  Future<void> link(AttachmentLink link) async {}
+
+  @override
+  Future<List<EvidenceItem>> listForTransaction(TransactionId id) async =>
+      const [];
+
+  @override
+  Future<void> remove(EvidenceId id) async {}
+
+  @override
+  Future<void> save(EvidenceItem evidence) async {}
+
+  @override
+  Future<void> saveExtraction(Extraction extraction) async {
+    throw StateError('forced extraction failure');
   }
 }
 
