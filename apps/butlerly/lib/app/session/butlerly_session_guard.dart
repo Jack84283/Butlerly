@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 /// Application-level timing for Butlerly's fresh-session behavior.
@@ -46,6 +47,7 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    HardwareKeyboard.instance.addHandler(_handleKeyEvent);
     widget.router.routeInformationProvider.addListener(_handleRouteChanged);
     _lastActivityAt = widget.now();
     _launchActive = _isLaunchRoute;
@@ -62,10 +64,9 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
       widget.router.routeInformationProvider.addListener(_handleRouteChanged);
       _launchActive = _isLaunchRoute;
     }
-    if (oldWidget.inactivityTimeout != widget.inactivityTimeout ||
-        oldWidget.now != widget.now) {
-      _lastActivityAt = widget.now();
-    }
+    // Keep the original activity timestamp across rebuilds. In particular,
+    // injected clocks are often closures whose identity changes even though
+    // no user activity occurred.
     _scheduleTimeout();
   }
 
@@ -74,14 +75,15 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
     switch (state) {
       case AppLifecycleState.resumed:
         _foreground = true;
-        if (_launchActive) return;
-        _scheduleTimeout();
+        if (!_launchActive) _scheduleTimeout();
+        return;
       case AppLifecycleState.inactive:
       case AppLifecycleState.hidden:
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
         _foreground = false;
         _inactivityTimer?.cancel();
+        return;
     }
   }
 
@@ -101,6 +103,11 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
     // Home session rather than carrying pre-launch idle time forward.
     _lastActivityAt = widget.now();
     _scheduleTimeout();
+  }
+
+  bool _handleKeyEvent(KeyEvent event) {
+    if (event is KeyDownEvent || event is KeyRepeatEvent) _recordActivity();
+    return false;
   }
 
   void _recordActivity() {
@@ -142,6 +149,7 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
   void dispose() {
     _inactivityTimer?.cancel();
     widget.router.routeInformationProvider.removeListener(_handleRouteChanged);
+    HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
