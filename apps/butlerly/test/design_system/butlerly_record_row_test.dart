@@ -424,7 +424,7 @@ void main() {
     );
     expect(
       ButlerlyTransactionItemTokens.horizontalInset,
-      ButlerlySpacing.small,
+      ButlerlySpacing.compact,
     );
     expect(ButlerlyTransactionItemTokens.topPadding, ButlerlySpacing.small);
     expect(
