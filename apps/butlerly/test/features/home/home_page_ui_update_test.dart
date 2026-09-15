@@ -139,18 +139,23 @@ void main() {
     await tester.tap(recentAction);
     await tester.pumpAndSettle();
 
-    final uri = router.routeInformationProvider.value.uri;
+    // An imperative GoRouter push adds a page to the navigation stack without
+    // replacing the route-information location. Assert the pushed page/state
+    // itself, plus the ability to pop back to Home.
+    final searchUriText = tester.widget<Text>(
+      find.byKey(const Key('search-uri')),
+    );
+    final uri = Uri.parse(searchUriText.data!);
     expect(uri.path, '/search');
     expect(uri.queryParameters['from'], '2026-09-01');
     expect(uri.queryParameters['to'], isNotNull);
     expect(DateTime.parse(uri.queryParameters['to']!).year, 2026);
     expect(DateTime.parse(uri.queryParameters['to']!).month, 9);
-    expect(find.byKey(const Key('search-uri')), findsOneWidget);
     expect(router.canPop(), isTrue);
 
     router.pop();
     await tester.pumpAndSettle();
-    expect(router.routeInformationProvider.value.uri.path, '/');
+    expect(find.byKey(const Key('search-uri')), findsNothing);
     expect(find.byType(HomePage), findsOneWidget);
   });
 
