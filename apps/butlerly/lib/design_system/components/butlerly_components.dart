@@ -461,6 +461,7 @@ class ButlerlyDestructiveButton extends StatelessWidget {
 
   final VoidCallback? onPressed;
   final Widget child;
+
   final Widget? icon;
 
   @override
@@ -590,15 +591,23 @@ class ButlerlyTransactionListItem extends StatelessWidget {
               Padding(
                 padding: const EdgeInsetsDirectional.only(
                   start: ButlerlyTransactionItemTokens.categoryIconLeadingInset,
+                  top: ButlerlyTransactionItemTokens.leadingIconTopInset,
                 ),
                 child: categoryId != null
                     ? ButlerlyCategoryIcon(
+                        key: const Key('transaction-leading-icon'),
                         categoryId: categoryId!,
                         semanticLabel: categoryLabel,
+                        containerSize:
+                            ButlerlyTransactionItemTokens.leadingIconSize,
+                        glyphSize:
+                            ButlerlyTransactionItemTokens.leadingIconGlyphSize,
                       )
-                    : _NeutralTransactionIcon(),
+                    : const _NeutralTransactionIcon(),
               ),
-              const SizedBox(width: ButlerlySpacing.small),
+              const SizedBox(
+                width: ButlerlyTransactionItemTokens.leadingToContentSpacing,
+              ),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -608,64 +617,36 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(child: _title(context)),
-                        const SizedBox(width: ButlerlySpacing.small),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsetsDirectional.only(
-                              end: ButlerlyTransactionItemTokens
-                                  .metadataTrailingInset,
-                            ),
-                            child: Align(
-                              alignment: AlignmentDirectional.centerEnd,
-                              child: _signedAmount(context),
-                            ),
+                        const SizedBox(
+                          width: ButlerlyTransactionItemTokens.titleAmountSpacing,
+                        ),
+                        Flexible(
+                          child: Align(
+                            alignment: AlignmentDirectional.centerEnd,
+                            child: _signedAmount(context),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(
-                      height: ButlerlyTransactionItemTokens.headerSpacing,
-                    ),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: _categoryText(context)),
-                        if (showDate && meta != null) ...[
-                          const SizedBox(width: ButlerlySpacing.small),
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsetsDirectional.only(
-                                end: ButlerlyTransactionItemTokens
-                                    .metadataTrailingInset,
-                              ),
-                              child: Align(
-                                alignment: AlignmentDirectional.centerEnd,
-                                child: Text(
-                                  meta!,
-                                  maxLines: supportingContent == null
-                                      ? 1
-                                      : null,
-                                  overflow: supportingContent == null
-                                      ? TextOverflow.ellipsis
-                                      : TextOverflow.visible,
-                                  textAlign: TextAlign.end,
-                                  style: context.transactionItemDate,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    if (paymentSource case final source?
-                        when source.trim().isNotEmpty)
+                    if (_metadataParts.isNotEmpty) ...[
+                      const SizedBox(
+                        height: ButlerlyTransactionItemTokens.headerSpacing,
+                      ),
+                      _metadataText(context),
+                    ],
+                    if (showDate && meta != null)
                       Padding(
-                        padding: const EdgeInsets.only(
-                          top: ButlerlyTransactionItemTokens.metadataSpacing,
+                        padding: EdgeInsets.only(
+                          top: _metadataParts.isNotEmpty
+                              ? ButlerlyTransactionItemTokens.metadataSpacing
+                              : ButlerlyTransactionItemTokens.headerSpacing,
                         ),
                         child: Text(
-                          source,
-                          style: context.transactionItemMetadata,
+                          meta!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.start,
+                          style: context.transactionItemDate,
                         ),
                       ),
                     if (_visibleTags.isNotEmpty)
@@ -675,6 +656,8 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                         ),
                         child: Text(
                           _visibleTags.join(' · '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: context.transactionItemMetadata,
                         ),
                       ),
@@ -799,26 +782,34 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     textHeightBehavior: ButlerlyTransactionItemTokens.textHeightBehavior,
   );
 
-  Widget _categoryText(BuildContext context) => Text(
-    [
-      if (categoryLabel case final value? when value.trim().isNotEmpty) value,
-      if (subcategoryLabel case final value?
-          when value.trim().isNotEmpty && value != categoryLabel)
-        value,
-    ].join(' · '),
-    maxLines: 2,
+  Widget _metadataText(BuildContext context) => Text(
+    _metadataParts.join(' · '),
+    maxLines: 1,
     overflow: TextOverflow.ellipsis,
     style: context.transactionItemMetadata,
+    textHeightBehavior: ButlerlyTransactionItemTokens.textHeightBehavior,
   );
 
   Widget _signedAmount(BuildContext context) => Text(
     '${isIncome ? '+' : '−'}$amount $currency',
+    maxLines: 1,
+    overflow: TextOverflow.ellipsis,
     textAlign: TextAlign.end,
     style: context.transactionItemAmount.copyWith(
       color: isIncome ? context.colors.success : null,
     ),
     textHeightBehavior: ButlerlyTransactionItemTokens.textHeightBehavior,
   );
+
+  List<String> get _metadataParts => [
+    if (categoryLabel case final value? when value.trim().isNotEmpty)
+      value.trim(),
+    if (subcategoryLabel case final value?
+        when value.trim().isNotEmpty && value.trim() != categoryLabel?.trim())
+      value.trim(),
+    if (paymentSource case final value? when value.trim().isNotEmpty)
+      value.trim(),
+  ];
 
   List<String> get _visibleTags =>
       tags.where((value) => value.trim().isNotEmpty).toList(growable: false);
@@ -861,9 +852,12 @@ class ButlerlyTransactionListItem extends StatelessWidget {
 }
 
 class _NeutralTransactionIcon extends StatelessWidget {
+  const _NeutralTransactionIcon();
+
   @override
   Widget build(BuildContext context) => SizedBox.square(
-    dimension: ButlerlySize.categoryIconContainer,
+    key: const Key('transaction-leading-icon'),
+    dimension: ButlerlyTransactionItemTokens.leadingIconSize,
     child: DecoratedBox(
       decoration: BoxDecoration(
         color: context.colors.subtleSurface,
@@ -871,7 +865,7 @@ class _NeutralTransactionIcon extends StatelessWidget {
       ),
       child: Icon(
         Icons.receipt_long_outlined,
-        size: ButlerlySize.categoryIconGlyph,
+        size: ButlerlyTransactionItemTokens.leadingIconGlyphSize,
         color: context.colors.secondaryText,
       ),
     ),

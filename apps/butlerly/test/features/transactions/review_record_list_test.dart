@@ -1,6 +1,7 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_record_list.dart';
@@ -79,8 +80,8 @@ void main() {
           find.byKey(const ValueKey('transaction-group-divider-1')),
           findsNothing,
         );
-        expect(find.text('Visa •••• 1234'), findsNWidgets(3));
-        expect(find.text('Not categorized'), findsNWidgets(3));
+        expect(find.textContaining('Visa •••• 1234'), findsNWidgets(3));
+        expect(find.textContaining('Not categorized'), findsNWidgets(3));
         expect(find.text('−42.18 USD'), findsNWidgets(3));
         expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
         expect(find.byIcon(Icons.warning_amber_rounded), findsNothing);
@@ -89,16 +90,17 @@ void main() {
         final colors = AppTheme.light.extension<ButlerlySemanticColors>()!;
         expect(
           transactionTitle.style?.fontFamily,
-          ButlerlyTypography.editorialFontFamily,
+          AppTheme.light.textTheme.bodyMedium?.fontFamily,
         );
         expect(
-          transactionTitle.style?.fontFamilyFallback,
-          ButlerlyTypography.editorialFontFallback,
+          transactionTitle.style?.fontFamily,
+          isNot(ButlerlyTypography.editorialFontFamily),
         );
         expect(
           transactionTitle.style?.fontSize,
-          AppTheme.light.textTheme.bodyMedium?.fontSize,
+          ButlerlyTransactionItemTokens.titleFontSize,
         );
+        expect(transactionTitle.style?.fontWeight, FontWeight.w600);
         expect(transactionTitle.style?.color, colors.primaryText);
 
         expect(
