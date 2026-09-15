@@ -25,8 +25,8 @@ abstract final class ButlerlyTransactionItemTokens {
   static const titleLineHeight = 20 / 15;
   static const metadataFontSize = 14.0;
   static const metadataLineHeight = 18 / 14;
-  static const amountFontSize = 17.0;
-  static const amountLineHeight = 20 / 17;
+  static const amountFontSize = titleFontSize;
+  static const amountLineHeight = titleLineHeight;
 
   static const directionIconSize = 18.0;
   static const warningIconSize = 18.0;
