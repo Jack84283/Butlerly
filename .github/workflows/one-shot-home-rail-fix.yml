@@ -1,0 +1,90 @@
+name: One-shot Home rail width fix
+
+on:
+  push:
+    branches:
+      - codex/home-sticky-header-search
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/home-sticky-header-search
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-toolchain
+
+      - name: Apply targeted Home header width fix
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/butlerly/lib/features/foundation/presentation/home_page.dart')
+          text = path.read_text()
+
+          old = """            SliverPersistentHeader(
+              pinned: true,
+              delegate: _HomePinnedHeaderDelegate(
+                extent: _homeHeaderExtent(context),
+"""
+          new = """            SliverLayoutBuilder(
+              builder: (context, constraints) => SliverPersistentHeader(
+                pinned: true,
+                delegate: _HomePinnedHeaderDelegate(
+                  extent: _homeHeaderExtent(
+                    context,
+                    crossAxisExtent: constraints.crossAxisExtent,
+                  ),
+"""
+          assert old in text, 'expected pinned header call site not found'
+          text = text.replace(old, new, 1)
+
+          old = """              ),
+            ),
+            SliverPadding(
+"""
+          new = """                ),
+              ),
+            ),
+            SliverPadding(
+"""
+          marker = text.index('            SliverLayoutBuilder(')
+          tail = text[marker:]
+          assert old in tail, 'expected pinned header closing sequence not found'
+          text = text[:marker] + tail.replace(old, new, 1)
+
+          old = 'double _homeHeaderExtent(BuildContext context) {'
+          new = '''double _homeHeaderExtent(
+            BuildContext context, {
+            required double crossAxisExtent,
+          }) {'''
+          assert old in text, 'expected header extent signature not found'
+          text = text.replace(old, new, 1)
+
+          old = '(MediaQuery.sizeOf(context).width - ButlerlySize.phoneGutter * 2)'
+          new = '(crossAxisExtent - ButlerlySize.phoneGutter * 2)'
+          assert old in text, 'expected MediaQuery width measurement not found'
+          text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+
+          dart format apps/butlerly/lib/features/foundation/presentation/home_page.dart
+          rm .github/workflows/one-shot-home-rail-fix.yml
+
+      - name: Commit targeted fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/butlerly/lib/features/foundation/presentation/home_page.dart .github/workflows/one-shot-home-rail-fix.yml
+          git diff --cached --check
+          git commit -m "Measure Home header against actual sliver width"
+          git push origin HEAD:codex/home-sticky-header-search
