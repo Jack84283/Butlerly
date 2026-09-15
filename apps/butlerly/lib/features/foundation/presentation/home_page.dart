@@ -14,7 +14,6 @@ import 'package:butlerly/features/foundation/presentation/transaction_master_dat
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
-import 'package:butlerly/l10n/home_brand_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
@@ -508,7 +507,7 @@ double _homeHeaderExtent(BuildContext context) {
   }
 
   final appName = context.l10n.text('appName');
-  final tagline = context.l10n.homeTagline;
+  final tagline = context.l10n.text('homeTagline');
   if (stacked) {
     final brandHeight =
         measure(appName, appStyle, availableWidth) +
@@ -618,7 +617,7 @@ class _HomeHeader extends StatelessWidget {
             ),
             const SizedBox(height: ButlerlySpacing.xxs),
             Text(
-              context.l10n.homeTagline,
+              context.l10n.text('homeTagline'),
               maxLines: stacked ? null : 2,
               overflow: stacked ? null : TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
