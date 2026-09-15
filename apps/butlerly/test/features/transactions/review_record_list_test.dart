@@ -164,4 +164,68 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets(
+    'transaction and search ledger mode groups by month and shows row dates',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: TransactionRecordList(
+                transactions: [
+                  TransactionDto(
+                    id: 'sep-15',
+                    amount: '12.00',
+                    currency: 'USD',
+                    direction: 'expense',
+                    status: 'active',
+                    reviewState: 'clear',
+                    createdAt: DateTime.utc(2026),
+                    updatedAt: DateTime.utc(2026),
+                    transactionDate: '2026-09-15',
+                    description: 'September merchant',
+                  ),
+                  TransactionDto(
+                    id: 'sep-04',
+                    amount: '8.00',
+                    currency: 'USD',
+                    direction: 'expense',
+                    status: 'active',
+                    reviewState: 'clear',
+                    createdAt: DateTime.utc(2026),
+                    updatedAt: DateTime.utc(2026),
+                    transactionDate: '2026-09-04',
+                    description: 'Another September merchant',
+                  ),
+                  TransactionDto(
+                    id: 'aug-31',
+                    amount: '5.00',
+                    currency: 'USD',
+                    direction: 'expense',
+                    status: 'active',
+                    reviewState: 'clear',
+                    createdAt: DateTime.utc(2026),
+                    updatedAt: DateTime.utc(2026),
+                    transactionDate: '2026-08-31',
+                    description: 'August merchant',
+                  ),
+                ],
+                groupByFinancialDate: true,
+                onTap: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('September 2026'), findsOneWidget);
+      expect(find.text('August 2026'), findsOneWidget);
+      expect(find.byType(ButlerlyTransactionList), findsNWidgets(2));
+      expect(find.textContaining('Sep 15, 2026'), findsOneWidget);
+      expect(find.textContaining('Sep 4, 2026'), findsOneWidget);
+      expect(find.textContaining('Aug 31, 2026'), findsOneWidget);
+    },
+  );
 }
