@@ -76,7 +76,10 @@ class LegalDocumentPage extends StatelessWidget {
         }
         return SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(ButlerlySpacing.section),
+            padding: const EdgeInsets.symmetric(
+              horizontal: ButlerlySize.phoneGutter,
+              vertical: ButlerlySpacing.section,
+            ),
             child: SelectableText(snapshot.requireData),
           ),
         );
@@ -95,11 +98,7 @@ const _documents = [
   LegalDocument('termsOfUse', 'assets/legal/terms_of_use.txt'),
   LegalDocument('privacyPolicy', 'assets/legal/privacy_policy.txt'),
   LegalDocument(
-    'softwareLicenseThirdPartyNotices',
-    'assets/legal/third_party_notices.txt',
-  ),
+    'softwareLicenseThirdPartyNotices', 'assets/legal/third_party_notices.txt'),
   LegalDocument(
-    'aiProfessionalAdviceDisclosures',
-    'assets/legal/ai_disclosures.txt',
-  ),
+    'aiProfessionalAdviceDisclosures', 'assets/legal/ai_disclosures.txt'),
 ];
