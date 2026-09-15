@@ -113,7 +113,7 @@ void main() {
     final node = tester.getSemantics(
       find.byKey(const ValueKey('activity-target')),
     );
-    tester.binding.performSemanticsAction(
+    tester.binding.platformDispatcher.onSemanticsActionEvent?.call(
       ui.SemanticsActionEvent(
         type: ui.SemanticsAction.didGainAccessibilityFocus,
         viewId: tester.view.viewId,
@@ -244,6 +244,61 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('suspended background time expires even if monotonic clock pauses', (
+    tester,
+  ) async {
+    var elapsed = Duration.zero;
+    var wall = DateTime.utc(2026, 9, 15, 12);
+    final router = _guardTestRouter();
+    addTearDown(router.dispose);
+    addTearDown(
+      () => tester.binding.handleAppLifecycleStateChanged(
+        AppLifecycleState.resumed,
+      ),
+    );
+
+    await tester.pumpWidget(
+      _guardedApp(router, () => elapsed, wallNow: () => wall),
+    );
+    await tester.pump();
+
+    await tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    wall = wall.add(const Duration(minutes: 6));
+    await tester.pump(const Duration(minutes: 6));
+    await tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+
+    expect(router.routeInformationProvider.value.uri.path, '/launch');
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('backward clock change while backgrounded fails closed', (
+    tester,
+  ) async {
+    var elapsed = Duration.zero;
+    var wall = DateTime.utc(2026, 9, 15, 12);
+    final router = _guardTestRouter();
+    addTearDown(router.dispose);
+    addTearDown(
+      () => tester.binding.handleAppLifecycleStateChanged(
+        AppLifecycleState.resumed,
+      ),
+    );
+
+    await tester.pumpWidget(
+      _guardedApp(router, () => elapsed, wallNow: () => wall),
+    );
+    await tester.pump();
+
+    await tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    wall = wall.subtract(const Duration(minutes: 1));
+    await tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+
+    expect(router.routeInformationProvider.value.uri.path, '/launch');
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('Android resume after timeout launches without re-closing', (
     tester,
   ) async {
@@ -365,6 +420,7 @@ GoRouter _guardTestRouter() => GoRouter(
 Widget _guardedApp(
   GoRouter router,
   ButlerlyElapsedNow elapsedNow, {
+  ButlerlyWallNow wallNow = DateTime.now,
   TargetPlatform targetPlatform = TargetPlatform.iOS,
   ButlerlyPlatformExit? onPlatformExit,
 }) => MaterialApp.router(
@@ -372,6 +428,7 @@ Widget _guardedApp(
   builder: (_, child) => ButlerlySessionGuard(
     router: router,
     elapsedNow: elapsedNow,
+    wallNow: wallNow,
     targetPlatform: targetPlatform,
     onPlatformExit: onPlatformExit,
     child: child ?? const SizedBox.shrink(),
