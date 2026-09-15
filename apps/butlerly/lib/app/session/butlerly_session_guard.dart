@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,19 +12,27 @@ abstract final class ButlerlySessionConfig {
   static const launchDuration = Duration(seconds: 5);
 }
 
-/// Tracks foreground inactivity without terminating the operating-system
-/// process.
+typedef ButlerlyPlatformExit = Future<void> Function();
+
+/// Tracks inactivity and turns an expired session into a fresh Butlerly launch.
 ///
-/// Once the timeout is reached Butlerly navigates to `/launch`, which removes
-/// the active route stack from view. The launch flow then returns to Home as a
-/// fresh UI session. Repository data and user preferences are intentionally
-/// untouched.
+/// On Android Butlerly first switches to `/launch` and then asks the platform
+/// navigator to close the Flutter activity. Reopening the application therefore
+/// resumes from the branded launch route (or cold-starts there if the process
+/// was reclaimed). iOS intentionally does not receive a programmatic-exit
+/// request because iOS does not support apps terminating themselves; on iOS the
+/// same expiration still clears the active UI/navigation session and presents
+/// the fresh launch flow immediately.
+///
+/// Repository data and persisted user preferences are intentionally untouched.
 class ButlerlySessionGuard extends StatefulWidget {
   const ButlerlySessionGuard({
     required this.router,
     required this.child,
     this.inactivityTimeout = ButlerlySessionConfig.inactivityTimeout,
     this.now = DateTime.now,
+    this.targetPlatform,
+    this.onPlatformExit,
     super.key,
   });
 
@@ -32,6 +41,12 @@ class ButlerlySessionGuard extends StatefulWidget {
   final Duration inactivityTimeout;
   final DateTime Function() now;
 
+  /// Injectable for tests. Production falls back to [defaultTargetPlatform].
+  final TargetPlatform? targetPlatform;
+
+  /// Injectable for tests. Production uses [SystemNavigator.pop] on Android.
+  final ButlerlyPlatformExit? onPlatformExit;
+
   @override
   State<ButlerlySessionGuard> createState() => _ButlerlySessionGuardState();
 }
@@ -39,6 +54,7 @@ class ButlerlySessionGuard extends StatefulWidget {
 class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
     with WidgetsBindingObserver {
   Timer? _inactivityTimer;
+  TextEditingController? _activeEditingController;
   late DateTime _lastActivityAt;
   late bool _launchActive;
   bool _foreground = true;
@@ -48,9 +64,13 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+    FocusManager.instance.addListener(_handleFocusChanged);
     widget.router.routeInformationProvider.addListener(_handleRouteChanged);
     _lastActivityAt = widget.now();
     _launchActive = _isLaunchRoute;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncEditingController();
+    });
     if (!_launchActive) _scheduleTimeout();
   }
 
@@ -75,6 +95,7 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
     switch (state) {
       case AppLifecycleState.resumed:
         _foreground = true;
+        _syncEditingController();
         if (!_launchActive) _scheduleTimeout();
         return;
       case AppLifecycleState.inactive:
@@ -90,24 +111,61 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
   bool get _isLaunchRoute =>
       widget.router.routeInformationProvider.value.uri.path == '/launch';
 
+  TargetPlatform get _targetPlatform =>
+      widget.targetPlatform ?? defaultTargetPlatform;
+
   void _handleRouteChanged() {
     final launchActive = _isLaunchRoute;
     if (launchActive == _launchActive) return;
     _launchActive = launchActive;
     if (_launchActive) {
       _inactivityTimer?.cancel();
+      _setEditingController(null);
       return;
     }
 
     // The launch flow has completed. Start the inactivity clock from the fresh
     // Home session rather than carrying pre-launch idle time forward.
     _lastActivityAt = widget.now();
+    _syncEditingController();
     _scheduleTimeout();
   }
 
   bool _handleKeyEvent(KeyEvent event) {
     if (event is KeyDownEvent || event is KeyRepeatEvent) _recordActivity();
     return false;
+  }
+
+  void _handleFocusChanged() {
+    _syncEditingController();
+    _recordActivity();
+  }
+
+  void _handleEditingChanged() {
+    // Software keyboards deliver text through the text-input channel rather
+    // than HardwareKeyboard. Listening to the focused EditableText controller
+    // ensures mobile typing counts as activity without requiring every form to
+    // wire an inactivity callback manually.
+    _recordActivity();
+  }
+
+  void _syncEditingController() {
+    final focusContext = FocusManager.instance.primaryFocus?.context;
+    EditableText? editable;
+    final widgetAtFocus = focusContext?.widget;
+    if (widgetAtFocus is EditableText) {
+      editable = widgetAtFocus;
+    } else {
+      editable = focusContext?.findAncestorWidgetOfExactType<EditableText>();
+    }
+    _setEditingController(editable?.controller);
+  }
+
+  void _setEditingController(TextEditingController? controller) {
+    if (identical(_activeEditingController, controller)) return;
+    _activeEditingController?.removeListener(_handleEditingChanged);
+    _activeEditingController = controller;
+    _activeEditingController?.addListener(_handleEditingChanged);
   }
 
   void _recordActivity() {
@@ -142,13 +200,34 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
   void _expireSession() {
     _inactivityTimer?.cancel();
     if (!_foreground || _launchActive || !mounted) return;
+
+    // Set the fresh-launch route before requesting Android activity closure so
+    // a warm reopen cannot expose the prior route even if the process survives.
     widget.router.go('/launch');
+
+    if (_targetPlatform == TargetPlatform.android) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_isLaunchRoute) return;
+        unawaited(_requestPlatformExit());
+      });
+    }
+  }
+
+  Future<void> _requestPlatformExit() async {
+    final exit = widget.onPlatformExit;
+    if (exit != null) {
+      await exit();
+      return;
+    }
+    await SystemNavigator.pop();
   }
 
   @override
   void dispose() {
     _inactivityTimer?.cancel();
+    _setEditingController(null);
     widget.router.routeInformationProvider.removeListener(_handleRouteChanged);
+    FocusManager.instance.removeListener(_handleFocusChanged);
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
