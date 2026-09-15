@@ -83,6 +83,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   PreservedEvidenceSource? _preserved;
   ReceiptOcrResult? _ocrResult;
   DateTime? _date;
+  bool _dateNeedsReview = false;
   bool _processing = false;
   bool _saving = false;
   bool _committed = false;
@@ -287,6 +288,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       _source = stableSource;
       _processing = true;
       _ocrResult = null;
+      _dateNeedsReview = false;
     });
 
     try {
@@ -423,40 +425,128 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     );
   }
 
+  void _showSaveMessage(String key) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(context.l10n.text(key))));
+  }
+
+  Extraction? _buildExtraction(
+    EvidenceItem evidence,
+    ReceiptOcrResult? ocr,
+    String token,
+  ) {
+    if (ocr == null) return null;
+    return Extraction(
+      id: ExtractionId('extraction-$token'),
+      evidenceId: evidence.id,
+      values: {
+        ...ocr.toExtractionValues(),
+        'confirmedAmount': _amount.text.trim(),
+        'confirmedCurrency': _currency.text.trim(),
+        if (_date != null) 'confirmedDate': _iso(_date!),
+      },
+      provenance: Provenance(
+        id: ProvenanceId('extraction-provenance-$token'),
+        sourceType: ProvenanceSourceType.evidenceExtraction,
+        capturedAt: DateTime.now().toUtc(),
+        originalRepresentation: ocr.rawText,
+      ),
+      createdAt: DateTime.now().toUtc(),
+    );
+  }
+
+  Future<void> _persistExtractionBestEffort(
+    FinanceServices financeForSave,
+    Extraction extraction,
+  ) async {
+    try {
+      await financeForSave.saveExtraction(extraction);
+    } catch (_) {
+      // Transaction + receipt evidence are already durable. Extraction metadata
+      // is derived and must never make the canonical save appear to fail.
+    }
+  }
+
+  void _finishCommittedSave({
+    required EvidenceItem evidence,
+    required ReceiptOcrResult? ocr,
+    required String extractionToken,
+  }) {
+    _committed = true;
+    notifyTransactionChanged();
+    try {
+      final extraction = _buildExtraction(evidence, ocr, extractionToken);
+      if (extraction != null) {
+        final financeForSave = finance;
+        unawaited(_persistExtractionBestEffort(financeForSave, extraction));
+      }
+    } catch (_) {
+      // Derived extraction must not invalidate an already committed receipt.
+    }
+    if (!mounted) return;
+    setState(() => _saving = false);
+    Navigator.pop(context, true);
+  }
+
+  Future<bool> _rollbackCreatedTransaction(String transactionId) async {
+    try {
+      final result = await finance.deleteTransactionPermanently(transactionId);
+      if (result is ApplicationSuccess<void>) return true;
+      if (result is ApplicationFailure<void> &&
+          result.failure.code == ApplicationFailureCode.notFound) {
+        return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _handleCreatedTransactionAttachFailure(
+    String transactionId,
+  ) async {
+    final rolledBack = await _rollbackCreatedTransaction(transactionId);
+    if (!rolledBack) {
+      // The transaction may already be durable. Refresh the rest of the app and
+      // leave this route so a retry cannot create a second transaction.
+      notifyTransactionChanged();
+    }
+    if (!mounted) return;
+    setState(() => _saving = false);
+    _showSaveMessage('evidenceAttachFailed');
+    if (!rolledBack) {
+      Navigator.pop(context, true);
+    }
+  }
+
   Future<void> _attachReceiptToExisting(TransactionDto transaction) async {
     final preserved = _preserved;
     final ocr = _ocrResult;
-    if (preserved == null) return;
-    setState(() => _saving = true);
-    final evidence = await _attach(transaction.id, preserved);
-    if (evidence == null) {
-      if (mounted) setState(() => _saving = false);
+    if (preserved == null) {
+      _showSaveMessage('receiptStoreFailed');
       return;
     }
-    if (ocr != null) {
-      await finance.saveExtraction(
-        Extraction(
-          id: ExtractionId('extraction-${evidence.id.value}'),
-          evidenceId: evidence.id,
-          values: {
-            ...ocr.toExtractionValues(),
-            'confirmedAmount': _amount.text.trim(),
-            'confirmedCurrency': _currency.text.trim(),
-            if (_date != null) 'confirmedDate': _iso(_date!),
-          },
-          provenance: Provenance(
-            id: ProvenanceId('extraction-provenance-${evidence.id.value}'),
-            sourceType: ProvenanceSourceType.evidenceExtraction,
-            capturedAt: DateTime.now().toUtc(),
-            originalRepresentation: ocr.rawText,
-          ),
-          createdAt: DateTime.now().toUtc(),
-        ),
-      );
+    setState(() => _saving = true);
+    EvidenceItem? evidence;
+    try {
+      evidence = await _attach(transaction.id, preserved);
+    } catch (_) {
+      evidence = null;
     }
-    _committed = true;
-    notifyTransactionChanged();
-    if (mounted) Navigator.pop(context, true);
+    if (evidence == null) {
+      if (mounted) {
+        setState(() => _saving = false);
+        _showSaveMessage('evidenceAttachFailed');
+      }
+      return;
+    }
+    _finishCommittedSave(
+      evidence: evidence,
+      ocr: ocr,
+      extractionToken: evidence.id.value,
+    );
   }
 
   String? _match(String? raw) {
@@ -485,165 +575,173 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       lastDate: DateTime(2100),
     );
     if (value != null && mounted) {
-      setState(() => _date = value);
+      setState(() {
+        _date = value;
+        _dateNeedsReview = false;
+      });
     }
   }
 
   Future<void> _save() async {
     final source = _source;
     final preserved = _preserved;
-    if (source == null ||
-        preserved == null ||
-        _date == null ||
-        !_formKey.currentState!.validate()) {
+    if (source == null || preserved == null) {
+      _showSaveMessage('receiptStoreFailed');
       return;
     }
-
-    // Check strict duplicates immediately before creating anything so the
-    // final decision uses the values the user actually approved.
-    final proposed = TransactionDto(
-      id: '__receipt-proposed__',
-      amount: _amount.text.trim(),
-      currency: _currency.text.trim().toUpperCase(),
-      direction: TransactionDirection.expense.name,
-      status: TransactionStatus.active.name,
-      reviewState: TransactionReviewState.clear.name,
-      transactionDate: _iso(_date!),
-      createdAt: DateTime.now().toUtc(),
-      updatedAt: DateTime.now().toUtc(),
-      description: _merchantRaw.text.trim().isEmpty
-          ? 'Receipt purchase'
-          : _merchantRaw.text.trim(),
-      rawCounterparty: _merchantRaw.text.trim().isEmpty
-          ? null
-          : _merchantRaw.text.trim(),
-      paymentSourceId: _paymentSourceId,
-      merchantId: _merchantId,
-      categoryId: _categoryId,
-      tagIds: _tagIds.toList(growable: false),
-    );
-    final duplicate = await finance.duplicateTransactionChecker.call(
-      DuplicateTransactionCheckCommand(
-        transactionDate: proposed.transactionDate!,
-        amount: proposed.amount,
-        currency: proposed.currency,
-        direction: TransactionDirection.expense,
-        paymentSourceId: _paymentSourceId,
-        merchantId: _merchantId,
-      ),
-    );
-    if (!mounted) return;
-    if (duplicate case ApplicationSuccess<DuplicateTransactionCheckResult>(
-      value: final check,
-    ) when check.requiresConfirmation) {
-      final decision =
-          await showButlerlyBottomSheet<ButlerlyDuplicateConfirmationResult>(
-            context: context,
-            builder: (dialogContext) =>
-                ButlerlyDuplicateTransactionConfirmation(
-                  proposed: proposed,
-                  candidates: check.candidates,
-                  paymentSourceLabels: {
-                    for (final source in _sources)
-                      source.id.value: _paymentSourceLabel(source),
-                  },
-                  onDecision: (value) => Navigator.pop(dialogContext, value),
-                ),
-          );
-      if (!mounted ||
-          decision == null ||
-          decision.decision == ButlerlyDuplicateDecision.cancel) {
-        return;
-      }
-      if (decision.decision == ButlerlyDuplicateDecision.useExisting) {
-        final selectedId = decision.selectedTransactionId;
-        final selected = check.candidates
-            .where((candidate) => candidate.transaction.id == selectedId)
-            .firstOrNull;
-        if (selected != null) {
-          await _attachReceiptToExisting(selected.transaction);
-        }
-        return;
-      }
-    }
-
-    // Reconciliation is deliberately separate from strict duplicate identity.
-    final matches = await _findExistingPaymentMatches();
-    if (matches.isNotEmpty && mounted) {
-      final selected = await _selectExistingMatch(matches);
-      if (selected != null) {
-        await _attachReceiptToExisting(selected.transaction);
-        return;
-      }
+    if (!_formKey.currentState!.validate()) return;
+    if (_date == null) {
+      setState(() => _dateNeedsReview = true);
+      _showSaveMessage('dateNeedsReview');
+      await _pickDate();
+      if (!mounted || _date == null) return;
     }
 
     setState(() => _saving = true);
-    final token = DateTime.now().microsecondsSinceEpoch;
-    final result = await finance.createReceiptTransaction(
-      ReceiptTransactionCommand(
-        id: 'transaction-$token',
-        provenanceId: 'receipt-transaction-$token',
-        money: Money(
-          amount: DecimalValue.parse(_amount.text.trim()),
-          currency: CurrencyCode(_currency.text.trim()),
-        ),
+
+    TransactionDto? createdTransaction;
+    String? extractionToken;
+    try {
+      // Check strict duplicates immediately before creating anything so the
+      // final decision uses the values the user actually approved.
+      final proposed = TransactionDto(
+        id: '__receipt-proposed__',
+        amount: _amount.text.trim(),
+        currency: _currency.text.trim().toUpperCase(),
+        direction: TransactionDirection.expense.name,
+        status: TransactionStatus.active.name,
+        reviewState: TransactionReviewState.clear.name,
         transactionDate: _iso(_date!),
-        originalRepresentation: source.name,
-        rawCounterparty: _merchantRaw.text.trim().isEmpty
-            ? null
-            : _merchantRaw.text.trim(),
+        createdAt: DateTime.now().toUtc(),
+        updatedAt: DateTime.now().toUtc(),
         description: _merchantRaw.text.trim().isEmpty
             ? 'Receipt purchase'
             : _merchantRaw.text.trim(),
-        notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+        rawCounterparty: _merchantRaw.text.trim().isEmpty
+            ? null
+            : _merchantRaw.text.trim(),
+        paymentSourceId: _paymentSourceId,
         merchantId: _merchantId,
         categoryId: _categoryId,
-        subcategoryId: _subcategoryId,
-        paymentSourceId: _paymentSourceId,
         tagIds: _tagIds.toList(growable: false),
-      ),
-    );
-
-    if (result is! ApplicationSuccess<TransactionDto>) {
-      if (mounted) setState(() => _saving = false);
-      return;
-    }
-
-    final evidence = await _attach(result.value.id, preserved);
-    if (evidence == null) {
-      await finance.deleteTransactionPermanently(result.value.id);
-      if (mounted) setState(() => _saving = false);
-      return;
-    }
-
-    final ocr = _ocrResult;
-    if (ocr != null) {
-      await finance.saveExtraction(
-        Extraction(
-          id: ExtractionId('extraction-$token'),
-          evidenceId: evidence.id,
-          values: {
-            ...ocr.toExtractionValues(),
-            'confirmedAmount': _amount.text.trim(),
-            'confirmedCurrency': _currency.text.trim(),
-            if (_date != null) 'confirmedDate': _iso(_date!),
-          },
-          provenance: Provenance(
-            id: ProvenanceId('extraction-provenance-$token'),
-            sourceType: ProvenanceSourceType.evidenceExtraction,
-            capturedAt: DateTime.now().toUtc(),
-            originalRepresentation: ocr.rawText,
-          ),
-          createdAt: DateTime.now().toUtc(),
+      );
+      final duplicate = await finance.duplicateTransactionChecker.call(
+        DuplicateTransactionCheckCommand(
+          transactionDate: proposed.transactionDate!,
+          amount: proposed.amount,
+          currency: proposed.currency,
+          direction: TransactionDirection.expense,
+          paymentSourceId: _paymentSourceId,
+          merchantId: _merchantId,
         ),
       );
+      if (!mounted) return;
+      if (duplicate case ApplicationSuccess<DuplicateTransactionCheckResult>(
+        value: final check,
+      ) when check.requiresConfirmation) {
+        final decision =
+            await showButlerlyBottomSheet<ButlerlyDuplicateConfirmationResult>(
+              context: context,
+              builder: (dialogContext) =>
+                  ButlerlyDuplicateTransactionConfirmation(
+                    proposed: proposed,
+                    candidates: check.candidates,
+                    paymentSourceLabels: {
+                      for (final source in _sources)
+                        source.id.value: _paymentSourceLabel(source),
+                    },
+                    onDecision: (value) => Navigator.pop(dialogContext, value),
+                  ),
+            );
+        if (!mounted) return;
+        if (decision == null ||
+            decision.decision == ButlerlyDuplicateDecision.cancel) {
+          setState(() => _saving = false);
+          return;
+        }
+        if (decision.decision == ButlerlyDuplicateDecision.useExisting) {
+          final selectedId = decision.selectedTransactionId;
+          final selected = check.candidates
+              .where((candidate) => candidate.transaction.id == selectedId)
+              .firstOrNull;
+          if (selected != null) {
+            await _attachReceiptToExisting(selected.transaction);
+          } else if (mounted) {
+            setState(() => _saving = false);
+            _showSaveMessage('dataPreserved');
+          }
+          return;
+        }
+      }
+
+      // Reconciliation is deliberately separate from strict duplicate identity.
+      final matches = await _findExistingPaymentMatches();
+      if (matches.isNotEmpty && mounted) {
+        final selected = await _selectExistingMatch(matches);
+        if (selected != null) {
+          await _attachReceiptToExisting(selected.transaction);
+          return;
+        }
+      }
+
+      final token = DateTime.now().microsecondsSinceEpoch;
+      final result = await finance.createReceiptTransaction(
+        ReceiptTransactionCommand(
+          id: 'transaction-$token',
+          provenanceId: 'receipt-transaction-$token',
+          money: Money(
+            amount: DecimalValue.parse(_amount.text.trim()),
+            currency: CurrencyCode(_currency.text.trim()),
+          ),
+          transactionDate: _iso(_date!),
+          originalRepresentation: source.name,
+          rawCounterparty: _merchantRaw.text.trim().isEmpty
+              ? null
+              : _merchantRaw.text.trim(),
+          description: _merchantRaw.text.trim().isEmpty
+              ? 'Receipt purchase'
+              : _merchantRaw.text.trim(),
+          notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+          merchantId: _merchantId,
+          categoryId: _categoryId,
+          subcategoryId: _subcategoryId,
+          paymentSourceId: _paymentSourceId,
+          tagIds: _tagIds.toList(growable: false),
+        ),
+      );
+
+      if (result is! ApplicationSuccess<TransactionDto>) {
+        if (mounted) {
+          setState(() => _saving = false);
+          _showSaveMessage('dataPreserved');
+        }
+        return;
+      }
+      createdTransaction = result.value;
+      extractionToken = token.toString();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      _showSaveMessage('dataPreserved');
+      return;
     }
 
-    _committed = true;
-    notifyTransactionChanged();
-    if (!mounted) return;
-    setState(() => _saving = false);
-    Navigator.pop(context, true);
+    EvidenceItem? evidence;
+    try {
+      evidence = await _attach(createdTransaction.id, preserved);
+    } catch (_) {
+      evidence = null;
+    }
+    if (evidence == null) {
+      await _handleCreatedTransactionAttachFailure(createdTransaction.id);
+      return;
+    }
+
+    _finishCommittedSave(
+      evidence: evidence,
+      ocr: _ocrResult,
+      extractionToken: extractionToken,
+    );
   }
 
   @override
@@ -778,6 +876,16 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                         trailing: const Icon(Icons.calendar_today_outlined),
                         onTap: _pickDate,
                       ),
+                      if (_dateNeedsReview)
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            context.l10n.text('dateNeedsReview'),
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                          ),
+                        ),
                       const SizedBox(height: ButlerlySpacing.standard),
                       ButlerlyCategorySelector(
                         label: context.l10n.text('category'),
