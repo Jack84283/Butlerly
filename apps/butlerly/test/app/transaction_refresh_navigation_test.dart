@@ -29,9 +29,9 @@ void main() {
             body: FilledButton(
               onPressed: () => Navigator.of(context).push<void>(
                 MaterialPageRoute<void>(
-                  builder: (_) => Scaffold(
+                  builder: (detailContext) => Scaffold(
                     body: FilledButton(
-                      onPressed: () => Navigator.of(_).pop(),
+                      onPressed: () => Navigator.of(detailContext).pop(),
                       child: const Text('Back'),
                     ),
                   ),
