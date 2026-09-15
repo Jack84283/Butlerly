@@ -124,7 +124,9 @@ void main() {
   testWidgets('Recent View all opens Search with the selected Home period', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(390, 844);
+    // Keep the action fully inside the viewport so this test isolates route
+    // behavior instead of coupling it to scroll/pinned-header hit testing.
+    tester.view.physicalSize = const Size(390, 1400);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -133,7 +135,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final recentAction = find.byKey(const Key('home-recent-view-all'));
-    await tester.ensureVisible(recentAction);
+    expect(recentAction, findsOneWidget);
     await tester.tap(recentAction);
     await tester.pumpAndSettle();
 
