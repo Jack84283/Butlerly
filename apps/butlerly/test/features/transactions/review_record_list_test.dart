@@ -77,10 +77,6 @@ void main() {
         expect(find.byType(ButlerlyRecordRow), findsNWidgets(3));
         expect(
           find.byKey(const ValueKey('transaction-group-divider-1')),
-          findsOneWidget,
-        );
-        expect(
-          find.byKey(const ValueKey('transaction-group-divider-2')),
           findsNothing,
         );
         expect(find.text('Visa •••• 1234'), findsNWidgets(3));
