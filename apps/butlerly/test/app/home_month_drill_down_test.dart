@@ -2,6 +2,7 @@ import 'package:butlerly/app/butlerly_app.dart';
 import 'package:butlerly/app/router/app_router.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
+import 'package:butlerly/features/foundation/presentation/search_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -58,15 +59,15 @@ void main() {
     await tester.tap(searchAction);
     await tester.pumpAndSettle();
 
-    final uri = appRouter.routeInformationProvider.value.uri;
-    expect(uri.path, '/search');
-    expect(uri.queryParameters['from'], '2026-07-01');
-    expect(uri.queryParameters['to'], '2026-07-31');
+    expect(find.byType(SearchPage), findsOneWidget);
+    final searchPage = tester.widget<SearchPage>(find.byType(SearchPage));
+    expect(searchPage.initialQuery?.from, DateTime(2026, 7, 1));
+    expect(searchPage.initialQuery?.to, DateTime(2026, 7, 31));
     expect(appRouter.canPop(), isTrue);
 
     appRouter.pop();
     await tester.pumpAndSettle();
-    expect(appRouter.routeInformationProvider.value.uri.path, '/');
+    expect(find.byType(SearchPage), findsNothing);
     expect(find.byType(HomePage), findsOneWidget);
   });
 }
