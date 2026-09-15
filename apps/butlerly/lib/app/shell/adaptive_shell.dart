@@ -319,6 +319,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
   Widget _phoneNavigation(BuildContext context) {
     final destinations = _destinations(context);
     return DecoratedBox(
+      key: const ValueKey('primary-phone-navigation'),
       decoration: BoxDecoration(
         color: Theme.of(context).navigationBarTheme.backgroundColor,
         border: Border(top: BorderSide(color: context.colors.cardDivider)),
@@ -353,22 +354,46 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     );
   }
 
+  Widget _phoneBody(BuildContext context) => ColoredBox(
+    key: const ValueKey('primary-phone-body-surface'),
+    color: context.colors.background,
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth > ButlerlySize.phoneContentMaxWidth
+            ? ButlerlySize.phoneContentMaxWidth
+            : constraints.maxWidth;
+        return Center(
+          child: SizedBox(
+            key: const ValueKey('primary-phone-content'),
+            width: width,
+            height: constraints.maxHeight,
+            child: navigationShell,
+          ),
+        );
+      },
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final secondaryRouteVisible = widget.visibilityController
         .secondaryRouteVisibleFor(navigationShell.currentIndex);
+    final viewport = MediaQuery.sizeOf(context);
+    final tabletViewport = ButlerlySize.isTabletViewport(viewport);
     return PopScope(
       canPop: secondaryRouteVisible || navigationShell.currentIndex != 1,
       onPopInvokedWithResult: _handleSystemBack,
       child: LayoutBuilder(
         builder: (context, constraints) {
           if (secondaryRouteVisible) {
-            return Scaffold(body: navigationShell);
+            return Scaffold(
+              body: tabletViewport ? navigationShell : _phoneBody(context),
+            );
           }
 
-          if (constraints.maxWidth < ButlerlySize.phoneBreakpoint) {
+          if (!tabletViewport) {
             return Scaffold(
-              body: SafeArea(bottom: false, child: navigationShell),
+              body: SafeArea(bottom: false, child: _phoneBody(context)),
               bottomNavigationBar: _phoneNavigation(context),
             );
           }
