@@ -10,16 +10,22 @@ import 'package:go_router/go_router.dart';
 /// Branded in-app launch surface shown after the native platform splash.
 ///
 /// It is used for both a cold application start and a fresh session after the
-/// inactivity timeout. The operating-system process is never force-terminated.
+/// inactivity timeout. Android may close its activity after a foreground
+/// inactivity timeout, but the launch route is selected before that request so
+/// a warm reopen still returns here. iOS uses this surface in-app because it
+/// does not support programmatic application termination.
 class ButlerlyLaunchPage extends StatefulWidget {
   const ButlerlyLaunchPage({
     this.duration = ButlerlySessionConfig.launchDuration,
-    this.now = DateTime.now,
+    this.elapsedNow,
     super.key,
   });
 
   final Duration duration;
-  final DateTime Function() now;
+
+  /// Injectable monotonic elapsed-time source for tests. Production owns a
+  /// [Stopwatch], matching the inactivity guard's clock semantics.
+  final ButlerlyElapsedNow? elapsedNow;
 
   @override
   State<ButlerlyLaunchPage> createState() => _ButlerlyLaunchPageState();
@@ -28,13 +34,16 @@ class ButlerlyLaunchPage extends StatefulWidget {
 class _ButlerlyLaunchPageState extends State<ButlerlyLaunchPage>
     with WidgetsBindingObserver {
   Timer? _timer;
-  DateTime? _startedAt;
+  Stopwatch? _ownedElapsedClock;
+  late ButlerlyElapsedNow _elapsedNow;
+  Duration? _startedAt;
   late Duration _remaining;
   late bool _foreground;
 
   @override
   void initState() {
     super.initState();
+    _installElapsedClock(widget.elapsedNow);
     WidgetsBinding.instance.addObserver(this);
     _remaining = widget.duration;
     final lifecycleState = WidgetsBinding.instance.lifecycleState;
@@ -46,11 +55,31 @@ class _ButlerlyLaunchPageState extends State<ButlerlyLaunchPage>
   @override
   void didUpdateWidget(covariant ButlerlyLaunchPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.duration == widget.duration) return;
-    _timer?.cancel();
-    _startedAt = null;
-    _remaining = widget.duration;
+    final clockChanged = !identical(oldWidget.elapsedNow, widget.elapsedNow);
+    final durationChanged = oldWidget.duration != widget.duration;
+    if (!clockChanged && !durationChanged) return;
+
+    if (clockChanged && _foreground) _pauseCountdown();
+    if (clockChanged) _installElapsedClock(widget.elapsedNow);
+    if (durationChanged) {
+      _timer?.cancel();
+      _timer = null;
+      _startedAt = null;
+      _remaining = widget.duration;
+    }
     if (_foreground) _startCountdown();
+  }
+
+  void _installElapsedClock(ButlerlyElapsedNow? injected) {
+    _ownedElapsedClock?.stop();
+    _ownedElapsedClock = null;
+    if (injected != null) {
+      _elapsedNow = injected;
+      return;
+    }
+    final stopwatch = Stopwatch()..start();
+    _ownedElapsedClock = stopwatch;
+    _elapsedNow = () => stopwatch.elapsed;
   }
 
   @override
@@ -77,7 +106,7 @@ class _ButlerlyLaunchPageState extends State<ButlerlyLaunchPage>
   void _startCountdown() {
     _timer?.cancel();
     if (!_foreground || _remaining <= Duration.zero) return;
-    _startedAt = widget.now();
+    _startedAt = _elapsedNow();
     _timer = Timer(_remaining, _finish);
   }
 
@@ -87,7 +116,8 @@ class _ButlerlyLaunchPageState extends State<ButlerlyLaunchPage>
     final startedAt = _startedAt;
     _startedAt = null;
     if (startedAt == null) return;
-    final elapsed = widget.now().difference(startedAt);
+    final rawElapsed = _elapsedNow() - startedAt;
+    final elapsed = rawElapsed.isNegative ? Duration.zero : rawElapsed;
     if (elapsed <= Duration.zero) return;
     _remaining = elapsed >= _remaining
         ? Duration.zero
@@ -105,6 +135,7 @@ class _ButlerlyLaunchPageState extends State<ButlerlyLaunchPage>
   @override
   void dispose() {
     _timer?.cancel();
+    _ownedElapsedClock?.stop();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
