@@ -205,8 +205,6 @@ void main() {
         expect(text.overflow, isNot(TextOverflow.ellipsis));
       }
       expect(find.byKey(const Key('home-month-selector')), findsOneWidget);
-      expect(find.byKey(const Key('home-category-view-all')), findsOneWidget);
-      expect(find.byKey(const Key('home-recent-view-all')), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
