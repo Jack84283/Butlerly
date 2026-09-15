@@ -33,7 +33,7 @@ void main() {
     final amount = find.text('−82.47 USD');
     final metadata = find.text('Groceries · Supermarket · Visa ••••8421');
     final date = find.text('Sep 2, 2026');
-    final leadingIcon = find.byIcon(Icons.receipt_long_outlined);
+    final leadingIcon = find.byKey(const Key('transaction-leading-icon'));
 
     expect(title, findsOneWidget);
     expect(amount, findsOneWidget);
@@ -41,18 +41,9 @@ void main() {
     expect(date, findsOneWidget);
     expect(leadingIcon, findsOneWidget);
 
-    expect(
-      tester.getSize(leadingIcon).width,
-      ButlerlyTransactionItemTokens.leadingIconGlyphSize,
-    );
-    final iconParent = tester.getSize(
-      find.ancestor(
-        of: leadingIcon,
-        matching: find.byType(SizedBox),
-      ).first,
-    );
-    expect(iconParent.width, ButlerlyTransactionItemTokens.leadingIconSize);
-    expect(iconParent.height, ButlerlyTransactionItemTokens.leadingIconSize);
+    final leadingSize = tester.getSize(leadingIcon);
+    expect(leadingSize.width, ButlerlyTransactionItemTokens.leadingIconSize);
+    expect(leadingSize.height, ButlerlyTransactionItemTokens.leadingIconSize);
 
     final titleText = tester.widget<Text>(title);
     final amountText = tester.widget<Text>(amount);
