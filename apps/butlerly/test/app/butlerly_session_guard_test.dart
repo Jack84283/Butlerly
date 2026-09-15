@@ -351,7 +351,7 @@ void main() {
     wall = wall.add(const Duration(minutes: 6));
     await tester.pump(const Duration(minutes: 6));
     _resumeFromBackground(tester);
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(router.routeInformationProvider.value.uri.path, '/launch');
     expect(find.byKey(const ValueKey('test-launch')), findsOneWidget);
