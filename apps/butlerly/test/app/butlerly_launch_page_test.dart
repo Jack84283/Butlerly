@@ -8,13 +8,13 @@ void main() {
   testWidgets('launch countdown pauses while Butlerly is backgrounded', (
     tester,
   ) async {
-    var now = DateTime(2026, 9, 15, 12);
+    var elapsed = Duration.zero;
     final router = GoRouter(
       initialLocation: '/launch',
       routes: [
         GoRoute(
           path: '/launch',
-          builder: (_, _) => ButlerlyLaunchPage(now: () => now),
+          builder: (_, _) => ButlerlyLaunchPage(elapsedNow: () => elapsed),
         ),
         GoRoute(
           path: '/',
@@ -34,11 +34,11 @@ void main() {
     );
     await tester.pump();
 
-    now = now.add(const Duration(seconds: 2));
+    elapsed = const Duration(seconds: 2);
     await tester.pump(const Duration(seconds: 2));
     await tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
 
-    now = now.add(const Duration(seconds: 10));
+    elapsed = const Duration(seconds: 12);
     await tester.pump(const Duration(seconds: 10));
     expect(
       find.byKey(const ValueKey('butlerly-launch-screen')),
@@ -47,14 +47,14 @@ void main() {
 
     await tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pump();
-    now = now.add(const Duration(seconds: 2, milliseconds: 999));
+    elapsed = const Duration(seconds: 14, milliseconds: 999);
     await tester.pump(const Duration(seconds: 2, milliseconds: 999));
     expect(
       find.byKey(const ValueKey('butlerly-launch-screen')),
       findsOneWidget,
     );
 
-    now = now.add(const Duration(milliseconds: 1));
+    elapsed = const Duration(seconds: 15);
     await tester.pump(const Duration(milliseconds: 1));
     await tester.pump();
     expect(router.routeInformationProvider.value.uri.path, '/');
