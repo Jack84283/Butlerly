@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 
 /// Theme-independent Butlerly type scale.
 ///
-/// Phase 1 uses a platform editorial serif for brand/display roles while the
-/// product font decision remains open. Functional UI copy intentionally stays
-/// on the platform sans-serif for legibility and cross-platform familiarity.
+/// Butlerly uses Times New Roman as its preferred editorial serif. Platforms
+/// that do not provide it fall back through common serif families while
+/// functional UI copy intentionally stays on the platform sans-serif for
+/// legibility and cross-platform familiarity.
 abstract final class ButlerlyTypography {
-  static const editorialFontFamily = 'Georgia';
+  static const editorialFontFamily = 'Times New Roman';
   static const editorialFontFallback = <String>[
-    'Times New Roman',
+    'Times',
     'Noto Serif',
     'serif',
   ];
@@ -21,6 +22,16 @@ abstract final class ButlerlyTypography {
         fontFamilyFallback: editorialFontFallback,
         letterSpacing: -0.35,
       );
+
+  /// Applies only the editorial font family and fallback stack.
+  ///
+  /// This is intended for existing component styles that must retain their
+  /// current size, weight, color, height, and spacing while adopting the
+  /// Butlerly editorial serif.
+  static TextStyle editorialText(TextStyle base) => base.copyWith(
+    fontFamily: editorialFontFamily,
+    fontFamilyFallback: editorialFontFallback,
+  );
 
   static TextTheme apply(
     TextTheme base, {
