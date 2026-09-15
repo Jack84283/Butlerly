@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:butlerly/app/session/butlerly_session_guard.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/features/foundation/presentation/butlerly_launch_page.dart';
@@ -14,7 +16,7 @@ void main() {
   testWidgets('foreground inactivity resets the UI session to launch', (
     tester,
   ) async {
-    var now = DateTime(2026, 9, 15, 12);
+    var elapsed = Duration.zero;
     final router = _guardTestRouter();
     addTearDown(router.dispose);
     addTearDown(
@@ -23,11 +25,11 @@ void main() {
       ),
     );
 
-    await tester.pumpWidget(_guardedApp(router, () => now));
+    await tester.pumpWidget(_guardedApp(router, () => elapsed));
     await tester.pump();
     expect(router.routeInformationProvider.value.uri.path, '/work');
 
-    now = now.add(const Duration(minutes: 5));
+    elapsed = const Duration(minutes: 5);
     await tester.pump(const Duration(minutes: 5));
     await tester.pump();
 
@@ -39,23 +41,23 @@ void main() {
   testWidgets('pointer activity restarts the inactivity timeout', (
     tester,
   ) async {
-    var now = DateTime(2026, 9, 15, 12);
+    var elapsed = Duration.zero;
     final router = _guardTestRouter();
     addTearDown(router.dispose);
 
-    await tester.pumpWidget(_guardedApp(router, () => now));
+    await tester.pumpWidget(_guardedApp(router, () => elapsed));
     await tester.pump();
 
-    now = now.add(const Duration(minutes: 4));
+    elapsed = const Duration(minutes: 4);
     await tester.pump(const Duration(minutes: 4));
     await tester.tap(find.byKey(const ValueKey('activity-target')));
     await tester.pump();
 
-    now = now.add(const Duration(minutes: 4, seconds: 59));
+    elapsed = const Duration(minutes: 8, seconds: 59);
     await tester.pump(const Duration(minutes: 4, seconds: 59));
     expect(router.routeInformationProvider.value.uri.path, '/work');
 
-    now = now.add(const Duration(seconds: 1));
+    elapsed = const Duration(minutes: 9);
     await tester.pump(const Duration(seconds: 1));
     await tester.pump();
     expect(router.routeInformationProvider.value.uri.path, '/launch');
@@ -65,19 +67,19 @@ void main() {
   testWidgets('software text editing restarts the inactivity timeout', (
     tester,
   ) async {
-    var now = DateTime(2026, 9, 15, 12);
+    var elapsed = Duration.zero;
     final router = _guardTestRouter();
     addTearDown(router.dispose);
 
-    await tester.pumpWidget(_guardedApp(router, () => now));
+    await tester.pumpWidget(_guardedApp(router, () => elapsed));
     await tester.pump();
 
-    now = now.add(const Duration(minutes: 4, seconds: 50));
+    elapsed = const Duration(minutes: 4, seconds: 50);
     await tester.pump(const Duration(minutes: 4, seconds: 50));
     await tester.tap(find.byKey(const ValueKey('activity-text-input')));
     await tester.pump();
 
-    now = now.add(const Duration(minutes: 4, seconds: 50));
+    elapsed = const Duration(minutes: 9, seconds: 40);
     await tester.pump(const Duration(minutes: 4, seconds: 50));
     await tester.enterText(
       find.byKey(const ValueKey('activity-text-input')),
@@ -85,11 +87,103 @@ void main() {
     );
     await tester.pump();
 
-    now = now.add(const Duration(minutes: 4, seconds: 59));
+    elapsed = const Duration(minutes: 14, seconds: 39);
     await tester.pump(const Duration(minutes: 4, seconds: 59));
     expect(router.routeInformationProvider.value.uri.path, '/work');
 
-    now = now.add(const Duration(seconds: 1));
+    elapsed = const Duration(minutes: 14, seconds: 40);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+    expect(router.routeInformationProvider.value.uri.path, '/launch');
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('semantic accessibility action restarts inactivity timeout', (
+    tester,
+  ) async {
+    var elapsed = Duration.zero;
+    final router = _guardTestRouter();
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_guardedApp(router, () => elapsed));
+    await tester.pump();
+
+    elapsed = const Duration(minutes: 4, seconds: 50);
+    await tester.pump(const Duration(minutes: 4, seconds: 50));
+    final node = tester.getSemantics(
+      find.byKey(const ValueKey('activity-target')),
+    );
+    tester.binding.performSemanticsAction(
+      ui.SemanticsActionEvent(
+        type: ui.SemanticsAction.tap,
+        viewId: tester.view.viewId,
+        nodeId: node.id,
+      ),
+    );
+    await tester.pump();
+
+    elapsed = const Duration(minutes: 9, seconds: 49);
+    await tester.pump(const Duration(minutes: 4, seconds: 59));
+    expect(router.routeInformationProvider.value.uri.path, '/work');
+
+    elapsed = const Duration(minutes: 9, seconds: 50);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+    expect(router.routeInformationProvider.value.uri.path, '/launch');
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('accessibility focus navigation restarts inactivity timeout', (
+    tester,
+  ) async {
+    var elapsed = Duration.zero;
+    final router = _guardTestRouter();
+    addTearDown(router.dispose);
+    addTearDown(() => tester.binding.accessibilityFocus.value = null);
+
+    await tester.pumpWidget(_guardedApp(router, () => elapsed));
+    await tester.pump();
+
+    elapsed = const Duration(minutes: 4, seconds: 50);
+    await tester.pump(const Duration(minutes: 4, seconds: 50));
+    final node = tester.getSemantics(
+      find.byKey(const ValueKey('activity-target')),
+    );
+    tester.binding.accessibilityFocus.value = node.id;
+    await tester.pump();
+
+    elapsed = const Duration(minutes: 9, seconds: 49);
+    await tester.pump(const Duration(minutes: 4, seconds: 59));
+    expect(router.routeInformationProvider.value.uri.path, '/work');
+
+    elapsed = const Duration(minutes: 9, seconds: 50);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+    expect(router.routeInformationProvider.value.uri.path, '/launch');
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('changing an injected elapsed source preserves idle duration', (
+    tester,
+  ) async {
+    var firstClock = Duration.zero;
+    var secondClock = const Duration(hours: 2);
+    final router = _guardTestRouter();
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_guardedApp(router, () => firstClock));
+    await tester.pump();
+
+    firstClock = const Duration(minutes: 4);
+    await tester.pump(const Duration(minutes: 4));
+    await tester.pumpWidget(_guardedApp(router, () => secondClock));
+    await tester.pump();
+
+    secondClock += const Duration(seconds: 59);
+    await tester.pump(const Duration(seconds: 59));
+    expect(router.routeInformationProvider.value.uri.path, '/work');
+
+    secondClock += const Duration(seconds: 1);
     await tester.pump(const Duration(seconds: 1));
     await tester.pump();
     expect(router.routeInformationProvider.value.uri.path, '/launch');
@@ -99,7 +193,7 @@ void main() {
   testWidgets('Android inactivity closes the activity after selecting launch', (
     tester,
   ) async {
-    var now = DateTime(2026, 9, 15, 12);
+    var elapsed = Duration.zero;
     var exits = 0;
     final router = _guardTestRouter();
     addTearDown(router.dispose);
@@ -107,7 +201,7 @@ void main() {
     await tester.pumpWidget(
       _guardedApp(
         router,
-        () => now,
+        () => elapsed,
         targetPlatform: TargetPlatform.android,
         onPlatformExit: () async {
           exits += 1;
@@ -116,7 +210,7 @@ void main() {
     );
     await tester.pump();
 
-    now = now.add(const Duration(minutes: 5));
+    elapsed = const Duration(minutes: 5);
     await tester.pump(const Duration(minutes: 5));
     await tester.pump();
 
@@ -128,7 +222,7 @@ void main() {
   testWidgets('iOS uses fresh-launch reset without unsupported forced exit', (
     tester,
   ) async {
-    var now = DateTime(2026, 9, 15, 12);
+    var elapsed = Duration.zero;
     var exits = 0;
     final router = _guardTestRouter();
     addTearDown(router.dispose);
@@ -136,7 +230,7 @@ void main() {
     await tester.pumpWidget(
       _guardedApp(
         router,
-        () => now,
+        () => elapsed,
         targetPlatform: TargetPlatform.iOS,
         onPlatformExit: () async {
           exits += 1;
@@ -145,7 +239,7 @@ void main() {
     );
     await tester.pump();
 
-    now = now.add(const Duration(minutes: 5));
+    elapsed = const Duration(minutes: 5);
     await tester.pump(const Duration(minutes: 5));
     await tester.pump();
 
@@ -157,7 +251,7 @@ void main() {
   testWidgets('short background interval preserves the current route', (
     tester,
   ) async {
-    var now = DateTime(2026, 9, 15, 12);
+    var elapsed = Duration.zero;
     final router = _guardTestRouter();
     addTearDown(router.dispose);
     addTearDown(
@@ -166,11 +260,11 @@ void main() {
       ),
     );
 
-    await tester.pumpWidget(_guardedApp(router, () => now));
+    await tester.pumpWidget(_guardedApp(router, () => elapsed));
     await tester.pump();
 
     await tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
-    now = now.add(const Duration(minutes: 4));
+    elapsed = const Duration(minutes: 4);
     await tester.pump(const Duration(minutes: 4));
     await tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pump();
@@ -183,7 +277,7 @@ void main() {
   testWidgets('Android resume after timeout launches without re-closing', (
     tester,
   ) async {
-    var now = DateTime(2026, 9, 15, 12);
+    var elapsed = Duration.zero;
     var exits = 0;
     final router = _guardTestRouter();
     addTearDown(router.dispose);
@@ -196,7 +290,7 @@ void main() {
     await tester.pumpWidget(
       _guardedApp(
         router,
-        () => now,
+        () => elapsed,
         targetPlatform: TargetPlatform.android,
         onPlatformExit: () async {
           exits += 1;
@@ -206,7 +300,7 @@ void main() {
     await tester.pump();
 
     await tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
-    now = now.add(const Duration(minutes: 6));
+    elapsed = const Duration(minutes: 6);
     await tester.pump(const Duration(minutes: 6));
     await tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pump();
@@ -300,14 +394,14 @@ GoRouter _guardTestRouter() => GoRouter(
 
 Widget _guardedApp(
   GoRouter router,
-  DateTime Function() now, {
-  TargetPlatform? targetPlatform,
+  ButlerlyElapsedNow elapsedNow, {
+  TargetPlatform targetPlatform = TargetPlatform.iOS,
   ButlerlyPlatformExit? onPlatformExit,
 }) => MaterialApp.router(
   routerConfig: router,
   builder: (_, child) => ButlerlySessionGuard(
     router: router,
-    now: now,
+    elapsedNow: elapsedNow,
     targetPlatform: targetPlatform,
     onPlatformExit: onPlatformExit,
     child: child ?? const SizedBox.shrink(),
