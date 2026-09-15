@@ -434,44 +434,117 @@ String homeGreetingKey(DateTime localTime) {
 double _homeHeaderExtent(BuildContext context) {
   final textTheme = Theme.of(context).textTheme;
   final scaler = MediaQuery.textScalerOf(context);
+  final locale = Localizations.localeOf(context);
+  final localeTag = locale.toLanguageTag();
   final availableWidth =
       (MediaQuery.sizeOf(context).width - ButlerlySize.phoneGutter * 2)
-          .clamp(0.0, ButlerlySize.pageContentMaxWidth)
+          .clamp(1.0, ButlerlySize.pageContentMaxWidth)
           .toDouble();
   final scaledBody = scaler.scale(14);
   final stacked = scaledBody > 18 || availableWidth < 300;
+  final direction = Directionality.of(context);
 
-  double lineHeight(TextStyle? style, double fallbackSize) {
-    final size = scaler.scale(style?.fontSize ?? fallbackSize);
-    return size * (style?.height ?? 1.2);
+  final appStyle = textTheme.headlineLarge ?? const TextStyle(fontSize: 32);
+  final taglineStyle = (textTheme.labelMedium ?? const TextStyle()).copyWith(
+    letterSpacing: 2.2,
+    fontSize: 9.5,
+  );
+  final greetingStyle = textTheme.bodyMedium ?? const TextStyle(fontSize: 14);
+  final monthStyle = textTheme.titleMedium ?? const TextStyle(fontSize: 16);
+
+  double measure(
+    String text,
+    TextStyle style,
+    double maxWidth, {
+    int? maxLines,
+  }) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: direction,
+      textScaler: scaler,
+      locale: locale,
+      maxLines: maxLines,
+    )..layout(maxWidth: maxWidth.clamp(1.0, double.infinity).toDouble());
+    return painter.height;
   }
 
-  final taglineLineHeight = scaler.scale(9.5) * 1.2;
-  final brandHeight =
-      lineHeight(textTheme.headlineLarge, 32) +
-      ButlerlySpacing.xxs +
-      taglineLineHeight * (stacked ? 3 : 2);
-  final greetingHeight = lineHeight(textTheme.bodyMedium, 14);
-  final monthTextHeight =
-      lineHeight(textTheme.titleMedium, 16) * (stacked ? 2 : 1);
-  final monthControlHeight = monthTextHeight + ButlerlySpacing.compact * 2;
-  final effectiveMonthHeight = monthControlHeight > kMinInteractiveDimension
-      ? monthControlHeight
-      : kMinInteractiveDimension;
-  final contextHeight =
-      greetingHeight + ButlerlySpacing.xxs + effectiveMonthHeight;
-  final fontMetricSlack = scaler.scale(4);
+  double maxMeasured(
+    Iterable<String> values,
+    TextStyle style,
+    double maxWidth, {
+    int? maxLines,
+  }) => values.fold<double>(
+    0,
+    (height, value) => height > measure(value, style, maxWidth, maxLines: maxLines)
+        ? height
+        : measure(value, style, maxWidth, maxLines: maxLines),
+  );
+
+  final greetingLabels = <String>[
+    context.l10n.text('greetingMorning'),
+    context.l10n.text('greetingAfternoon'),
+    context.l10n.text('greetingEvening'),
+  ];
+  final monthLabels = <String>[
+    for (var month = 1; month <= 12; month++)
+      DateFormat.yMMMM(localeTag).format(DateTime(2026, month)),
+  ];
+
+  double monthButtonHeight(double width, {required bool wrap}) {
+    final textWidth =
+        (width - ButlerlySpacing.compact * 2 - ButlerlySpacing.micro - 20)
+            .clamp(1.0, double.infinity)
+            .toDouble();
+    final textHeight = maxMeasured(
+      monthLabels,
+      monthStyle,
+      textWidth,
+      maxLines: wrap ? null : 1,
+    );
+    final contentHeight = textHeight + ButlerlySpacing.compact * 2;
+    return contentHeight > kMinInteractiveDimension
+        ? contentHeight
+        : kMinInteractiveDimension;
+  }
+
+  final appName = context.l10n.text('appName');
+  final tagline = context.l10n.homeTagline;
   if (stacked) {
+    final brandHeight =
+        measure(appName, appStyle, availableWidth) +
+        ButlerlySpacing.xxs +
+        measure(tagline, taglineStyle, availableWidth);
+    final contextHeight =
+        maxMeasured(greetingLabels, greetingStyle, availableWidth) +
+        ButlerlySpacing.xxs +
+        monthButtonHeight(availableWidth, wrap: true);
     return brandHeight +
         ButlerlySpacing.standard +
         contextHeight +
         ButlerlySpacing.small * 2 +
-        fontMetricSlack;
+        scaler.scale(2);
   }
+
+  final rowWidth = availableWidth - ButlerlySpacing.standard;
+  final brandWidth = rowWidth * 5 / 9;
+  final contextWidth = rowWidth * 4 / 9;
+  final brandHeight =
+      measure(appName, appStyle, brandWidth, maxLines: 1) +
+      ButlerlySpacing.xxs +
+      measure(tagline, taglineStyle, brandWidth, maxLines: 2);
+  final contextHeight =
+      maxMeasured(
+        greetingLabels,
+        greetingStyle,
+        contextWidth,
+        maxLines: 1,
+      ) +
+      ButlerlySpacing.xxs +
+      monthButtonHeight(contextWidth, wrap: false);
   final contentHeight = brandHeight > contextHeight
       ? brandHeight
       : contextHeight;
-  return contentHeight + ButlerlySpacing.small * 2 + fontMetricSlack;
+  return contentHeight + ButlerlySpacing.small * 2 + scaler.scale(2);
 }
 
 class _HomePinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
@@ -572,6 +645,11 @@ class _HomeHeader extends StatelessWidget {
               onPressed: onMonthTap,
               style: TextButton.styleFrom(
                 alignment: AlignmentDirectional.centerEnd,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: ButlerlySpacing.compact,
+                  vertical: ButlerlySpacing.compact,
+                ),
+                minimumSize: const Size(0, kMinInteractiveDimension),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
