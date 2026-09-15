@@ -86,6 +86,7 @@ class _ButlerlyLaunchPageState extends State<ButlerlyLaunchPage>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
+        if (_foreground) return;
         _foreground = true;
         if (_remaining <= Duration.zero) {
           _finish();
@@ -97,6 +98,7 @@ class _ButlerlyLaunchPageState extends State<ButlerlyLaunchPage>
       case AppLifecycleState.hidden:
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
+        if (!_foreground) return;
         _foreground = false;
         _pauseCountdown();
         return;
