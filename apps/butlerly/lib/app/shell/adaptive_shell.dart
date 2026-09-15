@@ -85,10 +85,12 @@ class PrimaryShellNavigatorObserver extends NavigatorObserver {
   PrimaryShellNavigatorObserver({
     required this.branchIndex,
     required this.controller,
+    this.onPop,
   });
 
   final int branchIndex;
   final PrimaryShellVisibilityController controller;
+  final VoidCallback? onPop;
 
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
@@ -98,6 +100,7 @@ class PrimaryShellNavigatorObserver extends NavigatorObserver {
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
     controller.updateTopRoute(branchIndex, previousRoute);
+    onPop?.call();
   }
 
   @override
