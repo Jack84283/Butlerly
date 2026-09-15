@@ -15,6 +15,7 @@ import 'package:butlerly/features/foundation/presentation/review_page.dart';
 import 'package:butlerly/features/foundation/presentation/search_page.dart';
 import 'package:butlerly/features/foundation/presentation/settings_page.dart';
 import 'package:butlerly/features/foundation/presentation/statement_capture_page.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/features/insights/presentation/insights_page.dart';
 import 'package:butlerly/features/tools/presentation/tools_page.dart';
@@ -30,6 +31,7 @@ PrimaryShellNavigatorObserver _primaryObserver(int branchIndex) =>
     PrimaryShellNavigatorObserver(
       branchIndex: branchIndex,
       controller: _primaryShellVisibility,
+      onPop: branchIndex == 2 ? notifyTransactionChanged : null,
     );
 
 NoTransitionPage<void> _primaryPage(
@@ -94,7 +96,13 @@ final appRouter = GoRouter(
                 );
                 return _primaryPage(
                   'transactions',
-                  TransactionsPage(query: query),
+                  RefreshIndicator(
+                    onRefresh: () async {
+                      notifyTransactionChanged();
+                      await WidgetsBinding.instance.endOfFrame;
+                    },
+                    child: TransactionsPage(query: query),
+                  ),
                   // StatefulShellRoute keeps branch widgets alive. A query
                   // change represents a different transaction result set, so
                   // give the page a semantic key and never retain stale state.
