@@ -29,6 +29,88 @@ final class ButlerlyStorageUnavailableException implements Exception {
   final Object? cause;
 }
 
+@visibleForTesting
+final class ButlerlyStartupFailure implements Exception {
+  const ButlerlyStartupFailure({
+    required this.code,
+    required this.phase,
+    required this.cause,
+  });
+
+  final String code;
+  final String phase;
+  final Object cause;
+
+  @override
+  String toString() => 'ButlerlyStartupFailure($code, $phase)';
+}
+
+@visibleForTesting
+ButlerlyStartupFailure classifyStartupFailure(String phase, Object error) {
+  if (error is ButlerlyStartupFailure) return error;
+
+  if (error is ButlerlyStorageUnavailableException) {
+    return ButlerlyStartupFailure(
+      code: 'DB-UNAVAILABLE',
+      phase: phase,
+      cause: error,
+    );
+  }
+
+  if (phase == 'database initialization') {
+    if (error is RepositoryException) {
+      final code = switch (error.code) {
+        RepositoryFailureCode.unavailable => 'DB-UNAVAILABLE',
+        RepositoryFailureCode.busy => 'DB-BUSY',
+        RepositoryFailureCode.permission => 'DB-PERMISSION',
+        RepositoryFailureCode.storageFull => 'DB-STORAGE-FULL',
+        RepositoryFailureCode.constraint => 'DB-CONSTRAINT',
+        RepositoryFailureCode.notFound => 'DB-NOT-FOUND',
+        RepositoryFailureCode.migration => 'DB-MIGRATION',
+        RepositoryFailureCode.integrity => 'DB-INTEGRITY',
+        RepositoryFailureCode.unknown => 'DB-UNKNOWN',
+      };
+      return ButlerlyStartupFailure(code: code, phase: phase, cause: error);
+    }
+    return ButlerlyStartupFailure(
+      code: 'DB-ERROR',
+      phase: phase,
+      cause: error,
+    );
+  }
+
+  final code = switch (phase) {
+    'locale initialization' => 'INIT-LOCALE',
+    'dependency configuration' => 'INIT-DI',
+    'restore recovery initialization' => 'RECOVERY-STATE',
+    'interrupted restore recovery' => 'RECOVERY-RESTORE',
+    'private artifact cleanup' => 'MAINTENANCE-CLEANUP',
+    'analysis rule installation' => 'ANALYSIS-RULES',
+    _ => 'STARTUP-UNKNOWN',
+  };
+  return ButlerlyStartupFailure(code: code, phase: phase, cause: error);
+}
+
+@visibleForTesting
+String startupDiagnosticCode(Object error) {
+  if (error is ButlerlyStartupFailure) return error.code;
+  if (error is ButlerlyStorageUnavailableException) return 'DB-UNAVAILABLE';
+  if (error is RepositoryException) {
+    return switch (error.code) {
+      RepositoryFailureCode.unavailable => 'DB-UNAVAILABLE',
+      RepositoryFailureCode.busy => 'DB-BUSY',
+      RepositoryFailureCode.permission => 'DB-PERMISSION',
+      RepositoryFailureCode.storageFull => 'DB-STORAGE-FULL',
+      RepositoryFailureCode.constraint => 'DB-CONSTRAINT',
+      RepositoryFailureCode.notFound => 'DB-NOT-FOUND',
+      RepositoryFailureCode.migration => 'DB-MIGRATION',
+      RepositoryFailureCode.integrity => 'DB-INTEGRITY',
+      RepositoryFailureCode.unknown => 'DB-UNKNOWN',
+    };
+  }
+  return 'STARTUP-UNKNOWN';
+}
+
 Future<void> bootstrap() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -286,7 +368,8 @@ class _StartupFailureBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final storageUnavailable = error is ButlerlyStorageUnavailableException;
+    final diagnosticCode = startupDiagnosticCode(error);
+    final storageUnavailable = diagnosticCode == 'DB-UNAVAILABLE';
     return Scaffold(
       key: const ValueKey('butlerly-startup-screen'),
       body: SafeArea(
@@ -314,6 +397,13 @@ class _StartupFailureBody extends StatelessWidget {
                   Text(
                     context.l10n.text('dataPreserved'),
                     textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Diagnostic: $diagnosticCode',
+                    key: const ValueKey('butlerly-startup-diagnostic'),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.labelMedium,
                   ),
                   const SizedBox(height: 20),
                   FilledButton.icon(
@@ -438,7 +528,12 @@ Future<void> initializeButlerly(AppLogger logger) async {
 
     logger.info('Startup: application ready');
   } catch (error, stackTrace) {
-    logger.severe('Startup failed during $phase', error, stackTrace);
+    final failure = classifyStartupFailure(phase, error);
+    logger.severe(
+      'Startup failed during $phase [${failure.code}]',
+      error,
+      stackTrace,
+    );
 
     try {
       await services.reset(dispose: false);
@@ -447,7 +542,7 @@ Future<void> initializeButlerly(AppLogger logger) async {
       await database?.close();
     } catch (_) {}
 
-    Error.throwWithStackTrace(error, stackTrace);
+    Error.throwWithStackTrace(failure, stackTrace);
   }
 }
 
