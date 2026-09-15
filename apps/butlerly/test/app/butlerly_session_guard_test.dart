@@ -233,10 +233,10 @@ void main() {
     await tester.pumpWidget(_guardedApp(router, () => elapsed));
     await tester.pump();
 
-    await tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     elapsed = const Duration(minutes: 4);
     await tester.pump(const Duration(minutes: 4));
-    await tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pump();
 
     expect(router.routeInformationProvider.value.uri.path, '/work');
@@ -244,7 +244,7 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('suspended background time expires even if monotonic clock pauses', (
+  testWidgets('timely resume restarts the full inactivity timeout', (
     tester,
   ) async {
     var elapsed = Duration.zero;
@@ -262,10 +262,51 @@ void main() {
     );
     await tester.pump();
 
-    await tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    elapsed = const Duration(minutes: 4, seconds: 50);
+    await tester.pump(const Duration(minutes: 4, seconds: 50));
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+
+    wall = wall.add(const Duration(seconds: 5));
+    elapsed = const Duration(minutes: 4, seconds: 55);
+    await tester.pump(const Duration(seconds: 5));
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+
+    expect(router.routeInformationProvider.value.uri.path, '/work');
+
+    elapsed = const Duration(minutes: 9, seconds: 54);
+    await tester.pump(const Duration(minutes: 4, seconds: 59));
+    expect(router.routeInformationProvider.value.uri.path, '/work');
+
+    elapsed = const Duration(minutes: 9, seconds: 55);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+    expect(router.routeInformationProvider.value.uri.path, '/launch');
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('suspended background time expires even if monotonic clock pauses', (
+    tester,
+  ) async {
+    final elapsed = Duration.zero;
+    var wall = DateTime.utc(2026, 9, 15, 12);
+    final router = _guardTestRouter();
+    addTearDown(router.dispose);
+    addTearDown(
+      () => tester.binding.handleAppLifecycleStateChanged(
+        AppLifecycleState.resumed,
+      ),
+    );
+
+    await tester.pumpWidget(
+      _guardedApp(router, () => elapsed, wallNow: () => wall),
+    );
+    await tester.pump();
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     wall = wall.add(const Duration(minutes: 6));
     await tester.pump(const Duration(minutes: 6));
-    await tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pump();
 
     expect(router.routeInformationProvider.value.uri.path, '/launch');
@@ -275,7 +316,7 @@ void main() {
   testWidgets('backward clock change while backgrounded fails closed', (
     tester,
   ) async {
-    var elapsed = Duration.zero;
+    final elapsed = Duration.zero;
     var wall = DateTime.utc(2026, 9, 15, 12);
     final router = _guardTestRouter();
     addTearDown(router.dispose);
@@ -290,9 +331,9 @@ void main() {
     );
     await tester.pump();
 
-    await tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     wall = wall.subtract(const Duration(minutes: 1));
-    await tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pump();
 
     expect(router.routeInformationProvider.value.uri.path, '/launch');
@@ -324,10 +365,10 @@ void main() {
     );
     await tester.pump();
 
-    await tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     elapsed = const Duration(minutes: 6);
     await tester.pump(const Duration(minutes: 6));
-    await tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pump();
 
     expect(router.routeInformationProvider.value.uri.path, '/launch');
