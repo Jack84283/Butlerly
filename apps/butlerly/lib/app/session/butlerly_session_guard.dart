@@ -15,12 +15,17 @@ abstract final class ButlerlySessionConfig {
 
 typedef ButlerlyPlatformExit = Future<void> Function();
 typedef ButlerlyElapsedNow = Duration Function();
+typedef ButlerlyWallNow = DateTime Function();
 
 /// Tracks inactivity and turns an expired session into a fresh Butlerly launch.
 ///
-/// Elapsed inactivity is measured with a monotonic clock rather than wall-clock
-/// time so device clock and timezone changes cannot shorten or extend the
-/// privacy timeout.
+/// Foreground inactivity is measured with a monotonic clock rather than
+/// wall-clock time so device clock and timezone changes cannot shorten or
+/// extend the active privacy timeout. While Butlerly is backgrounded, a UTC
+/// wall-clock snapshot supplements the monotonic clock because some platform
+/// monotonic clocks pause during deep device sleep. A backward wall-clock jump
+/// while backgrounded fails closed into a fresh session instead of risking an
+/// indefinitely extended timeout.
 ///
 /// On Android, a timeout reached while Butlerly is in the foreground first
 /// switches to `/launch` and then asks the platform navigator to close the
@@ -40,6 +45,7 @@ class ButlerlySessionGuard extends StatefulWidget {
     required this.child,
     this.inactivityTimeout = ButlerlySessionConfig.inactivityTimeout,
     this.elapsedNow,
+    this.wallNow = DateTime.now,
     this.targetPlatform,
     this.onPlatformExit,
     super.key,
@@ -50,8 +56,12 @@ class ButlerlySessionGuard extends StatefulWidget {
   final Duration inactivityTimeout;
 
   /// Injectable monotonic elapsed-time source for tests. Production owns a
-  /// [Stopwatch], which is unaffected by wall-clock or timezone changes.
+  /// [Stopwatch], which is unaffected by ordinary wall-clock/timezone changes.
   final ButlerlyElapsedNow? elapsedNow;
+
+  /// Used only to account for time spent backgrounded/suspended. Foreground
+  /// inactivity never depends on this wall clock.
+  final ButlerlyWallNow wallNow;
 
   /// Injectable for tests. Production falls back to [defaultTargetPlatform].
   final TargetPlatform? targetPlatform;
@@ -70,6 +80,8 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
   late ButlerlyElapsedNow _elapsedNow;
   TextEditingController? _activeEditingController;
   late Duration _lastActivityAt;
+  DateTime? _backgroundedAtWall;
+  Duration? _backgroundedAtElapsed;
   late bool _launchActive;
   late bool _foreground;
 
@@ -129,10 +141,14 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
+        if (_foreground) return;
         _foreground = true;
         _syncEditingController();
+        final expiredWhileAway = _backgroundCouldHaveExpired();
+        _clearBackgroundSnapshot();
         if (_launchActive) return;
-        if (_elapsedSinceActivity >= widget.inactivityTimeout) {
+        if (expiredWhileAway ||
+            _elapsedSinceActivity >= widget.inactivityTimeout) {
           // The app was already away when the timeout elapsed. Present the
           // fresh launch now; do not immediately close the activity the user
           // just reopened.
@@ -145,8 +161,11 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
       case AppLifecycleState.hidden:
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
+        if (!_foreground) return;
         _foreground = false;
         _inactivityTimer?.cancel();
+        _backgroundedAtElapsed = _elapsedNow();
+        _backgroundedAtWall = widget.wallNow().toUtc();
         return;
     }
   }
@@ -157,6 +176,35 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
   Duration get _elapsedSinceActivity {
     final elapsed = _elapsedNow() - _lastActivityAt;
     return elapsed.isNegative ? Duration.zero : elapsed;
+  }
+
+  bool _backgroundCouldHaveExpired() {
+    final backgroundedAtElapsed = _backgroundedAtElapsed;
+    final backgroundedAtWall = _backgroundedAtWall;
+    if (backgroundedAtElapsed == null || backgroundedAtWall == null) {
+      return false;
+    }
+
+    final rawIdleAtBackground = backgroundedAtElapsed - _lastActivityAt;
+    final idleAtBackground = rawIdleAtBackground.isNegative
+        ? Duration.zero
+        : rawIdleAtBackground;
+    final remaining = widget.inactivityTimeout - idleAtBackground;
+    if (remaining <= Duration.zero) return true;
+
+    final wallAway = widget.wallNow().toUtc().difference(backgroundedAtWall);
+    if (wallAway.isNegative) {
+      // The system clock moved backward while Butlerly was away. There is no
+      // trustworthy suspend-inclusive duration, so protect privacy by requiring
+      // a fresh session instead of potentially extending the timeout.
+      return true;
+    }
+    return wallAway >= remaining;
+  }
+
+  void _clearBackgroundSnapshot() {
+    _backgroundedAtElapsed = null;
+    _backgroundedAtWall = null;
   }
 
   TargetPlatform get _targetPlatform =>
@@ -175,6 +223,7 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
     // The launch flow has completed. Start the inactivity clock from the fresh
     // Home session rather than carrying pre-launch idle time forward.
     _lastActivityAt = _elapsedNow();
+    _clearBackgroundSnapshot();
     _syncEditingController();
     _scheduleTimeout();
   }
@@ -283,6 +332,7 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
   void dispose() {
     _inactivityTimer?.cancel();
     _ownedElapsedClock?.stop();
+    _clearBackgroundSnapshot();
     _setEditingController(null);
     widget.router.routeInformationProvider.removeListener(_handleRouteChanged);
     FocusManager.instance.removeListener(_handleFocusChanged);
