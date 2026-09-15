@@ -153,8 +153,11 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
   }
 
   void _handleFocusChanged() {
+    // Focus changes can also be caused by lifecycle or route transitions, so
+    // they are not themselves evidence of user activity. Pointer/key events
+    // already account for user-driven focus changes; this listener only keeps
+    // the active EditableText controller subscription current.
     _syncEditingController();
-    _recordActivity();
   }
 
   void _handleEditingChanged() {
