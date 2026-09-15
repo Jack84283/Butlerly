@@ -227,8 +227,15 @@ class TransactionRecordList extends StatelessWidget {
         .whereType<String>()
         .where((value) => value.trim().isNotEmpty)
         .toList(growable: false);
-    final title = transaction.description?.trim().isNotEmpty == true
-        ? transaction.description!.trim()
+    final merchant = masterData.merchantName(transaction.merchantId)?.trim();
+    final description = transaction.description?.trim();
+    final rawCounterparty = transaction.rawCounterparty?.trim();
+    final title = merchant?.isNotEmpty == true
+        ? merchant!
+        : description?.isNotEmpty == true
+        ? description!
+        : rawCounterparty?.isNotEmpty == true
+        ? rawCounterparty!
         : context.l10n.text('untitledTransaction');
     return ButlerlyRecordRow(
       title: title,
