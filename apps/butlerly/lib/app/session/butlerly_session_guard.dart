@@ -154,7 +154,10 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
           // just reopened.
           _expireSession(requestPlatformExit: false);
         } else {
-          _scheduleTimeout();
+          // Returning to Butlerly before the privacy timeout is itself user
+          // activity. Give the resumed session a full inactivity window rather
+          // than carrying a nearly-expired foreground timer across the resume.
+          _recordActivity();
         }
         return;
       case AppLifecycleState.inactive:
