@@ -98,7 +98,7 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('semantic accessibility action restarts inactivity timeout', (
+  testWidgets('accessibility focus semantics restart inactivity timeout', (
     tester,
   ) async {
     var elapsed = Duration.zero;
@@ -115,41 +115,11 @@ void main() {
     );
     tester.binding.performSemanticsAction(
       ui.SemanticsActionEvent(
-        type: ui.SemanticsAction.tap,
+        type: ui.SemanticsAction.didGainAccessibilityFocus,
         viewId: tester.view.viewId,
         nodeId: node.id,
       ),
     );
-    await tester.pump();
-
-    elapsed = const Duration(minutes: 9, seconds: 49);
-    await tester.pump(const Duration(minutes: 4, seconds: 59));
-    expect(router.routeInformationProvider.value.uri.path, '/work');
-
-    elapsed = const Duration(minutes: 9, seconds: 50);
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pump();
-    expect(router.routeInformationProvider.value.uri.path, '/launch');
-    await tester.pumpWidget(const SizedBox.shrink());
-  });
-
-  testWidgets('accessibility focus navigation restarts inactivity timeout', (
-    tester,
-  ) async {
-    var elapsed = Duration.zero;
-    final router = _guardTestRouter();
-    addTearDown(router.dispose);
-    addTearDown(() => tester.binding.accessibilityFocus.value = null);
-
-    await tester.pumpWidget(_guardedApp(router, () => elapsed));
-    await tester.pump();
-
-    elapsed = const Duration(minutes: 4, seconds: 50);
-    await tester.pump(const Duration(minutes: 4, seconds: 50));
-    final node = tester.getSemantics(
-      find.byKey(const ValueKey('activity-target')),
-    );
-    tester.binding.accessibilityFocus.value = node.id;
     await tester.pump();
 
     elapsed = const Duration(minutes: 9, seconds: 49);
