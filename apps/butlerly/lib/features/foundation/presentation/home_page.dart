@@ -359,24 +359,29 @@ class _HomePageState extends State<HomePage> {
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _HomePinnedHeaderDelegate(
-                extent: _homeHeaderExtent(context),
-                child: FutureBuilder<_HomeData>(
-                  future: future,
-                  builder: (context, snapshot) {
-                    final data =
-                        snapshot.data ??
-                        _HomeData.empty(_now, selectedMonth: _selectedMonth);
-                    final loading =
-                        snapshot.connectionState != ConnectionState.done;
-                    return _HomeHeader(
-                      month: data.displayMonth,
-                      greetingKey: homeGreetingKey(_now),
-                      onMonthTap: loading ? null : () => _selectMonth(data),
-                    );
-                  },
+            SliverLayoutBuilder(
+              builder: (context, constraints) => SliverPersistentHeader(
+                pinned: true,
+                delegate: _HomePinnedHeaderDelegate(
+                  extent: _homeHeaderExtent(
+                    context,
+                    crossAxisExtent: constraints.crossAxisExtent,
+                  ),
+                  child: FutureBuilder<_HomeData>(
+                    future: future,
+                    builder: (context, snapshot) {
+                      final data =
+                          snapshot.data ??
+                          _HomeData.empty(_now, selectedMonth: _selectedMonth);
+                      final loading =
+                          snapshot.connectionState != ConnectionState.done;
+                      return _HomeHeader(
+                        month: data.displayMonth,
+                        greetingKey: homeGreetingKey(_now),
+                        onMonthTap: loading ? null : () => _selectMonth(data),
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
@@ -430,13 +435,16 @@ String homeGreetingKey(DateTime localTime) {
   return 'greetingEvening';
 }
 
-double _homeHeaderExtent(BuildContext context) {
+double _homeHeaderExtent(
+  BuildContext context, {
+  required double crossAxisExtent,
+}) {
   final textTheme = Theme.of(context).textTheme;
   final scaler = MediaQuery.textScalerOf(context);
   final locale = Localizations.localeOf(context);
   final localeTag = locale.toLanguageTag();
   final availableWidth =
-      (MediaQuery.sizeOf(context).width - ButlerlySize.phoneGutter * 2)
+      (crossAxisExtent - ButlerlySize.phoneGutter * 2)
           .clamp(1.0, ButlerlySize.pageContentMaxWidth)
           .toDouble();
   final scaledBody = scaler.scale(14);
