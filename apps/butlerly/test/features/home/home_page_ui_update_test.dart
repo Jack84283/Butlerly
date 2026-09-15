@@ -97,21 +97,24 @@ void main() {
 
       final categoryAction = find.byKey(const Key('home-category-view-all'));
       final recentAction = find.byKey(const Key('home-recent-view-all'));
+      final categoryTitle = find.text('Spending by category');
+      final recentTitle = find.text('Recent transactions');
       expect(categoryAction, findsOneWidget);
       expect(recentAction, findsOneWidget);
       expect(find.byType(VerticalDivider), findsNothing);
 
-      expect(tester.getCenter(categoryAction).dx, greaterThan(300));
-      expect(tester.getCenter(recentAction).dx, greaterThan(300));
+      final categoryRight = tester.getTopRight(categoryAction).dx;
+      final recentRight = tester.getTopRight(recentAction).dx;
+      expect(categoryRight, closeTo(recentRight, 0.1));
+      expect(categoryRight, greaterThan(tester.getTopRight(categoryTitle).dx));
+      expect(recentRight, greaterThan(tester.getTopRight(recentTitle).dx));
       expect(
-        (tester.getCenter(categoryAction).dy -
-                tester.getCenter(find.text('Spending by category')).dy)
+        (tester.getCenter(categoryAction).dy - tester.getCenter(categoryTitle).dy)
             .abs(),
         lessThan(12),
       );
       expect(
-        (tester.getCenter(recentAction).dy -
-                tester.getCenter(find.text('Recent transactions')).dy)
+        (tester.getCenter(recentAction).dy - tester.getCenter(recentTitle).dy)
             .abs(),
         lessThan(12),
       );
@@ -141,6 +144,34 @@ void main() {
     expect(DateTime.parse(uri.queryParameters['to']!).year, 2026);
     expect(DateTime.parse(uri.queryParameters['to']!).month, 9);
     expect(find.byKey(const Key('search-uri')), findsOneWidget);
+    expect(router.canPop(), isTrue);
+
+    router.pop();
+    await tester.pumpAndSettle();
+    expect(router.routeInformationProvider.value.uri.path, '/');
+    expect(find.byType(HomePage), findsOneWidget);
+  });
+
+  testWidgets('Home remains overflow-free at 3x accessibility text scale', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    tester.view.platformDispatcher.textScaleFactorTestValue = 3.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(
+      tester.view.platformDispatcher.clearTextScaleFactorTestValue,
+    );
+
+    await tester.pumpWidget(_testApp(router));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Butlerly'), findsOneWidget);
+    expect(find.byKey(const Key('home-month-selector')), findsOneWidget);
+    expect(find.byKey(const Key('home-category-view-all')), findsOneWidget);
+    expect(find.byKey(const Key('home-recent-view-all')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }
 
