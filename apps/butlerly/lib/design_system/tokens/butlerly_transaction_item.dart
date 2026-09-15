@@ -36,8 +36,9 @@ extension ButlerlyTransactionItemStyles on BuildContext {
 
   TextStyle get transactionItemDate => Theme.of(this).textTheme.bodySmall!;
 
-  TextStyle get transactionItemDescription =>
-      Theme.of(this).textTheme.bodyMedium!.copyWith(color: colors.primaryText);
+  TextStyle get transactionItemDescription => ButlerlyTypography.editorialText(
+    Theme.of(this).textTheme.bodyMedium!.copyWith(color: colors.primaryText),
+  );
 
   TextStyle get transactionItemMetadata => Theme.of(this).textTheme.bodySmall!;
 
