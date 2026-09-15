@@ -469,6 +469,46 @@ void main() {
     expect(find.text('New global transaction'), findsOneWidget);
   });
 
+  testWidgets(
+    'Home recent transaction uses merchant title matching amount size and hides tags',
+    (tester) async {
+      HomePage.debugCurrentDate = DateTime.utc(2026, 8, 15, 12);
+      addTearDown(() => HomePage.debugCurrentDate = null);
+
+      final finance = services<FinanceServices>();
+      await finance.saveMerchant(
+        Merchant(id: MerchantId('home-merchant'), name: 'Home Market'),
+      );
+      await finance.saveTag(Tag(id: TagId('home-tag'), name: 'Home Weekly'));
+      await finance.createTransaction(
+        CreateTransactionCommand(
+          id: 'home-merchant-row',
+          provenanceId: 'manual-home-merchant-row',
+          timing: KnownTransactionTime(DateTime.utc(2026, 8, 11)),
+          money: Money(
+            amount: DecimalValue.parse('19.75'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+          description: 'Home description fallback',
+        ),
+      );
+      await finance.assignMerchant('home-merchant-row', 'home-merchant');
+      await finance.addTag('home-merchant-row', 'home-tag');
+
+      await tester.pumpWidget(const MaterialApp(home: HomePage()));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Home Market'), findsOneWidget);
+      expect(find.text('Home description fallback'), findsNothing);
+      expect(find.text('Home Weekly'), findsNothing);
+
+      final title = tester.widget<Text>(find.text('Home Market'));
+      final amount = tester.widget<Text>(find.text('−19.75 USD'));
+      expect(amount.style?.fontSize, title.style?.fontSize);
+    },
+  );
+
   testWidgets('transaction rows show merchant category and tags', (
     tester,
   ) async {
@@ -517,7 +557,8 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: TransactionsPage()));
     await tester.pumpAndSettle();
 
-    expect(find.text('Organized row'), findsOneWidget);
+    expect(find.text('Corner Market'), findsOneWidget);
+    expect(find.text('Organized row'), findsNothing);
     expect(find.text('Groceries'), findsOneWidget);
     expect(find.text('Weekly'), findsOneWidget);
     expect(find.text('2 transactions'), findsOneWidget);
