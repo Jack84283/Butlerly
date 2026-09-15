@@ -442,7 +442,7 @@ double _homeHeaderExtent(BuildContext context) {
   final brandHeight =
       lineHeight(textTheme.headlineLarge, 32) +
       ButlerlySpacing.xxs +
-      scaler.scale(9.5) * 1.2;
+      scaler.scale(9.5) * 1.2 * 2;
   final monthTextHeight = lineHeight(textTheme.titleMedium, 16);
   final monthControlHeight = monthTextHeight + ButlerlySpacing.compact * 2;
   final effectiveMonthHeight = monthControlHeight > kMinInteractiveDimension
@@ -530,7 +530,7 @@ class _HomeHeader extends StatelessWidget {
               ),
               const SizedBox(height: ButlerlySpacing.xxs),
               Text(
-                context.l10n.text('homeSubtitle').toUpperCase(),
+                'A CALMER WAY TO MONEY',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
