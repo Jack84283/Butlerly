@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 /// Theme-independent Butlerly type scale.
 ///
-/// Butlerly uses Times New Roman as its preferred editorial serif. Platforms
-/// that do not provide it fall back through common serif families while
-/// functional UI copy intentionally stays on the platform sans-serif for
-/// legibility and cross-platform familiarity.
+/// Butlerly prefers Times New Roman for editorial roles and intentionally keeps
+/// Georgia out of the fallback chain. Times New Roman is not bundled as an app
+/// asset, so platforms that do not ship it fall back through common serif
+/// families. This preserves the requested preference without adding a licensed
+/// proprietary font asset or a runtime font download. Functional UI copy stays
+/// on the platform sans-serif for legibility and cross-platform familiarity.
 abstract final class ButlerlyTypography {
   static const editorialFontFamily = 'Times New Roman';
   static const editorialFontFallback = <String>[
