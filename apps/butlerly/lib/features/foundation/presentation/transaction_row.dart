@@ -13,7 +13,8 @@ import 'package:flutter/material.dart';
 /// Screens provide the transaction, resolved master data, and interaction
 /// affordances. This component owns the semantic mapping from transaction data
 /// to the visual row so title, amount, metadata, state, and fallbacks cannot
-/// drift between Home, Transactions, Search, and Review.
+/// drift between Home, Transactions, Search, and Review. Surface-specific
+/// density choices such as tag visibility remain explicit inputs.
 class TransactionRow extends StatelessWidget {
   const TransactionRow({
     required this.transaction,
@@ -22,6 +23,7 @@ class TransactionRow extends StatelessWidget {
     this.paymentSourceNames = const {},
     this.missingCategoryLabel,
     this.showDate = false,
+    this.showTags = false,
     this.supportingContent,
     this.possibleDuplicate = false,
     this.possibleDuplicateLabel,
@@ -35,6 +37,7 @@ class TransactionRow extends StatelessWidget {
   final Map<String, String> paymentSourceNames;
   final String? missingCategoryLabel;
   final bool showDate;
+  final bool showTags;
   final Widget? supportingContent;
   final bool possibleDuplicate;
   final String? possibleDuplicateLabel;
@@ -60,12 +63,14 @@ class TransactionRow extends StatelessWidget {
     final sourceLabel = source == null || source.trim().isEmpty
         ? null
         : source.trim();
-    final tags = transaction.tagIds
-        .map(masterData.tagName)
-        .whereType<String>()
-        .map((value) => value.trim())
-        .where((value) => value.isNotEmpty)
-        .toList(growable: false);
+    final tags = showTags
+        ? transaction.tagIds
+              .map(masterData.tagName)
+              .whereType<String>()
+              .map((value) => value.trim())
+              .where((value) => value.isNotEmpty)
+              .toList(growable: false)
+        : const <String>[];
 
     return ButlerlyRecordRow(
       title: transactionRowTitle(context, transaction, masterData),
