@@ -9,11 +9,10 @@ import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
-import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_row.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
-import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
@@ -1177,38 +1176,10 @@ class _HomeRecentActivity extends StatelessWidget {
   Widget build(BuildContext context) => ButlerlyTransactionList(
     children: [
       for (final transaction in transactions)
-        ButlerlyRecordRow(
-          title:
-              masterData.merchantName(transaction.merchantId) ??
-              _transactionTitle(context, transaction),
-          amount: localizedTransactionAmount(
-            context,
-            transaction.amount.replaceFirst(RegExp(r'^[+-]'), ''),
-          ),
-          currency: transaction.currency,
-          categoryId:
-              transaction.categoryId != null &&
-                  ButlerlyCategoryIdentity.forBuiltInId(
-                        transaction.categoryId!,
-                      ) !=
-                      null
-              ? transaction.categoryId
-              : null,
-          categoryLabel:
-              masterData.categoryNameForParent(transaction.categoryId) ??
-              masterData.categoryName(transaction.categoryId) ??
-              '',
-          subcategoryLabel:
-              masterData.categoryNameForParent(transaction.categoryId) == null
-              ? null
-              : masterData.categoryName(transaction.categoryId),
-          paymentSource: masterData.paymentSourceName(
-            transaction.paymentSourceId,
-          ),
-          meta: _transactionDateLabel(context, transaction),
+        TransactionRow(
+          transaction: transaction,
+          masterData: masterData,
           showDate: true,
-          isIncome: transaction.direction == TransactionDirection.income.name,
-          needsReview: transaction.reviewState == 'needsReview',
           onTap: () => onTap(transaction),
         ),
     ],
@@ -1514,24 +1485,3 @@ String _periodRoute(
     queryParameters: {'from': period.startDate, 'to': period.endDate},
   ).toString();
 }
-
-String _transactionTitle(BuildContext context, TransactionDto transaction) {
-  for (final candidate in [
-    transaction.description,
-    transaction.rawCounterparty,
-  ]) {
-    if (candidate != null && candidate.trim().isNotEmpty) {
-      return candidate.trim();
-    }
-  }
-  return context.l10n.text('untitledTransaction');
-}
-
-String _transactionDateLabel(
-  BuildContext context,
-  TransactionDto transaction,
-) => transactionDateLabel(
-  transaction,
-  pendingLabel: context.l10n.text('datePending'),
-  locale: Localizations.localeOf(context).toLanguageTag(),
-);
