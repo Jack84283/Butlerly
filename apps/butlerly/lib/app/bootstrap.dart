@@ -1,4 +1,9 @@
+import 'dart:async';
+
 import 'package:butlerly/app/butlerly_app.dart';
+import 'package:butlerly/app/router/app_router.dart';
+import 'package:butlerly/app/session/butlerly_session_guard.dart';
+import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/core/config/app_configuration.dart';
 import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
@@ -7,11 +12,22 @@ import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
+import 'package:butlerly/features/foundation/presentation/butlerly_launch_page.dart';
+import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
+
+@visibleForTesting
+final class ButlerlyStorageUnavailableException implements Exception {
+  const ButlerlyStorageUnavailableException([this.cause]);
+
+  final Object? cause;
+}
 
 Future<void> bootstrap() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,10 +36,6 @@ Future<void> bootstrap() async {
   logger.initialize();
   _installErrorHandlers(logger);
 
-  // Paint a Flutter surface immediately. Startup used to await every local
-  // initialization step before runApp(), which meant any first-run failure or
-  // stall left iOS showing an unexplained blank window. The gate keeps startup
-  // visible and recoverable while preserving the same initialization order.
   runApp(
     ProviderScope(
       child: ButlerlyStartupGate(
@@ -39,47 +51,181 @@ class ButlerlyStartupGate extends StatefulWidget {
   const ButlerlyStartupGate({
     required this.logger,
     required this.initialize,
+    this.minimumLaunchDuration = ButlerlySessionConfig.launchDuration,
+    this.launchElapsedNow,
+    this.readyBuilder,
+    this.onReady,
     super.key,
   });
 
   final AppLogger logger;
   final Future<void> Function() initialize;
+  final Duration minimumLaunchDuration;
+  final ButlerlyElapsedNow? launchElapsedNow;
+  final WidgetBuilder? readyBuilder;
+  final VoidCallback? onReady;
 
   @override
   State<ButlerlyStartupGate> createState() => _ButlerlyStartupGateState();
 }
 
-class _ButlerlyStartupGateState extends State<ButlerlyStartupGate> {
+class _ButlerlyStartupGateState extends State<ButlerlyStartupGate>
+    with WidgetsBindingObserver {
   Object? _failure;
   bool _ready = false;
   int _attempt = 0;
 
+  Timer? _launchTimer;
+  Stopwatch? _ownedLaunchClock;
+  late ButlerlyElapsedNow _launchElapsedNow;
+  Completer<void>? _launchCompleter;
+  Duration _launchRemaining = Duration.zero;
+  Duration? _launchStartedAt;
+  late bool _foreground;
+
   @override
   void initState() {
     super.initState();
+    _installLaunchClock(widget.launchElapsedNow);
+    WidgetsBinding.instance.addObserver(this);
+    final lifecycleState = WidgetsBinding.instance.lifecycleState;
+    _foreground =
+        lifecycleState == null || lifecycleState == AppLifecycleState.resumed;
     _beginAttempt();
+  }
+
+  void _installLaunchClock(ButlerlyElapsedNow? injected) {
+    _ownedLaunchClock?.stop();
+    _ownedLaunchClock = null;
+    if (injected != null) {
+      _launchElapsedNow = injected;
+      return;
+    }
+    final stopwatch = Stopwatch()..start();
+    _ownedLaunchClock = stopwatch;
+    _launchElapsedNow = () => stopwatch.elapsed;
   }
 
   void _beginAttempt() {
     final attempt = ++_attempt;
-    Future<void>.sync(widget.initialize).then(
-      (_) {
-        if (!mounted || attempt != _attempt) return;
-        setState(() {
-          _failure = null;
-          _ready = true;
-        });
-      },
-      onError: (Object error, StackTrace stackTrace) {
-        widget.logger.severe(
-          'Butlerly startup initialization failed',
-          error,
-          stackTrace,
-        );
-        if (!mounted || attempt != _attempt) return;
-        setState(() => _failure = error);
-      },
-    );
+    final launchWindow = _beginLaunchWindow();
+    unawaited(_runAttempt(attempt, launchWindow));
+  }
+
+  Future<void> _runAttempt(int attempt, Future<void> launchWindow) async {
+    try {
+      await Future<void>.sync(widget.initialize);
+      await launchWindow;
+      if (!mounted || attempt != _attempt) return;
+      (widget.onReady ?? _completeColdLaunch)();
+      if (!mounted || attempt != _attempt) return;
+      setState(() {
+        _failure = null;
+        _ready = true;
+      });
+    } catch (error, stackTrace) {
+      _cancelLaunchWindow(complete: true);
+      widget.logger.severe(
+        'Butlerly startup initialization failed',
+        error,
+        stackTrace,
+      );
+      if (!mounted || attempt != _attempt) return;
+      setState(() {
+        _failure = error;
+        _ready = false;
+      });
+    }
+  }
+
+  Future<void> _beginLaunchWindow() {
+    _cancelLaunchWindow(complete: true);
+    final completer = Completer<void>();
+    _launchCompleter = completer;
+    _launchRemaining = widget.minimumLaunchDuration;
+    _launchStartedAt = null;
+    if (_launchRemaining <= Duration.zero) {
+      completer.complete();
+    } else if (_foreground) {
+      _startLaunchCountdown();
+    }
+    return completer.future;
+  }
+
+  void _startLaunchCountdown() {
+    final completer = _launchCompleter;
+    if (!_foreground ||
+        completer == null ||
+        completer.isCompleted ||
+        _launchRemaining <= Duration.zero) {
+      return;
+    }
+    _launchTimer?.cancel();
+    _launchStartedAt = _launchElapsedNow();
+    _launchTimer = Timer(_launchRemaining, _completeLaunchWindow);
+  }
+
+  void _pauseLaunchCountdown() {
+    _launchTimer?.cancel();
+    _launchTimer = null;
+    final startedAt = _launchStartedAt;
+    _launchStartedAt = null;
+    if (startedAt == null) return;
+    final rawElapsed = _launchElapsedNow() - startedAt;
+    final elapsed = rawElapsed.isNegative ? Duration.zero : rawElapsed;
+    if (elapsed <= Duration.zero) return;
+    _launchRemaining = elapsed >= _launchRemaining
+        ? Duration.zero
+        : _launchRemaining - elapsed;
+  }
+
+  void _completeLaunchWindow() {
+    _launchTimer?.cancel();
+    _launchTimer = null;
+    _launchStartedAt = null;
+    _launchRemaining = Duration.zero;
+    final completer = _launchCompleter;
+    if (completer != null && !completer.isCompleted) completer.complete();
+  }
+
+  void _cancelLaunchWindow({required bool complete}) {
+    _launchTimer?.cancel();
+    _launchTimer = null;
+    _launchStartedAt = null;
+    final completer = _launchCompleter;
+    if (complete && completer != null && !completer.isCompleted) {
+      completer.complete();
+    }
+    _launchCompleter = null;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        if (_foreground) return;
+        _foreground = true;
+        if (_launchRemaining <= Duration.zero) {
+          _completeLaunchWindow();
+        } else {
+          _startLaunchCountdown();
+        }
+        return;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        if (!_foreground) return;
+        _foreground = false;
+        _pauseLaunchCountdown();
+        return;
+    }
+  }
+
+  void _completeColdLaunch() {
+    if (appRouter.routeInformationProvider.value.uri.path == '/launch') {
+      appRouter.go('/');
+    }
   }
 
   void _retry() {
@@ -91,99 +237,92 @@ class _ButlerlyStartupGateState extends State<ButlerlyStartupGate> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    if (_ready) return const ButlerlyApp();
+  void dispose() {
+    _attempt += 1;
+    _cancelLaunchWindow(complete: true);
+    _ownedLaunchClock?.stop();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
-    const background = Color(0xFF0A0A0D);
-    const primaryText = Color(0xFFF6F0E7);
-    const secondaryText = Color(0xFFB8B2AA);
-    const brand = Color(0xFF720018);
+  @override
+  Widget build(BuildContext context) {
+    if (_ready) {
+      return widget.readyBuilder?.call(context) ?? const ButlerlyApp();
+    }
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: background,
-        colorSchemeSeed: brand,
-      ),
-      home: Scaffold(
-        key: const ValueKey('butlerly-startup-screen'),
-        body: SafeArea(
-          child: Center(
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: ThemeMode.system,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      home: _failure == null
+          ? const ButlerlyLaunchSurface(
+              screenKey: ValueKey('butlerly-startup-screen'),
+              footer: SizedBox(
+                key: ValueKey('butlerly-startup-progress'),
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(),
+              ),
+            )
+          : _StartupFailureBody(error: _failure!, onRetry: _retry),
+    );
+  }
+}
+
+class _StartupFailureBody extends StatelessWidget {
+  const _StartupFailureBody({required this.error, required this.onRetry});
+
+  final Object error;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final storageUnavailable = error is ButlerlyStorageUnavailableException;
+    return Scaffold(
+      key: const ValueKey('butlerly-startup-screen'),
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 520),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: brand,
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: const Icon(
-                        Icons.shield_outlined,
-                        color: Colors.white,
-                        size: 44,
-                      ),
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline_rounded, size: 48),
+                  const SizedBox(height: 20),
+                  Text(
+                    context.l10n.text(
+                      storageUnavailable
+                          ? 'localStorageUnavailable'
+                          : 'pageUnavailable',
                     ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Butlerly',
-                      style: TextStyle(
-                        color: primaryText,
-                        fontSize: 32,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    if (_failure == null) ...[
-                      const CircularProgressIndicator(),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Preparing your local data…',
-                        key: ValueKey('butlerly-startup-progress'),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: secondaryText),
-                      ),
-                    ] else ...[
-                      const Icon(
-                        Icons.error_outline_rounded,
-                        color: Color(0xFFFFB4AB),
-                        size: 32,
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        "Butlerly couldn't initialize local storage.",
-                        key: ValueKey('butlerly-startup-error'),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: primaryText,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Your local data has not been erased. '
-                        'You can try initialization again.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: secondaryText),
-                      ),
-                      const SizedBox(height: 20),
-                      FilledButton.icon(
-                        key: const ValueKey('butlerly-startup-retry'),
-                        onPressed: _retry,
-                        icon: const Icon(Icons.refresh_rounded),
-                        label: const Text('Try again'),
-                      ),
-                    ],
-                  ],
-                ),
+                    key: const ValueKey('butlerly-startup-error'),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    context.l10n.text('dataPreserved'),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  FilledButton.icon(
+                    key: const ValueKey('butlerly-startup-retry'),
+                    onPressed: onRetry,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: Text(context.l10n.text('tryAgain')),
+                  ),
+                ],
               ),
             ),
           ),
@@ -209,7 +348,7 @@ Future<void> initializeButlerly(AppLogger logger) async {
     phase = 'database initialization';
     logger.info('Startup: opening local database');
     database = LocalDatabase(logger: logger);
-    await database.initialize();
+    await initializeLocalDatabaseForStartup(database, logger);
     logger.info('Startup: local database ready');
 
     phase = 'dependency configuration';
@@ -230,10 +369,6 @@ Future<void> initializeButlerly(AppLogger logger) async {
     if (database.status == DatabaseStatus.ready &&
         services.isRegistered<LocalDataManager>()) {
       phase = 'interrupted restore recovery';
-      // Analyze durable restore intent before any retention cleanup. A crash can
-      // leave the safety-backup reference only in restore-origin.json; pruning
-      // history before reading that sidecar could delete the required recovery
-      // snapshot.
       try {
         await recoverInterruptedLocalRestore(
           database,
@@ -241,10 +376,6 @@ Future<void> initializeButlerly(AppLogger logger) async {
           recoveryState: recoveryState,
         );
       } catch (error, stack) {
-        // Recovery-state persistence deliberately closes the in-memory gate before
-        // touching disk. If persistence then fails (for example under storage
-        // pressure), continue into the recovery-only UI rather than aborting the
-        // whole app. Any failure before that gate is established remains fatal.
         if (!(recoveryState?.isRecoveryRequired ?? false)) rethrow;
         logger.severe(
           'Restore recovery persistence failed after the recovery gate closed',
@@ -260,9 +391,6 @@ Future<void> initializeButlerly(AppLogger logger) async {
       final incident = recoveryState?.incident;
       final recoveryIsUnknown =
           incident != null && incident.safetyBackupPath.isEmpty;
-      // Cleanup is housekeeping, not a prerequisite for reading the local
-      // ledger. Preserve startup availability if it fails, while still keeping
-      // restore recovery itself blocking when integrity cannot be established.
       if (!recoveryIsUnknown && backupManager != null) {
         try {
           await backupManager.cleanupOrphanedPrivateArtifacts();
@@ -277,8 +405,6 @@ Future<void> initializeButlerly(AppLogger logger) async {
       }
     }
 
-    // A controlled-recovery incident means the database/evidence pair or runtime
-    // refresh has not yet been proven safe. Do not perform normal startup writes.
     if (services.isRegistered<FinanceServices>() &&
         !(recoveryState?.isRecoveryRequired ?? false)) {
       phase = 'analysis rule installation';
@@ -302,8 +428,6 @@ Future<void> initializeButlerly(AppLogger logger) async {
         }
         logger.info('Startup: bundled analysis rules ready');
       } catch (error, stackTrace) {
-        // Insights and analysis can report unavailable data later; they must not
-        // make the core local ledger impossible to open.
         logger.severe(
           'Bundled analysis rule installation failed; continuing',
           error,
@@ -316,9 +440,6 @@ Future<void> initializeButlerly(AppLogger logger) async {
   } catch (error, stackTrace) {
     logger.severe('Startup failed during $phase', error, stackTrace);
 
-    // A retry must begin from a clean runtime registration state, but never
-    // delete user files or database contents. Close only the active handle and
-    // clear dependency registrations created by the failed attempt.
     try {
       await services.reset(dispose: false);
     } catch (_) {}
@@ -327,6 +448,39 @@ Future<void> initializeButlerly(AppLogger logger) async {
     } catch (_) {}
 
     Error.throwWithStackTrace(error, stackTrace);
+  }
+}
+
+@visibleForTesting
+Future<void> initializeLocalDatabaseForStartup(
+  LocalDatabase database,
+  AppLogger logger,
+) async {
+  try {
+    await database.initialize();
+    if (database.status != DatabaseStatus.ready) {
+      throw const ButlerlyStorageUnavailableException();
+    }
+  } on RepositoryException catch (error, stackTrace) {
+    switch (error.code) {
+      case RepositoryFailureCode.unavailable:
+      case RepositoryFailureCode.busy:
+      case RepositoryFailureCode.permission:
+      case RepositoryFailureCode.storageFull:
+        database.status = DatabaseStatus.unavailable;
+        logger.severe(
+          'Local storage is unavailable during startup',
+          error,
+          stackTrace,
+        );
+        throw ButlerlyStorageUnavailableException(error);
+      case RepositoryFailureCode.constraint:
+      case RepositoryFailureCode.notFound:
+      case RepositoryFailureCode.migration:
+      case RepositoryFailureCode.integrity:
+      case RepositoryFailureCode.unknown:
+        rethrow;
+    }
   }
 }
 
