@@ -21,7 +21,7 @@ abstract final class ButlerlySpacing {
   static const modalBottom = standard;
   static const modalItem = standard;
 
-  static const pagePadding = standard;
+  static const pagePadding = small;
   static const contentPadding = standard;
   static const cardPadding = small;
   static const cardGap = small;
