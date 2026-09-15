@@ -276,100 +276,159 @@ class _HomePageState extends State<HomePage> {
     if (changed == true) await _refresh();
   }
 
-  @override
-  Widget build(BuildContext context) => RefreshIndicator(
-    onRefresh: _refresh,
-    child: ButlerlyPage(
+  Widget _homeContent(BuildContext context, _HomeData data, bool loading) {
+    final currentMonth = _sameMonth(
+      data.displayMonth,
+      data.currentFinancialMonth,
+    );
+    if (loading) return const _HomeLoading();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        FutureBuilder<_HomeData>(
-          future: _data,
-          builder: (context, snapshot) {
-            final data =
-                snapshot.data ??
-                _HomeData.empty(_now, selectedMonth: _selectedMonth);
-            final loading = snapshot.connectionState != ConnectionState.done;
-            final currentMonth = _sameMonth(
-              data.displayMonth,
-              data.currentFinancialMonth,
-            );
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _HomeHeader(
-                  month: data.displayMonth,
-                  greetingKey: homeGreetingKey(_now),
-                  onMonthTap: loading ? null : () => _selectMonth(data),
-                  onNotificationsTap: () => context.push('/notifications'),
-                ),
-                const SizedBox(height: ButlerlySpacing.large),
-                if (loading)
-                  const _HomeLoading()
-                else ...[
-                  _SpendingHero(
-                    model: data.model,
-                    analysisUnavailable: data.analysisUnavailable,
-                  ),
-                  const SizedBox(height: ButlerlySpacing.section),
-                  _SpendingTrend(points: data.trend),
-                  _HomeSectionHeader(
-                    title: context.l10n.text('analysis.rule.r010.name'),
-                    action: TextButton(
-                      onPressed: () => context.push(
-                        _periodRoute(
-                          '/analysis',
-                          data.period,
-                          currentMonth: currentMonth,
-                        ),
-                      ),
-                      child: Text(context.l10n.text('viewAll')),
-                    ),
-                  ),
-                  _CategorySummary(
-                    model: data.model,
-                    masterData: data.masterData,
-                  ),
-                  if (data.reviewCount > 0 || data.insight != null) ...[
-                    const SizedBox(height: ButlerlySpacing.section),
-                    _AttentionSection(
-                      reviewCount: data.reviewCount,
-                      insight: data.insight,
-                      insightRoute: _periodRoute(
-                        '/insights',
-                        data.period,
-                        currentMonth: currentMonth,
-                      ),
-                    ),
-                  ],
-                  _HomeSectionHeader(
-                    title: context.l10n.text('recentTransactions'),
-                    action: TextButton(
-                      onPressed: () => context.go(
-                        _periodRoute(
-                          '/transactions',
-                          data.period,
-                          currentMonth: currentMonth,
-                        ),
-                      ),
-                      child: Text(context.l10n.text('viewAll')),
-                    ),
-                  ),
-                  if (data.transactions.isEmpty)
-                    const _HomeEmptyTransactions()
-                  else
-                    _HomeRecentActivity(
-                      transactions: data.transactions,
-                      masterData: data.masterData,
-                      onTap: _open,
-                    ),
-                  const SizedBox(height: ButlerlySpacing.structural),
-                ],
-              ],
-            );
-          },
+        _SpendingHero(
+          model: data.model,
+          analysisUnavailable: data.analysisUnavailable,
+          onNotificationsTap: () => context.push('/notifications'),
         ),
+        const SizedBox(height: ButlerlySpacing.section),
+        _SpendingTrend(points: data.trend),
+        _HomeSectionHeader(
+          title: context.l10n.text('analysis.rule.r010.name'),
+          action: TextButton(
+            key: const Key('home-category-view-all'),
+            onPressed: () => context.push(
+              _periodRoute(
+                '/analysis',
+                data.period,
+                currentMonth: currentMonth,
+              ),
+            ),
+            child: Text(context.l10n.text('viewAll')),
+          ),
+        ),
+        _CategorySummary(
+          model: data.model,
+          masterData: data.masterData,
+        ),
+        if (data.reviewCount > 0 || data.insight != null) ...[
+          const SizedBox(height: ButlerlySpacing.section),
+          _AttentionSection(
+            reviewCount: data.reviewCount,
+            insight: data.insight,
+            insightRoute: _periodRoute(
+              '/insights',
+              data.period,
+              currentMonth: currentMonth,
+            ),
+          ),
+        ],
+        _HomeSectionHeader(
+          title: context.l10n.text('recentTransactions'),
+          action: TextButton(
+            key: const Key('home-recent-view-all'),
+            onPressed: () => context.push(
+              _periodRoute(
+                '/search',
+                data.period,
+                currentMonth: currentMonth,
+              ),
+            ),
+            child: Text(context.l10n.text('viewAll')),
+          ),
+        ),
+        if (data.transactions.isEmpty)
+          const _HomeEmptyTransactions()
+        else
+          _HomeRecentActivity(
+            transactions: data.transactions,
+            masterData: data.masterData,
+            onTap: _open,
+          ),
+        const SizedBox(height: ButlerlySpacing.structural),
       ],
-    ),
-  );
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final future = _data;
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: ColoredBox(
+        color: context.colors.background,
+        child: LayoutBuilder(
+          builder: (context, constraints) => CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _HomePinnedHeaderDelegate(
+                  extent: _homeHeaderExtent(
+                    context,
+                    crossAxisExtent: constraints.maxWidth,
+                  ),
+                  child: FutureBuilder<_HomeData>(
+                    future: future,
+                    builder: (context, snapshot) {
+                      final data =
+                          snapshot.data ??
+                          _HomeData.empty(_now, selectedMonth: _selectedMonth);
+                      final loading =
+                          snapshot.connectionState != ConnectionState.done;
+                      return _HomeHeader(
+                        month: data.displayMonth,
+                        greetingKey: homeGreetingKey(_now),
+                        onMonthTap: loading ? null : () => _selectMonth(data),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(
+                  ButlerlySize.phoneGutter,
+                  ButlerlySpacing.large,
+                  ButlerlySize.phoneGutter,
+                  ButlerlySpacing.large,
+                ),
+                sliver: SliverLayoutBuilder(
+                  builder: (context, constraints) {
+                    final extraWidth =
+                        constraints.crossAxisExtent -
+                        ButlerlySize.pageContentMaxWidth;
+                    final horizontalInset = extraWidth > 0
+                        ? extraWidth / 2
+                        : 0.0;
+                    return SliverPadding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: horizontalInset,
+                      ),
+                      sliver: SliverToBoxAdapter(
+                        child: FutureBuilder<_HomeData>(
+                          future: future,
+                          builder: (context, snapshot) {
+                            final data =
+                                snapshot.data ??
+                                _HomeData.empty(
+                                  _now,
+                                  selectedMonth: _selectedMonth,
+                                );
+                            final loading =
+                                snapshot.connectionState != ConnectionState.done;
+                            return _homeContent(context, data, loading);
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 String homeGreetingKey(DateTime localTime) {
@@ -378,18 +437,175 @@ String homeGreetingKey(DateTime localTime) {
   return 'greetingEvening';
 }
 
+double _homeHeaderExtent(
+  BuildContext context, {
+  required double crossAxisExtent,
+}) {
+  final textTheme = Theme.of(context).textTheme;
+  final scaler = MediaQuery.textScalerOf(context);
+  final locale = Localizations.localeOf(context);
+  final localeTag = locale.toLanguageTag();
+  final availableWidth =
+      (crossAxisExtent - ButlerlySize.phoneGutter * 2)
+          .clamp(1.0, ButlerlySize.pageContentMaxWidth)
+          .toDouble();
+  final scaledBody = scaler.scale(14);
+  final stacked = scaledBody > 18 || availableWidth < 300;
+  final direction = Directionality.of(context);
+
+  final appStyle = textTheme.headlineLarge ?? const TextStyle(fontSize: 32);
+  final taglineStyle = (textTheme.labelMedium ?? const TextStyle()).copyWith(
+    letterSpacing: 2.2,
+    fontSize: 9.5,
+  );
+  final greetingStyle = textTheme.bodyMedium ?? const TextStyle(fontSize: 14);
+  final monthStyle = textTheme.titleMedium ?? const TextStyle(fontSize: 16);
+
+  double measure(
+    String text,
+    TextStyle style,
+    double maxWidth, {
+    int? maxLines,
+  }) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: direction,
+      textScaler: scaler,
+      locale: locale,
+      maxLines: maxLines,
+    )..layout(maxWidth: maxWidth.clamp(1.0, double.infinity).toDouble());
+    return painter.height;
+  }
+
+  double maxMeasured(
+    Iterable<String> values,
+    TextStyle style,
+    double maxWidth, {
+    int? maxLines,
+  }) => values.fold<double>(
+    0,
+    (height, value) => height > measure(value, style, maxWidth, maxLines: maxLines)
+        ? height
+        : measure(value, style, maxWidth, maxLines: maxLines),
+  );
+
+  final greetingLabels = <String>[
+    context.l10n.text('greetingMorning'),
+    context.l10n.text('greetingAfternoon'),
+    context.l10n.text('greetingEvening'),
+  ];
+  final monthLabels = <String>[
+    for (var month = 1; month <= 12; month++)
+      DateFormat.yMMMM(localeTag).format(DateTime(2026, month)),
+  ];
+
+  double monthButtonHeight(double width, {required bool wrap}) {
+    final textWidth =
+        (width - ButlerlySpacing.compact * 2 - ButlerlySpacing.micro - 20)
+            .clamp(1.0, double.infinity)
+            .toDouble();
+    final textHeight = maxMeasured(
+      monthLabels,
+      monthStyle,
+      textWidth,
+      maxLines: wrap ? null : 1,
+    );
+    final contentHeight = textHeight + ButlerlySpacing.compact * 2;
+    return contentHeight > kMinInteractiveDimension
+        ? contentHeight
+        : kMinInteractiveDimension;
+  }
+
+  final appName = context.l10n.text('appName');
+  final tagline = context.l10n.text('homeTagline');
+  if (stacked) {
+    final brandHeight =
+        measure(appName, appStyle, availableWidth) +
+        ButlerlySpacing.xxs +
+        measure(tagline, taglineStyle, availableWidth);
+    final contextHeight =
+        maxMeasured(greetingLabels, greetingStyle, availableWidth) +
+        ButlerlySpacing.xxs +
+        monthButtonHeight(availableWidth, wrap: true);
+    return brandHeight +
+        ButlerlySpacing.standard +
+        contextHeight +
+        ButlerlySpacing.small * 2 +
+        scaler.scale(2);
+  }
+
+  final rowWidth = availableWidth - ButlerlySpacing.standard;
+  final brandWidth = rowWidth * 5 / 9;
+  final contextWidth = rowWidth * 4 / 9;
+  final brandHeight =
+      measure(appName, appStyle, brandWidth, maxLines: 1) +
+      ButlerlySpacing.xxs +
+      measure(tagline, taglineStyle, brandWidth, maxLines: 2);
+  final contextHeight =
+      maxMeasured(
+        greetingLabels,
+        greetingStyle,
+        contextWidth,
+        maxLines: 1,
+      ) +
+      ButlerlySpacing.xxs +
+      monthButtonHeight(contextWidth, wrap: false);
+  final contentHeight = brandHeight > contextHeight
+      ? brandHeight
+      : contextHeight;
+  return contentHeight + ButlerlySpacing.small * 2 + scaler.scale(2);
+}
+
+class _HomePinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
+  const _HomePinnedHeaderDelegate({required this.extent, required this.child});
+
+  final double extent;
+  final Widget child;
+
+  @override
+  double get minExtent => extent;
+
+  @override
+  double get maxExtent => extent;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) => ColoredBox(
+    color: context.colors.background,
+    child: Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: ButlerlySize.phoneGutter,
+          vertical: ButlerlySpacing.small,
+        ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxWidth: ButlerlySize.pageContentMaxWidth,
+          ),
+          child: SizedBox(width: double.infinity, child: child),
+        ),
+      ),
+    ),
+  );
+
+  @override
+  bool shouldRebuild(covariant _HomePinnedHeaderDelegate oldDelegate) =>
+      oldDelegate.extent != extent || oldDelegate.child != child;
+}
+
 class _HomeHeader extends StatelessWidget {
   const _HomeHeader({
     required this.month,
     required this.greetingKey,
     required this.onMonthTap,
-    required this.onNotificationsTap,
   });
 
   final DateTime month;
   final String greetingKey;
   final VoidCallback? onMonthTap;
-  final VoidCallback onNotificationsTap;
 
   @override
   Widget build(BuildContext context) {
@@ -398,19 +614,22 @@ class _HomeHeader extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final scaledBody = MediaQuery.textScalerOf(context).scale(14);
-        final stacked = constraints.maxWidth < 520 || scaledBody > 18;
+        final stacked = scaledBody > 18 || constraints.maxWidth < 300;
         final brand = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               context.l10n.text('appName'),
+              maxLines: stacked ? null : 1,
+              overflow: stacked ? null : TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.headlineLarge,
             ),
             const SizedBox(height: ButlerlySpacing.xxs),
             Text(
-              context.l10n.text('homeSubtitle').toUpperCase(),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+              context.l10n.text('homeTagline'),
+              maxLines: stacked ? null : 2,
+              overflow: stacked ? null : TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 letterSpacing: 2.2,
                 fontSize: 9.5,
@@ -419,57 +638,42 @@ class _HomeHeader extends StatelessWidget {
           ],
         );
         final contextBlock = Column(
-          crossAxisAlignment: stacked
-              ? CrossAxisAlignment.start
-              : CrossAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: stacked ? constraints.maxWidth : 260,
-              ),
-              child: TextButton(
-                key: const Key('home-month-selector'),
-                onPressed: onMonthTap,
-                style: TextButton.styleFrom(
-                  alignment: AlignmentDirectional.centerStart,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.max,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        monthLabel,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ),
-                    const SizedBox(width: ButlerlySpacing.micro),
-                    const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
-                  ],
-                ),
-              ),
+            Text(
+              context.l10n.text(greetingKey),
+              maxLines: stacked ? null : 1,
+              overflow: stacked ? null : TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
-            ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: stacked ? constraints.maxWidth : 260,
+            const SizedBox(height: ButlerlySpacing.xxs),
+            TextButton(
+              key: const Key('home-month-selector'),
+              onPressed: onMonthTap,
+              style: TextButton.styleFrom(
+                alignment: AlignmentDirectional.centerEnd,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: ButlerlySpacing.compact,
+                  vertical: ButlerlySpacing.compact,
+                ),
+                minimumSize: const Size(0, kMinInteractiveDimension),
               ),
               child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
+                  Flexible(
                     child: Text(
-                      context.l10n.text(greetingKey),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      monthLabel,
+                      maxLines: stacked ? null : 1,
+                      overflow: stacked ? null : TextOverflow.ellipsis,
+                      textAlign: TextAlign.end,
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
                   ),
-                  const SizedBox(width: ButlerlySpacing.compact),
-                  IconButton(
-                    tooltip: context.l10n.text('notifications'),
-                    onPressed: onNotificationsTap,
-                    icon: const Icon(Icons.notifications_none_rounded),
-                  ),
+                  const SizedBox(width: ButlerlySpacing.micro),
+                  const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
                 ],
               ),
             ),
@@ -478,6 +682,7 @@ class _HomeHeader extends StatelessWidget {
         if (stacked) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
             children: [
               brand,
               const SizedBox(height: ButlerlySpacing.standard),
@@ -513,19 +718,13 @@ class _HomeSectionHeader extends StatelessWidget {
     child: LayoutBuilder(
       builder: (context, constraints) {
         final scaledBody = MediaQuery.textScalerOf(context).scale(14);
-        final stacked = constraints.maxWidth < 420 || scaledBody > 20;
-        final titleWidget = Text(
-          title,
-          style: Theme.of(context).textTheme.titleLarge,
-        );
-        if (stacked) {
+        if (scaledBody > 28) {
           return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              titleWidget,
-              const SizedBox(height: ButlerlySpacing.micro),
+              Text(title, style: Theme.of(context).textTheme.titleLarge),
               Align(
-                alignment: AlignmentDirectional.centerStart,
+                alignment: AlignmentDirectional.centerEnd,
                 child: action,
               ),
             ],
@@ -533,7 +732,12 @@ class _HomeSectionHeader extends StatelessWidget {
         }
         return Row(
           children: [
-            Expanded(child: titleWidget),
+            Expanded(
+              child: Text(
+                title,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
             action,
           ],
         );
@@ -546,10 +750,12 @@ class _SpendingHero extends StatelessWidget {
   const _SpendingHero({
     required this.model,
     required this.analysisUnavailable,
+    required this.onNotificationsTap,
   });
 
   final AnalysisModel? model;
   final bool analysisUnavailable;
+  final VoidCallback onNotificationsTap;
 
   @override
   Widget build(BuildContext context) {
@@ -565,9 +771,21 @@ class _SpendingHero extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            context.l10n.text('totalSpending'),
-            style: Theme.of(context).textTheme.titleLarge,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  context.l10n.text('totalSpending'),
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              IconButton(
+                key: const Key('home-notification-action'),
+                tooltip: context.l10n.text('notifications'),
+                onPressed: onNotificationsTap,
+                icon: const Icon(Icons.notifications_none_rounded),
+              ),
+            ],
           ),
           const SizedBox(height: ButlerlySpacing.micro),
           Row(
@@ -755,14 +973,13 @@ class _CategorySummary extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final scroll = constraints.maxWidth < 360 || textScale > 18;
-        final dividerWidth = scroll ? 0.0 : (categories.length - 1).toDouble();
         final itemWidth = scroll
             ? 132.0
-            : (constraints.maxWidth - dividerWidth) / categories.length;
+            : constraints.maxWidth / categories.length;
         final row = Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            for (var index = 0; index < categories.length; index++) ...[
+            for (var index = 0; index < categories.length; index++)
               SizedBox(
                 width: itemWidth,
                 child: _CategorySummaryItem(
@@ -771,15 +988,6 @@ class _CategorySummary extends StatelessWidget {
                   total: total,
                 ),
               ),
-              if (index < categories.length - 1 && !scroll)
-                SizedBox(
-                  height: 86,
-                  child: VerticalDivider(
-                    width: 1,
-                    color: context.colors.cardDivider,
-                  ),
-                ),
-            ],
           ],
         );
         return scroll
@@ -1260,9 +1468,6 @@ AnalysisPeriod _homePeriodForMonth({
     return null;
   }
 
-  // Core local records remain usable if a persisted timezone can no longer be
-  // resolved, while all calendar-boundary calculations still stay inside the
-  // application-layer period resolver.
   return resolve(timeZoneId) ?? resolve('UTC')!;
 }
 
