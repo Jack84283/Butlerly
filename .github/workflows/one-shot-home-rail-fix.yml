@@ -10,15 +10,12 @@ permissions:
 
 jobs:
   fix:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: codex/home-sticky-header-search
           fetch-depth: 0
-
-      - uses: ./.github/actions/setup-toolchain
 
       - name: Apply targeted Home header width fix
         shell: bash
@@ -33,6 +30,23 @@ jobs:
               pinned: true,
               delegate: _HomePinnedHeaderDelegate(
                 extent: _homeHeaderExtent(context),
+                child: FutureBuilder<_HomeData>(
+                  future: future,
+                  builder: (context, snapshot) {
+                    final data =
+                        snapshot.data ??
+                        _HomeData.empty(_now, selectedMonth: _selectedMonth);
+                    final loading =
+                        snapshot.connectionState != ConnectionState.done;
+                    return _HomeHeader(
+                      month: data.displayMonth,
+                      greetingKey: homeGreetingKey(_now),
+                      onMonthTap: loading ? null : () => _selectMonth(data),
+                    );
+                  },
+                ),
+              ),
+            ),
 """
           new = """            SliverLayoutBuilder(
               builder: (context, constraints) => SliverPersistentHeader(
@@ -42,41 +56,44 @@ jobs:
                     context,
                     crossAxisExtent: constraints.crossAxisExtent,
                   ),
-"""
-          assert old in text, 'expected pinned header call site not found'
-          text = text.replace(old, new, 1)
-
-          old = """              ),
-            ),
-            SliverPadding(
-"""
-          new = """                ),
+                  child: FutureBuilder<_HomeData>(
+                    future: future,
+                    builder: (context, snapshot) {
+                      final data =
+                          snapshot.data ??
+                          _HomeData.empty(_now, selectedMonth: _selectedMonth);
+                      final loading =
+                          snapshot.connectionState != ConnectionState.done;
+                      return _HomeHeader(
+                        month: data.displayMonth,
+                        greetingKey: homeGreetingKey(_now),
+                        onMonthTap: loading ? null : () => _selectMonth(data),
+                      );
+                    },
+                  ),
+                ),
               ),
             ),
-            SliverPadding(
 """
-          marker = text.index('            SliverLayoutBuilder(')
-          tail = text[marker:]
-          assert old in tail, 'expected pinned header closing sequence not found'
-          text = text[:marker] + tail.replace(old, new, 1)
+          assert text.count(old) == 1, 'expected exactly one pinned header block'
+          text = text.replace(old, new, 1)
 
           old = 'double _homeHeaderExtent(BuildContext context) {'
-          new = '''double _homeHeaderExtent(
+          new = """double _homeHeaderExtent(
             BuildContext context, {
             required double crossAxisExtent,
-          }) {'''
-          assert old in text, 'expected header extent signature not found'
+          }) {"""
+          assert text.count(old) == 1, 'expected exactly one header extent signature'
           text = text.replace(old, new, 1)
 
           old = '(MediaQuery.sizeOf(context).width - ButlerlySize.phoneGutter * 2)'
           new = '(crossAxisExtent - ButlerlySize.phoneGutter * 2)'
-          assert old in text, 'expected MediaQuery width measurement not found'
+          assert text.count(old) == 1, 'expected exactly one MediaQuery width measurement'
           text = text.replace(old, new, 1)
 
           path.write_text(text)
           PY
 
-          dart format apps/butlerly/lib/features/foundation/presentation/home_page.dart
           rm .github/workflows/one-shot-home-rail-fix.yml
 
       - name: Commit targeted fix
