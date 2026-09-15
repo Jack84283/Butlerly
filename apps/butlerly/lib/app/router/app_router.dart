@@ -45,6 +45,7 @@ NoTransitionPage<void> _primaryPage(
 
 final appRouter = GoRouter(
   initialLocation: '/launch',
+  overridePlatformDefaultLocation: true,
   routes: [
     GoRoute(path: '/launch', builder: (_, _) => const ButlerlyLaunchPage()),
     GoRoute(path: '/welcome', builder: (_, _) => const WelcomePage()),
