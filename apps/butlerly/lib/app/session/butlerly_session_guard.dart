@@ -79,9 +79,6 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
     _installElapsedClock(widget.elapsedNow);
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addSemanticsActionListener(_handleSemanticsAction);
-    WidgetsBinding.instance.accessibilityFocus.addListener(
-      _handleAccessibilityFocusChanged,
-    );
     HardwareKeyboard.instance.addHandler(_handleKeyEvent);
     FocusManager.instance.addListener(_handleFocusChanged);
     widget.router.routeInformationProvider.addListener(_handleRouteChanged);
@@ -188,14 +185,10 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
   }
 
   void _handleSemanticsAction(ui.SemanticsActionEvent _) {
-    // VoiceOver and TalkBack activate controls through semantics rather than
-    // raw pointer or hardware-key events. Treat those actions as real activity.
-    _recordActivity();
-  }
-
-  void _handleAccessibilityFocusChanged() {
-    // Moving accessibility focus is user navigation even when no control is
-    // activated, so it must keep the session alive as well.
+    // VoiceOver and TalkBack navigation and activation are delivered as
+    // semantics actions, including accessibility-focus movement. Counting the
+    // platform action itself avoids treating framework-only focus changes as
+    // user activity.
     _recordActivity();
   }
 
@@ -294,9 +287,6 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
     widget.router.routeInformationProvider.removeListener(_handleRouteChanged);
     FocusManager.instance.removeListener(_handleFocusChanged);
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
-    WidgetsBinding.instance.accessibilityFocus.removeListener(
-      _handleAccessibilityFocusChanged,
-    );
     WidgetsBinding.instance.removeSemanticsActionListener(_handleSemanticsAction);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
