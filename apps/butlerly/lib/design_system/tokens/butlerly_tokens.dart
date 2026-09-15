@@ -114,6 +114,7 @@ abstract final class ButlerlySize {
   static const preferredTarget = 48.0;
   static const phoneBreakpoint = 600.0;
   static const desktopBreakpoint = 1024.0;
+  static const phoneContentMaxWidth = 600.0;
   static const phoneGutter = 12.0;
   static const tabletGutter = 24.0;
   static const desktopGutter = 32.0;
@@ -129,6 +130,11 @@ abstract final class ButlerlySize {
   static const sourcePreviewWidth = 64.0;
   static const sourcePreviewHeight = 80.0;
   static const navigationBarHeight = 78.0;
+
+  /// Window class is based on the shortest logical side so rotating a phone
+  /// never turns its primary navigation into tablet navigation.
+  static bool isTabletViewport(Size viewport) =>
+      viewport.shortestSide >= phoneBreakpoint;
 }
 
 abstract final class ButlerlyMotion {
