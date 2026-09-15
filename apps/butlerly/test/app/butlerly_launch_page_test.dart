@@ -36,7 +36,7 @@ void main() {
 
     elapsed = const Duration(seconds: 2);
     await tester.pump(const Duration(seconds: 2));
-    await tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
 
     elapsed = const Duration(seconds: 12);
     await tester.pump(const Duration(seconds: 10));
@@ -45,7 +45,7 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pump();
     elapsed = const Duration(seconds: 14, milliseconds: 999);
     await tester.pump(const Duration(seconds: 2, milliseconds: 999));
@@ -88,7 +88,7 @@ void main() {
 
     elapsed = const Duration(seconds: 2);
     await tester.pump(const Duration(seconds: 2));
-    await tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pump();
 
     elapsed = const Duration(seconds: 4, milliseconds: 999);
