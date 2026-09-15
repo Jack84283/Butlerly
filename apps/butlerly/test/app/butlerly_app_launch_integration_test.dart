@@ -34,7 +34,7 @@ void main() {
       expect(find.byType(RestoreRecoveryRequiredPage), findsNothing);
 
       await tester.pump(const Duration(milliseconds: 1));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       expect(appRouter.routeInformationProvider.value.uri.path, '/');
       expect(
