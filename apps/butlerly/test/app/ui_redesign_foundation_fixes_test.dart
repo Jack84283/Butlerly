@@ -53,11 +53,12 @@ void main() {
   });
 
   test('editorial placeholder keeps cross-platform serif fallbacks', () {
-    expect(ButlerlyTypography.editorialFontFamily, 'Georgia');
+    expect(ButlerlyTypography.editorialFontFamily, 'Times New Roman');
     expect(
       ButlerlyTypography.editorialFontFallback,
-      containsAll(const ['Times New Roman', 'Noto Serif', 'serif']),
+      containsAll(const ['Times', 'Noto Serif', 'serif']),
     );
+    expect(ButlerlyTypography.editorialFontFallback, isNot(contains('Georgia')));
   });
 
   test('phone navigation preserves the established 78 px height at 1x', () {

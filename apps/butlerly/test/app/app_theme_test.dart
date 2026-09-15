@@ -1,5 +1,6 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -15,6 +16,33 @@ void main() {
       expect(dark.brightness, Brightness.dark);
       expect(lightColors.interactive, isNotNull);
       expect(darkColors.interactive, isNotNull);
+    }
+  });
+
+  test('editorial typography prefers Times New Roman with serif fallbacks', () {
+    expect(ButlerlyTypography.editorialFontFamily, 'Times New Roman');
+    expect(
+      ButlerlyTypography.editorialFontFallback,
+      const ['Times', 'Noto Serif', 'serif'],
+    );
+    expect(
+      <String>[
+        ButlerlyTypography.editorialFontFamily,
+        ...ButlerlyTypography.editorialFontFallback,
+      ],
+      isNot(contains('Georgia')),
+      reason:
+          'Georgia must not reappear as a fallback because its numerals are the reason Butlerly prefers Times New Roman.',
+    );
+    for (final theme in [AppTheme.light, AppTheme.dark]) {
+      expect(
+        theme.textTheme.displaySmall?.fontFamily,
+        ButlerlyTypography.editorialFontFamily,
+      );
+      expect(
+        theme.textTheme.displaySmall?.fontFamilyFallback,
+        ButlerlyTypography.editorialFontFallback,
+      );
     }
   });
 

@@ -1,5 +1,6 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/app/router/app_router.dart';
+import 'package:butlerly/app/session/butlerly_session_guard.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/app/theme/theme_mode_provider.dart';
 import 'package:butlerly/core/data/restore_recovery_state.dart';
@@ -38,34 +39,48 @@ class ButlerlyApp extends ConsumerWidget {
       themeMode: themeMode,
       locale: locale,
       routerConfig: appRouter,
-      builder: (context, child) {
-        Widget normalContent() {
-          if (preference.isLoading) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
-          }
-          if (firstUse) {
-            return Overlay(
-              initialEntries: [
-                OverlayEntry(builder: (_) => const FirstUsePreferencesPage()),
-              ],
-            );
-          }
-          return child ?? const SizedBox.shrink();
-        }
-
-        if (recoveryState == null) return normalContent();
-        return ListenableBuilder(
-          listenable: recoveryState,
+      builder: (context, child) => ButlerlySessionGuard(
+        router: appRouter,
+        child: ListenableBuilder(
+          listenable: appRouter.routeInformationProvider,
           builder: (context, _) {
-            if (recoveryState.isRecoveryRequired) {
-              return const RestoreRecoveryRequiredPage();
+            // A cold launch and an inactivity reset must show the branded
+            // launch surface before first-use or restore-recovery overlays.
+            if (appRouter.routeInformationProvider.value.uri.path == '/launch') {
+              return child ?? const SizedBox.shrink();
             }
-            return normalContent();
+
+            Widget normalContent() {
+              if (preference.isLoading) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+              if (firstUse) {
+                return Overlay(
+                  initialEntries: [
+                    OverlayEntry(
+                      builder: (_) => const FirstUsePreferencesPage(),
+                    ),
+                  ],
+                );
+              }
+              return child ?? const SizedBox.shrink();
+            }
+
+            if (recoveryState == null) return normalContent();
+            return ListenableBuilder(
+              listenable: recoveryState,
+              builder: (context, _) {
+                if (recoveryState.isRecoveryRequired) {
+                  return const RestoreRecoveryRequiredPage();
+                }
+                return normalContent();
+              },
+            );
           },
-        );
-      },
+        ),
+      ),
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: const [
         AppLocalizations.delegate,

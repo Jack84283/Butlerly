@@ -107,58 +107,6 @@ Future<void> startLocalFileImport(
   }
 }
 
-class LaunchPage extends StatefulWidget {
-  const LaunchPage({super.key});
-
-  @override
-  State<LaunchPage> createState() => _LaunchPageState();
-}
-
-class _LaunchPageState extends State<LaunchPage> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await Future<void>.delayed(
-        ButlerlyMotion.responsive(context, const Duration(seconds: 3)),
-      );
-      if (mounted) context.go('/welcome');
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    body: Semantics(
-      label: context.l10n.text('appName'),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: context.colors.brand,
-                borderRadius: BorderRadius.circular(ButlerlyRadius.large),
-              ),
-              child: const Icon(
-                Icons.shield_outlined,
-                color: Colors.white,
-                size: 44,
-              ),
-            ),
-            const SizedBox(height: ButlerlySpacing.section),
-            Text(
-              context.l10n.text('appName'),
-              style: Theme.of(context).textTheme.displaySmall,
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
 class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key});
 

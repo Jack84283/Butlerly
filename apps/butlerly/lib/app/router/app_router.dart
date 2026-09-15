@@ -4,6 +4,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
 import 'package:butlerly/features/foundation/presentation/add_page.dart';
+import 'package:butlerly/features/foundation/presentation/butlerly_launch_page.dart';
 import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/features/foundation/presentation/master_data_page.dart';
@@ -43,9 +44,10 @@ NoTransitionPage<void> _primaryPage(
     );
 
 final appRouter = GoRouter(
-  initialLocation: '/',
+  initialLocation: '/launch',
+  overridePlatformDefaultLocation: true,
   routes: [
-    GoRoute(path: '/launch', builder: (_, _) => const LaunchPage()),
+    GoRoute(path: '/launch', builder: (_, _) => const ButlerlyLaunchPage()),
     GoRoute(path: '/welcome', builder: (_, _) => const WelcomePage()),
 
     // Primary app shell. Only the five primary destinations keep the
