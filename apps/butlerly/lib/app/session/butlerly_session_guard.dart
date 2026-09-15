@@ -16,14 +16,17 @@ typedef ButlerlyPlatformExit = Future<void> Function();
 
 /// Tracks inactivity and turns an expired session into a fresh Butlerly launch.
 ///
-/// On Android Butlerly first switches to `/launch` and then asks the platform
-/// navigator to close the Flutter activity. Reopening the application therefore
-/// resumes from the branded launch route (or cold-starts there if the process
-/// was reclaimed). iOS intentionally does not receive a programmatic-exit
-/// request because iOS does not support apps terminating themselves; on iOS the
-/// same expiration still clears the active UI/navigation session and presents
-/// the fresh launch flow immediately.
+/// On Android, a timeout reached while Butlerly is in the foreground first
+/// switches to `/launch` and then asks the platform navigator to close the
+/// Flutter activity. Reopening the application therefore resumes from the
+/// branded launch route (or cold-starts there if the process was reclaimed).
+/// If the timeout elapses while Butlerly is already backgrounded, the next
+/// resume goes directly to the fresh launch route instead of immediately
+/// closing the activity again.
 ///
+/// iOS intentionally does not receive a programmatic-exit request because iOS
+/// does not support apps terminating themselves; on iOS the same expiration
+/// clears the active UI/navigation session and presents the fresh launch flow.
 /// Repository data and persisted user preferences are intentionally untouched.
 class ButlerlySessionGuard extends StatefulWidget {
   const ButlerlySessionGuard({
@@ -57,7 +60,7 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
   TextEditingController? _activeEditingController;
   late DateTime _lastActivityAt;
   late bool _launchActive;
-  bool _foreground = true;
+  late bool _foreground;
 
   @override
   void initState() {
@@ -68,10 +71,13 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
     widget.router.routeInformationProvider.addListener(_handleRouteChanged);
     _lastActivityAt = widget.now();
     _launchActive = _isLaunchRoute;
+    final lifecycleState = WidgetsBinding.instance.lifecycleState;
+    _foreground =
+        lifecycleState == null || lifecycleState == AppLifecycleState.resumed;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _syncEditingController();
     });
-    if (!_launchActive) _scheduleTimeout();
+    if (_foreground && !_launchActive) _scheduleTimeout();
   }
 
   @override
@@ -96,7 +102,15 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
       case AppLifecycleState.resumed:
         _foreground = true;
         _syncEditingController();
-        if (!_launchActive) _scheduleTimeout();
+        if (_launchActive) return;
+        if (_elapsedSinceActivity >= widget.inactivityTimeout) {
+          // The app was already away when the timeout elapsed. Present the
+          // fresh launch now; do not immediately close the activity the user
+          // just reopened.
+          _expireSession(requestPlatformExit: false);
+        } else {
+          _scheduleTimeout();
+        }
         return;
       case AppLifecycleState.inactive:
       case AppLifecycleState.hidden:
@@ -110,6 +124,8 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
 
   bool get _isLaunchRoute =>
       widget.router.routeInformationProvider.value.uri.path == '/launch';
+
+  Duration get _elapsedSinceActivity => widget.now().difference(_lastActivityAt);
 
   TargetPlatform get _targetPlatform =>
       widget.targetPlatform ?? defaultTargetPlatform;
@@ -178,8 +194,7 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
     _inactivityTimer?.cancel();
     if (!_foreground || _launchActive) return;
 
-    final elapsed = widget.now().difference(_lastActivityAt);
-    final remaining = widget.inactivityTimeout - elapsed;
+    final remaining = widget.inactivityTimeout - _elapsedSinceActivity;
     if (remaining <= Duration.zero) {
       _expireSession();
       return;
@@ -189,15 +204,14 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
 
   void _handleTimeout() {
     if (!_foreground || _launchActive) return;
-    final elapsed = widget.now().difference(_lastActivityAt);
-    if (elapsed < widget.inactivityTimeout) {
+    if (_elapsedSinceActivity < widget.inactivityTimeout) {
       _scheduleTimeout();
       return;
     }
     _expireSession();
   }
 
-  void _expireSession() {
+  void _expireSession({bool requestPlatformExit = true}) {
     _inactivityTimer?.cancel();
     if (!_foreground || _launchActive || !mounted) return;
 
@@ -205,7 +219,7 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
     // a warm reopen cannot expose the prior route even if the process survives.
     widget.router.go('/launch');
 
-    if (_targetPlatform == TargetPlatform.android) {
+    if (requestPlatformExit && _targetPlatform == TargetPlatform.android) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || !_isLaunchRoute) return;
         unawaited(_requestPlatformExit());
