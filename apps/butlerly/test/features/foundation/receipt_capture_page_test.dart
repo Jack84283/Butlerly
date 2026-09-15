@@ -134,7 +134,15 @@ void main() {
     expect(find.byType(TextFormField), findsWidgets);
     expect(find.text('Description'), findsOneWidget);
     expect(find.text('12.34'), findsOneWidget);
-    expect(find.text('Save receipt transaction'), findsOneWidget);
+
+    final saveReceipt = find.text('Save receipt transaction');
+    expect(saveReceipt, findsOneWidget);
+    await tester.ensureVisible(saveReceipt);
+    await tester.tap(saveReceipt);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Date needs review'), findsWidgets);
+    expect(find.byType(DatePickerDialog), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
