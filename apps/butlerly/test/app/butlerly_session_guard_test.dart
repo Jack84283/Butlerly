@@ -19,11 +19,6 @@ void main() {
     var elapsed = Duration.zero;
     final router = _guardTestRouter();
     addTearDown(router.dispose);
-    addTearDown(
-      () => tester.binding.handleAppLifecycleStateChanged(
-        AppLifecycleState.resumed,
-      ),
-    );
 
     await tester.pumpWidget(_guardedApp(router, () => elapsed));
     await tester.pump();
@@ -222,21 +217,21 @@ void main() {
     tester,
   ) async {
     var elapsed = Duration.zero;
+    var wall = DateTime.utc(2026, 9, 15, 12);
     final router = _guardTestRouter();
     addTearDown(router.dispose);
-    addTearDown(
-      () => tester.binding.handleAppLifecycleStateChanged(
-        AppLifecycleState.resumed,
-      ),
-    );
+    addTearDown(() => _restoreResumed(tester));
 
-    await tester.pumpWidget(_guardedApp(router, () => elapsed));
+    await tester.pumpWidget(
+      _guardedApp(router, () => elapsed, wallNow: () => wall),
+    );
     await tester.pump();
 
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    _sendToBackground(tester);
     elapsed = const Duration(minutes: 4);
+    wall = wall.add(const Duration(minutes: 4));
     await tester.pump(const Duration(minutes: 4));
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    _resumeFromBackground(tester);
     await tester.pump();
 
     expect(router.routeInformationProvider.value.uri.path, '/work');
@@ -251,11 +246,7 @@ void main() {
     var wall = DateTime.utc(2026, 9, 15, 12);
     final router = _guardTestRouter();
     addTearDown(router.dispose);
-    addTearDown(
-      () => tester.binding.handleAppLifecycleStateChanged(
-        AppLifecycleState.resumed,
-      ),
-    );
+    addTearDown(() => _restoreResumed(tester));
 
     await tester.pumpWidget(
       _guardedApp(router, () => elapsed, wallNow: () => wall),
@@ -264,12 +255,12 @@ void main() {
 
     elapsed = const Duration(minutes: 4, seconds: 50);
     await tester.pump(const Duration(minutes: 4, seconds: 50));
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    _sendToBackground(tester);
 
     wall = wall.add(const Duration(seconds: 5));
     elapsed = const Duration(minutes: 4, seconds: 55);
     await tester.pump(const Duration(seconds: 5));
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    _resumeFromBackground(tester);
     await tester.pump();
 
     expect(router.routeInformationProvider.value.uri.path, '/work');
@@ -292,21 +283,17 @@ void main() {
     var wall = DateTime.utc(2026, 9, 15, 12);
     final router = _guardTestRouter();
     addTearDown(router.dispose);
-    addTearDown(
-      () => tester.binding.handleAppLifecycleStateChanged(
-        AppLifecycleState.resumed,
-      ),
-    );
+    addTearDown(() => _restoreResumed(tester));
 
     await tester.pumpWidget(
       _guardedApp(router, () => elapsed, wallNow: () => wall),
     );
     await tester.pump();
 
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    _sendToBackground(tester);
     wall = wall.add(const Duration(minutes: 6));
     await tester.pump(const Duration(minutes: 6));
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    _resumeFromBackground(tester);
     await tester.pump();
 
     expect(router.routeInformationProvider.value.uri.path, '/launch');
@@ -320,20 +307,16 @@ void main() {
     var wall = DateTime.utc(2026, 9, 15, 12);
     final router = _guardTestRouter();
     addTearDown(router.dispose);
-    addTearDown(
-      () => tester.binding.handleAppLifecycleStateChanged(
-        AppLifecycleState.resumed,
-      ),
-    );
+    addTearDown(() => _restoreResumed(tester));
 
     await tester.pumpWidget(
       _guardedApp(router, () => elapsed, wallNow: () => wall),
     );
     await tester.pump();
 
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    _sendToBackground(tester);
     wall = wall.subtract(const Duration(minutes: 1));
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    _resumeFromBackground(tester);
     await tester.pump();
 
     expect(router.routeInformationProvider.value.uri.path, '/launch');
@@ -344,19 +327,17 @@ void main() {
     tester,
   ) async {
     var elapsed = Duration.zero;
+    var wall = DateTime.utc(2026, 9, 15, 12);
     var exits = 0;
     final router = _guardTestRouter();
     addTearDown(router.dispose);
-    addTearDown(
-      () => tester.binding.handleAppLifecycleStateChanged(
-        AppLifecycleState.resumed,
-      ),
-    );
+    addTearDown(() => _restoreResumed(tester));
 
     await tester.pumpWidget(
       _guardedApp(
         router,
         () => elapsed,
+        wallNow: () => wall,
         targetPlatform: TargetPlatform.android,
         onPlatformExit: () async {
           exits += 1;
@@ -365,10 +346,11 @@ void main() {
     );
     await tester.pump();
 
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    _sendToBackground(tester);
     elapsed = const Duration(minutes: 6);
+    wall = wall.add(const Duration(minutes: 6));
     await tester.pump(const Duration(minutes: 6));
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    _resumeFromBackground(tester);
     await tester.pump();
 
     expect(router.routeInformationProvider.value.uri.path, '/launch');
@@ -416,6 +398,45 @@ void main() {
     expect(find.text('Home'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+}
+
+void _sendToBackground(WidgetTester tester) {
+  final binding = tester.binding;
+  final state = binding.lifecycleState;
+  if (state == null || state == AppLifecycleState.detached) {
+    binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+  }
+  if (binding.lifecycleState == AppLifecycleState.resumed) {
+    binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+  }
+  if (binding.lifecycleState == AppLifecycleState.inactive) {
+    binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+  }
+  if (binding.lifecycleState == AppLifecycleState.hidden) {
+    binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+  }
+}
+
+void _resumeFromBackground(WidgetTester tester) {
+  final binding = tester.binding;
+  if (binding.lifecycleState == AppLifecycleState.paused) {
+    binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+  }
+  if (binding.lifecycleState == AppLifecycleState.hidden) {
+    binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+  }
+  if (binding.lifecycleState == AppLifecycleState.inactive ||
+      binding.lifecycleState == AppLifecycleState.detached) {
+    binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+  }
+}
+
+void _restoreResumed(WidgetTester tester) {
+  if (tester.binding.lifecycleState == AppLifecycleState.resumed ||
+      tester.binding.lifecycleState == null) {
+    return;
+  }
+  _resumeFromBackground(tester);
 }
 
 GoRouter _guardTestRouter() => GoRouter(
