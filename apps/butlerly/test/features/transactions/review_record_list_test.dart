@@ -2,6 +2,7 @@ import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
+import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_record_list.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -87,7 +88,14 @@ void main() {
 
         final transactionTitle = tester.widget<Text>(find.text('Merchant 0'));
         final colors = AppTheme.light.extension<ButlerlySemanticColors>()!;
-        expect(transactionTitle.style?.fontFamily, isNull);
+        expect(
+          transactionTitle.style?.fontFamily,
+          AppTheme.light.textTheme.bodyMedium?.fontFamily,
+        );
+        expect(
+          transactionTitle.style?.fontFamily,
+          isNot(ButlerlyTypography.editorialFontFamily),
+        );
         expect(
           transactionTitle.style?.fontSize,
           ButlerlyTransactionItemTokens.titleFontSize,
