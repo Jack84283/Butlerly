@@ -74,19 +74,28 @@ class TransactionRecordList extends StatelessWidget {
       final key = '${date.year}-${date.month}-${date.day}';
       groups.putIfAbsent(key, () => []).add(transaction);
     }
+    final entries = groups.entries.toList(growable: false);
     final locale = Localizations.localeOf(context).toLanguageTag();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final entry in groups.entries) ...[
-          if (entry.key != groups.entries.first.key)
-            const SizedBox(height: ButlerlySpacing.section),
+        for (var index = 0; index < entries.length; index++) ...[
+          if (index > 0) ...[
+            const SizedBox(height: ButlerlySpacing.compact),
+            Divider(
+              key: ValueKey('transaction-group-divider-$index'),
+              height: ButlerlyTransactionItemTokens.dividerThickness,
+              thickness: ButlerlyTransactionItemTokens.dividerThickness,
+              color: context.colors.cardDivider,
+            ),
+            const SizedBox(height: ButlerlySpacing.compact),
+          ],
           Row(
             children: [
               Expanded(
                 child: Text(
                   transactionDateLabel(
-                    entry.value.first,
+                    entries[index].value.first,
                     pendingLabel: context.l10n.text('datePending'),
                     locale: locale,
                   ),
@@ -94,7 +103,7 @@ class TransactionRecordList extends StatelessWidget {
                 ),
               ),
               Text(
-                '${entry.value.length}',
+                '${entries[index].value.length}',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
@@ -102,7 +111,8 @@ class TransactionRecordList extends StatelessWidget {
           const SizedBox(height: ButlerlySpacing.compact),
           ButlerlyTransactionList(
             children: [
-              for (final transaction in entry.value) rows[transaction]!,
+              for (final transaction in entries[index].value)
+                rows[transaction]!,
             ],
           ),
         ],
