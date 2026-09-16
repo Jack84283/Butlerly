@@ -20,6 +20,7 @@ void main() {
       ButlerlyLayout.deviceClass(
         const Size(390, 844),
         platform: TargetPlatform.iOS,
+        deviceDisplaySize: const Size(390, 844),
       ),
       ButlerlyDeviceClass.phone,
     );
@@ -27,6 +28,7 @@ void main() {
       ButlerlyLayout.deviceClass(
         const Size(932, 430),
         platform: TargetPlatform.iOS,
+        deviceDisplaySize: const Size(932, 430),
       ),
       ButlerlyDeviceClass.phone,
     );
@@ -34,6 +36,7 @@ void main() {
       ButlerlyLayout.deviceClass(
         const Size(744, 1133),
         platform: TargetPlatform.iOS,
+        deviceDisplaySize: const Size(744, 1133),
       ),
       ButlerlyDeviceClass.tablet,
     );
@@ -41,6 +44,15 @@ void main() {
       ButlerlyLayout.deviceClass(
         const Size(1133, 744),
         platform: TargetPlatform.iOS,
+        deviceDisplaySize: const Size(1133, 744),
+      ),
+      ButlerlyDeviceClass.tablet,
+    );
+    expect(
+      ButlerlyLayout.deviceClass(
+        const Size(500, 800),
+        platform: TargetPlatform.iOS,
+        deviceDisplaySize: const Size(1024, 1366),
       ),
       ButlerlyDeviceClass.tablet,
     );
@@ -76,6 +88,13 @@ void main() {
         platform: TargetPlatform.iOS,
       ),
       ButlerlySize.pageContentMaxWidth,
+    );
+    expect(
+      ButlerlyLayout.contentMaxWidth(
+        const Size(500, 800),
+        platform: TargetPlatform.iOS,
+      ),
+      ButlerlySize.phoneContentMaxWidth,
     );
     expect(
       ButlerlyLayout.contentMaxWidth(
@@ -264,6 +283,37 @@ void main() {
     );
   }
 
+  testWidgets(
+    'narrow iPad window keeps the iPad shell and bottom navigation',
+    (tester) async {
+      const windowSize = Size(500, 800);
+      await _pumpAt(
+        tester,
+        windowSize,
+        platform: TargetPlatform.iOS,
+        displaySize: const Size(1024, 1366),
+      );
+
+      expect(find.byType(IPadPrimaryShell), findsOneWidget);
+      expect(find.byType(IPhonePrimaryShell), findsNothing);
+      expect(find.byType(NavigationRail), findsNothing);
+      expect(
+        find.byKey(const ValueKey('primary-phone-navigation')),
+        findsNothing,
+      );
+      final navigation = find.byKey(
+        const ValueKey('primary-ipad-navigation'),
+      );
+      expect(navigation, findsOneWidget);
+      expect(tester.getSize(navigation).width, windowSize.width);
+      expect(tester.getRect(navigation).bottom, windowSize.height);
+      expect(
+        tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
+        windowSize.width - ButlerlySize.phoneGutter * 2,
+      );
+    },
+  );
+
   testWidgets('iPad landscape keeps the tablet readable body', (tester) async {
     await _pumpAt(
       tester,
@@ -371,11 +421,16 @@ Future<void> _pumpAt(
   WidgetTester tester,
   Size size, {
   required TargetPlatform platform,
+  Size? displaySize,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
+  tester.view.display.size = displaySize ?? size;
+  tester.view.display.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
+  addTearDown(tester.view.display.resetSize);
+  addTearDown(tester.view.display.resetDevicePixelRatio);
 
   await _withPlatform(platform, () async {
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
