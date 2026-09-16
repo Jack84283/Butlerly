@@ -9,17 +9,32 @@ void main() {
   setUp(() => appRouter.go('/'));
 
   testWidgets(
-    'iPhone landscape keeps compact Home header behavior',
+    'iPhone landscape right-aligns Home context while keeping phone canvas',
     (tester) async {
       const size = Size(932, 430);
       await _pumpOnIos(tester, size, displaySize: size);
 
       final expectedRight = size.width - ButlerlySize.phoneGutter;
-      final contextRight = tester
-          .getRect(find.byKey(const ValueKey('home-header-context')))
-          .right;
+      expect(
+        tester.getRect(find.byKey(const ValueKey('home-header-context'))).right,
+        closeTo(expectedRight, 0.01),
+      );
+      expect(
+        tester.getRect(find.byKey(const ValueKey('home-greeting'))).right,
+        closeTo(expectedRight, 0.01),
+      );
+      expect(
+        tester.getRect(find.byKey(const Key('home-month-selector'))).right,
+        closeTo(expectedRight, 0.01),
+      );
 
-      expect(contextRight, lessThan(expectedRight));
+      final canvas = tester.widget<ColoredBox>(
+        find.byKey(const ValueKey('home-page-canvas')),
+      );
+      final contentSurface = tester.widget<ColoredBox>(
+        find.byKey(const ValueKey('home-page-content-surface')),
+      );
+      expect(canvas.color, contentSurface.color);
     },
     variant: TargetPlatformVariant.only(TargetPlatform.iOS),
   );
@@ -51,6 +66,28 @@ void main() {
         find.byKey(const ValueKey('home-page-content-surface')),
       );
       expect(canvas.color, isNot(contentSurface.color));
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+  );
+
+  testWidgets(
+    'Home keeps pull-to-refresh available across the scroll surface',
+    (tester) async {
+      const size = Size(390, 844);
+      await _pumpOnIos(tester, size, displaySize: size);
+
+      final refreshIndicator = tester.widget<RefreshIndicator>(
+        find.byKey(const ValueKey('home-refresh-indicator')),
+      );
+      expect(
+        refreshIndicator.triggerMode,
+        RefreshIndicatorTriggerMode.anywhere,
+      );
+
+      final scrollView = tester.widget<CustomScrollView>(
+        find.byType(CustomScrollView).first,
+      );
+      expect(scrollView.physics, isA<AlwaysScrollableScrollPhysics>());
     },
     variant: TargetPlatformVariant.only(TargetPlatform.iOS),
   );
