@@ -1,0 +1,219 @@
+name: One-off device shell test repair
+
+on:
+  push:
+    branches:
+      - codex/device-specific-shells
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/device-specific-shells
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-toolchain
+      - name: Repair platform-scoped tests
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          responsive = Path('apps/butlerly/test/app/responsive_shell_test.dart')
+          text = responsive.read_text()
+
+          text = text.replace(
+              "      appRouter.go('/search');\n      await tester.pumpAndSettle();",
+              "      await _withPlatform(TargetPlatform.iOS, () async {\n        appRouter.go('/search');\n        await tester.pumpAndSettle();\n      });",
+          )
+          text = text.replace(
+              "      appRouter.go('/import-export');\n      await tester.pumpAndSettle();",
+              "      await _withPlatform(TargetPlatform.iOS, () async {\n        appRouter.go('/import-export');\n        await tester.pumpAndSettle();\n      });",
+          )
+
+          old_legal = """      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      tester.view.physicalSize = const Size(932, 430);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: LegalDocumentPage(
+            document: LegalDocument(
+              'termsOfUse',
+              'assets/legal/terms_of_use.txt',
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+"""
+          new_legal = """      tester.view.physicalSize = const Size(932, 430);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await _withPlatform(TargetPlatform.iOS, () async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: LegalDocumentPage(
+              document: LegalDocument(
+                'termsOfUse',
+                'assets/legal/terms_of_use.txt',
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+      });
+"""
+          assert old_legal in text
+          text = text.replace(old_legal, new_legal)
+
+          old_pump = """  debugDefaultTargetPlatformOverride = platform;
+  addTearDown(() => debugDefaultTargetPlatformOverride = null);
+  tester.view.physicalSize = size;
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+
+  await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+  await tester.pumpAndSettle();
+"""
+          new_pump = """  tester.view.physicalSize = size;
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+
+  await _withPlatform(platform, () async {
+    await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+    await tester.pumpAndSettle();
+  });
+"""
+          assert old_pump in text
+          text = text.replace(old_pump, new_pump, 1)
+
+          old_focused = """  debugDefaultTargetPlatformOverride = platform;
+  addTearDown(() => debugDefaultTargetPlatformOverride = null);
+  tester.view.physicalSize = size;
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Focused page')),
+        body: const ButlerlyResponsiveBody(
+          contentKey: ValueKey('focused-page-content'),
+          child: SizedBox.expand(),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+"""
+          new_focused = """  tester.view.physicalSize = size;
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+
+  await _withPlatform(platform, () async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          appBar: AppBar(title: const Text('Focused page')),
+          body: const ButlerlyResponsiveBody(
+            contentKey: ValueKey('focused-page-content'),
+            child: SizedBox.expand(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+  });
+}
+"""
+          assert old_focused in text
+          text = text.replace(old_focused, new_focused)
+
+          text += """
+
+Future<void> _withPlatform(
+  TargetPlatform platform,
+  Future<void> Function() action,
+) async {
+  final previous = debugDefaultTargetPlatformOverride;
+  debugDefaultTargetPlatformOverride = platform;
+  try {
+    await action();
+  } finally {
+    debugDefaultTargetPlatformOverride = previous;
+  }
+}
+"""
+          responsive.write_text(text)
+
+          app_test = Path('apps/butlerly/test/app/butlerly_app_test.dart')
+          text = app_test.read_text()
+          material_import = "import 'package:flutter/material.dart';"
+          foundation_import = "import 'package:flutter/foundation.dart';"
+          if foundation_import not in text:
+              text = text.replace(material_import, foundation_import + "\n" + material_import)
+
+          old_test = """  testWidgets('uses adaptive navigation at tablet widths', (tester) async {
+    tester.view.physicalSize = const Size(900, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NavigationRail), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
+  });
+"""
+          new_test = """  testWidgets('uses iPad bottom navigation at tablet widths', (tester) async {
+    final previousPlatform = debugDefaultTargetPlatformOverride;
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      tester.view.physicalSize = const Size(900, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(NavigationRail), findsNothing);
+      expect(
+        find.byKey(const ValueKey('primary-ipad-navigation')),
+        findsOneWidget,
+      );
+    } finally {
+      debugDefaultTargetPlatformOverride = previousPlatform;
+    }
+  });
+"""
+          assert old_test in text
+          app_test.write_text(text.replace(old_test, new_test))
+          PY
+          dart format apps/butlerly/test/app/responsive_shell_test.dart apps/butlerly/test/app/butlerly_app_test.dart
+      - name: Commit repair and remove one-off workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/oneoff-device-shell-test-fix.yml
+          git add apps/butlerly/test/app/responsive_shell_test.dart apps/butlerly/test/app/butlerly_app_test.dart
+          git commit -m "Align tablet navigation tests with iPad shell"
+          git push origin HEAD:codex/device-specific-shells
