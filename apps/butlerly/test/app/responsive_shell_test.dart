@@ -73,7 +73,7 @@ void main() {
     );
   });
 
-  testWidgets(
+  _testWidgetsOnIos(
     'iPhone portrait keeps iPhone bottom navigation and normal page gutters',
     (tester) async {
       await _pumpAt(tester, const Size(390, 844));
@@ -94,7 +94,7 @@ void main() {
     },
   );
 
-  testWidgets(
+  _testWidgetsOnIos(
     'iPhone landscape keeps full-width Home chrome and bottom navigation',
     (tester) async {
       const size = Size(932, 430);
@@ -123,7 +123,7 @@ void main() {
     },
   );
 
-  testWidgets(
+  _testWidgetsOnIos(
     'landscape Search keeps a full-width header and the phone readable body',
     (tester) async {
       await _pumpAt(tester, const Size(932, 430));
@@ -147,7 +147,7 @@ void main() {
     },
   );
 
-  testWidgets(
+  _testWidgetsOnIos(
     'landscape Import/Export keeps a full-width header and phone body width',
     (tester) async {
       await _pumpAt(tester, const Size(932, 430));
@@ -170,7 +170,7 @@ void main() {
     },
   );
 
-  testWidgets(
+  _testWidgetsOnIos(
     'focused responsive body keeps AppBar full-width and caps phone content',
     (tester) async {
       await _pumpResponsiveBodyAt(tester, const Size(932, 430));
@@ -185,7 +185,7 @@ void main() {
     },
   );
 
-  testWidgets('focused responsive body keeps the iPad readable width', (
+  _testWidgetsOnIos('focused responsive body keeps the iPad readable width', (
     tester,
   ) async {
     await _pumpResponsiveBodyAt(tester, const Size(1133, 744));
@@ -198,7 +198,7 @@ void main() {
   });
 
   for (final size in const [Size(744, 1133), Size(1133, 744)]) {
-    testWidgets(
+    _testWidgetsOnIos(
       'iPad uses bottom navigation at ${size.width}x${size.height}',
       (tester) async {
         await _pumpAt(tester, size);
@@ -220,7 +220,9 @@ void main() {
     );
   }
 
-  testWidgets('iPad landscape keeps the tablet readable body', (tester) async {
+  _testWidgetsOnIos('iPad landscape keeps the tablet readable body', (
+    tester,
+  ) async {
     await _pumpAt(tester, const Size(1133, 744));
 
     expect(
@@ -229,34 +231,31 @@ void main() {
     );
   });
 
-  testWidgets('desktop uses the isolated desktop shell', (tester) async {
-    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
-    try {
-      await _pumpAt(tester, const Size(1200, 500));
+  _testWidgetsOnMacOs('desktop uses the isolated desktop shell', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(1200, 500));
 
-      expect(find.byType(NavigationRail), findsOneWidget);
-      expect(
-        find.byKey(const ValueKey('primary-desktop-navigation')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const ValueKey('primary-phone-navigation')),
-        findsNothing,
-      );
-      expect(
-        find.byKey(const ValueKey('primary-ipad-navigation')),
-        findsNothing,
-      );
-      expect(
-        tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
-        ButlerlySize.pageContentMaxWidth,
-      );
-    } finally {
-      debugDefaultTargetPlatformOverride = null;
-    }
+    expect(find.byType(NavigationRail), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('primary-desktop-navigation')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('primary-phone-navigation')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('primary-ipad-navigation')),
+      findsNothing,
+    );
+    expect(
+      tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
+      ButlerlySize.pageContentMaxWidth,
+    );
   });
 
-  testWidgets(
+  _testWidgetsOnIos(
     'landscape Legal document keeps full-width AppBar and capped content',
     (tester) async {
       tester.view.physicalSize = const Size(932, 430);
@@ -284,6 +283,22 @@ void main() {
         ButlerlySize.phoneContentMaxWidth,
       );
     },
+  );
+}
+
+void _testWidgetsOnIos(String description, WidgetTesterCallback callback) {
+  testWidgets(
+    description,
+    callback,
+    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+  );
+}
+
+void _testWidgetsOnMacOs(String description, WidgetTesterCallback callback) {
+  testWidgets(
+    description,
+    callback,
+    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
   );
 }
 
