@@ -136,8 +136,10 @@ void main() {
         platform: TargetPlatform.iOS,
       );
 
-      appRouter.go('/search');
-      await tester.pumpAndSettle();
+      await _withPlatform(TargetPlatform.iOS, () async {
+        appRouter.go('/search');
+        await tester.pumpAndSettle();
+      });
 
       expect(find.byType(NavigationRail), findsNothing);
       expect(
@@ -164,8 +166,10 @@ void main() {
         platform: TargetPlatform.iOS,
       );
 
-      appRouter.go('/import-export');
-      await tester.pumpAndSettle();
+      await _withPlatform(TargetPlatform.iOS, () async {
+        appRouter.go('/import-export');
+        await tester.pumpAndSettle();
+      });
 
       expect(find.byType(NavigationRail), findsNothing);
       expect(
@@ -282,24 +286,24 @@ void main() {
   testWidgets(
     'landscape Legal document keeps full-width AppBar and capped content',
     (tester) async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
-      addTearDown(() => debugDefaultTargetPlatformOverride = null);
       tester.view.physicalSize = const Size(932, 430);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: LegalDocumentPage(
-            document: LegalDocument(
-              'termsOfUse',
-              'assets/legal/terms_of_use.txt',
+      await _withPlatform(TargetPlatform.iOS, () async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: LegalDocumentPage(
+              document: LegalDocument(
+                'termsOfUse',
+                'assets/legal/terms_of_use.txt',
+              ),
             ),
           ),
-        ),
-      );
-      await tester.pump();
+        );
+        await tester.pump();
+      });
 
       expect(tester.getSize(find.byType(AppBar)).width, 932);
       expect(
@@ -317,15 +321,15 @@ Future<void> _pumpAt(
   Size size, {
   required TargetPlatform platform,
 }) async {
-  debugDefaultTargetPlatformOverride = platform;
-  addTearDown(() => debugDefaultTargetPlatformOverride = null);
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
 
-  await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
-  await tester.pumpAndSettle();
+  await _withPlatform(platform, () async {
+    await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+    await tester.pumpAndSettle();
+  });
 }
 
 Future<void> _pumpResponsiveBodyAt(
@@ -333,23 +337,36 @@ Future<void> _pumpResponsiveBodyAt(
   Size size, {
   required TargetPlatform platform,
 }) async {
-  debugDefaultTargetPlatformOverride = platform;
-  addTearDown(() => debugDefaultTargetPlatformOverride = null);
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
 
-  await tester.pumpWidget(
-    MaterialApp(
-      home: Scaffold(
-        appBar: AppBar(title: const Text('Focused page')),
-        body: const ButlerlyResponsiveBody(
-          contentKey: ValueKey('focused-page-content'),
-          child: SizedBox.expand(),
+  await _withPlatform(platform, () async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          appBar: AppBar(title: const Text('Focused page')),
+          body: const ButlerlyResponsiveBody(
+            contentKey: ValueKey('focused-page-content'),
+            child: SizedBox.expand(),
+          ),
         ),
       ),
-    ),
-  );
-  await tester.pumpAndSettle();
+    );
+    await tester.pumpAndSettle();
+  });
+}
+
+Future<void> _withPlatform(
+  TargetPlatform platform,
+  Future<void> Function() action,
+) async {
+  final previous = debugDefaultTargetPlatformOverride;
+  debugDefaultTargetPlatformOverride = platform;
+  try {
+    await action();
+  } finally {
+    debugDefaultTargetPlatformOverride = previous;
+  }
 }
