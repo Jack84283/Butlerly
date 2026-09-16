@@ -3,6 +3,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/import/local_csv_importer.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -121,60 +122,63 @@ class WelcomePage extends StatelessWidget {
       ],
     ),
     body: SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(ButlerlySpacing.section),
-        children: [
-          Align(
-            child: Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: context.colors.brand,
-                borderRadius: BorderRadius.circular(ButlerlyRadius.large),
-              ),
-              child: const Icon(
-                Icons.shield_outlined,
-                color: Colors.white,
-                size: 40,
+      child: ButlerlyResponsiveBody(
+        contentKey: const ValueKey('welcome-content'),
+        child: ListView(
+          padding: const EdgeInsets.all(ButlerlySpacing.section),
+          children: [
+            Align(
+              child: Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: context.colors.brand,
+                  borderRadius: BorderRadius.circular(ButlerlyRadius.large),
+                ),
+                child: const Icon(
+                  Icons.shield_outlined,
+                  color: Colors.white,
+                  size: 40,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: ButlerlySpacing.section),
-          Text(
-            context.l10n.text('welcomeTitle'),
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.headlineLarge,
-          ),
-          const SizedBox(height: ButlerlySpacing.compact),
-          Text(
-            context.l10n.text('welcomeSubtitle'),
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-          const SizedBox(height: ButlerlySpacing.large),
-          _WelcomeValue(
-            icon: Icons.lock_outline_rounded,
-            title: context.l10n.text('privateByDefault'),
-            body: context.l10n.text('privateByDefaultBody'),
-          ),
-          const SizedBox(height: ButlerlySpacing.small),
-          _WelcomeValue(
-            icon: Icons.cloud_off_outlined,
-            title: context.l10n.text('worksOffline'),
-            body: context.l10n.text('worksOfflineBody'),
-          ),
-          const SizedBox(height: ButlerlySpacing.small),
-          _WelcomeValue(
-            icon: Icons.auto_awesome_outlined,
-            title: context.l10n.text('optionalAssistance'),
-            body: context.l10n.text('optionalAssistanceBody'),
-          ),
-          const SizedBox(height: ButlerlySpacing.large),
-          FilledButton(
-            onPressed: () => context.go('/'),
-            child: Text(context.l10n.text('getStarted')),
-          ),
-        ],
+            const SizedBox(height: ButlerlySpacing.section),
+            Text(
+              context.l10n.text('welcomeTitle'),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.headlineLarge,
+            ),
+            const SizedBox(height: ButlerlySpacing.compact),
+            Text(
+              context.l10n.text('welcomeSubtitle'),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            const SizedBox(height: ButlerlySpacing.large),
+            _WelcomeValue(
+              icon: Icons.lock_outline_rounded,
+              title: context.l10n.text('privateByDefault'),
+              body: context.l10n.text('privateByDefaultBody'),
+            ),
+            const SizedBox(height: ButlerlySpacing.small),
+            _WelcomeValue(
+              icon: Icons.cloud_off_outlined,
+              title: context.l10n.text('worksOffline'),
+              body: context.l10n.text('worksOfflineBody'),
+            ),
+            const SizedBox(height: ButlerlySpacing.small),
+            _WelcomeValue(
+              icon: Icons.auto_awesome_outlined,
+              title: context.l10n.text('optionalAssistance'),
+              body: context.l10n.text('optionalAssistanceBody'),
+            ),
+            const SizedBox(height: ButlerlySpacing.large),
+            FilledButton(
+              onPressed: () => context.go('/'),
+              child: Text(context.l10n.text('getStarted')),
+            ),
+          ],
+        ),
       ),
     ),
   );
@@ -295,46 +299,49 @@ class _ImportExportPageState extends State<ImportExportPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(context.l10n.text('importExport'))),
-    body: ListView(
-      padding: const EdgeInsets.all(ButlerlySpacing.standard),
-      children: [
-        ButlerlyOfflineBanner(
-          message: context.l10n.text('importOfflineBanner'),
-        ),
-        if (_importing) const LinearProgressIndicator(),
-        ButlerlySectionHeader(title: context.l10n.text('importData')),
-        _ActionRow(
-          icon: Icons.file_open_outlined,
-          title: context.l10n.text('importFromFile'),
-          subtitle: context.l10n.text('importFromFileBody'),
-          onTap: _importing ? () {} : _importCsv,
-        ),
-        _ActionRow(
-          icon: Icons.image_outlined,
-          title: context.l10n.text('importReceipts'),
-          subtitle: context.l10n.text('importReceiptsBody'),
-          onTap: () => _openReceiptFlow(context),
-        ),
-        _ActionRow(
-          icon: Icons.credit_card_outlined,
-          title: context.l10n.text('addPaymentTransaction'),
-          subtitle: context.l10n.text('addPaymentTransactionBody'),
-          onTap: () => context.push('/add'),
-        ),
-        _ActionRow(
-          icon: Icons.notifications_none_outlined,
-          title: context.l10n.text('addPaymentNotification'),
-          subtitle: context.l10n.text('addPaymentNotificationBody'),
-          onTap: _importing ? () {} : _addNotificationTransaction,
-        ),
-        ButlerlySectionHeader(title: context.l10n.text('importExport')),
-        _ActionRow(
-          icon: Icons.file_download_outlined,
-          title: context.l10n.text('exportToFile'),
-          subtitle: context.l10n.text('exportToFileBody'),
-          onTap: () => context.push('/privacy-data'),
-        ),
-      ],
+    body: ButlerlyResponsiveBody(
+      contentKey: const ValueKey('import-export-content'),
+      child: ListView(
+        padding: const EdgeInsets.all(ButlerlySpacing.standard),
+        children: [
+          ButlerlyOfflineBanner(
+            message: context.l10n.text('importOfflineBanner'),
+          ),
+          if (_importing) const LinearProgressIndicator(),
+          ButlerlySectionHeader(title: context.l10n.text('importData')),
+          _ActionRow(
+            icon: Icons.file_open_outlined,
+            title: context.l10n.text('importFromFile'),
+            subtitle: context.l10n.text('importFromFileBody'),
+            onTap: _importing ? () {} : _importCsv,
+          ),
+          _ActionRow(
+            icon: Icons.image_outlined,
+            title: context.l10n.text('importReceipts'),
+            subtitle: context.l10n.text('importReceiptsBody'),
+            onTap: () => _openReceiptFlow(context),
+          ),
+          _ActionRow(
+            icon: Icons.credit_card_outlined,
+            title: context.l10n.text('addPaymentTransaction'),
+            subtitle: context.l10n.text('addPaymentTransactionBody'),
+            onTap: () => context.push('/add'),
+          ),
+          _ActionRow(
+            icon: Icons.notifications_none_outlined,
+            title: context.l10n.text('addPaymentNotification'),
+            subtitle: context.l10n.text('addPaymentNotificationBody'),
+            onTap: _importing ? () {} : _addNotificationTransaction,
+          ),
+          ButlerlySectionHeader(title: context.l10n.text('importExport')),
+          _ActionRow(
+            icon: Icons.file_download_outlined,
+            title: context.l10n.text('exportToFile'),
+            subtitle: context.l10n.text('exportToFileBody'),
+            onTap: () => context.push('/privacy-data'),
+          ),
+        ],
+      ),
     ),
   );
 }
@@ -600,10 +607,13 @@ class NotificationsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(context.l10n.text('notifications'))),
-    body: ButlerlyEmptyState(
-      icon: Icons.notifications_none_rounded,
-      title: context.l10n.text('noNotifications'),
-      message: context.l10n.text('noNotificationsBody'),
+    body: ButlerlyResponsiveBody(
+      contentKey: const ValueKey('notifications-content'),
+      child: ButlerlyEmptyState(
+        icon: Icons.notifications_none_rounded,
+        title: context.l10n.text('noNotifications'),
+        message: context.l10n.text('noNotificationsBody'),
+      ),
     ),
   );
 }
@@ -614,12 +624,15 @@ class AssistantUnavailablePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(context.l10n.text('assistant'))),
-    body: ButlerlyEmptyState(
-      icon: Icons.auto_awesome_outlined,
-      title: context.l10n.text('assistantUnavailable'),
-      message: context.l10n.text('assistantUnavailableBody'),
-      actionLabel: context.l10n.text('searchRecords'),
-      onAction: () => context.go('/search'),
+    body: ButlerlyResponsiveBody(
+      contentKey: const ValueKey('assistant-unavailable-content'),
+      child: ButlerlyEmptyState(
+        icon: Icons.auto_awesome_outlined,
+        title: context.l10n.text('assistantUnavailable'),
+        message: context.l10n.text('assistantUnavailableBody'),
+        actionLabel: context.l10n.text('searchRecords'),
+        onAction: () => context.go('/search'),
+      ),
     ),
   );
 }
@@ -632,23 +645,28 @@ class ReceiptDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(context.l10n.text('receiptDetail'))),
-    body: ListView(
-      padding: const EdgeInsets.all(ButlerlySpacing.standard),
-      children: [
-        Text(
-          context.l10n.text('sourceData'),
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: ButlerlySpacing.small),
-        ButlerlySourcePreview(
-          title: name,
-          subtitle: context.l10n.text('receiptPreview'),
-        ),
-        ButlerlySectionHeader(title: context.l10n.text('extractedSourceText')),
-        ButlerlyCard(
-          child: Text(context.l10n.text('extractedTextUnavailable')),
-        ),
-      ],
+    body: ButlerlyResponsiveBody(
+      contentKey: const ValueKey('receipt-detail-content'),
+      child: ListView(
+        padding: const EdgeInsets.all(ButlerlySpacing.standard),
+        children: [
+          Text(
+            context.l10n.text('sourceData'),
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: ButlerlySpacing.small),
+          ButlerlySourcePreview(
+            title: name,
+            subtitle: context.l10n.text('receiptPreview'),
+          ),
+          ButlerlySectionHeader(
+            title: context.l10n.text('extractedSourceText'),
+          ),
+          ButlerlyCard(
+            child: Text(context.l10n.text('extractedTextUnavailable')),
+          ),
+        ],
+      ),
     ),
   );
 }

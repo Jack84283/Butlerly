@@ -6,6 +6,7 @@ import 'package:butlerly/core/evidence/statement_extractor.dart';
 import 'package:butlerly/core/evidence/statement_source_matcher.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
@@ -386,9 +387,8 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
   void _message(String value) {
     if (mounted) {
       setState(() => _busy = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(value)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(value)));
     }
   }
 
@@ -432,63 +432,72 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
         ),
       ],
     ),
-    body: _busy
-        ? const ButlerlyLoadingState()
-        : _statements.isEmpty
-        ? Center(
-            child: Padding(
-              padding: const EdgeInsets.all(ButlerlySpacing.large),
-              child: Text(context.l10n.text('statementsEmptyBody')),
-            ),
-          )
-        : ListView.builder(
-            padding: const EdgeInsets.all(ButlerlySpacing.pagePadding),
-            itemCount: _statements.length,
-            itemBuilder: (_, index) {
-              final item = _statements[index];
-              return Padding(
-                padding: const EdgeInsets.only(bottom: ButlerlySpacing.cardGap),
-                child: ButlerlyCard(
-                  padding: EdgeInsets.zero,
-                  child: ListTile(
-                    leading: const Icon(Icons.description_outlined),
-                    title: Text(statementDisplayTitle(context, item, _sources)),
-                    subtitle: Text(
-                      item.extractionMessage == null
-                          ? (item.paymentSourceId == null
-                                ? context.l10n.text(
-                                    'choosePaymentSourceToContinue',
-                                  )
-                                : context.l10n.text('reviewInProgress'))
-                          : _statementStatusLabel(
-                              context,
-                              item.extractionMessage,
-                            ),
-                      style: context.transactionItemMetadata,
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (kDebugMode &&
-                            _debugDiagnostics.containsKey(item.id))
-                          IconButton(
-                            tooltip: context.l10n.text('extractionDiagnostics'),
-                            onPressed: () => _showDiagnostics(item.id),
-                            icon: const Icon(Icons.bug_report_outlined),
-                          ),
-                        IconButton(
-                          tooltip: context.l10n.text('deleteStatement'),
-                          onPressed: () => _deleteUnprocessed(item),
-                          icon: const Icon(Icons.delete_outline_rounded),
-                        ),
-                      ],
-                    ),
-                    onTap: () => _open(item),
+    body: ButlerlyResponsiveBody(
+      contentKey: const ValueKey('statement-capture-content'),
+      child: _busy
+          ? const ButlerlyLoadingState()
+          : _statements.isEmpty
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(ButlerlySpacing.large),
+                child: Text(context.l10n.text('statementsEmptyBody')),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(ButlerlySpacing.pagePadding),
+              itemCount: _statements.length,
+              itemBuilder: (_, index) {
+                final item = _statements[index];
+                return Padding(
+                  padding: const EdgeInsets.only(
+                    bottom: ButlerlySpacing.cardGap,
                   ),
-                ),
-              );
-            },
-          ),
+                  child: ButlerlyCard(
+                    padding: EdgeInsets.zero,
+                    child: ListTile(
+                      leading: const Icon(Icons.description_outlined),
+                      title: Text(
+                        statementDisplayTitle(context, item, _sources),
+                      ),
+                      subtitle: Text(
+                        item.extractionMessage == null
+                            ? (item.paymentSourceId == null
+                                  ? context.l10n.text(
+                                      'choosePaymentSourceToContinue',
+                                    )
+                                  : context.l10n.text('reviewInProgress'))
+                            : _statementStatusLabel(
+                                context,
+                                item.extractionMessage,
+                              ),
+                        style: context.transactionItemMetadata,
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (kDebugMode &&
+                              _debugDiagnostics.containsKey(item.id))
+                            IconButton(
+                              tooltip: context.l10n.text(
+                                'extractionDiagnostics',
+                              ),
+                              onPressed: () => _showDiagnostics(item.id),
+                              icon: const Icon(Icons.bug_report_outlined),
+                            ),
+                          IconButton(
+                            tooltip: context.l10n.text('deleteStatement'),
+                            onPressed: () => _deleteUnprocessed(item),
+                            icon: const Icon(Icons.delete_outline_rounded),
+                          ),
+                        ],
+                      ),
+                      onTap: () => _open(item),
+                    ),
+                  ),
+                );
+              },
+            ),
+    ),
   );
 }
 
@@ -525,9 +534,9 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
     final l10n = context.l10n;
     final name = TextEditingController(text: widget.statement.institution);
     final lastFour = TextEditingController(
-      text: RegExp(
-        r'(\d{4})$',
-      ).firstMatch(widget.statement.maskedAccountIdentifier ?? '')?.group(1),
+      text: RegExp(r'(\d{4})$')
+          .firstMatch(widget.statement.maskedAccountIdentifier ?? '')
+          ?.group(1),
     );
     var type = PaymentSourceType.account;
     final create = await showButlerlyBottomSheet<bool>(
@@ -1056,9 +1065,11 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
     if (status == StatementRowStatus.saved) {
       final strict = await widget.service.duplicates(row);
       if (!mounted) return;
-      if (strict case ApplicationSuccess<DuplicateTransactionCheckResult>(
-        value: final duplicate,
-      ) when duplicate.requiresConfirmation) {
+      if (strict
+          case ApplicationSuccess<DuplicateTransactionCheckResult>(
+            value: final duplicate,
+          )
+          when duplicate.requiresConfirmation) {
         final proposed = TransactionDto(
           id: '__statement-proposed__',
           amount: row.amount!,
@@ -1106,9 +1117,11 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
       }
       final matches = await widget.service.likelyMatches(row, _sourceId!);
       if (!mounted) return;
-      if (matches case ApplicationSuccess<List<ReconciliationMatchCandidate>>(
-        value: final values,
-      ) when values.isNotEmpty) {
+      if (matches
+          case ApplicationSuccess<List<ReconciliationMatchCandidate>>(
+            value: final values,
+          )
+          when values.isNotEmpty) {
         final decision = await showButlerlyBottomSheet<StatementReconciliationDecision>(
           context: context,
           builder: (_) => ButlerlySheet(
@@ -1189,169 +1202,172 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
         ),
       ],
     ),
-    body: ListView(
-      padding: const EdgeInsets.all(ButlerlySpacing.pagePadding),
-      children: [
-        if (widget.statement.institution != null ||
-            widget.statement.maskedAccountIdentifier != null ||
-            widget.statement.periodStart != null)
-          Card(
-            child: ListTile(
-              title: Text(
-                statementDisplayTitle(context, widget.statement, _sources),
-              ),
-              subtitle: Text(
-                [
-                  if (widget.statement.maskedAccountIdentifier != null)
-                    widget.statement.maskedAccountIdentifier!,
-                  if (widget.statement.periodStart != null &&
-                      widget.statement.periodEnd != null)
-                    '${widget.statement.periodStart!.toIso8601String().substring(0, 10)} – '
-                        '${widget.statement.periodEnd!.toIso8601String().substring(0, 10)}',
-                ].join(' · '),
-              ),
-            ),
-          ),
-        const SizedBox(height: ButlerlySpacing.compact),
-        _ProgressSummary(rows: _rows),
-        const SizedBox(height: ButlerlySpacing.sectionSpacing),
-        ButlerlyPaymentSourceSelector(
-          value: _sourceId,
-          label: '${context.l10n.text('paymentSource')} *',
-          clearLabel: context.l10n.text('clear'),
-          sources: _sources,
-          onChanged: (value) async {
-            if (value == null) {
-              setState(() => _sourceId = null);
-              return;
-            }
-            await widget.service.assignSource(widget.statement.id, value);
-            setState(() => _sourceId = value);
-          },
-        ),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: _createSource,
-            icon: const Icon(Icons.add_card_outlined),
-            label: Text(context.l10n.text('createNewPaymentSource')),
-          ),
-        ),
-        const SizedBox(height: ButlerlySpacing.compact),
-        if (_rows.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              vertical: ButlerlySpacing.sectionSpacing,
-            ),
-            child: Text(
-              widget.statement.extractionMessage == null
-                  ? context.l10n.text('statementNoRows')
-                  : _statementStatusLabel(
-                      context,
-                      widget.statement.extractionMessage,
-                    ),
-              style: context.transactionItemMetadata,
-              textAlign: TextAlign.center,
-            ),
-          ),
-        for (final row in _rows)
-          Padding(
-            padding: const EdgeInsets.only(bottom: ButlerlySpacing.cardGap),
-            child: ButlerlyCard(
-              padding: EdgeInsets.zero,
-              child: Padding(
-                padding: const EdgeInsets.all(ButlerlySpacing.cardPadding),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      row.description ?? row.originalText,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    Text(
-                      [
-                        row.transactionDate?.toIso8601String().substring(
-                              0,
-                              10,
-                            ) ??
-                            context.l10n.text('dateNeedsReview'),
-                        row.currency ??
-                            context.l10n.text('currencyNeedsReview'),
-                        row.amount ?? context.l10n.text('amountNeedsReview'),
-                        _statementDirectionLabel(context, row.direction),
-                        _statementRowStatusLabel(context, row.status),
-                      ].join(' · '),
-                    ),
-                    if (row.status == StatementRowStatus.pending ||
-                        row.status == StatementRowStatus.unresolved ||
-                        row.status == StatementRowStatus.deferred ||
-                        row.status == StatementRowStatus.skipped)
-                      ButlerlyButtonBar(
-                        alignment: ButlerlyButtonBarAlignment.start,
-                        density: ButlerlyButtonBarDensity.compact,
-                        spacing: ButlerlyButtonBarSpacing.none,
-                        children: [
-                          if (row.status != StatementRowStatus.skipped)
-                            ButlerlyCompactActionButton(
-                              onPressed: () => _edit(row),
-                              icon: Icons.edit_outlined,
-                              child: Text(context.l10n.text('edit')),
-                            ),
-                          if (row.status != StatementRowStatus.skipped)
-                            ButlerlyCompactActionButton(
-                              onPressed:
-                                  _sourceId != null &&
-                                      row.transactionDate != null &&
-                                      row.amount != null &&
-                                      row.currency != null &&
-                                      row.direction != null
-                                  ? () => _act(row, StatementRowStatus.saved)
-                                  : null,
-                              icon: Icons.save_outlined,
-                              child: Text(context.l10n.text('save')),
-                            ),
-                          if (row.status != StatementRowStatus.skipped)
-                            ButlerlyCompactActionButton(
-                              onPressed: () =>
-                                  _act(row, StatementRowStatus.deferred),
-                              icon: Icons.schedule_outlined,
-                              child: Text(context.l10n.text('later')),
-                            ),
-                          ButlerlyCompactActionButton(
-                            onPressed: () => _toggleSkipRestore(row),
-                            icon: row.status == StatementRowStatus.skipped
-                                ? Icons.restore_outlined
-                                : Icons.skip_next_outlined,
-                            child: Text(
-                              row.status == StatementRowStatus.skipped
-                                  ? context.l10n.text('restore')
-                                  : context.l10n.text('skip'),
-                            ),
-                          ),
-                        ],
-                      ),
-                  ],
+    body: ButlerlyResponsiveBody(
+      contentKey: const ValueKey('statement-review-content'),
+      child: ListView(
+        padding: const EdgeInsets.all(ButlerlySpacing.pagePadding),
+        children: [
+          if (widget.statement.institution != null ||
+              widget.statement.maskedAccountIdentifier != null ||
+              widget.statement.periodStart != null)
+            Card(
+              child: ListTile(
+                title: Text(
+                  statementDisplayTitle(context, widget.statement, _sources),
+                ),
+                subtitle: Text(
+                  [
+                    if (widget.statement.maskedAccountIdentifier != null)
+                      widget.statement.maskedAccountIdentifier!,
+                    if (widget.statement.periodStart != null &&
+                        widget.statement.periodEnd != null)
+                      '${widget.statement.periodStart!.toIso8601String().substring(0, 10)} – '
+                          '${widget.statement.periodEnd!.toIso8601String().substring(0, 10)}',
+                  ].join(' · '),
                 ),
               ),
             ),
+          const SizedBox(height: ButlerlySpacing.compact),
+          _ProgressSummary(rows: _rows),
+          const SizedBox(height: ButlerlySpacing.sectionSpacing),
+          ButlerlyPaymentSourceSelector(
+            value: _sourceId,
+            label: '${context.l10n.text('paymentSource')} *',
+            clearLabel: context.l10n.text('clear'),
+            sources: _sources,
+            onChanged: (value) async {
+              if (value == null) {
+                setState(() => _sourceId = null);
+                return;
+              }
+              await widget.service.assignSource(widget.statement.id, value);
+              setState(() => _sourceId = value);
+            },
           ),
-        Padding(
-          padding: const EdgeInsets.only(
-            top: ButlerlySpacing.micro,
-            bottom: ButlerlySpacing.bottomActionSpacing,
-          ),
-          child: SafeArea(
-            top: false,
-            child: FilledButton.icon(
-              onPressed: _sourceId == null || _rows.isEmpty
-                  ? null
-                  : _importBatch,
-              icon: const Icon(Icons.download_done_outlined),
-              label: Text(context.l10n.text('importData')),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _createSource,
+              icon: const Icon(Icons.add_card_outlined),
+              label: Text(context.l10n.text('createNewPaymentSource')),
             ),
           ),
-        ),
-      ],
+          const SizedBox(height: ButlerlySpacing.compact),
+          if (_rows.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                vertical: ButlerlySpacing.sectionSpacing,
+              ),
+              child: Text(
+                widget.statement.extractionMessage == null
+                    ? context.l10n.text('statementNoRows')
+                    : _statementStatusLabel(
+                        context,
+                        widget.statement.extractionMessage,
+                      ),
+                style: context.transactionItemMetadata,
+                textAlign: TextAlign.center,
+              ),
+            ),
+          for (final row in _rows)
+            Padding(
+              padding: const EdgeInsets.only(bottom: ButlerlySpacing.cardGap),
+              child: ButlerlyCard(
+                padding: EdgeInsets.zero,
+                child: Padding(
+                  padding: const EdgeInsets.all(ButlerlySpacing.cardPadding),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        row.description ?? row.originalText,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      Text(
+                        [
+                          row.transactionDate?.toIso8601String().substring(
+                                0,
+                                10,
+                              ) ??
+                              context.l10n.text('dateNeedsReview'),
+                          row.currency ??
+                              context.l10n.text('currencyNeedsReview'),
+                          row.amount ?? context.l10n.text('amountNeedsReview'),
+                          _statementDirectionLabel(context, row.direction),
+                          _statementRowStatusLabel(context, row.status),
+                        ].join(' · '),
+                      ),
+                      if (row.status == StatementRowStatus.pending ||
+                          row.status == StatementRowStatus.unresolved ||
+                          row.status == StatementRowStatus.deferred ||
+                          row.status == StatementRowStatus.skipped)
+                        ButlerlyButtonBar(
+                          alignment: ButlerlyButtonBarAlignment.start,
+                          density: ButlerlyButtonBarDensity.compact,
+                          spacing: ButlerlyButtonBarSpacing.none,
+                          children: [
+                            if (row.status != StatementRowStatus.skipped)
+                              ButlerlyCompactActionButton(
+                                onPressed: () => _edit(row),
+                                icon: Icons.edit_outlined,
+                                child: Text(context.l10n.text('edit')),
+                              ),
+                            if (row.status != StatementRowStatus.skipped)
+                              ButlerlyCompactActionButton(
+                                onPressed:
+                                    _sourceId != null &&
+                                        row.transactionDate != null &&
+                                        row.amount != null &&
+                                        row.currency != null &&
+                                        row.direction != null
+                                    ? () => _act(row, StatementRowStatus.saved)
+                                    : null,
+                                icon: Icons.save_outlined,
+                                child: Text(context.l10n.text('save')),
+                              ),
+                            if (row.status != StatementRowStatus.skipped)
+                              ButlerlyCompactActionButton(
+                                onPressed: () =>
+                                    _act(row, StatementRowStatus.deferred),
+                                icon: Icons.schedule_outlined,
+                                child: Text(context.l10n.text('later')),
+                              ),
+                            ButlerlyCompactActionButton(
+                              onPressed: () => _toggleSkipRestore(row),
+                              icon: row.status == StatementRowStatus.skipped
+                                  ? Icons.restore_outlined
+                                  : Icons.skip_next_outlined,
+                              child: Text(
+                                row.status == StatementRowStatus.skipped
+                                    ? context.l10n.text('restore')
+                                    : context.l10n.text('skip'),
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.only(
+              top: ButlerlySpacing.micro,
+              bottom: ButlerlySpacing.bottomActionSpacing,
+            ),
+            child: SafeArea(
+              top: false,
+              child: FilledButton.icon(
+                onPressed: _sourceId == null || _rows.isEmpty
+                    ? null
+                    : _importBatch,
+                icon: const Icon(Icons.download_done_outlined),
+                label: Text(context.l10n.text('importData')),
+              ),
+            ),
+          ),
+        ],
+      ),
     ),
   );
 }

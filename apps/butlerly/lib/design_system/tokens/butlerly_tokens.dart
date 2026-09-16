@@ -114,6 +114,7 @@ abstract final class ButlerlySize {
   static const preferredTarget = 48.0;
   static const phoneBreakpoint = 600.0;
   static const desktopBreakpoint = 1024.0;
+  static const phoneContentMaxWidth = 600.0;
   static const phoneGutter = 12.0;
   static const tabletGutter = 24.0;
   static const desktopGutter = 32.0;
@@ -129,6 +130,27 @@ abstract final class ButlerlySize {
   static const sourcePreviewWidth = 64.0;
   static const sourcePreviewHeight = 80.0;
   static const navigationBarHeight = 78.0;
+}
+
+enum ButlerlyNavigationMode { phone, rail, extendedRail }
+
+/// Semantic responsive-layout policy. Feature pages consume this policy rather
+/// than embedding breakpoints or readable-width numbers of their own.
+abstract final class ButlerlyLayout {
+  static ButlerlyNavigationMode navigationMode(Size viewport) {
+    if (viewport.width >= ButlerlySize.desktopBreakpoint) {
+      return ButlerlyNavigationMode.extendedRail;
+    }
+    if (viewport.shortestSide >= ButlerlySize.phoneBreakpoint) {
+      return ButlerlyNavigationMode.rail;
+    }
+    return ButlerlyNavigationMode.phone;
+  }
+
+  static double contentMaxWidth(Size viewport) =>
+      navigationMode(viewport) == ButlerlyNavigationMode.phone
+      ? ButlerlySize.phoneContentMaxWidth
+      : ButlerlySize.pageContentMaxWidth;
 }
 
 abstract final class ButlerlyMotion {

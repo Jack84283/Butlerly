@@ -29,60 +29,67 @@ class ButlerlyPage extends StatelessWidget {
   final Widget? pinnedHeader;
 
   @override
-  Widget build(BuildContext context) => ColoredBox(
-    color: context.colors.background,
-    child: CustomScrollView(
-      controller: controller,
-      physics: const AlwaysScrollableScrollPhysics(),
-      slivers: [
-        if (title != null)
-          SliverAppBar(
-            pinned: true,
-            title: Text(title!),
-            actions: actions,
-            backgroundColor: context.colors.background.withValues(alpha: 0.96),
-          ),
-        if (pinnedHeader != null)
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _ButlerlyPinnedHeaderDelegate(child: pinnedHeader!),
-          ),
-        SliverPadding(
-          padding:
-              padding ??
-              const EdgeInsets.fromLTRB(
-                ButlerlySize.phoneGutter,
-                ButlerlySpacing.standard,
-                ButlerlySize.phoneGutter,
-                ButlerlySpacing.large,
+  Widget build(BuildContext context) {
+    final contentMaxWidth = ButlerlyLayout.contentMaxWidth(
+      MediaQuery.sizeOf(context),
+    );
+    return ColoredBox(
+      color: context.colors.background,
+      child: CustomScrollView(
+        controller: controller,
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          if (title != null)
+            SliverAppBar(
+              pinned: true,
+              title: Text(title!),
+              actions: actions,
+              backgroundColor: context.colors.background.withValues(
+                alpha: 0.96,
               ),
-          sliver: SliverLayoutBuilder(
-            builder: (context, constraints) {
-              final extraWidth =
-                  constraints.crossAxisExtent -
-                  ButlerlySize.pageContentMaxWidth;
-              final horizontalInset = extraWidth > 0 ? extraWidth / 2 : 0.0;
-              return SliverPadding(
-                padding: EdgeInsets.symmetric(horizontal: horizontalInset),
-                sliver: SliverList.list(
-                  children: [
-                    if (subtitle != null) ...[
-                      Text(
-                        subtitle!,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      const SizedBox(height: ButlerlySpacing.section),
-                    ],
-                    ...children,
-                  ],
+            ),
+          if (pinnedHeader != null)
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _ButlerlyPinnedHeaderDelegate(child: pinnedHeader!),
+            ),
+          SliverPadding(
+            padding:
+                padding ??
+                const EdgeInsets.fromLTRB(
+                  ButlerlySize.phoneGutter,
+                  ButlerlySpacing.standard,
+                  ButlerlySize.phoneGutter,
+                  ButlerlySpacing.large,
                 ),
-              );
-            },
+            sliver: SliverLayoutBuilder(
+              builder: (context, constraints) {
+                final extraWidth =
+                    constraints.crossAxisExtent - contentMaxWidth;
+                final horizontalInset = extraWidth > 0 ? extraWidth / 2 : 0.0;
+                return SliverPadding(
+                  padding: EdgeInsets.symmetric(horizontal: horizontalInset),
+                  sliver: SliverList.list(
+                    key: const ValueKey('butlerly-page-content-sliver'),
+                    children: [
+                      if (subtitle != null) ...[
+                        Text(
+                          subtitle!,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: ButlerlySpacing.section),
+                      ],
+                      ...children,
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
 
 class _ButlerlyPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
@@ -109,8 +116,10 @@ class _ButlerlyPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
           horizontal: ButlerlySize.phoneGutter,
         ),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: ButlerlySize.pageContentMaxWidth,
+          constraints: BoxConstraints(
+            maxWidth: ButlerlyLayout.contentMaxWidth(
+              MediaQuery.sizeOf(context),
+            ),
           ),
           child: SizedBox(width: double.infinity, child: child),
         ),
@@ -279,10 +288,8 @@ class ButlerlyStatusChip extends StatelessWidget {
             ],
             Text(
               label,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w600,
-              ),
+              style: Theme.of(context).textTheme.labelLarge
+                  ?.copyWith(color: color, fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -471,9 +478,8 @@ class ButlerlyDestructiveButton extends StatelessWidget {
       backgroundColor: colors.error,
       foregroundColor: Theme.of(context).colorScheme.onError,
       disabledBackgroundColor: colors.error.withValues(alpha: 0.35),
-      disabledForegroundColor: Theme.of(
-        context,
-      ).colorScheme.onError.withValues(alpha: 0.7),
+      disabledForegroundColor: Theme.of(context).colorScheme.onError
+          .withValues(alpha: 0.7),
     );
     return icon == null
         ? FilledButton(onPressed: onPressed, style: style, child: child)
@@ -618,7 +624,8 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                       children: [
                         Expanded(child: _title(context)),
                         const SizedBox(
-                          width: ButlerlyTransactionItemTokens.titleAmountSpacing,
+                          width:
+                              ButlerlyTransactionItemTokens.titleAmountSpacing,
                         ),
                         Flexible(
                           child: Align(
@@ -1028,9 +1035,8 @@ class ButlerlyEmptyState extends StatelessWidget {
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: context.colors.secondaryText,
-                ),
+                style: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(color: context.colors.secondaryText),
               ),
               if (actionLabel != null) ...[
                 const SizedBox(height: ButlerlySpacing.section),

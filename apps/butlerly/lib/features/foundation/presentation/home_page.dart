@@ -146,8 +146,9 @@ class _HomePageState extends State<HomePage> {
         'current_month',
         instant: now,
       );
-      if (currentContextResult
-          case ApplicationSuccess<AnalysisContext>(:final value)) {
+      if (currentContextResult case ApplicationSuccess<AnalysisContext>(
+        :final value,
+      )) {
         final analysisCurrentMonth = _monthFromPeriod(value.period);
         if (_sameMonth(displayMonth, analysisCurrentMonth)) {
           selectedContext = value;
@@ -162,8 +163,9 @@ class _HomePageState extends State<HomePage> {
               timeZoneId: value.period.timeZoneId,
             ),
           );
-          if (selectedContextResult
-              case ApplicationSuccess<AnalysisContext>(:final value)) {
+          if (selectedContextResult case ApplicationSuccess<AnalysisContext>(
+            :final value,
+          )) {
             selectedContext = value;
           } else {
             analysisUnavailable = true;
@@ -175,8 +177,9 @@ class _HomePageState extends State<HomePage> {
 
       if (selectedContext != null) {
         final result = await analysis.call(selectedContext);
-        if (result
-            case ApplicationSuccess<List<RuleExecutionResult>>(:final value)) {
+        if (result case ApplicationSuccess<List<RuleExecutionResult>>(
+          :final value,
+        )) {
           model = AnalysisModel.fromResults(value);
           final insightUseCase = finance.calculateInsights;
           if (insightUseCase != null) {
@@ -192,14 +195,9 @@ class _HomePageState extends State<HomePage> {
     }
 
     final trend =
-        analysis == null ||
-            selectedContext == null ||
-            allTransactions.isEmpty
+        analysis == null || selectedContext == null || allTransactions.isEmpty
         ? const <_HomeTrendPoint>[]
-        : await _loadTrend(
-            analysis: analysis,
-            endingMonth: displayMonth,
-          );
+        : await _loadTrend(analysis: analysis, endingMonth: displayMonth);
 
     return _HomeData(
       transactions: recent,
@@ -223,8 +221,9 @@ class _HomePageState extends State<HomePage> {
       endingMonth: endingMonth,
       instant: _now,
     );
-    if (result
-        case ApplicationSuccess<List<MonthlySpendingTrendPoint>>(:final value)) {
+    if (result case ApplicationSuccess<List<MonthlySpendingTrendPoint>>(
+      :final value,
+    )) {
       return [
         for (final point in value)
           _HomeTrendPoint(
@@ -305,10 +304,7 @@ class _HomePageState extends State<HomePage> {
             child: Text(context.l10n.text('viewAll')),
           ),
         ),
-        _CategorySummary(
-          model: data.model,
-          masterData: data.masterData,
-        ),
+        _CategorySummary(model: data.model, masterData: data.masterData),
         if (data.reviewCount > 0 || data.insight != null) ...[
           const SizedBox(height: ButlerlySpacing.section),
           _AttentionSection(
@@ -326,11 +322,7 @@ class _HomePageState extends State<HomePage> {
           action: TextButton(
             key: const Key('home-recent-view-all'),
             onPressed: () => context.push(
-              _periodRoute(
-                '/search',
-                data.period,
-                currentMonth: currentMonth,
-              ),
+              _periodRoute('/search', data.period, currentMonth: currentMonth),
             ),
             child: Text(context.l10n.text('viewAll')),
           ),
@@ -392,9 +384,11 @@ class _HomePageState extends State<HomePage> {
                 ),
                 sliver: SliverLayoutBuilder(
                   builder: (context, constraints) {
+                    final contentMaxWidth = ButlerlyLayout.contentMaxWidth(
+                      MediaQuery.sizeOf(context),
+                    );
                     final extraWidth =
-                        constraints.crossAxisExtent -
-                        ButlerlySize.pageContentMaxWidth;
+                        constraints.crossAxisExtent - contentMaxWidth;
                     final horizontalInset = extraWidth > 0
                         ? extraWidth / 2
                         : 0.0;
@@ -403,19 +397,24 @@ class _HomePageState extends State<HomePage> {
                         horizontal: horizontalInset,
                       ),
                       sliver: SliverToBoxAdapter(
-                        child: FutureBuilder<_HomeData>(
-                          future: future,
-                          builder: (context, snapshot) {
-                            final data =
-                                snapshot.data ??
-                                _HomeData.empty(
-                                  _now,
-                                  selectedMonth: _selectedMonth,
-                                );
-                            final loading =
-                                snapshot.connectionState != ConnectionState.done;
-                            return _homeContent(context, data, loading);
-                          },
+                        child: SizedBox(
+                          key: const ValueKey('home-page-content'),
+                          width: double.infinity,
+                          child: FutureBuilder<_HomeData>(
+                            future: future,
+                            builder: (context, snapshot) {
+                              final data =
+                                  snapshot.data ??
+                                  _HomeData.empty(
+                                    _now,
+                                    selectedMonth: _selectedMonth,
+                                  );
+                              final loading =
+                                  snapshot.connectionState !=
+                                  ConnectionState.done;
+                              return _homeContent(context, data, loading);
+                            },
+                          ),
                         ),
                       ),
                     );
@@ -444,10 +443,12 @@ double _homeHeaderExtent(
   final scaler = MediaQuery.textScalerOf(context);
   final locale = Localizations.localeOf(context);
   final localeTag = locale.toLanguageTag();
-  final availableWidth =
-      (crossAxisExtent - ButlerlySize.phoneGutter * 2)
-          .clamp(1.0, ButlerlySize.pageContentMaxWidth)
-          .toDouble();
+  final contentMaxWidth = ButlerlyLayout.contentMaxWidth(
+    MediaQuery.sizeOf(context),
+  );
+  final availableWidth = (crossAxisExtent - ButlerlySize.phoneGutter * 2)
+      .clamp(1.0, contentMaxWidth)
+      .toDouble();
   final scaledBody = scaler.scale(14);
   final stacked = scaledBody > 18 || availableWidth < 300;
   final direction = Directionality.of(context);
@@ -483,7 +484,8 @@ double _homeHeaderExtent(
     int? maxLines,
   }) => values.fold<double>(
     0,
-    (height, value) => height > measure(value, style, maxWidth, maxLines: maxLines)
+    (height, value) =>
+        height > measure(value, style, maxWidth, maxLines: maxLines)
         ? height
         : measure(value, style, maxWidth, maxLines: maxLines),
   );
@@ -541,12 +543,7 @@ double _homeHeaderExtent(
       ButlerlySpacing.xxs +
       measure(tagline, taglineStyle, brandWidth, maxLines: 2);
   final contextHeight =
-      maxMeasured(
-        greetingLabels,
-        greetingStyle,
-        contextWidth,
-        maxLines: 1,
-      ) +
+      maxMeasured(greetingLabels, greetingStyle, contextWidth, maxLines: 1) +
       ButlerlySpacing.xxs +
       monthButtonHeight(contextWidth, wrap: false);
   final contentHeight = brandHeight > contextHeight
@@ -573,6 +570,7 @@ class _HomePinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) => ColoredBox(
+    key: const ValueKey('home-header-surface'),
     color: context.colors.background,
     child: Center(
       child: Padding(
@@ -581,8 +579,10 @@ class _HomePinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
           vertical: ButlerlySpacing.small,
         ),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: ButlerlySize.pageContentMaxWidth,
+          constraints: BoxConstraints(
+            maxWidth: ButlerlyLayout.contentMaxWidth(
+              MediaQuery.sizeOf(context),
+            ),
           ),
           child: SizedBox(width: double.infinity, child: child),
         ),
@@ -629,10 +629,8 @@ class _HomeHeader extends StatelessWidget {
               context.l10n.text('homeTagline'),
               maxLines: stacked ? null : 2,
               overflow: stacked ? null : TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                letterSpacing: 2.2,
-                fontSize: 9.5,
-              ),
+              style: Theme.of(context).textTheme.labelMedium
+                  ?.copyWith(letterSpacing: 2.2, fontSize: 9.5),
             ),
           ],
         );
@@ -722,20 +720,14 @@ class _HomeSectionHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(title, style: Theme.of(context).textTheme.titleLarge),
-              Align(
-                alignment: AlignmentDirectional.centerEnd,
-                child: action,
-              ),
+              Align(alignment: AlignmentDirectional.centerEnd, child: action),
             ],
           );
         }
         return Row(
           children: [
             Expanded(
-              child: Text(
-                title,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
+              child: Text(title, style: Theme.of(context).textTheme.titleLarge),
             ),
             action,
           ],
@@ -800,12 +792,13 @@ class _SpendingHero extends StatelessWidget {
               if (spending != null) ...[
                 const SizedBox(width: ButlerlySpacing.compact),
                 Padding(
-                  padding: const EdgeInsets.only(bottom: ButlerlySpacing.compact),
+                  padding: const EdgeInsets.only(
+                    bottom: ButlerlySpacing.compact,
+                  ),
                   child: Text(
                     context.l10n.text('spent'),
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: context.colors.secondaryText,
-                    ),
+                    style: Theme.of(context).textTheme.headlineMedium
+                        ?.copyWith(color: context.colors.secondaryText),
                   ),
                 ),
               ],
@@ -907,7 +900,9 @@ class _SpendingTrend extends StatelessWidget {
                                         : context.colors.secondaryText
                                               .withValues(alpha: 0.35),
                                     borderRadius: const BorderRadius.vertical(
-                                      top: Radius.circular(ButlerlyRadius.small),
+                                      top: Radius.circular(
+                                        ButlerlyRadius.small,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -944,10 +939,7 @@ class _SpendingTrend extends StatelessWidget {
 }
 
 class _CategorySummary extends StatelessWidget {
-  const _CategorySummary({
-    required this.model,
-    required this.masterData,
-  });
+  const _CategorySummary({required this.model, required this.masterData});
 
   final AnalysisModel? model;
   final TransactionMasterData masterData;
@@ -1032,11 +1024,7 @@ class _CategorySummaryItem extends StatelessWidget {
                     color: color.withValues(alpha: 0.16),
                     border: Border.all(color: color.withValues(alpha: 0.55)),
                   ),
-                  child: Icon(
-                    Icons.category_outlined,
-                    size: 22,
-                    color: color,
-                  ),
+                  child: Icon(Icons.category_outlined, size: 22, color: color),
                 )
               : ButlerlyCategoryIcon(
                   categoryId: categoryId,
@@ -1080,10 +1068,9 @@ class _AttentionSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasReview = reviewCount > 0;
     final title = hasReview
-        ? context.l10n.text(
-            'dataQualityNeedsAttention',
-            {'count': '$reviewCount'},
-          )
+        ? context.l10n.text('dataQualityNeedsAttention', {
+            'count': '$reviewCount',
+          })
         : context.l10n.text('notable');
     final subtitle = hasReview
         ? context.l10n.text('reviewRecommendation')
@@ -1130,10 +1117,11 @@ class _AttentionSection extends StatelessWidget {
                     children: [
                       Text(
                         context.l10n.text('needsAttention').toUpperCase(),
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: context.colors.interactive,
-                          letterSpacing: 1.6,
-                        ),
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              color: context.colors.interactive,
+                              letterSpacing: 1.6,
+                            ),
                       ),
                       const SizedBox(height: ButlerlySpacing.micro),
                       Text(
@@ -1279,12 +1267,7 @@ class _HomeMonthPickerState extends State<_HomeMonthPicker> {
             onPressed: () => setState(() => _year--),
             icon: const Icon(Icons.chevron_left_rounded),
           ),
-          Expanded(
-            child: Text(
-              '$_year',
-              textAlign: TextAlign.center,
-            ),
-          ),
+          Expanded(child: Text('$_year', textAlign: TextAlign.center)),
           IconButton(
             onPressed: _year < widget.currentMonth.year
                 ? () => setState(() => _year++)
@@ -1305,9 +1288,8 @@ class _HomeMonthPickerState extends State<_HomeMonthPicker> {
         ),
         itemBuilder: (context, index) {
           final candidate = DateTime(_year, index + 1, 1);
-          final future = _monthStart(candidate).isAfter(
-            _monthStart(widget.currentMonth),
-          );
+          final future = _monthStart(candidate)
+              .isAfter(_monthStart(widget.currentMonth));
           final selected = _sameMonth(candidate, widget.selectedMonth);
           final label = DateFormat.MMM(locale).format(candidate);
           return selected
@@ -1430,9 +1412,7 @@ AnalysisPeriod _homePeriodForMonth({
     if (result case AnalysisPeriodResolved(:final window)) {
       return AnalysisPeriod(
         startDate: _date(window.start),
-        endDate: _date(
-          window.endExclusive.subtract(const Duration(days: 1)),
-        ),
+        endDate: _date(window.endExclusive.subtract(const Duration(days: 1))),
         timeZoneId: window.timeZoneId,
       );
     }
