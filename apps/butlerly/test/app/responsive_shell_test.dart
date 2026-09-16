@@ -92,7 +92,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(NavigationRail), findsNothing);
-      expect(find.byKey(const ValueKey('primary-phone-navigation')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('primary-phone-navigation')),
+        findsNothing,
+      );
       expect(tester.getSize(find.byType(AppBar)).width, 932);
       final content = tester.renderObject<RenderSliver>(
         find.byKey(const ValueKey('butlerly-page-content-sliver')),
