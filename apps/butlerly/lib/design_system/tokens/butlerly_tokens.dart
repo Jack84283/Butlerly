@@ -144,12 +144,16 @@ abstract final class ButlerlyOpacity {
 
 enum ButlerlyDeviceClass { phone, tablet, desktop }
 
-/// Semantic responsive-layout policy. Device class is intentionally separate
-/// from viewport width so a landscape tablet never becomes a desktop shell.
+enum ButlerlyDesktopNavigationMode { bottom, rail, extendedRail }
+
+/// Semantic responsive-layout policy. Device shell identity is intentionally
+/// separate from the current window size so an iPad remains an iPad while its
+/// app window is resized. Content sizing still follows the current viewport.
 abstract final class ButlerlyLayout {
   static ButlerlyDeviceClass deviceClass(
     Size viewport, {
     TargetPlatform? platform,
+    Size? deviceDisplaySize,
   }) {
     final resolvedPlatform = platform ?? defaultTargetPlatform;
     switch (resolvedPlatform) {
@@ -158,6 +162,10 @@ abstract final class ButlerlyLayout {
       case TargetPlatform.linux:
         return ButlerlyDeviceClass.desktop;
       case TargetPlatform.iOS:
+        final identitySize = deviceDisplaySize ?? viewport;
+        return identitySize.shortestSide >= ButlerlySize.tabletBreakpoint
+            ? ButlerlyDeviceClass.tablet
+            : ButlerlyDeviceClass.phone;
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
         return viewport.shortestSide >= ButlerlySize.tabletBreakpoint
@@ -166,16 +174,34 @@ abstract final class ButlerlyLayout {
     }
   }
 
+  /// Preserves the pre-device-split desktop behavior until the dedicated
+  /// desktop menu/submenu redesign replaces it.
+  static ButlerlyDesktopNavigationMode desktopNavigationMode(Size viewport) {
+    if (viewport.width >= ButlerlySize.desktopBreakpoint) {
+      return ButlerlyDesktopNavigationMode.extendedRail;
+    }
+    if (viewport.shortestSide >= ButlerlySize.tabletBreakpoint) {
+      return ButlerlyDesktopNavigationMode.rail;
+    }
+    return ButlerlyDesktopNavigationMode.bottom;
+  }
+
   static bool desktopNavigationExtended(Size viewport) =>
-      viewport.width >= ButlerlySize.desktopBreakpoint;
+      desktopNavigationMode(viewport) ==
+      ButlerlyDesktopNavigationMode.extendedRail;
 
   static double contentMaxWidth(
     Size viewport, {
     TargetPlatform? platform,
-  }) =>
-      deviceClass(viewport, platform: platform) == ButlerlyDeviceClass.phone
-      ? ButlerlySize.phoneContentMaxWidth
-      : ButlerlySize.pageContentMaxWidth;
+  }) {
+    final device = deviceClass(viewport, platform: platform);
+    final compactDesktop =
+        device == ButlerlyDeviceClass.desktop &&
+        desktopNavigationMode(viewport) == ButlerlyDesktopNavigationMode.bottom;
+    return device == ButlerlyDeviceClass.phone || compactDesktop
+        ? ButlerlySize.phoneContentMaxWidth
+        : ButlerlySize.pageContentMaxWidth;
+  }
 }
 
 abstract final class ButlerlyMotion {

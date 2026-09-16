@@ -44,10 +44,30 @@ void main() {
     );
     expect(
       ButlerlyLayout.deviceClass(
+        const Size(500, 800),
+        platform: TargetPlatform.iOS,
+        deviceDisplaySize: const Size(1024, 1366),
+      ),
+      ButlerlyDeviceClass.tablet,
+    );
+    expect(
+      ButlerlyLayout.deviceClass(
         const Size(1200, 500),
         platform: TargetPlatform.macOS,
       ),
       ButlerlyDeviceClass.desktop,
+    );
+    expect(
+      ButlerlyLayout.desktopNavigationMode(const Size(500, 800)),
+      ButlerlyDesktopNavigationMode.bottom,
+    );
+    expect(
+      ButlerlyLayout.desktopNavigationMode(const Size(900, 800)),
+      ButlerlyDesktopNavigationMode.rail,
+    );
+    expect(
+      ButlerlyLayout.desktopNavigationMode(const Size(1200, 500)),
+      ButlerlyDesktopNavigationMode.extendedRail,
     );
     expect(
       ButlerlyLayout.contentMaxWidth(
@@ -62,6 +82,13 @@ void main() {
         platform: TargetPlatform.iOS,
       ),
       ButlerlySize.pageContentMaxWidth,
+    );
+    expect(
+      ButlerlyLayout.contentMaxWidth(
+        const Size(500, 800),
+        platform: TargetPlatform.macOS,
+      ),
+      ButlerlySize.phoneContentMaxWidth,
     );
     expect(
       ButlerlyLayout.contentMaxWidth(
@@ -219,6 +246,32 @@ void main() {
     );
   }
 
+  _testWidgetsOnIos(
+    'narrow iPad window keeps the iPad shell and bottom navigation',
+    (tester) async {
+      const windowSize = Size(500, 800);
+      await _pumpAt(
+        tester,
+        windowSize,
+        displaySize: const Size(1024, 1366),
+      );
+
+      expect(find.byType(IPadPrimaryShell), findsOneWidget);
+      expect(find.byType(IPhonePrimaryShell), findsNothing);
+      expect(find.byType(NavigationRail), findsNothing);
+      expect(
+        find.byKey(const ValueKey('primary-phone-navigation')),
+        findsNothing,
+      );
+      final navigation = find.byKey(
+        const ValueKey('primary-ipad-navigation'),
+      );
+      expect(navigation, findsOneWidget);
+      expect(tester.getSize(navigation).width, windowSize.width);
+      expect(tester.getRect(navigation).bottom, windowSize.height);
+    },
+  );
+
   _testWidgetsOnIos('iPad landscape keeps the tablet readable body', (
     tester,
   ) async {
@@ -227,6 +280,33 @@ void main() {
     expect(
       tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
       ButlerlySize.pageContentMaxWidth,
+    );
+  });
+
+  _testWidgetsOnMacOs('compact desktop preserves bottom navigation', (
+    tester,
+  ) async {
+    const size = Size(500, 800);
+    await _pumpAt(tester, size);
+
+    expect(find.byType(NavigationRail), findsNothing);
+    expect(
+      find.byKey(const ValueKey('primary-desktop-navigation')),
+      findsNothing,
+    );
+    final navigation = find.byKey(
+      const ValueKey('primary-desktop-compact-navigation'),
+    );
+    expect(navigation, findsOneWidget);
+    expect(tester.getSize(navigation).width, size.width);
+    expect(tester.getRect(navigation).bottom, size.height);
+    expect(
+      find.byKey(const ValueKey('primary-phone-navigation')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('primary-ipad-navigation')),
+      findsNothing,
     );
   });
 
@@ -239,6 +319,10 @@ void main() {
     expect(
       find.byKey(const ValueKey('primary-desktop-navigation')),
       findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('primary-desktop-compact-navigation')),
+      findsNothing,
     );
     expect(
       find.byKey(const ValueKey('primary-phone-navigation')),
@@ -301,11 +385,19 @@ void _testWidgetsOnMacOs(String description, WidgetTesterCallback callback) {
   );
 }
 
-Future<void> _pumpAt(WidgetTester tester, Size size) async {
+Future<void> _pumpAt(
+  WidgetTester tester,
+  Size size, {
+  Size? displaySize,
+}) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
+  tester.view.display.size = displaySize ?? size;
+  tester.view.display.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
+  addTearDown(tester.view.display.resetSize);
+  addTearDown(tester.view.display.resetDevicePixelRatio);
 
   await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
   await tester.pumpAndSettle();

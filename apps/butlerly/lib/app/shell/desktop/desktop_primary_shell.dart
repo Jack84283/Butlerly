@@ -1,3 +1,4 @@
+import 'package:butlerly/app/shell/shared/primary_bottom_navigation.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -21,10 +22,31 @@ class DesktopPrimaryShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final viewport = MediaQuery.sizeOf(context);
+    final navigationMode = ButlerlyLayout.desktopNavigationMode(viewport);
+
+    if (navigationMode == ButlerlyDesktopNavigationMode.bottom) {
+      return Scaffold(
+        body: SafeArea(
+          bottom: false,
+          child: ColoredBox(
+            key: const ValueKey('primary-desktop-compact-body-surface'),
+            color: context.colors.background,
+            child: body,
+          ),
+        ),
+        bottomNavigationBar: PrimaryBottomNavigation(
+          navigationKey: const ValueKey('primary-desktop-compact-navigation'),
+          destinations: destinations,
+          visualBranchIndexes: visualBranchIndexes,
+          currentIndex: currentIndex,
+          onSelected: onSelected,
+        ),
+      );
+    }
+
     final selectedVisualIndex = visualBranchIndexes.indexOf(currentIndex);
-    final extended = ButlerlyLayout.desktopNavigationExtended(
-      MediaQuery.sizeOf(context),
-    );
+    final extended = navigationMode == ButlerlyDesktopNavigationMode.extendedRail;
 
     return Scaffold(
       body: SafeArea(

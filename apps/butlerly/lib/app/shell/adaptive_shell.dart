@@ -179,7 +179,13 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
       shell = Scaffold(body: navigationShell);
     } else {
       final destinations = _destinations(context);
-      final deviceClass = ButlerlyLayout.deviceClass(MediaQuery.sizeOf(context));
+      final view = View.of(context);
+      final display = view.display;
+      final deviceDisplaySize = display.size / display.devicePixelRatio;
+      final deviceClass = ButlerlyLayout.deviceClass(
+        MediaQuery.sizeOf(context),
+        deviceDisplaySize: deviceDisplaySize,
+      );
       shell = switch (deviceClass) {
         ButlerlyDeviceClass.phone => IPhonePrimaryShell(
           body: navigationShell,
