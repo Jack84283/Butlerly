@@ -65,7 +65,10 @@ class _HomePageState extends State<HomePage> {
     if (mounted) _refresh();
   }
 
-  Future<_HomeData> _load({String? languageCode}) async {
+  Future<_HomeData> _load({
+    String? languageCode,
+    bool forceAnalysisRefresh = false,
+  }) async {
     final finance = _finance;
     final now = _now;
     if (finance == null) {
@@ -176,7 +179,10 @@ class _HomePageState extends State<HomePage> {
       }
 
       if (selectedContext != null) {
-        final result = await analysis.call(selectedContext);
+        final result = await analysis.call(
+          selectedContext,
+          forceRefresh: forceAnalysisRefresh,
+        );
         if (result case ApplicationSuccess<List<RuleExecutionResult>>(
           :final value,
         )) {
@@ -238,7 +244,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _refresh() async {
-    final refreshed = _load();
+    final refreshed = _load(forceAnalysisRefresh: true);
     setState(() {
       _data = refreshed;
     });
@@ -354,7 +360,9 @@ class _HomePageState extends State<HomePage> {
         ? context.colors.subtleSurface
         : context.colors.background;
     return RefreshIndicator(
+      key: const ValueKey('home-refresh-indicator'),
       onRefresh: _refresh,
+      triggerMode: RefreshIndicatorTriggerMode.anywhere,
       child: ColoredBox(
         key: const ValueKey('home-page-canvas'),
         color: canvasColor,
@@ -626,6 +634,9 @@ class _HomeHeader extends StatelessWidget {
       builder: (context, constraints) {
         final scaledBody = MediaQuery.textScalerOf(context).scale(14);
         final stacked = scaledBody > 18 || constraints.maxWidth < 300;
+        final alignContextToEdge =
+            deviceClass == ButlerlyDeviceClass.tablet ||
+            constraints.maxWidth >= ButlerlySize.tabletBreakpoint;
         final brand = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -706,7 +717,7 @@ class _HomeHeader extends StatelessWidget {
           children: [
             Expanded(flex: 5, child: brand),
             const SizedBox(width: ButlerlySpacing.standard),
-            if (deviceClass == ButlerlyDeviceClass.tablet)
+            if (alignContextToEdge)
               Expanded(flex: 4, child: contextBlock)
             else
               Flexible(flex: 4, child: contextBlock),
