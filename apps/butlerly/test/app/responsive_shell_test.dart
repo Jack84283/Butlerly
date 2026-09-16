@@ -1,5 +1,6 @@
 import 'package:butlerly/app/butlerly_app.dart';
 import 'package:butlerly/app/router/app_router.dart';
+import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -10,22 +11,10 @@ void main() {
   setUp(() => appRouter.go('/'));
 
   test('window class and readable width use the shortest logical side', () {
-    expect(
-      ButlerlySize.isTabletViewport(const Size(390, 844)),
-      isFalse,
-    );
-    expect(
-      ButlerlySize.isTabletViewport(const Size(932, 430)),
-      isFalse,
-    );
-    expect(
-      ButlerlySize.isTabletViewport(const Size(744, 1133)),
-      isTrue,
-    );
-    expect(
-      ButlerlySize.isTabletViewport(const Size(1133, 744)),
-      isTrue,
-    );
+    expect(ButlerlySize.isTabletViewport(const Size(390, 844)), isFalse);
+    expect(ButlerlySize.isTabletViewport(const Size(932, 430)), isFalse);
+    expect(ButlerlySize.isTabletViewport(const Size(744, 1133)), isTrue);
+    expect(ButlerlySize.isTabletViewport(const Size(1133, 744)), isTrue);
     expect(
       ButlerlySize.pageContentMaxWidthFor(const Size(932, 430)),
       ButlerlySize.phoneContentMaxWidth,
@@ -36,23 +25,24 @@ void main() {
     );
   });
 
-  testWidgets('iPhone portrait keeps phone navigation and normal page gutters', (
-    tester,
-  ) async {
-    await _pumpAt(tester, const Size(390, 844));
+  testWidgets(
+    'iPhone portrait keeps phone navigation and normal page gutters',
+    (tester) async {
+      await _pumpAt(tester, const Size(390, 844));
 
-    expect(find.byType(NavigationRail), findsNothing);
-    expect(
-      tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
-      390 - ButlerlySize.phoneGutter * 2,
-    );
-    expect(
-      tester
-          .getSize(find.byKey(const ValueKey('primary-phone-navigation')))
-          .width,
-      390,
-    );
-  });
+      expect(find.byType(NavigationRail), findsNothing);
+      expect(
+        tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
+        390 - ButlerlySize.phoneGutter * 2,
+      );
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('primary-phone-navigation')))
+            .width,
+        390,
+      );
+    },
+  );
 
   testWidgets(
     'iPhone landscape keeps full-width Home chrome and caps body at 600',
@@ -107,6 +97,33 @@ void main() {
     },
   );
 
+  testWidgets(
+    'focused responsive body keeps AppBar full-width and caps phone content',
+    (tester) async {
+      await _pumpResponsiveBodyAt(tester, const Size(932, 430));
+
+      expect(tester.getSize(find.byType(AppBar)).width, 932);
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('focused-page-content')))
+            .width,
+        ButlerlySize.phoneContentMaxWidth,
+      );
+    },
+  );
+
+  testWidgets('focused responsive body keeps the tablet readable width', (
+    tester,
+  ) async {
+    await _pumpResponsiveBodyAt(tester, const Size(1133, 744));
+
+    expect(tester.getSize(find.byType(AppBar)).width, 1133);
+    expect(
+      tester.getSize(find.byKey(const ValueKey('focused-page-content'))).width,
+      ButlerlySize.pageContentMaxWidth,
+    );
+  });
+
   for (final size in const [Size(744, 1133), Size(1133, 744)]) {
     testWidgets(
       'iPad mini uses tablet navigation at ${size.width}x${size.height}',
@@ -141,5 +158,25 @@ Future<void> _pumpAt(WidgetTester tester, Size size) async {
   addTearDown(tester.view.resetDevicePixelRatio);
 
   await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _pumpResponsiveBodyAt(WidgetTester tester, Size size) async {
+  tester.view.physicalSize = size;
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Focused page')),
+        body: const ButlerlyResponsiveBody(
+          contentKey: ValueKey('focused-page-content'),
+          child: SizedBox.expand(),
+        ),
+      ),
+    ),
+  );
   await tester.pumpAndSettle();
 }
