@@ -2,6 +2,7 @@ import 'package:butlerly/app/butlerly_app.dart';
 import 'package:butlerly/app/router/app_router.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/legal_licenses_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,17 +11,33 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   setUp(() => appRouter.go('/'));
 
-  test('window class and readable width use the shortest logical side', () {
-    expect(ButlerlySize.isTabletViewport(const Size(390, 844)), isFalse);
-    expect(ButlerlySize.isTabletViewport(const Size(932, 430)), isFalse);
-    expect(ButlerlySize.isTabletViewport(const Size(744, 1133)), isTrue);
-    expect(ButlerlySize.isTabletViewport(const Size(1133, 744)), isTrue);
+  test('layout policy distinguishes phone, tablet, and desktop windows', () {
     expect(
-      ButlerlySize.pageContentMaxWidthFor(const Size(932, 430)),
+      ButlerlyLayout.navigationMode(const Size(390, 844)),
+      ButlerlyNavigationMode.phone,
+    );
+    expect(
+      ButlerlyLayout.navigationMode(const Size(932, 430)),
+      ButlerlyNavigationMode.phone,
+    );
+    expect(
+      ButlerlyLayout.navigationMode(const Size(744, 1133)),
+      ButlerlyNavigationMode.rail,
+    );
+    expect(
+      ButlerlyLayout.navigationMode(const Size(1133, 744)),
+      ButlerlyNavigationMode.extendedRail,
+    );
+    expect(
+      ButlerlyLayout.navigationMode(const Size(1200, 500)),
+      ButlerlyNavigationMode.extendedRail,
+    );
+    expect(
+      ButlerlyLayout.contentMaxWidth(const Size(932, 430)),
       ButlerlySize.phoneContentMaxWidth,
     );
     expect(
-      ButlerlySize.pageContentMaxWidthFor(const Size(1133, 744)),
+      ButlerlyLayout.contentMaxWidth(const Size(1200, 500)),
       ButlerlySize.pageContentMaxWidth,
     );
   });
@@ -172,6 +189,53 @@ void main() {
       ButlerlySize.pageContentMaxWidth,
     );
   });
+
+  testWidgets('shallow desktop window keeps extended NavigationRail', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(1200, 500));
+
+    final rail = tester.widget<NavigationRail>(find.byType(NavigationRail));
+    expect(rail.extended, isTrue);
+    expect(
+      find.byKey(const ValueKey('primary-phone-navigation')),
+      findsNothing,
+    );
+    expect(
+      tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
+      ButlerlySize.pageContentMaxWidth,
+    );
+  });
+
+  testWidgets(
+    'landscape Legal document keeps full-width AppBar and capped content',
+    (tester) async {
+      tester.view.physicalSize = const Size(932, 430);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: LegalDocumentPage(
+            document: LegalDocument(
+              'termsOfUse',
+              'assets/legal/terms_of_use.txt',
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(tester.getSize(find.byType(AppBar)).width, 932);
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('legal-document-content')))
+            .width,
+        ButlerlySize.phoneContentMaxWidth,
+      );
+    },
+  );
 }
 
 Future<void> _pumpAt(WidgetTester tester, Size size) async {

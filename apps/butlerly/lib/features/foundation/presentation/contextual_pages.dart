@@ -122,60 +122,63 @@ class WelcomePage extends StatelessWidget {
       ],
     ),
     body: SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(ButlerlySpacing.section),
-        children: [
-          Align(
-            child: Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: context.colors.brand,
-                borderRadius: BorderRadius.circular(ButlerlyRadius.large),
-              ),
-              child: const Icon(
-                Icons.shield_outlined,
-                color: Colors.white,
-                size: 40,
+      child: ButlerlyResponsiveBody(
+        contentKey: const ValueKey('welcome-content'),
+        child: ListView(
+          padding: const EdgeInsets.all(ButlerlySpacing.section),
+          children: [
+            Align(
+              child: Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: context.colors.brand,
+                  borderRadius: BorderRadius.circular(ButlerlyRadius.large),
+                ),
+                child: const Icon(
+                  Icons.shield_outlined,
+                  color: Colors.white,
+                  size: 40,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: ButlerlySpacing.section),
-          Text(
-            context.l10n.text('welcomeTitle'),
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.headlineLarge,
-          ),
-          const SizedBox(height: ButlerlySpacing.compact),
-          Text(
-            context.l10n.text('welcomeSubtitle'),
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-          const SizedBox(height: ButlerlySpacing.large),
-          _WelcomeValue(
-            icon: Icons.lock_outline_rounded,
-            title: context.l10n.text('privateByDefault'),
-            body: context.l10n.text('privateByDefaultBody'),
-          ),
-          const SizedBox(height: ButlerlySpacing.small),
-          _WelcomeValue(
-            icon: Icons.cloud_off_outlined,
-            title: context.l10n.text('worksOffline'),
-            body: context.l10n.text('worksOfflineBody'),
-          ),
-          const SizedBox(height: ButlerlySpacing.small),
-          _WelcomeValue(
-            icon: Icons.auto_awesome_outlined,
-            title: context.l10n.text('optionalAssistance'),
-            body: context.l10n.text('optionalAssistanceBody'),
-          ),
-          const SizedBox(height: ButlerlySpacing.large),
-          FilledButton(
-            onPressed: () => context.go('/'),
-            child: Text(context.l10n.text('getStarted')),
-          ),
-        ],
+            const SizedBox(height: ButlerlySpacing.section),
+            Text(
+              context.l10n.text('welcomeTitle'),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.headlineLarge,
+            ),
+            const SizedBox(height: ButlerlySpacing.compact),
+            Text(
+              context.l10n.text('welcomeSubtitle'),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            const SizedBox(height: ButlerlySpacing.large),
+            _WelcomeValue(
+              icon: Icons.lock_outline_rounded,
+              title: context.l10n.text('privateByDefault'),
+              body: context.l10n.text('privateByDefaultBody'),
+            ),
+            const SizedBox(height: ButlerlySpacing.small),
+            _WelcomeValue(
+              icon: Icons.cloud_off_outlined,
+              title: context.l10n.text('worksOffline'),
+              body: context.l10n.text('worksOfflineBody'),
+            ),
+            const SizedBox(height: ButlerlySpacing.small),
+            _WelcomeValue(
+              icon: Icons.auto_awesome_outlined,
+              title: context.l10n.text('optionalAssistance'),
+              body: context.l10n.text('optionalAssistanceBody'),
+            ),
+            const SizedBox(height: ButlerlySpacing.large),
+            FilledButton(
+              onPressed: () => context.go('/'),
+              child: Text(context.l10n.text('getStarted')),
+            ),
+          ],
+        ),
       ),
     ),
   );
@@ -642,23 +645,28 @@ class ReceiptDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(context.l10n.text('receiptDetail'))),
-    body: ListView(
-      padding: const EdgeInsets.all(ButlerlySpacing.standard),
-      children: [
-        Text(
-          context.l10n.text('sourceData'),
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: ButlerlySpacing.small),
-        ButlerlySourcePreview(
-          title: name,
-          subtitle: context.l10n.text('receiptPreview'),
-        ),
-        ButlerlySectionHeader(title: context.l10n.text('extractedSourceText')),
-        ButlerlyCard(
-          child: Text(context.l10n.text('extractedTextUnavailable')),
-        ),
-      ],
+    body: ButlerlyResponsiveBody(
+      contentKey: const ValueKey('receipt-detail-content'),
+      child: ListView(
+        padding: const EdgeInsets.all(ButlerlySpacing.standard),
+        children: [
+          Text(
+            context.l10n.text('sourceData'),
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: ButlerlySpacing.small),
+          ButlerlySourcePreview(
+            title: name,
+            subtitle: context.l10n.text('receiptPreview'),
+          ),
+          ButlerlySectionHeader(
+            title: context.l10n.text('extractedSourceText'),
+          ),
+          ButlerlyCard(
+            child: Text(context.l10n.text('extractedTextUnavailable')),
+          ),
+        ],
+      ),
     ),
   );
 }

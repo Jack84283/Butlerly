@@ -130,16 +130,27 @@ abstract final class ButlerlySize {
   static const sourcePreviewWidth = 64.0;
   static const sourcePreviewHeight = 80.0;
   static const navigationBarHeight = 78.0;
+}
 
-  /// Window class is based on the shortest logical side so rotating a phone
-  /// never turns its primary navigation into tablet navigation.
-  static bool isTabletViewport(Size viewport) =>
-      viewport.shortestSide >= phoneBreakpoint;
+enum ButlerlyNavigationMode { phone, rail, extendedRail }
 
-  /// Keeps phone page content readable in landscape while allowing tablets to
-  /// use the established wider readable column.
-  static double pageContentMaxWidthFor(Size viewport) =>
-      isTabletViewport(viewport) ? pageContentMaxWidth : phoneContentMaxWidth;
+/// Semantic responsive-layout policy. Feature pages consume this policy rather
+/// than embedding breakpoints or readable-width numbers of their own.
+abstract final class ButlerlyLayout {
+  static ButlerlyNavigationMode navigationMode(Size viewport) {
+    if (viewport.width >= ButlerlySize.desktopBreakpoint) {
+      return ButlerlyNavigationMode.extendedRail;
+    }
+    if (viewport.shortestSide >= ButlerlySize.phoneBreakpoint) {
+      return ButlerlyNavigationMode.rail;
+    }
+    return ButlerlyNavigationMode.phone;
+  }
+
+  static double contentMaxWidth(Size viewport) =>
+      navigationMode(viewport) == ButlerlyNavigationMode.phone
+      ? ButlerlySize.phoneContentMaxWidth
+      : ButlerlySize.pageContentMaxWidth;
 }
 
 abstract final class ButlerlyMotion {

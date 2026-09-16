@@ -16,9 +16,7 @@ class ButlerlyResponsiveBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maxWidth = ButlerlySize.pageContentMaxWidthFor(
-      MediaQuery.sizeOf(context),
-    );
+    final maxWidth = ButlerlyLayout.contentMaxWidth(MediaQuery.sizeOf(context));
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(

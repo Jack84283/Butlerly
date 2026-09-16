@@ -1,4 +1,5 @@
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -60,30 +61,33 @@ class LegalDocumentPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(context.l10n.text(document.titleKey))),
-    body: FutureBuilder<String>(
-      future: rootBundle.loadString(document.assetPath),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(ButlerlySpacing.section),
-              child: Text(context.l10n.text('legalDocumentLoadError')),
-            ),
-          );
-        }
-        if (!snapshot.hasData) {
-          return const ButlerlyLoadingState();
-        }
-        return SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: ButlerlySize.phoneGutter,
-              vertical: ButlerlySpacing.section,
-            ),
-            child: SelectableText(snapshot.requireData),
-          ),
-        );
-      },
+    body: SafeArea(
+      child: ButlerlyResponsiveBody(
+        contentKey: const ValueKey('legal-document-content'),
+        child: FutureBuilder<String>(
+          future: rootBundle.loadString(document.assetPath),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(ButlerlySpacing.section),
+                  child: Text(context.l10n.text('legalDocumentLoadError')),
+                ),
+              );
+            }
+            if (!snapshot.hasData) {
+              return const ButlerlyLoadingState();
+            }
+            return SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(
+                horizontal: ButlerlySize.phoneGutter,
+                vertical: ButlerlySpacing.section,
+              ),
+              child: SelectableText(snapshot.requireData),
+            );
+          },
+        ),
+      ),
     ),
   );
 }

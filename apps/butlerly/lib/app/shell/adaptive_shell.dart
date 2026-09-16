@@ -364,74 +364,70 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
   Widget build(BuildContext context) {
     final secondaryRouteVisible = widget.visibilityController
         .secondaryRouteVisibleFor(navigationShell.currentIndex);
-    final viewport = MediaQuery.sizeOf(context);
-    final tabletViewport = ButlerlySize.isTabletViewport(viewport);
+    final navigationMode = ButlerlyLayout.navigationMode(
+      MediaQuery.sizeOf(context),
+    );
+
+    late final Widget shell;
+    if (secondaryRouteVisible) {
+      shell = Scaffold(body: navigationShell);
+    } else if (navigationMode == ButlerlyNavigationMode.phone) {
+      shell = Scaffold(
+        body: SafeArea(bottom: false, child: _phoneBody()),
+        bottomNavigationBar: _phoneNavigation(context),
+      );
+    } else {
+      final extended = navigationMode == ButlerlyNavigationMode.extendedRail;
+      final destinations = _destinations(context);
+      final selectedVisualIndex = _visualBranchIndexes.indexOf(
+        navigationShell.currentIndex,
+      );
+      shell = Scaffold(
+        body: SafeArea(
+          child: Row(
+            children: [
+              NavigationRail(
+                extended: extended,
+                selectedIndex: selectedVisualIndex,
+                onDestinationSelected: (visualIndex) =>
+                    _selectDestination(_visualBranchIndexes[visualIndex]),
+                leading: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: ButlerlySpacing.section,
+                  ),
+                  child: extended
+                      ? Text(
+                          context.l10n.text('appName'),
+                          style: Theme.of(context).textTheme.headlineMedium
+                              ?.copyWith(color: context.colors.primaryText),
+                        )
+                      : Icon(
+                          Icons.circle,
+                          size: 14,
+                          color: context.colors.interactive,
+                        ),
+                ),
+                destinations: [
+                  for (final branchIndex in _visualBranchIndexes)
+                    NavigationRailDestination(
+                      icon: destinations[branchIndex]!.icon,
+                      selectedIcon: destinations[branchIndex]!.selectedIcon,
+                      label: Text(destinations[branchIndex]!.label),
+                    ),
+                ],
+              ),
+              VerticalDivider(width: 1, color: context.colors.cardDivider),
+              Expanded(child: navigationShell),
+            ],
+          ),
+        ),
+      );
+    }
+
     return PopScope(
       canPop: secondaryRouteVisible || navigationShell.currentIndex != 1,
       onPopInvokedWithResult: _handleSystemBack,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          if (secondaryRouteVisible) {
-            return Scaffold(body: navigationShell);
-          }
-
-          if (!tabletViewport) {
-            return Scaffold(
-              body: SafeArea(bottom: false, child: _phoneBody()),
-              bottomNavigationBar: _phoneNavigation(context),
-            );
-          }
-
-          final extended =
-              constraints.maxWidth >= ButlerlySize.desktopBreakpoint;
-          final destinations = _destinations(context);
-          final selectedVisualIndex = _visualBranchIndexes.indexOf(
-            navigationShell.currentIndex,
-          );
-          return Scaffold(
-            body: SafeArea(
-              child: Row(
-                children: [
-                  NavigationRail(
-                    extended: extended,
-                    selectedIndex: selectedVisualIndex,
-                    onDestinationSelected: (visualIndex) => _selectDestination(
-                      _visualBranchIndexes[visualIndex],
-                    ),
-                    leading: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: ButlerlySpacing.section,
-                      ),
-                      child: extended
-                          ? Text(
-                              context.l10n.text('appName'),
-                              style: Theme.of(context).textTheme.headlineMedium
-                                  ?.copyWith(color: context.colors.primaryText),
-                            )
-                          : Icon(
-                              Icons.circle,
-                              size: 14,
-                              color: context.colors.interactive,
-                            ),
-                    ),
-                    destinations: [
-                      for (final branchIndex in _visualBranchIndexes)
-                        NavigationRailDestination(
-                          icon: destinations[branchIndex]!.icon,
-                          selectedIcon:
-                              destinations[branchIndex]!.selectedIcon,
-                          label: Text(destinations[branchIndex]!.label),
-                        ),
-                    ],
-                  ),
-                  VerticalDivider(width: 1, color: context.colors.cardDivider),
-                  Expanded(child: navigationShell),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
+      child: shell,
     );
   }
 }
