@@ -343,10 +343,21 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final future = _data;
+    final view = View.of(context);
+    final display = view.display;
+    final deviceDisplaySize = display.size / display.devicePixelRatio;
+    final deviceClass = ButlerlyLayout.deviceClass(
+      MediaQuery.sizeOf(context),
+      deviceDisplaySize: deviceDisplaySize,
+    );
+    final canvasColor = deviceClass == ButlerlyDeviceClass.tablet
+        ? context.colors.subtleSurface
+        : context.colors.background;
     return RefreshIndicator(
       onRefresh: _refresh,
       child: ColoredBox(
-        color: context.colors.background,
+        key: const ValueKey('home-page-canvas'),
+        color: canvasColor,
         child: LayoutBuilder(
           builder: (context, constraints) => CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -397,23 +408,27 @@ class _HomePageState extends State<HomePage> {
                         horizontal: horizontalInset,
                       ),
                       sliver: SliverToBoxAdapter(
-                        child: SizedBox(
-                          key: const ValueKey('home-page-content'),
-                          width: double.infinity,
-                          child: FutureBuilder<_HomeData>(
-                            future: future,
-                            builder: (context, snapshot) {
-                              final data =
-                                  snapshot.data ??
-                                  _HomeData.empty(
-                                    _now,
-                                    selectedMonth: _selectedMonth,
-                                  );
-                              final loading =
-                                  snapshot.connectionState !=
-                                  ConnectionState.done;
-                              return _homeContent(context, data, loading);
-                            },
+                        child: ColoredBox(
+                          key: const ValueKey('home-page-content-surface'),
+                          color: context.colors.background,
+                          child: SizedBox(
+                            key: const ValueKey('home-page-content'),
+                            width: double.infinity,
+                            child: FutureBuilder<_HomeData>(
+                              future: future,
+                              builder: (context, snapshot) {
+                                final data =
+                                    snapshot.data ??
+                                    _HomeData.empty(
+                                      _now,
+                                      selectedMonth: _selectedMonth,
+                                    );
+                                final loading =
+                                    snapshot.connectionState !=
+                                    ConnectionState.done;
+                                return _homeContent(context, data, loading);
+                              },
+                            ),
                           ),
                         ),
                       ),
@@ -443,11 +458,8 @@ double _homeHeaderExtent(
   final scaler = MediaQuery.textScalerOf(context);
   final locale = Localizations.localeOf(context);
   final localeTag = locale.toLanguageTag();
-  final contentMaxWidth = ButlerlyLayout.contentMaxWidth(
-    MediaQuery.sizeOf(context),
-  );
   final availableWidth = (crossAxisExtent - ButlerlySize.phoneGutter * 2)
-      .clamp(1.0, contentMaxWidth)
+      .clamp(1.0, double.infinity)
       .toDouble();
   final scaledBody = scaler.scale(14);
   final stacked = scaledBody > 18 || availableWidth < 300;
@@ -572,20 +584,15 @@ class _HomePinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
   ) => ColoredBox(
     key: const ValueKey('home-header-surface'),
     color: context.colors.background,
-    child: Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: ButlerlySize.phoneGutter,
-          vertical: ButlerlySpacing.small,
-        ),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: ButlerlyLayout.contentMaxWidth(
-              MediaQuery.sizeOf(context),
-            ),
-          ),
-          child: SizedBox(width: double.infinity, child: child),
-        ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: ButlerlySize.phoneGutter,
+        vertical: ButlerlySpacing.small,
+      ),
+      child: SizedBox(
+        key: const ValueKey('home-header-content'),
+        width: double.infinity,
+        child: child,
       ),
     ),
   );
@@ -635,11 +642,13 @@ class _HomeHeader extends StatelessWidget {
           ],
         );
         final contextBlock = Column(
+          key: const ValueKey('home-header-context'),
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               context.l10n.text(greetingKey),
+              key: const ValueKey('home-greeting'),
               maxLines: stacked ? null : 1,
               overflow: stacked ? null : TextOverflow.ellipsis,
               textAlign: TextAlign.end,
@@ -692,7 +701,7 @@ class _HomeHeader extends StatelessWidget {
           children: [
             Expanded(flex: 5, child: brand),
             const SizedBox(width: ButlerlySpacing.standard),
-            Flexible(flex: 4, child: contextBlock),
+            Expanded(flex: 4, child: contextBlock),
           ],
         );
       },
