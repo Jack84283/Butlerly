@@ -44,7 +44,9 @@ class ButlerlyPage extends StatelessWidget {
               pinned: true,
               title: Text(title!),
               actions: actions,
-              backgroundColor: context.colors.background.withValues(alpha: 0.96),
+              backgroundColor: context.colors.background.withValues(
+                alpha: 0.96,
+              ),
             ),
           if (pinnedHeader != null)
             SliverPersistentHeader(
