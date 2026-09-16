@@ -299,46 +299,46 @@ class _ImportExportPageState extends State<ImportExportPage> {
     body: ButlerlyResponsiveBody(
       contentKey: const ValueKey('import-export-content'),
       child: ListView(
-      padding: const EdgeInsets.all(ButlerlySpacing.standard),
-      children: [
-        ButlerlyOfflineBanner(
-          message: context.l10n.text('importOfflineBanner'),
-        ),
-        if (_importing) const LinearProgressIndicator(),
-        ButlerlySectionHeader(title: context.l10n.text('importData')),
-        _ActionRow(
-          icon: Icons.file_open_outlined,
-          title: context.l10n.text('importFromFile'),
-          subtitle: context.l10n.text('importFromFileBody'),
-          onTap: _importing ? () {} : _importCsv,
-        ),
-        _ActionRow(
-          icon: Icons.image_outlined,
-          title: context.l10n.text('importReceipts'),
-          subtitle: context.l10n.text('importReceiptsBody'),
-          onTap: () => _openReceiptFlow(context),
-        ),
-        _ActionRow(
-          icon: Icons.credit_card_outlined,
-          title: context.l10n.text('addPaymentTransaction'),
-          subtitle: context.l10n.text('addPaymentTransactionBody'),
-          onTap: () => context.push('/add'),
-        ),
-        _ActionRow(
-          icon: Icons.notifications_none_outlined,
-          title: context.l10n.text('addPaymentNotification'),
-          subtitle: context.l10n.text('addPaymentNotificationBody'),
-          onTap: _importing ? () {} : _addNotificationTransaction,
-        ),
-        ButlerlySectionHeader(title: context.l10n.text('importExport')),
-        _ActionRow(
-          icon: Icons.file_download_outlined,
-          title: context.l10n.text('exportToFile'),
-          subtitle: context.l10n.text('exportToFileBody'),
-          onTap: () => context.push('/privacy-data'),
-        ),
-      ],
-    ),
+        padding: const EdgeInsets.all(ButlerlySpacing.standard),
+        children: [
+          ButlerlyOfflineBanner(
+            message: context.l10n.text('importOfflineBanner'),
+          ),
+          if (_importing) const LinearProgressIndicator(),
+          ButlerlySectionHeader(title: context.l10n.text('importData')),
+          _ActionRow(
+            icon: Icons.file_open_outlined,
+            title: context.l10n.text('importFromFile'),
+            subtitle: context.l10n.text('importFromFileBody'),
+            onTap: _importing ? () {} : _importCsv,
+          ),
+          _ActionRow(
+            icon: Icons.image_outlined,
+            title: context.l10n.text('importReceipts'),
+            subtitle: context.l10n.text('importReceiptsBody'),
+            onTap: () => _openReceiptFlow(context),
+          ),
+          _ActionRow(
+            icon: Icons.credit_card_outlined,
+            title: context.l10n.text('addPaymentTransaction'),
+            subtitle: context.l10n.text('addPaymentTransactionBody'),
+            onTap: () => context.push('/add'),
+          ),
+          _ActionRow(
+            icon: Icons.notifications_none_outlined,
+            title: context.l10n.text('addPaymentNotification'),
+            subtitle: context.l10n.text('addPaymentNotificationBody'),
+            onTap: _importing ? () {} : _addNotificationTransaction,
+          ),
+          ButlerlySectionHeader(title: context.l10n.text('importExport')),
+          _ActionRow(
+            icon: Icons.file_download_outlined,
+            title: context.l10n.text('exportToFile'),
+            subtitle: context.l10n.text('exportToFileBody'),
+            onTap: () => context.push('/privacy-data'),
+          ),
+        ],
+      ),
     ),
   );
 }
@@ -607,10 +607,10 @@ class NotificationsPage extends StatelessWidget {
     body: ButlerlyResponsiveBody(
       contentKey: const ValueKey('notifications-content'),
       child: ButlerlyEmptyState(
-      icon: Icons.notifications_none_rounded,
-      title: context.l10n.text('noNotifications'),
-      message: context.l10n.text('noNotificationsBody'),
-    ),
+        icon: Icons.notifications_none_rounded,
+        title: context.l10n.text('noNotifications'),
+        message: context.l10n.text('noNotificationsBody'),
+      ),
     ),
   );
 }
@@ -624,12 +624,12 @@ class AssistantUnavailablePage extends StatelessWidget {
     body: ButlerlyResponsiveBody(
       contentKey: const ValueKey('assistant-unavailable-content'),
       child: ButlerlyEmptyState(
-      icon: Icons.auto_awesome_outlined,
-      title: context.l10n.text('assistantUnavailable'),
-      message: context.l10n.text('assistantUnavailableBody'),
-      actionLabel: context.l10n.text('searchRecords'),
-      onAction: () => context.go('/search'),
-    ),
+        icon: Icons.auto_awesome_outlined,
+        title: context.l10n.text('assistantUnavailable'),
+        message: context.l10n.text('assistantUnavailableBody'),
+        actionLabel: context.l10n.text('searchRecords'),
+        onAction: () => context.go('/search'),
+      ),
     ),
   );
 }

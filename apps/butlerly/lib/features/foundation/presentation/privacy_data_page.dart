@@ -102,10 +102,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       final result = await share.SharePlus.instance.share(
         share.ShareParams(
           files: [
-            share.XFile(
-              file.path,
-              mimeType: 'application/vnd.butlerly.backup',
-            ),
+            share.XFile(file.path, mimeType: 'application/vnd.butlerly.backup'),
           ],
           title: fileName,
           sharePositionOrigin: shareOrigin,
@@ -254,9 +251,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
                   }
                   Navigator.pop(sheetContext, password.text);
                 },
-                child: Text(
-                  context.l10n.backupText('createEncryptedBackup'),
-                ),
+                child: Text(context.l10n.backupText('createEncryptedBackup')),
               ),
             ],
           ),
@@ -476,9 +471,9 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     }
   }
 
-  void _message(String value) => ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(SnackBar(content: Text(value)));
+  void _message(String value) =>
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(value)));
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -486,65 +481,65 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     body: ButlerlyResponsiveBody(
       contentKey: const ValueKey('privacy-data-content'),
       child: ListView(
-      padding: const EdgeInsets.all(ButlerlySpacing.standard),
-      children: [
-        ButlerlyCard(child: Text(context.l10n.text('privacyScopeBody'))),
-        ButlerlySectionHeader(title: context.l10n.text('localDataControls')),
-        ListTile(
-          enabled: !_busy,
-          leading: const Icon(Icons.backup_outlined),
-          title: Text(context.l10n.backupText('backup')),
-          subtitle: Text(
-            context.l10n.backupText('backupSubtitle'),
-            style: _subtitleStyle(context),
+        padding: const EdgeInsets.all(ButlerlySpacing.standard),
+        children: [
+          ButlerlyCard(child: Text(context.l10n.text('privacyScopeBody'))),
+          ButlerlySectionHeader(title: context.l10n.text('localDataControls')),
+          ListTile(
+            enabled: !_busy,
+            leading: const Icon(Icons.backup_outlined),
+            title: Text(context.l10n.backupText('backup')),
+            subtitle: Text(
+              context.l10n.backupText('backupSubtitle'),
+              style: _subtitleStyle(context),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _backup,
           ),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: _backup,
-        ),
-        const Divider(),
-        ListTile(
-          enabled: !_busy,
-          leading: const Icon(Icons.restore_outlined),
-          title: Text(context.l10n.backupText('restoreBackup')),
-          subtitle: Text(
-            context.l10n.backupText('restoreSubtitle'),
-            style: _subtitleStyle(context),
+          const Divider(),
+          ListTile(
+            enabled: !_busy,
+            leading: const Icon(Icons.restore_outlined),
+            title: Text(context.l10n.backupText('restoreBackup')),
+            subtitle: Text(
+              context.l10n.backupText('restoreSubtitle'),
+              style: _subtitleStyle(context),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _restore,
           ),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: _restore,
-        ),
-        const Divider(),
-        ListTile(
-          enabled: !_busy,
-          leading: const Icon(Icons.download_outlined),
-          title: Text(context.l10n.text('exportToFile')),
-          subtitle: Text(
-            context.l10n.text('exportScopeBody'),
-            style: _subtitleStyle(context),
+          const Divider(),
+          ListTile(
+            enabled: !_busy,
+            leading: const Icon(Icons.download_outlined),
+            title: Text(context.l10n.text('exportToFile')),
+            subtitle: Text(
+              context.l10n.text('exportScopeBody'),
+              style: _subtitleStyle(context),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _export,
           ),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: _export,
-        ),
-        const Divider(),
-        ListTile(
-          enabled: !_busy,
-          leading: const Icon(Icons.delete_forever_outlined),
-          title: Text(context.l10n.text('resetAllData')),
-          subtitle: Text(
-            context.l10n.text('eraseScopeBody'),
-            style: _subtitleStyle(context),
+          const Divider(),
+          ListTile(
+            enabled: !_busy,
+            leading: const Icon(Icons.delete_forever_outlined),
+            title: Text(context.l10n.text('resetAllData')),
+            subtitle: Text(
+              context.l10n.text('eraseScopeBody'),
+              style: _subtitleStyle(context),
+            ),
+            textColor: Theme.of(context).colorScheme.error,
+            iconColor: Theme.of(context).colorScheme.error,
+            onTap: _confirmErase,
           ),
-          textColor: Theme.of(context).colorScheme.error,
-          iconColor: Theme.of(context).colorScheme.error,
-          onTap: _confirmErase,
-        ),
-        if (_busy) const ButlerlyLoadingState(),
-      ],
-    ),
+          if (_busy) const ButlerlyLoadingState(),
+        ],
+      ),
     ),
   );
 }
 
-TextStyle? _subtitleStyle(BuildContext context) => Theme.of(
-  context,
-).textTheme.bodySmall?.copyWith(color: context.colors.secondaryText);
+TextStyle? _subtitleStyle(BuildContext context) =>
+    Theme.of(context).textTheme.bodySmall
+        ?.copyWith(color: context.colors.secondaryText);
