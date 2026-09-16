@@ -392,9 +392,11 @@ class _HomePageState extends State<HomePage> {
                 ),
                 sliver: SliverLayoutBuilder(
                   builder: (context, constraints) {
+                    final contentMaxWidth = ButlerlySize.pageContentMaxWidthFor(
+                      MediaQuery.sizeOf(context),
+                    );
                     final extraWidth =
-                        constraints.crossAxisExtent -
-                        ButlerlySize.pageContentMaxWidth;
+                        constraints.crossAxisExtent - contentMaxWidth;
                     final horizontalInset = extraWidth > 0
                         ? extraWidth / 2
                         : 0.0;
@@ -403,19 +405,24 @@ class _HomePageState extends State<HomePage> {
                         horizontal: horizontalInset,
                       ),
                       sliver: SliverToBoxAdapter(
-                        child: FutureBuilder<_HomeData>(
-                          future: future,
-                          builder: (context, snapshot) {
-                            final data =
-                                snapshot.data ??
-                                _HomeData.empty(
-                                  _now,
-                                  selectedMonth: _selectedMonth,
-                                );
-                            final loading =
-                                snapshot.connectionState != ConnectionState.done;
-                            return _homeContent(context, data, loading);
-                          },
+                        child: SizedBox(
+                          key: const ValueKey('home-page-content'),
+                          width: double.infinity,
+                          child: FutureBuilder<_HomeData>(
+                            future: future,
+                            builder: (context, snapshot) {
+                              final data =
+                                  snapshot.data ??
+                                  _HomeData.empty(
+                                    _now,
+                                    selectedMonth: _selectedMonth,
+                                  );
+                              final loading =
+                                  snapshot.connectionState !=
+                                  ConnectionState.done;
+                              return _homeContent(context, data, loading);
+                            },
+                          ),
                         ),
                       ),
                     );
@@ -444,9 +451,12 @@ double _homeHeaderExtent(
   final scaler = MediaQuery.textScalerOf(context);
   final locale = Localizations.localeOf(context);
   final localeTag = locale.toLanguageTag();
+  final contentMaxWidth = ButlerlySize.pageContentMaxWidthFor(
+    MediaQuery.sizeOf(context),
+  );
   final availableWidth =
       (crossAxisExtent - ButlerlySize.phoneGutter * 2)
-          .clamp(1.0, ButlerlySize.pageContentMaxWidth)
+          .clamp(1.0, contentMaxWidth)
           .toDouble();
   final scaledBody = scaler.scale(14);
   final stacked = scaledBody > 18 || availableWidth < 300;
@@ -573,6 +583,7 @@ class _HomePinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) => ColoredBox(
+    key: const ValueKey('home-header-surface'),
     color: context.colors.background,
     child: Center(
       child: Padding(
@@ -581,8 +592,10 @@ class _HomePinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
           vertical: ButlerlySpacing.small,
         ),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: ButlerlySize.pageContentMaxWidth,
+          constraints: BoxConstraints(
+            maxWidth: ButlerlySize.pageContentMaxWidthFor(
+              MediaQuery.sizeOf(context),
+            ),
           ),
           child: SizedBox(width: double.infinity, child: child),
         ),

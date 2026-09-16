@@ -319,6 +319,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
   Widget _phoneNavigation(BuildContext context) {
     final destinations = _destinations(context);
     return DecoratedBox(
+      key: const ValueKey('primary-phone-navigation'),
       decoration: BoxDecoration(
         color: Theme.of(context).navigationBarTheme.backgroundColor,
         border: Border(top: BorderSide(color: context.colors.cardDivider)),
@@ -353,10 +354,18 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     );
   }
 
+  Widget _phoneBody() => ColoredBox(
+    key: const ValueKey('primary-phone-body-surface'),
+    color: context.colors.background,
+    child: navigationShell,
+  );
+
   @override
   Widget build(BuildContext context) {
     final secondaryRouteVisible = widget.visibilityController
         .secondaryRouteVisibleFor(navigationShell.currentIndex);
+    final viewport = MediaQuery.sizeOf(context);
+    final tabletViewport = ButlerlySize.isTabletViewport(viewport);
     return PopScope(
       canPop: secondaryRouteVisible || navigationShell.currentIndex != 1,
       onPopInvokedWithResult: _handleSystemBack,
@@ -366,9 +375,9 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
             return Scaffold(body: navigationShell);
           }
 
-          if (constraints.maxWidth < ButlerlySize.phoneBreakpoint) {
+          if (!tabletViewport) {
             return Scaffold(
-              body: SafeArea(bottom: false, child: navigationShell),
+              body: SafeArea(bottom: false, child: _phoneBody()),
               bottomNavigationBar: _phoneNavigation(context),
             );
           }

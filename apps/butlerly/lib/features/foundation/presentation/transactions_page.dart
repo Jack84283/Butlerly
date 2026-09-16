@@ -5,6 +5,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
@@ -357,9 +358,8 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   }
 
   Future<_EditorMasterData> _loadMasterData(String languageCode) async {
-    final snapshot = await TransactionMasterDataProvider(
-      widget.finance,
-    ).load(languageCode: languageCode);
+    final snapshot = await TransactionMasterDataProvider(widget.finance)
+        .load(languageCode: languageCode);
     return _EditorMasterData.fromSnapshot(snapshot);
   }
 
@@ -448,9 +448,11 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
       ),
     );
     if (!mounted) return;
-    if (duplicate case ApplicationSuccess<DuplicateTransactionCheckResult>(
-      value: final check,
-    ) when check.requiresConfirmation) {
+    if (duplicate
+        case ApplicationSuccess<DuplicateTransactionCheckResult>(
+          value: final check,
+        )
+        when check.requiresConfirmation) {
       final editorData = await _masterData;
       if (!mounted) return;
       final decision =
@@ -474,9 +476,8 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
       if (decision.decision == ButlerlyDuplicateDecision.useExisting) {
         final selectedId = decision.selectedTransactionId;
         if (selectedId != null) {
-          Navigator.of(
-            context,
-          ).pop(TransactionEditorResult.useExisting(selectedId));
+          Navigator.of(context)
+              .pop(TransactionEditorResult.useExisting(selectedId));
         }
         return;
       }
@@ -553,200 +554,203 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
               : context.l10n.text('editTransaction'),
         ),
       ),
-      body: FutureBuilder<_EditorMasterData>(
-        future: _masterData,
-        initialData: const _EditorMasterData(
-          merchants: [],
-          categories: [],
-          tags: [],
-          paymentSources: [],
-          categoryLabels: {},
-          tagLabels: {},
-        ),
-        builder: (context, snapshot) {
-          final data = snapshot.requireData;
-          final selectedCategory = data.categories
-              .where((value) => value.id.value == _categoryId)
-              .firstOrNull;
-          final selectedParentId =
-              selectedCategory?.parentId?.value ??
-              (selectedCategory != null && selectedCategory.parentId == null
-                  ? selectedCategory.id.value
-                  : null);
-          return Form(
-            key: _formKey,
-            child: ListView(
-              // The editor's wider inset keeps the final action reachable in
-              // the established form layout at compact test and phone sizes.
-              padding: const EdgeInsets.all(24),
-              children: [
-                ButlerlyDirectionSelector(
-                  value: _direction,
-                  expenseLabel: context.l10n.text('expense'),
-                  incomeLabel: context.l10n.text('income'),
-                  onChanged: (value) => setState(() => _direction = value),
-                ),
-                const SizedBox(height: ButlerlySpacing.section),
-                TextFormField(
-                  controller: _amount,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
+      body: ButlerlyResponsiveBody(
+        contentKey: const ValueKey('transaction-editor-content'),
+        child: FutureBuilder<_EditorMasterData>(
+          future: _masterData,
+          initialData: const _EditorMasterData(
+            merchants: [],
+            categories: [],
+            tags: [],
+            paymentSources: [],
+            categoryLabels: {},
+            tagLabels: {},
+          ),
+          builder: (context, snapshot) {
+            final data = snapshot.requireData;
+            final selectedCategory = data.categories
+                .where((value) => value.id.value == _categoryId)
+                .firstOrNull;
+            final selectedParentId =
+                selectedCategory?.parentId?.value ??
+                (selectedCategory != null && selectedCategory.parentId == null
+                    ? selectedCategory.id.value
+                    : null);
+            return Form(
+              key: _formKey,
+              child: ListView(
+                // The editor's wider inset keeps the final action reachable in
+                // the established form layout at compact test and phone sizes.
+                padding: const EdgeInsets.all(24),
+                children: [
+                  ButlerlyDirectionSelector(
+                    value: _direction,
+                    expenseLabel: context.l10n.text('expense'),
+                    incomeLabel: context.l10n.text('income'),
+                    onChanged: (value) => setState(() => _direction = value),
                   ),
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('amount'),
-                    prefixIcon: const Icon(Icons.payments_outlined),
-                  ),
-                  validator: (value) {
-                    try {
-                      DecimalValue.parse(value?.trim() ?? '');
-                      return null;
-                    } on DomainValidationException {
-                      return context.l10n.text('invalidAmount');
-                    }
-                  },
-                ),
-                const SizedBox(height: ButlerlySpacing.standard),
-                TextFormField(
-                  controller: _currency,
-                  textCapitalization: TextCapitalization.characters,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('currency'),
-                  ),
-                  validator: (value) {
-                    try {
-                      CurrencyCode(value?.trim() ?? '');
-                      return null;
-                    } on DomainValidationException {
-                      return context.l10n.text('invalidCurrency');
-                    }
-                  },
-                ),
-                const SizedBox(height: ButlerlySpacing.standard),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(context.l10n.text('date')),
-                  subtitle: Text(_shortDate(_date)),
-                  trailing: const Icon(Icons.calendar_today_outlined),
-                  onTap: () async {
-                    final selected = await showDatePicker(
-                      context: context,
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2100),
-                      initialDate: _date,
-                    );
-                    if (selected != null) {
-                      setState(() {
-                        _date = selected;
-                        _dateChanged = true;
-                      });
-                    }
-                  },
-                ),
-                const SizedBox(height: ButlerlySpacing.standard),
-                TextFormField(
-                  controller: _description,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('descriptionOptional'),
-                    prefixIcon: const Icon(Icons.notes_rounded),
-                  ),
-                  maxLines: 2,
-                ),
-                const SizedBox(height: ButlerlySpacing.standard),
-                TextFormField(
-                  controller: _notes,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('notesOptional'),
-                    prefixIcon: const Icon(Icons.sticky_note_2_outlined),
-                  ),
-                  maxLines: 3,
-                ),
-                const SizedBox(height: ButlerlySpacing.standard),
-                ButlerlyMerchantSelector(
-                  label: context.l10n.text('merchant'),
-                  clearLabel: context.l10n.text('clear'),
-                  merchants: data.merchants,
-                  value: _merchantId,
-                  onChanged: _selectMerchant,
-                  onCreate: () => _createMerchant(data),
-                  createTooltip: context.l10n.text('merchant'),
-                ),
-                const SizedBox(height: ButlerlySpacing.standard),
-                ButlerlyCategorySelector(
-                  label: context.l10n.text('category'),
-                  clearLabel: context.l10n.text('clear'),
-                  categories: data.categories,
-                  masterData: TransactionMasterData(
-                    categoryNames: data.categoryLabels,
-                    tagNames: data.tagLabels,
-                  ),
-                  value: selectedParentId,
-                  onChanged: (value) => setState(() {
-                    _classificationOverridden = true;
-                    _categoryId = value;
-                    _subcategoryId = null;
-                  }),
-                ),
-                const SizedBox(height: ButlerlySpacing.standard),
-                ButlerlySubcategorySelector(
-                  label: context.l10n.text('subcategory'),
-                  clearLabel: context.l10n.text('clear'),
-                  categories: data.categories,
-                  masterData: TransactionMasterData(
-                    categoryNames: data.categoryLabels,
-                    tagNames: data.tagLabels,
-                  ),
-                  parentId: selectedParentId,
-                  value: _subcategoryId,
-                  onChanged: (value) => setState(() {
-                    _classificationOverridden = true;
-                    _subcategoryId = value;
-                    _categoryId = selectedParentId;
-                  }),
-                ),
-                const SizedBox(height: ButlerlySpacing.standard),
-                ButlerlyPaymentSourceSelector(
-                  label: context.l10n.text('paymentSource'),
-                  clearLabel: context.l10n.text('clear'),
-                  sources: data.paymentSources,
-                  value: _paymentSourceId,
-                  onChanged: (value) =>
-                      setState(() => _paymentSourceId = value),
-                ),
-                const SizedBox(height: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      context.l10n.text('tags'),
-                      style: Theme.of(context).textTheme.bodySmall,
+                  const SizedBox(height: ButlerlySpacing.section),
+                  TextFormField(
+                    controller: _amount,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
                     ),
-                    ButlerlyTagPicker(
-                      searchLabel: context.l10n.text('search'),
-                      createLabel: context.l10n.text('addTag'),
-                      tags: data.tags,
-                      masterData: TransactionMasterData(
-                        categoryNames: data.categoryLabels,
-                        tagNames: data.tagLabels,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.text('amount'),
+                      prefixIcon: const Icon(Icons.payments_outlined),
+                    ),
+                    validator: (value) {
+                      try {
+                        DecimalValue.parse(value?.trim() ?? '');
+                        return null;
+                      } on DomainValidationException {
+                        return context.l10n.text('invalidAmount');
+                      }
+                    },
+                  ),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  TextFormField(
+                    controller: _currency,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.text('currency'),
+                    ),
+                    validator: (value) {
+                      try {
+                        CurrencyCode(value?.trim() ?? '');
+                        return null;
+                      } on DomainValidationException {
+                        return context.l10n.text('invalidCurrency');
+                      }
+                    },
+                  ),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(context.l10n.text('date')),
+                    subtitle: Text(_shortDate(_date)),
+                    trailing: const Icon(Icons.calendar_today_outlined),
+                    onTap: () async {
+                      final selected = await showDatePicker(
+                        context: context,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                        initialDate: _date,
+                      );
+                      if (selected != null) {
+                        setState(() {
+                          _date = selected;
+                          _dateChanged = true;
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  TextFormField(
+                    controller: _description,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.text('descriptionOptional'),
+                      prefixIcon: const Icon(Icons.notes_rounded),
+                    ),
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  TextFormField(
+                    controller: _notes,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.text('notesOptional'),
+                      prefixIcon: const Icon(Icons.sticky_note_2_outlined),
+                    ),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  ButlerlyMerchantSelector(
+                    label: context.l10n.text('merchant'),
+                    clearLabel: context.l10n.text('clear'),
+                    merchants: data.merchants,
+                    value: _merchantId,
+                    onChanged: _selectMerchant,
+                    onCreate: () => _createMerchant(data),
+                    createTooltip: context.l10n.text('merchant'),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  ButlerlyCategorySelector(
+                    label: context.l10n.text('category'),
+                    clearLabel: context.l10n.text('clear'),
+                    categories: data.categories,
+                    masterData: TransactionMasterData(
+                      categoryNames: data.categoryLabels,
+                      tagNames: data.tagLabels,
+                    ),
+                    value: selectedParentId,
+                    onChanged: (value) => setState(() {
+                      _classificationOverridden = true;
+                      _categoryId = value;
+                      _subcategoryId = null;
+                    }),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  ButlerlySubcategorySelector(
+                    label: context.l10n.text('subcategory'),
+                    clearLabel: context.l10n.text('clear'),
+                    categories: data.categories,
+                    masterData: TransactionMasterData(
+                      categoryNames: data.categoryLabels,
+                      tagNames: data.tagLabels,
+                    ),
+                    parentId: selectedParentId,
+                    value: _subcategoryId,
+                    onChanged: (value) => setState(() {
+                      _classificationOverridden = true;
+                      _subcategoryId = value;
+                      _categoryId = selectedParentId;
+                    }),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  ButlerlyPaymentSourceSelector(
+                    label: context.l10n.text('paymentSource'),
+                    clearLabel: context.l10n.text('clear'),
+                    sources: data.paymentSources,
+                    value: _paymentSourceId,
+                    onChanged: (value) =>
+                        setState(() => _paymentSourceId = value),
+                  ),
+                  const SizedBox(height: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.l10n.text('tags'),
+                        style: Theme.of(context).textTheme.bodySmall,
                       ),
-                      selected: _tagIds,
-                      onChanged: (value) => setState(() => _tagIds = value),
-                      onCreate: () => _createTag(data),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: ButlerlySpacing.section),
-                FilledButton(
-                  onPressed: _saving ? null : _save,
-                  child: Text(
-                    _saving
-                        ? context.l10n.text('saving')
-                        : context.l10n.text('saveLocally'),
+                      ButlerlyTagPicker(
+                        searchLabel: context.l10n.text('search'),
+                        createLabel: context.l10n.text('addTag'),
+                        tags: data.tags,
+                        masterData: TransactionMasterData(
+                          categoryNames: data.categoryLabels,
+                          tagNames: data.tagLabels,
+                        ),
+                        selected: _tagIds,
+                        onChanged: (value) => setState(() => _tagIds = value),
+                        onCreate: () => _createTag(data),
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ),
-          );
-        },
+                  const SizedBox(height: ButlerlySpacing.section),
+                  FilledButton(
+                    onPressed: _saving ? null : _save,
+                    child: Text(
+                      _saving
+                          ? context.l10n.text('saving')
+                          : context.l10n.text('saveLocally'),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -1000,161 +1004,166 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(ButlerlySpacing.pagePadding),
-        children: [
-          SizedBox(
-            width: double.infinity,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  '${localizedTransactionAmount(context, transaction.amount)} ${transaction.currency}',
-                  textAlign: TextAlign.center,
-                  style: context.transactionDetailAmount,
-                ),
-                const SizedBox(height: ButlerlySpacing.micro),
-                Text(
-                  transaction.description ??
-                      context.l10n.text('untitledTransaction'),
-                  textAlign: TextAlign.center,
-                  style: context.transactionDetailDescription,
-                ),
-              ],
-            ),
-          ),
-          if (transaction.normalizedMoney.isNotEmpty) ...[
-            const SizedBox(height: ButlerlySpacing.compact),
-            Text(
-              context.l10n.text('referenceAmounts'),
-              style: Theme.of(context).textTheme.labelLarge,
-            ),
-            ...transaction.normalizedMoney.map(
-              (value) => _DetailRow(
-                label: context.l10n.text('referenceCurrency', {
-                  'currency': value.currency,
-                }),
-                value:
-                    '${localizedTransactionAmount(context, value.amount)} ${value.currency}',
+      body: ButlerlyResponsiveBody(
+        contentKey: const ValueKey('transaction-detail-content'),
+        child: ListView(
+          padding: const EdgeInsets.all(ButlerlySpacing.pagePadding),
+          children: [
+            SizedBox(
+              width: double.infinity,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    '${localizedTransactionAmount(context, transaction.amount)} ${transaction.currency}',
+                    textAlign: TextAlign.center,
+                    style: context.transactionDetailAmount,
+                  ),
+                  const SizedBox(height: ButlerlySpacing.micro),
+                  Text(
+                    transaction.description ??
+                        context.l10n.text('untitledTransaction'),
+                    textAlign: TextAlign.center,
+                    style: context.transactionDetailDescription,
+                  ),
+                ],
               ),
             ),
-          ],
-          const SizedBox(height: ButlerlySpacing.section),
-          _DetailRow(
-            label: context.l10n.text('direction'),
-            value: context.l10n.text(transaction.direction),
-          ),
-          _DetailRow(
-            label: context.l10n.text('date'),
-            value: _transactionDate(transaction, context),
-          ),
-          _DetailRow(
-            label: context.l10n.text('status'),
-            value: context.l10n.text(transaction.status),
-          ),
-          _DetailRow(
-            label: context.l10n.text('reviewState'),
-            value: transaction.reviewState == 'needsReview'
-                ? context.l10n.text('needsReview')
-                : context.l10n.text('clear'),
-          ),
-          if (transaction.notes?.trim().isNotEmpty == true)
+            if (transaction.normalizedMoney.isNotEmpty) ...[
+              const SizedBox(height: ButlerlySpacing.compact),
+              Text(
+                context.l10n.text('referenceAmounts'),
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              ...transaction.normalizedMoney.map(
+                (value) => _DetailRow(
+                  label: context.l10n.text('referenceCurrency', {
+                    'currency': value.currency,
+                  }),
+                  value:
+                      '${localizedTransactionAmount(context, value.amount)} ${value.currency}',
+                ),
+              ),
+            ],
+            const SizedBox(height: ButlerlySpacing.section),
             _DetailRow(
-              label: context.l10n.text('notes'),
-              value: transaction.notes!,
+              label: context.l10n.text('direction'),
+              value: context.l10n.text(transaction.direction),
             ),
-          if (transaction.provenance.isNotEmpty) ...[
+            _DetailRow(
+              label: context.l10n.text('date'),
+              value: _transactionDate(transaction, context),
+            ),
+            _DetailRow(
+              label: context.l10n.text('status'),
+              value: context.l10n.text(transaction.status),
+            ),
+            _DetailRow(
+              label: context.l10n.text('reviewState'),
+              value: transaction.reviewState == 'needsReview'
+                  ? context.l10n.text('needsReview')
+                  : context.l10n.text('clear'),
+            ),
+            if (transaction.notes?.trim().isNotEmpty == true)
+              _DetailRow(
+                label: context.l10n.text('notes'),
+                value: transaction.notes!,
+              ),
+            if (transaction.provenance.isNotEmpty) ...[
+              const SizedBox(height: ButlerlySpacing.standard),
+              Text(
+                context.l10n.text('recordHistory'),
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              ...transaction.provenance.map(
+                (value) => _DetailRow(
+                  label: context.l10n.text('origin'),
+                  value: _provenanceLabel(context, value.sourceType),
+                ),
+              ),
+            ],
             const SizedBox(height: ButlerlySpacing.standard),
-            Text(
-              context.l10n.text('recordHistory'),
-              style: Theme.of(context).textTheme.titleMedium,
+            _EvidenceSection(finance: finance, transactionId: transaction.id),
+            _TransactionMasterDataRows(
+              key: ValueKey(
+                '${transaction.updatedAt.microsecondsSinceEpoch}-${transaction.tagIds.join(',')}',
+              ),
+              finance: finance,
+              transaction: transaction,
             ),
-            ...transaction.provenance.map(
-              (value) => _DetailRow(
-                label: context.l10n.text('origin'),
-                value: _provenanceLabel(context, value.sourceType),
+            if (transaction.paymentSourceId != null)
+              _PaymentSourceRow(
+                finance: finance,
+                paymentSourceId: transaction.paymentSourceId!,
+              ),
+            const SizedBox(height: ButlerlySpacing.section),
+            OutlinedButton.icon(
+              onPressed: () async {
+                final changed = await _organizeTransaction(
+                  context,
+                  finance,
+                  transaction,
+                );
+                if (changed == true && context.mounted) {
+                  final refreshed = await finance.getTransaction(
+                    transaction.id,
+                  );
+                  if (!context.mounted) return;
+                  if (refreshed case ApplicationSuccess<TransactionDto>(
+                    :final value,
+                  )) {
+                    setState(() {
+                      transaction = value;
+                      _changed = true;
+                    });
+                  }
+                }
+              },
+              icon: const Icon(Icons.sell_outlined),
+              label: Text(context.l10n.text('organizeTransaction')),
+            ),
+            const SizedBox(height: ButlerlySpacing.small),
+            OutlinedButton.icon(
+              onPressed: () async {
+                final assigned = await _assignPaymentSource(
+                  context,
+                  finance,
+                  transaction,
+                );
+                if (assigned != null && context.mounted) {
+                  setState(() => transaction = assigned);
+                }
+              },
+              icon: const Icon(Icons.account_balance_wallet_outlined),
+              label: Text(context.l10n.text('assignPaymentSource')),
+            ),
+            const SizedBox(height: ButlerlySpacing.small),
+            OutlinedButton.icon(
+              onPressed: transaction.status == TransactionStatus.archived.name
+                  ? () async {
+                      await finance.restoreTransaction(transaction.id);
+                      if (context.mounted) Navigator.of(context).pop(true);
+                    }
+                  : () => _archive(context),
+              icon: Icon(
+                transaction.status == TransactionStatus.archived.name
+                    ? Icons.unarchive_outlined
+                    : Icons.archive_outlined,
+              ),
+              label: Text(
+                transaction.status == TransactionStatus.archived.name
+                    ? context.l10n.text('restoreTransaction')
+                    : context.l10n.text('archiveTransaction'),
               ),
             ),
+            const SizedBox(height: ButlerlySpacing.small),
+            ButlerlyDestructiveButton(
+              onPressed: () => _delete(context),
+              icon: const Icon(Icons.delete_forever_outlined),
+              child: Text(context.l10n.text('deletePermanently')),
+            ),
           ],
-          const SizedBox(height: ButlerlySpacing.standard),
-          _EvidenceSection(finance: finance, transactionId: transaction.id),
-          _TransactionMasterDataRows(
-            key: ValueKey(
-              '${transaction.updatedAt.microsecondsSinceEpoch}-${transaction.tagIds.join(',')}',
-            ),
-            finance: finance,
-            transaction: transaction,
-          ),
-          if (transaction.paymentSourceId != null)
-            _PaymentSourceRow(
-              finance: finance,
-              paymentSourceId: transaction.paymentSourceId!,
-            ),
-          const SizedBox(height: ButlerlySpacing.section),
-          OutlinedButton.icon(
-            onPressed: () async {
-              final changed = await _organizeTransaction(
-                context,
-                finance,
-                transaction,
-              );
-              if (changed == true && context.mounted) {
-                final refreshed = await finance.getTransaction(transaction.id);
-                if (!context.mounted) return;
-                if (refreshed case ApplicationSuccess<TransactionDto>(
-                  :final value,
-                )) {
-                  setState(() {
-                    transaction = value;
-                    _changed = true;
-                  });
-                }
-              }
-            },
-            icon: const Icon(Icons.sell_outlined),
-            label: Text(context.l10n.text('organizeTransaction')),
-          ),
-          const SizedBox(height: ButlerlySpacing.small),
-          OutlinedButton.icon(
-            onPressed: () async {
-              final assigned = await _assignPaymentSource(
-                context,
-                finance,
-                transaction,
-              );
-              if (assigned != null && context.mounted) {
-                setState(() => transaction = assigned);
-              }
-            },
-            icon: const Icon(Icons.account_balance_wallet_outlined),
-            label: Text(context.l10n.text('assignPaymentSource')),
-          ),
-          const SizedBox(height: ButlerlySpacing.small),
-          OutlinedButton.icon(
-            onPressed: transaction.status == TransactionStatus.archived.name
-                ? () async {
-                    await finance.restoreTransaction(transaction.id);
-                    if (context.mounted) Navigator.of(context).pop(true);
-                  }
-                : () => _archive(context),
-            icon: Icon(
-              transaction.status == TransactionStatus.archived.name
-                  ? Icons.unarchive_outlined
-                  : Icons.archive_outlined,
-            ),
-            label: Text(
-              transaction.status == TransactionStatus.archived.name
-                  ? context.l10n.text('restoreTransaction')
-                  : context.l10n.text('archiveTransaction'),
-            ),
-          ),
-          const SizedBox(height: ButlerlySpacing.small),
-          ButlerlyDestructiveButton(
-            onPressed: () => _delete(context),
-            icon: const Icon(Icons.delete_forever_outlined),
-            child: Text(context.l10n.text('deletePermanently')),
-          ),
-        ],
+        ),
       ),
     ),
   );
