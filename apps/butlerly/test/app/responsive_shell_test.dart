@@ -98,6 +98,29 @@ void main() {
   );
 
   testWidgets(
+    'landscape Import/Export keeps a full-width header and caps body at 600',
+    (tester) async {
+      await _pumpAt(tester, const Size(932, 430));
+
+      appRouter.go('/import-export');
+      await tester.pumpAndSettle();
+
+      expect(find.byType(NavigationRail), findsNothing);
+      expect(
+        find.byKey(const ValueKey('primary-phone-navigation')),
+        findsNothing,
+      );
+      expect(tester.getSize(find.byType(AppBar)).width, 932);
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('import-export-content')))
+            .width,
+        ButlerlySize.phoneContentMaxWidth,
+      );
+    },
+  );
+
+  testWidgets(
     'focused responsive body keeps AppBar full-width and caps phone content',
     (tester) async {
       await _pumpResponsiveBodyAt(tester, const Size(932, 430));

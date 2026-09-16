@@ -8,6 +8,7 @@ import 'package:butlerly/core/database/initial_master_data.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -482,7 +483,9 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(context.l10n.text('privacyAndData'))),
-    body: ListView(
+    body: ButlerlyResponsiveBody(
+      contentKey: const ValueKey('privacy-data-content'),
+      child: ListView(
       padding: const EdgeInsets.all(ButlerlySpacing.standard),
       children: [
         ButlerlyCard(child: Text(context.l10n.text('privacyScopeBody'))),
@@ -537,6 +540,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         ),
         if (_busy) const ButlerlyLoadingState(),
       ],
+    ),
     ),
   );
 }

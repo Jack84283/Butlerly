@@ -2,6 +2,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/import/local_csv_importer.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
@@ -295,7 +296,9 @@ class _ImportExportPageState extends State<ImportExportPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(context.l10n.text('importExport'))),
-    body: ListView(
+    body: ButlerlyResponsiveBody(
+      contentKey: const ValueKey('import-export-content'),
+      child: ListView(
       padding: const EdgeInsets.all(ButlerlySpacing.standard),
       children: [
         ButlerlyOfflineBanner(
@@ -335,6 +338,7 @@ class _ImportExportPageState extends State<ImportExportPage> {
           onTap: () => context.push('/privacy-data'),
         ),
       ],
+    ),
     ),
   );
 }
@@ -600,10 +604,13 @@ class NotificationsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(context.l10n.text('notifications'))),
-    body: ButlerlyEmptyState(
+    body: ButlerlyResponsiveBody(
+      contentKey: const ValueKey('notifications-content'),
+      child: ButlerlyEmptyState(
       icon: Icons.notifications_none_rounded,
       title: context.l10n.text('noNotifications'),
       message: context.l10n.text('noNotificationsBody'),
+    ),
     ),
   );
 }
@@ -614,12 +621,15 @@ class AssistantUnavailablePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(context.l10n.text('assistant'))),
-    body: ButlerlyEmptyState(
+    body: ButlerlyResponsiveBody(
+      contentKey: const ValueKey('assistant-unavailable-content'),
+      child: ButlerlyEmptyState(
       icon: Icons.auto_awesome_outlined,
       title: context.l10n.text('assistantUnavailable'),
       message: context.l10n.text('assistantUnavailableBody'),
       actionLabel: context.l10n.text('searchRecords'),
       onAction: () => context.go('/search'),
+    ),
     ),
   );
 }
