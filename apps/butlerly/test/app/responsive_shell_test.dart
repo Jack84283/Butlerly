@@ -1,5 +1,6 @@
 import 'package:butlerly/app/butlerly_app.dart';
 import 'package:butlerly/app/router/app_router.dart';
+import 'package:butlerly/app/shell/desktop/desktop_primary_shell.dart';
 import 'package:butlerly/app/shell/ipad/ipad_primary_shell.dart';
 import 'package:butlerly/app/shell/iphone/iphone_primary_shell.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
@@ -51,6 +52,18 @@ void main() {
       ButlerlyDeviceClass.desktop,
     );
     expect(
+      ButlerlyLayout.desktopNavigationMode(const Size(500, 800)),
+      ButlerlyDesktopNavigationMode.bottom,
+    );
+    expect(
+      ButlerlyLayout.desktopNavigationMode(const Size(900, 800)),
+      ButlerlyDesktopNavigationMode.rail,
+    );
+    expect(
+      ButlerlyLayout.desktopNavigationMode(const Size(1200, 500)),
+      ButlerlyDesktopNavigationMode.extendedRail,
+    );
+    expect(
       ButlerlyLayout.contentMaxWidth(
         const Size(932, 430),
         platform: TargetPlatform.iOS,
@@ -63,6 +76,13 @@ void main() {
         platform: TargetPlatform.iOS,
       ),
       ButlerlySize.pageContentMaxWidth,
+    );
+    expect(
+      ButlerlyLayout.contentMaxWidth(
+        const Size(500, 800),
+        platform: TargetPlatform.macOS,
+      ),
+      ButlerlySize.phoneContentMaxWidth,
     );
     expect(
       ButlerlyLayout.contentMaxWidth(
@@ -257,17 +277,48 @@ void main() {
     );
   });
 
-  testWidgets('desktop uses the isolated desktop shell', (tester) async {
+  testWidgets('compact desktop preserves bottom navigation', (tester) async {
+    const size = Size(500, 800);
+    await _pumpAt(tester, size, platform: TargetPlatform.macOS);
+
+    expect(find.byType(DesktopPrimaryShell), findsOneWidget);
+    expect(find.byType(NavigationRail), findsNothing);
+    expect(
+      find.byKey(const ValueKey('primary-desktop-navigation')),
+      findsNothing,
+    );
+    final navigation = find.byKey(
+      const ValueKey('primary-desktop-compact-navigation'),
+    );
+    expect(navigation, findsOneWidget);
+    expect(tester.getSize(navigation).width, size.width);
+    expect(tester.getRect(navigation).bottom, size.height);
+    expect(
+      find.byKey(const ValueKey('primary-phone-navigation')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('primary-ipad-navigation')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('desktop uses the isolated desktop rail shell', (tester) async {
     await _pumpAt(
       tester,
       const Size(1200, 500),
       platform: TargetPlatform.macOS,
     );
 
+    expect(find.byType(DesktopPrimaryShell), findsOneWidget);
     expect(find.byType(NavigationRail), findsOneWidget);
     expect(
       find.byKey(const ValueKey('primary-desktop-navigation')),
       findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('primary-desktop-compact-navigation')),
+      findsNothing,
     );
     expect(
       find.byKey(const ValueKey('primary-phone-navigation')),
