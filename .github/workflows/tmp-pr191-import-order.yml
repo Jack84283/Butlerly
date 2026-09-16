@@ -1,0 +1,57 @@
+name: Temporary PR191 import ordering
+
+on:
+  push:
+    branches:
+      - codex/linkedin-responsive-content
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/linkedin-responsive-content
+          fetch-depth: 0
+      - name: Fix directive ordering
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              Path('apps/butlerly/lib/features/foundation/presentation/contextual_pages.dart'): (
+                  "import 'package:butlerly/design_system/components/butlerly_components.dart';\n"
+                  "import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';\n"
+                  "import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';\n",
+                  "import 'package:butlerly/design_system/components/butlerly_components.dart';\n"
+                  "import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';\n"
+                  "import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';\n",
+              ),
+              Path('apps/butlerly/lib/features/foundation/presentation/privacy_data_page.dart'): (
+                  "import 'package:butlerly/design_system/components/butlerly_components.dart';\n"
+                  "import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';\n"
+                  "import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';\n",
+                  "import 'package:butlerly/design_system/components/butlerly_components.dart';\n"
+                  "import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';\n"
+                  "import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';\n",
+              ),
+          }
+          for path, (old, new) in replacements.items():
+              text = path.read_text()
+              if old not in text:
+                  raise SystemExit(f'missing expected import block in {path}')
+              path.write_text(text.replace(old, new, 1))
+          PY
+      - name: Commit import ordering and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/tmp-pr191-import-order.yml
+          git add apps/butlerly/lib/features/foundation/presentation/contextual_pages.dart
+          git add apps/butlerly/lib/features/foundation/presentation/privacy_data_page.dart
+          git diff --cached --check
+          git commit -m "Fix responsive route import ordering"
+          git push origin HEAD:codex/linkedin-responsive-content
