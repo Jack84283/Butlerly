@@ -1,0 +1,38 @@
+name: Responsive P2 patch
+
+on:
+  push:
+    branches:
+      - codex/linkedin-responsive-content
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/linkedin-responsive-content
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-toolchain
+      - run: python3 tool/oneoff_responsive_p2.py
+      - run: |
+          dart format \
+            apps/butlerly/lib/design_system/components/butlerly_responsive_body.dart \
+            apps/butlerly/lib/features/foundation/presentation/transactions_page.dart \
+            apps/butlerly/lib/features/foundation/presentation/receipt_capture_page.dart \
+            apps/butlerly/lib/features/foundation/presentation/statement_capture_page.dart \
+            apps/butlerly/test/app/responsive_shell_test.dart
+      - run: |
+          git config user.name "Jack"
+          git config user.email "jack84283@gmail.com"
+          git rm tool/oneoff_responsive_p2.py
+          git add apps/butlerly/lib/design_system/components/butlerly_responsive_body.dart \
+            apps/butlerly/lib/features/foundation/presentation/transactions_page.dart \
+            apps/butlerly/lib/features/foundation/presentation/receipt_capture_page.dart \
+            apps/butlerly/lib/features/foundation/presentation/statement_capture_page.dart \
+            apps/butlerly/test/app/responsive_shell_test.dart
+          git commit -m "Constrain focused workflow bodies responsively"
+          git push origin HEAD:codex/linkedin-responsive-content
