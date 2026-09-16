@@ -48,7 +48,7 @@ contextual = ensure_import(
     "import 'package:butlerly/design_system/components/butlerly_components.dart';\n",
     "import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';\n",
 )
-contextual = wrap_body(contextual, 'ImportExportPageState', 'import-export-content')
+contextual = wrap_body(contextual, '_ImportExportPageState', 'import-export-content')
 contextual = wrap_body(contextual, 'NotificationsPage', 'notifications-content')
 contextual = wrap_body(contextual, 'AssistantUnavailablePage', 'assistant-unavailable-content')
 contextual_path.write_text(contextual)
