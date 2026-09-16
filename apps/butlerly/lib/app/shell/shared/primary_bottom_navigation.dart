@@ -12,7 +12,7 @@ double phoneNavigationHeightForLabels({
   required TextStyle labelStyle,
   required TextDirection textDirection,
 }) {
-  final availableWidth = itemWidth > 0 ? itemWidth : 1.0;
+  final availableWidth = itemWidth > 0 ? itemWidth : double.minPositive;
 
   double labelHeight(String label) {
     final painter = TextPainter(
@@ -87,6 +87,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
                   ? context.colors.brandStrong
                   : context.colors.selection,
               border: Border.all(
+                width: ButlerlySize.dividerWidth,
                 color: context.colors.interactive.withValues(
                   alpha: ButlerlyOpacity.primaryNavigationBorder,
                 ),
