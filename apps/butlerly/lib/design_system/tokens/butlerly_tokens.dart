@@ -146,12 +146,14 @@ enum ButlerlyDeviceClass { phone, tablet, desktop }
 
 enum ButlerlyDesktopNavigationMode { bottom, rail, extendedRail }
 
-/// Semantic responsive-layout policy. Device class is intentionally separate
-/// from viewport width so a landscape tablet never becomes a desktop shell.
+/// Semantic responsive-layout policy. Device shell identity is intentionally
+/// separate from the current window size so an iPad remains an iPad while its
+/// app window is resized. Content sizing still follows the current viewport.
 abstract final class ButlerlyLayout {
   static ButlerlyDeviceClass deviceClass(
     Size viewport, {
     TargetPlatform? platform,
+    Size? deviceDisplaySize,
   }) {
     final resolvedPlatform = platform ?? defaultTargetPlatform;
     switch (resolvedPlatform) {
@@ -160,6 +162,10 @@ abstract final class ButlerlyLayout {
       case TargetPlatform.linux:
         return ButlerlyDeviceClass.desktop;
       case TargetPlatform.iOS:
+        final identitySize = deviceDisplaySize ?? viewport;
+        return identitySize.shortestSide >= ButlerlySize.tabletBreakpoint
+            ? ButlerlyDeviceClass.tablet
+            : ButlerlyDeviceClass.phone;
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
         return viewport.shortestSide >= ButlerlySize.tabletBreakpoint
