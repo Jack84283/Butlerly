@@ -584,15 +584,17 @@ class _HomePinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
   ) => ColoredBox(
     key: const ValueKey('home-header-surface'),
     color: context.colors.background,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: ButlerlySize.phoneGutter,
-        vertical: ButlerlySpacing.small,
-      ),
-      child: SizedBox(
-        key: const ValueKey('home-header-content'),
-        width: double.infinity,
-        child: child,
+    child: Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: ButlerlySize.phoneGutter,
+          vertical: ButlerlySpacing.small,
+        ),
+        child: SizedBox(
+          key: const ValueKey('home-header-content'),
+          width: double.infinity,
+          child: child,
+        ),
       ),
     ),
   );
@@ -701,7 +703,10 @@ class _HomeHeader extends StatelessWidget {
           children: [
             Expanded(flex: 5, child: brand),
             const SizedBox(width: ButlerlySpacing.standard),
-            Expanded(flex: 4, child: contextBlock),
+            if (constraints.maxWidth >= ButlerlySize.tabletBreakpoint)
+              Expanded(flex: 4, child: contextBlock)
+            else
+              Flexible(flex: 4, child: contextBlock),
           ],
         );
       },
