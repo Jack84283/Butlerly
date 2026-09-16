@@ -1,5 +1,7 @@
 import 'package:butlerly/app/butlerly_app.dart';
 import 'package:butlerly/app/router/app_router.dart';
+import 'package:butlerly/app/shell/ipad/ipad_primary_shell.dart';
+import 'package:butlerly/app/shell/iphone/iphone_primary_shell.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/legal_licenses_page.dart';
@@ -11,42 +13,72 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   setUp(() => appRouter.go('/'));
 
-  test('layout policy distinguishes phone, tablet, and desktop windows', () {
+  test('layout policy distinguishes phone, tablet, and desktop devices', () {
     expect(
-      ButlerlyLayout.navigationMode(const Size(390, 844)),
-      ButlerlyNavigationMode.phone,
+      ButlerlyLayout.deviceClass(
+        const Size(390, 844),
+        platform: TargetPlatform.iOS,
+      ),
+      ButlerlyDeviceClass.phone,
     );
     expect(
-      ButlerlyLayout.navigationMode(const Size(932, 430)),
-      ButlerlyNavigationMode.phone,
+      ButlerlyLayout.deviceClass(
+        const Size(932, 430),
+        platform: TargetPlatform.iOS,
+      ),
+      ButlerlyDeviceClass.phone,
     );
     expect(
-      ButlerlyLayout.navigationMode(const Size(744, 1133)),
-      ButlerlyNavigationMode.rail,
+      ButlerlyLayout.deviceClass(
+        const Size(744, 1133),
+        platform: TargetPlatform.iOS,
+      ),
+      ButlerlyDeviceClass.tablet,
     );
     expect(
-      ButlerlyLayout.navigationMode(const Size(1133, 744)),
-      ButlerlyNavigationMode.extendedRail,
+      ButlerlyLayout.deviceClass(
+        const Size(1133, 744),
+        platform: TargetPlatform.iOS,
+      ),
+      ButlerlyDeviceClass.tablet,
     );
     expect(
-      ButlerlyLayout.navigationMode(const Size(1200, 500)),
-      ButlerlyNavigationMode.extendedRail,
+      ButlerlyLayout.deviceClass(
+        const Size(1200, 500),
+        platform: TargetPlatform.macOS,
+      ),
+      ButlerlyDeviceClass.desktop,
     );
     expect(
-      ButlerlyLayout.contentMaxWidth(const Size(932, 430)),
+      ButlerlyLayout.contentMaxWidth(
+        const Size(932, 430),
+        platform: TargetPlatform.iOS,
+      ),
       ButlerlySize.phoneContentMaxWidth,
     );
     expect(
-      ButlerlyLayout.contentMaxWidth(const Size(1200, 500)),
+      ButlerlyLayout.contentMaxWidth(
+        const Size(1133, 744),
+        platform: TargetPlatform.iOS,
+      ),
+      ButlerlySize.pageContentMaxWidth,
+    );
+    expect(
+      ButlerlyLayout.contentMaxWidth(
+        const Size(1200, 500),
+        platform: TargetPlatform.macOS,
+      ),
       ButlerlySize.pageContentMaxWidth,
     );
   });
 
-  testWidgets(
-    'iPhone portrait keeps phone navigation and normal page gutters',
+  _testWidgetsOnIos(
+    'iPhone portrait keeps iPhone bottom navigation and normal page gutters',
     (tester) async {
       await _pumpAt(tester, const Size(390, 844));
 
+      expect(find.byType(IPhonePrimaryShell), findsOneWidget);
+      expect(find.byType(IPadPrimaryShell), findsNothing);
       expect(find.byType(NavigationRail), findsNothing);
       expect(
         tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
@@ -61,37 +93,37 @@ void main() {
     },
   );
 
-  testWidgets(
-    'iPhone landscape keeps full-width Home chrome and caps body at 600',
+  _testWidgetsOnIos(
+    'iPhone landscape keeps full-width Home chrome and bottom navigation',
     (tester) async {
-      await _pumpAt(tester, const Size(932, 430));
+      const size = Size(932, 430);
+      await _pumpAt(tester, size);
 
+      expect(find.byType(IPhonePrimaryShell), findsOneWidget);
+      expect(find.byType(IPadPrimaryShell), findsNothing);
       expect(find.byType(NavigationRail), findsNothing);
       expect(
         tester
             .getSize(find.byKey(const ValueKey('primary-phone-body-surface')))
             .width,
-        932,
+        size.width,
       );
       expect(
         tester.getSize(find.byKey(const ValueKey('home-header-surface'))).width,
-        932,
+        size.width,
       );
       expect(
         tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
         ButlerlySize.phoneContentMaxWidth,
       );
-      expect(
-        tester
-            .getSize(find.byKey(const ValueKey('primary-phone-navigation')))
-            .width,
-        932,
-      );
+      final navigation = find.byKey(const ValueKey('primary-phone-navigation'));
+      expect(tester.getSize(navigation).width, size.width);
+      expect(tester.getRect(navigation).bottom, size.height);
     },
   );
 
-  testWidgets(
-    'landscape Search keeps a full-width header and the same 600 point body',
+  _testWidgetsOnIos(
+    'landscape Search keeps a full-width header and the phone readable body',
     (tester) async {
       await _pumpAt(tester, const Size(932, 430));
 
@@ -114,8 +146,8 @@ void main() {
     },
   );
 
-  testWidgets(
-    'landscape Import/Export keeps a full-width header and caps body at 600',
+  _testWidgetsOnIos(
+    'landscape Import/Export keeps a full-width header and phone body width',
     (tester) async {
       await _pumpAt(tester, const Size(932, 430));
 
@@ -137,7 +169,7 @@ void main() {
     },
   );
 
-  testWidgets(
+  _testWidgetsOnIos(
     'focused responsive body keeps AppBar full-width and caps phone content',
     (tester) async {
       await _pumpResponsiveBodyAt(tester, const Size(932, 430));
@@ -152,7 +184,7 @@ void main() {
     },
   );
 
-  testWidgets('focused responsive body keeps the tablet readable width', (
+  _testWidgetsOnIos('focused responsive body keeps the iPad readable width', (
     tester,
   ) async {
     await _pumpResponsiveBodyAt(tester, const Size(1133, 744));
@@ -165,21 +197,29 @@ void main() {
   });
 
   for (final size in const [Size(744, 1133), Size(1133, 744)]) {
-    testWidgets(
-      'iPad mini uses tablet navigation at ${size.width}x${size.height}',
+    _testWidgetsOnIos(
+      'iPad uses bottom navigation at ${size.width}x${size.height}',
       (tester) async {
         await _pumpAt(tester, size);
 
-        expect(find.byType(NavigationRail), findsOneWidget);
+        expect(find.byType(IPadPrimaryShell), findsOneWidget);
+        expect(find.byType(IPhonePrimaryShell), findsNothing);
+        expect(find.byType(NavigationRail), findsNothing);
         expect(
           find.byKey(const ValueKey('primary-phone-navigation')),
           findsNothing,
         );
+        final navigation = find.byKey(
+          const ValueKey('primary-ipad-navigation'),
+        );
+        expect(navigation, findsOneWidget);
+        expect(tester.getSize(navigation).width, size.width);
+        expect(tester.getRect(navigation).bottom, size.height);
       },
     );
   }
 
-  testWidgets('iPad mini landscape keeps the 760 point readable body', (
+  _testWidgetsOnIos('iPad landscape keeps the tablet readable body', (
     tester,
   ) async {
     await _pumpAt(tester, const Size(1133, 744));
@@ -190,15 +230,22 @@ void main() {
     );
   });
 
-  testWidgets('shallow desktop window keeps extended NavigationRail', (
+  _testWidgetsOnMacOs('desktop uses the isolated desktop shell', (
     tester,
   ) async {
     await _pumpAt(tester, const Size(1200, 500));
 
-    final rail = tester.widget<NavigationRail>(find.byType(NavigationRail));
-    expect(rail.extended, isTrue);
+    expect(find.byType(NavigationRail), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('primary-desktop-navigation')),
+      findsOneWidget,
+    );
     expect(
       find.byKey(const ValueKey('primary-phone-navigation')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('primary-ipad-navigation')),
       findsNothing,
     );
     expect(
@@ -207,7 +254,7 @@ void main() {
     );
   });
 
-  testWidgets(
+  _testWidgetsOnIos(
     'landscape Legal document keeps full-width AppBar and capped content',
     (tester) async {
       tester.view.physicalSize = const Size(932, 430);
@@ -238,6 +285,22 @@ void main() {
   );
 }
 
+void _testWidgetsOnIos(String description, WidgetTesterCallback callback) {
+  testWidgets(
+    description,
+    callback,
+    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+  );
+}
+
+void _testWidgetsOnMacOs(String description, WidgetTesterCallback callback) {
+  testWidgets(
+    description,
+    callback,
+    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+  );
+}
+
 Future<void> _pumpAt(WidgetTester tester, Size size) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -248,7 +311,10 @@ Future<void> _pumpAt(WidgetTester tester, Size size) async {
   await tester.pumpAndSettle();
 }
 
-Future<void> _pumpResponsiveBodyAt(WidgetTester tester, Size size) async {
+Future<void> _pumpResponsiveBodyAt(
+  WidgetTester tester,
+  Size size,
+) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
