@@ -143,6 +143,13 @@ void main() {
         tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
         ButlerlySize.phoneContentMaxWidth,
       );
+      final canvas = tester.widget<ColoredBox>(
+        find.byKey(const ValueKey('home-page-canvas')),
+      );
+      final contentSurface = tester.widget<ColoredBox>(
+        find.byKey(const ValueKey('home-page-content-surface')),
+      );
+      expect(canvas.color, contentSurface.color);
       final navigation = find.byKey(const ValueKey('primary-phone-navigation'));
       expect(tester.getSize(navigation).width, size.width);
       expect(tester.getRect(navigation).bottom, size.height);
@@ -272,16 +279,54 @@ void main() {
     },
   );
 
-  _testWidgetsOnIos('iPad landscape keeps the tablet readable body', (
-    tester,
-  ) async {
-    await _pumpAt(tester, const Size(1133, 744));
+  _testWidgetsOnIos(
+    'iPad landscape keeps full-width Home header and distinct page canvas',
+    (tester) async {
+      const size = Size(1133, 744);
+      await _pumpAt(tester, size);
 
-    expect(
-      tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
-      ButlerlySize.pageContentMaxWidth,
-    );
-  });
+      expect(
+        tester.getSize(find.byKey(const ValueKey('home-header-surface'))).width,
+        size.width,
+      );
+      expect(
+        tester.getSize(find.byKey(const ValueKey('home-header-content'))).width,
+        size.width - ButlerlySize.phoneGutter * 2,
+      );
+
+      final expectedRight = size.width - ButlerlySize.phoneGutter;
+      expect(
+        tester.getRect(find.byKey(const ValueKey('home-header-context'))).right,
+        closeTo(expectedRight, 0.01),
+      );
+      expect(
+        tester.getRect(find.byKey(const ValueKey('home-greeting'))).right,
+        closeTo(expectedRight, 0.01),
+      );
+      expect(
+        tester.getRect(find.byKey(const Key('home-month-selector'))).right,
+        closeTo(expectedRight, 0.01),
+      );
+
+      expect(
+        tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
+        ButlerlySize.pageContentMaxWidth,
+      );
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('home-page-content-surface')))
+            .width,
+        ButlerlySize.pageContentMaxWidth,
+      );
+      final canvas = tester.widget<ColoredBox>(
+        find.byKey(const ValueKey('home-page-canvas')),
+      );
+      final contentSurface = tester.widget<ColoredBox>(
+        find.byKey(const ValueKey('home-page-content-surface')),
+      );
+      expect(canvas.color, isNot(contentSurface.color));
+    },
+  );
 
   _testWidgetsOnMacOs('compact desktop preserves bottom navigation', (
     tester,
