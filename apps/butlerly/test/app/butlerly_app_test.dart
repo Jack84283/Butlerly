@@ -403,7 +403,7 @@ void main() {
     );
   });
 
-  testWidgets('uses adaptive navigation at tablet widths', (tester) async {
+  testWidgets('uses bottom navigation at tablet widths', (tester) async {
     tester.view.physicalSize = const Size(900, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -412,8 +412,11 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     await tester.pumpAndSettle();
 
-    expect(find.byType(NavigationRail), findsOneWidget);
-    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.byType(NavigationRail), findsNothing);
+    expect(
+      find.byKey(const ValueKey('primary-ipad-navigation')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('allows the user to select dark appearance', (tester) async {
