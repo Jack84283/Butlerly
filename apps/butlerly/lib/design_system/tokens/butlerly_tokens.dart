@@ -135,6 +135,11 @@ abstract final class ButlerlySize {
   /// never turns its primary navigation into tablet navigation.
   static bool isTabletViewport(Size viewport) =>
       viewport.shortestSide >= phoneBreakpoint;
+
+  /// Keeps phone page content readable in landscape while allowing tablets to
+  /// use the established wider readable column.
+  static double pageContentMaxWidthFor(Size viewport) =>
+      isTabletViewport(viewport) ? pageContentMaxWidth : phoneContentMaxWidth;
 }
 
 abstract final class ButlerlyMotion {
