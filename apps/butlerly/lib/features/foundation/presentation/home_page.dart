@@ -15,6 +15,8 @@ import 'package:butlerly/features/foundation/presentation/transactions_page.dart
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
+import 'package:flutter/cupertino.dart' show CupertinoSliverRefreshControl;
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -359,96 +361,110 @@ class _HomePageState extends State<HomePage> {
     final canvasColor = deviceClass == ButlerlyDeviceClass.tablet
         ? context.colors.subtleSurface
         : context.colors.background;
-    return RefreshIndicator(
-      key: const ValueKey('home-refresh-indicator'),
-      onRefresh: _refresh,
-      triggerMode: RefreshIndicatorTriggerMode.anywhere,
-      child: ColoredBox(
-        key: const ValueKey('home-page-canvas'),
-        color: canvasColor,
-        child: LayoutBuilder(
-          builder: (context, constraints) => CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              SliverPersistentHeader(
-                pinned: true,
-                delegate: _HomePinnedHeaderDelegate(
-                  extent: _homeHeaderExtent(
-                    context,
-                    crossAxisExtent: constraints.maxWidth,
-                  ),
-                  child: FutureBuilder<_HomeData>(
-                    future: future,
-                    builder: (context, snapshot) {
-                      final data =
-                          snapshot.data ??
-                          _HomeData.empty(_now, selectedMonth: _selectedMonth);
-                      final loading =
-                          snapshot.connectionState != ConnectionState.done;
-                      return _HomeHeader(
-                        deviceClass: deviceClass,
-                        month: data.displayMonth,
-                        greetingKey: homeGreetingKey(_now),
-                        onMonthTap: loading ? null : () => _selectMonth(data),
-                      );
-                    },
-                  ),
-                ),
+    final useCupertinoRefresh =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
+    final content = ColoredBox(
+      key: const ValueKey('home-page-canvas'),
+      color: canvasColor,
+      child: LayoutBuilder(
+        builder: (context, constraints) => CustomScrollView(
+          physics: useCupertinoRefresh
+              ? const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
+                )
+              : const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            if (useCupertinoRefresh)
+              CupertinoSliverRefreshControl(
+                key: const ValueKey('home-cupertino-refresh-control'),
+                onRefresh: _refresh,
               ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(
-                  ButlerlySize.phoneGutter,
-                  ButlerlySpacing.large,
-                  ButlerlySize.phoneGutter,
-                  ButlerlySpacing.large,
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _HomePinnedHeaderDelegate(
+                extent: _homeHeaderExtent(
+                  context,
+                  crossAxisExtent: constraints.maxWidth,
                 ),
-                sliver: SliverLayoutBuilder(
-                  builder: (context, constraints) {
-                    final contentMaxWidth = ButlerlyLayout.contentMaxWidth(
-                      MediaQuery.sizeOf(context),
-                    );
-                    final extraWidth =
-                        constraints.crossAxisExtent - contentMaxWidth;
-                    final horizontalInset = extraWidth > 0
-                        ? extraWidth / 2
-                        : 0.0;
-                    return SliverPadding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: horizontalInset,
-                      ),
-                      sliver: SliverToBoxAdapter(
-                        child: ColoredBox(
-                          key: const ValueKey('home-page-content-surface'),
-                          color: context.colors.background,
-                          child: SizedBox(
-                            key: const ValueKey('home-page-content'),
-                            width: double.infinity,
-                            child: FutureBuilder<_HomeData>(
-                              future: future,
-                              builder: (context, snapshot) {
-                                final data =
-                                    snapshot.data ??
-                                    _HomeData.empty(
-                                      _now,
-                                      selectedMonth: _selectedMonth,
-                                    );
-                                final loading =
-                                    snapshot.connectionState !=
-                                    ConnectionState.done;
-                                return _homeContent(context, data, loading);
-                              },
-                            ),
-                          ),
-                        ),
-                      ),
+                child: FutureBuilder<_HomeData>(
+                  future: future,
+                  builder: (context, snapshot) {
+                    final data =
+                        snapshot.data ??
+                        _HomeData.empty(_now, selectedMonth: _selectedMonth);
+                    final loading =
+                        snapshot.connectionState != ConnectionState.done;
+                    return _HomeHeader(
+                      deviceClass: deviceClass,
+                      month: data.displayMonth,
+                      greetingKey: homeGreetingKey(_now),
+                      onMonthTap: loading ? null : () => _selectMonth(data),
                     );
                   },
                 ),
               ),
-            ],
-          ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(
+                ButlerlySize.phoneGutter,
+                ButlerlySpacing.large,
+                ButlerlySize.phoneGutter,
+                ButlerlySpacing.large,
+              ),
+              sliver: SliverLayoutBuilder(
+                builder: (context, constraints) {
+                  final contentMaxWidth = ButlerlyLayout.contentMaxWidth(
+                    MediaQuery.sizeOf(context),
+                  );
+                  final extraWidth =
+                      constraints.crossAxisExtent - contentMaxWidth;
+                  final horizontalInset = extraWidth > 0
+                      ? extraWidth / 2
+                      : 0.0;
+                  return SliverPadding(
+                    padding: EdgeInsets.symmetric(horizontal: horizontalInset),
+                    sliver: SliverToBoxAdapter(
+                      child: ColoredBox(
+                        key: const ValueKey('home-page-content-surface'),
+                        color: context.colors.background,
+                        child: SizedBox(
+                          key: const ValueKey('home-page-content'),
+                          width: double.infinity,
+                          child: FutureBuilder<_HomeData>(
+                            future: future,
+                            builder: (context, snapshot) {
+                              final data =
+                                  snapshot.data ??
+                                  _HomeData.empty(
+                                    _now,
+                                    selectedMonth: _selectedMonth,
+                                  );
+                              final loading =
+                                  snapshot.connectionState !=
+                                  ConnectionState.done;
+                              return _homeContent(context, data, loading);
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
+    );
+
+    if (useCupertinoRefresh) return content;
+
+    return RefreshIndicator(
+      key: const ValueKey('home-refresh-indicator'),
+      onRefresh: _refresh,
+      triggerMode: RefreshIndicatorTriggerMode.anywhere,
+      child: content,
     );
   }
 }
