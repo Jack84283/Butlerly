@@ -95,7 +95,9 @@ class PrimaryBottomNavigation extends StatelessWidget {
             child: IconTheme(
               data: IconThemeData(
                 size: ButlerlySize.primaryNavigationAddGlyphSize,
-                color: selected ? Colors.white : context.colors.interactive,
+                color: selected
+                    ? Theme.of(context).colorScheme.onPrimary
+                    : context.colors.interactive,
               ),
               child: baseIcon,
             ),
