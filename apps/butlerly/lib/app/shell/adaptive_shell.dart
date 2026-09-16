@@ -1,59 +1,15 @@
-import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/app/shell/desktop/desktop_primary_shell.dart';
+import 'package:butlerly/app/shell/ipad/ipad_primary_shell.dart';
+import 'package:butlerly/app/shell/iphone/iphone_primary_shell.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
-import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+export 'package:butlerly/app/shell/shared/primary_bottom_navigation.dart'
+    show phoneNavigationHeightForLabels;
+
 const primaryShellRouteNamePrefix = 'primary-shell:';
-const _phoneNavigationAddIconSize = 52.0;
-
-/// Computes phone navigation height from each destination's actual geometry.
-///
-/// This supports nonlinear [TextScaler] implementations and labels that wrap
-/// at large accessibility sizes without imposing a fixed maximum growth cap.
-/// The established 78 px baseline already includes its own vertical slack, so
-/// the bar only grows when a real destination's icon + gap + scaled label
-/// geometry exceeds it.
-double phoneNavigationHeightForLabels({
-  required TextScaler textScaler,
-  required double itemWidth,
-  required Iterable<String> standardLabels,
-  required String addLabel,
-  required TextStyle labelStyle,
-  required TextDirection textDirection,
-}) {
-  final availableWidth = itemWidth > 0 ? itemWidth : 1.0;
-
-  double labelHeight(String label) {
-    final painter = TextPainter(
-      text: TextSpan(text: label, style: labelStyle),
-      textScaler: textScaler,
-      textDirection: textDirection,
-      textAlign: TextAlign.center,
-    )..layout(maxWidth: availableWidth);
-    return painter.height;
-  }
-
-  var requiredHeight =
-      _phoneNavigationAddIconSize +
-      ButlerlySpacing.micro +
-      labelHeight(addLabel);
-
-  for (final label in standardLabels) {
-    final destinationHeight =
-        ButlerlySize.standardIcon +
-        ButlerlySize.navigationLabelGap +
-        labelHeight(label);
-    if (destinationHeight > requiredHeight) {
-      requiredHeight = destinationHeight;
-    }
-  }
-
-  return requiredHeight < ButlerlySize.navigationBarHeight
-      ? ButlerlySize.navigationBarHeight
-      : requiredHeight;
-}
 
 class PrimaryShellVisibilityController extends ChangeNotifier {
   final Map<int, bool> _secondaryRouteVisible = <int, bool>{};
@@ -213,215 +169,40 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     ),
   };
 
-  Widget _destination(
-    BuildContext context,
-    NavigationDestination destination,
-    int branchIndex,
-  ) {
-    final selected = navigationShell.currentIndex == branchIndex;
-    final add = branchIndex == 1;
-    final labelStyle = ButlerlyTypography.navigationLabel(
-      Theme.of(context).textTheme.labelSmall!,
-      color: selected
-          ? context.colors.interactive
-          : context.colors.secondaryText,
-      selected: selected,
-    );
-    final baseIcon = selected
-        ? (destination.selectedIcon ?? destination.icon)
-        : destination.icon;
-    final icon = add
-        ? Container(
-            width: _phoneNavigationAddIconSize,
-            height: _phoneNavigationAddIconSize,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: selected
-                  ? context.colors.brandStrong
-                  : context.colors.selection,
-              border: Border.all(
-                color: context.colors.interactive.withValues(alpha: 0.55),
-              ),
-            ),
-            child: IconTheme(
-              data: IconThemeData(
-                size: 28,
-                color: selected ? Colors.white : context.colors.interactive,
-              ),
-              child: baseIcon,
-            ),
-          )
-        : IconTheme(
-            data: IconThemeData(
-              size: ButlerlySize.standardIcon,
-              color: selected
-                  ? context.colors.interactive
-                  : context.colors.secondaryText,
-            ),
-            child: baseIcon,
-          );
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: add
-          ? context.l10n.text('addTransactionAction')
-          : destination.label,
-      excludeSemantics: true,
-      child: InkWell(
-        onTap: () => _selectDestination(branchIndex),
-        child: SizedBox(
-          height: double.infinity,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              icon,
-              SizedBox(
-                height: add
-                    ? ButlerlySpacing.micro
-                    : ButlerlySize.navigationLabelGap,
-              ),
-              Text(
-                destination.label,
-                textAlign: TextAlign.center,
-                softWrap: true,
-                style: labelStyle,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  double _phoneNavigationHeight(
-    BuildContext context,
-    Map<int, NavigationDestination> destinations,
-    double availableWidth,
-  ) {
-    final labelStyle = ButlerlyTypography.navigationLabel(
-      Theme.of(context).textTheme.labelSmall!,
-      color: context.colors.secondaryText,
-      selected: true,
-    );
-    return phoneNavigationHeightForLabels(
-      textScaler: MediaQuery.textScalerOf(context),
-      itemWidth: availableWidth / _visualBranchIndexes.length,
-      standardLabels: [
-        for (final branchIndex in _visualBranchIndexes)
-          if (branchIndex != 1) destinations[branchIndex]!.label,
-      ],
-      addLabel: destinations[1]!.label,
-      labelStyle: labelStyle,
-      textDirection: Directionality.of(context),
-    );
-  }
-
-  Widget _phoneNavigation(BuildContext context) {
-    final destinations = _destinations(context);
-    return DecoratedBox(
-      key: const ValueKey('primary-phone-navigation'),
-      decoration: BoxDecoration(
-        color: Theme.of(context).navigationBarTheme.backgroundColor,
-        border: Border(top: BorderSide(color: context.colors.cardDivider)),
-      ),
-      child: Material(
-        type: MaterialType.transparency,
-        child: SafeArea(
-          top: false,
-          child: LayoutBuilder(
-            builder: (context, constraints) => SizedBox(
-              height: _phoneNavigationHeight(
-                context,
-                destinations,
-                constraints.maxWidth,
-              ),
-              child: Row(
-                children: [
-                  for (final branchIndex in _visualBranchIndexes)
-                    Expanded(
-                      child: _destination(
-                        context,
-                        destinations[branchIndex]!,
-                        branchIndex,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _phoneBody() => ColoredBox(
-    key: const ValueKey('primary-phone-body-surface'),
-    color: context.colors.background,
-    child: navigationShell,
-  );
-
   @override
   Widget build(BuildContext context) {
     final secondaryRouteVisible = widget.visibilityController
         .secondaryRouteVisibleFor(navigationShell.currentIndex);
-    final navigationMode = ButlerlyLayout.navigationMode(
-      MediaQuery.sizeOf(context),
-    );
 
     late final Widget shell;
     if (secondaryRouteVisible) {
       shell = Scaffold(body: navigationShell);
-    } else if (navigationMode == ButlerlyNavigationMode.phone) {
-      shell = Scaffold(
-        body: SafeArea(bottom: false, child: _phoneBody()),
-        bottomNavigationBar: _phoneNavigation(context),
-      );
     } else {
-      final extended = navigationMode == ButlerlyNavigationMode.extendedRail;
       final destinations = _destinations(context);
-      final selectedVisualIndex = _visualBranchIndexes.indexOf(
-        navigationShell.currentIndex,
-      );
-      shell = Scaffold(
-        body: SafeArea(
-          child: Row(
-            children: [
-              NavigationRail(
-                extended: extended,
-                selectedIndex: selectedVisualIndex,
-                onDestinationSelected: (visualIndex) =>
-                    _selectDestination(_visualBranchIndexes[visualIndex]),
-                leading: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: ButlerlySpacing.section,
-                  ),
-                  child: extended
-                      ? Text(
-                          context.l10n.text('appName'),
-                          style: Theme.of(context).textTheme.headlineMedium
-                              ?.copyWith(color: context.colors.primaryText),
-                        )
-                      : Icon(
-                          Icons.circle,
-                          size: 14,
-                          color: context.colors.interactive,
-                        ),
-                ),
-                destinations: [
-                  for (final branchIndex in _visualBranchIndexes)
-                    NavigationRailDestination(
-                      icon: destinations[branchIndex]!.icon,
-                      selectedIcon: destinations[branchIndex]!.selectedIcon,
-                      label: Text(destinations[branchIndex]!.label),
-                    ),
-                ],
-              ),
-              VerticalDivider(width: 1, color: context.colors.cardDivider),
-              Expanded(child: navigationShell),
-            ],
-          ),
+      final deviceClass = ButlerlyLayout.deviceClass(MediaQuery.sizeOf(context));
+      shell = switch (deviceClass) {
+        ButlerlyDeviceClass.phone => IPhonePrimaryShell(
+          body: navigationShell,
+          destinations: destinations,
+          visualBranchIndexes: _visualBranchIndexes,
+          currentIndex: navigationShell.currentIndex,
+          onSelected: _selectDestination,
         ),
-      );
+        ButlerlyDeviceClass.tablet => IPadPrimaryShell(
+          body: navigationShell,
+          destinations: destinations,
+          visualBranchIndexes: _visualBranchIndexes,
+          currentIndex: navigationShell.currentIndex,
+          onSelected: _selectDestination,
+        ),
+        ButlerlyDeviceClass.desktop => DesktopPrimaryShell(
+          body: navigationShell,
+          destinations: destinations,
+          visualBranchIndexes: _visualBranchIndexes,
+          currentIndex: navigationShell.currentIndex,
+          onSelected: _selectDestination,
+        ),
+      };
     }
 
     return PopScope(
