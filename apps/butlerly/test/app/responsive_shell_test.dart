@@ -76,11 +76,7 @@ void main() {
   testWidgets(
     'iPhone portrait keeps iPhone bottom navigation and normal page gutters',
     (tester) async {
-      await _pumpAt(
-        tester,
-        const Size(390, 844),
-        platform: TargetPlatform.iOS,
-      );
+      await _pumpAt(tester, const Size(390, 844));
 
       expect(find.byType(IPhonePrimaryShell), findsOneWidget);
       expect(find.byType(IPadPrimaryShell), findsNothing);
@@ -102,7 +98,7 @@ void main() {
     'iPhone landscape keeps full-width Home chrome and bottom navigation',
     (tester) async {
       const size = Size(932, 430);
-      await _pumpAt(tester, size, platform: TargetPlatform.iOS);
+      await _pumpAt(tester, size);
 
       expect(find.byType(IPhonePrimaryShell), findsOneWidget);
       expect(find.byType(IPadPrimaryShell), findsNothing);
@@ -130,11 +126,7 @@ void main() {
   testWidgets(
     'landscape Search keeps a full-width header and the phone readable body',
     (tester) async {
-      await _pumpAt(
-        tester,
-        const Size(932, 430),
-        platform: TargetPlatform.iOS,
-      );
+      await _pumpAt(tester, const Size(932, 430));
 
       appRouter.go('/search');
       await tester.pumpAndSettle();
@@ -158,11 +150,7 @@ void main() {
   testWidgets(
     'landscape Import/Export keeps a full-width header and phone body width',
     (tester) async {
-      await _pumpAt(
-        tester,
-        const Size(932, 430),
-        platform: TargetPlatform.iOS,
-      );
+      await _pumpAt(tester, const Size(932, 430));
 
       appRouter.go('/import-export');
       await tester.pumpAndSettle();
@@ -185,11 +173,7 @@ void main() {
   testWidgets(
     'focused responsive body keeps AppBar full-width and caps phone content',
     (tester) async {
-      await _pumpResponsiveBodyAt(
-        tester,
-        const Size(932, 430),
-        platform: TargetPlatform.iOS,
-      );
+      await _pumpResponsiveBodyAt(tester, const Size(932, 430));
 
       expect(tester.getSize(find.byType(AppBar)).width, 932);
       expect(
@@ -204,11 +188,7 @@ void main() {
   testWidgets('focused responsive body keeps the iPad readable width', (
     tester,
   ) async {
-    await _pumpResponsiveBodyAt(
-      tester,
-      const Size(1133, 744),
-      platform: TargetPlatform.iOS,
-    );
+    await _pumpResponsiveBodyAt(tester, const Size(1133, 744));
 
     expect(tester.getSize(find.byType(AppBar)).width, 1133);
     expect(
@@ -221,7 +201,7 @@ void main() {
     testWidgets(
       'iPad uses bottom navigation at ${size.width}x${size.height}',
       (tester) async {
-        await _pumpAt(tester, size, platform: TargetPlatform.iOS);
+        await _pumpAt(tester, size);
 
         expect(find.byType(IPadPrimaryShell), findsOneWidget);
         expect(find.byType(IPhonePrimaryShell), findsNothing);
@@ -241,11 +221,7 @@ void main() {
   }
 
   testWidgets('iPad landscape keeps the tablet readable body', (tester) async {
-    await _pumpAt(
-      tester,
-      const Size(1133, 744),
-      platform: TargetPlatform.iOS,
-    );
+    await _pumpAt(tester, const Size(1133, 744));
 
     expect(
       tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
@@ -254,36 +230,35 @@ void main() {
   });
 
   testWidgets('desktop uses the isolated desktop shell', (tester) async {
-    await _pumpAt(
-      tester,
-      const Size(1200, 500),
-      platform: TargetPlatform.macOS,
-    );
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    try {
+      await _pumpAt(tester, const Size(1200, 500));
 
-    expect(find.byType(NavigationRail), findsOneWidget);
-    expect(
-      find.byKey(const ValueKey('primary-desktop-navigation')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey('primary-phone-navigation')),
-      findsNothing,
-    );
-    expect(
-      find.byKey(const ValueKey('primary-ipad-navigation')),
-      findsNothing,
-    );
-    expect(
-      tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
-      ButlerlySize.pageContentMaxWidth,
-    );
+      expect(find.byType(NavigationRail), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('primary-desktop-navigation')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('primary-phone-navigation')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey('primary-ipad-navigation')),
+        findsNothing,
+      );
+      expect(
+        tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
+        ButlerlySize.pageContentMaxWidth,
+      );
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 
   testWidgets(
     'landscape Legal document keeps full-width AppBar and capped content',
     (tester) async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
-      addTearDown(() => debugDefaultTargetPlatformOverride = null);
       tester.view.physicalSize = const Size(932, 430);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
@@ -312,13 +287,7 @@ void main() {
   );
 }
 
-Future<void> _pumpAt(
-  WidgetTester tester,
-  Size size, {
-  required TargetPlatform platform,
-}) async {
-  debugDefaultTargetPlatformOverride = platform;
-  addTearDown(() => debugDefaultTargetPlatformOverride = null);
+Future<void> _pumpAt(WidgetTester tester, Size size) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
@@ -330,11 +299,8 @@ Future<void> _pumpAt(
 
 Future<void> _pumpResponsiveBodyAt(
   WidgetTester tester,
-  Size size, {
-  required TargetPlatform platform,
-}) async {
-  debugDefaultTargetPlatformOverride = platform;
-  addTearDown(() => debugDefaultTargetPlatformOverride = null);
+  Size size,
+) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
