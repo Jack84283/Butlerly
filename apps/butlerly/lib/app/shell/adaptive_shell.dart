@@ -354,24 +354,10 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     );
   }
 
-  Widget _phoneBody(BuildContext context) => ColoredBox(
+  Widget _phoneBody() => ColoredBox(
     key: const ValueKey('primary-phone-body-surface'),
     color: context.colors.background,
-    child: LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth > ButlerlySize.phoneContentMaxWidth
-            ? ButlerlySize.phoneContentMaxWidth
-            : constraints.maxWidth;
-        return Center(
-          child: SizedBox(
-            key: const ValueKey('primary-phone-content'),
-            width: width,
-            height: constraints.maxHeight,
-            child: navigationShell,
-          ),
-        );
-      },
-    ),
+    child: navigationShell,
   );
 
   @override
@@ -386,14 +372,12 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           if (secondaryRouteVisible) {
-            return Scaffold(
-              body: tabletViewport ? navigationShell : _phoneBody(context),
-            );
+            return Scaffold(body: navigationShell);
           }
 
           if (!tabletViewport) {
             return Scaffold(
-              body: SafeArea(bottom: false, child: _phoneBody(context)),
+              body: SafeArea(bottom: false, child: _phoneBody()),
               bottomNavigationBar: _phoneNavigation(context),
             );
           }
