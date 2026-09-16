@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 abstract final class ButlerlySpacing {
@@ -113,6 +114,7 @@ abstract final class ButlerlySize {
   static const minimumTarget = 44.0;
   static const preferredTarget = 48.0;
   static const phoneBreakpoint = 600.0;
+  static const tabletBreakpoint = phoneBreakpoint;
   static const desktopBreakpoint = 1024.0;
   static const phoneContentMaxWidth = 600.0;
   static const phoneGutter = 12.0;
@@ -130,25 +132,48 @@ abstract final class ButlerlySize {
   static const sourcePreviewWidth = 64.0;
   static const sourcePreviewHeight = 80.0;
   static const navigationBarHeight = 78.0;
+  static const primaryNavigationAddIconSize = 52.0;
+  static const primaryNavigationAddGlyphSize = 28.0;
+  static const desktopNavigationLeadingIconSize = 14.0;
+  static const dividerWidth = 1.0;
 }
 
-enum ButlerlyNavigationMode { phone, rail, extendedRail }
+abstract final class ButlerlyOpacity {
+  static const primaryNavigationBorder = 0.55;
+}
 
-/// Semantic responsive-layout policy. Feature pages consume this policy rather
-/// than embedding breakpoints or readable-width numbers of their own.
+enum ButlerlyDeviceClass { phone, tablet, desktop }
+
+/// Semantic responsive-layout policy. Device class is intentionally separate
+/// from viewport width so a landscape tablet never becomes a desktop shell.
 abstract final class ButlerlyLayout {
-  static ButlerlyNavigationMode navigationMode(Size viewport) {
-    if (viewport.width >= ButlerlySize.desktopBreakpoint) {
-      return ButlerlyNavigationMode.extendedRail;
+  static ButlerlyDeviceClass deviceClass(
+    Size viewport, {
+    TargetPlatform? platform,
+  }) {
+    final resolvedPlatform = platform ?? defaultTargetPlatform;
+    switch (resolvedPlatform) {
+      case TargetPlatform.macOS:
+      case TargetPlatform.windows:
+      case TargetPlatform.linux:
+        return ButlerlyDeviceClass.desktop;
+      case TargetPlatform.iOS:
+      case TargetPlatform.android:
+      case TargetPlatform.fuchsia:
+        return viewport.shortestSide >= ButlerlySize.tabletBreakpoint
+            ? ButlerlyDeviceClass.tablet
+            : ButlerlyDeviceClass.phone;
     }
-    if (viewport.shortestSide >= ButlerlySize.phoneBreakpoint) {
-      return ButlerlyNavigationMode.rail;
-    }
-    return ButlerlyNavigationMode.phone;
   }
 
-  static double contentMaxWidth(Size viewport) =>
-      navigationMode(viewport) == ButlerlyNavigationMode.phone
+  static bool desktopNavigationExtended(Size viewport) =>
+      viewport.width >= ButlerlySize.desktopBreakpoint;
+
+  static double contentMaxWidth(
+    Size viewport, {
+    TargetPlatform? platform,
+  }) =>
+      deviceClass(viewport, platform: platform) == ButlerlyDeviceClass.phone
       ? ButlerlySize.phoneContentMaxWidth
       : ButlerlySize.pageContentMaxWidth;
 }
