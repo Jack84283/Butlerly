@@ -378,6 +378,7 @@ class _HomePageState extends State<HomePage> {
                       final loading =
                           snapshot.connectionState != ConnectionState.done;
                       return _HomeHeader(
+                        deviceClass: deviceClass,
                         month: data.displayMonth,
                         greetingKey: homeGreetingKey(_now),
                         onMonthTap: loading ? null : () => _selectMonth(data),
@@ -606,11 +607,13 @@ class _HomePinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
 
 class _HomeHeader extends StatelessWidget {
   const _HomeHeader({
+    required this.deviceClass,
     required this.month,
     required this.greetingKey,
     required this.onMonthTap,
   });
 
+  final ButlerlyDeviceClass deviceClass;
   final DateTime month;
   final String greetingKey;
   final VoidCallback? onMonthTap;
@@ -703,7 +706,7 @@ class _HomeHeader extends StatelessWidget {
           children: [
             Expanded(flex: 5, child: brand),
             const SizedBox(width: ButlerlySpacing.standard),
-            if (constraints.maxWidth >= ButlerlySize.tabletBreakpoint)
+            if (deviceClass == ButlerlyDeviceClass.tablet)
               Expanded(flex: 4, child: contextBlock)
             else
               Flexible(flex: 4, child: contextBlock),
