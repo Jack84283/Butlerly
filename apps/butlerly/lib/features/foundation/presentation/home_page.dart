@@ -247,11 +247,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _refresh() async {
-    final refreshed = _load(forceAnalysisRefresh: true);
+    final refreshed = await _load(forceAnalysisRefresh: true);
+    if (!mounted) return;
     setState(() {
-      _data = refreshed;
+      _data = Future.value(refreshed);
     });
-    await refreshed;
   }
 
   Future<void> _selectMonth(_HomeData data) async {
@@ -374,11 +374,6 @@ class _HomePageState extends State<HomePage> {
                 )
               : const AlwaysScrollableScrollPhysics(),
           slivers: [
-            if (useCupertinoRefresh)
-              CupertinoSliverRefreshControl(
-                key: const ValueKey('home-cupertino-refresh-control'),
-                onRefresh: _refresh,
-              ),
             SliverPersistentHeader(
               pinned: true,
               delegate: _HomePinnedHeaderDelegate(
@@ -404,50 +399,53 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
-                ButlerlySize.phoneGutter,
-                ButlerlySpacing.large,
-                ButlerlySize.phoneGutter,
-                ButlerlySpacing.large,
+            if (useCupertinoRefresh)
+              CupertinoSliverRefreshControl(
+                key: const ValueKey('home-cupertino-refresh-control'),
+                onRefresh: _refresh,
               ),
-              sliver: SliverLayoutBuilder(
-                builder: (context, constraints) {
-                  final contentMaxWidth = ButlerlyLayout.contentMaxWidth(
-                    MediaQuery.sizeOf(context),
-                  );
-                  final extraWidth =
-                      constraints.crossAxisExtent - contentMaxWidth;
-                  final horizontalInset = extraWidth > 0 ? extraWidth / 2 : 0.0;
-                  return SliverPadding(
-                    padding: EdgeInsets.symmetric(horizontal: horizontalInset),
-                    sliver: SliverToBoxAdapter(
-                      child: ColoredBox(
-                        key: const ValueKey('home-page-content-surface'),
-                        color: context.colors.background,
-                        child: SizedBox(
-                          key: const ValueKey('home-page-content'),
-                          width: double.infinity,
-                          child: FutureBuilder<_HomeData>(
-                            future: future,
-                            builder: (context, snapshot) {
-                              final data =
-                                  snapshot.data ??
-                                  _HomeData.empty(
-                                    _now,
-                                    selectedMonth: _selectedMonth,
-                                  );
-                              final loading =
-                                  snapshot.connectionState !=
-                                  ConnectionState.done;
-                              return _homeContent(context, data, loading);
-                            },
-                          ),
+            SliverToBoxAdapter(
+              child: ColoredBox(
+                key: const ValueKey('home-page-content-surface'),
+                color: context.colors.background,
+                child: Padding(
+                  key: const ValueKey('home-page-content-padding'),
+                  padding: const EdgeInsets.fromLTRB(
+                    ButlerlySize.phoneGutter,
+                    ButlerlySpacing.small,
+                    ButlerlySize.phoneGutter,
+                    ButlerlySpacing.large,
+                  ),
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: ButlerlyLayout.contentMaxWidth(
+                          MediaQuery.sizeOf(context),
+                        ),
+                      ),
+                      child: SizedBox(
+                        key: const ValueKey('home-page-content'),
+                        width: double.infinity,
+                        child: FutureBuilder<_HomeData>(
+                          key: const ValueKey('home-body-data'),
+                          future: future,
+                          builder: (context, snapshot) {
+                            final data =
+                                snapshot.data ??
+                                _HomeData.empty(
+                                  _now,
+                                  selectedMonth: _selectedMonth,
+                                );
+                            final loading =
+                                snapshot.connectionState != ConnectionState.done;
+                            return _homeContent(context, data, loading);
+                          },
                         ),
                       ),
                     ),
-                  );
-                },
+                  ),
+                ),
               ),
             ),
           ],
