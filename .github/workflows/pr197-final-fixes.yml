@@ -68,8 +68,45 @@ jobs:
           )
           PY
 
-          # Keep the already-merged #196 refresh implementation and test unchanged.
+          # Start from the #196 regression test, then validate the zero-extent
+          # refresh sliver from CustomScrollView.slivers instead of relying on
+          # an element finder for CupertinoSliverRefreshControl.
           git checkout origin/main -- apps/butlerly/test/features/home/home_pull_to_refresh_test.dart
+
+          python3 <<'PY'
+          from pathlib import Path
+          p = Path('apps/butlerly/test/features/home/home_pull_to_refresh_test.dart')
+          text = p.read_text()
+          old = """    final refreshControl = tester.widget<CupertinoSliverRefreshControl>(
+      find.byKey(const ValueKey('home-cupertino-refresh-control')),
+    );
+    expect(refreshControl.onRefresh, isNotNull);
+    expect(find.byKey(const ValueKey('home-refresh-indicator')), findsNothing);
+
+    final scrollView = tester.widget<CustomScrollView>(
+      find.byType(CustomScrollView),
+    );
+"""
+          new = """    final scrollView = tester.widget<CustomScrollView>(
+      find.byType(CustomScrollView),
+    );
+    final refreshControls = scrollView.slivers
+        .whereType<CupertinoSliverRefreshControl>()
+        .toList();
+    expect(refreshControls, hasLength(1));
+    final refreshControl = refreshControls.single;
+    expect(
+      refreshControl.key,
+      const ValueKey('home-cupertino-refresh-control'),
+    );
+    expect(refreshControl.onRefresh, isNotNull);
+    expect(find.byKey(const ValueKey('home-refresh-indicator')), findsNothing);
+
+"""
+          if text.count(old) != 1:
+              raise SystemExit('refresh test anchor did not match exactly once')
+          p.write_text(text.replace(old, new, 1))
+          PY
 
           cd apps/butlerly
           flutter pub get
