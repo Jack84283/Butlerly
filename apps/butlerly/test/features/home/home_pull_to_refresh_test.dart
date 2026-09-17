@@ -29,19 +29,21 @@ void main() {
     await tester.pumpWidget(const _TestApp());
     await tester.pumpAndSettle();
 
-    expect(
-      find.byKey(const ValueKey('home-cupertino-refresh-control')),
-      findsOneWidget,
+    final scrollView = tester.widget<CustomScrollView>(
+      find.byType(CustomScrollView),
     );
-    final refreshControl = tester.widget<CupertinoSliverRefreshControl>(
-      find.byKey(const ValueKey('home-cupertino-refresh-control')),
+    final refreshControls = scrollView.slivers
+        .whereType<CupertinoSliverRefreshControl>()
+        .toList();
+    expect(refreshControls, hasLength(1));
+    final refreshControl = refreshControls.single;
+    expect(
+      refreshControl.key,
+      const ValueKey('home-cupertino-refresh-control'),
     );
     expect(refreshControl.onRefresh, isNotNull);
     expect(find.byKey(const ValueKey('home-refresh-indicator')), findsNothing);
 
-    final scrollView = tester.widget<CustomScrollView>(
-      find.byType(CustomScrollView),
-    );
     expect(scrollView.physics, isA<BouncingScrollPhysics>());
     expect(
       (scrollView.physics! as BouncingScrollPhysics).parent,
