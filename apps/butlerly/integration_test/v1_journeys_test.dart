@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:butlerly/app/butlerly_app.dart';
+import 'package:butlerly/app/session/butlerly_session_guard.dart';
 import 'package:butlerly/core/evidence/local_ocr_service.dart';
 import 'package:butlerly/core/import/local_csv_importer.dart';
 import 'package:butlerly/features/foundation/presentation/first_use_preferences_page.dart';
@@ -49,6 +50,7 @@ void main() {
     );
 
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+    await tester.pump(ButlerlySessionConfig.launchDuration);
     await tester.pumpAndSettle();
     expect(find.byType(FirstUsePreferencesPage), findsOneWidget);
     await tester.tap(

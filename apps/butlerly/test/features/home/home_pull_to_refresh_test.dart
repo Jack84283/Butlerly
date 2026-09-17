@@ -90,7 +90,10 @@ void main() {
         const ValueKey('home-cupertino-refresh-control'),
       );
       expect(refreshControl.onRefresh, isNotNull);
-      expect(find.byKey(const ValueKey('home-refresh-indicator')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('home-refresh-indicator')),
+        findsNothing,
+      );
 
       final colors = AppTheme.light.extension<ButlerlySemanticColors>()!;
       final canvas = tester.widget<ColoredBox>(
@@ -149,7 +152,10 @@ void main() {
       expect(find.text('10.00 USD'), findsOneWidget);
       expect(find.text('15.00 USD'), findsNothing);
       expect(find.byType(CircularProgressIndicator), findsNothing);
-      expect(tester.getTopLeft(headerFinder).dy, closeTo(headerTopBefore, 0.01));
+      expect(
+        tester.getTopLeft(headerFinder).dy,
+        closeTo(headerTopBefore, 0.01),
+      );
 
       readGate.complete();
       transactions.readGate = null;
@@ -160,7 +166,10 @@ void main() {
       expect(find.text('10.00 USD'), findsNothing);
       expect(find.text('15.00 USD'), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsNothing);
-      expect(tester.getTopLeft(headerFinder).dy, closeTo(headerTopBefore, 0.01));
+      expect(
+        tester.getTopLeft(headerFinder).dy,
+        closeTo(headerTopBefore, 0.01),
+      );
 
       expect(scrollView.physics, isA<BouncingScrollPhysics>());
       expect(

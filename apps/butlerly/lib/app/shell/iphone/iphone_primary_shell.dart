@@ -24,7 +24,7 @@ class IPhonePrimaryShell extends StatelessWidget {
       bottom: false,
       child: ColoredBox(
         key: const ValueKey('primary-phone-body-surface'),
-        color: context.colors.background,
+        color: context.colors.subtleSurface,
         child: body,
       ),
     ),

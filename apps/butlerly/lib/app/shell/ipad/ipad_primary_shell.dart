@@ -24,7 +24,7 @@ class IPadPrimaryShell extends StatelessWidget {
       bottom: false,
       child: ColoredBox(
         key: const ValueKey('primary-ipad-body-surface'),
-        color: context.colors.background,
+        color: context.colors.subtleSurface,
         child: body,
       ),
     ),

@@ -31,7 +31,7 @@ class DesktopPrimaryShell extends StatelessWidget {
           bottom: false,
           child: ColoredBox(
             key: const ValueKey('primary-desktop-compact-body-surface'),
-            color: context.colors.background,
+            color: context.colors.subtleSurface,
             child: body,
           ),
         ),
@@ -46,7 +46,8 @@ class DesktopPrimaryShell extends StatelessWidget {
     }
 
     final selectedVisualIndex = visualBranchIndexes.indexOf(currentIndex);
-    final extended = navigationMode == ButlerlyDesktopNavigationMode.extendedRail;
+    final extended =
+        navigationMode == ButlerlyDesktopNavigationMode.extendedRail;
 
     return Scaffold(
       body: SafeArea(
@@ -87,7 +88,13 @@ class DesktopPrimaryShell extends StatelessWidget {
               width: ButlerlySize.dividerWidth,
               color: context.colors.cardDivider,
             ),
-            Expanded(child: body),
+            Expanded(
+              child: ColoredBox(
+                key: const ValueKey('primary-desktop-body-surface'),
+                color: context.colors.subtleSurface,
+                child: body,
+              ),
+            ),
           ],
         ),
       ),

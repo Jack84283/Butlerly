@@ -320,7 +320,7 @@ void main() {
         tester
             .getSize(find.byKey(const ValueKey('home-page-content-surface')))
             .width,
-        size.width,
+        ButlerlySize.pageContentMaxWidth + ButlerlySize.phoneGutter * 2,
       );
       final canvas = tester.widget<ColoredBox>(
         find.byKey(const ValueKey('home-page-canvas')),

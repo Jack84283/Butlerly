@@ -408,49 +408,55 @@ class _HomePageState extends State<HomePage> {
                 key: const ValueKey('home-cupertino-refresh-control'),
                 onRefresh: _refresh,
               ),
-            SliverToBoxAdapter(
-              child: ColoredBox(
-                key: const ValueKey('home-page-content-surface'),
-                color: context.colors.background,
-                child: Padding(
-                  key: const ValueKey('home-page-content-padding'),
-                  padding: const EdgeInsets.fromLTRB(
-                    ButlerlySize.phoneGutter,
-                    ButlerlySpacing.small,
-                    ButlerlySize.phoneGutter,
-                    ButlerlySpacing.large,
-                  ),
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: ButlerlyLayout.contentMaxWidth(
-                          MediaQuery.sizeOf(context),
+            SliverLayoutBuilder(
+              builder: (context, constraints) {
+                final contentMaxWidth = ButlerlyLayout.contentMaxWidth(
+                  MediaQuery.sizeOf(context),
+                );
+                final surfaceMaxWidth =
+                    contentMaxWidth + ButlerlySize.phoneGutter * 2;
+                final extraWidth =
+                    constraints.crossAxisExtent - surfaceMaxWidth;
+                final horizontalInset = extraWidth > 0 ? extraWidth / 2 : 0.0;
+                return SliverPadding(
+                  padding: EdgeInsets.symmetric(horizontal: horizontalInset),
+                  sliver: SliverToBoxAdapter(
+                    child: ColoredBox(
+                      key: const ValueKey('home-page-content-surface'),
+                      color: context.colors.background,
+                      child: Padding(
+                        key: const ValueKey('home-page-content-padding'),
+                        padding: const EdgeInsets.fromLTRB(
+                          ButlerlySize.phoneGutter,
+                          ButlerlySpacing.small,
+                          ButlerlySize.phoneGutter,
+                          ButlerlySpacing.large,
                         ),
-                      ),
-                      child: SizedBox(
-                        key: const ValueKey('home-page-content'),
-                        width: double.infinity,
-                        child: FutureBuilder<_HomeData>(
-                          key: const ValueKey('home-body-data'),
-                          future: future,
-                          builder: (context, snapshot) {
-                            final data =
-                                snapshot.data ??
-                                _HomeData.empty(
-                                  _now,
-                                  selectedMonth: _selectedMonth,
-                                );
-                            final loading =
-                                snapshot.connectionState != ConnectionState.done;
-                            return _homeContent(context, data, loading);
-                          },
+                        child: SizedBox(
+                          key: const ValueKey('home-page-content'),
+                          width: double.infinity,
+                          child: FutureBuilder<_HomeData>(
+                            key: const ValueKey('home-body-data'),
+                            future: future,
+                            builder: (context, snapshot) {
+                              final data =
+                                  snapshot.data ??
+                                  _HomeData.empty(
+                                    _now,
+                                    selectedMonth: _selectedMonth,
+                                  );
+                              final loading =
+                                  snapshot.connectionState !=
+                                  ConnectionState.done;
+                              return _homeContent(context, data, loading);
+                            },
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ],
         ),
@@ -669,8 +675,10 @@ class _HomeHeader extends StatelessWidget {
               context.l10n.text('homeTagline'),
               maxLines: stacked ? null : 2,
               overflow: stacked ? null : TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelMedium
-                  ?.copyWith(letterSpacing: 2.2, fontSize: 9.5),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                letterSpacing: 2.2,
+                fontSize: 9.5,
+              ),
             ),
           ],
         );
@@ -842,8 +850,9 @@ class _SpendingHero extends StatelessWidget {
                   ),
                   child: Text(
                     context.l10n.text('spent'),
-                    style: Theme.of(context).textTheme.headlineMedium
-                        ?.copyWith(color: context.colors.secondaryText),
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: context.colors.secondaryText,
+                    ),
                   ),
                 ),
               ],
@@ -956,9 +965,9 @@ class _SpendingTrend extends StatelessWidget {
                           ),
                           const SizedBox(height: ButlerlySpacing.compact),
                           Text(
-                            DateFormat.MMM(locale)
-                                .format(point.month)
-                                .toUpperCase(),
+                            DateFormat.MMM(
+                              locale,
+                            ).format(point.month).toUpperCase(),
                             maxLines: 1,
                             style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(
@@ -1333,8 +1342,9 @@ class _HomeMonthPickerState extends State<_HomeMonthPicker> {
         ),
         itemBuilder: (context, index) {
           final candidate = DateTime(_year, index + 1, 1);
-          final future = _monthStart(candidate)
-              .isAfter(_monthStart(widget.currentMonth));
+          final future = _monthStart(
+            candidate,
+          ).isAfter(_monthStart(widget.currentMonth));
           final selected = _sameMonth(candidate, widget.selectedMonth);
           final label = DateFormat.MMM(locale).format(candidate);
           return selected

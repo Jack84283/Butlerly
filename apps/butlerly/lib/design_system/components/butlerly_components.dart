@@ -33,8 +33,19 @@ class ButlerlyPage extends StatelessWidget {
     final contentMaxWidth = ButlerlyLayout.contentMaxWidth(
       MediaQuery.sizeOf(context),
     );
+    final contentPadding =
+        padding ??
+        const EdgeInsets.fromLTRB(
+          ButlerlySize.phoneGutter,
+          ButlerlySpacing.standard,
+          ButlerlySize.phoneGutter,
+          ButlerlySpacing.large,
+        );
+    final surfaceMaxWidth = contentMaxWidth + contentPadding.horizontal;
+
     return ColoredBox(
-      color: context.colors.background,
+      key: const ValueKey('butlerly-page-canvas'),
+      color: context.colors.subtleSurface,
       child: CustomScrollView(
         controller: controller,
         physics: const AlwaysScrollableScrollPhysics(),
@@ -53,38 +64,34 @@ class ButlerlyPage extends StatelessWidget {
               pinned: true,
               delegate: _ButlerlyPinnedHeaderDelegate(child: pinnedHeader!),
             ),
-          SliverPadding(
-            padding:
-                padding ??
-                const EdgeInsets.fromLTRB(
-                  ButlerlySize.phoneGutter,
-                  ButlerlySpacing.standard,
-                  ButlerlySize.phoneGutter,
-                  ButlerlySpacing.large,
-                ),
-            sliver: SliverLayoutBuilder(
-              builder: (context, constraints) {
-                final extraWidth =
-                    constraints.crossAxisExtent - contentMaxWidth;
-                final horizontalInset = extraWidth > 0 ? extraWidth / 2 : 0.0;
-                return SliverPadding(
-                  padding: EdgeInsets.symmetric(horizontal: horizontalInset),
-                  sliver: SliverList.list(
-                    key: const ValueKey('butlerly-page-content-sliver'),
-                    children: [
-                      if (subtitle != null) ...[
-                        Text(
-                          subtitle!,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                        const SizedBox(height: ButlerlySpacing.section),
+          SliverLayoutBuilder(
+            builder: (context, constraints) {
+              final extraWidth = constraints.crossAxisExtent - surfaceMaxWidth;
+              final horizontalInset = extraWidth > 0 ? extraWidth / 2 : 0.0;
+              return SliverPadding(
+                padding: EdgeInsets.symmetric(horizontal: horizontalInset),
+                sliver: DecoratedSliver(
+                  key: const ValueKey('butlerly-page-content-surface'),
+                  decoration: BoxDecoration(color: context.colors.background),
+                  sliver: SliverPadding(
+                    padding: contentPadding,
+                    sliver: SliverList.list(
+                      key: const ValueKey('butlerly-page-content-sliver'),
+                      children: [
+                        if (subtitle != null) ...[
+                          Text(
+                            subtitle!,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: ButlerlySpacing.section),
+                        ],
+                        ...children,
                       ],
-                      ...children,
-                    ],
+                    ),
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -288,8 +295,10 @@ class ButlerlyStatusChip extends StatelessWidget {
             ],
             Text(
               label,
-              style: Theme.of(context).textTheme.labelLarge
-                  ?.copyWith(color: color, fontWeight: FontWeight.w600),
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -478,8 +487,9 @@ class ButlerlyDestructiveButton extends StatelessWidget {
       backgroundColor: colors.error,
       foregroundColor: Theme.of(context).colorScheme.onError,
       disabledBackgroundColor: colors.error.withValues(alpha: 0.35),
-      disabledForegroundColor: Theme.of(context).colorScheme.onError
-          .withValues(alpha: 0.7),
+      disabledForegroundColor: Theme.of(
+        context,
+      ).colorScheme.onError.withValues(alpha: 0.7),
     );
     return icon == null
         ? FilledButton(onPressed: onPressed, style: style, child: child)
@@ -1035,8 +1045,9 @@ class ButlerlyEmptyState extends StatelessWidget {
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium
-                    ?.copyWith(color: context.colors.secondaryText),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: context.colors.secondaryText,
+                ),
               ),
               if (actionLabel != null) ...[
                 const SizedBox(height: ButlerlySpacing.section),
