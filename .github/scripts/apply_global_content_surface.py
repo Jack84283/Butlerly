@@ -108,7 +108,7 @@ class ButlerlyResponsiveBody extends StatelessWidget {
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: maxWidth),
-          child: ColoredBox(
+          child: Material(
             key: const ValueKey('butlerly-responsive-body-content-surface'),
             color: context.colors.background,
             child: SizedBox(
@@ -232,28 +232,15 @@ void main() {
     expect(canvas.color, colors.subtleSurface);
     expect((surface.decoration as BoxDecoration).color, colors.background);
 
-    final surfaceRect = tester.getRect(
-      find.byKey(const ValueKey('butlerly-page-content-surface')),
-    );
     final childRect = tester.getRect(
       find.byKey(const ValueKey('surface-policy-child')),
     );
+    expect(childRect.width, ButlerlySize.pageContentMaxWidth);
     expect(
-      surfaceRect.width,
-      ButlerlySize.pageContentMaxWidth + ButlerlySize.phoneGutter * 2,
+      childRect.left,
+      closeTo((1200 - ButlerlySize.pageContentMaxWidth) / 2, 0.01),
     );
-    expect(
-      childRect.left - surfaceRect.left,
-      closeTo(ButlerlySize.phoneGutter, 0.01),
-    );
-    expect(
-      surfaceRect.right - childRect.right,
-      closeTo(ButlerlySize.phoneGutter, 0.01),
-    );
-    expect(
-      childRect.top - surfaceRect.top,
-      closeTo(ButlerlySpacing.standard, 0.01),
-    );
+    expect(childRect.top, closeTo(ButlerlySpacing.standard, 0.01));
   });
 
   testWidgets('responsive body distinguishes content from outside canvas', (
@@ -277,7 +264,7 @@ void main() {
     final canvas = tester.widget<ColoredBox>(
       find.byKey(const ValueKey('butlerly-responsive-body-canvas')),
     );
-    final surface = tester.widget<ColoredBox>(
+    final surface = tester.widget<Material>(
       find.byKey(
         const ValueKey('butlerly-responsive-body-content-surface'),
       ),
@@ -298,3 +285,22 @@ void main() {
   });
 }
 ''')
+
+components_test = Path('apps/butlerly/test/design_system/butlerly_components_test.dart')
+ctext = components_test.read_text()
+old = '''        expect(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget is ColoredBox && widget.color == colors.background,
+          ),
+          findsOneWidget,
+        );'''
+new = '''        expect(
+          find.byWidgetPredicate(
+            (widget) => widget is Material && widget.color == colors.background,
+          ),
+          findsWidgets,
+        );'''
+if old not in ctext:
+    raise SystemExit('semantic background expectation not found')
+components_test.write_text(ctext.replace(old, new, 1))
