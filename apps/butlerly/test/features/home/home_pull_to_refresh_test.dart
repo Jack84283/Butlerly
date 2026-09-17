@@ -18,7 +18,7 @@ void main() {
   });
 
   testWidgets(
-    'Home keeps the pinned header above iOS refresh and refreshes body data',
+    'Home keeps the pinned header above a real iOS pull refresh',
     (tester) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
@@ -28,9 +28,8 @@ void main() {
       await tester.pumpWidget(const _TestApp());
       await tester.pumpAndSettle();
 
-      final scrollView = tester.widget<CustomScrollView>(
-        find.byType(CustomScrollView),
-      );
+      final scrollFinder = find.byType(CustomScrollView);
+      final scrollView = tester.widget<CustomScrollView>(scrollFinder);
       final headerIndex = scrollView.slivers.indexWhere(
         (sliver) => sliver is SliverPersistentHeader,
       );
@@ -79,11 +78,24 @@ void main() {
       );
 
       final bodyFinder = find.byKey(const ValueKey('home-body-data'));
+      final headerFinder = find.byKey(const ValueKey('home-header-surface'));
       final beforeRefresh = (tester.widget(bodyFinder) as FutureBuilder).future;
-      await refreshControl.onRefresh!();
+      final headerTopBefore = tester.getTopLeft(headerFinder).dy;
+
+      await tester.drag(scrollFinder, const Offset(0, 320));
+      await tester.pump();
+
+      // The refresh is allowed to animate, but completed Home data must not be
+      // replaced by the generic loading state while the new snapshot is swapped.
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(tester.getTopLeft(headerFinder).dy, closeTo(headerTopBefore, 0.01));
+
       await tester.pumpAndSettle();
+
       final afterRefresh = (tester.widget(bodyFinder) as FutureBuilder).future;
       expect(identical(beforeRefresh, afterRefresh), isFalse);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(tester.getTopLeft(headerFinder).dy, closeTo(headerTopBefore, 0.01));
 
       expect(scrollView.physics, isA<BouncingScrollPhysics>());
       expect(
