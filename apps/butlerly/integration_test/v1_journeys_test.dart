@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:butlerly/app/butlerly_app.dart';
 import 'package:butlerly/core/evidence/local_ocr_service.dart';
 import 'package:butlerly/core/import/local_csv_importer.dart';
+import 'package:butlerly/features/foundation/presentation/first_use_preferences_page.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -49,8 +50,13 @@ void main() {
 
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     await tester.pumpAndSettle();
-    expect(find.text('Set up your local workspace'), findsOneWidget);
-    await tester.tap(find.text('Continue locally'));
+    expect(find.byType(FirstUsePreferencesPage), findsOneWidget);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(FirstUsePreferencesPage),
+        matching: find.byType(FilledButton),
+      ),
+    );
     await tester.pumpAndSettle();
 
     await harness.restart();
