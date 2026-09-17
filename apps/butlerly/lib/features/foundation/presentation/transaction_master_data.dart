@@ -1,4 +1,5 @@
 import 'package:butlerly/core/di/finance_services.dart';
+import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
@@ -81,7 +82,8 @@ final class TransactionMasterData {
             value.name,
     },
     paymentSourceNames: {
-      for (final value in paymentSources) value.id.value: value.name,
+      for (final value in paymentSources)
+        value.id.value: paymentSourceDisplayLabel(value),
     },
   );
 

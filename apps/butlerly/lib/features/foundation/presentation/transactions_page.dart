@@ -3,12 +3,14 @@ import 'dart:async';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
+import 'package:butlerly/design_system/components/butlerly_compact_section_selector.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
+import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_count_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
@@ -32,10 +34,8 @@ class TransactionsPage extends StatefulWidget {
   State<TransactionsPage> createState() => _TransactionsPageState();
 }
 
-class _TransactionsPageState extends State<TransactionsPage>
-    with SingleTickerProviderStateMixin {
+class _TransactionsPageState extends State<TransactionsPage> {
   late Future<_TransactionsData> _transactions;
-  late final TabController _tabController;
   _TransactionFilter _filter = _TransactionFilter.all;
   String? _loadedLanguageCode;
 
@@ -46,10 +46,6 @@ class _TransactionsPageState extends State<TransactionsPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(
-      length: _TransactionFilter.values.length,
-      vsync: this,
-    );
     _transactions = Future.value(const _TransactionsData([]));
     transactionChanges.addListener(_handleTransactionChange);
   }
@@ -65,7 +61,6 @@ class _TransactionsPageState extends State<TransactionsPage>
 
   @override
   void dispose() {
-    _tabController.dispose();
     transactionChanges.removeListener(_handleTransactionChange);
     super.dispose();
   }
@@ -106,9 +101,7 @@ class _TransactionsPageState extends State<TransactionsPage>
     return switch (result) {
       ApplicationSuccess<List<PaymentSource>>(:final value) => {
         for (final source in value)
-          source.id.value: source.lastFour == null
-              ? source.name
-              : '${source.name} ••••${source.lastFour}',
+          source.id.value: paymentSourceDisplayLabel(source),
       },
       _ => const {},
     };
@@ -187,16 +180,15 @@ class _TransactionsPageState extends State<TransactionsPage>
             .toList(growable: false);
         return ButlerlyPage(
           title: context.l10n.text('transactions'),
-          pinnedHeader: TabBar(
-            controller: _tabController,
-            isScrollable: false,
-            tabs: [
-              Tab(text: context.l10n.text('all')),
-              Tab(text: context.l10n.text('income')),
-              Tab(text: context.l10n.text('expense')),
-              Tab(text: context.l10n.text('archived')),
+          pinnedHeader: ButlerlyCompactSectionSelector(
+            labels: [
+              context.l10n.text('all'),
+              context.l10n.text('income'),
+              context.l10n.text('expense'),
+              context.l10n.text('archived'),
             ],
-            onTap: (index) {
+            selectedIndex: _TransactionFilter.values.indexOf(_filter),
+            onSelected: (index) {
               final filter = _TransactionFilter.values[index];
               if (filter != _filter) setState(() => _filter = filter);
             },
@@ -462,9 +454,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
               candidates: check.candidates,
               paymentSourceLabels: {
                 for (final source in editorData.paymentSources)
-                  source.id.value: source.lastFour == null
-                      ? (source.displayIdentity ?? source.name)
-                      : '${source.displayIdentity ?? source.name} ••••${source.lastFour}',
+                  source.id.value: paymentSourceDisplayLabel(source),
               },
               onDecision: (value) => Navigator.pop(dialogContext, value),
             ),
@@ -1516,7 +1506,9 @@ class _PaymentSourceRow extends StatelessWidget {
           .firstOrNull;
       return _DetailRow(
         label: context.l10n.text('paymentSource'),
-        value: source?.name ?? context.l10n.text('unavailablePaymentSource'),
+        value: source == null
+            ? context.l10n.text('unavailablePaymentSource')
+            : paymentSourceDisplayLabel(source),
       );
     },
   );
@@ -1766,7 +1758,7 @@ Future<TransactionDto?> _assignPaymentSource(
             (value) => ListTile(
               contentPadding: EdgeInsets.zero,
               onTap: () => Navigator.pop(dialogContext, value.id.value),
-              title: Text(value.name),
+              title: Text(paymentSourceDisplayLabel(value)),
             ),
           ),
         ],
