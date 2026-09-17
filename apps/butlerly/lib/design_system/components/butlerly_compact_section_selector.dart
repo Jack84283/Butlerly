@@ -91,6 +91,7 @@ class _ButlerlyCompactSectionSelectorState
                         horizontal: ButlerlySpacing.xxs,
                       ),
                       child: Semantics(
+                        key: ValueKey('compact-section-semantics-$index'),
                         selected: index == widget.selectedIndex,
                         child: TextButton(
                           key: ValueKey('compact-section-$index'),
