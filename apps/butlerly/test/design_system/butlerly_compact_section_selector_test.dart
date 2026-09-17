@@ -29,10 +29,37 @@ void main() {
       ButlerlySize.minimumTarget,
     );
     expect(find.byType(TextButton), findsNWidgets(4));
+    expect(
+      tester
+          .widget<Semantics>(
+            find.byKey(const ValueKey('compact-section-semantics-0')),
+          )
+          .properties
+          .selected,
+      isTrue,
+    );
+    expect(
+      tester
+          .widget<Semantics>(
+            find.byKey(const ValueKey('compact-section-semantics-2')),
+          )
+          .properties
+          .selected,
+      isFalse,
+    );
 
     await tester.tap(find.byKey(const ValueKey('compact-section-2')));
     await tester.pump();
     expect(selected, 2);
+    expect(
+      tester
+          .widget<Semantics>(
+            find.byKey(const ValueKey('compact-section-semantics-2')),
+          )
+          .properties
+          .selected,
+      isTrue,
+    );
   });
 
   testWidgets('overflow indicators follow horizontal scroll position', (
