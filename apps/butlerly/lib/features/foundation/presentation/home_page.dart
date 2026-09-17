@@ -33,6 +33,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late Future<_HomeData> _data;
+  int _loadGeneration = 0;
   String? _loadedLanguageCode;
   DateTime? _selectedMonth;
 
@@ -55,6 +56,7 @@ class _HomePageState extends State<HomePage> {
     final languageCode = Localizations.localeOf(context).languageCode;
     if (_loadedLanguageCode == languageCode) return;
     _loadedLanguageCode = languageCode;
+    _loadGeneration++;
     _data = _load(languageCode: languageCode);
   }
 
@@ -247,8 +249,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _refresh() async {
+    final generation = ++_loadGeneration;
     final refreshed = await _load(forceAnalysisRefresh: true);
-    if (!mounted) return;
+    if (!mounted || generation != _loadGeneration) return;
     setState(() {
       _data = Future.value(refreshed);
     });
@@ -263,6 +266,7 @@ class _HomePageState extends State<HomePage> {
       ),
     );
     if (!mounted || selected == null) return;
+    _loadGeneration++;
     setState(() {
       _selectedMonth = _sameMonth(selected, data.currentFinancialMonth)
           ? null

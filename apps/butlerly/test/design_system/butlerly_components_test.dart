@@ -21,7 +21,9 @@ void main() {
         expect(
           find.byWidgetPredicate(
             (widget) =>
-                widget is ColoredBox && widget.color == colors.background,
+                widget is DecoratedSliver &&
+                widget.decoration is BoxDecoration &&
+                (widget.decoration as BoxDecoration).color == colors.background,
           ),
           findsOneWidget,
         );
