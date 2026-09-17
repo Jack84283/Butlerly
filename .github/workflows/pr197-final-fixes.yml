@@ -35,45 +35,6 @@ jobs:
                   raise SystemExit(f'{path}: expected {count} occurrence(s), found {actual}: {old!r}')
               p.write_text(text.replace(old, new, count))
 
-          home = 'apps/butlerly/lib/features/foundation/presentation/home_page.dart'
-          replace_exact(
-              home,
-              "import 'package:flutter/foundation.dart'\n    show TargetPlatform, defaultTargetPlatform, kIsWeb;",
-              "import 'package:flutter/foundation.dart' show TargetPlatform, kIsWeb;",
-          )
-          replace_exact(
-              home,
-              "  static DateTime? debugCurrentDate;",
-              "  static DateTime? debugCurrentDate;\n  static TargetPlatform? debugTargetPlatform;",
-          )
-          replace_exact(
-              home,
-              "    final useCupertinoRefresh =\n        !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;",
-              "    final debugTargetPlatform = HomePage.debugTargetPlatform;\n    final useCupertinoRefresh = debugTargetPlatform != null\n        ? debugTargetPlatform == TargetPlatform.iOS\n        : !kIsWeb && Theme.of(context).platform == TargetPlatform.iOS;",
-          )
-
-          refresh_test = 'apps/butlerly/test/features/home/home_pull_to_refresh_test.dart'
-          replace_exact(
-              refresh_test,
-              "import 'package:flutter/foundation.dart';\n",
-              "",
-          )
-          replace_exact(
-              refresh_test,
-              "    HomePage.debugCurrentDate = DateTime(2026, 9, 16, 15);",
-              "    HomePage.debugCurrentDate = DateTime(2026, 9, 16, 15);\n    HomePage.debugTargetPlatform = TargetPlatform.iOS;",
-          )
-          replace_exact(
-              refresh_test,
-              "    HomePage.debugCurrentDate = null;",
-              "    HomePage.debugCurrentDate = null;\n    HomePage.debugTargetPlatform = null;",
-          )
-          replace_exact(
-              refresh_test,
-              "    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;\n    addTearDown(() => debugDefaultTargetPlatformOverride = null);\n    expect(defaultTargetPlatform, TargetPlatform.iOS);\n\n",
-              "",
-          )
-
           for shell in (
               'apps/butlerly/lib/app/shell/iphone/iphone_primary_shell.dart',
               'apps/butlerly/lib/app/shell/ipad/ipad_primary_shell.dart',
@@ -107,11 +68,13 @@ jobs:
           )
           PY
 
+          # Restore the already-proven #196 iOS refresh regression test exactly.
+          git checkout origin/main -- apps/butlerly/test/features/home/home_pull_to_refresh_test.dart
+
           cd apps/butlerly
           flutter pub get
           cd ../..
           dart format \
-            apps/butlerly/lib/features/foundation/presentation/home_page.dart \
             apps/butlerly/lib/app/shell/iphone/iphone_primary_shell.dart \
             apps/butlerly/lib/app/shell/ipad/ipad_primary_shell.dart \
             apps/butlerly/test/features/home/home_pull_to_refresh_test.dart \
@@ -134,7 +97,6 @@ jobs:
           git config user.email "jack84283@gmail.com"
           git rm .github/workflows/pr197-final-fixes.yml
           git add \
-            apps/butlerly/lib/features/foundation/presentation/home_page.dart \
             apps/butlerly/lib/app/shell/iphone/iphone_primary_shell.dart \
             apps/butlerly/lib/app/shell/ipad/ipad_primary_shell.dart \
             apps/butlerly/test/features/home/home_pull_to_refresh_test.dart \
