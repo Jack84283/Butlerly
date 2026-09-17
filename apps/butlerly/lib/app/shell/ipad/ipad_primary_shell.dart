@@ -20,6 +20,7 @@ class IPadPrimaryShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
+    extendBody: true,
     body: SafeArea(
       bottom: false,
       child: ColoredBox(
