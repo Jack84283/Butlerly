@@ -16,14 +16,209 @@ jobs:
         with:
           ref: fix/home-refresh-layout
       - uses: ./.github/actions/setup-toolchain
-      - run: dart format apps/butlerly/lib/features/foundation/presentation/home_page.dart
+      - name: Refine Home refresh layout and tests
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          home = Path('apps/butlerly/lib/features/foundation/presentation/home_page.dart')
+          text = home.read_text()
+
+          build_start = text.index(
+              '    return ColoredBox(',
+              text.index('  Widget build(BuildContext context) {'),
+          )
+          build_end_marker = '\n  }\n}\n\nString homeGreetingKey'
+          build_end = text.index(build_end_marker, build_start)
+
+          replacement = '''    final content = ColoredBox(
+            key: const ValueKey('home-page-canvas'),
+            color: canvasColor,
+            child: LayoutBuilder(
+              builder: (context, constraints) => CustomScrollView(
+                physics: useCupertinoRefresh
+                    ? const BouncingScrollPhysics(
+                        parent: AlwaysScrollableScrollPhysics(),
+                      )
+                    : const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverPersistentHeader(
+                    pinned: true,
+                    delegate: _HomePinnedHeaderDelegate(
+                      extent: _homeHeaderExtent(
+                        context,
+                        crossAxisExtent: constraints.maxWidth,
+                      ),
+                      child: FutureBuilder<_HomeData>(
+                        future: future,
+                        builder: (context, snapshot) {
+                          final data =
+                              snapshot.data ??
+                              _HomeData.empty(
+                                _now,
+                                selectedMonth: _selectedMonth,
+                              );
+                          final loading =
+                              snapshot.connectionState != ConnectionState.done;
+                          return _HomeHeader(
+                            deviceClass: deviceClass,
+                            month: data.displayMonth,
+                            greetingKey: homeGreetingKey(_now),
+                            onMonthTap: loading
+                                ? null
+                                : () => _selectMonth(data),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  if (useCupertinoRefresh)
+                    CupertinoSliverRefreshControl(
+                      key: const ValueKey('home-cupertino-refresh-control'),
+                      onRefresh: _refresh,
+                    ),
+                  SliverLayoutBuilder(
+                    builder: (context, constraints) {
+                      final contentMaxWidth = ButlerlyLayout.contentMaxWidth(
+                        MediaQuery.sizeOf(context),
+                      );
+                      final surfaceMaxWidth =
+                          contentMaxWidth + ButlerlySize.phoneGutter * 2;
+                      final extraWidth =
+                          constraints.crossAxisExtent - surfaceMaxWidth;
+                      final horizontalInset = extraWidth > 0
+                          ? extraWidth / 2
+                          : 0.0;
+                      return SliverPadding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: horizontalInset,
+                        ),
+                        sliver: SliverToBoxAdapter(
+                          child: ColoredBox(
+                            key: const ValueKey('home-page-content-surface'),
+                            color: context.colors.background,
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                ButlerlySize.phoneGutter,
+                                ButlerlySpacing.small,
+                                ButlerlySize.phoneGutter,
+                                ButlerlySpacing.large,
+                              ),
+                              child: SizedBox(
+                                key: const ValueKey('home-page-content'),
+                                width: double.infinity,
+                                child: FutureBuilder<_HomeData>(
+                                  future: future,
+                                  builder: (context, snapshot) {
+                                    final data =
+                                        snapshot.data ??
+                                        _HomeData.empty(
+                                          _now,
+                                          selectedMonth: _selectedMonth,
+                                        );
+                                    final loading =
+                                        snapshot.connectionState !=
+                                        ConnectionState.done;
+                                    return _homeContent(
+                                      context,
+                                      data,
+                                      loading,
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          );
+
+          if (useCupertinoRefresh) return content;
+
+          return RefreshIndicator(
+            key: const ValueKey('home-refresh-indicator'),
+            onRefresh: _refresh,
+            triggerMode: RefreshIndicatorTriggerMode.anywhere,
+            child: content,
+          );'''
+
+          text = text[:build_start] + replacement + text[build_end:]
+          home.write_text(text)
+
+          responsive = Path('apps/butlerly/test/app/responsive_shell_test.dart')
+          rtext = responsive.read_text()
+          old = '''      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('home-page-content-surface')))
+            .width,
+        ButlerlySize.pageContentMaxWidth,
+      );'''
+          new = '''      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('home-page-content-surface')))
+            .width,
+        ButlerlySize.pageContentMaxWidth + ButlerlySize.phoneGutter * 2,
+      );'''
+          if old not in rtext:
+            raise SystemExit('responsive surface expectation not found')
+          responsive.write_text(rtext.replace(old, new, 1))
+
+          refresh_test = Path(
+              'apps/butlerly/test/features/home/home_pull_to_refresh_test.dart'
+          )
+          ttext = refresh_test.read_text()
+          needle = '''      expect(refreshControl.onRefresh, isNotNull);
+      expect(find.byKey(const ValueKey('home-refresh-indicator')), findsNothing);
+
+      expect(scrollView.physics, isA<BouncingScrollPhysics>());'''
+          insert = '''      expect(refreshControl.onRefresh, isNotNull);
+      expect(find.byKey(const ValueKey('home-refresh-indicator')), findsNothing);
+
+      final headerIndex = scrollView.slivers.indexWhere(
+        (sliver) => sliver is SliverPersistentHeader,
+      );
+      final refreshIndex = scrollView.slivers.indexWhere(
+        (sliver) => sliver is CupertinoSliverRefreshControl,
+      );
+      expect(headerIndex, greaterThanOrEqualTo(0));
+      expect(refreshIndex, greaterThan(headerIndex));
+
+      final headerBefore = tester.getRect(
+        find.byKey(const ValueKey('home-header-surface')),
+      );
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, 120));
+      await tester.pump();
+      final headerDuringPull = tester.getRect(
+        find.byKey(const ValueKey('home-header-surface')),
+      );
+      expect(headerDuringPull.top, closeTo(headerBefore.top, 0.01));
+
+      expect(scrollView.physics, isA<BouncingScrollPhysics>());'''
+          if needle not in ttext:
+            raise SystemExit('refresh-test insertion point not found')
+          refresh_test.write_text(ttext.replace(needle, insert, 1))
+          PY
+
+          dart format \
+            apps/butlerly/lib/features/foundation/presentation/home_page.dart \
+            apps/butlerly/test/app/responsive_shell_test.dart \
+            apps/butlerly/test/features/home/home_pull_to_refresh_test.dart
       - run: ./tool/setup.sh
       - run: ./tool/validate.sh flutter_application
       - name: Commit formatted validated Home fix
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add apps/butlerly/lib/features/foundation/presentation/home_page.dart
+          git add \
+            apps/butlerly/lib/features/foundation/presentation/home_page.dart \
+            apps/butlerly/test/app/responsive_shell_test.dart \
+            apps/butlerly/test/features/home/home_pull_to_refresh_test.dart
           git rm .github/workflows/validate-home-refresh-layout.yml
-          git commit -m "Validate Home refresh and layout fixes"
+          git commit -m "Fix Home refresh behavior and body layout"
           git push origin HEAD:fix/home-refresh-layout
