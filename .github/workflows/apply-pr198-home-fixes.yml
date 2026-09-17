@@ -19,147 +19,44 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           path = Path('apps/butlerly/lib/features/foundation/presentation/home_page.dart')
           text = path.read_text()
 
-          old_refresh = '''  Future<void> _refresh() async {
-            final refreshed = _load(forceAnalysisRefresh: true);
-            setState(() {
-              _data = refreshed;
-            });
-            await refreshed;
-          }
-          '''
-          new_refresh = '''  Future<void> _refresh() async {
+          refresh_pattern = re.compile(
+              r"  Future<void> _refresh\(\) async \{.*?^  \}\n\n  Future<void> _selectMonth",
+              re.MULTILINE | re.DOTALL,
+          )
+          refresh_replacement = '''  Future<void> _refresh() async {
             final refreshed = await _load(forceAnalysisRefresh: true);
             if (!mounted) return;
             setState(() {
               _data = Future.value(refreshed);
             });
           }
-          '''
-          if old_refresh not in text:
-            raise SystemExit('refresh block not found')
-          text = text.replace(old_refresh, new_refresh, 1)
 
-          old_layout = '''    final content = ColoredBox(
-            key: const ValueKey('home-page-canvas'),
-            color: canvasColor,
-            child: LayoutBuilder(
-              builder: (context, constraints) => CustomScrollView(
-                physics: useCupertinoRefresh
-                    ? const BouncingScrollPhysics(
-                        parent: AlwaysScrollableScrollPhysics(),
-                      )
-                    : const AlwaysScrollableScrollPhysics(),
-                slivers: [
-                  if (useCupertinoRefresh)
-                    CupertinoSliverRefreshControl(
-                      key: const ValueKey('home-cupertino-refresh-control'),
-                      onRefresh: _refresh,
-                    ),
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _HomePinnedHeaderDelegate(
-                      extent: _homeHeaderExtent(
-                        context,
-                        crossAxisExtent: constraints.maxWidth,
-                      ),
-                      child: FutureBuilder<_HomeData>(
-                        future: future,
-                        builder: (context, snapshot) {
-                          final data =
-                              snapshot.data ??
-                              _HomeData.empty(_now, selectedMonth: _selectedMonth);
-                          final loading =
-                              snapshot.connectionState != ConnectionState.done;
-                          return _HomeHeader(
-                            deviceClass: deviceClass,
-                            month: data.displayMonth,
-                            greetingKey: homeGreetingKey(_now),
-                            onMonthTap: loading ? null : () => _selectMonth(data),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(
-                      ButlerlySize.phoneGutter,
-                      ButlerlySpacing.large,
-                      ButlerlySize.phoneGutter,
-                      ButlerlySpacing.large,
-                    ),
-                    sliver: SliverLayoutBuilder(
-                      builder: (context, constraints) {
-                        final contentMaxWidth = ButlerlyLayout.contentMaxWidth(
-                          MediaQuery.sizeOf(context),
-                        );
-                        final extraWidth =
-                            constraints.crossAxisExtent - contentMaxWidth;
-                        final horizontalInset = extraWidth > 0 ? extraWidth / 2 : 0.0;
-                        return SliverPadding(
-                          padding: EdgeInsets.symmetric(horizontal: horizontalInset),
-                          sliver: SliverToBoxAdapter(
-                            child: ColoredBox(
-                              key: const ValueKey('home-page-content-surface'),
-                              color: context.colors.background,
-                              child: SizedBox(
-                                key: const ValueKey('home-page-content'),
-                                width: double.infinity,
-                                child: FutureBuilder<_HomeData>(
-                                  future: future,
-                                  builder: (context, snapshot) {
-                                    final data =
-                                        snapshot.data ??
-                                        _HomeData.empty(
-                                          _now,
-                                          selectedMonth: _selectedMonth,
-                                        );
-                                    final loading =
-                                        snapshot.connectionState !=
-                                        ConnectionState.done;
-                                    return _homeContent(context, data, loading);
-                                  },
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
+          Future<void> _selectMonth'''
+          text, count = refresh_pattern.subn(refresh_replacement, text, count=1)
+          if count != 1:
+            raise SystemExit(f'refresh replacement count: {count}')
 
-          if (useCupertinoRefresh) return content;
-
-          return RefreshIndicator(
-            key: const ValueKey('home-refresh-indicator'),
-            onRefresh: _refresh,
-            triggerMode: RefreshIndicatorTriggerMode.anywhere,
-            child: content,
-          );
-          '''
-
+          build_start = text.index('    final content = ColoredBox(', text.index('  Widget build(BuildContext context) {'))
+          build_end_marker = '\n  }\n}\n\nString homeGreetingKey'
+          build_end = text.index(build_end_marker, build_start)
           new_layout = '''    return ColoredBox(
             key: const ValueKey('home-page-canvas'),
             color: canvasColor,
             child: LayoutBuilder(
               builder: (context, constraints) {
+                final headerExtent = _homeHeaderExtent(
+                  context,
+                  crossAxisExtent: constraints.maxWidth,
+                );
                 final header = SizedBox(
-                  height: _homeHeaderExtent(
-                    context,
-                    crossAxisExtent: constraints.maxWidth,
-                  ),
+                  height: headerExtent,
                   child: _HomePinnedHeaderDelegate(
-                    extent: _homeHeaderExtent(
-                      context,
-                      crossAxisExtent: constraints.maxWidth,
-                    ),
+                    extent: headerExtent,
                     child: FutureBuilder<_HomeData>(
                       future: future,
                       builder: (context, snapshot) {
@@ -257,12 +154,8 @@ jobs:
                 );
               },
             ),
-          );
-          '''
-
-          if old_layout not in text:
-            raise SystemExit('layout block not found')
-          text = text.replace(old_layout, new_layout, 1)
+          );'''
+          text = text[:build_start] + new_layout + text[build_end:]
           path.write_text(text)
           PY
 
