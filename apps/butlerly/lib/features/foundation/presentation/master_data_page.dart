@@ -1,6 +1,8 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/design_system/components/butlerly_compact_section_selector.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/master_data_labels.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -15,10 +17,9 @@ class MasterDataPage extends StatefulWidget {
   State<MasterDataPage> createState() => _MasterDataPageState();
 }
 
-class _MasterDataPageState extends State<MasterDataPage>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabs = TabController(length: 3, vsync: this);
+class _MasterDataPageState extends State<MasterDataPage> {
   late Future<_MasterData> _data;
+  int _sectionIndex = 0;
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
@@ -30,22 +31,23 @@ class _MasterDataPageState extends State<MasterDataPage>
     _data = _load();
   }
 
-  @override
-  void dispose() {
-    _tabs.dispose();
-    super.dispose();
-  }
-
   Future<_MasterData> _load() async {
     final finance = _finance;
     if (finance == null) return const _MasterData([], [], []);
-    final categories = await finance.listCategories();
-    final tags = await finance.listTags();
+    final results = await Future.wait([
+      finance.listCategories(),
+      finance.listTags(),
+      finance.listMerchants(),
+    ]);
+    final categories = results[0];
+    final tags = results[1];
+    final merchants = results[2];
     if (categories is! ApplicationSuccess<List<Category>> ||
-        tags is! ApplicationSuccess<List<Tag>>) {
+        tags is! ApplicationSuccess<List<Tag>> ||
+        merchants is! ApplicationSuccess<List<Merchant>>) {
       throw StateError('Master data could not be loaded.');
     }
-    return _MasterData(categories.value, tags.value, []);
+    return _MasterData(categories.value, tags.value, merchants.value);
   }
 
   void _refresh() {
@@ -65,14 +67,26 @@ class _MasterDataPageState extends State<MasterDataPage>
   Future<void> _editExisting(Object value) async {
     final finance = _finance;
     if (finance == null) return;
-    final currentName = value is Category ? value.name : (value as Tag).name;
-    final name = await _editDialog(
+    final currentName = switch (value) {
+      Category category => category.name,
+      Tag tag => tag.name,
+      Merchant merchant => merchant.name,
+      _ => throw ArgumentError.value(value, 'value'),
+    };
+    final labelKey = switch (value) {
+      Category() => 'categoryName',
+      Tag() => 'tagName',
+      Merchant() => 'merchantName',
+      _ => throw ArgumentError.value(value, 'value'),
+    };
+    final name = await _editSheet(
       context,
       title: context.l10n.text('edit'),
-      labelKey: value is Category ? 'categoryName' : 'tagName',
+      labelKey: labelKey,
       initial: currentName,
     );
     if (name == null || !mounted) return;
+
     if (value is Category) {
       final parent = value.parentId == null ? null : await _chooseParent();
       if (!mounted || (value.parentId != null && parent == null)) return;
@@ -86,10 +100,22 @@ class _MasterDataPageState extends State<MasterDataPage>
         ),
       );
       if (!_accepted(saved)) return;
-    } else {
-      final tag = value as Tag;
+    } else if (value is Tag) {
       final saved = await finance.saveTag(
-        Tag(id: tag.id, name: name, status: tag.status),
+        Tag(id: value.id, name: name, status: value.status),
+      );
+      if (!_accepted(saved)) return;
+    } else if (value is Merchant) {
+      final saved = await finance.saveMerchant(
+        Merchant(
+          id: value.id,
+          name: name,
+          status: value.status,
+          rawName: value.rawName,
+          defaultCategoryId: value.defaultCategoryId,
+          defaultSubcategoryId: value.defaultSubcategoryId,
+          isBuiltIn: value.isBuiltIn,
+        ),
       );
       if (!_accepted(saved)) return;
     }
@@ -97,30 +123,46 @@ class _MasterDataPageState extends State<MasterDataPage>
   }
 
   Future<void> _add() async {
-    final index = _tabs.index;
-    final result = await _editDialog(
+    final index = _sectionIndex;
+    final titleKey = switch (index) {
+      0 => 'addCategory',
+      1 => 'addSubcategory',
+      2 => 'addTagManagement',
+      3 => 'addMerchant',
+      _ => 'add',
+    };
+    final labelKey = switch (index) {
+      0 => 'categoryName',
+      1 => 'subcategoryName',
+      2 => 'tagName',
+      3 => 'merchantName',
+      _ => 'name',
+    };
+    final result = await _editSheet(
       context,
-      title: context.l10n.text(
-        index == 0
-            ? 'addCategory'
-            : index == 1
-            ? 'addSubcategory'
-            : 'addTagManagement',
-      ),
-      labelKey: index == 0
-          ? 'categoryName'
-          : index == 1
-          ? 'subcategoryName'
-          : 'tagName',
+      title: context.l10n.text(titleKey),
+      labelKey: labelKey,
     );
     if (result == null || !mounted) return;
     final finance = _finance;
     if (finance == null) return;
+
     if (index == 2) {
       final saved = await finance.saveTag(
         Tag(
           id: TagId('user.tag.${DateTime.now().microsecondsSinceEpoch}'),
           name: result,
+        ),
+      );
+      if (!_accepted(saved)) return;
+    } else if (index == 3) {
+      final saved = await finance.saveMerchant(
+        Merchant(
+          id: MerchantId(
+            'user.merchant.${DateTime.now().microsecondsSinceEpoch}',
+          ),
+          name: result,
+          rawName: result,
         ),
       );
       if (!_accepted(saved)) return;
@@ -151,36 +193,42 @@ class _MasterDataPageState extends State<MasterDataPage>
               value.parentId == null && value.status == CategoryStatus.active,
         )
         .toList();
-    return showDialog<CategoryId>(
+    return showButlerlyBottomSheet<CategoryId>(
       context: context,
-      builder: (context) => SimpleDialog(
+      builder: (context) => ButlerlySheet(
+        key: const ValueKey('master-data-parent-sheet'),
         title: Text(context.l10n.text('parentCategory')),
-        children: [
-          for (final category in roots)
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(context, category.id),
-              child: Text(
-                categoryDisplayLabel(
-                  category,
-                  Localizations.localeOf(context).languageCode,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final category in roots)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                onTap: () => Navigator.pop(context, category.id),
+                title: Text(
+                  categoryDisplayLabel(
+                    category,
+                    Localizations.localeOf(context).languageCode,
+                  ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Future<String?> _editDialog(
+  Future<String?> _editSheet(
     BuildContext context, {
     required String title,
     required String labelKey,
     String? initial,
   }) async {
     final controller = TextEditingController(text: initial);
-    final result = await showDialog<String>(
+    final result = await showButlerlyBottomSheet<String>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => ButlerlySheet(
+        key: const ValueKey('master-data-edit-sheet'),
         title: Text(title),
         content: TextField(
           controller: controller,
@@ -200,20 +248,22 @@ class _MasterDataPageState extends State<MasterDataPage>
         ],
       ),
     );
-    controller.dispose();
+    WidgetsBinding.instance.addPostFrameCallback((_) => controller.dispose());
     return result?.trim().isEmpty == true ? null : result?.trim();
   }
 
   @override
   Widget build(BuildContext context) => ButlerlyPage(
     title: context.l10n.text('masterData'),
-    pinnedHeader: TabBar(
-      controller: _tabs,
-      tabs: [
-        Tab(text: context.l10n.text('categories')),
-        Tab(text: context.l10n.text('subcategories')),
-        Tab(text: context.l10n.text('tags')),
+    pinnedHeader: ButlerlyCompactSectionSelector(
+      labels: [
+        context.l10n.text('categories'),
+        context.l10n.text('subcategories'),
+        context.l10n.text('tags'),
+        context.l10n.text('merchants'),
       ],
+      selectedIndex: _sectionIndex,
+      onSelected: (index) => setState(() => _sectionIndex = index),
     ),
     children: [
       const SizedBox(height: 0),
@@ -244,16 +294,13 @@ class _MasterDataPageState extends State<MasterDataPage>
                   label: Text(context.l10n.text('add')),
                 ),
               ),
-              const SizedBox(height: 12),
-              AnimatedBuilder(
-                animation: _tabs,
-                builder: (context, _) => _MasterDataList(
-                  index: _tabs.index,
-                  data: data,
-                  onChanged: _refresh,
-                  finance: _finance,
-                  onEdit: _editExisting,
-                ),
+              const SizedBox(height: ButlerlySpacing.small),
+              _MasterDataList(
+                index: _sectionIndex,
+                data: data,
+                onChanged: _refresh,
+                finance: _finance,
+                onEdit: _editExisting,
               ),
             ],
           );
@@ -265,10 +312,11 @@ class _MasterDataPageState extends State<MasterDataPage>
 }
 
 final class _MasterData {
-  const _MasterData(this.categories, this.tags, this.unused);
+  const _MasterData(this.categories, this.tags, this.merchants);
+
   final List<Category> categories;
   final List<Tag> tags;
-  final List<Object> unused;
+  final List<Merchant> merchants;
 }
 
 class _MasterDataList extends StatelessWidget {
@@ -279,11 +327,19 @@ class _MasterDataList extends StatelessWidget {
     required this.finance,
     required this.onEdit,
   });
+
   final int index;
   final _MasterData data;
   final VoidCallback onChanged;
   final FinanceServices? finance;
   final Future<void> Function(Object value) onEdit;
+
+  void _showFailure(BuildContext context) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(context.l10n.text('dataPreserved'))));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -298,9 +354,7 @@ class _MasterDataList extends StatelessWidget {
                   ? context.l10n.text('builtin')
                   : context.l10n.text('user'),
               active: tag.status == TagStatus.active,
-              onEdit: tag.id.value.startsWith('tag.')
-                  ? null
-                  : () => onEdit(tag),
+              onEdit: tag.id.value.startsWith('tag.') ? null : () => onEdit(tag),
               onToggle: finance == null
                   ? null
                   : () async {
@@ -311,18 +365,53 @@ class _MasterDataList extends StatelessWidget {
                       );
                       if (saved is ApplicationSuccess<Tag>) {
                         onChanged();
-                      } else if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(context.l10n.text('dataPreserved')),
-                          ),
-                        );
+                      } else {
+                        _showFailure(context);
                       }
                     },
             ),
         ],
       );
     }
+
+    if (index == 3) {
+      return _ListCard(
+        children: [
+          for (final merchant in data.merchants)
+            _Row(
+              title: merchant.name,
+              origin: merchant.isBuiltIn
+                  ? context.l10n.text('builtin')
+                  : context.l10n.text('user'),
+              active: merchant.status == MerchantStatus.active,
+              onEdit: merchant.isBuiltIn ? null : () => onEdit(merchant),
+              onToggle: finance == null
+                  ? null
+                  : () async {
+                      final saved = await finance!.saveMerchant(
+                        merchant.status == MerchantStatus.active
+                            ? merchant.archive()
+                            : Merchant(
+                                id: merchant.id,
+                                name: merchant.name,
+                                rawName: merchant.rawName,
+                                defaultCategoryId: merchant.defaultCategoryId,
+                                defaultSubcategoryId:
+                                    merchant.defaultSubcategoryId,
+                                isBuiltIn: merchant.isBuiltIn,
+                              ),
+                      );
+                      if (saved is ApplicationSuccess<Merchant>) {
+                        onChanged();
+                      } else {
+                        _showFailure(context);
+                      }
+                    },
+            ),
+        ],
+      );
+    }
+
     final values = data.categories.where(
       (category) =>
           index == 0 ? category.parentId == null : category.parentId != null,
@@ -335,7 +424,9 @@ class _MasterDataList extends StatelessWidget {
             subtitle: index == 1
                 ? data.categories
                       .where((parent) => parent.id == category.parentId)
-                      .map((parent) => categoryDisplayLabel(parent, language))
+                      .map(
+                        (parent) => categoryDisplayLabel(parent, language),
+                      )
                       .firstOrNull
                 : '${data.categories.where((child) => child.parentId == category.id).length} ${context.l10n.text('subcategories').toLowerCase()}',
             origin: category.origin == CategoryOrigin.system
@@ -360,12 +451,8 @@ class _MasterDataList extends StatelessWidget {
                     );
                     if (saved is ApplicationSuccess<Category>) {
                       onChanged();
-                    } else if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(context.l10n.text('dataPreserved')),
-                        ),
-                      );
+                    } else {
+                      _showFailure(context);
                     }
                   },
           ),
@@ -376,7 +463,9 @@ class _MasterDataList extends StatelessWidget {
 
 class _ListCard extends StatelessWidget {
   const _ListCard({required this.children});
+
   final List<Widget> children;
+
   @override
   Widget build(BuildContext context) => children.isEmpty
       ? ButlerlyEmptyState(
@@ -399,12 +488,14 @@ class _Row extends StatelessWidget {
     this.onEdit,
     this.subtitle,
   });
+
   final String title;
   final String? subtitle;
   final String origin;
   final bool active;
   final VoidCallback? onToggle;
   final VoidCallback? onEdit;
+
   @override
   Widget build(BuildContext context) => ListTile(
     title: Text(title),
