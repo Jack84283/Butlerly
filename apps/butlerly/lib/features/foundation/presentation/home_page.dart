@@ -17,7 +17,7 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/cupertino.dart' show CupertinoSliverRefreshControl;
 import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform, kIsWeb;
+    show SynchronousFuture, TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -33,9 +33,9 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late Future<_HomeData> _data;
-  int _loadGeneration = 0;
   String? _loadedLanguageCode;
   DateTime? _selectedMonth;
+  int _loadGeneration = 0;
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
@@ -253,7 +253,7 @@ class _HomePageState extends State<HomePage> {
     final refreshed = await _load(forceAnalysisRefresh: true);
     if (!mounted || generation != _loadGeneration) return;
     setState(() {
-      _data = Future.value(refreshed);
+      _data = SynchronousFuture<_HomeData>(refreshed);
     });
   }
 
@@ -266,11 +266,11 @@ class _HomePageState extends State<HomePage> {
       ),
     );
     if (!mounted || selected == null) return;
-    _loadGeneration++;
     setState(() {
       _selectedMonth = _sameMonth(selected, data.currentFinancialMonth)
           ? null
           : _monthStart(selected);
+      _loadGeneration++;
       _data = _load();
     });
   }
@@ -425,6 +425,7 @@ class _HomePageState extends State<HomePage> {
                       key: const ValueKey('home-page-content-surface'),
                       color: context.colors.background,
                       child: Padding(
+                        key: const ValueKey('home-page-content-padding'),
                         padding: const EdgeInsets.fromLTRB(
                           ButlerlySize.phoneGutter,
                           ButlerlySpacing.small,
@@ -435,6 +436,7 @@ class _HomePageState extends State<HomePage> {
                           key: const ValueKey('home-page-content'),
                           width: double.infinity,
                           child: FutureBuilder<_HomeData>(
+                            key: const ValueKey('home-body-data'),
                             future: future,
                             builder: (context, snapshot) {
                               final data =
