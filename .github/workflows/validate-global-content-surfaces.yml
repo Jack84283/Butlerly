@@ -20,6 +20,7 @@ jobs:
       - name: Apply app-wide content surface policy
         run: |
           python3 .github/scripts/apply_global_content_surface.py
+          python3 .github/scripts/fix_global_surface_tests.py
           dart format \
             apps/butlerly/lib/design_system/components/butlerly_components.dart \
             apps/butlerly/lib/design_system/components/butlerly_responsive_body.dart \
@@ -37,5 +38,6 @@ jobs:
           git add apps/butlerly/lib apps/butlerly/test/design_system/content_surface_policy_test.dart apps/butlerly/test/design_system/butlerly_components_test.dart
           git rm .github/workflows/validate-global-content-surfaces.yml
           git rm .github/scripts/apply_global_content_surface.py
+          git rm .github/scripts/fix_global_surface_tests.py
           git commit -m "Apply content surface policy across pages"
           git push origin HEAD:fix/home-refresh-layout
