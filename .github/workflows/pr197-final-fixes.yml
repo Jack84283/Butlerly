@@ -68,7 +68,7 @@ jobs:
           )
           PY
 
-          # Restore the already-proven #196 iOS refresh regression test exactly.
+          # Keep the already-merged #196 refresh implementation and test unchanged.
           git checkout origin/main -- apps/butlerly/test/features/home/home_pull_to_refresh_test.dart
 
           cd apps/butlerly
@@ -80,12 +80,17 @@ jobs:
             apps/butlerly/test/features/home/home_pull_to_refresh_test.dart \
             apps/butlerly/test/app/ui_redesign_foundation_fixes_test.dart
 
-      - name: Run focused Flutter regression tests
+      - name: Run iOS refresh regression alone
+        shell: bash
+        run: |
+          cd apps/butlerly
+          flutter test test/features/home/home_pull_to_refresh_test.dart
+
+      - name: Run focused layout regressions
         shell: bash
         run: |
           cd apps/butlerly
           flutter test \
-            test/features/home/home_pull_to_refresh_test.dart \
             test/features/home/home_header_device_identity_test.dart \
             test/app/ui_redesign_foundation_fixes_test.dart \
             test/app/responsive_shell_test.dart
