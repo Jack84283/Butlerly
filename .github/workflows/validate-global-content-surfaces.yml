@@ -1,0 +1,309 @@
+name: Validate global content surface policy
+
+on:
+  push:
+    branches:
+      - fix/home-refresh-layout
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/home-refresh-layout
+      - uses: ./.github/actions/setup-toolchain
+      - run: ./tool/setup.sh
+      - name: Apply app-wide content surface policy
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          components = Path('apps/butlerly/lib/design_system/components/butlerly_components.dart')
+          text = components.read_text()
+          class_start = text.index('class ButlerlyPage extends StatelessWidget')
+          build_start = text.index('  @override\n  Widget build(BuildContext context) {', class_start)
+          build_end = text.index('\n}\n\nclass _ButlerlyPinnedHeaderDelegate', build_start)
+          replacement = '''  @override
+  Widget build(BuildContext context) {
+    final contentMaxWidth = ButlerlyLayout.contentMaxWidth(
+      MediaQuery.sizeOf(context),
+    );
+    final contentPadding =
+        padding ??
+        const EdgeInsets.fromLTRB(
+          ButlerlySize.phoneGutter,
+          ButlerlySpacing.standard,
+          ButlerlySize.phoneGutter,
+          ButlerlySpacing.large,
+        );
+    final surfaceMaxWidth = contentMaxWidth + contentPadding.horizontal;
+
+    return ColoredBox(
+      key: const ValueKey('butlerly-page-canvas'),
+      color: context.colors.subtleSurface,
+      child: CustomScrollView(
+        controller: controller,
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          if (title != null)
+            SliverAppBar(
+              pinned: true,
+              title: Text(title!),
+              actions: actions,
+              backgroundColor: context.colors.background.withValues(
+                alpha: 0.96,
+              ),
+            ),
+          if (pinnedHeader != null)
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _ButlerlyPinnedHeaderDelegate(child: pinnedHeader!),
+            ),
+          SliverLayoutBuilder(
+            builder: (context, constraints) {
+              final extraWidth = constraints.crossAxisExtent - surfaceMaxWidth;
+              final horizontalInset = extraWidth > 0 ? extraWidth / 2 : 0.0;
+              return SliverPadding(
+                padding: EdgeInsets.symmetric(horizontal: horizontalInset),
+                sliver: DecoratedSliver(
+                  key: const ValueKey('butlerly-page-content-surface'),
+                  decoration: BoxDecoration(color: context.colors.background),
+                  sliver: SliverPadding(
+                    padding: contentPadding,
+                    sliver: SliverList.list(
+                      key: const ValueKey('butlerly-page-content-sliver'),
+                      children: [
+                        if (subtitle != null) ...[
+                          Text(
+                            subtitle!,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: ButlerlySpacing.section),
+                        ],
+                        ...children,
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }'''
+          text = text[:build_start] + replacement + text[build_end:]
+          components.write_text(text)
+
+          responsive = Path('apps/butlerly/lib/design_system/components/butlerly_responsive_body.dart')
+          responsive.write_text('''import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:flutter/material.dart';
+
+/// Centers page body content inside Butlerly's readable-width policy while
+/// leaving surrounding screen chrome, such as an AppBar or bottom navigation,
+/// free to span the full viewport.
+///
+/// The readable body is the content surface. Any horizontal area outside that
+/// surface uses the shared out-of-content canvas color.
+class ButlerlyResponsiveBody extends StatelessWidget {
+  const ButlerlyResponsiveBody({
+    required this.child,
+    this.contentKey,
+    super.key,
+  });
+
+  final Widget child;
+  final Key? contentKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxWidth = ButlerlyLayout.contentMaxWidth(MediaQuery.sizeOf(context));
+    return ColoredBox(
+      key: const ValueKey('butlerly-responsive-body-canvas'),
+      color: context.colors.subtleSurface,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: ColoredBox(
+            key: const ValueKey('butlerly-responsive-body-content-surface'),
+            color: context.colors.background,
+            child: SizedBox(
+              key: contentKey,
+              width: double.infinity,
+              height: double.infinity,
+              child: child,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+''')
+
+          for path in [
+              Path('apps/butlerly/lib/app/shell/iphone/iphone_primary_shell.dart'),
+              Path('apps/butlerly/lib/app/shell/ipad/ipad_primary_shell.dart'),
+          ]:
+              shell = path.read_text()
+              old = "color: context.colors.background,\n        child: body,"
+              new = "color: context.colors.subtleSurface,\n        child: body,"
+              if old not in shell:
+                  raise SystemExit(f'primary shell surface not found in {path}')
+              path.write_text(shell.replace(old, new, 1))
+
+          desktop = Path('apps/butlerly/lib/app/shell/desktop/desktop_primary_shell.dart')
+          dtext = desktop.read_text()
+          old = "color: context.colors.background,\n            child: body,"
+          new = "color: context.colors.subtleSurface,\n            child: body,"
+          if old not in dtext:
+              raise SystemExit('desktop compact surface not found')
+          dtext = dtext.replace(old, new, 1)
+          old = '            Expanded(child: body),'
+          new = '''            Expanded(
+              child: ColoredBox(
+                key: const ValueKey('primary-desktop-body-surface'),
+                color: context.colors.subtleSurface,
+                child: body,
+              ),
+            ),'''
+          if old not in dtext:
+              raise SystemExit('desktop expanded body not found')
+          desktop.write_text(dtext.replace(old, new, 1))
+          PY
+
+          cat > apps/butlerly/test/design_system/content_surface_policy_test.dart <<'DART'
+          import 'package:butlerly/app/theme/app_theme.dart';
+          import 'package:butlerly/design_system/components/butlerly_components.dart';
+          import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
+          import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+          import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+          import 'package:flutter/material.dart';
+          import 'package:flutter_test/flutter_test.dart';
+
+          void main() {
+            testWidgets('ButlerlyPage keeps page padding inside the content surface', (
+              tester,
+            ) async {
+              tester.view.physicalSize = const Size(1200, 800);
+              tester.view.devicePixelRatio = 1;
+              addTearDown(tester.view.resetPhysicalSize);
+              addTearDown(tester.view.resetDevicePixelRatio);
+
+              await tester.pumpWidget(
+                MaterialApp(
+                  theme: AppTheme.light,
+                  home: const Scaffold(
+                    body: ButlerlyPage(
+                      children: [SizedBox(key: ValueKey('surface-policy-child'))],
+                    ),
+                  ),
+                ),
+              );
+              await tester.pumpAndSettle();
+
+              final canvas = tester.widget<ColoredBox>(
+                find.byKey(const ValueKey('butlerly-page-canvas')),
+              );
+              final surface = tester.widget<DecoratedSliver>(
+                find.byKey(const ValueKey('butlerly-page-content-surface')),
+              );
+              final colors = AppTheme.light.extension<ButlerlySemanticColors>()!;
+              expect(canvas.color, colors.subtleSurface);
+              expect((surface.decoration as BoxDecoration).color, colors.background);
+
+              final surfaceRect = tester.getRect(
+                find.byKey(const ValueKey('butlerly-page-content-surface')),
+              );
+              final childRect = tester.getRect(
+                find.byKey(const ValueKey('surface-policy-child')),
+              );
+              expect(
+                surfaceRect.width,
+                ButlerlySize.pageContentMaxWidth + ButlerlySize.phoneGutter * 2,
+              );
+              expect(
+                childRect.left - surfaceRect.left,
+                closeTo(ButlerlySize.phoneGutter, 0.01),
+              );
+              expect(
+                surfaceRect.right - childRect.right,
+                closeTo(ButlerlySize.phoneGutter, 0.01),
+              );
+              expect(
+                childRect.top - surfaceRect.top,
+                closeTo(ButlerlySpacing.standard, 0.01),
+              );
+            });
+
+            testWidgets('responsive body distinguishes content from outside canvas', (
+              tester,
+            ) async {
+              tester.view.physicalSize = const Size(1200, 800);
+              tester.view.devicePixelRatio = 1;
+              addTearDown(tester.view.resetPhysicalSize);
+              addTearDown(tester.view.resetDevicePixelRatio);
+
+              await tester.pumpWidget(
+                MaterialApp(
+                  theme: AppTheme.light,
+                  home: const Scaffold(
+                    body: ButlerlyResponsiveBody(child: SizedBox()),
+                  ),
+                ),
+              );
+              await tester.pumpAndSettle();
+
+              final canvas = tester.widget<ColoredBox>(
+                find.byKey(const ValueKey('butlerly-responsive-body-canvas')),
+              );
+              final surface = tester.widget<ColoredBox>(
+                find.byKey(
+                  const ValueKey('butlerly-responsive-body-content-surface'),
+                ),
+              );
+              final colors = AppTheme.light.extension<ButlerlySemanticColors>()!;
+              expect(canvas.color, colors.subtleSurface);
+              expect(surface.color, colors.background);
+              expect(
+                tester
+                    .getSize(
+                      find.byKey(
+                        const ValueKey('butlerly-responsive-body-content-surface'),
+                      ),
+                    )
+                    .width,
+                ButlerlySize.pageContentMaxWidth,
+              );
+            });
+          }
+          DART
+
+          dart format \
+            apps/butlerly/lib/design_system/components/butlerly_components.dart \
+            apps/butlerly/lib/design_system/components/butlerly_responsive_body.dart \
+            apps/butlerly/lib/app/shell/iphone/iphone_primary_shell.dart \
+            apps/butlerly/lib/app/shell/ipad/ipad_primary_shell.dart \
+            apps/butlerly/lib/app/shell/desktop/desktop_primary_shell.dart \
+            apps/butlerly/test/design_system/content_surface_policy_test.dart
+      - run: ./tool/validate.sh flutter_application
+      - name: Commit validated global surface policy
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            apps/butlerly/lib/design_system/components/butlerly_components.dart \
+            apps/butlerly/lib/design_system/components/butlerly_responsive_body.dart \
+            apps/butlerly/lib/app/shell/iphone/iphone_primary_shell.dart \
+            apps/butlerly/lib/app/shell/ipad/ipad_primary_shell.dart \
+            apps/butlerly/lib/app/shell/desktop/desktop_primary_shell.dart \
+            apps/butlerly/test/design_system/content_surface_policy_test.dart
+          git rm .github/workflows/validate-global-content-surfaces.yml
+          git commit -m "Apply content surface policy across pages"
+          git push origin HEAD:fix/home-refresh-layout
