@@ -20,205 +20,35 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
-
+          import base64
+          replacement = base64.b64decode('ICAgIGZpbmFsIGNvbnRlbnQgPSBDb2xvcmVkQm94KAogICAgICBrZXk6IGNvbnN0IFZhbHVlS2V5KCdob21lLXBhZ2UtY2FudmFzJyksCiAgICAgIGNvbG9yOiBjYW52YXNDb2xvciwKICAgICAgY2hpbGQ6IExheW91dEJ1aWxkZXIoCiAgICAgICAgYnVpbGRlcjogKGNvbnRleHQsIGNvbnN0cmFpbnRzKSA9PiBDdXN0b21TY3JvbGxWaWV3KAogICAgICAgICAgcGh5c2ljczogdXNlQ3VwZXJ0aW5vUmVmcmVzaAogICAgICAgICAgICAgID8gY29uc3QgQm91bmNpbmdTY3JvbGxQaHlzaWNzKAogICAgICAgICAgICAgICAgICBwYXJlbnQ6IEFsd2F5c1Njcm9sbGFibGVTY3JvbGxQaHlzaWNzKCksCiAgICAgICAgICAgICAgICApCiAgICAgICAgICAgICAgOiBjb25zdCBBbHdheXNTY3JvbGxhYmxlU2Nyb2xsUGh5c2ljcygpLAogICAgICAgICAgc2xpdmVyczogWwogICAgICAgICAgICBTbGl2ZXJQZXJzaXN0ZW50SGVhZGVyKAogICAgICAgICAgICAgIHBpbm5lZDogdHJ1ZSwKICAgICAgICAgICAgICBkZWxlZ2F0ZTogX0hvbWVQaW5uZWRIZWFkZXJEZWxlZ2F0ZSgKICAgICAgICAgICAgICAgIGV4dGVudDogX2hvbWVIZWFkZXJFeHRlbnQoCiAgICAgICAgICAgICAgICAgIGNvbnRleHQsCiAgICAgICAgICAgICAgICAgIGNyb3NzQXhpc0V4dGVudDogY29uc3RyYWludHMubWF4V2lkdGgsCiAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgY2hpbGQ6IEZ1dHVyZUJ1aWxkZXI8X0hvbWVEYXRhPigKICAgICAgICAgICAgICAgICAgZnV0dXJlOiBmdXR1cmUsCiAgICAgICAgICAgICAgICAgIGJ1aWxkZXI6IChjb250ZXh0LCBzbmFwc2hvdCkgewogICAgICAgICAgICAgICAgICAgIGZpbmFsIGRhdGEgPQogICAgICAgICAgICAgICAgICAgICAgICBzbmFwc2hvdC5kYXRhID8/CiAgICAgICAgICAgICAgICAgICAgICAgIF9Ib21lRGF0YS5lbXB0eShfbm93LCBzZWxlY3RlZE1vbnRoOiBfc2VsZWN0ZWRNb250aCk7CiAgICAgICAgICAgICAgICAgICAgZmluYWwgbG9hZGluZyA9CiAgICAgICAgICAgICAgICAgICAgICAgIHNuYXBzaG90LmNvbm5lY3Rpb25TdGF0ZSAhPSBDb25uZWN0aW9uU3RhdGUuZG9uZTsKICAgICAgICAgICAgICAgICAgICByZXR1cm4gX0hvbWVIZWFkZXIoCiAgICAgICAgICAgICAgICAgICAgICBkZXZpY2VDbGFzczogZGV2aWNlQ2xhc3MsCiAgICAgICAgICAgICAgICAgICAgICBtb250aDogZGF0YS5kaXNwbGF5TW9udGgsCiAgICAgICAgICAgICAgICAgICAgICBncmVldGluZ0tleTogaG9tZUdyZWV0aW5nS2V5KF9ub3cpLAogICAgICAgICAgICAgICAgICAgICAgb25Nb250aFRhcDogbG9hZGluZyA/IG51bGwgOiAoKSA9PiBfc2VsZWN0TW9udGgoZGF0YSksCiAgICAgICAgICAgICAgICAgICAgKTsKICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICksCiAgICAgICAgICAgICAgKSwKICAgICAgICAgICAgKSwKICAgICAgICAgICAgaWYgKHVzZUN1cGVydGlub1JlZnJlc2gpCiAgICAgICAgICAgICAgQ3VwZXJ0aW5vU2xpdmVyUmVmcmVzaENvbnRyb2woCiAgICAgICAgICAgICAgICBrZXk6IGNvbnN0IFZhbHVlS2V5KCdob21lLWN1cGVydGluby1yZWZyZXNoLWNvbnRyb2wnKSwKICAgICAgICAgICAgICAgIG9uUmVmcmVzaDogX3JlZnJlc2gsCiAgICAgICAgICAgICAgKSwKICAgICAgICAgICAgU2xpdmVyTGF5b3V0QnVpbGRlcigKICAgICAgICAgICAgICBidWlsZGVyOiAoY29udGV4dCwgY29uc3RyYWludHMpIHsKICAgICAgICAgICAgICAgIGZpbmFsIGNvbnRlbnRNYXhXaWR0aCA9IEJ1dGxlcmx5TGF5b3V0LmNvbnRlbnRNYXhXaWR0aCgKICAgICAgICAgICAgICAgICAgTWVkaWFRdWVyeS5zaXplT2YoY29udGV4dCksCiAgICAgICAgICAgICAgICApOwogICAgICAgICAgICAgICAgZmluYWwgc3VyZmFjZU1heFdpZHRoID0KICAgICAgICAgICAgICAgICAgICBjb250ZW50TWF4V2lkdGggKyBCdXRsZXJseVNpemUucGhvbmVHdXR0ZXIgKiAyOwogICAgICAgICAgICAgICAgZmluYWwgZXh0cmFXaWR0aCA9CiAgICAgICAgICAgICAgICAgICAgY29uc3RyYWludHMuY3Jvc3NBeGlzRXh0ZW50IC0gc3VyZmFjZU1heFdpZHRoOwogICAgICAgICAgICAgICAgZmluYWwgaG9yaXpvbnRhbEluc2V0ID0gZXh0cmFXaWR0aCA+IDAgPyBleHRyYVdpZHRoIC8gMiA6IDAuMDsKICAgICAgICAgICAgICAgIHJldHVybiBTbGl2ZXJQYWRkaW5nKAogICAgICAgICAgICAgICAgICBwYWRkaW5nOiBFZGdlSW5zZXRzLnN5bW1ldHJpYyhob3Jpem9udGFsOiBob3Jpem9udGFsSW5zZXQpLAogICAgICAgICAgICAgICAgICBzbGl2ZXI6IFNsaXZlclRvQm94QWRhcHRlcigKICAgICAgICAgICAgICAgICAgICBjaGlsZDogQ29sb3JlZEJveCgKICAgICAgICAgICAgICAgICAgICAgIGtleTogY29uc3QgVmFsdWVLZXkoJ2hvbWUtcGFnZS1jb250ZW50LXN1cmZhY2UnKSwKICAgICAgICAgICAgICAgICAgICAgIGNvbG9yOiBjb250ZXh0LmNvbG9ycy5iYWNrZ3JvdW5kLAogICAgICAgICAgICAgICAgICAgICAgY2hpbGQ6IFBhZGRpbmcoCiAgICAgICAgICAgICAgICAgICAgICAgIHBhZGRpbmc6IGNvbnN0IEVkZ2VJbnNldHMuZnJvbUxUUkIoCiAgICAgICAgICAgICAgICAgICAgICAgICAgQnV0bGVybHlTaXplLnBob25lR3V0dGVyLAogICAgICAgICAgICAgICAgICAgICAgICAgIEJ1dGxlcmx5U3BhY2luZy5zbWFsbCwKICAgICAgICAgICAgICAgICAgICAgICAgICBCdXRsZXJseVNpemUucGhvbmVHdXR0ZXIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgQnV0bGVybHlTcGFjaW5nLmxhcmdlLAogICAgICAgICAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgICAgICAgICBjaGlsZDogU2l6ZWRCb3goCiAgICAgICAgICAgICAgICAgICAgICAgICAga2V5OiBjb25zdCBWYWx1ZUtleSgnaG9tZS1wYWdlLWNvbnRlbnQnKSwKICAgICAgICAgICAgICAgICAgICAgICAgICB3aWR0aDogZG91YmxlLmluZmluaXR5LAogICAgICAgICAgICAgICAgICAgICAgICAgIGNoaWxkOiBGdXR1cmVCdWlsZGVyPF9Ib21lRGF0YT4oCiAgICAgICAgICAgICAgICAgICAgICAgICAgICBmdXR1cmU6IGZ1dHVyZSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgIGJ1aWxkZXI6IChjb250ZXh0LCBzbmFwc2hvdCkgewogICAgICAgICAgICAgICAgICAgICAgICAgICAgICBmaW5hbCBkYXRhID0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHNuYXBzaG90LmRhdGEgPz8KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIF9Ib21lRGF0YS5lbXB0eSgKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgX25vdywKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgc2VsZWN0ZWRNb250aDogX3NlbGVjdGVkTW9udGgsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICApOwogICAgICAgICAgICAgICAgICAgICAgICAgICAgICBmaW5hbCBsb2FkaW5nID0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHNuYXBzaG90LmNvbm5lY3Rpb25TdGF0ZSAhPQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgQ29ubmVjdGlvblN0YXRlLmRvbmU7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHJldHVybiBfaG9tZUNvbnRlbnQoY29udGV4dCwgZGF0YSwgbG9hZGluZyk7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAgICksCiAgICAgICAgICAgICAgICAgICAgICAgICksCiAgICAgICAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgICAgICksCiAgICAgICAgICAgICAgICApOwogICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICksCiAgICAgICAgICBdLAogICAgICAgICksCiAgICAgICksCiAgICApOwoKICAgIGlmICh1c2VDdXBlcnRpbm9SZWZyZXNoKSByZXR1cm4gY29udGVudDsKCiAgICByZXR1cm4gUmVmcmVzaEluZGljYXRvcigKICAgICAga2V5OiBjb25zdCBWYWx1ZUtleSgnaG9tZS1yZWZyZXNoLWluZGljYXRvcicpLAogICAgICBvblJlZnJlc2g6IF9yZWZyZXNoLAogICAgICB0cmlnZ2VyTW9kZTogUmVmcmVzaEluZGljYXRvclRyaWdnZXJNb2RlLmFueXdoZXJlLAogICAgICBjaGlsZDogY29udGVudCwKICAgICk7').decode()
+          oldresp = base64.b64decode('ICAgICAgZXhwZWN0KAogICAgICAgIHRlc3RlcgogICAgICAgICAgICAuZ2V0U2l6ZShmaW5kLmJ5S2V5KGNvbnN0IFZhbHVlS2V5KCdob21lLXBhZ2UtY29udGVudC1zdXJmYWNlJykpKQogICAgICAgICAgICAud2lkdGgsCiAgICAgICAgQnV0bGVybHlTaXplLnBhZ2VDb250ZW50TWF4V2lkdGgsCiAgICAgICk7').decode()
+          newresp = base64.b64decode('ICAgICAgZXhwZWN0KAogICAgICAgIHRlc3RlcgogICAgICAgICAgICAuZ2V0U2l6ZShmaW5kLmJ5S2V5KGNvbnN0IFZhbHVlS2V5KCdob21lLXBhZ2UtY29udGVudC1zdXJmYWNlJykpKQogICAgICAgICAgICAud2lkdGgsCiAgICAgICAgQnV0bGVybHlTaXplLnBhZ2VDb250ZW50TWF4V2lkdGggKyBCdXRsZXJseVNpemUucGhvbmVHdXR0ZXIgKiAyLAogICAgICApOw==').decode()
+          needle = base64.b64decode('ICAgICAgZXhwZWN0KHJlZnJlc2hDb250cm9sLm9uUmVmcmVzaCwgaXNOb3ROdWxsKTsKICAgICAgZXhwZWN0KGZpbmQuYnlLZXkoY29uc3QgVmFsdWVLZXkoJ2hvbWUtcmVmcmVzaC1pbmRpY2F0b3InKSksIGZpbmRzTm90aGluZyk7CgogICAgICBleHBlY3Qoc2Nyb2xsVmlldy5waHlzaWNzLCBpc0E8Qm91bmNpbmdTY3JvbGxQaHlzaWNzPigpKTs=').decode()
+          insert = base64.b64decode('ICAgICAgZXhwZWN0KHJlZnJlc2hDb250cm9sLm9uUmVmcmVzaCwgaXNOb3ROdWxsKTsKICAgICAgZXhwZWN0KGZpbmQuYnlLZXkoY29uc3QgVmFsdWVLZXkoJ2hvbWUtcmVmcmVzaC1pbmRpY2F0b3InKSksIGZpbmRzTm90aGluZyk7CgogICAgICBmaW5hbCBoZWFkZXJJbmRleCA9IHNjcm9sbFZpZXcuc2xpdmVycy5pbmRleFdoZXJlKAogICAgICAgIChzbGl2ZXIpID0+IHNsaXZlciBpcyBTbGl2ZXJQZXJzaXN0ZW50SGVhZGVyLAogICAgICApOwogICAgICBmaW5hbCByZWZyZXNoSW5kZXggPSBzY3JvbGxWaWV3LnNsaXZlcnMuaW5kZXhXaGVyZSgKICAgICAgICAoc2xpdmVyKSA9PiBzbGl2ZXIgaXMgQ3VwZXJ0aW5vU2xpdmVyUmVmcmVzaENvbnRyb2wsCiAgICAgICk7CiAgICAgIGV4cGVjdChoZWFkZXJJbmRleCwgZ3JlYXRlclRoYW5PckVxdWFsVG8oMCkpOwogICAgICBleHBlY3QocmVmcmVzaEluZGV4LCBncmVhdGVyVGhhbihoZWFkZXJJbmRleCkpOwoKICAgICAgZmluYWwgaGVhZGVyQmVmb3JlID0gdGVzdGVyLmdldFJlY3QoCiAgICAgICAgZmluZC5ieUtleShjb25zdCBWYWx1ZUtleSgnaG9tZS1oZWFkZXItc3VyZmFjZScpKSwKICAgICAgKTsKICAgICAgYXdhaXQgdGVzdGVyLmRyYWcoZmluZC5ieVR5cGUoQ3VzdG9tU2Nyb2xsVmlldyksIGNvbnN0IE9mZnNldCgwLCAxMjApKTsKICAgICAgYXdhaXQgdGVzdGVyLnB1bXAoKTsKICAgICAgZmluYWwgaGVhZGVyRHVyaW5nUHVsbCA9IHRlc3Rlci5nZXRSZWN0KAogICAgICAgIGZpbmQuYnlLZXkoY29uc3QgVmFsdWVLZXkoJ2hvbWUtaGVhZGVyLXN1cmZhY2UnKSksCiAgICAgICk7CiAgICAgIGV4cGVjdChoZWFkZXJEdXJpbmdQdWxsLnRvcCwgY2xvc2VUbyhoZWFkZXJCZWZvcmUudG9wLCAwLjAxKSk7CgogICAgICBleHBlY3Qoc2Nyb2xsVmlldy5waHlzaWNzLCBpc0E8Qm91bmNpbmdTY3JvbGxQaHlzaWNzPigpKTs=').decode()
           home = Path('apps/butlerly/lib/features/foundation/presentation/home_page.dart')
           text = home.read_text()
-
-          build_start = text.index(
-              '    return ColoredBox(',
-              text.index('  Widget build(BuildContext context) {'),
-          )
-          build_end_marker = '\n  }\n}\n\nString homeGreetingKey'
-          build_end = text.index(build_end_marker, build_start)
-
-          replacement = '''    final content = ColoredBox(
-            key: const ValueKey('home-page-canvas'),
-            color: canvasColor,
-            child: LayoutBuilder(
-              builder: (context, constraints) => CustomScrollView(
-                physics: useCupertinoRefresh
-                    ? const BouncingScrollPhysics(
-                        parent: AlwaysScrollableScrollPhysics(),
-                      )
-                    : const AlwaysScrollableScrollPhysics(),
-                slivers: [
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _HomePinnedHeaderDelegate(
-                      extent: _homeHeaderExtent(
-                        context,
-                        crossAxisExtent: constraints.maxWidth,
-                      ),
-                      child: FutureBuilder<_HomeData>(
-                        future: future,
-                        builder: (context, snapshot) {
-                          final data =
-                              snapshot.data ??
-                              _HomeData.empty(
-                                _now,
-                                selectedMonth: _selectedMonth,
-                              );
-                          final loading =
-                              snapshot.connectionState != ConnectionState.done;
-                          return _HomeHeader(
-                            deviceClass: deviceClass,
-                            month: data.displayMonth,
-                            greetingKey: homeGreetingKey(_now),
-                            onMonthTap: loading
-                                ? null
-                                : () => _selectMonth(data),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  if (useCupertinoRefresh)
-                    CupertinoSliverRefreshControl(
-                      key: const ValueKey('home-cupertino-refresh-control'),
-                      onRefresh: _refresh,
-                    ),
-                  SliverLayoutBuilder(
-                    builder: (context, constraints) {
-                      final contentMaxWidth = ButlerlyLayout.contentMaxWidth(
-                        MediaQuery.sizeOf(context),
-                      );
-                      final surfaceMaxWidth =
-                          contentMaxWidth + ButlerlySize.phoneGutter * 2;
-                      final extraWidth =
-                          constraints.crossAxisExtent - surfaceMaxWidth;
-                      final horizontalInset = extraWidth > 0
-                          ? extraWidth / 2
-                          : 0.0;
-                      return SliverPadding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: horizontalInset,
-                        ),
-                        sliver: SliverToBoxAdapter(
-                          child: ColoredBox(
-                            key: const ValueKey('home-page-content-surface'),
-                            color: context.colors.background,
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                ButlerlySize.phoneGutter,
-                                ButlerlySpacing.small,
-                                ButlerlySize.phoneGutter,
-                                ButlerlySpacing.large,
-                              ),
-                              child: SizedBox(
-                                key: const ValueKey('home-page-content'),
-                                width: double.infinity,
-                                child: FutureBuilder<_HomeData>(
-                                  future: future,
-                                  builder: (context, snapshot) {
-                                    final data =
-                                        snapshot.data ??
-                                        _HomeData.empty(
-                                          _now,
-                                          selectedMonth: _selectedMonth,
-                                        );
-                                    final loading =
-                                        snapshot.connectionState !=
-                                        ConnectionState.done;
-                                    return _homeContent(
-                                      context,
-                                      data,
-                                      loading,
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          );
-
-          if (useCupertinoRefresh) return content;
-
-          return RefreshIndicator(
-            key: const ValueKey('home-refresh-indicator'),
-            onRefresh: _refresh,
-            triggerMode: RefreshIndicatorTriggerMode.anywhere,
-            child: content,
-          );'''
-
-          text = text[:build_start] + replacement + text[build_end:]
-          home.write_text(text)
-
+          start = text.index('    return ColoredBox(', text.index('  Widget build(BuildContext context) {'))
+          marker = '\n  }\n}\n\nString homeGreetingKey'
+          end = text.index(marker, start)
+          home.write_text(text[:start] + replacement + text[end:])
           responsive = Path('apps/butlerly/test/app/responsive_shell_test.dart')
           rtext = responsive.read_text()
-          old = '''      expect(
-        tester
-            .getSize(find.byKey(const ValueKey('home-page-content-surface')))
-            .width,
-        ButlerlySize.pageContentMaxWidth,
-      );'''
-          new = '''      expect(
-        tester
-            .getSize(find.byKey(const ValueKey('home-page-content-surface')))
-            .width,
-        ButlerlySize.pageContentMaxWidth + ButlerlySize.phoneGutter * 2,
-      );'''
-          if old not in rtext:
-            raise SystemExit('responsive surface expectation not found')
-          responsive.write_text(rtext.replace(old, new, 1))
-
-          refresh_test = Path(
-              'apps/butlerly/test/features/home/home_pull_to_refresh_test.dart'
-          )
-          ttext = refresh_test.read_text()
-          needle = '''      expect(refreshControl.onRefresh, isNotNull);
-      expect(find.byKey(const ValueKey('home-refresh-indicator')), findsNothing);
-
-      expect(scrollView.physics, isA<BouncingScrollPhysics>());'''
-          insert = '''      expect(refreshControl.onRefresh, isNotNull);
-      expect(find.byKey(const ValueKey('home-refresh-indicator')), findsNothing);
-
-      final headerIndex = scrollView.slivers.indexWhere(
-        (sliver) => sliver is SliverPersistentHeader,
-      );
-      final refreshIndex = scrollView.slivers.indexWhere(
-        (sliver) => sliver is CupertinoSliverRefreshControl,
-      );
-      expect(headerIndex, greaterThanOrEqualTo(0));
-      expect(refreshIndex, greaterThan(headerIndex));
-
-      final headerBefore = tester.getRect(
-        find.byKey(const ValueKey('home-header-surface')),
-      );
-      await tester.drag(find.byType(CustomScrollView), const Offset(0, 120));
-      await tester.pump();
-      final headerDuringPull = tester.getRect(
-        find.byKey(const ValueKey('home-header-surface')),
-      );
-      expect(headerDuringPull.top, closeTo(headerBefore.top, 0.01));
-
-      expect(scrollView.physics, isA<BouncingScrollPhysics>());'''
-          if needle not in ttext:
-            raise SystemExit('refresh-test insertion point not found')
-          refresh_test.write_text(ttext.replace(needle, insert, 1))
+          if oldresp not in rtext: raise SystemExit('responsive expectation missing')
+          responsive.write_text(rtext.replace(oldresp, newresp, 1))
+          refresh = Path('apps/butlerly/test/features/home/home_pull_to_refresh_test.dart')
+          ttext = refresh.read_text()
+          if needle not in ttext: raise SystemExit('refresh insertion missing')
+          refresh.write_text(ttext.replace(needle, insert, 1))
           PY
-
-          dart format \
-            apps/butlerly/lib/features/foundation/presentation/home_page.dart \
-            apps/butlerly/test/app/responsive_shell_test.dart \
-            apps/butlerly/test/features/home/home_pull_to_refresh_test.dart
+          dart format apps/butlerly/lib/features/foundation/presentation/home_page.dart apps/butlerly/test/app/responsive_shell_test.dart apps/butlerly/test/features/home/home_pull_to_refresh_test.dart
       - run: ./tool/setup.sh
       - run: ./tool/validate.sh flutter_application
-      - name: Commit formatted validated Home fix
+      - name: Commit validated Home fix
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            apps/butlerly/lib/features/foundation/presentation/home_page.dart \
-            apps/butlerly/test/app/responsive_shell_test.dart \
-            apps/butlerly/test/features/home/home_pull_to_refresh_test.dart
+          git add apps/butlerly/lib/features/foundation/presentation/home_page.dart apps/butlerly/test/app/responsive_shell_test.dart apps/butlerly/test/features/home/home_pull_to_refresh_test.dart
           git rm .github/workflows/validate-home-refresh-layout.yml
           git commit -m "Fix Home refresh behavior and body layout"
           git push origin HEAD:fix/home-refresh-layout
