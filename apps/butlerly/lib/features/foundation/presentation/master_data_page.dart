@@ -68,9 +68,9 @@ class _MasterDataPageState extends State<MasterDataPage> {
     final finance = _finance;
     if (finance == null) return;
     final currentName = switch (value) {
-      Category category => category.name,
-      Tag tag => tag.name,
-      Merchant merchant => merchant.name,
+      Category(:final name) => name,
+      Tag(:final name) => name,
+      Merchant(:final name) => name,
       _ => throw ArgumentError.value(value, 'value'),
     };
     final labelKey = switch (value) {
@@ -365,7 +365,7 @@ class _MasterDataList extends StatelessWidget {
                       );
                       if (saved is ApplicationSuccess<Tag>) {
                         onChanged();
-                      } else {
+                      } else if (context.mounted) {
                         _showFailure(context);
                       }
                     },
@@ -403,7 +403,7 @@ class _MasterDataList extends StatelessWidget {
                       );
                       if (saved is ApplicationSuccess<Merchant>) {
                         onChanged();
-                      } else {
+                      } else if (context.mounted) {
                         _showFailure(context);
                       }
                     },
@@ -451,7 +451,7 @@ class _MasterDataList extends StatelessWidget {
                     );
                     if (saved is ApplicationSuccess<Category>) {
                       onChanged();
-                    } else {
+                    } else if (context.mounted) {
                       _showFailure(context);
                     }
                   },
