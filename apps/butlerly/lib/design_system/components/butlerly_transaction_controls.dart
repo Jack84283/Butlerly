@@ -1,16 +1,13 @@
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
-
-String _paymentSourceText(PaymentSource source) => source.lastFour == null
-    ? (source.displayIdentity ?? source.name)
-    : '${source.displayIdentity ?? source.name} ••••${source.lastFour}';
 
 enum ButlerlyDuplicateDecision { useExisting, continueAnyway, cancel }
 
@@ -270,7 +267,7 @@ class ButlerlyPaymentSourceSelector extends StatelessWidget {
       ))
         DropdownMenuEntry(
           value: source.id.value,
-          label: _paymentSourceText(source),
+          label: paymentSourceDisplayLabel(source),
         ),
     ],
     onChanged: onChanged,
@@ -345,7 +342,7 @@ class ButlerlyPaymentSourceFilter extends StatelessWidget {
       ))
         DropdownMenuEntry(
           value: source.id.value,
-          label: _paymentSourceText(source),
+          label: paymentSourceDisplayLabel(source),
         ),
     ],
     onChanged: (value) => onChanged(value == '' ? null : value),
