@@ -61,7 +61,7 @@ void main() {
     expect(ButlerlyTypography.editorialFontFallback, isNot(contains('Georgia')));
   });
 
-  test('phone navigation preserves the established 78 px height at 1x', () {
+  test('phone navigation preserves the compact baseline height at 1x', () {
     final labelStyle = ButlerlyTypography.navigationLabel(
       AppTheme.light.textTheme.labelSmall!,
       color: Colors.black,
@@ -76,6 +76,8 @@ void main() {
       textDirection: TextDirection.ltr,
     );
 
+    expect(ButlerlySize.navigationBarHeight, 64);
+    expect(ButlerlySize.primaryNavigationAddIconSize, 44);
     expect(height, ButlerlySize.navigationBarHeight);
   });
 
@@ -116,7 +118,7 @@ void main() {
           ButlerlySize.navigationLabelGap +
           maxStandardLabelHeight;
       final addRequiredHeight =
-          52 +
+          ButlerlySize.primaryNavigationAddIconSize +
           ButlerlySpacing.micro +
           _navigationLabelHeight(
             addLabel,
@@ -130,7 +132,9 @@ void main() {
         addRequiredHeight,
       ].reduce((left, right) => left > right ? left : right);
       final impossibleMixedHeight =
-          52 + ButlerlySpacing.micro + maxStandardLabelHeight;
+          ButlerlySize.primaryNavigationAddIconSize +
+          ButlerlySpacing.micro +
+          maxStandardLabelHeight;
 
       expect(height, expectedHeight);
       expect(height, lessThan(impossibleMixedHeight));

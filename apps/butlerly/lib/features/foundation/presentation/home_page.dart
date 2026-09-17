@@ -16,7 +16,8 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/cupertino.dart' show CupertinoSliverRefreshControl;
-import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -358,9 +359,7 @@ class _HomePageState extends State<HomePage> {
       MediaQuery.sizeOf(context),
       deviceDisplaySize: deviceDisplaySize,
     );
-    final canvasColor = deviceClass == ButlerlyDeviceClass.tablet
-        ? context.colors.subtleSurface
-        : context.colors.background;
+    final canvasColor = context.colors.subtleSurface;
     final useCupertinoRefresh =
         !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
@@ -419,9 +418,7 @@ class _HomePageState extends State<HomePage> {
                   );
                   final extraWidth =
                       constraints.crossAxisExtent - contentMaxWidth;
-                  final horizontalInset = extraWidth > 0
-                      ? extraWidth / 2
-                      : 0.0;
+                  final horizontalInset = extraWidth > 0 ? extraWidth / 2 : 0.0;
                   return SliverPadding(
                     padding: EdgeInsets.symmetric(horizontal: horizontalInset),
                     sliver: SliverToBoxAdapter(
@@ -568,7 +565,7 @@ double _homeHeaderExtent(
     return brandHeight +
         ButlerlySpacing.standard +
         contextHeight +
-        ButlerlySpacing.small * 2 +
+        ButlerlySpacing.small +
         scaler.scale(2);
   }
 
@@ -586,7 +583,7 @@ double _homeHeaderExtent(
   final contentHeight = brandHeight > contextHeight
       ? brandHeight
       : contextHeight;
-  return contentHeight + ButlerlySpacing.small * 2 + scaler.scale(2);
+  return contentHeight + ButlerlySpacing.small + scaler.scale(2);
 }
 
 class _HomePinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
@@ -611,9 +608,11 @@ class _HomePinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
     color: context.colors.background,
     child: Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: ButlerlySize.phoneGutter,
-          vertical: ButlerlySpacing.small,
+        padding: const EdgeInsets.fromLTRB(
+          ButlerlySize.phoneGutter,
+          ButlerlySpacing.small,
+          ButlerlySize.phoneGutter,
+          0,
         ),
         child: SizedBox(
           key: const ValueKey('home-header-content'),

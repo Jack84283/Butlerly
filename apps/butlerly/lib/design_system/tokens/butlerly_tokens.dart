@@ -131,9 +131,12 @@ abstract final class ButlerlySize {
   static const navigationLabelGap = ButlerlySpacing.xxs;
   static const sourcePreviewWidth = 64.0;
   static const sourcePreviewHeight = 80.0;
-  static const navigationBarHeight = 78.0;
-  static const primaryNavigationAddIconSize = 52.0;
+  static const navigationBarHeight = 64.0;
+  static const primaryNavigationAddIconSize = 44.0;
   static const primaryNavigationAddGlyphSize = 28.0;
+  static const primaryNavigationArchRise = 12.0;
+  static const primaryNavigationArchWidth = 76.0;
+  static const primaryNavigationArchHeight = 32.0;
   static const desktopNavigationLeadingIconSize = 14.0;
   static const dividerWidth = 1.0;
 }
@@ -190,10 +193,7 @@ abstract final class ButlerlyLayout {
       desktopNavigationMode(viewport) ==
       ButlerlyDesktopNavigationMode.extendedRail;
 
-  static double contentMaxWidth(
-    Size viewport, {
-    TargetPlatform? platform,
-  }) {
+  static double contentMaxWidth(Size viewport, {TargetPlatform? platform}) {
     final device = deviceClass(viewport, platform: platform);
     final compactDesktop =
         device == ButlerlyDeviceClass.desktop &&

@@ -117,6 +117,16 @@ void main() {
             .width,
         390,
       );
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('primary-navigation-content')))
+            .height,
+        ButlerlySize.navigationBarHeight,
+      );
+      expect(
+        find.byKey(const ValueKey('primary-navigation-add-arch')),
+        findsOneWidget,
+      );
     },
   );
 
@@ -149,7 +159,7 @@ void main() {
       final contentSurface = tester.widget<ColoredBox>(
         find.byKey(const ValueKey('home-page-content-surface')),
       );
-      expect(canvas.color, contentSurface.color);
+      expect(canvas.color, isNot(contentSurface.color));
       final navigation = find.byKey(const ValueKey('primary-phone-navigation'));
       expect(tester.getSize(navigation).width, size.width);
       expect(tester.getRect(navigation).bottom, size.height);
@@ -257,11 +267,7 @@ void main() {
     'narrow iPad window keeps the iPad shell and bottom navigation',
     (tester) async {
       const windowSize = Size(500, 800);
-      await _pumpAt(
-        tester,
-        windowSize,
-        displaySize: const Size(1024, 1366),
-      );
+      await _pumpAt(tester, windowSize, displaySize: const Size(1024, 1366));
 
       expect(find.byType(IPadPrimaryShell), findsOneWidget);
       expect(find.byType(IPhonePrimaryShell), findsNothing);
@@ -270,9 +276,7 @@ void main() {
         find.byKey(const ValueKey('primary-phone-navigation')),
         findsNothing,
       );
-      final navigation = find.byKey(
-        const ValueKey('primary-ipad-navigation'),
-      );
+      final navigation = find.byKey(const ValueKey('primary-ipad-navigation'));
       expect(navigation, findsOneWidget);
       expect(tester.getSize(navigation).width, windowSize.width);
       expect(tester.getRect(navigation).bottom, windowSize.height);
@@ -349,10 +353,7 @@ void main() {
       find.byKey(const ValueKey('primary-phone-navigation')),
       findsNothing,
     );
-    expect(
-      find.byKey(const ValueKey('primary-ipad-navigation')),
-      findsNothing,
-    );
+    expect(find.byKey(const ValueKey('primary-ipad-navigation')), findsNothing);
   });
 
   _testWidgetsOnMacOs('desktop uses the isolated desktop shell', (
@@ -373,10 +374,7 @@ void main() {
       find.byKey(const ValueKey('primary-phone-navigation')),
       findsNothing,
     );
-    expect(
-      find.byKey(const ValueKey('primary-ipad-navigation')),
-      findsNothing,
-    );
+    expect(find.byKey(const ValueKey('primary-ipad-navigation')), findsNothing);
     expect(
       tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
       ButlerlySize.pageContentMaxWidth,
@@ -448,10 +446,7 @@ Future<void> _pumpAt(
   await tester.pumpAndSettle();
 }
 
-Future<void> _pumpResponsiveBodyAt(
-  WidgetTester tester,
-  Size size,
-) async {
+Future<void> _pumpResponsiveBodyAt(WidgetTester tester, Size size) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);

@@ -165,39 +165,86 @@ class PrimaryBottomNavigation extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => DecoratedBox(
-    key: navigationKey,
-    decoration: BoxDecoration(
-      color: Theme.of(context).navigationBarTheme.backgroundColor,
-      border: Border(
-        top: BorderSide(
-          width: ButlerlySize.dividerWidth,
-          color: context.colors.cardDivider,
-        ),
-      ),
-    ),
-    child: Material(
-      type: MaterialType.transparency,
-      child: SafeArea(
-        top: false,
-        child: LayoutBuilder(
-          builder: (context, constraints) => SizedBox(
-            height: _navigationHeight(context, constraints.maxWidth),
-            child: Row(
+  Widget build(BuildContext context) {
+    final navigationColor =
+        Theme.of(context).navigationBarTheme.backgroundColor ??
+        context.colors.background;
+    final divider = BorderSide(
+      width: ButlerlySize.dividerWidth,
+      color: context.colors.cardDivider,
+    );
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+
+    return Material(
+      key: navigationKey,
+      color: Colors.transparent,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final navigationHeight = _navigationHeight(
+            context,
+            constraints.maxWidth,
+          );
+          return SizedBox(
+            height: navigationHeight + bottomInset,
+            child: Stack(
+              clipBehavior: Clip.none,
               children: [
-                for (final branchIndex in visualBranchIndexes)
-                  Expanded(
-                    child: _destination(
-                      context,
-                      destinations[branchIndex]!,
-                      branchIndex,
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: navigationColor,
+                      border: Border(top: divider),
                     ),
                   ),
+                ),
+                if (visualBranchIndexes.contains(1))
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: -ButlerlySize.primaryNavigationArchRise,
+                    child: Center(
+                      child: Container(
+                        key: const ValueKey('primary-navigation-add-arch'),
+                        width: ButlerlySize.primaryNavigationArchWidth,
+                        height: ButlerlySize.primaryNavigationArchHeight,
+                        decoration: BoxDecoration(
+                          color: navigationColor,
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(
+                              ButlerlySize.primaryNavigationArchWidth / 2,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  height: navigationHeight,
+                  child: SizedBox(
+                    key: const ValueKey('primary-navigation-content'),
+                    height: navigationHeight,
+                    child: Row(
+                      children: [
+                        for (final branchIndex in visualBranchIndexes)
+                          Expanded(
+                            child: _destination(
+                              context,
+                              destinations[branchIndex]!,
+                              branchIndex,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
-          ),
-        ),
+          );
+        },
       ),
-    ),
-  );
+    );
+  }
 }
