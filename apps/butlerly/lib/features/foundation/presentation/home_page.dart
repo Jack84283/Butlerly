@@ -17,7 +17,7 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/cupertino.dart' show CupertinoSliverRefreshControl;
 import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform, kIsWeb;
+    show SynchronousFuture, TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -35,6 +35,7 @@ class _HomePageState extends State<HomePage> {
   late Future<_HomeData> _data;
   String? _loadedLanguageCode;
   DateTime? _selectedMonth;
+  int _loadGeneration = 0;
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
@@ -55,6 +56,7 @@ class _HomePageState extends State<HomePage> {
     final languageCode = Localizations.localeOf(context).languageCode;
     if (_loadedLanguageCode == languageCode) return;
     _loadedLanguageCode = languageCode;
+    _loadGeneration++;
     _data = _load(languageCode: languageCode);
   }
 
@@ -247,10 +249,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _refresh() async {
+    final generation = ++_loadGeneration;
     final refreshed = await _load(forceAnalysisRefresh: true);
-    if (!mounted) return;
+    if (!mounted || generation != _loadGeneration) return;
     setState(() {
-      _data = Future.value(refreshed);
+      _data = SynchronousFuture<_HomeData>(refreshed);
     });
   }
 
@@ -267,6 +270,7 @@ class _HomePageState extends State<HomePage> {
       _selectedMonth = _sameMonth(selected, data.currentFinancialMonth)
           ? null
           : _monthStart(selected);
+      _loadGeneration++;
       _data = _load();
     });
   }
