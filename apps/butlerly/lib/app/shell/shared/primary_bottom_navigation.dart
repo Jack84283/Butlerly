@@ -187,12 +187,9 @@ class PrimaryBottomNavigation extends StatelessWidget {
           return SizedBox(
             height: navigationHeight + bottomInset,
             child: Stack(
+              clipBehavior: Clip.none,
               children: [
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top: ButlerlySize.primaryNavigationArchRise,
-                  bottom: 0,
+                Positioned.fill(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: navigationColor,
@@ -201,17 +198,21 @@ class PrimaryBottomNavigation extends StatelessWidget {
                   ),
                 ),
                 if (visualBranchIndexes.contains(1))
-                  Align(
-                    alignment: Alignment.topCenter,
-                    child: Container(
-                      key: const ValueKey('primary-navigation-add-arch'),
-                      width: ButlerlySize.primaryNavigationArchWidth,
-                      height: ButlerlySize.primaryNavigationArchHeight,
-                      decoration: BoxDecoration(
-                        color: navigationColor,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(
-                            ButlerlySize.primaryNavigationArchWidth / 2,
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: -ButlerlySize.primaryNavigationArchRise,
+                    child: Center(
+                      child: Container(
+                        key: const ValueKey('primary-navigation-add-arch'),
+                        width: ButlerlySize.primaryNavigationArchWidth,
+                        height: ButlerlySize.primaryNavigationArchHeight,
+                        decoration: BoxDecoration(
+                          color: navigationColor,
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(
+                              ButlerlySize.primaryNavigationArchWidth / 2,
+                            ),
                           ),
                         ),
                       ),
