@@ -49,7 +49,7 @@ jobs:
           replace_exact(
               home,
               "    final useCupertinoRefresh =\n        !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;",
-              "    final targetPlatform =\n        HomePage.debugTargetPlatform ?? Theme.of(context).platform;\n    final useCupertinoRefresh =\n        !kIsWeb && targetPlatform == TargetPlatform.iOS;",
+              "    final debugTargetPlatform = HomePage.debugTargetPlatform;\n    final useCupertinoRefresh = debugTargetPlatform != null\n        ? debugTargetPlatform == TargetPlatform.iOS\n        : !kIsWeb && Theme.of(context).platform == TargetPlatform.iOS;",
           )
 
           refresh_test = 'apps/butlerly/test/features/home/home_pull_to_refresh_test.dart'
