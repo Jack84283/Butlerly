@@ -64,7 +64,10 @@ class ToolsPage extends StatelessWidget {
             runSpacing: ButlerlySpacing.cardGap,
             children: [
               for (final tool in tools)
-                SizedBox(width: cardWidth, child: _ToolPanel(tool: tool)),
+                SizedBox(
+                  width: cardWidth,
+                  child: _ToolPanel(tool: tool),
+                ),
             ],
           );
         },

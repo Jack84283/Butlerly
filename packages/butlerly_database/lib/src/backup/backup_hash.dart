@@ -27,7 +27,9 @@ int int64FromBytes(List<int> bytes) {
   if (bytes.length != 8) {
     throw const FormatException('Invalid 64-bit backup field.');
   }
-  return ByteData.sublistView(Uint8List.fromList(bytes)).getInt64(0, Endian.big);
+  return ByteData.sublistView(
+    Uint8List.fromList(bytes),
+  ).getInt64(0, Endian.big);
 }
 
 extension FirstOrNullExtension<T> on Iterable<T> {
@@ -156,7 +158,9 @@ final class _Sha256Accumulator {
     for (var offset = 0; offset < _buffer.length; offset += 64) {
       _compress(_buffer.sublist(offset, offset + 64));
     }
-    return _state.map((value) => value.toRadixString(16).padLeft(8, '0')).join();
+    return _state
+        .map((value) => value.toRadixString(16).padLeft(8, '0'))
+        .join();
   }
 
   void _compress(List<int> block) {
@@ -166,10 +170,12 @@ final class _Sha256Accumulator {
       words[index] = data.getUint32(index * 4, Endian.big);
     }
     for (var index = 16; index < 64; index++) {
-      final s0 = _rotateRight(words[index - 15], 7) ^
+      final s0 =
+          _rotateRight(words[index - 15], 7) ^
           _rotateRight(words[index - 15], 18) ^
           (words[index - 15] >> 3);
-      final s1 = _rotateRight(words[index - 2], 17) ^
+      final s1 =
+          _rotateRight(words[index - 2], 17) ^
           _rotateRight(words[index - 2], 19) ^
           (words[index - 2] >> 10);
       words[index] = _u32(words[index - 16] + s0 + words[index - 7] + s1);
@@ -185,10 +191,12 @@ final class _Sha256Accumulator {
     var h = _state[7];
 
     for (var index = 0; index < 64; index++) {
-      final bigS1 = _rotateRight(e, 6) ^ _rotateRight(e, 11) ^ _rotateRight(e, 25);
+      final bigS1 =
+          _rotateRight(e, 6) ^ _rotateRight(e, 11) ^ _rotateRight(e, 25);
       final choose = (e & f) ^ ((~e) & g);
       final temp1 = _u32(h + bigS1 + choose + _round[index] + words[index]);
-      final bigS0 = _rotateRight(a, 2) ^ _rotateRight(a, 13) ^ _rotateRight(a, 22);
+      final bigS0 =
+          _rotateRight(a, 2) ^ _rotateRight(a, 13) ^ _rotateRight(a, 22);
       final majority = (a & b) ^ (a & c) ^ (b & c);
       final temp2 = _u32(bigS0 + majority);
 

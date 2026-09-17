@@ -166,12 +166,8 @@ final class CalculateAnalysisOverview {
         ? const <String, FindingLifecycle>{}
         : {
             for (final finding in [
-              ...await findings!.list(
-                lifecycle: FindingLifecycle.acknowledged,
-              ),
-              ...await findings!.list(
-                lifecycle: FindingLifecycle.dismissed,
-              ),
+              ...await findings!.list(lifecycle: FindingLifecycle.acknowledged),
+              ...await findings!.list(lifecycle: FindingLifecycle.dismissed),
             ])
               finding.id: finding.lifecycle,
           };

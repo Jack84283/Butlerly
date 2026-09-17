@@ -58,7 +58,10 @@ class TransactionRecordList extends StatelessWidget {
           missingCategoryLabel: missingCategoryLabel,
           showDate: effectiveShowDateInRows,
           showTags: true,
-          supportingContent: supportingContentBuilder?.call(context, transaction),
+          supportingContent: supportingContentBuilder?.call(
+            context,
+            transaction,
+          ),
           possibleDuplicate: possibleDuplicateIds.contains(transaction.id),
           possibleDuplicateLabel: possibleDuplicateLabel,
           onPossibleDuplicateTap: onPossibleDuplicateTap,

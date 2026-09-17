@@ -27,7 +27,9 @@ CREATE INDEX idx_sample_updated ON sample(updated_at);
   });
 
   test('v8 migration adds merge metadata and tombstones to v7 tables', () async {
-    final database = await databaseFactoryFfi.openDatabase(inMemoryDatabasePath);
+    final database = await databaseFactoryFfi.openDatabase(
+      inMemoryDatabasePath,
+    );
     addTearDown(database.close);
 
     const v7Fixture = '''
@@ -96,7 +98,9 @@ CREATE TABLE reconciliation_links(id TEXT PRIMARY KEY);
   });
 
   test('current baseline creates v8 merge metadata directly', () async {
-    final database = await databaseFactoryFfi.openDatabase(inMemoryDatabasePath);
+    final database = await databaseFactoryFfi.openDatabase(
+      inMemoryDatabasePath,
+    );
     addTearDown(database.close);
     final baseline = await File('database/schema/v1.sql').readAsString();
     for (final statement in splitSqlStatements(baseline)) {

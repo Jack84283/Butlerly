@@ -5,18 +5,12 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
 format_check() {
-  local before after
-  before="$(find . -type f -name '*.dart' -print0 | sort -z | xargs -0 sha256sum)"
-  dart format --output=none . >/dev/null
-  after="$(find . -type f -name '*.dart' -print0 | sort -z | xargs -0 sha256sum)"
-  if [[ "$before" != "$after" ]]; then
-    echo 'Dart formatting changed tracked source files.' >&2
-    return 1
-  fi
+  "$repo_root/tool/check_format.sh" .
 }
 
 ./tool/check_toolchain_consistency.sh
 ./tool/verify_toolchain.sh
+"$repo_root/tool/test_check_format.sh"
 
 validate_finance_domain() (
   cd packages/butlerly_finance_domain

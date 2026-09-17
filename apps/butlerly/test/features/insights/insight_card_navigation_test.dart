@@ -8,32 +8,31 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('only supporting-transactions action triggers insight drill-down', (
-    tester,
-  ) async {
-    final context = _context();
-    final rule = _rule('ANL-R020', InsightOutputType.pattern);
-    final finding = _finding(rule, context, evidenceIds: const ['support-1']);
-    final evaluation = _evaluation([
-      _result(rule, context, finding),
-    ]);
-    String? navigation;
+  testWidgets(
+    'only supporting-transactions action triggers insight drill-down',
+    (tester) async {
+      final context = _context();
+      final rule = _rule('ANL-R020', InsightOutputType.pattern);
+      final finding = _finding(rule, context, evidenceIds: const ['support-1']);
+      final evaluation = _evaluation([_result(rule, context, finding)]);
+      String? navigation;
 
-    await tester.pumpWidget(_app(evaluation, (path) => navigation = path));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(_app(evaluation, (path) => navigation = path));
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Spending compared with baseline'));
-    await tester.pump();
-    expect(navigation, isNull);
+      await tester.tap(find.text('Spending compared with baseline'));
+      await tester.pump();
+      expect(navigation, isNull);
 
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('View 1 supporting transaction'));
-    expect(
-      navigation,
-      '/search?locked=true&from=2026-09-01&to=2026-09-05&direction=expense',
-    );
-  });
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('View 1 supporting transaction'));
+      expect(
+        navigation,
+        '/search?locked=true&from=2026-09-01&to=2026-09-05&direction=expense',
+      );
+    },
+  );
 
   testWidgets(
     'equivalent declared pattern and alert consolidate while preserving escalation',
@@ -130,9 +129,7 @@ void main() {
 
 Widget _app(InsightsEvaluation evaluation, ValueChanged<String> onNavigation) =>
     MaterialApp(
-      theme: ThemeData(
-        extensions: const [ButlerlySemanticColors.light],
-      ),
+      theme: ThemeData(extensions: const [ButlerlySemanticColors.light]),
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
@@ -187,10 +184,7 @@ AnalysisRuleDefinition _rule(
   definitionHash: RuleDefinitionHash(id == 'ANL-R024' ? 'b' * 64 : 'a' * 64),
   surface: AnalysisSurface.insights,
   filters: const [
-    AnalysisFilter(
-      kind: AnalysisFilterKind.direction,
-      values: ['expense'],
-    ),
+    AnalysisFilter(kind: AnalysisFilterKind.direction, values: ['expense']),
   ],
   outputType: outputType,
   role: includeRelationship
@@ -246,12 +240,13 @@ InsightResult _result(
   currency: CurrencyCode('USD'),
 );
 
-InsightsEvaluation _evaluation(List<InsightResult> results) => InsightsEvaluation(
-  summary: PeriodSummary(
-    context: results.first.context,
-    comparisonAvailable: true,
-    currency: CurrencyCode('USD'),
-  ),
-  results: results,
-  hasSufficientHistory: true,
-);
+InsightsEvaluation _evaluation(List<InsightResult> results) =>
+    InsightsEvaluation(
+      summary: PeriodSummary(
+        context: results.first.context,
+        comparisonAvailable: true,
+        currency: CurrencyCode('USD'),
+      ),
+      results: results,
+      hasSufficientHistory: true,
+    );

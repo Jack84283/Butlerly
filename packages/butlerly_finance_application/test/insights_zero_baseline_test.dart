@@ -59,10 +59,7 @@ void main() {
     resultPersistence: ResultPersistencePolicy.finding,
     definitionHash: RuleDefinitionHash('7' * 64),
     filters: const [
-      AnalysisFilter(
-        kind: AnalysisFilterKind.direction,
-        values: ['expense'],
-      ),
+      AnalysisFilter(kind: AnalysisFilterKind.direction, values: ['expense']),
     ],
   );
 
@@ -125,34 +122,39 @@ void main() {
     ],
   );
 
-  test('empty previous period is a zero baseline and comparison still runs', () {
-    final current = [expense('current-1', '25')];
-    final definition = rule(
-      id: 'ANL-R020',
-      operation: RuleOperation.sum,
-      condition: RuleCondition(
-        operator: 'gt',
-        left: 'value',
-        value: DecimalValue.parse('0'),
-      ),
-    );
+  test(
+    'empty previous period is a zero baseline and comparison still runs',
+    () {
+      final current = [expense('current-1', '25')];
+      final definition = rule(
+        id: 'ANL-R020',
+        operation: RuleOperation.sum,
+        condition: RuleCondition(
+          operator: 'gt',
+          left: 'value',
+          value: DecimalValue.parse('0'),
+        ),
+      );
 
-    final result = const AnalysisRuleEngine().execute(
-      dataset: dataset(current, const []),
-      definitions: [definition],
-    ).single;
+      final result = const AnalysisRuleEngine()
+          .execute(
+            dataset: dataset(current, const []),
+            definitions: [definition],
+          )
+          .single;
 
-    expect(result.comparison, isNotNull);
-    expect(result.comparison!.baselineValue, DecimalValue.parse('0'));
-    expect(result.comparison!.absoluteChange, DecimalValue.parse('25'));
-    expect(result.comparison!.percentageChange, isNull);
-    expect(result.comparison!.availability, AnalysisDataAvailability.empty);
-    expect(result.finding, isNotNull);
-    expect(
-      result.issues.map((issue) => issue.code),
-      isNot(contains('missingBaseline')),
-    );
-  });
+      expect(result.comparison, isNotNull);
+      expect(result.comparison!.baselineValue, DecimalValue.parse('0'));
+      expect(result.comparison!.absoluteChange, DecimalValue.parse('25'));
+      expect(result.comparison!.percentageChange, isNull);
+      expect(result.comparison!.availability, AnalysisDataAvailability.empty);
+      expect(result.finding, isNotNull);
+      expect(
+        result.issues.map((issue) => issue.code),
+        isNot(contains('missingBaseline')),
+      );
+    },
+  );
 
   test('zero versus zero does not count as an increase', () {
     final definition = rule(
@@ -161,10 +163,12 @@ void main() {
       condition: increaseBy20Percent(),
     );
 
-    final result = const AnalysisRuleEngine().execute(
-      dataset: dataset(const [], const []),
-      definitions: [definition],
-    ).single;
+    final result = const AnalysisRuleEngine()
+        .execute(
+          dataset: dataset(const [], const []),
+          definitions: [definition],
+        )
+        .single;
 
     expect(result.comparison!.baselineValue, DecimalValue.parse('0'));
     expect(result.finding, isNull);
@@ -183,10 +187,9 @@ void main() {
       outputType: InsightOutputType.alert,
     );
 
-    final result = const AnalysisRuleEngine().execute(
-      dataset: dataset(current, baseline),
-      definitions: [definition],
-    ).single;
+    final result = const AnalysisRuleEngine()
+        .execute(dataset: dataset(current, baseline), definitions: [definition])
+        .single;
 
     expect(result.finding, isNotNull);
     expect(result.finding!.currentValue, DecimalValue.parse('120'));
@@ -206,10 +209,9 @@ void main() {
       outputType: InsightOutputType.alert,
     );
 
-    final result = const AnalysisRuleEngine().execute(
-      dataset: dataset(current, baseline),
-      definitions: [definition],
-    ).single;
+    final result = const AnalysisRuleEngine()
+        .execute(dataset: dataset(current, baseline), definitions: [definition])
+        .single;
 
     expect(result.finding, isNotNull);
     expect(result.finding!.currentValue, DecimalValue.parse('90'));
@@ -225,10 +227,9 @@ void main() {
       outputType: InsightOutputType.alert,
     );
 
-    final result = const AnalysisRuleEngine().execute(
-      dataset: dataset(current, const []),
-      definitions: [definition],
-    ).single;
+    final result = const AnalysisRuleEngine()
+        .execute(dataset: dataset(current, const []), definitions: [definition])
+        .single;
 
     expect(result.finding, isNotNull);
     expect(result.finding!.baselineValue, DecimalValue.parse('0'));
@@ -260,20 +261,19 @@ void main() {
     expect(results, hasLength(3));
     final findings = results.where((result) => result.finding != null).toList();
     expect(findings, hasLength(2));
-    expect(
-      findings.map((result) => result.finding!.dimension).toSet(),
-      {'c1', 'c2'},
-    );
+    expect(findings.map((result) => result.finding!.dimension).toSet(), {
+      'c1',
+      'c2',
+    });
     expect(
       findings
           .map((result) => result.finding!.evidence.single.transactionId.value)
           .toSet(),
       {'c1', 'c2'},
     );
-    expect(
-      findings.map((result) => result.finding!.baselineValue).toSet(),
-      {DecimalValue.parse('100')},
-    );
+    expect(findings.map((result) => result.finding!.baselineValue).toSet(), {
+      DecimalValue.parse('100'),
+    });
   });
 
   test('R025 also evaluates every transaction against zero baseline', () {

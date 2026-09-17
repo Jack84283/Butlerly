@@ -208,8 +208,9 @@ result:
     expect(r024.condition.children, hasLength(2));
     expect(r024.condition.children.first.operator, 'all');
     expect(
-      r024.condition.children.first.children
-          .map((RuleCondition value) => value.left),
+      r024.condition.children.first.children.map(
+        (RuleCondition value) => value.left,
+      ),
       containsAll(['currentTotal', 'currentTotal']),
     );
     expect(r024.condition.children.last.operator, 'gtMultiplier');

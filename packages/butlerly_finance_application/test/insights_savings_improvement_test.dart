@@ -59,9 +59,7 @@ void main() {
     severity: RuleSeverity.info,
     surface: AnalysisSurface.overview,
     role: role,
-    definitionHash: RuleDefinitionHash(
-      id == 'ANL-R001' ? '1' * 64 : '2' * 64,
-    ),
+    definitionHash: RuleDefinitionHash(id == 'ANL-R001' ? '1' * 64 : '2' * 64),
     filters: [
       AnalysisFilter(
         kind: AnalysisFilterKind.direction,
@@ -227,37 +225,43 @@ void main() {
     expect(result.finding!.percentageChange, DecimalValue.parse('20'));
   });
 
-  test('trivial positive savings improvement below 20 percent does not trigger', () {
-    final result = savingsResult(
-      dataset(
-        currentIncome: '1020',
-        currentExpense: '800',
-        baselineIncome: '1000',
-        baselineExpense: '800',
-      ),
-    );
+  test(
+    'trivial positive savings improvement below 20 percent does not trigger',
+    () {
+      final result = savingsResult(
+        dataset(
+          currentIncome: '1020',
+          currentExpense: '800',
+          baselineIncome: '1000',
+          baselineExpense: '800',
+        ),
+      );
 
-    expect(result.finding, isNull);
-    expect(result.comparison!.baselineValue, DecimalValue.parse('200'));
-    expect(result.comparison!.currentValue, DecimalValue.parse('220'));
-    expect(result.comparison!.percentageChange, DecimalValue.parse('10'));
-  });
+      expect(result.finding, isNull);
+      expect(result.comparison!.baselineValue, DecimalValue.parse('200'));
+      expect(result.comparison!.currentValue, DecimalValue.parse('220'));
+      expect(result.comparison!.percentageChange, DecimalValue.parse('10'));
+    },
+  );
 
-  test('zero baseline to positive savings triggers without infinite percent', () {
-    final result = savingsResult(
-      dataset(
-        currentIncome: '1000',
-        currentExpense: '900',
-        baselineIncome: '1000',
-        baselineExpense: '1000',
-      ),
-    );
+  test(
+    'zero baseline to positive savings triggers without infinite percent',
+    () {
+      final result = savingsResult(
+        dataset(
+          currentIncome: '1000',
+          currentExpense: '900',
+          baselineIncome: '1000',
+          baselineExpense: '1000',
+        ),
+      );
 
-    expect(result.finding, isNotNull);
-    expect(result.finding!.baselineValue, DecimalValue.parse('0'));
-    expect(result.finding!.currentValue, DecimalValue.parse('100'));
-    expect(result.finding!.percentageChange, isNull);
-  });
+      expect(result.finding, isNotNull);
+      expect(result.finding!.baselineValue, DecimalValue.parse('0'));
+      expect(result.finding!.currentValue, DecimalValue.parse('100'));
+      expect(result.finding!.percentageChange, isNull);
+    },
+  );
 
   test('negative savings becoming less negative is an improvement', () {
     final result = savingsResult(

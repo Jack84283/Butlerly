@@ -33,13 +33,19 @@ void main() {
     final future = DateTime.now().toUtc().add(const Duration(minutes: 5));
     await fixture.database.database.update(
       'transactions',
-      {'description': 'New local value', 'updated_at': future.toIso8601String()},
+      {
+        'description': 'New local value',
+        'updated_at': future.toIso8601String(),
+      },
       where: 'id = ?',
       whereArgs: ['keep-local'],
     );
     await fixture.database.database.update(
       'transactions',
-      {'description': 'Stale local value', 'updated_at': oldTime.toIso8601String()},
+      {
+        'description': 'Stale local value',
+        'updated_at': oldTime.toIso8601String(),
+      },
       where: 'id = ?',
       whereArgs: ['restore-backup'],
     );
@@ -60,39 +66,46 @@ void main() {
     expect(await fixture.description('new-local'), 'Created after backup');
   });
 
-  test('merge applies backup deletion tombstone unless local row is newer', () async {
-    final fixture = await _Fixture.create();
-    addTearDown(fixture.dispose);
-    final oldTime = DateTime.utc(2026, 1, 1);
+  test(
+    'merge applies backup deletion tombstone unless local row is newer',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final oldTime = DateTime.utc(2026, 1, 1);
 
-    await fixture.insertTransaction(
-      id: 'deleted-at-source',
-      description: 'Will be deleted',
-      updatedAt: oldTime,
-    );
-    await fixture.database.database.delete(
-      'transactions',
-      where: 'id = ?',
-      whereArgs: ['deleted-at-source'],
-    );
-    final backup = File(path.join(fixture.root.path, 'deleted.butlerlybackup'));
-    await fixture.backups.createBackup(backup);
+      await fixture.insertTransaction(
+        id: 'deleted-at-source',
+        description: 'Will be deleted',
+        updatedAt: oldTime,
+      );
+      await fixture.database.database.delete(
+        'transactions',
+        where: 'id = ?',
+        whereArgs: ['deleted-at-source'],
+      );
+      final backup = File(
+        path.join(fixture.root.path, 'deleted.butlerlybackup'),
+      );
+      await fixture.backups.createBackup(backup);
 
-    await fixture.insertTransaction(
-      id: 'deleted-at-source',
-      description: 'Old local copy',
-      updatedAt: oldTime,
-    );
-    await fixture.backups.restore(backup, mode: LocalRestoreMode.merge);
-    expect(await fixture.description('deleted-at-source'), isNull);
-  });
+      await fixture.insertTransaction(
+        id: 'deleted-at-source',
+        description: 'Old local copy',
+        updatedAt: oldTime,
+      );
+      await fixture.backups.restore(backup, mode: LocalRestoreMode.merge);
+      expect(await fixture.description('deleted-at-source'), isNull);
+    },
+  );
 
   test('backup restores checksum-protected evidence in merge mode', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
     final evidence = File(path.join(fixture.evidence.path, 'receipt.bin'));
     await evidence.writeAsBytes([1, 2, 3, 4]);
-    final backup = File(path.join(fixture.root.path, 'evidence.butlerlybackup'));
+    final backup = File(
+      path.join(fixture.root.path, 'evidence.butlerlybackup'),
+    );
     await fixture.backups.createBackup(backup);
     await evidence.delete();
 
@@ -117,7 +130,8 @@ final class _Fixture {
 
   static Future<_Fixture> create() async {
     final root = await Directory.systemTemp.createTemp('butlerly-backup-test-');
-    final documents = Directory(path.join(root.path, 'documents'))..createSync();
+    final documents = Directory(path.join(root.path, 'documents'))
+      ..createSync();
     final evidence = Directory(path.join(root.path, 'evidence'))..createSync();
     final database = LocalDatabase(
       logger: AppLogger(),

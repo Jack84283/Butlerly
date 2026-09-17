@@ -147,9 +147,7 @@ class _RestoreRecoveryRequiredPageState
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.restore),
-                      label: Text(
-                        context.l10n.backupText('recoverButlerly'),
-                      ),
+                      label: Text(context.l10n.backupText('recoverButlerly')),
                     ),
                   if (hasSafetyCopy) const SizedBox(height: 12),
                   TextButton.icon(

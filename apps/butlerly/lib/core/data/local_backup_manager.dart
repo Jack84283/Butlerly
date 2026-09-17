@@ -82,11 +82,7 @@ final class LocalBackupManager {
       await EvidenceMutationLock.runExclusive(
         () => _createBackupUnlocked(plain),
       );
-      await _encryption.encrypt(
-        plain,
-        encryptedCandidate,
-        password: password,
-      );
+      await _encryption.encrypt(plain, encryptedCandidate, password: password);
       await _encryption.decrypt(
         encryptedCandidate,
         verificationPlain,
@@ -208,10 +204,7 @@ final class LocalBackupManager {
 
   Future<bool> isEncryptedBackup(File file) => _encryption.isEncrypted(file);
 
-  Future<engine.BackupInspection> inspect(
-    File file, {
-    String? password,
-  }) async {
+  Future<engine.BackupInspection> inspect(File file, {String? password}) async {
     final readable = await _openReadableBackup(file, password: password);
     try {
       await _assertSupportedBackupSchema(readable.file);
@@ -391,7 +384,8 @@ final class LocalBackupManager {
       final journalExists = await journal.exists();
       final rootExistsAfterFailure = await root.exists();
       var rollbackProven =
-          !journalExists && rootExistsAfterFailure == rootExistedBeforeActivation;
+          !journalExists &&
+          rootExistsAfterFailure == rootExistedBeforeActivation;
       if (rollbackProven) {
         try {
           await _validateDatabase(database.database);
@@ -700,12 +694,12 @@ final class LocalBackupManager {
     );
   }
 
-  Future<void> _copyDirectory(
-    Directory source,
-    Directory destination,
-  ) async {
+  Future<void> _copyDirectory(Directory source, Directory destination) async {
     await destination.create(recursive: true);
-    await for (final entity in source.list(recursive: true, followLinks: false)) {
+    await for (final entity in source.list(
+      recursive: true,
+      followLinks: false,
+    )) {
       final relative = path.relative(entity.path, from: source.path);
       final target = path.join(destination.path, relative);
       if (entity is Directory) {

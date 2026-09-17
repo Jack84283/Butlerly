@@ -3,101 +3,98 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('maps rule grouping to presentation section without semantic coupling', () {
-    expect(
-      insightPresentationGroup(
-        _insight(
-          RuleGrouping.transaction,
-          semanticType: InsightSemanticType.attention,
+  test(
+    'maps rule grouping to presentation section without semantic coupling',
+    () {
+      expect(
+        insightPresentationGroup(
+          _insight(
+            RuleGrouping.transaction,
+            semanticType: InsightSemanticType.attention,
+          ),
         ),
-      ),
-      InsightPresentationGroup.unusual,
-    );
-    expect(
-      insightPresentationGroup(_insight(RuleGrouping.transaction)),
-      InsightPresentationGroup.other,
-    );
-    expect(
-      insightPresentationGroup(
-        _insight(
-          RuleGrouping.transaction,
-          semanticType: InsightSemanticType.positive,
+        InsightPresentationGroup.unusual,
+      );
+      expect(
+        insightPresentationGroup(_insight(RuleGrouping.transaction)),
+        InsightPresentationGroup.other,
+      );
+      expect(
+        insightPresentationGroup(
+          _insight(
+            RuleGrouping.transaction,
+            semanticType: InsightSemanticType.positive,
+          ),
         ),
-      ),
-      InsightPresentationGroup.other,
-    );
-    expect(
-      insightPresentationGroup(_insight(RuleGrouping.category)),
-      InsightPresentationGroup.category,
-    );
-    expect(
-      insightPresentationGroup(_insight(RuleGrouping.subcategory)),
-      InsightPresentationGroup.subcategory,
-    );
-    expect(
-      insightPresentationGroup(_insight(RuleGrouping.tag)),
-      InsightPresentationGroup.tag,
-    );
-    expect(
-      insightPresentationGroup(_insight(RuleGrouping.merchant)),
-      InsightPresentationGroup.merchant,
-    );
-    expect(
-      insightPresentationGroup(_insight(RuleGrouping.paymentSource)),
-      InsightPresentationGroup.paymentSource,
-    );
-    expect(
-      insightPresentationGroup(_insight(RuleGrouping.none)),
-      InsightPresentationGroup.other,
-    );
-  });
+        InsightPresentationGroup.other,
+      );
+      expect(
+        insightPresentationGroup(_insight(RuleGrouping.category)),
+        InsightPresentationGroup.category,
+      );
+      expect(
+        insightPresentationGroup(_insight(RuleGrouping.subcategory)),
+        InsightPresentationGroup.subcategory,
+      );
+      expect(
+        insightPresentationGroup(_insight(RuleGrouping.tag)),
+        InsightPresentationGroup.tag,
+      );
+      expect(
+        insightPresentationGroup(_insight(RuleGrouping.merchant)),
+        InsightPresentationGroup.merchant,
+      );
+      expect(
+        insightPresentationGroup(_insight(RuleGrouping.paymentSource)),
+        InsightPresentationGroup.paymentSource,
+      );
+      expect(
+        insightPresentationGroup(_insight(RuleGrouping.none)),
+        InsightPresentationGroup.other,
+      );
+    },
+  );
 
-  test('uses authored presentation role for unusually large purchase section', () {
-    expect(
-      insightPresentationGroup(
-        _insight(
-          RuleGrouping.transaction,
-          role: 'largePurchase',
-          operation: RuleOperation.maximum,
-          visualizationType: InsightVisualizationType.comparison,
-          semanticType: InsightSemanticType.attention,
+  test(
+    'uses authored presentation role for unusually large purchase section',
+    () {
+      expect(
+        insightPresentationGroup(
+          _insight(
+            RuleGrouping.transaction,
+            role: 'largePurchase',
+            operation: RuleOperation.maximum,
+            visualizationType: InsightVisualizationType.comparison,
+            semanticType: InsightSemanticType.attention,
+          ),
         ),
-      ),
-      InsightPresentationGroup.largePurchase,
-    );
-    expect(
-      insightPresentationGroup(
-        _insight(
-          RuleGrouping.transaction,
-          operation: RuleOperation.maximum,
-          visualizationType: InsightVisualizationType.comparison,
-          semanticType: InsightSemanticType.attention,
+        InsightPresentationGroup.largePurchase,
+      );
+      expect(
+        insightPresentationGroup(
+          _insight(
+            RuleGrouping.transaction,
+            operation: RuleOperation.maximum,
+            visualizationType: InsightVisualizationType.comparison,
+            semanticType: InsightSemanticType.attention,
+          ),
         ),
-      ),
-      InsightPresentationGroup.unusual,
-    );
-  });
+        InsightPresentationGroup.unusual,
+      );
+    },
+  );
 
   test('recognizes an all-positive fallback group', () {
     expect(
       insightGroupIsPositiveOnly([
-        _insight(
-          RuleGrouping.none,
-          semanticType: InsightSemanticType.positive,
-        ),
-        _insight(
-          RuleGrouping.none,
-          semanticType: InsightSemanticType.positive,
-        ),
+        _insight(RuleGrouping.none, semanticType: InsightSemanticType.positive),
+        _insight(RuleGrouping.none, semanticType: InsightSemanticType.positive),
       ]),
       isTrue,
     );
     expect(
       insightGroupIsPositiveOnly([
-        _insight(
-          RuleGrouping.none,
-          semanticType: InsightSemanticType.positive,
-        ),
+        _insight(RuleGrouping.none, semanticType: InsightSemanticType.positive),
         _insight(
           RuleGrouping.none,
           semanticType: InsightSemanticType.attention,

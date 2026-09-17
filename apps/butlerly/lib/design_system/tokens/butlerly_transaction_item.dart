@@ -33,8 +33,7 @@ abstract final class ButlerlyTransactionItemTokens {
   static const navigationIconSize = 18.0;
   static const dividerThickness = 1.0;
   static const dividerInset = horizontalInset;
-  static const minTouchHeight =
-      leadingIconSize + topPadding + bottomPadding;
+  static const minTouchHeight = leadingIconSize + topPadding + bottomPadding;
   static const selectionControlTapTargetSize = MaterialTapTargetSize.shrinkWrap;
   static const selectionControlDensity = VisualDensity.compact;
   static const textHeightBehavior = TextHeightBehavior(
@@ -45,8 +44,8 @@ abstract final class ButlerlyTransactionItemTokens {
 
 /// Semantic styles for the transaction title, amount, and supporting metadata.
 extension ButlerlyTransactionItemStyles on BuildContext {
-  TextStyle get transactionItemAmount => Theme.of(this).textTheme.titleMedium!
-      .copyWith(
+  TextStyle get transactionItemAmount =>
+      Theme.of(this).textTheme.titleMedium!.copyWith(
         fontSize: ButlerlyTransactionItemTokens.amountFontSize,
         height: ButlerlyTransactionItemTokens.amountLineHeight,
         fontWeight: FontWeight.w600,
@@ -54,26 +53,24 @@ extension ButlerlyTransactionItemStyles on BuildContext {
         fontFeatures: ButlerlyTypography.financialAmountFeatures,
       );
 
-  TextStyle get transactionItemDate => Theme.of(this).textTheme.bodyMedium!
-      .copyWith(
+  TextStyle get transactionItemDate =>
+      Theme.of(this).textTheme.bodyMedium!.copyWith(
         fontSize: ButlerlyTransactionItemTokens.metadataFontSize,
         height: ButlerlyTransactionItemTokens.metadataLineHeight,
         fontWeight: FontWeight.w400,
         color: colors.secondaryText,
       );
 
-  TextStyle get transactionItemDescription => Theme.of(this)
-      .textTheme
-      .bodyMedium!
-      .copyWith(
+  TextStyle get transactionItemDescription =>
+      Theme.of(this).textTheme.bodyMedium!.copyWith(
         fontSize: ButlerlyTransactionItemTokens.titleFontSize,
         height: ButlerlyTransactionItemTokens.titleLineHeight,
         fontWeight: FontWeight.w600,
         color: colors.primaryText,
       );
 
-  TextStyle get transactionItemMetadata => Theme.of(this).textTheme.bodyMedium!
-      .copyWith(
+  TextStyle get transactionItemMetadata =>
+      Theme.of(this).textTheme.bodyMedium!.copyWith(
         fontSize: ButlerlyTransactionItemTokens.metadataFontSize,
         height: ButlerlyTransactionItemTokens.metadataLineHeight,
         fontWeight: FontWeight.w400,

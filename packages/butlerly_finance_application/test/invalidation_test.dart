@@ -21,10 +21,9 @@ void main() {
     enabled: true,
     status: AnalysisRuleStatus.active,
     period: 'selected_period',
-    measure: measure ?? const RuleMeasure(
-      operation: RuleOperation.sum,
-      field: 'amount',
-    ),
+    measure:
+        measure ??
+        const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
     measures: measures,
     grouping: RuleGrouping.none,
     baseline: RuleBaseline.none,
@@ -41,47 +40,62 @@ void main() {
   ) async {
     final results = _Results();
     final repository = _Rules(rules);
-    final outcome = await InvalidateAnalysis(
-      findings,
-      results: results,
-      rules: repository,
-    ).call(
-      reason,
-      DateTime.utc(2026, 8, 15),
-      periodStart: '2026-08-01',
-      periodEnd: '2026-08-31',
-    );
+    final outcome =
+        await InvalidateAnalysis(
+          findings,
+          results: results,
+          rules: repository,
+        ).call(
+          reason,
+          DateTime.utc(2026, 8, 15),
+          periodStart: '2026-08-01',
+          periodEnd: '2026-08-31',
+        );
     expect(outcome, isA<ApplicationSuccess<void>>());
     return results.ruleIds;
   }
 
   test('invalidates a singular amount measure', () async {
     expect(
-      await invalidate(
-        AnalysisInvalidationReason.transactionAmountChanged,
-        [rule('ANL-R001')],
-      ),
+      await invalidate(AnalysisInvalidationReason.transactionAmountChanged, [
+        rule('ANL-R001'),
+      ]),
       {'ANL-R001'},
     );
   });
 
-  test('invalidates singular base-currency measures for FX and base changes', () async {
-    final base = rule(
-      'ANL-R001',
-      measure: const RuleMeasure(
-        operation: RuleOperation.sum,
-        field: 'amount',
-        currencyBasis: CurrencyBasis.baseCurrency,
-      ),
-    );
-    expect(await invalidate(AnalysisInvalidationReason.exchangeRateChanged, [base]), {'ANL-R001'});
-    expect(await invalidate(AnalysisInvalidationReason.baseCurrencyChanged, [base]), {'ANL-R001'});
-  });
+  test(
+    'invalidates singular base-currency measures for FX and base changes',
+    () async {
+      final base = rule(
+        'ANL-R001',
+        measure: const RuleMeasure(
+          operation: RuleOperation.sum,
+          field: 'amount',
+          currencyBasis: CurrencyBasis.baseCurrency,
+        ),
+      );
+      expect(
+        await invalidate(AnalysisInvalidationReason.exchangeRateChanged, [
+          base,
+        ]),
+        {'ANL-R001'},
+      );
+      expect(
+        await invalidate(AnalysisInvalidationReason.baseCurrencyChanged, [
+          base,
+        ]),
+        {'ANL-R001'},
+      );
+    },
+  );
 
   test('retains multi-measure support and propagates to dependents', () async {
     final root = rule(
       'ANL-R001',
-      measures: const [RuleMeasure(operation: RuleOperation.sum, field: 'amount')],
+      measures: const [
+        RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
+      ],
     );
     final dependent = rule(
       'ANL-R002',
@@ -93,7 +107,11 @@ void main() {
       dependencies: [RuleDependency(ruleId: RuleIdentity('ANL-R002'))],
     );
     expect(
-      await invalidate(AnalysisInvalidationReason.transactionAmountChanged, [root, dependent, grandchild]),
+      await invalidate(AnalysisInvalidationReason.transactionAmountChanged, [
+        root,
+        dependent,
+        grandchild,
+      ]),
       {'ANL-R001', 'ANL-R002', 'ANL-R003'},
     );
   });
@@ -101,10 +119,15 @@ void main() {
   test('leaves unrelated rules out of a narrow invalidation scope', () async {
     final unrelated = rule(
       'ANL-R004',
-      measure: const RuleMeasure(operation: RuleOperation.count, field: 'transaction'),
+      measure: const RuleMeasure(
+        operation: RuleOperation.count,
+        field: 'transaction',
+      ),
     );
     expect(
-      await invalidate(AnalysisInvalidationReason.transactionAmountChanged, [unrelated]),
+      await invalidate(AnalysisInvalidationReason.transactionAmountChanged, [
+        unrelated,
+      ]),
       isEmpty,
     );
   });
@@ -148,18 +171,33 @@ final class _Rules implements AnalysisRuleRepository {
   @override
   Future<List<AnalysisRuleDefinition>> listDefinitions() async => values;
   @override
-  Future<AnalysisRuleActivation?> existingActivation(RuleIdentity id) async => null;
+  Future<AnalysisRuleActivation?> existingActivation(RuleIdentity id) async =>
+      null;
   @override
-  Future<void> activate(RuleIdentity id, RuleVersion version, bool enabled, DateTime at) async {}
+  Future<void> activate(
+    RuleIdentity id,
+    RuleVersion version,
+    bool enabled,
+    DateTime at,
+  ) async {}
   @override
-  Future<void> install(AnalysisRuleDefinition definition, {required String sourceType, required String canonicalDefinition}) async {}
+  Future<void> install(
+    AnalysisRuleDefinition definition, {
+    required String sourceType,
+    required String canonicalDefinition,
+  }) async {}
 }
 
 final class _Findings implements AnalysisFindingRepository {
   @override
-  Future<List<AnalysisFinding>> list({FindingLifecycle? lifecycle}) async => const [];
+  Future<List<AnalysisFinding>> list({FindingLifecycle? lifecycle}) async =>
+      const [];
   @override
   Future<void> save(AnalysisFinding finding) async {}
   @override
-  Future<void> updateLifecycle(String id, FindingLifecycle lifecycle, DateTime at) async {}
+  Future<void> updateLifecycle(
+    String id,
+    FindingLifecycle lifecycle,
+    DateTime at,
+  ) async {}
 }

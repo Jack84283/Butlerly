@@ -92,52 +92,53 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('saves recognized receipt after transaction and evidence commit', (
-    tester,
-  ) async {
-    final transactions = _ReceiptTransactionRepository();
-    final finance = _finance(transactions);
-    final fixturePath = _fixturePath();
-    final source = XFile(fixturePath, name: 'receipt.png');
-    String? attachedTransactionId;
-    bool? routeResult;
+  testWidgets(
+    'saves recognized receipt after transaction and evidence commit',
+    (tester) async {
+      final transactions = _ReceiptTransactionRepository();
+      final finance = _finance(transactions);
+      final fixturePath = _fixturePath();
+      final source = XFile(fixturePath, name: 'receipt.png');
+      String? attachedTransactionId;
+      bool? routeResult;
 
-    _resetView(tester);
+      _resetView(tester);
 
-    await _openReceiptRoute(
-      tester,
-      ReceiptCapturePage(
-        finance: finance,
-        evidenceStore: _evidenceStore(finance),
-        pickImage: (_) async => source,
-        preserveEvidence: (_) async => _preservedReceipt,
-        fileForPreserved: (_) async => File(fixturePath),
-        discardPreserved: (_) async {},
-        attachPreserved: (transactionId, _) async {
-          attachedTransactionId = transactionId;
-          return _receiptEvidence('evidence-success');
-        },
-        ocr: (_) async => _recognizedReceipt(),
-        loadInitialData: _emptyInitialData,
-      ),
-      onResult: (value) => routeResult = value,
-    );
-    await _captureAndAcceptReceipt(tester);
+      await _openReceiptRoute(
+        tester,
+        ReceiptCapturePage(
+          finance: finance,
+          evidenceStore: _evidenceStore(finance),
+          pickImage: (_) async => source,
+          preserveEvidence: (_) async => _preservedReceipt,
+          fileForPreserved: (_) async => File(fixturePath),
+          discardPreserved: (_) async {},
+          attachPreserved: (transactionId, _) async {
+            attachedTransactionId = transactionId;
+            return _receiptEvidence('evidence-success');
+          },
+          ocr: (_) async => _recognizedReceipt(),
+          loadInitialData: _emptyInitialData,
+        ),
+        onResult: (value) => routeResult = value,
+      );
+      await _captureAndAcceptReceipt(tester);
 
-    final saveReceipt = find.widgetWithText(
-      FilledButton,
-      'Save receipt transaction',
-    );
-    await _scrollToAndTap(tester, saveReceipt);
-    await tester.pumpAndSettle();
+      final saveReceipt = find.widgetWithText(
+        FilledButton,
+        'Save receipt transaction',
+      );
+      await _scrollToAndTap(tester, saveReceipt);
+      await tester.pumpAndSettle();
 
-    expect(routeResult, isTrue);
-    expect(transactions.values, hasLength(1));
-    expect(attachedTransactionId, transactions.values.keys.single);
-    expect(transactions.values.values.single.transactionDate, '2026-09-15');
-    expect(find.byType(ReceiptCapturePage), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
+      expect(routeResult, isTrue);
+      expect(transactions.values, hasLength(1));
+      expect(attachedTransactionId, transactions.values.keys.single);
+      expect(transactions.values.values.single.transactionDate, '2026-09-15');
+      expect(find.byType(ReceiptCapturePage), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('failed evidence attach rolls new transaction back for retry', (
     tester,
@@ -300,13 +301,14 @@ FinanceServices _finance(
   MemoryUserPreferences(),
 );
 
-LocalEvidenceStore _evidenceStore(FinanceServices finance) => LocalEvidenceStore(
-  LocalDataManager(
-    LocalDatabase(logger: AppLogger()),
-    localEvidenceDirectory: Directory.systemTemp,
-  ),
-  finance,
-);
+LocalEvidenceStore _evidenceStore(FinanceServices finance) =>
+    LocalEvidenceStore(
+      LocalDataManager(
+        LocalDatabase(logger: AppLogger()),
+        localEvidenceDirectory: Directory.systemTemp,
+      ),
+      finance,
+    );
 
 Future<ReceiptCaptureInitialData> _emptyInitialData() async =>
     const ReceiptCaptureInitialData(
@@ -345,9 +347,9 @@ Future<void> _openReceiptRoute(
           body: Center(
             child: FilledButton(
               onPressed: () async {
-                final result = await Navigator.of(context).push<bool>(
-                  MaterialPageRoute(builder: (_) => page),
-                );
+                final result = await Navigator.of(
+                  context,
+                ).push<bool>(MaterialPageRoute(builder: (_) => page));
                 onResult(result);
               },
               child: const Text('Open receipt'),
@@ -388,11 +390,7 @@ Future<void> _scrollToAndTap(WidgetTester tester, Finder target) async {
     matching: find.byType(Scrollable),
   );
   expect(scrollable, findsWidgets);
-  await tester.scrollUntilVisible(
-    target,
-    400,
-    scrollable: scrollable.first,
-  );
+  await tester.scrollUntilVisible(target, 400, scrollable: scrollable.first);
   await tester.pumpAndSettle();
   await tester.tap(target);
 }

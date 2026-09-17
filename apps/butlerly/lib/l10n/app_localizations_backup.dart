@@ -80,8 +80,7 @@ const _backupStrings = <String, Map<String, String>>{
     'backup': 'Crear copia de Butlerly',
     'backupSubtitle': 'Crea un archivo de copia local portátil y cifrado.',
     'restoreBackup': 'Restaurar copia',
-    'restoreSubtitle':
-        'Combina o reemplaza datos desde una copia de Butlerly.',
+    'restoreSubtitle': 'Combina o reemplaza datos desde una copia de Butlerly.',
     'backupComplete': 'La copia cifrada se creó correctamente.',
     'backupFailed': 'No se pudo crear la copia.',
     'restoreFailed': 'No se pudo restaurar la copia.',
@@ -173,8 +172,7 @@ const _backupStrings = <String, Map<String, String>>{
     'recoverButlerly': '恢复 Butlerly',
     'eraseLocalRecoveryData': '清除本地数据并重新开始',
     'recoveryResetTitle': '清除本机 Butlerly 数据？',
-    'recoveryResetBody':
-        '这将永久删除此设备上的 Butlerly 本地财务数据、凭证和恢复副本。仅在无法完成恢复时使用此操作。',
+    'recoveryResetBody': '这将永久删除此设备上的 Butlerly 本地财务数据、凭证和恢复副本。仅在无法完成恢复时使用此操作。',
     'recoveryResetConfirm': '清除并重新开始',
     'recoveryStillRequired': '仍需要执行恢复。正常编辑仍未启用，可用的恢复材料已保留。',
   },

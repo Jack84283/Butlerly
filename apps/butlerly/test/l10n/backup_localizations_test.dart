@@ -15,11 +15,19 @@ void main() {
   });
 
   test('backup vocabulary resolves every English key in all locales', () {
-    for (final locale in const [Locale('en'), Locale('es'), Locale('zh', 'CN')]) {
+    for (final locale in const [
+      Locale('en'),
+      Locale('es'),
+      Locale('zh', 'CN'),
+    ]) {
       final localizations = AppLocalizations(locale);
       for (final key in backupLocalizationKeys) {
         final value = localizations.backupText(key);
-        expect(value, isNotEmpty, reason: '$key is empty for ${locale.languageCode}');
+        expect(
+          value,
+          isNotEmpty,
+          reason: '$key is empty for ${locale.languageCode}',
+        );
         expect(value, isNot(key), reason: '$key fell back to the raw key');
       }
     }

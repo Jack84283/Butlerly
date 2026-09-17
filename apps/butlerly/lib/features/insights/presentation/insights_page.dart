@@ -159,7 +159,9 @@ class _InsightsPageState extends State<InsightsPage> {
             return useCase.call(value.value);
           });
     } else {
-      future = useCase.contextFor(period, instant: DateTime.now()).then((value) {
+      future = useCase.contextFor(period, instant: DateTime.now()).then((
+        value,
+      ) {
         if (value is! ApplicationSuccess<AnalysisContext>) {
           return const ApplicationFailure<InsightsEvaluation>(
             ApplicationFailureDetail(
@@ -571,7 +573,9 @@ class _InsightValue extends StatelessWidget {
 
 String _qualityIssueText(BuildContext context, String code) => switch (code) {
   'missingFx' => context.l10n.text('analysisDataQualityIssueMissingFx'),
-  'insufficientData' => context.l10n.text('analysisDataQualityIssueInsufficient'),
+  'insufficientData' => context.l10n.text(
+    'analysisDataQualityIssueInsufficient',
+  ),
   'missingBaseline' => context.l10n.text('analysisDataQualityIssueBaseline'),
   'equivalentElapsedCoverage' ||
   'currentMonthToDate' ||

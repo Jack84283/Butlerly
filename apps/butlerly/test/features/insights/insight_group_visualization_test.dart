@@ -15,9 +15,7 @@ void main() {
     Locale? locale,
   }) => MaterialApp(
     locale: locale,
-    theme: ThemeData(
-      extensions: const [ButlerlySemanticColors.light],
-    ),
+    theme: ThemeData(extensions: const [ButlerlySemanticColors.light]),
     localizationsDelegates: const [
       AppLocalizations.delegate,
       GlobalMaterialLocalizations.delegate,
@@ -182,10 +180,7 @@ void main() {
     await tester.pumpWidget(
       testApp(
         locale: const Locale('es'),
-        results: [
-          result('source.visa', '1234.5'),
-          result('source.cash', '30'),
-        ],
+        results: [result('source.visa', '1234.5'), result('source.cash', '30')],
         masterData: const TransactionMasterData(
           paymentSourceNames: {
             'source.visa': 'Personal Visa',

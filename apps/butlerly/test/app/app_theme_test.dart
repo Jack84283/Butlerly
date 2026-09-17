@@ -21,10 +21,11 @@ void main() {
 
   test('editorial typography prefers Times New Roman with serif fallbacks', () {
     expect(ButlerlyTypography.editorialFontFamily, 'Times New Roman');
-    expect(
-      ButlerlyTypography.editorialFontFallback,
-      const ['Times', 'Noto Serif', 'serif'],
-    );
+    expect(ButlerlyTypography.editorialFontFallback, const [
+      'Times',
+      'Noto Serif',
+      'serif',
+    ]);
     expect(
       <String>[
         ButlerlyTypography.editorialFontFamily,

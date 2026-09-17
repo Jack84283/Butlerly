@@ -13,7 +13,11 @@ void main() {
     final parsed = parser.parse(source);
     expect(parsed.isValid, isTrue, reason: parsed.diagnostics.toString());
     final validated = validator.validate(parsed.document!);
-    expect(validated.diagnostics, isEmpty, reason: validated.diagnostics.toString());
+    expect(
+      validated.diagnostics,
+      isEmpty,
+      reason: validated.diagnostics.toString(),
+    );
     expect(validated.definition, isNotNull);
     return validated.definition!;
   }
@@ -23,7 +27,9 @@ void main() {
   setUpAll(() {
     final expenseRule = loadRule('assets/analysis_rules/metrics/ANL-R001.yaml');
     final incomeRule = loadRule('assets/analysis_rules/metrics/ANL-R002.yaml');
-    final savingsRule = loadRule('assets/analysis_rules/insights/ANL-R029.yaml');
+    final savingsRule = loadRule(
+      'assets/analysis_rules/insights/ANL-R029.yaml',
+    );
     definitions = [expenseRule, incomeRule, savingsRule];
   });
 

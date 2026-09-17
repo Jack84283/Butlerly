@@ -50,7 +50,6 @@ final class ScanExistingTransactionsForDuplicates {
   List<TransactionId> _sortedIds(List<TransactionId> ids) => List.unmodifiable(
     ids.toList()..sort((a, b) => a.value.compareTo(b.value)),
   );
-
 }
 
 /// Refreshes only the duplicate key(s) affected by one transaction mutation.

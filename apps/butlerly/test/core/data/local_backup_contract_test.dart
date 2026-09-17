@@ -18,7 +18,9 @@ void main() {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
     await fixture.insertTransaction('tx-manifest');
-    final backup = File(path.join(fixture.root.path, 'manifest.butlerlybackup'));
+    final backup = File(
+      path.join(fixture.root.path, 'manifest.butlerlybackup'),
+    );
 
     await fixture.manager.createBackup(backup);
 
@@ -30,164 +32,183 @@ void main() {
     expect(manifest['schemaVersion'], 8);
   });
 
-  test('replace creates a safety backup that can recover prior state', () async {
-    final fixture = await _Fixture.create();
-    addTearDown(fixture.dispose);
-    await fixture.insertTransaction('tx-safety', description: 'backup state');
-    final source = File(path.join(fixture.root.path, 'source.butlerlybackup'));
-    await fixture.manager.createBackup(source);
-    await fixture.database.database.update(
-      'transactions',
-      {
-        'description': 'current state',
-        'updated_at': DateTime.now().toUtc().add(const Duration(minutes: 1)).toIso8601String(),
-      },
-      where: 'id = ?',
-      whereArgs: ['tx-safety'],
-    );
+  test(
+    'replace creates a safety backup that can recover prior state',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction('tx-safety', description: 'backup state');
+      final source = File(
+        path.join(fixture.root.path, 'source.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(source);
+      await fixture.database.database.update(
+        'transactions',
+        {
+          'description': 'current state',
+          'updated_at': DateTime.now()
+              .toUtc()
+              .add(const Duration(minutes: 1))
+              .toIso8601String(),
+        },
+        where: 'id = ?',
+        whereArgs: ['tx-safety'],
+      );
 
-    await fixture.manager.restore(source, mode: LocalRestoreMode.replace);
+      await fixture.manager.restore(source, mode: LocalRestoreMode.replace);
 
-    final safetyDirectory = await fixture.data.safetyBackupDirectory();
-    final safetyFiles = await safetyDirectory
-        .list()
-        .where((entity) => entity is File && entity.path.endsWith('.butlerlybackup'))
-        .cast<File>()
-        .toList();
-    expect(safetyFiles, hasLength(1));
-    final afterReplace = await fixture.database.database.query(
-      'transactions',
-      columns: ['description'],
-      where: 'id = ?',
-      whereArgs: ['tx-safety'],
-    );
-    expect(afterReplace.single['description'], 'backup state');
+      final safetyDirectory = await fixture.data.safetyBackupDirectory();
+      final safetyFiles = await safetyDirectory
+          .list()
+          .where(
+            (entity) =>
+                entity is File && entity.path.endsWith('.butlerlybackup'),
+          )
+          .cast<File>()
+          .toList();
+      expect(safetyFiles, hasLength(1));
+      final afterReplace = await fixture.database.database.query(
+        'transactions',
+        columns: ['description'],
+        where: 'id = ?',
+        whereArgs: ['tx-safety'],
+      );
+      expect(afterReplace.single['description'], 'backup state');
 
-    await fixture.manager.restore(
-      safetyFiles.single,
-      mode: LocalRestoreMode.replace,
-    );
+      await fixture.manager.restore(
+        safetyFiles.single,
+        mode: LocalRestoreMode.replace,
+      );
 
-    final recovered = await fixture.database.database.query(
-      'transactions',
-      columns: ['description'],
-      where: 'id = ?',
-      whereArgs: ['tx-safety'],
-    );
-    expect(recovered.single['description'], 'current state');
-  });
+      final recovered = await fixture.database.database.query(
+        'transactions',
+        columns: ['description'],
+        where: 'id = ?',
+        whereArgs: ['tx-safety'],
+      );
+      expect(recovered.single['description'], 'current state');
+    },
+  );
 
-  test('restore keeps durable decisions and drops generated workflow state', () async {
-    final fixture = await _Fixture.create();
-    addTearDown(fixture.dispose);
-    final now = DateTime.utc(2026, 9, 1).toIso8601String();
-    await fixture.insertTransaction('tx-a');
-    await fixture.insertTransaction('tx-b');
-    await fixture.insertTransaction('tx-c');
-    await fixture.database.database.insert('provenances', {
-      'id': 'prov-workflow',
-      'source_type': 'manual',
-      'captured_at': now,
-    });
-    await fixture.database.database.insert('review_issues', {
-      'id': 'review-open',
-      'transaction_id': 'tx-a',
-      'reason': 'incomplete',
-      'status': 'open',
-      'created_at': now,
-    });
-    await fixture.database.database.insert('review_issues', {
-      'id': 'review-closed',
-      'transaction_id': 'tx-a',
-      'reason': 'incomplete',
-      'status': 'resolved',
-      'created_at': now,
-      'closed_at': now,
-    });
-    await fixture.database.database.insert('suggestions', {
-      'id': 'suggestion-open',
-      'transaction_id': 'tx-a',
-      'target': 'category',
-      'proposed_value': 'category.food',
-      'method': 'local',
-      'status': 'proposed',
-      'provenance_id': 'prov-workflow',
-      'created_at': now,
-    });
-    await fixture.database.database.insert('suggestions', {
-      'id': 'suggestion-decided',
-      'transaction_id': 'tx-a',
-      'target': 'category',
-      'proposed_value': 'category.food',
-      'method': 'local',
-      'status': 'accepted',
-      'provenance_id': 'prov-workflow',
-      'created_at': now,
-      'decided_at': now,
-    });
-    await _insertCandidate(
-      fixture,
-      id: 'candidate-proposed',
-      receiptId: 'tx-a',
-      paymentId: 'tx-b',
-      status: 'proposed',
-      now: now,
-    );
-    await _insertCandidate(
-      fixture,
-      id: 'candidate-rejected',
-      receiptId: 'tx-a',
-      paymentId: 'tx-c',
-      status: 'rejected',
-      now: now,
-    );
-    await _insertDuplicateGroup(
-      fixture,
-      id: 'duplicate-open',
-      status: 'unresolved',
-      now: now,
-    );
-    await _insertDuplicateGroup(
-      fixture,
-      id: 'duplicate-decided',
-      status: 'keepBoth',
-      now: now,
-    );
-    final backup = File(path.join(fixture.root.path, 'workflow.butlerlybackup'));
+  test(
+    'restore keeps durable decisions and drops generated workflow state',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final now = DateTime.utc(2026, 9, 1).toIso8601String();
+      await fixture.insertTransaction('tx-a');
+      await fixture.insertTransaction('tx-b');
+      await fixture.insertTransaction('tx-c');
+      await fixture.database.database.insert('provenances', {
+        'id': 'prov-workflow',
+        'source_type': 'manual',
+        'captured_at': now,
+      });
+      await fixture.database.database.insert('review_issues', {
+        'id': 'review-open',
+        'transaction_id': 'tx-a',
+        'reason': 'incomplete',
+        'status': 'open',
+        'created_at': now,
+      });
+      await fixture.database.database.insert('review_issues', {
+        'id': 'review-closed',
+        'transaction_id': 'tx-a',
+        'reason': 'incomplete',
+        'status': 'resolved',
+        'created_at': now,
+        'closed_at': now,
+      });
+      await fixture.database.database.insert('suggestions', {
+        'id': 'suggestion-open',
+        'transaction_id': 'tx-a',
+        'target': 'category',
+        'proposed_value': 'category.food',
+        'method': 'local',
+        'status': 'proposed',
+        'provenance_id': 'prov-workflow',
+        'created_at': now,
+      });
+      await fixture.database.database.insert('suggestions', {
+        'id': 'suggestion-decided',
+        'transaction_id': 'tx-a',
+        'target': 'category',
+        'proposed_value': 'category.food',
+        'method': 'local',
+        'status': 'accepted',
+        'provenance_id': 'prov-workflow',
+        'created_at': now,
+        'decided_at': now,
+      });
+      await _insertCandidate(
+        fixture,
+        id: 'candidate-proposed',
+        receiptId: 'tx-a',
+        paymentId: 'tx-b',
+        status: 'proposed',
+        now: now,
+      );
+      await _insertCandidate(
+        fixture,
+        id: 'candidate-rejected',
+        receiptId: 'tx-a',
+        paymentId: 'tx-c',
+        status: 'rejected',
+        now: now,
+      );
+      await _insertDuplicateGroup(
+        fixture,
+        id: 'duplicate-open',
+        status: 'unresolved',
+        now: now,
+      );
+      await _insertDuplicateGroup(
+        fixture,
+        id: 'duplicate-decided',
+        status: 'keepBoth',
+        now: now,
+      );
+      final backup = File(
+        path.join(fixture.root.path, 'workflow.butlerlybackup'),
+      );
 
-    await fixture.manager.createBackup(backup);
-    await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+      await fixture.manager.createBackup(backup);
+      await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
 
-    expect(
-      await _ids(fixture, 'review_issues'),
-      containsAll(<String>['review-closed']),
-    );
-    expect(await _ids(fixture, 'review_issues'), isNot(contains('review-open')));
-    expect(
-      await _ids(fixture, 'suggestions'),
-      containsAll(<String>['suggestion-decided']),
-    );
-    expect(
-      await _ids(fixture, 'suggestions'),
-      isNot(contains('suggestion-open')),
-    );
-    expect(
-      await _ids(fixture, 'reconciliation_candidates'),
-      containsAll(<String>['candidate-rejected']),
-    );
-    expect(
-      await _ids(fixture, 'reconciliation_candidates'),
-      isNot(contains('candidate-proposed')),
-    );
-    expect(
-      await _ids(fixture, 'duplicate_candidate_groups'),
-      containsAll(<String>['duplicate-decided']),
-    );
-    expect(
-      await _ids(fixture, 'duplicate_candidate_groups'),
-      isNot(contains('duplicate-open')),
-    );
-  });
+      expect(
+        await _ids(fixture, 'review_issues'),
+        containsAll(<String>['review-closed']),
+      );
+      expect(
+        await _ids(fixture, 'review_issues'),
+        isNot(contains('review-open')),
+      );
+      expect(
+        await _ids(fixture, 'suggestions'),
+        containsAll(<String>['suggestion-decided']),
+      );
+      expect(
+        await _ids(fixture, 'suggestions'),
+        isNot(contains('suggestion-open')),
+      );
+      expect(
+        await _ids(fixture, 'reconciliation_candidates'),
+        containsAll(<String>['candidate-rejected']),
+      );
+      expect(
+        await _ids(fixture, 'reconciliation_candidates'),
+        isNot(contains('candidate-proposed')),
+      );
+      expect(
+        await _ids(fixture, 'duplicate_candidate_groups'),
+        containsAll(<String>['duplicate-decided']),
+      );
+      expect(
+        await _ids(fixture, 'duplicate_candidate_groups'),
+        isNot(contains('duplicate-open')),
+      );
+    },
+  );
 }
 
 Future<void> _insertCandidate(
@@ -264,8 +285,11 @@ final class _Fixture {
   final LocalBackupManager manager;
 
   static Future<_Fixture> create() async {
-    final root = await Directory.systemTemp.createTemp('butlerly-backup-contract-');
-    final documents = Directory(path.join(root.path, 'documents'))..createSync();
+    final root = await Directory.systemTemp.createTemp(
+      'butlerly-backup-contract-',
+    );
+    final documents = Directory(path.join(root.path, 'documents'))
+      ..createSync();
     final evidence = Directory(path.join(root.path, 'evidence'))..createSync();
     final database = LocalDatabase(
       logger: AppLogger(),
@@ -287,10 +311,7 @@ final class _Fixture {
     );
   }
 
-  Future<void> insertTransaction(
-    String id, {
-    String? description,
-  }) async {
+  Future<void> insertTransaction(String id, {String? description}) async {
     final now = DateTime.utc(2026, 9, 1).toIso8601String();
     await database.database.insert('transactions', {
       'id': id,

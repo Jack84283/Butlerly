@@ -76,10 +76,7 @@ final class LocalBackupSnapshotWriter {
     tables['categories'] = categories;
     recordCount += categories.length;
 
-    final merchants = await source.query(
-      'merchants',
-      where: 'is_built_in = 0',
-    );
+    final merchants = await source.query('merchants', where: 'is_built_in = 0');
     tables['merchants'] = merchants;
     recordCount += merchants.length;
 
@@ -136,7 +133,9 @@ final class LocalBackupSnapshotWriter {
     );
     tables['duplicate_candidate_groups'] = duplicateGroups;
     recordCount += duplicateGroups.length;
-    final duplicateIds = duplicateGroups.map((row) => row['id'] as String).toSet();
+    final duplicateIds = duplicateGroups
+        .map((row) => row['id'] as String)
+        .toSet();
     final duplicateMembers = await _rowsForIds(
       source,
       table: 'duplicate_candidate_group_transactions',
@@ -148,14 +147,13 @@ final class LocalBackupSnapshotWriter {
 
     final tombstones = await source.query('entity_tombstones');
     final portableTombstones = tombstones
-        .where(
-          (row) => !_generatedTombstoneTypes.contains(row['entity_type']),
-        )
+        .where((row) => !_generatedTombstoneTypes.contains(row['entity_type']))
         .toList(growable: false);
     tables['entity_tombstones'] = portableTombstones;
     recordCount += portableTombstones.length;
 
-    final evidenceRows = tables['evidence_items']! as List<Map<String, Object?>>;
+    final evidenceRows =
+        tables['evidence_items']! as List<Map<String, Object?>>;
     final evidenceRoot = await localDataManager.evidenceDirectory();
 
     // Every DB-referenced binary must exist. In addition, preserve unreferenced

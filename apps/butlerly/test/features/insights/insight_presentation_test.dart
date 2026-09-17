@@ -79,27 +79,33 @@ void main() {
     expect(presentation.primaryMetric, InsightPrimaryMetric.percentage);
   });
 
-  test('legacy positive role still maps to positive comparison presentation', () {
-    final presentation = result(
-      rule(role: 'positive'),
-      baseline: DecimalValue.parse('100'),
-    ).presentation;
+  test(
+    'legacy positive role still maps to positive comparison presentation',
+    () {
+      final presentation = result(
+        rule(role: 'positive'),
+        baseline: DecimalValue.parse('100'),
+      ).presentation;
 
-    expect(presentation.semanticType, InsightSemanticType.positive);
-    expect(
-      presentation.visualizationType,
-      InsightVisualizationType.comparison,
-    );
-    expect(presentation.primaryMetric, InsightPrimaryMetric.amount);
-  });
+      expect(presentation.semanticType, InsightSemanticType.positive);
+      expect(
+        presentation.visualizationType,
+        InsightVisualizationType.comparison,
+      );
+      expect(presentation.primaryMetric, InsightPrimaryMetric.amount);
+    },
+  );
 
-  test('legacy alert output defaults to attention without rule-id branching', () {
-    final presentation = result(
-      rule(id: 'ANL-R777', outputType: InsightOutputType.alert),
-    ).presentation;
+  test(
+    'legacy alert output defaults to attention without rule-id branching',
+    () {
+      final presentation = result(
+        rule(id: 'ANL-R777', outputType: InsightOutputType.alert),
+      ).presentation;
 
-    expect(presentation.semanticType, InsightSemanticType.attention);
-  });
+      expect(presentation.semanticType, InsightSemanticType.attention);
+    },
+  );
 
   test('legacy category share result maps to pie presentation', () {
     final presentation = result(

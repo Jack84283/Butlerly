@@ -4,6 +4,7 @@ import 'package:butlerly/app/butlerly_app.dart';
 import 'package:butlerly/app/router/app_router.dart';
 import 'package:butlerly/app/session/butlerly_session_guard.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
+import 'package:butlerly/core/analysis/bundled_analysis_rules.dart';
 import 'package:butlerly/core/config/app_configuration.dart';
 import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
@@ -17,7 +18,6 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -72,11 +72,7 @@ ButlerlyStartupFailure classifyStartupFailure(String phase, Object error) {
       };
       return ButlerlyStartupFailure(code: code, phase: phase, cause: error);
     }
-    return ButlerlyStartupFailure(
-      code: 'DB-ERROR',
-      phase: phase,
-      cause: error,
-    );
+    return ButlerlyStartupFailure(code: 'DB-ERROR', phase: phase, cause: error);
   }
 
   final code = switch (phase) {
@@ -116,7 +112,7 @@ Future<void> bootstrap() async {
 
   final logger = AppLogger();
   logger.initialize();
-  _installErrorHandlers(logger);
+  installErrorHandlers(logger);
 
   runApp(
     ProviderScope(
@@ -500,16 +496,10 @@ Future<void> initializeButlerly(AppLogger logger) async {
       phase = 'analysis rule installation';
       logger.info('Startup: installing bundled analysis rules');
       try {
-        final sources = <String, String>{};
-        for (final path in _analysisRulePaths) {
-          sources[path] = await rootBundle.loadString(path);
-        }
-        final catalog = await rootBundle.loadString(
-          'assets/analysis_rules/catalog.yaml',
-        );
-        final installation = await services<FinanceServices>()
-            .installBuiltInRules
-            ?.call(sources, catalogSource: catalog);
+        final installer = services<FinanceServices>().installBuiltInRules;
+        final installation = installer == null
+            ? null
+            : await installBundledAnalysisRules(installer);
         if (installation != null && installation.diagnostics.isNotEmpty) {
           logger.warning(
             'Some bundled analysis rules were rejected: '
@@ -579,29 +569,9 @@ Future<void> initializeLocalDatabaseForStartup(
   }
 }
 
-const _analysisRulePaths = [
-  'assets/analysis_rules/metrics/ANL-R001.yaml',
-  'assets/analysis_rules/metrics/ANL-R002.yaml',
-  'assets/analysis_rules/metrics/ANL-R003.yaml',
-  'assets/analysis_rules/metrics/ANL-R004.yaml',
-  'assets/analysis_rules/metrics/ANL-R010.yaml',
-  'assets/analysis_rules/metrics/ANL-R016.yaml',
-  'assets/analysis_rules/insights/ANL-R014.yaml',
-  'assets/analysis_rules/insights/ANL-R020.yaml',
-  'assets/analysis_rules/insights/ANL-R021.yaml',
-  'assets/analysis_rules/insights/ANL-R022.yaml',
-  'assets/analysis_rules/insights/ANL-R023.yaml',
-  'assets/analysis_rules/insights/ANL-R024.yaml',
-  'assets/analysis_rules/insights/ANL-R025.yaml',
-  'assets/analysis_rules/insights/ANL-R026.yaml',
-  'assets/analysis_rules/data_quality/ANL-R090.yaml',
-  'assets/analysis_rules/data_quality/ANL-R091.yaml',
-  'assets/analysis_rules/data_quality/ANL-R092.yaml',
-];
-
-void _installErrorHandlers(AppLogger logger) {
+@visibleForTesting
+void installErrorHandlers(AppLogger logger) {
   FlutterError.onError = (details) {
-    FlutterError.presentError(details);
     logger.severe(
       'Uncaught Flutter framework error',
       details.exception,

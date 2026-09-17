@@ -41,7 +41,9 @@ class InsightGroupVisualizations extends StatelessWidget {
       final first = entries.first;
       final type = first.presentation.visualizationType;
       final data = entries
-          .where((entry) => entry.currentValue != null && entry.dimension != null)
+          .where(
+            (entry) => entry.currentValue != null && entry.dimension != null,
+          )
           .map(
             (entry) => InsightChartDatum(
               label: _dimensionLabel(context, entry),
@@ -54,25 +56,27 @@ class InsightGroupVisualizations extends StatelessWidget {
         data.sort((a, b) => a.label.compareTo(b.label));
       }
       final currency = first.currency?.value ?? '';
-      final isShare = first.presentation.primaryMetric == InsightPrimaryMetric.share;
-      String decimal(double value) => localizedDecimal(context, value.toString());
+      final isShare =
+          first.presentation.primaryMetric == InsightPrimaryMetric.share;
+      String decimal(double value) =>
+          localizedDecimal(context, value.toString());
       String percentage(double value) => '${decimal(value)}%';
       String valueLabel(double value) => isShare
           ? percentage(value)
           : '${decimal(value)}${currency.isEmpty ? '' : ' $currency'}';
       final visualization = switch (type) {
         InsightVisualizationType.pie => InsightDonutVisualization(
-            data: data,
-            percentageLabel: percentage,
-          ),
+          data: data,
+          percentageLabel: percentage,
+        ),
         InsightVisualizationType.bar => InsightBarVisualization(
-            data: data,
-            valueLabel: valueLabel,
-          ),
+          data: data,
+          valueLabel: valueLabel,
+        ),
         InsightVisualizationType.trend => InsightTrendVisualization(
-            data: data,
-            valueLabel: valueLabel,
-          ),
+          data: data,
+          valueLabel: valueLabel,
+        ),
         _ => const SizedBox.shrink(),
       };
       final child = embedded

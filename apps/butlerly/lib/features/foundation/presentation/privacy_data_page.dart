@@ -471,9 +471,9 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     }
   }
 
-  void _message(String value) =>
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(value)));
+  void _message(String value) => ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(value)));
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -540,6 +540,6 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
   );
 }
 
-TextStyle? _subtitleStyle(BuildContext context) =>
-    Theme.of(context).textTheme.bodySmall
-        ?.copyWith(color: context.colors.secondaryText);
+TextStyle? _subtitleStyle(BuildContext context) => Theme.of(
+  context,
+).textTheme.bodySmall?.copyWith(color: context.colors.secondaryText);

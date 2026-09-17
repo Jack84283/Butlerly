@@ -111,9 +111,9 @@ void main() {
     expect(find.text('Sep 2, 2026'), findsOneWidget);
     expect(
       tester.getTopLeft(find.text('Sep 2, 2026')).dx,
-      tester.getTopLeft(
-        find.text('Groceries · Supermarket · Visa ••••8421'),
-      ).dx,
+      tester
+          .getTopLeft(find.text('Groceries · Supermarket · Visa ••••8421'))
+          .dx,
     );
     expect(find.byIcon(Icons.arrow_downward_rounded), findsNothing);
     expect(
@@ -427,14 +427,8 @@ void main() {
       ButlerlySpacing.compact,
     );
     expect(ButlerlyTransactionItemTokens.topPadding, ButlerlySpacing.small);
-    expect(
-      ButlerlyTransactionItemTokens.bottomPadding,
-      ButlerlySpacing.small,
-    );
-    expect(
-      ButlerlyTransactionItemTokens.dividerInset,
-      ButlerlySpacing.compact,
-    );
+    expect(ButlerlyTransactionItemTokens.bottomPadding, ButlerlySpacing.small);
+    expect(ButlerlyTransactionItemTokens.dividerInset, ButlerlySpacing.compact);
     expect(
       ButlerlyTransactionItemTokens.minTouchHeight,
       ButlerlyTransactionItemTokens.leadingIconSize +
@@ -443,35 +437,31 @@ void main() {
     );
   });
 
-  testWidgets(
-    'combined metadata and tags use semantic compact spacing',
-    (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.light,
-          home: Scaffold(
-            body: ButlerlyRecordRow(
-              title: 'Whole Foods',
-              amount: '20.00',
-              currency: 'USD',
-              categoryLabel: 'Food',
-              paymentSource: 'Visa',
-              tags: const ['Groceries'],
-            ),
+  testWidgets('combined metadata and tags use semantic compact spacing', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: ButlerlyRecordRow(
+            title: 'Whole Foods',
+            amount: '20.00',
+            currency: 'USD',
+            categoryLabel: 'Food',
+            paymentSource: 'Visa',
+            tags: const ['Groceries'],
           ),
         ),
-      );
+      ),
+    );
 
-      final metadata = tester.getRect(find.text('Food · Visa'));
-      final tags = tester.getRect(find.text('Groceries'));
-      expect(
-        tags.top - metadata.bottom,
-        ButlerlyTransactionItemTokens.metadataSpacing,
-      );
-      expect(
-        ButlerlyTransactionItemTokens.metadataSpacing,
-        ButlerlySpacing.xxs,
-      );
-    },
-  );
+    final metadata = tester.getRect(find.text('Food · Visa'));
+    final tags = tester.getRect(find.text('Groceries'));
+    expect(
+      tags.top - metadata.bottom,
+      ButlerlyTransactionItemTokens.metadataSpacing,
+    );
+    expect(ButlerlyTransactionItemTokens.metadataSpacing, ButlerlySpacing.xxs);
+  });
 }

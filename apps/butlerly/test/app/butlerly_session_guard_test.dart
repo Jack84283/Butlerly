@@ -276,29 +276,30 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('suspended background time expires even if monotonic clock pauses', (
-    tester,
-  ) async {
-    final elapsed = Duration.zero;
-    var wall = DateTime.utc(2026, 9, 15, 12);
-    final router = _guardTestRouter();
-    addTearDown(router.dispose);
-    addTearDown(() => _restoreResumed(tester));
+  testWidgets(
+    'suspended background time expires even if monotonic clock pauses',
+    (tester) async {
+      final elapsed = Duration.zero;
+      var wall = DateTime.utc(2026, 9, 15, 12);
+      final router = _guardTestRouter();
+      addTearDown(router.dispose);
+      addTearDown(() => _restoreResumed(tester));
 
-    await tester.pumpWidget(
-      _guardedApp(router, () => elapsed, wallNow: () => wall),
-    );
-    await tester.pump();
+      await tester.pumpWidget(
+        _guardedApp(router, () => elapsed, wallNow: () => wall),
+      );
+      await tester.pump();
 
-    _sendToBackground(tester);
-    wall = wall.add(const Duration(minutes: 6));
-    await tester.pump(const Duration(minutes: 6));
-    _resumeFromBackground(tester);
-    await tester.pump();
+      _sendToBackground(tester);
+      wall = wall.add(const Duration(minutes: 6));
+      await tester.pump(const Duration(minutes: 6));
+      _resumeFromBackground(tester);
+      await tester.pump();
 
-    expect(router.routeInformationProvider.value.uri.path, '/launch');
-    await tester.pumpWidget(const SizedBox.shrink());
-  });
+      expect(router.routeInformationProvider.value.uri.path, '/launch');
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
 
   testWidgets('backward clock change while backgrounded fails closed', (
     tester,
@@ -359,45 +360,46 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('Butlerly launch surface remains for five seconds then opens Home', (
-    tester,
-  ) async {
-    final router = GoRouter(
-      initialLocation: '/launch',
-      routes: [
-        GoRoute(
-          path: '/launch',
-          builder: (_, _) => const ButlerlyLaunchPage(),
-        ),
-        GoRoute(
-          path: '/',
-          builder: (_, _) => const Scaffold(body: Text('Home')),
-        ),
-      ],
-    );
-    addTearDown(router.dispose);
+  testWidgets(
+    'Butlerly launch surface remains for five seconds then opens Home',
+    (tester) async {
+      final router = GoRouter(
+        initialLocation: '/launch',
+        routes: [
+          GoRoute(
+            path: '/launch',
+            builder: (_, _) => const ButlerlyLaunchPage(),
+          ),
+          GoRoute(
+            path: '/',
+            builder: (_, _) => const Scaffold(body: Text('Home')),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
 
-    await tester.pumpWidget(
-      MaterialApp.router(theme: AppTheme.light, routerConfig: router),
-    );
-    await tester.pump();
-    expect(
-      find.byKey(const ValueKey('butlerly-launch-screen')),
-      findsOneWidget,
-    );
+      await tester.pumpWidget(
+        MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      );
+      await tester.pump();
+      expect(
+        find.byKey(const ValueKey('butlerly-launch-screen')),
+        findsOneWidget,
+      );
 
-    await tester.pump(const Duration(seconds: 4, milliseconds: 999));
-    expect(
-      find.byKey(const ValueKey('butlerly-launch-screen')),
-      findsOneWidget,
-    );
+      await tester.pump(const Duration(seconds: 4, milliseconds: 999));
+      expect(
+        find.byKey(const ValueKey('butlerly-launch-screen')),
+        findsOneWidget,
+      );
 
-    await tester.pump(const Duration(milliseconds: 1));
-    await tester.pump();
-    expect(router.routeInformationProvider.value.uri.path, '/');
-    expect(find.text('Home'), findsOneWidget);
-    await tester.pumpWidget(const SizedBox.shrink());
-  });
+      await tester.pump(const Duration(milliseconds: 1));
+      await tester.pump();
+      expect(router.routeInformationProvider.value.uri.path, '/');
+      expect(find.text('Home'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
 }
 
 void _sendToBackground(WidgetTester tester) {
@@ -460,9 +462,7 @@ GoRouter _guardTestRouter() => GoRouter(
               ),
               const SizedBox(
                 width: 220,
-                child: TextField(
-                  key: ValueKey('activity-text-input'),
-                ),
+                child: TextField(key: ValueKey('activity-text-input')),
               ),
             ],
           ),
@@ -471,10 +471,8 @@ GoRouter _guardTestRouter() => GoRouter(
     ),
     GoRoute(
       path: '/launch',
-      builder: (_, _) => const Scaffold(
-        key: ValueKey('test-launch'),
-        body: Text('Launch'),
-      ),
+      builder: (_, _) =>
+          const Scaffold(key: ValueKey('test-launch'), body: Text('Launch')),
     ),
   ],
 );

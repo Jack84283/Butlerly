@@ -98,7 +98,9 @@ final class InvalidateAnalysis {
     bool uses(AnalysisRuleDefinition rule, Set<String> fields) =>
         rule.grouping.name != 'none' && fields.contains(rule.grouping.name) ||
         rule.filters.any((filter) => fields.contains(filter.kind.name)) ||
-        _effectiveMeasures(rule).any((measure) => fields.contains(measure.field)) ||
+        _effectiveMeasures(
+          rule,
+        ).any((measure) => fields.contains(measure.field)) ||
         (fields.contains('baseCurrency') &&
             _effectiveMeasures(rule).any(
               (measure) => measure.currencyBasis == CurrencyBasis.baseCurrency,

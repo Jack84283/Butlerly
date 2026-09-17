@@ -172,8 +172,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     final preference = preferenceResult is ApplicationSuccess<UserPreference?>
         ? preferenceResult.value
         : null;
-    final snapshot = await TransactionMasterDataProvider(finance)
-        .load(languageCode: preference?.locale ?? 'en');
+    final snapshot = await TransactionMasterDataProvider(
+      finance,
+    ).load(languageCode: preference?.locale ?? 'en');
     if (!mounted) return;
     _applyInitialData(
       ReceiptCaptureInitialData(preference: preference, snapshot: snapshot),
@@ -636,11 +637,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         ),
       );
       if (!mounted) return;
-      if (duplicate
-          case ApplicationSuccess<DuplicateTransactionCheckResult>(
-            value: final check,
-          )
-          when check.requiresConfirmation) {
+      if (duplicate case ApplicationSuccess<DuplicateTransactionCheckResult>(
+        value: final check,
+      ) when check.requiresConfirmation) {
         final decision =
             await showButlerlyBottomSheet<ButlerlyDuplicateConfirmationResult>(
               context: context,

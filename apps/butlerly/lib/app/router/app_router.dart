@@ -38,12 +38,11 @@ NoTransitionPage<void> _primaryPage(
   String name,
   Widget child, {
   LocalKey? key,
-}) =>
-    NoTransitionPage<void>(
-      key: key,
-      name: '$primaryShellRouteNamePrefix$name',
-      child: child,
-    );
+}) => NoTransitionPage<void>(
+  key: key,
+  name: '$primaryShellRouteNamePrefix$name',
+  child: child,
+);
 
 final appRouter = GoRouter(
   initialLocation: '/launch',
@@ -149,7 +148,8 @@ final appRouter = GoRouter(
       builder: (_, state) {
         final parameters = state.uri.queryParameters;
         final locked = parameters['locked'] == 'true';
-        final hasInitialQuery = locked ||
+        final hasInitialQuery =
+            locked ||
             const {
               'ids',
               'from',

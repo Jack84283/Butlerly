@@ -23,7 +23,9 @@ void main() {
     ).readAsStringSync();
     final parsed = const RestrictedRuleParser().parse(source);
     expect(parsed.diagnostics, isEmpty);
-    final validated = const RuleDefinitionValidator().validate(parsed.document!);
+    final validated = const RuleDefinitionValidator().validate(
+      parsed.document!,
+    );
     expect(validated.diagnostics, isEmpty);
     final definition = validated.definition!;
     expect(definition.presentation, isNotNull);
@@ -43,17 +45,11 @@ void main() {
 
     final reloaded = (await repository.listActive()).single;
     expect(reloaded.presentation, isNotNull);
-    expect(
-      reloaded.presentation!.semanticType,
-      InsightSemanticType.neutral,
-    );
+    expect(reloaded.presentation!.semanticType, InsightSemanticType.neutral);
     expect(
       reloaded.presentation!.visualizationType,
       InsightVisualizationType.pie,
     );
-    expect(
-      reloaded.presentation!.primaryMetric,
-      InsightPrimaryMetric.share,
-    );
+    expect(reloaded.presentation!.primaryMetric, InsightPrimaryMetric.share);
   });
 }

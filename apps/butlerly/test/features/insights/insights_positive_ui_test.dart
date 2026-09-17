@@ -87,9 +87,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        theme: ThemeData(
-          extensions: const [ButlerlySemanticColors.light],
-        ),
+        theme: ThemeData(extensions: const [ButlerlySemanticColors.light]),
         localizationsDelegates: const [
           AppLocalizations.delegate,
           GlobalMaterialLocalizations.delegate,
@@ -203,9 +201,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        theme: ThemeData(
-          extensions: const [ButlerlySemanticColors.light],
-        ),
+        theme: ThemeData(extensions: const [ButlerlySemanticColors.light]),
         localizationsDelegates: const [
           AppLocalizations.delegate,
           GlobalMaterialLocalizations.delegate,
@@ -243,28 +239,31 @@ void main() {
     expect(find.text('储蓄改善'), findsOneWidget);
   });
 
-  test('new insight strings participate in localization completeness checks', () {
-    const keys = {
-      'insightsPositiveChanges',
-      'insightsCategoryMovementSection',
-      'insightsSubcategoryMovementSection',
-      'insightsMerchantMovementSection',
-      'viewOneSupportingTransaction',
-      'viewManySupportingTransactions',
-      'analysis.rule.r027.name',
-      'analysis.rule.r027.description',
-      'analysis.rule.r028.name',
-      'analysis.rule.r028.description',
-      'analysis.rule.r029.name',
-      'analysis.rule.r029.description',
-    };
-    for (final language in ['es', 'zh']) {
-      final missing = AppLocalizations.missingKeysFor(language);
-      for (final key in keys) {
-        expect(missing, isNot(contains(key)));
+  test(
+    'new insight strings participate in localization completeness checks',
+    () {
+      const keys = {
+        'insightsPositiveChanges',
+        'insightsCategoryMovementSection',
+        'insightsSubcategoryMovementSection',
+        'insightsMerchantMovementSection',
+        'viewOneSupportingTransaction',
+        'viewManySupportingTransactions',
+        'analysis.rule.r027.name',
+        'analysis.rule.r027.description',
+        'analysis.rule.r028.name',
+        'analysis.rule.r028.description',
+        'analysis.rule.r029.name',
+        'analysis.rule.r029.description',
+      };
+      for (final language in ['es', 'zh']) {
+        final missing = AppLocalizations.missingKeysFor(language);
+        for (final key in keys) {
+          expect(missing, isNot(contains(key)));
+        }
       }
-    }
-  });
+    },
+  );
 }
 
 class _LocalizedProbe extends StatelessWidget {

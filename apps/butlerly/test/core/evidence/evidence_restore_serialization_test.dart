@@ -22,7 +22,8 @@ void main() {
     final root = await Directory.systemTemp.createTemp(
       'butlerly-restore-evidence-lock-',
     );
-    final documents = Directory(path.join(root.path, 'documents'))..createSync();
+    final documents = Directory(path.join(root.path, 'documents'))
+      ..createSync();
     final evidence = Directory(path.join(root.path, 'evidence'))..createSync();
     final database = LocalDatabase(
       logger: AppLogger(),
@@ -52,14 +53,12 @@ void main() {
     var mutationObservedCompletedRestore = false;
     final mutationFuture = EvidenceMutationLock.runExclusive(() async {
       mutationObservedCompletedRestore = restoreCompleted;
-      await File(path.join(evidence.path, 'captured-during-restore.bin'))
-          .writeAsString('new evidence', flush: true);
+      await File(
+        path.join(evidence.path, 'captured-during-restore.bin'),
+      ).writeAsString('new evidence', flush: true);
     });
 
-    await Future.wait<void>([
-      restoreFuture.then((_) {}),
-      mutationFuture,
-    ]);
+    await Future.wait<void>([restoreFuture.then((_) {}), mutationFuture]);
 
     expect(mutationObservedCompletedRestore, isTrue);
     final captured = File(
@@ -77,7 +76,8 @@ void main() {
       );
       final documents = Directory(path.join(root.path, 'documents'))
         ..createSync();
-      final evidence = Directory(path.join(root.path, 'evidence'))..createSync();
+      final evidence = Directory(path.join(root.path, 'evidence'))
+        ..createSync();
       final database = LocalDatabase(
         logger: AppLogger(),
         factory: databaseFactoryFfi,
@@ -105,7 +105,9 @@ void main() {
       );
       final store = LocalEvidenceStore(data, finance);
       final manager = LocalBackupManager(database, data);
-      final backup = File(path.join(root.path, 'before-capture.butlerlybackup'));
+      final backup = File(
+        path.join(root.path, 'before-capture.butlerlybackup'),
+      );
       await manager.createBackup(backup);
 
       final source = File(path.join(root.path, 'statement.pdf'));
@@ -145,7 +147,8 @@ void main() {
     final root = await Directory.systemTemp.createTemp(
       'butlerly-restore-erase-lock-',
     );
-    final documents = Directory(path.join(root.path, 'documents'))..createSync();
+    final documents = Directory(path.join(root.path, 'documents'))
+      ..createSync();
     final evidence = Directory(path.join(root.path, 'evidence'))..createSync();
     final database = LocalDatabase(
       logger: AppLogger(),
@@ -177,9 +180,12 @@ void main() {
       'created_at': old,
       'updated_at': old,
     });
-    await File(path.join(evidence.path, 'restored-evidence.bin'))
-        .writeAsString('backup evidence', flush: true);
-    final backup = File(path.join(root.path, 'restore-then-erase.butlerlybackup'));
+    await File(
+      path.join(evidence.path, 'restored-evidence.bin'),
+    ).writeAsString('backup evidence', flush: true);
+    final backup = File(
+      path.join(root.path, 'restore-then-erase.butlerlybackup'),
+    );
     await manager.createBackup(backup);
 
     // Hold the mutation boundary so restore and erase can be deterministically

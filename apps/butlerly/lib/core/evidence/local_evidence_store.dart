@@ -69,7 +69,9 @@ final class LocalEvidenceStore {
   }
 
   Future<void> discardPreserved(PreservedEvidenceSource source) =>
-      EvidenceMutationLock.runExclusive(() => _discardPreservedUnlocked(source));
+      EvidenceMutationLock.runExclusive(
+        () => _discardPreservedUnlocked(source),
+      );
 
   Future<void> _discardPreservedUnlocked(PreservedEvidenceSource source) async {
     final file = await _pendingFileFor(source);
@@ -258,7 +260,9 @@ final class LocalEvidenceStore {
     if (!await liveFile.exists()) return;
     final pendingDirectory = await _pendingEvidenceDirectory();
     await pendingDirectory.create(recursive: true);
-    final pending = File(path.join(pendingDirectory.path, source.localFileName));
+    final pending = File(
+      path.join(pendingDirectory.path, source.localFileName),
+    );
     if (await pending.exists()) {
       // Preserve the unpublished copy and remove only the failed live
       // publication. This branch is defensive against unexpected duplicate
@@ -279,10 +283,7 @@ final class LocalEvidenceStore {
       return null;
     }
     return File(
-      path.join(
-        (await _pendingEvidenceDirectory()).path,
-        source.localFileName,
-      ),
+      path.join((await _pendingEvidenceDirectory()).path, source.localFileName),
     );
   }
 
@@ -310,7 +311,9 @@ final class LocalEvidenceStore {
 
   Future<bool> abandonStatementImport(String statementId) =>
       EvidenceMutationLock.runExclusive(() async {
-        final result = await finance.statementServices?.abandonImport(statementId);
+        final result = await finance.statementServices?.abandonImport(
+          statementId,
+        );
         if (result is! ApplicationSuccess<EvidenceItem?>) return false;
         final evidence = result.value;
         if (evidence == null) return true;

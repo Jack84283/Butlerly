@@ -121,67 +121,69 @@ void main() {
     expect(path, isNot(contains('ids=')));
   });
 
-  testWidgets('selective R024 branch drills into evidence and carries refresh context', (
-    tester,
-  ) async {
-    String? path;
-    await tester.pumpWidget(
-      app(
-        _selectiveOverallInsight(
-          evidence: [
-            EvidenceReference(transactionId: TransactionId('large-expense')),
-          ],
+  testWidgets(
+    'selective R024 branch drills into evidence and carries refresh context',
+    (tester) async {
+      String? path;
+      await tester.pumpWidget(
+        app(
+          _selectiveOverallInsight(
+            evidence: [
+              EvidenceReference(transactionId: TransactionId('large-expense')),
+            ],
+          ),
+          onNavigationRequested: (value) => path = value,
         ),
-        onNavigationRequested: (value) => path = value,
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.textContaining('1 supporting transaction'));
-    expect(
-      path,
-      '/search?locked=true&from=2026-09-01&to=2026-09-05&direction=expense&ids=large-expense&insightRule=ANL-R024',
-    );
-  });
+      await tester.tap(find.textContaining('1 supporting transaction'));
+      expect(
+        path,
+        '/search?locked=true&from=2026-09-01&to=2026-09-05&direction=expense&ids=large-expense&insightRule=ANL-R024',
+      );
+    },
+  );
 
-  testWidgets('multi-value filters fall back to exact evidence without throwing', (
-    tester,
-  ) async {
-    String? path;
-    await tester.pumpWidget(
-      app(
-        _insight(
-          grouping: RuleGrouping.none,
-          dimension: null,
-          ruleId: 'ANL-R024',
-          nameKey: 'analysis.rule.r024.name',
-          descriptionKey: 'analysis.rule.r024.description',
-          outputType: InsightOutputType.alert,
-          evidence: [
-            EvidenceReference(transactionId: TransactionId('support-1')),
-          ],
-          filters: const [
-            AnalysisFilter(
-              kind: AnalysisFilterKind.direction,
-              values: ['expense', 'income'],
-            ),
-          ],
+  testWidgets(
+    'multi-value filters fall back to exact evidence without throwing',
+    (tester) async {
+      String? path;
+      await tester.pumpWidget(
+        app(
+          _insight(
+            grouping: RuleGrouping.none,
+            dimension: null,
+            ruleId: 'ANL-R024',
+            nameKey: 'analysis.rule.r024.name',
+            descriptionKey: 'analysis.rule.r024.description',
+            outputType: InsightOutputType.alert,
+            evidence: [
+              EvidenceReference(transactionId: TransactionId('support-1')),
+            ],
+            filters: const [
+              AnalysisFilter(
+                kind: AnalysisFilterKind.direction,
+                values: ['expense', 'income'],
+              ),
+            ],
+          ),
+          onNavigationRequested: (value) => path = value,
         ),
-        onNavigationRequested: (value) => path = value,
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.textContaining('1 supporting transaction'));
-    expect(
-      path,
-      '/search?locked=true&from=2026-09-01&to=2026-09-05&ids=support-1',
-    );
-  });
+      await tester.tap(find.textContaining('1 supporting transaction'));
+      expect(
+        path,
+        '/search?locked=true&from=2026-09-01&to=2026-09-05&ids=support-1',
+      );
+    },
+  );
 
   testWidgets('offers precise uncategorized category drill-down', (
     tester,
@@ -238,10 +240,7 @@ InsightResult _overallInsight({List<EvidenceReference> evidence = const []}) =>
       descriptionKey: 'analysis.rule.r020.description',
       evidence: evidence,
       filters: const [
-        AnalysisFilter(
-          kind: AnalysisFilterKind.direction,
-          values: ['expense'],
-        ),
+        AnalysisFilter(kind: AnalysisFilterKind.direction, values: ['expense']),
       ],
     );
 
@@ -257,10 +256,7 @@ InsightResult _selectiveOverallInsight({
   evidence: evidence,
   supportingMetrics: const [selectiveMarker],
   filters: const [
-    AnalysisFilter(
-      kind: AnalysisFilterKind.direction,
-      values: ['expense'],
-    ),
+    AnalysisFilter(kind: AnalysisFilterKind.direction, values: ['expense']),
   ],
 );
 

@@ -90,21 +90,20 @@ void main() {
     definitionHash: RuleDefinitionHash('8' * 64),
     role: 'positive',
     filters: const [
-      AnalysisFilter(
-        kind: AnalysisFilterKind.direction,
-        values: ['expense'],
-      ),
+      AnalysisFilter(kind: AnalysisFilterKind.direction, values: ['expense']),
     ],
   );
 
   test('overall spending decrease triggers at exactly 20 percent', () {
-    final result = const AnalysisRuleEngine().execute(
-      dataset: dataset(
-        [expense('current', '80')],
-        [expense('baseline', '100', date: '2026-08-05')],
-      ),
-      definitions: [positiveRule(id: 'ANL-R027')],
-    ).single;
+    final result = const AnalysisRuleEngine()
+        .execute(
+          dataset: dataset(
+            [expense('current', '80')],
+            [expense('baseline', '100', date: '2026-08-05')],
+          ),
+          definitions: [positiveRule(id: 'ANL-R027')],
+        )
+        .single;
 
     expect(result.finding, isNotNull);
     expect(result.finding!.currentValue, DecimalValue.parse('80'));
@@ -113,64 +112,72 @@ void main() {
   });
 
   test('overall spending decrease does not trigger below threshold', () {
-    final result = const AnalysisRuleEngine().execute(
-      dataset: dataset(
-        [expense('current', '81')],
-        [expense('baseline', '100', date: '2026-08-05')],
-      ),
-      definitions: [positiveRule(id: 'ANL-R027')],
-    ).single;
+    final result = const AnalysisRuleEngine()
+        .execute(
+          dataset: dataset(
+            [expense('current', '81')],
+            [expense('baseline', '100', date: '2026-08-05')],
+          ),
+          definitions: [positiveRule(id: 'ANL-R027')],
+        )
+        .single;
 
     expect(result.finding, isNull);
   });
 
   test('zero baseline is compared but is not classified as a decrease', () {
-    final result = const AnalysisRuleEngine().execute(
-      dataset: dataset([expense('current', '25')], const []),
-      definitions: [positiveRule(id: 'ANL-R027')],
-    ).single;
+    final result = const AnalysisRuleEngine()
+        .execute(
+          dataset: dataset([expense('current', '25')], const []),
+          definitions: [positiveRule(id: 'ANL-R027')],
+        )
+        .single;
 
     expect(result.comparison!.baselineValue, DecimalValue.parse('0'));
     expect(result.comparison!.percentageChange, isNull);
     expect(result.finding, isNull);
   });
 
-  test('category decrease evaluates each current category against its baseline', () {
-    final results = const AnalysisRuleEngine().execute(
-      dataset: dataset(
-        [
-          expense('food-current', '40', categoryId: 'food'),
-          expense('travel-current', '90', categoryId: 'travel'),
+  test(
+    'category decrease evaluates each current category against its baseline',
+    () {
+      final results = const AnalysisRuleEngine().execute(
+        dataset: dataset(
+          [
+            expense('food-current', '40', categoryId: 'food'),
+            expense('travel-current', '90', categoryId: 'travel'),
+          ],
+          [
+            expense(
+              'food-baseline',
+              '50',
+              date: '2026-08-05',
+              categoryId: 'food',
+            ),
+            expense(
+              'travel-baseline',
+              '100',
+              date: '2026-08-06',
+              categoryId: 'travel',
+            ),
+          ],
+        ),
+        definitions: [
+          positiveRule(id: 'ANL-R028', grouping: RuleGrouping.category),
         ],
-        [
-          expense(
-            'food-baseline',
-            '50',
-            date: '2026-08-05',
-            categoryId: 'food',
-          ),
-          expense(
-            'travel-baseline',
-            '100',
-            date: '2026-08-06',
-            categoryId: 'travel',
-          ),
-        ],
-      ),
-      definitions: [
-        positiveRule(id: 'ANL-R028', grouping: RuleGrouping.category),
-      ],
-    );
+      );
 
-    final byDimension = {
-      for (final result in results) result.finding?.dimension ?? 'none': result,
-    };
-    expect(byDimension['food']?.finding, isNotNull);
-    expect(
-      results.where((result) => result.finding?.dimension == 'travel'),
-      isEmpty,
-    );
-  });
+      final byDimension = {
+        for (final result in results)
+          result.finding?.dimension ?? 'none': result,
+      };
+      expect(byDimension['food']?.finding, isNotNull);
+      expect(
+        results.where((result) => result.finding?.dimension == 'travel'),
+        isEmpty,
+      );
+    },
+  );
 
   test('new category from zero is not classified as a spending decrease', () {
     final results = const AnalysisRuleEngine().execute(

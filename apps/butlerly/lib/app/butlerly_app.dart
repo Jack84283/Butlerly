@@ -46,7 +46,8 @@ class ButlerlyApp extends ConsumerWidget {
           builder: (context, _) {
             // A cold launch and an inactivity reset must show the branded
             // launch surface before first-use or restore-recovery overlays.
-            if (appRouter.routeInformationProvider.value.uri.path == '/launch') {
+            if (appRouter.routeInformationProvider.value.uri.path ==
+                '/launch') {
               return child ?? const SizedBox.shrink();
             }
 

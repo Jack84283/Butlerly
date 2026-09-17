@@ -79,10 +79,7 @@ AnalysisFinding _finding({String id = 'finding-1'}) {
     enabled: true,
     status: AnalysisRuleStatus.active,
     period: 'selected_period',
-    measure: const RuleMeasure(
-      operation: RuleOperation.sum,
-      field: 'amount',
-    ),
+    measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
     grouping: RuleGrouping.none,
     baseline: RuleBaseline.previousEquivalentPeriod,
     condition: const RuleCondition(operator: 'gte'),

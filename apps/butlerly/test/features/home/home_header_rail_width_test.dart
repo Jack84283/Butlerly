@@ -14,9 +14,7 @@ void main() {
       tester.view.platformDispatcher.textScaleFactorTestValue = 3.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
-      addTearDown(
-        tester.view.platformDispatcher.clearTextScaleFactorTestValue,
-      );
+      addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
 
       HomePage.debugCurrentDate = DateTime(2026, 9, 14, 13);
       addTearDown(() => HomePage.debugCurrentDate = null);
