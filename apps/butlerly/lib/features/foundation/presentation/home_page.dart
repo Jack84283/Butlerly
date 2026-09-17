@@ -247,14 +247,14 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _refresh() async {
-  final refreshed = await _load(forceAnalysisRefresh: true);
-  if (!mounted) return;
-  setState(() {
-    _data = Future.value(refreshed);
-  });
-}
+    final refreshed = await _load(forceAnalysisRefresh: true);
+    if (!mounted) return;
+    setState(() {
+      _data = Future.value(refreshed);
+    });
+  }
 
-Future<void> _selectMonth(_HomeData data) async {
+  Future<void> _selectMonth(_HomeData data) async {
     final selected = await showButlerlyBottomSheet<DateTime>(
       context: context,
       builder: (context) => _HomeMonthPicker(
@@ -363,121 +363,108 @@ Future<void> _selectMonth(_HomeData data) async {
     final useCupertinoRefresh =
         !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
-    return ColoredBox(
-  key: const ValueKey('home-page-canvas'),
-  color: canvasColor,
-  child: LayoutBuilder(
-    builder: (context, constraints) {
-      final headerExtent = _homeHeaderExtent(
-        context,
-        crossAxisExtent: constraints.maxWidth,
-      );
-      final header = SizedBox(
-        height: headerExtent,
-        child: _HomePinnedHeaderDelegate(
-          extent: headerExtent,
-          child: FutureBuilder<_HomeData>(
-            future: future,
-            builder: (context, snapshot) {
-              final data =
-                  snapshot.data ??
-                  _HomeData.empty(_now, selectedMonth: _selectedMonth);
-              final loading =
-                  snapshot.connectionState != ConnectionState.done;
-              return _HomeHeader(
-                deviceClass: deviceClass,
-                month: data.displayMonth,
-                greetingKey: homeGreetingKey(_now),
-                onMonthTap: loading ? null : () => _selectMonth(data),
-              );
-            },
-          ),
-        ).build(context, 0, false),
-      );
-
-      final scrollView = CustomScrollView(
-        physics: useCupertinoRefresh
-            ? const BouncingScrollPhysics(
-                parent: AlwaysScrollableScrollPhysics(),
-              )
-            : const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          if (useCupertinoRefresh)
-            CupertinoSliverRefreshControl(
-              key: const ValueKey('home-cupertino-refresh-control'),
-              onRefresh: _refresh,
-            ),
-          SliverLayoutBuilder(
-            builder: (context, constraints) {
-              final contentMaxWidth = ButlerlyLayout.contentMaxWidth(
-                MediaQuery.sizeOf(context),
-              );
-              final surfaceMaxWidth =
-                  contentMaxWidth + ButlerlySize.phoneGutter * 2;
-              final extraWidth =
-                  constraints.crossAxisExtent - surfaceMaxWidth;
-              final horizontalInset = extraWidth > 0 ? extraWidth / 2 : 0.0;
-              return SliverPadding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: horizontalInset,
+    final content = ColoredBox(
+      key: const ValueKey('home-page-canvas'),
+      color: canvasColor,
+      child: LayoutBuilder(
+        builder: (context, constraints) => CustomScrollView(
+          physics: useCupertinoRefresh
+              ? const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
+                )
+              : const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _HomePinnedHeaderDelegate(
+                extent: _homeHeaderExtent(
+                  context,
+                  crossAxisExtent: constraints.maxWidth,
                 ),
-                sliver: SliverToBoxAdapter(
-                  child: ColoredBox(
-                    key: const ValueKey('home-page-content-surface'),
-                    color: context.colors.background,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        ButlerlySize.phoneGutter,
-                        ButlerlySpacing.small,
-                        ButlerlySize.phoneGutter,
-                        ButlerlySpacing.large,
-                      ),
-                      child: SizedBox(
-                        key: const ValueKey('home-page-content'),
-                        width: double.infinity,
-                        child: FutureBuilder<_HomeData>(
-                          future: future,
-                          builder: (context, snapshot) {
-                            final data =
-                                snapshot.data ??
-                                _HomeData.empty(
-                                  _now,
-                                  selectedMonth: _selectedMonth,
-                                );
-                            final loading =
-                                snapshot.connectionState !=
-                                ConnectionState.done;
-                            return _homeContent(context, data, loading);
-                          },
+                child: FutureBuilder<_HomeData>(
+                  future: future,
+                  builder: (context, snapshot) {
+                    final data =
+                        snapshot.data ??
+                        _HomeData.empty(_now, selectedMonth: _selectedMonth);
+                    final loading =
+                        snapshot.connectionState != ConnectionState.done;
+                    return _HomeHeader(
+                      deviceClass: deviceClass,
+                      month: data.displayMonth,
+                      greetingKey: homeGreetingKey(_now),
+                      onMonthTap: loading ? null : () => _selectMonth(data),
+                    );
+                  },
+                ),
+              ),
+            ),
+            if (useCupertinoRefresh)
+              CupertinoSliverRefreshControl(
+                key: const ValueKey('home-cupertino-refresh-control'),
+                onRefresh: _refresh,
+              ),
+            SliverLayoutBuilder(
+              builder: (context, constraints) {
+                final contentMaxWidth = ButlerlyLayout.contentMaxWidth(
+                  MediaQuery.sizeOf(context),
+                );
+                final surfaceMaxWidth =
+                    contentMaxWidth + ButlerlySize.phoneGutter * 2;
+                final extraWidth =
+                    constraints.crossAxisExtent - surfaceMaxWidth;
+                final horizontalInset = extraWidth > 0 ? extraWidth / 2 : 0.0;
+                return SliverPadding(
+                  padding: EdgeInsets.symmetric(horizontal: horizontalInset),
+                  sliver: SliverToBoxAdapter(
+                    child: ColoredBox(
+                      key: const ValueKey('home-page-content-surface'),
+                      color: context.colors.background,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          ButlerlySize.phoneGutter,
+                          ButlerlySpacing.small,
+                          ButlerlySize.phoneGutter,
+                          ButlerlySpacing.large,
+                        ),
+                        child: SizedBox(
+                          key: const ValueKey('home-page-content'),
+                          width: double.infinity,
+                          child: FutureBuilder<_HomeData>(
+                            future: future,
+                            builder: (context, snapshot) {
+                              final data =
+                                  snapshot.data ??
+                                  _HomeData.empty(
+                                    _now,
+                                    selectedMonth: _selectedMonth,
+                                  );
+                              final loading =
+                                  snapshot.connectionState !=
+                                  ConnectionState.done;
+                              return _homeContent(context, data, loading);
+                            },
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              );
-            },
-          ),
-        ],
-      );
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
 
-      final body = useCupertinoRefresh
-          ? scrollView
-          : RefreshIndicator(
-              key: const ValueKey('home-refresh-indicator'),
-              onRefresh: _refresh,
-              triggerMode: RefreshIndicatorTriggerMode.anywhere,
-              child: scrollView,
-            );
+    if (useCupertinoRefresh) return content;
 
-      return Column(
-        children: [
-          header,
-          Expanded(child: body),
-        ],
-      );
-    },
-  ),
-);
+    return RefreshIndicator(
+      key: const ValueKey('home-refresh-indicator'),
+      onRefresh: _refresh,
+      triggerMode: RefreshIndicatorTriggerMode.anywhere,
+      child: content,
+    );
   }
 }
 
@@ -682,8 +669,10 @@ class _HomeHeader extends StatelessWidget {
               context.l10n.text('homeTagline'),
               maxLines: stacked ? null : 2,
               overflow: stacked ? null : TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelMedium
-                  ?.copyWith(letterSpacing: 2.2, fontSize: 9.5),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                letterSpacing: 2.2,
+                fontSize: 9.5,
+              ),
             ),
           ],
         );
@@ -855,8 +844,9 @@ class _SpendingHero extends StatelessWidget {
                   ),
                   child: Text(
                     context.l10n.text('spent'),
-                    style: Theme.of(context).textTheme.headlineMedium
-                        ?.copyWith(color: context.colors.secondaryText),
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: context.colors.secondaryText,
+                    ),
                   ),
                 ),
               ],
@@ -969,9 +959,9 @@ class _SpendingTrend extends StatelessWidget {
                           ),
                           const SizedBox(height: ButlerlySpacing.compact),
                           Text(
-                            DateFormat.MMM(locale)
-                                .format(point.month)
-                                .toUpperCase(),
+                            DateFormat.MMM(
+                              locale,
+                            ).format(point.month).toUpperCase(),
                             maxLines: 1,
                             style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(
@@ -1346,8 +1336,9 @@ class _HomeMonthPickerState extends State<_HomeMonthPicker> {
         ),
         itemBuilder: (context, index) {
           final candidate = DateTime(_year, index + 1, 1);
-          final future = _monthStart(candidate)
-              .isAfter(_monthStart(widget.currentMonth));
+          final future = _monthStart(
+            candidate,
+          ).isAfter(_monthStart(widget.currentMonth));
           final selected = _sameMonth(candidate, widget.selectedMonth);
           final label = DateFormat.MMM(locale).format(candidate);
           return selected

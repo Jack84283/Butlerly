@@ -15,41 +15,45 @@ void main() {
     HomePage.debugCurrentDate = null;
   });
 
-  testWidgets(
-    'Home uses native sliver pull-to-refresh on iOS',
-    (tester) async {
-      tester.view.physicalSize = const Size(390, 844);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets('Home uses native sliver pull-to-refresh on iOS', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(const _TestApp());
-      await tester.pumpAndSettle();
+    await tester.pumpWidget(const _TestApp());
+    await tester.pumpAndSettle();
 
-      final scrollView = tester.widget<CustomScrollView>(
-        find.byType(CustomScrollView),
-      );
-      final refreshControls = scrollView.slivers
-          .whereType<CupertinoSliverRefreshControl>()
-          .toList();
-      expect(refreshControls, hasLength(1));
-      final refreshControl = refreshControls.single;
-      expect(
-        refreshControl.key,
-        const ValueKey('home-cupertino-refresh-control'),
-      );
-      expect(refreshControl.onRefresh, isNotNull);
-      expect(find.byKey(const ValueKey('home-refresh-indicator')), findsNothing);
+    final scrollView = tester.widget<CustomScrollView>(
+      find.byType(CustomScrollView),
+    );
+    final refreshControls = scrollView.slivers
+        .whereType<CupertinoSliverRefreshControl>()
+        .toList();
+    expect(refreshControls, hasLength(1));
+    final refreshControl = refreshControls.single;
+    expect(
+      refreshControl.key,
+      const ValueKey('home-cupertino-refresh-control'),
+    );
+    expect(refreshControl.onRefresh, isNotNull);
+    expect(find.byKey(const ValueKey('home-refresh-indicator')), findsNothing);
 
-      expect(scrollView.physics, isA<BouncingScrollPhysics>());
-      expect(
-        (scrollView.physics! as BouncingScrollPhysics).parent,
-        isA<AlwaysScrollableScrollPhysics>(),
-      );
-      expect(tester.takeException(), isNull);
-    },
-    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
-  );
+    final headerIndex = scrollView.slivers.indexWhere(
+      (sliver) => sliver is SliverPersistentHeader,
+    );
+    final refreshIndex = scrollView.slivers.indexWhere(
+      (sliver) => sliver is CupertinoSliverRefreshControl,
+    );
+    expect(refreshIndex, greaterThan(headerIndex));
+
+    expect(scrollView.physics, isA<BouncingScrollPhysics>());
+    expect(
+      (scrollView.physics! as BouncingScrollPhysics).parent,
+      isA<AlwaysScrollableScrollPhysics>(),
+    );
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 }
 
 class _TestApp extends StatelessWidget {
