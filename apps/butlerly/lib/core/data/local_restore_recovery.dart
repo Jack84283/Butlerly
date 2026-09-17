@@ -79,10 +79,12 @@ Future<void> recoverInterruptedLocalRestore(
   final journalPrevious = data?['previousPath'] as String?;
   final journalStaging = data?['stagingPath'] as String?;
   final journalPhase = data?['phase'] as String?;
-  final journalPreviousDirectory =
-      journalPrevious == null ? null : Directory(journalPrevious);
-  final journalStagingDirectory =
-      journalStaging == null ? null : Directory(journalStaging);
+  final journalPreviousDirectory = journalPrevious == null
+      ? null
+      : Directory(journalPrevious);
+  final journalStagingDirectory = journalStaging == null
+      ? null
+      : Directory(journalStaging);
 
   if (committed) {
     // DB commit is authoritative: keep the live evidence tree. Cleanup is
@@ -94,7 +96,9 @@ Future<void> recoverInterruptedLocalRestore(
       journalOperationId == committedOperationId
           ? journalPreviousDirectory
           : null,
-      journalOperationId == committedOperationId ? journalStagingDirectory : null,
+      journalOperationId == committedOperationId
+          ? journalStagingDirectory
+          : null,
     );
     for (final directory in cleanup) {
       if (await directory.exists()) await directory.delete(recursive: true);
@@ -161,7 +165,8 @@ Future<void> recoverInterruptedLocalRestore(
     if (originState.rootExisted == false) {
       // The wrapper persisted this fact before invoking the live engine.
       if (await root.exists()) await root.delete(recursive: true);
-    } else if (journalPhase == 'evidenceActivated' || journalPhase == 'dbWriting') {
+    } else if (journalPhase == 'evidenceActivated' ||
+        journalPhase == 'dbWriting') {
       // The original root existed, so an activated restore must have produced a
       // deterministic previous directory. Its absence means evidence was lost
       // or externally altered; never substitute the uncommitted live tree.
@@ -400,7 +405,9 @@ String? _operationIdFromPrevious(Directory root, Directory? previous) {
   return name.substring(prefix.length);
 }
 
-Future<_RecoveryDirectories> _discoverRecoveryDirectories(Directory root) async {
+Future<_RecoveryDirectories> _discoverRecoveryDirectories(
+  Directory root,
+) async {
   final previous = <Directory>[];
   final staging = <Directory>[];
   final parent = root.parent;

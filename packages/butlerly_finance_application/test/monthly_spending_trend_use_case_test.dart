@@ -23,11 +23,7 @@ void main() {
     ]);
     analysis = CalculateAnalysisOverview(
       _Rules([_expenseTotalRule()]),
-      AnalysisDatasetBuilder(
-        transactions,
-        _Preferences(),
-        null,
-      ),
+      AnalysisDatasetBuilder(transactions, _Preferences(), null),
       const AnalysisRuleEngine(),
     );
   });
@@ -43,35 +39,35 @@ void main() {
 
       final points =
           (result as ApplicationSuccess<List<MonthlySpendingTrendPoint>>).value;
-      expect(
-        points.map((point) => point.month),
-        [
-          DateTime.utc(2026, 7, 1),
-          DateTime.utc(2026, 8, 1),
-          DateTime.utc(2026, 9, 1),
-        ],
-      );
-      expect(
-        points.map((point) => point.spending!.value),
-        [
-          DecimalValue.parse('30'),
-          DecimalValue.parse('100'),
-          DecimalValue.parse('150'),
-        ],
-      );
+      expect(points.map((point) => point.month), [
+        DateTime.utc(2026, 7, 1),
+        DateTime.utc(2026, 8, 1),
+        DateTime.utc(2026, 9, 1),
+      ]);
+      expect(points.map((point) => point.spending!.value), [
+        DecimalValue.parse('30'),
+        DecimalValue.parse('100'),
+        DecimalValue.parse('150'),
+      ]);
     },
   );
 
-  test('reads the canonical transaction source once for the whole trend', () async {
-    final result = await CalculateMonthlySpendingTrend(analysis)(
-      endingMonth: DateTime.utc(2026, 9, 1),
-      instant: DateTime.utc(2026, 9, 5, 12),
-      monthCount: 7,
-    );
+  test(
+    'reads the canonical transaction source once for the whole trend',
+    () async {
+      final result = await CalculateMonthlySpendingTrend(analysis)(
+        endingMonth: DateTime.utc(2026, 9, 1),
+        instant: DateTime.utc(2026, 9, 5, 12),
+        monthCount: 7,
+      );
 
-    expect(result, isA<ApplicationSuccess<List<MonthlySpendingTrendPoint>>>());
-    expect(transactions.listAllCalls, 1);
-  });
+      expect(
+        result,
+        isA<ApplicationSuccess<List<MonthlySpendingTrendPoint>>>(),
+      );
+      expect(transactions.listAllCalls, 1);
+    },
+  );
 
   test('historical ending month is resolved as a complete month', () async {
     final result = await CalculateMonthlySpendingTrend(analysis)(
@@ -82,10 +78,10 @@ void main() {
 
     final points =
         (result as ApplicationSuccess<List<MonthlySpendingTrendPoint>>).value;
-    expect(
-      points.map((point) => point.spending!.value),
-      [DecimalValue.parse('30'), DecimalValue.parse('100')],
-    );
+    expect(points.map((point) => point.spending!.value), [
+      DecimalValue.parse('30'),
+      DecimalValue.parse('100'),
+    ]);
   });
 
   test('rejects a future ending month', () async {
@@ -124,10 +120,7 @@ AnalysisRuleDefinition _expenseTotalRule() => AnalysisRuleDefinition(
   surface: AnalysisSurface.overview,
   role: 'expenseTotal',
   filters: const [
-    AnalysisFilter(
-      kind: AnalysisFilterKind.direction,
-      values: ['expense'],
-    ),
+    AnalysisFilter(kind: AnalysisFilterKind.direction, values: ['expense']),
   ],
   definitionHash: RuleDefinitionHash('a' * 64),
 );

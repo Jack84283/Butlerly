@@ -21,16 +21,14 @@ class AppLogger {
   }
 
   void severe(String message, Object error, StackTrace? stackTrace) {
-    final details = redact('$error');
-    _logger.severe('${redact(message)}: $details');
-    if (kDebugMode && stackTrace != null) {
-      debugPrint(stackTrace.toString());
-    }
+    // Exception text and stack traces can contain private paths, platform
+    // payloads, or financial data. Keep only the type and caller-owned context.
+    _logger.severe('${redact(message)} [${error.runtimeType}]');
   }
 
   /// Removes common sensitive values before an application message is emitted.
-  /// Errors are deliberately not forwarded because platform errors can include
-  /// user-entered data or local paths.
+  /// This is defense in depth for caller-owned messages, not a sanitizer for
+  /// arbitrary exception text. Errors and stack traces are never forwarded.
   static String redact(String value) {
     return value
         .replaceAll(RegExp(r'\b\d{12,19}\b'), '[redacted-number]')

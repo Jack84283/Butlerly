@@ -17,7 +17,9 @@ void main() {
     addTearDown(fixture.dispose);
     final old = DateTime.utc(2026, 1, 1);
     await fixture.insertTransaction('existing', old, amount: '100');
-    final backup = File(path.join(fixture.root.path, 'merge-source.butlerlybackup'));
+    final backup = File(
+      path.join(fixture.root.path, 'merge-source.butlerlybackup'),
+    );
     await fixture.manager.createBackup(backup);
 
     final newer = DateTime.now().toUtc().add(const Duration(minutes: 1));
@@ -59,72 +61,77 @@ void main() {
     );
   });
 
-  test('refresh failure preserves activated state and retries in recovery', () async {
-    final fixture = await _Fixture.create();
-    addTearDown(fixture.dispose);
-    final timestamp = DateTime.utc(2026, 1, 1);
-    await fixture.insertTransaction('tx-1', timestamp, amount: '100');
-    final backup = File(path.join(fixture.root.path, 'replace-source.butlerlybackup'));
-    await fixture.manager.createBackup(backup);
+  test(
+    'refresh failure preserves activated state and retries in recovery',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final timestamp = DateTime.utc(2026, 1, 1);
+      await fixture.insertTransaction('tx-1', timestamp, amount: '100');
+      final backup = File(
+        path.join(fixture.root.path, 'replace-source.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(backup);
 
-    await fixture.database.database.update(
-      'transactions',
-      {
-        'amount_coefficient': '200',
-        'updated_at': DateTime.now()
-            .toUtc()
-            .add(const Duration(minutes: 1))
-            .toIso8601String(),
-      },
-      where: 'id = ?',
-      whereArgs: ['tx-1'],
-    );
-
-    var refreshCalls = 0;
-    await expectLater(
-      fixture.manager.restore(
-        backup,
-        mode: LocalRestoreMode.replace,
-        postActivationRefresh: () async {
-          refreshCalls++;
-          throw StateError('synthetic refresh failure');
+      await fixture.database.database.update(
+        'transactions',
+        {
+          'amount_coefficient': '200',
+          'updated_at': DateTime.now()
+              .toUtc()
+              .add(const Duration(minutes: 1))
+              .toIso8601String(),
         },
-      ),
-      throwsA(isA<RestoreRecoveryRequiredException>()),
-    );
+        where: 'id = ?',
+        whereArgs: ['tx-1'],
+      );
 
-    final activated = await fixture.database.database.query(
-      'transactions',
-      where: 'id = ?',
-      whereArgs: ['tx-1'],
-    );
-    expect(activated, hasLength(1));
-    expect(activated.single['amount_coefficient'], '100');
-    expect(refreshCalls, 1);
-    expect(fixture.manager.recoveryState.isRecoveryRequired, isTrue);
-    expect(fixture.manager.recoveryState.incident?.retryCurrentState, isTrue);
-    expect(
-      fixture.manager.recoveryState.incident?.reason,
-      'post-activation-validation-or-refresh-failed',
-    );
-    expect(
-      fixture.manager.recoveryState.incident?.safetyBackupPath,
-      isNotEmpty,
-    );
+      var refreshCalls = 0;
+      await expectLater(
+        fixture.manager.restore(
+          backup,
+          mode: LocalRestoreMode.replace,
+          postActivationRefresh: () async {
+            refreshCalls++;
+            throw StateError('synthetic refresh failure');
+          },
+        ),
+        throwsA(isA<RestoreRecoveryRequiredException>()),
+      );
 
-    await fixture.manager.recoverControlledState(
-      postActivationRefresh: () async => refreshCalls++,
-    );
+      final activated = await fixture.database.database.query(
+        'transactions',
+        where: 'id = ?',
+        whereArgs: ['tx-1'],
+      );
+      expect(activated, hasLength(1));
+      expect(activated.single['amount_coefficient'], '100');
+      expect(refreshCalls, 1);
+      expect(fixture.manager.recoveryState.isRecoveryRequired, isTrue);
+      expect(fixture.manager.recoveryState.incident?.retryCurrentState, isTrue);
+      expect(
+        fixture.manager.recoveryState.incident?.reason,
+        'post-activation-validation-or-refresh-failed',
+      );
+      expect(
+        fixture.manager.recoveryState.incident?.safetyBackupPath,
+        isNotEmpty,
+      );
 
-    expect(refreshCalls, 2);
-    expect(fixture.manager.recoveryState.isRecoveryRequired, isFalse);
-    final recovered = await fixture.database.database.query(
-      'transactions',
-      where: 'id = ?',
-      whereArgs: ['tx-1'],
-    );
-    expect(recovered.single['amount_coefficient'], '100');
-  });
+      await fixture.manager.recoverControlledState(
+        postActivationRefresh: () async => refreshCalls++,
+      );
+
+      expect(refreshCalls, 2);
+      expect(fixture.manager.recoveryState.isRecoveryRequired, isFalse);
+      final recovered = await fixture.database.database.query(
+        'transactions',
+        where: 'id = ?',
+        whereArgs: ['tx-1'],
+      );
+      expect(recovered.single['amount_coefficient'], '100');
+    },
+  );
 
   test('invalid current evidence falls back to safety snapshot', () async {
     final fixture = await _Fixture.create();
@@ -149,7 +156,9 @@ void main() {
     await receipt.writeAsString('safe-evidence', flush: true);
 
     final safetyDirectory = await fixture.data.safetyBackupDirectory();
-    final safety = File(path.join(safetyDirectory.path, 'manual-safety.butlerlybackup'));
+    final safety = File(
+      path.join(safetyDirectory.path, 'manual-safety.butlerlybackup'),
+    );
     await fixture.manager.createBackup(safety);
     await fixture.manager.recoveryState.markRequired(
       operationId: 'engine-failure',
@@ -180,10 +189,14 @@ void main() {
     addTearDown(fixture.dispose);
     final old = DateTime.utc(2026, 1, 1);
     await fixture.insertTransaction('tx-concurrent', old, amount: '100');
-    final backup = File(path.join(fixture.root.path, 'concurrent.butlerlybackup'));
+    final backup = File(
+      path.join(fixture.root.path, 'concurrent.butlerlybackup'),
+    );
     await fixture.manager.createBackup(backup);
 
-    final slowEvidence = File(path.join(fixture.evidence.path, 'slow-stage.bin'));
+    final slowEvidence = File(
+      path.join(fixture.evidence.path, 'slow-stage.bin'),
+    );
     await slowEvidence.writeAsBytes(
       List<int>.filled(24 * 1024 * 1024, 7),
       flush: true,
@@ -220,33 +233,42 @@ void main() {
     expect(rows.single['amount_coefficient'], '300');
   });
 
-  test('isolated restore staging is removed after successful activation', () async {
-    final fixture = await _Fixture.create();
-    addTearDown(fixture.dispose);
-    final timestamp = DateTime.utc(2026, 1, 1);
-    await fixture.insertTransaction('tx-stage', timestamp, amount: '100');
-    final backup = File(path.join(fixture.root.path, 'stage-source.butlerlybackup'));
-    await fixture.manager.createBackup(backup);
+  test(
+    'isolated restore staging is removed after successful activation',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final timestamp = DateTime.utc(2026, 1, 1);
+      await fixture.insertTransaction('tx-stage', timestamp, amount: '100');
+      final backup = File(
+        path.join(fixture.root.path, 'stage-source.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(backup);
 
-    await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+      await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
 
-    final stageDirectories = await fixture.root
-        .list()
-        .where(
-          (entity) =>
-              entity is Directory &&
-              path.basename(entity.path).startsWith('.butlerly-restore-stage-'),
-        )
-        .toList();
-    expect(stageDirectories, isEmpty);
-  });
+      final stageDirectories = await fixture.root
+          .list()
+          .where(
+            (entity) =>
+                entity is Directory &&
+                path
+                    .basename(entity.path)
+                    .startsWith('.butlerly-restore-stage-'),
+          )
+          .toList();
+      expect(stageDirectories, isEmpty);
+    },
+  );
 
   test('successful restores retain at most two safety snapshots', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
     final timestamp = DateTime.utc(2026, 1, 1);
     await fixture.insertTransaction('tx-retention', timestamp, amount: '100');
-    final backup = File(path.join(fixture.root.path, 'retention.butlerlybackup'));
+    final backup = File(
+      path.join(fixture.root.path, 'retention.butlerlybackup'),
+    );
     await fixture.manager.createBackup(backup);
 
     for (var index = 0; index < 4; index++) {
@@ -264,7 +286,9 @@ void main() {
     );
     final files = await safetyDirectory
         .list(followLinks: false)
-        .where((entity) => entity is File && entity.path.endsWith('.butlerlybackup'))
+        .where(
+          (entity) => entity is File && entity.path.endsWith('.butlerlybackup'),
+        )
         .toList();
     expect(files.length, lessThanOrEqualTo(2));
   });
@@ -306,7 +330,8 @@ final class _Fixture {
     final root = await Directory.systemTemp.createTemp(
       'butlerly-backup-design-contract-',
     );
-    final documents = Directory(path.join(root.path, 'documents'))..createSync();
+    final documents = Directory(path.join(root.path, 'documents'))
+      ..createSync();
     final evidence = Directory(path.join(root.path, 'evidence'))..createSync();
     final database = LocalDatabase(
       logger: AppLogger(),

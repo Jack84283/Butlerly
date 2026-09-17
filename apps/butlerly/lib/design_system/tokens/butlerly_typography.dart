@@ -10,16 +10,12 @@ import 'package:flutter/material.dart';
 /// on the platform sans-serif for legibility and cross-platform familiarity.
 abstract final class ButlerlyTypography {
   static const editorialFontFamily = 'Times New Roman';
-  static const editorialFontFallback = <String>[
-    'Times',
-    'Noto Serif',
-    'serif',
-  ];
+  static const editorialFontFallback = <String>['Times', 'Noto Serif', 'serif'];
   static const financialAmountFeatures = [FontFeature.tabularFigures()];
   static const navigationLabelFontSize = 10.5;
 
-  static TextStyle _editorial(TextStyle? base) => (base ?? const TextStyle())
-      .copyWith(
+  static TextStyle _editorial(TextStyle? base) =>
+      (base ?? const TextStyle()).copyWith(
         fontFamily: editorialFontFamily,
         fontFamilyFallback: editorialFontFallback,
         letterSpacing: -0.35,
@@ -110,9 +106,8 @@ abstract final class ButlerlyTypography {
     fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
   );
 
-  static TextStyle editorialTitle(TextStyle base) => _editorial(base).copyWith(
-    fontWeight: FontWeight.w500,
-  );
+  static TextStyle editorialTitle(TextStyle base) =>
+      _editorial(base).copyWith(fontWeight: FontWeight.w500);
 
   static TextStyle financialAmount(TextStyle base) => _editorial(base).copyWith(
     fontFeatures: financialAmountFeatures,

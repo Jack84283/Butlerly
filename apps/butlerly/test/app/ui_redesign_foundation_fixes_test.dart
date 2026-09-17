@@ -58,7 +58,10 @@ void main() {
       ButlerlyTypography.editorialFontFallback,
       containsAll(const ['Times', 'Noto Serif', 'serif']),
     );
-    expect(ButlerlyTypography.editorialFontFallback, isNot(contains('Georgia')));
+    expect(
+      ButlerlyTypography.editorialFontFallback,
+      isNot(contains('Georgia')),
+    );
   });
 
   test('phone navigation preserves the compact baseline height at 1x', () {
@@ -308,10 +311,7 @@ void _expectNoFlutterException(WidgetTester tester) {
   expect(exception, isNull);
 }
 
-void _expectNavigationLabelIsNotEllipsized(
-  WidgetTester tester,
-  String label,
-) {
+void _expectNavigationLabelIsNotEllipsized(WidgetTester tester, String label) {
   final widget = tester.widget<Text>(find.text(label).last);
   expect(widget.maxLines, isNull);
   expect(widget.overflow, isNull);

@@ -340,7 +340,9 @@ class _ButlerlySessionGuardState extends State<ButlerlySessionGuard>
     widget.router.routeInformationProvider.removeListener(_handleRouteChanged);
     FocusManager.instance.removeListener(_handleFocusChanged);
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
-    WidgetsBinding.instance.removeSemanticsActionListener(_handleSemanticsAction);
+    WidgetsBinding.instance.removeSemanticsActionListener(
+      _handleSemanticsAction,
+    );
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

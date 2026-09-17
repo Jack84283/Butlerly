@@ -70,15 +70,16 @@ void main() {
   });
 }
 
-InsightsEvaluation _evaluation(List<InsightResult> results) => InsightsEvaluation(
-  summary: PeriodSummary(
-    context: _context(),
-    currency: CurrencyCode('USD'),
-    comparisonAvailable: true,
-  ),
-  results: results,
-  hasSufficientHistory: true,
-);
+InsightsEvaluation _evaluation(List<InsightResult> results) =>
+    InsightsEvaluation(
+      summary: PeriodSummary(
+        context: _context(),
+        currency: CurrencyCode('USD'),
+        comparisonAvailable: true,
+      ),
+      results: results,
+      hasSufficientHistory: true,
+    );
 
 InsightResult _insight({
   required String ruleId,

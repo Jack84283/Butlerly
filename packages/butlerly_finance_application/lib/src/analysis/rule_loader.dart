@@ -548,11 +548,7 @@ InsightPresentation? _presentation(Object? raw) {
   if (raw is! Map) {
     throw const FormatException('Presentation must be a mapping.');
   }
-  const supported = {
-    'semantic_type',
-    'visualization_type',
-    'primary_metric',
-  };
+  const supported = {'semantic_type', 'visualization_type', 'primary_metric'};
   for (final key in raw.keys.map((value) => value.toString())) {
     if (!supported.contains(key)) {
       throw FormatException('Unsupported presentation field: $key.');

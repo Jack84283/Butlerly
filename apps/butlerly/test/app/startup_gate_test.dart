@@ -78,10 +78,7 @@ void main() {
     await tester.pump();
 
     expect(attempts, 2);
-    expect(
-      find.byKey(const ValueKey('butlerly-startup-error')),
-      findsNothing,
-    );
+    expect(find.byKey(const ValueKey('butlerly-startup-error')), findsNothing);
     expect(
       find.byKey(const ValueKey('butlerly-startup-progress')),
       findsOneWidget,
@@ -114,21 +111,24 @@ void main() {
     expect(startupDiagnosticCode(failure), 'RECOVERY-STATE');
   });
 
-  test('storage availability failure becomes a retryable storage error', () async {
-    final database = _FailingLocalDatabase(
-      logger,
-      const RepositoryException(
-        RepositoryFailureCode.unavailable,
-        'open database',
-      ),
-    );
+  test(
+    'storage availability failure becomes a retryable storage error',
+    () async {
+      final database = _FailingLocalDatabase(
+        logger,
+        const RepositoryException(
+          RepositoryFailureCode.unavailable,
+          'open database',
+        ),
+      );
 
-    await expectLater(
-      initializeLocalDatabaseForStartup(database, logger),
-      throwsA(isA<ButlerlyStorageUnavailableException>()),
-    );
-    expect(database.status, DatabaseStatus.unavailable);
-  });
+      await expectLater(
+        initializeLocalDatabaseForStartup(database, logger),
+        throwsA(isA<ButlerlyStorageUnavailableException>()),
+      );
+      expect(database.status, DatabaseStatus.unavailable);
+    },
+  );
 
   test('migration failure remains fatal and is not reclassified', () async {
     final database = _FailingLocalDatabase(
@@ -174,9 +174,8 @@ void main() {
         initialize: () async =>
             throw const ButlerlyStorageUnavailableException(),
         minimumLaunchDuration: Duration.zero,
-        readyBuilder: (_) => const MaterialApp(
-          home: Scaffold(body: Text('ready')),
-        ),
+        readyBuilder: (_) =>
+            const MaterialApp(home: Scaffold(body: Text('ready'))),
       ),
     );
     await tester.pump();
@@ -214,7 +213,9 @@ void main() {
     expect(find.textContaining('apply database migration'), findsNothing);
   });
 
-  testWidgets('cold startup uses one five-second launch window', (tester) async {
+  testWidgets('cold startup uses one five-second launch window', (
+    tester,
+  ) async {
     var ready = false;
 
     await tester.pumpWidget(
@@ -222,9 +223,8 @@ void main() {
         logger: logger,
         initialize: () async {},
         onReady: () => ready = true,
-        readyBuilder: (_) => const MaterialApp(
-          home: Scaffold(body: Text('ready')),
-        ),
+        readyBuilder: (_) =>
+            const MaterialApp(home: Scaffold(body: Text('ready'))),
       ),
     );
     await tester.pump();
@@ -239,7 +239,9 @@ void main() {
     expect(find.text('ready'), findsOneWidget);
   });
 
-  testWidgets('cold startup countdown pauses while backgrounded', (tester) async {
+  testWidgets('cold startup countdown pauses while backgrounded', (
+    tester,
+  ) async {
     var elapsed = Duration.zero;
     var ready = false;
     addTearDown(
@@ -254,9 +256,8 @@ void main() {
         initialize: () async {},
         launchElapsedNow: () => elapsed,
         onReady: () => ready = true,
-        readyBuilder: (_) => const MaterialApp(
-          home: Scaffold(body: Text('ready')),
-        ),
+        readyBuilder: (_) =>
+            const MaterialApp(home: Scaffold(body: Text('ready'))),
       ),
     );
     await tester.pump();
@@ -297,9 +298,8 @@ void main() {
         logger: logger,
         initialize: () async {},
         minimumLaunchDuration: Duration.zero,
-        readyBuilder: (_) => const MaterialApp(
-          home: Scaffold(body: Text('ready')),
-        ),
+        readyBuilder: (_) =>
+            const MaterialApp(home: Scaffold(body: Text('ready'))),
       ),
     );
     await tester.pumpAndSettle();

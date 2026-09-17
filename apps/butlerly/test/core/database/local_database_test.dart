@@ -47,7 +47,7 @@ void main() {
   });
 
   test(
-    'restores legacy dismissed Insights without touching canonical or unrelated data',
+    'preserves all finding lifecycles and financial data across repeated restarts',
     () async {
       var database = localDatabase();
       await database.initialize();
@@ -83,6 +83,13 @@ void main() {
       );
       await _insertFinding(
         db,
+        id: 'acknowledged-insight',
+        ruleId: 'ANL-R020',
+        lifecycle: 'acknowledged',
+        now: now,
+      );
+      await _insertFinding(
+        db,
         id: 'unrelated-finding',
         ruleId: 'ANL-R999',
         lifecycle: 'dismissed',
@@ -102,36 +109,27 @@ void main() {
         surface: 'overview',
         now: now,
       );
-      await database.close();
-
-      database = localDatabase();
-      await database.initialize();
-
-      expect(
-        await database.database.query('analysis_findings'),
-        hasLength(1),
-      );
-      expect(
-        (await database.database.query('analysis_findings')).single['id'],
-        'unrelated-finding',
-      );
-      expect(
-        await database.database.query('analysis_rule_results'),
-        hasLength(1),
-      );
-      expect(
-        (await database.database.query('analysis_rule_results')).single['id'],
-        'overview-result',
-      );
-      expect(
-        await database.database.query(
-          'transactions',
-          where: 'id = ?',
-          whereArgs: ['tx-keep'],
-        ),
-        hasLength(1),
-      );
-
+      const tables = [
+        'analysis_findings',
+        'analysis_rule_results',
+        'transactions',
+      ];
+      final before = <String, List<Map<String, Object?>>>{};
+      for (final table in tables) {
+        before[table] = await db.query(table, orderBy: 'id');
+      }
+      for (var restart = 0; restart < 2; restart++) {
+        await database.close();
+        database = localDatabase();
+        await database.initialize();
+        for (final table in tables) {
+          expect(
+            await database.database.query(table, orderBy: 'id'),
+            before[table],
+            reason: '$table must survive restart $restart unchanged',
+          );
+        }
+      }
       await database.close();
     },
   );

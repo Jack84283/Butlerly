@@ -116,10 +116,7 @@ void main() {
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
     await tester.pumpAndSettle();
     await tester.tap(find.textContaining('2 supporting transactions'));
-    expect(
-      path,
-      '/search?locked=true&from=2026-09-01&to=2026-09-05',
-    );
+    expect(path, '/search?locked=true&from=2026-09-01&to=2026-09-05');
   });
 
   testWidgets('renders multiple active insight rules generically', (

@@ -788,29 +788,31 @@ void main() {
       merchantId: merchant == null ? null : MerchantId(merchant),
     );
 
-    AnalysisRuleDefinition insight(
-      RuleGrouping grouping,
-    ) => AnalysisRuleDefinition(
-      identity: RuleIdentity('ANL-R020'),
-      version: RuleVersion('1.2.0'),
-      schemaVersion: '1.0.0',
-      type: AnalysisRuleType.insight,
-      nameKey: 'insight',
-      descriptionKey: 'insight.description',
-      enabled: true,
-      status: AnalysisRuleStatus.active,
-      period: 'selected_period',
-      measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
-      grouping: grouping,
-      baseline: RuleBaseline.previousEquivalentPeriod,
-      condition: RuleCondition(
-        operator: 'gt',
-        left: 'value',
-        value: DecimalValue.parse('0'),
-      ),
-      severity: RuleSeverity.info,
-      definitionHash: RuleDefinitionHash('d' * 64),
-    );
+    AnalysisRuleDefinition insight(RuleGrouping grouping) =>
+        AnalysisRuleDefinition(
+          identity: RuleIdentity('ANL-R020'),
+          version: RuleVersion('1.2.0'),
+          schemaVersion: '1.0.0',
+          type: AnalysisRuleType.insight,
+          nameKey: 'insight',
+          descriptionKey: 'insight.description',
+          enabled: true,
+          status: AnalysisRuleStatus.active,
+          period: 'selected_period',
+          measure: const RuleMeasure(
+            operation: RuleOperation.sum,
+            field: 'amount',
+          ),
+          grouping: grouping,
+          baseline: RuleBaseline.previousEquivalentPeriod,
+          condition: RuleCondition(
+            operator: 'gt',
+            left: 'value',
+            value: DecimalValue.parse('0'),
+          ),
+          severity: RuleSeverity.info,
+          definitionHash: RuleDefinitionHash('d' * 64),
+        );
 
     final current = [
       transaction('dining-current', '600', category: 'dining'),

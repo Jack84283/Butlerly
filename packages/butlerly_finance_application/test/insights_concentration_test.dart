@@ -55,10 +55,7 @@ void main() {
       condition: RuleCondition(
         operator: 'gte',
         left: 'value',
-        value: DecimalValue.fromParts(
-          coefficient: BigInt.from(50),
-          scale: 0,
-        ),
+        value: DecimalValue.fromParts(coefficient: BigInt.from(50), scale: 0),
       ),
       severity: RuleSeverity.attention,
       surface: AnalysisSurface.insights,
@@ -66,10 +63,7 @@ void main() {
       resultPersistence: ResultPersistencePolicy.finding,
       definitionHash: RuleDefinitionHash('6' * 64),
       filters: [
-        AnalysisFilter(
-          kind: AnalysisFilterKind.direction,
-          values: ['expense'],
-        ),
+        AnalysisFilter(kind: AnalysisFilterKind.direction, values: ['expense']),
       ],
     );
 

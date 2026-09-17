@@ -5,9 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('successful application result completes normally', () async {
     await expectLater(
-      requireApplicationSuccess(
-        Future.value(const ApplicationSuccess<int>(1)),
-      ),
+      requireApplicationSuccess(Future.value(const ApplicationSuccess<int>(1))),
       completes,
     );
   });

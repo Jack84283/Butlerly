@@ -323,8 +323,8 @@ final class AnalysisRuleEngine {
     AnalysisFinding finding,
     _ConditionEvidence conditionEvidence,
   ) {
-    final evidence = conditionEvidence.selective &&
-            conditionEvidence.values.isNotEmpty
+    final evidence =
+        conditionEvidence.selective && conditionEvidence.values.isNotEmpty
         ? conditionEvidence.values
               .map((value) => EvidenceReference(transactionId: value.id))
               .toList(growable: false)
@@ -685,13 +685,10 @@ final class AnalysisRuleEngine {
     final target = operation == RuleOperation.maximum
         ? amounts.reduce((a, b) => a.compareTo(b) >= 0 ? a : b)
         : amounts.reduce((a, b) => a.compareTo(b) <= 0 ? a : b);
-    return _ConditionEvidence(
-      [
-        for (var index = 0; index < selected.length; index++)
-          if (amounts[index] == target) selected[index],
-      ],
-      true,
-    );
+    return _ConditionEvidence([
+      for (var index = 0; index < selected.length; index++)
+        if (amounts[index] == target) selected[index],
+    ], true);
   }
 
   List<AnalysisEconomicTransaction> _conditionSelectedCurrentValues(
@@ -736,70 +733,70 @@ final class AnalysisRuleEngine {
       'percentageChange' => percentageChange,
       'absoluteChange' => absoluteChange,
       'currentTotal' => _conditionAggregate(
-          rule,
-          dataset,
-          currentValues,
-          RuleOperation.sum,
-        ),
+        rule,
+        dataset,
+        currentValues,
+        RuleOperation.sum,
+      ),
       'currentAverage' => _conditionAggregate(
-          rule,
-          dataset,
-          currentValues,
-          RuleOperation.average,
-        ),
+        rule,
+        dataset,
+        currentValues,
+        RuleOperation.average,
+      ),
       'currentMinimum' => _conditionAggregate(
-          rule,
-          dataset,
-          currentValues,
-          RuleOperation.minimum,
-        ),
+        rule,
+        dataset,
+        currentValues,
+        RuleOperation.minimum,
+      ),
       'currentMaximum' => _conditionAggregate(
-          rule,
-          dataset,
-          currentValues,
-          RuleOperation.maximum,
-        ),
+        rule,
+        dataset,
+        currentValues,
+        RuleOperation.maximum,
+      ),
       'currentCount' => _conditionAggregate(
-          rule,
-          dataset,
-          currentValues,
-          RuleOperation.count,
-        ),
+        rule,
+        dataset,
+        currentValues,
+        RuleOperation.count,
+      ),
       'baselineTotal' => _conditionAggregate(
-          rule,
-          dataset,
-          _baselineGroup(rule, dataset, dimension),
-          RuleOperation.sum,
-          baseline: true,
-        ),
+        rule,
+        dataset,
+        _baselineGroup(rule, dataset, dimension),
+        RuleOperation.sum,
+        baseline: true,
+      ),
       'baselineAverage' => _conditionAggregate(
-          rule,
-          dataset,
-          _baselineGroup(rule, dataset, dimension),
-          RuleOperation.average,
-          baseline: true,
-        ),
+        rule,
+        dataset,
+        _baselineGroup(rule, dataset, dimension),
+        RuleOperation.average,
+        baseline: true,
+      ),
       'baselineMinimum' => _conditionAggregate(
-          rule,
-          dataset,
-          _baselineGroup(rule, dataset, dimension),
-          RuleOperation.minimum,
-          baseline: true,
-        ),
+        rule,
+        dataset,
+        _baselineGroup(rule, dataset, dimension),
+        RuleOperation.minimum,
+        baseline: true,
+      ),
       'baselineMaximum' => _conditionAggregate(
-          rule,
-          dataset,
-          _baselineGroup(rule, dataset, dimension),
-          RuleOperation.maximum,
-          baseline: true,
-        ),
+        rule,
+        dataset,
+        _baselineGroup(rule, dataset, dimension),
+        RuleOperation.maximum,
+        baseline: true,
+      ),
       'baselineCount' => _conditionAggregate(
-          rule,
-          dataset,
-          _baselineGroup(rule, dataset, dimension),
-          RuleOperation.count,
-          baseline: true,
-        ),
+        rule,
+        dataset,
+        _baselineGroup(rule, dataset, dimension),
+        RuleOperation.count,
+        baseline: true,
+      ),
       _ => null,
     };
   }
@@ -840,12 +837,14 @@ final class AnalysisRuleEngine {
       RuleOperation.sum => _sum(amounts),
       RuleOperation.average =>
         amounts.isEmpty ? _zero() : _sum(amounts).divideBy(amounts.length),
-      RuleOperation.minimum => amounts.isEmpty
-          ? _zero()
-          : amounts.reduce((a, b) => a.compareTo(b) <= 0 ? a : b),
-      RuleOperation.maximum => amounts.isEmpty
-          ? _zero()
-          : amounts.reduce((a, b) => a.compareTo(b) >= 0 ? a : b),
+      RuleOperation.minimum =>
+        amounts.isEmpty
+            ? _zero()
+            : amounts.reduce((a, b) => a.compareTo(b) <= 0 ? a : b),
+      RuleOperation.maximum =>
+        amounts.isEmpty
+            ? _zero()
+            : amounts.reduce((a, b) => a.compareTo(b) >= 0 ? a : b),
       _ => throw StateError('Unsupported condition aggregate: $operation.'),
     };
   }
@@ -1314,7 +1313,8 @@ final class AnalysisRuleEngine {
       coefficient:
           income.value.coefficient *
               BigInt.from(10).pow(scale - income.value.scale) -
-          expense.value.coefficient * BigInt.from(10).pow(scale - expense.value.scale),
+          expense.value.coefficient *
+              BigInt.from(10).pow(scale - expense.value.scale),
       scale: scale,
     );
   }

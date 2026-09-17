@@ -16,77 +16,96 @@ void main() {
     baseCurrency: CurrencyCode('USD'),
   );
 
-  test('R024 unusual-transaction-only branch narrows evidence to current maximum', () {
-    final result = const AnalysisRuleEngine().execute(
-      dataset: AnalysisDataset(
-        context: context,
-        transactions: [
-          _expense('current-high', '2026-09-01', '70'),
-          _expense('current-low', '2026-09-02', '20'),
-        ],
-        baselineTransactions: [
-          _expense('baseline-a', '2026-08-01', '40'),
-          _expense('baseline-b', '2026-08-02', '40'),
-        ],
-      ),
-      definitions: [_r024()],
-    ).single;
+  test(
+    'R024 unusual-transaction-only branch narrows evidence to current maximum',
+    () {
+      final result = const AnalysisRuleEngine()
+          .execute(
+            dataset: AnalysisDataset(
+              context: context,
+              transactions: [
+                _expense('current-high', '2026-09-01', '70'),
+                _expense('current-low', '2026-09-02', '20'),
+              ],
+              baselineTransactions: [
+                _expense('baseline-a', '2026-08-01', '40'),
+                _expense('baseline-b', '2026-08-02', '40'),
+              ],
+            ),
+            definitions: [_r024()],
+          )
+          .single;
 
-    expect(result.finding, isNotNull);
-    expect(
-      result.finding!.evidence.map((value) => value.transactionId.value),
-      ['current-high'],
-    );
-    expect(result.finding!.supportingMetrics, contains(selectiveMarker));
-  });
+      expect(result.finding, isNotNull);
+      expect(
+        result.finding!.evidence.map((value) => value.transactionId.value),
+        ['current-high'],
+      );
+      expect(result.finding!.supportingMetrics, contains(selectiveMarker));
+    },
+  );
 
   test('R024 period-increase branch keeps the full current population', () {
-    final result = const AnalysisRuleEngine().execute(
-      dataset: AnalysisDataset(
-        context: context,
-        transactions: [
-          _expense('current-a', '2026-09-01', '60'),
-          _expense('current-b', '2026-09-02', '40'),
-        ],
-        baselineTransactions: [
-          _expense('baseline-a', '2026-08-01', '40'),
-          _expense('baseline-b', '2026-08-02', '40'),
-        ],
-      ),
-      definitions: [_r024()],
-    ).single;
+    final result = const AnalysisRuleEngine()
+        .execute(
+          dataset: AnalysisDataset(
+            context: context,
+            transactions: [
+              _expense('current-a', '2026-09-01', '60'),
+              _expense('current-b', '2026-09-02', '40'),
+            ],
+            baselineTransactions: [
+              _expense('baseline-a', '2026-08-01', '40'),
+              _expense('baseline-b', '2026-08-02', '40'),
+            ],
+          ),
+          definitions: [_r024()],
+        )
+        .single;
 
     expect(result.finding, isNotNull);
     expect(
-      result.finding!.evidence.map((value) => value.transactionId.value).toSet(),
+      result.finding!.evidence
+          .map((value) => value.transactionId.value)
+          .toSet(),
       {'current-a', 'current-b'},
     );
     expect(result.finding!.supportingMetrics, isNot(contains(selectiveMarker)));
   });
 
-  test('R024 both matching branches keep criteria-style population evidence', () {
-    final result = const AnalysisRuleEngine().execute(
-      dataset: AnalysisDataset(
-        context: context,
-        transactions: [
-          _expense('current-high', '2026-09-01', '80'),
-          _expense('current-low', '2026-09-02', '30'),
-        ],
-        baselineTransactions: [
-          _expense('baseline-a', '2026-08-01', '40'),
-          _expense('baseline-b', '2026-08-02', '40'),
-        ],
-      ),
-      definitions: [_r024()],
-    ).single;
+  test(
+    'R024 both matching branches keep criteria-style population evidence',
+    () {
+      final result = const AnalysisRuleEngine()
+          .execute(
+            dataset: AnalysisDataset(
+              context: context,
+              transactions: [
+                _expense('current-high', '2026-09-01', '80'),
+                _expense('current-low', '2026-09-02', '30'),
+              ],
+              baselineTransactions: [
+                _expense('baseline-a', '2026-08-01', '40'),
+                _expense('baseline-b', '2026-08-02', '40'),
+              ],
+            ),
+            definitions: [_r024()],
+          )
+          .single;
 
-    expect(result.finding, isNotNull);
-    expect(
-      result.finding!.evidence.map((value) => value.transactionId.value).toSet(),
-      {'current-high', 'current-low'},
-    );
-    expect(result.finding!.supportingMetrics, isNot(contains(selectiveMarker)));
-  });
+      expect(result.finding, isNotNull);
+      expect(
+        result.finding!.evidence
+            .map((value) => value.transactionId.value)
+            .toSet(),
+        {'current-high', 'current-low'},
+      );
+      expect(
+        result.finding!.supportingMetrics,
+        isNot(contains(selectiveMarker)),
+      );
+    },
+  );
 }
 
 AnalysisRuleDefinition _r024() => AnalysisRuleDefinition(
@@ -136,10 +155,7 @@ AnalysisRuleDefinition _r024() => AnalysisRuleDefinition(
   severity: RuleSeverity.attention,
   surface: AnalysisSurface.insights,
   filters: const [
-    AnalysisFilter(
-      kind: AnalysisFilterKind.direction,
-      values: ['expense'],
-    ),
+    AnalysisFilter(kind: AnalysisFilterKind.direction, values: ['expense']),
   ],
   definitionHash: RuleDefinitionHash('2' * 64),
   resultPersistence: ResultPersistencePolicy.finding,

@@ -35,7 +35,8 @@ InsightDrillDownRefreshDecision resolveInsightDrillDownRefresh(
 }) {
   InsightResult? refreshed;
   for (final insight in evaluation.activeFindings) {
-    if (insight.rule.identity.value == ruleId && insight.dimension == dimension) {
+    if (insight.rule.identity.value == ruleId &&
+        insight.dimension == dimension) {
       refreshed = insight;
       break;
     }
@@ -47,7 +48,8 @@ InsightDrillDownRefreshDecision resolveInsightDrillDownRefresh(
     );
   }
 
-  final remainsSelective = refreshed.finding?.supportingMetrics.contains(
+  final remainsSelective =
+      refreshed.finding?.supportingMetrics.contains(
         _selectiveConditionEvidenceMarker,
       ) ??
       false;

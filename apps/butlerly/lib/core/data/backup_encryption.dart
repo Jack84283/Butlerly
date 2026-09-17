@@ -58,7 +58,9 @@ final class BackupEncryption {
   );
 
   Future<bool> isEncrypted(File file) async {
-    if (!await file.exists() || await file.length() < magic.length) return false;
+    if (!await file.exists() || await file.length() < magic.length) {
+      return false;
+    }
     final input = await file.open(mode: FileMode.read);
     try {
       final value = await input.read(magic.length);

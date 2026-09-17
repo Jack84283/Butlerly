@@ -510,9 +510,7 @@ class _AnalysisContent extends StatelessWidget {
     final path = switch (selected?.periodType) {
       'selected_month' => Uri(
         path: '/insights',
-        queryParameters: {
-          'month': selected!.period.startDate.substring(0, 7),
-        },
+        queryParameters: {'month': selected!.period.startDate.substring(0, 7)},
       ).toString(),
       'selected_period' => Uri(
         path: '/insights',

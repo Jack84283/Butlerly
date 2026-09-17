@@ -358,8 +358,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   }
 
   Future<_EditorMasterData> _loadMasterData(String languageCode) async {
-    final snapshot = await TransactionMasterDataProvider(widget.finance)
-        .load(languageCode: languageCode);
+    final snapshot = await TransactionMasterDataProvider(
+      widget.finance,
+    ).load(languageCode: languageCode);
     return _EditorMasterData.fromSnapshot(snapshot);
   }
 
@@ -448,11 +449,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
       ),
     );
     if (!mounted) return;
-    if (duplicate
-        case ApplicationSuccess<DuplicateTransactionCheckResult>(
-          value: final check,
-        )
-        when check.requiresConfirmation) {
+    if (duplicate case ApplicationSuccess<DuplicateTransactionCheckResult>(
+      value: final check,
+    ) when check.requiresConfirmation) {
       final editorData = await _masterData;
       if (!mounted) return;
       final decision =
@@ -476,8 +475,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
       if (decision.decision == ButlerlyDuplicateDecision.useExisting) {
         final selectedId = decision.selectedTransactionId;
         if (selectedId != null) {
-          Navigator.of(context)
-              .pop(TransactionEditorResult.useExisting(selectedId));
+          Navigator.of(
+            context,
+          ).pop(TransactionEditorResult.useExisting(selectedId));
         }
         return;
       }

@@ -187,11 +187,7 @@ Future<void> _write(
     }
     await executor.update(
       table,
-      {
-        ...row,
-        'created_at': existing.single['created_at'],
-        'updated_at': now,
-      },
+      {...row, 'created_at': existing.single['created_at'], 'updated_at': now},
       where: 'id = ?',
       whereArgs: [id],
     );

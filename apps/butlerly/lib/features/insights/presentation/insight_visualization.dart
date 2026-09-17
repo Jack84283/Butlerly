@@ -275,7 +275,9 @@ class InsightDonutVisualization extends StatelessWidget {
     ];
     String share(double value) => percentageLabel(value / total * 100);
     return Semantics(
-      label: usable.map((item) => '${item.label}: ${share(item.value)}').join(', '),
+      label: usable
+          .map((item) => '${item.label}: ${share(item.value)}')
+          .join(', '),
       child: ExcludeSemantics(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,

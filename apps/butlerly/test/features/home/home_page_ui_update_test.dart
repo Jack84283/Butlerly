@@ -21,10 +21,7 @@ void main() {
         GoRoute(
           path: '/search',
           builder: (_, state) => Scaffold(
-            body: Text(
-              state.uri.toString(),
-              key: const Key('search-uri'),
-            ),
+            body: Text(state.uri.toString(), key: const Key('search-uri')),
           ),
         ),
         GoRoute(
@@ -56,33 +53,34 @@ void main() {
     router.dispose();
   });
 
-  testWidgets('Home header stays pinned with requested left and right content', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(390, 360);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets(
+    'Home header stays pinned with requested left and right content',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 360);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(_testApp(router));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(_testApp(router));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Butlerly'), findsOneWidget);
-    expect(find.text('Good afternoon'), findsOneWidget);
-    expect(find.text('September 2026'), findsOneWidget);
-    expect(find.text('A CALMER WAY TO MONEY'), findsOneWidget);
-    expect(find.byKey(const Key('home-notification-action')), findsOneWidget);
+      expect(find.text('Butlerly'), findsOneWidget);
+      expect(find.text('Good afternoon'), findsOneWidget);
+      expect(find.text('September 2026'), findsOneWidget);
+      expect(find.text('A CALMER WAY TO MONEY'), findsOneWidget);
+      expect(find.byKey(const Key('home-notification-action')), findsOneWidget);
 
-    final initialHeaderTop = tester.getTopLeft(find.text('Butlerly')).dy;
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -260));
-    await tester.pumpAndSettle();
+      final initialHeaderTop = tester.getTopLeft(find.text('Butlerly')).dy;
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -260));
+      await tester.pumpAndSettle();
 
-    expect(
-      tester.getTopLeft(find.text('Butlerly')).dy,
-      closeTo(initialHeaderTop, 0.1),
-    );
-    expect(tester.takeException(), isNull);
-  });
+      expect(
+        tester.getTopLeft(find.text('Butlerly')).dy,
+        closeTo(initialHeaderTop, 0.1),
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('Home tagline is localized outside English', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -125,7 +123,8 @@ void main() {
       expect(categoryRight, greaterThan(tester.getTopRight(categoryTitle).dx));
       expect(recentRight, greaterThan(tester.getTopRight(recentTitle).dx));
       expect(
-        (tester.getCenter(categoryAction).dy - tester.getCenter(categoryTitle).dy)
+        (tester.getCenter(categoryAction).dy -
+                tester.getCenter(categoryTitle).dy)
             .abs(),
         lessThan(12),
       );
@@ -190,9 +189,7 @@ void main() {
       tester.view.platformDispatcher.textScaleFactorTestValue = 3.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
-      addTearDown(
-        tester.view.platformDispatcher.clearTextScaleFactorTestValue,
-      );
+      addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
 
       await tester.pumpWidget(_testApp(router));
       await tester.pumpAndSettle();

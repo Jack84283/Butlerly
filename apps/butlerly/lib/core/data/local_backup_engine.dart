@@ -164,21 +164,18 @@ final class LocalBackupManager {
       updatedAt: 'updated_at',
       createdAt: 'created_at',
     ),
-    _TableSpec(
-      'normalized_money',
-      ['transaction_id', 'exchange_rate_id'],
-      updatedAt: 'updated_at',
-    ),
-    _TableSpec(
-      'transaction_provenances',
-      ['transaction_id', 'provenance_id'],
-      mergeUnion: true,
-    ),
-    _TableSpec(
-      'transaction_tags',
-      ['transaction_id', 'tag_id'],
-      createdAt: 'created_at',
-    ),
+    _TableSpec('normalized_money', [
+      'transaction_id',
+      'exchange_rate_id',
+    ], updatedAt: 'updated_at'),
+    _TableSpec('transaction_provenances', [
+      'transaction_id',
+      'provenance_id',
+    ], mergeUnion: true),
+    _TableSpec('transaction_tags', [
+      'transaction_id',
+      'tag_id',
+    ], createdAt: 'created_at'),
     _TableSpec('evidence_items', ['id'], createdAt: 'created_at'),
     _TableSpec(
       'financial_statements',
@@ -219,20 +216,16 @@ final class LocalBackupManager {
       updatedAt: 'updated_at',
       createdAt: 'created_at',
     ),
-    _TableSpec(
-      'duplicate_candidate_group_transactions',
-      ['group_id', 'transaction_id'],
-    ),
-    _TableSpec(
-      'analysis_rule_activations',
-      ['rule_id'],
-      updatedAt: 'updated_at',
-    ),
-    _TableSpec(
-      'analysis_rule_configurations',
-      ['rule_id'],
-      updatedAt: 'updated_at',
-    ),
+    _TableSpec('duplicate_candidate_group_transactions', [
+      'group_id',
+      'transaction_id',
+    ]),
+    _TableSpec('analysis_rule_activations', [
+      'rule_id',
+    ], updatedAt: 'updated_at'),
+    _TableSpec('analysis_rule_configurations', [
+      'rule_id',
+    ], updatedAt: 'updated_at'),
     _TableSpec('user_preferences', ['id'], updatedAt: 'updated_at'),
   ];
 
@@ -324,14 +317,10 @@ final class LocalBackupManager {
 
           // restore_context is strictly transaction-scoped. No user write can
           // observe trigger suppression outside this SQLite writer transaction.
-          await tx.insert(
-            'restore_context',
-            {
-              'id': 1,
-              'backup_time': backupTime.toIso8601String(),
-            },
-            conflictAlgorithm: ConflictAlgorithm.replace,
-          );
+          await tx.insert('restore_context', {
+            'id': 1,
+            'backup_time': backupTime.toIso8601String(),
+          }, conflictAlgorithm: ConflictAlgorithm.replace);
         }
 
         try {
@@ -358,17 +347,13 @@ final class LocalBackupManager {
                   keptNewer++;
                   continue;
                 }
-                if (await _hasNewerLocalTombstone(
-                  tx,
-                  spec,
-                  row,
-                  backupTime,
-                )) {
+                if (await _hasNewerLocalTombstone(tx, spec, row, backupTime)) {
                   keptNewer++;
                   continue;
                 }
                 final local = await _findRow(tx, spec, row);
-                if (local != null && _rowChangedAfter(local, spec, backupTime)) {
+                if (local != null &&
+                    _rowChangedAfter(local, spec, backupTime)) {
                   keptNewer++;
                   continue;
                 }
@@ -380,7 +365,8 @@ final class LocalBackupManager {
           }
           if (mode == LocalRestoreMode.replace) {
             final tombstones =
-                (tablePayload['entity_tombstones'] as List? ?? const <Object?>[])
+                (tablePayload['entity_tombstones'] as List? ??
+                        const <Object?>[])
                     .cast<Map>();
             for (final raw in tombstones) {
               final row = raw.cast<String, Object?>();
@@ -671,8 +657,8 @@ final class LocalBackupManager {
     Map<String, String> remaps,
   ) {
     if (remaps.isEmpty) return;
-    final rows =
-        (tablePayload['evidence_items'] as List? ?? const <Object?>[]).cast<Map>();
+    final rows = (tablePayload['evidence_items'] as List? ?? const <Object?>[])
+        .cast<Map>();
     for (final raw in rows) {
       final row = raw.cast<String, Object?>();
       final current = row['local_file_name'] as String?;
@@ -689,18 +675,13 @@ final class LocalBackupManager {
   ) async {
     final protected = <String>{};
     final spec = _specByName['transactions']!;
-    final rows =
-        (tablePayload['transactions'] as List? ?? const <Object?>[]).cast<Map>();
+    final rows = (tablePayload['transactions'] as List? ?? const <Object?>[])
+        .cast<Map>();
     for (final raw in rows) {
       final row = raw.cast<String, Object?>();
       final id = row['id'] as String?;
       if (id == null) continue;
-      if (await _hasNewerLocalTombstone(
-        executor,
-        spec,
-        row,
-        backupTime,
-      )) {
+      if (await _hasNewerLocalTombstone(executor, spec, row, backupTime)) {
         protected.add(id);
         continue;
       }
@@ -710,7 +691,8 @@ final class LocalBackupManager {
         whereArgs: [id],
         limit: 1,
       );
-      if (local.isNotEmpty && _rowChangedAfter(local.single, spec, backupTime)) {
+      if (local.isNotEmpty &&
+          _rowChangedAfter(local.single, spec, backupTime)) {
         protected.add(id);
       }
     }
@@ -921,11 +903,7 @@ final class LocalBackupManager {
         args.add(value);
       }
     }
-    await tx.delete(
-      spec.name,
-      where: where.join(' AND '),
-      whereArgs: args,
-    );
+    await tx.delete(spec.name, where: where.join(' AND '), whereArgs: args);
   }
 
   Future<void> _upsertRow(
@@ -1002,10 +980,7 @@ final class LocalBackupManager {
   Future<void> _purgeGeneratedWorkflowState(Transaction tx) async {
     await tx.delete('review_issues', where: 'closed_at IS NULL');
     await tx.delete('suggestions', where: 'decided_at IS NULL');
-    await tx.delete(
-      'reconciliation_candidates',
-      where: "status = 'proposed'",
-    );
+    await tx.delete('reconciliation_candidates', where: "status = 'proposed'");
     await tx.rawDelete(
       'DELETE FROM duplicate_candidate_group_transactions '
       'WHERE group_id IN ('
@@ -1061,10 +1036,7 @@ final class LocalBackupManager {
     await tx.delete('entity_tombstones');
   }
 
-  Future<void> _copyDirectory(
-    Directory source,
-    Directory destination,
-  ) async {
+  Future<void> _copyDirectory(Directory source, Directory destination) async {
     await for (final entity in source.list(recursive: true)) {
       final relative = path.relative(entity.path, from: source.path);
       final target = path.join(destination.path, relative);

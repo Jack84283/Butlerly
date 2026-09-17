@@ -38,55 +38,67 @@ void main() {
         .where(
           (entity) =>
               entity is File &&
-              path.basename(entity.path).startsWith(
-                '${path.basename(destination.path)}.previous-',
-              ),
+              path
+                  .basename(entity.path)
+                  .startsWith('${path.basename(destination.path)}.previous-'),
         )
         .toList();
     expect(leftovers, isEmpty);
   });
 
-  test('ambiguous torn restore fails closed and preserves every tree', () async {
-    final fixture = await _Fixture.create();
-    addTearDown(fixture.dispose);
-    final live = File(path.join(fixture.evidence.path, 'receipt.bin'));
-    await live.writeAsString('live');
+  test(
+    'ambiguous torn restore fails closed and preserves every tree',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final live = File(path.join(fixture.evidence.path, 'receipt.bin'));
+      await live.writeAsString('live');
 
-    final previousA = Directory(
-      '${fixture.evidence.path}.restore-previous-restore-a',
-    )..createSync(recursive: true);
-    final previousB = Directory(
-      '${fixture.evidence.path}.restore-previous-restore-b',
-    )..createSync(recursive: true);
-    await File(path.join(previousA.path, 'receipt.bin')).writeAsString('old-a');
-    await File(path.join(previousB.path, 'receipt.bin')).writeAsString('old-b');
-    final safety = File(path.join(fixture.root.path, 'safety.butlerlybackup'));
-    await fixture.manager.createBackup(safety);
-    await _writeOrigin(
-      fixture.evidence,
-      operationId: 'wrapper-ambiguous',
-      rootExisted: true,
-      safetyBackupPath: safety.path,
-    );
-    final journal = File('${fixture.evidence.path}.restore-journal.json');
-    await journal.writeAsString('{"operationId":');
+      final previousA = Directory(
+        '${fixture.evidence.path}.restore-previous-restore-a',
+      )..createSync(recursive: true);
+      final previousB = Directory(
+        '${fixture.evidence.path}.restore-previous-restore-b',
+      )..createSync(recursive: true);
+      await File(
+        path.join(previousA.path, 'receipt.bin'),
+      ).writeAsString('old-a');
+      await File(
+        path.join(previousB.path, 'receipt.bin'),
+      ).writeAsString('old-b');
+      final safety = File(
+        path.join(fixture.root.path, 'safety.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(safety);
+      await _writeOrigin(
+        fixture.evidence,
+        operationId: 'wrapper-ambiguous',
+        rootExisted: true,
+        safetyBackupPath: safety.path,
+      );
+      final journal = File('${fixture.evidence.path}.restore-journal.json');
+      await journal.writeAsString('{"operationId":');
 
-    await expectLater(
-      fixture.manager.recoverInterruptedRestore(),
-      throwsA(isA<RestoreRecoveryRequiredException>()),
-    );
+      await expectLater(
+        fixture.manager.recoverInterruptedRestore(),
+        throwsA(isA<RestoreRecoveryRequiredException>()),
+      );
 
-    expect(await live.readAsString(), 'live');
-    expect(await previousA.exists(), isTrue);
-    expect(await previousB.exists(), isTrue);
-    expect(await journal.exists(), isTrue);
-    expect(fixture.manager.recoveryState.isRecoveryRequired, isTrue);
-    expect(
-      fixture.manager.recoveryState.incident?.reason,
-      'ambiguous-restore-recovery',
-    );
-    expect(fixture.manager.recoveryState.incident?.safetyBackupPath, safety.path);
-  });
+      expect(await live.readAsString(), 'live');
+      expect(await previousA.exists(), isTrue);
+      expect(await previousB.exists(), isTrue);
+      expect(await journal.exists(), isTrue);
+      expect(fixture.manager.recoveryState.isRecoveryRequired, isTrue);
+      expect(
+        fixture.manager.recoveryState.incident?.reason,
+        'ambiguous-restore-recovery',
+      );
+      expect(
+        fixture.manager.recoveryState.incident?.safetyBackupPath,
+        safety.path,
+      );
+    },
+  );
 
   test('valid restore journal ignores unrelated stale previous tree', () async {
     final fixture = await _Fixture.create();
@@ -104,7 +116,9 @@ void main() {
     final unrelated = Directory(
       '${fixture.evidence.path}.restore-previous-restore-stale',
     )..createSync(recursive: true);
-    await File(path.join(unrelated.path, 'receipt.bin')).writeAsString('stale-old');
+    await File(
+      path.join(unrelated.path, 'receipt.bin'),
+    ).writeAsString('stale-old');
 
     final journal = File('${fixture.evidence.path}.restore-journal.json');
     await journal.writeAsString(
@@ -121,36 +135,41 @@ void main() {
     expect(await journal.exists(), isFalse);
   });
 
-  test('pre-commit recovery returns to an originally absent evidence root', () async {
-    final fixture = await _Fixture.create();
-    addTearDown(fixture.dispose);
-    await fixture.evidence.delete(recursive: true);
+  test(
+    'pre-commit recovery returns to an originally absent evidence root',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.evidence.delete(recursive: true);
 
-    const operation = 'restore-empty-origin';
-    await fixture.evidence.create(recursive: true);
-    await File(path.join(fixture.evidence.path, 'restored.bin')).writeAsString('new');
-    await _writeOrigin(
-      fixture.evidence,
-      operationId: 'wrapper-empty-origin',
-      rootExisted: false,
-      safetyBackupPath: path.join(fixture.root.path, 'safety.butlerlybackup'),
-    );
-    final originState = File('${fixture.evidence.path}.restore-origin.json');
-    final journal = File('${fixture.evidence.path}.restore-journal.json');
-    await journal.writeAsString(
-      '{"operationId":"$operation",'
-      '"previousPath":"${fixture.evidence.path}.restore-previous-$operation",'
-      '"stagingPath":"${fixture.evidence.path}.restore-$operation",'
-      '"phase":"dbWriting"}',
-    );
+      const operation = 'restore-empty-origin';
+      await fixture.evidence.create(recursive: true);
+      await File(
+        path.join(fixture.evidence.path, 'restored.bin'),
+      ).writeAsString('new');
+      await _writeOrigin(
+        fixture.evidence,
+        operationId: 'wrapper-empty-origin',
+        rootExisted: false,
+        safetyBackupPath: path.join(fixture.root.path, 'safety.butlerlybackup'),
+      );
+      final originState = File('${fixture.evidence.path}.restore-origin.json');
+      final journal = File('${fixture.evidence.path}.restore-journal.json');
+      await journal.writeAsString(
+        '{"operationId":"$operation",'
+        '"previousPath":"${fixture.evidence.path}.restore-previous-$operation",'
+        '"stagingPath":"${fixture.evidence.path}.restore-$operation",'
+        '"phase":"dbWriting"}',
+      );
 
-    await fixture.manager.recoverInterruptedRestore();
+      await fixture.manager.recoverInterruptedRestore();
 
-    expect(await fixture.evidence.exists(), isFalse);
-    expect(await journal.exists(), isFalse);
-    expect(await originState.exists(), isFalse);
-    expect(fixture.manager.recoveryState.isRecoveryRequired, isFalse);
-  });
+      expect(await fixture.evidence.exists(), isFalse);
+      expect(await journal.exists(), isFalse);
+      expect(await originState.exists(), isFalse);
+      expect(fixture.manager.recoveryState.isRecoveryRequired, isFalse);
+    },
+  );
 
   test('missing previous tree for an existing origin fails closed', () async {
     final fixture = await _Fixture.create();
@@ -188,95 +207,113 @@ void main() {
       fixture.manager.recoveryState.incident?.reason,
       'missing-previous-evidence-recovery',
     );
-    expect(fixture.manager.recoveryState.incident?.safetyBackupPath, safety.path);
-  });
-
-  test('activated legacy journal without origin never deletes live evidence', () async {
-    final fixture = await _Fixture.create();
-    addTearDown(fixture.dispose);
-    final live = File(path.join(fixture.evidence.path, 'receipt.bin'));
-    await live.writeAsString('only-live-copy');
-    const operation = 'restore-no-origin';
-    final journal = File('${fixture.evidence.path}.restore-journal.json');
-    await journal.writeAsString(
-      '{"operationId":"$operation",'
-      '"previousPath":"${fixture.evidence.path}.restore-previous-$operation",'
-      '"stagingPath":"${fixture.evidence.path}.restore-$operation",'
-      '"phase":"evidenceActivated"}',
-    );
-
-    await expectLater(
-      fixture.manager.recoverInterruptedRestore(),
-      throwsA(isA<RestoreRecoveryRequiredException>()),
-    );
-
-    expect(await live.readAsString(), 'only-live-copy');
-    expect(await journal.exists(), isTrue);
     expect(
-      fixture.manager.recoveryState.incident?.reason,
-      'indeterminate-restore-recovery',
+      fixture.manager.recoveryState.incident?.safetyBackupPath,
+      safety.path,
     );
   });
 
-  test('completed engine activation with pending wrapper validation fails closed', () async {
-    final fixture = await _Fixture.create();
-    addTearDown(fixture.dispose);
-    final safety = File(path.join(fixture.root.path, 'safety.butlerlybackup'));
-    await fixture.manager.createBackup(safety);
-    await _writeOrigin(
-      fixture.evidence,
-      operationId: 'wrapper-validation-pending',
-      rootExisted: true,
-      safetyBackupPath: safety.path,
-    );
+  test(
+    'activated legacy journal without origin never deletes live evidence',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final live = File(path.join(fixture.evidence.path, 'receipt.bin'));
+      await live.writeAsString('only-live-copy');
+      const operation = 'restore-no-origin';
+      final journal = File('${fixture.evidence.path}.restore-journal.json');
+      await journal.writeAsString(
+        '{"operationId":"$operation",'
+        '"previousPath":"${fixture.evidence.path}.restore-previous-$operation",'
+        '"stagingPath":"${fixture.evidence.path}.restore-$operation",'
+        '"phase":"evidenceActivated"}',
+      );
 
-    await expectLater(
-      fixture.manager.recoverInterruptedRestore(),
-      throwsA(isA<RestoreRecoveryRequiredException>()),
-    );
+      await expectLater(
+        fixture.manager.recoverInterruptedRestore(),
+        throwsA(isA<RestoreRecoveryRequiredException>()),
+      );
 
-    final incident = fixture.manager.recoveryState.incident;
-    expect(incident?.reason, 'post-activation-validation-pending');
-    expect(incident?.retryCurrentState, isTrue);
-    expect(incident?.safetyBackupPath, safety.path);
-  });
+      expect(await live.readAsString(), 'only-live-copy');
+      expect(await journal.exists(), isTrue);
+      expect(
+        fixture.manager.recoveryState.incident?.reason,
+        'indeterminate-restore-recovery',
+      );
+    },
+  );
 
-  test('interrupted origin replacement never trusts the older main intent', () async {
-    final fixture = await _Fixture.create();
-    addTearDown(fixture.dispose);
-    final oldSafety = File(path.join(fixture.root.path, 'old-safety.butlerlybackup'));
-    final newSafety = File(path.join(fixture.root.path, 'new-safety.butlerlybackup'));
-    await fixture.manager.createBackup(oldSafety);
-    await fixture.manager.createBackup(newSafety);
+  test(
+    'completed engine activation with pending wrapper validation fails closed',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final safety = File(
+        path.join(fixture.root.path, 'safety.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(safety);
+      await _writeOrigin(
+        fixture.evidence,
+        operationId: 'wrapper-validation-pending',
+        rootExisted: true,
+        safetyBackupPath: safety.path,
+      );
 
-    await _writeOrigin(
-      fixture.evidence,
-      operationId: 'old-operation',
-      rootExisted: true,
-      safetyBackupPath: oldSafety.path,
-    );
-    final origin = File('${fixture.evidence.path}.restore-origin.json');
-    await File('${origin.path}.tmp').writeAsString(
-      jsonEncode({
-        'operationId': 'new-operation',
-        'rootExisted': true,
-        'safetyBackupPath': newSafety.path,
-        'activationPending': true,
-      }),
-      flush: true,
-    );
+      await expectLater(
+        fixture.manager.recoverInterruptedRestore(),
+        throwsA(isA<RestoreRecoveryRequiredException>()),
+      );
 
-    await expectLater(
-      fixture.manager.recoverInterruptedRestore(),
-      throwsA(isA<RestoreRecoveryRequiredException>()),
-    );
+      final incident = fixture.manager.recoveryState.incident;
+      expect(incident?.reason, 'post-activation-validation-pending');
+      expect(incident?.retryCurrentState, isTrue);
+      expect(incident?.safetyBackupPath, safety.path);
+    },
+  );
 
-    final incident = fixture.manager.recoveryState.incident;
-    expect(incident?.reason, 'unreadable-restore-origin-state');
-    expect(incident?.safetyBackupPath, isEmpty);
-    expect(await origin.exists(), isTrue);
-    expect(await File('${origin.path}.tmp').exists(), isTrue);
-  });
+  test(
+    'interrupted origin replacement never trusts the older main intent',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final oldSafety = File(
+        path.join(fixture.root.path, 'old-safety.butlerlybackup'),
+      );
+      final newSafety = File(
+        path.join(fixture.root.path, 'new-safety.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(oldSafety);
+      await fixture.manager.createBackup(newSafety);
+
+      await _writeOrigin(
+        fixture.evidence,
+        operationId: 'old-operation',
+        rootExisted: true,
+        safetyBackupPath: oldSafety.path,
+      );
+      final origin = File('${fixture.evidence.path}.restore-origin.json');
+      await File('${origin.path}.tmp').writeAsString(
+        jsonEncode({
+          'operationId': 'new-operation',
+          'rootExisted': true,
+          'safetyBackupPath': newSafety.path,
+          'activationPending': true,
+        }),
+        flush: true,
+      );
+
+      await expectLater(
+        fixture.manager.recoverInterruptedRestore(),
+        throwsA(isA<RestoreRecoveryRequiredException>()),
+      );
+
+      final incident = fixture.manager.recoveryState.incident;
+      expect(incident?.reason, 'unreadable-restore-origin-state');
+      expect(incident?.safetyBackupPath, isEmpty);
+      expect(await origin.exists(), isTrue);
+      expect(await File('${origin.path}.tmp').exists(), isTrue);
+    },
+  );
 }
 
 Future<void> _writeOrigin(
@@ -309,7 +346,8 @@ final class _Fixture {
     final root = await Directory.systemTemp.createTemp(
       'butlerly-backup-recovery-regression-',
     );
-    final documents = Directory(path.join(root.path, 'documents'))..createSync();
+    final documents = Directory(path.join(root.path, 'documents'))
+      ..createSync();
     final evidence = Directory(path.join(root.path, 'evidence'))..createSync();
     final database = LocalDatabase(
       logger: AppLogger(),

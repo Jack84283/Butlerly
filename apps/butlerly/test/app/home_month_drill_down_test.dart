@@ -47,9 +47,7 @@ void main() {
     expect(page.initialRange, isNull);
   });
 
-  testWidgets('historical Home month is carried into Search', (
-    tester,
-  ) async {
+  testWidgets('historical Home month is carried into Search', (tester) async {
     // A taller viewport keeps the recent-transactions action fully visible so
     // this regression exercises the production push/back stack directly.
     await _openJulyHome(tester, size: const Size(390, 1400));

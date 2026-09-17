@@ -27,7 +27,10 @@ void main() {
       final first = await calculate.currentMonth(now);
       final firstResults =
           (first as ApplicationSuccess<List<RuleExecutionResult>>).value;
-      expect(firstResults.where((result) => result.finding != null), hasLength(3));
+      expect(
+        firstResults.where((result) => result.finding != null),
+        hasLength(3),
+      );
       expect(
         findings.values.where(
           (finding) => finding.lifecycle == FindingLifecycle.active,
@@ -114,16 +117,11 @@ void main() {
     );
 
     final first = await calculate.currentMonth(now);
-    final finding =
-        (first as ApplicationSuccess<List<RuleExecutionResult>>)
-            .value
-            .single
-            .finding!;
-    await findings.updateLifecycle(
-      finding.id,
-      FindingLifecycle.dismissed,
-      now,
-    );
+    final finding = (first as ApplicationSuccess<List<RuleExecutionResult>>)
+        .value
+        .single
+        .finding!;
+    await findings.updateLifecycle(finding.id, FindingLifecycle.dismissed, now);
 
     final recalculated = await calculate.currentMonth(now);
     final recalculatedFinding =
@@ -174,18 +172,13 @@ AnalysisRuleDefinition _insightRule(String id, String multiplier) =>
       severity: RuleSeverity.attention,
       surface: AnalysisSurface.insights,
       filters: const [
-        AnalysisFilter(
-          kind: AnalysisFilterKind.direction,
-          values: ['expense'],
-        ),
+        AnalysisFilter(kind: AnalysisFilterKind.direction, values: ['expense']),
       ],
-      definitionHash: RuleDefinitionHash(
-        switch (id) {
-          'ANL-R020' => 'a' * 64,
-          'ANL-R021' => 'b' * 64,
-          _ => 'c' * 64,
-        },
-      ),
+      definitionHash: RuleDefinitionHash(switch (id) {
+        'ANL-R020' => 'a' * 64,
+        'ANL-R021' => 'b' * 64,
+        _ => 'c' * 64,
+      }),
       resultPersistence: ResultPersistencePolicy.finding,
       refreshPolicy: RefreshPolicy.onInvalidation,
     );
@@ -223,7 +216,8 @@ final class _Transactions implements TransactionRepository {
   Future<List<Transaction>> listAll() async => values;
 
   @override
-  Future<List<Transaction>> query(TransactionRepositoryQuery query) async => values;
+  Future<List<Transaction>> query(TransactionRepositoryQuery query) async =>
+      values;
 
   @override
   Future<void> removePermanently(TransactionId id) async {
@@ -260,7 +254,8 @@ final class _Rules implements AnalysisRuleRepository {
   Future<List<AnalysisRuleDefinition>> listDefinitions() async => values;
 
   @override
-  Future<AnalysisRuleActivation?> existingActivation(RuleIdentity id) async => null;
+  Future<AnalysisRuleActivation?> existingActivation(RuleIdentity id) async =>
+      null;
 
   @override
   Future<void> activate(
@@ -296,8 +291,8 @@ final class _Findings implements AnalysisFindingRepository {
     }
     final existing = values[index];
     final lifecycle = switch (existing.lifecycle) {
-      FindingLifecycle.acknowledged || FindingLifecycle.dismissed =>
-        existing.lifecycle,
+      FindingLifecycle.acknowledged ||
+      FindingLifecycle.dismissed => existing.lifecycle,
       _ => finding.lifecycle,
     };
     values[index] = _withLifecycle(finding, lifecycle);

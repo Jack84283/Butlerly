@@ -28,7 +28,10 @@ void main() {
     final second = await scan();
     final secondGroups =
         (second as ApplicationSuccess<List<DuplicateCandidateGroup>>).value;
-    expect(secondGroups.single.status, DuplicateCandidateGroupStatus.unresolved);
+    expect(
+      secondGroups.single.status,
+      DuplicateCandidateGroupStatus.unresolved,
+    );
     expect(secondGroups.single.selectedTransactionId, isNull);
   });
 
@@ -36,9 +39,10 @@ void main() {
     final repository = _Groups([_match('a', '25'), _match('b', '25')]);
     final clock = _Clock(DateTime.utc(2026, 1, 1));
     final scan = ScanExistingTransactionsForDuplicates(repository, clock);
-    final first = (await scan() as ApplicationSuccess<List<DuplicateCandidateGroup>>)
-        .value
-        .single;
+    final first =
+        (await scan() as ApplicationSuccess<List<DuplicateCandidateGroup>>)
+            .value
+            .single;
     await repository.save(
       DuplicateCandidateGroup(
         id: first.id,
@@ -50,9 +54,10 @@ void main() {
         updatedAt: clock.now(),
       ),
     );
-    final result = (await scan() as ApplicationSuccess<List<DuplicateCandidateGroup>>)
-        .value
-        .single;
+    final result =
+        (await scan() as ApplicationSuccess<List<DuplicateCandidateGroup>>)
+            .value
+            .single;
     expect(result.status, DuplicateCandidateGroupStatus.unresolved);
     expect(result.selectedTransactionId, isNull);
   });

@@ -17,10 +17,15 @@ void main() {
     appRouter.go('/search?from=2026-09-01&to=2026-09-30');
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey('search-pull-to-refresh')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('search-pull-to-refresh')),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('primary shell observer invokes its pop callback', (tester) async {
+  testWidgets('primary shell observer invokes its pop callback', (
+    tester,
+  ) async {
     final controller = PrimaryShellVisibilityController();
     var popCount = 0;
     final observer = PrimaryShellNavigatorObserver(

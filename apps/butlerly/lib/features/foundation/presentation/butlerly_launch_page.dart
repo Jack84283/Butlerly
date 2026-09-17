@@ -168,9 +168,7 @@ class _ButlerlyLaunchPageState extends State<ButlerlyLaunchPage>
     final rawElapsed = _elapsedNow() - startedAt;
     final elapsed = rawElapsed.isNegative ? Duration.zero : rawElapsed;
     if (elapsed <= Duration.zero) return;
-    _remaining = elapsed >= _remaining
-        ? Duration.zero
-        : _remaining - elapsed;
+    _remaining = elapsed >= _remaining ? Duration.zero : _remaining - elapsed;
   }
 
   void _finish() {

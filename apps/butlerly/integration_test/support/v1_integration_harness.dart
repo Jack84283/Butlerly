@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:butlerly/core/analysis/bundled_analysis_rules.dart';
 import 'package:butlerly/core/config/app_configuration.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/database/initial_master_data.dart';
@@ -9,7 +10,6 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
-import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 
 /// Real local application boundary used by V1 integration tests.
@@ -62,16 +62,8 @@ final class V1IntegrationHarness {
   }
 
   Future<void> installBuiltInRules() async {
-    final sources = <String, String>{};
-    for (final asset in _analysisRuleAssets) {
-      sources[asset] = await rootBundle.loadString(asset);
-    }
-    final catalog = await rootBundle.loadString(
-      'assets/analysis_rules/catalog.yaml',
-    );
-    final result = await finance.installBuiltInRules!.call(
-      sources,
-      catalogSource: catalog,
+    final result = await installBundledAnalysisRules(
+      finance.installBuiltInRules!,
     );
     if (result.diagnostics.isNotEmpty) {
       throw StateError('Bundled analysis rules failed to install.');
@@ -84,29 +76,6 @@ final class V1IntegrationHarness {
     if (await root.exists()) await root.delete(recursive: true);
   }
 }
-
-const _analysisRuleAssets = [
-  'assets/analysis_rules/metrics/ANL-R001.yaml',
-  'assets/analysis_rules/metrics/ANL-R002.yaml',
-  'assets/analysis_rules/metrics/ANL-R003.yaml',
-  'assets/analysis_rules/metrics/ANL-R004.yaml',
-  'assets/analysis_rules/metrics/ANL-R010.yaml',
-  'assets/analysis_rules/metrics/ANL-R016.yaml',
-  'assets/analysis_rules/insights/ANL-R014.yaml',
-  'assets/analysis_rules/insights/ANL-R020.yaml',
-  'assets/analysis_rules/insights/ANL-R021.yaml',
-  'assets/analysis_rules/insights/ANL-R022.yaml',
-  'assets/analysis_rules/insights/ANL-R023.yaml',
-  'assets/analysis_rules/insights/ANL-R024.yaml',
-  'assets/analysis_rules/insights/ANL-R025.yaml',
-  'assets/analysis_rules/insights/ANL-R026.yaml',
-  'assets/analysis_rules/insights/ANL-R027.yaml',
-  'assets/analysis_rules/insights/ANL-R028.yaml',
-  'assets/analysis_rules/insights/ANL-R029.yaml',
-  'assets/analysis_rules/data_quality/ANL-R090.yaml',
-  'assets/analysis_rules/data_quality/ANL-R091.yaml',
-  'assets/analysis_rules/data_quality/ANL-R092.yaml',
-];
 
 Money money(String amount, String currency) =>
     Money(amount: DecimalValue.parse(amount), currency: CurrencyCode(currency));
