@@ -1,0 +1,275 @@
+name: Apply PR 198 Home fixes
+
+on:
+  push:
+    branches:
+      - fix/post-197-review-cleanup
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/post-197-review-cleanup
+      - name: Patch Home layout and refresh behavior
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/butlerly/lib/features/foundation/presentation/home_page.dart')
+          text = path.read_text()
+
+          old_refresh = '''  Future<void> _refresh() async {
+            final refreshed = _load(forceAnalysisRefresh: true);
+            setState(() {
+              _data = refreshed;
+            });
+            await refreshed;
+          }
+          '''
+          new_refresh = '''  Future<void> _refresh() async {
+            final refreshed = await _load(forceAnalysisRefresh: true);
+            if (!mounted) return;
+            setState(() {
+              _data = Future.value(refreshed);
+            });
+          }
+          '''
+          if old_refresh not in text:
+            raise SystemExit('refresh block not found')
+          text = text.replace(old_refresh, new_refresh, 1)
+
+          old_layout = '''    final content = ColoredBox(
+            key: const ValueKey('home-page-canvas'),
+            color: canvasColor,
+            child: LayoutBuilder(
+              builder: (context, constraints) => CustomScrollView(
+                physics: useCupertinoRefresh
+                    ? const BouncingScrollPhysics(
+                        parent: AlwaysScrollableScrollPhysics(),
+                      )
+                    : const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  if (useCupertinoRefresh)
+                    CupertinoSliverRefreshControl(
+                      key: const ValueKey('home-cupertino-refresh-control'),
+                      onRefresh: _refresh,
+                    ),
+                  SliverPersistentHeader(
+                    pinned: true,
+                    delegate: _HomePinnedHeaderDelegate(
+                      extent: _homeHeaderExtent(
+                        context,
+                        crossAxisExtent: constraints.maxWidth,
+                      ),
+                      child: FutureBuilder<_HomeData>(
+                        future: future,
+                        builder: (context, snapshot) {
+                          final data =
+                              snapshot.data ??
+                              _HomeData.empty(_now, selectedMonth: _selectedMonth);
+                          final loading =
+                              snapshot.connectionState != ConnectionState.done;
+                          return _HomeHeader(
+                            deviceClass: deviceClass,
+                            month: data.displayMonth,
+                            greetingKey: homeGreetingKey(_now),
+                            onMonthTap: loading ? null : () => _selectMonth(data),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(
+                      ButlerlySize.phoneGutter,
+                      ButlerlySpacing.large,
+                      ButlerlySize.phoneGutter,
+                      ButlerlySpacing.large,
+                    ),
+                    sliver: SliverLayoutBuilder(
+                      builder: (context, constraints) {
+                        final contentMaxWidth = ButlerlyLayout.contentMaxWidth(
+                          MediaQuery.sizeOf(context),
+                        );
+                        final extraWidth =
+                            constraints.crossAxisExtent - contentMaxWidth;
+                        final horizontalInset = extraWidth > 0 ? extraWidth / 2 : 0.0;
+                        return SliverPadding(
+                          padding: EdgeInsets.symmetric(horizontal: horizontalInset),
+                          sliver: SliverToBoxAdapter(
+                            child: ColoredBox(
+                              key: const ValueKey('home-page-content-surface'),
+                              color: context.colors.background,
+                              child: SizedBox(
+                                key: const ValueKey('home-page-content'),
+                                width: double.infinity,
+                                child: FutureBuilder<_HomeData>(
+                                  future: future,
+                                  builder: (context, snapshot) {
+                                    final data =
+                                        snapshot.data ??
+                                        _HomeData.empty(
+                                          _now,
+                                          selectedMonth: _selectedMonth,
+                                        );
+                                    final loading =
+                                        snapshot.connectionState !=
+                                        ConnectionState.done;
+                                    return _homeContent(context, data, loading);
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+
+          if (useCupertinoRefresh) return content;
+
+          return RefreshIndicator(
+            key: const ValueKey('home-refresh-indicator'),
+            onRefresh: _refresh,
+            triggerMode: RefreshIndicatorTriggerMode.anywhere,
+            child: content,
+          );
+          '''
+
+          new_layout = '''    return ColoredBox(
+            key: const ValueKey('home-page-canvas'),
+            color: canvasColor,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final header = SizedBox(
+                  height: _homeHeaderExtent(
+                    context,
+                    crossAxisExtent: constraints.maxWidth,
+                  ),
+                  child: _HomePinnedHeaderDelegate(
+                    extent: _homeHeaderExtent(
+                      context,
+                      crossAxisExtent: constraints.maxWidth,
+                    ),
+                    child: FutureBuilder<_HomeData>(
+                      future: future,
+                      builder: (context, snapshot) {
+                        final data =
+                            snapshot.data ??
+                            _HomeData.empty(_now, selectedMonth: _selectedMonth);
+                        final loading =
+                            snapshot.connectionState != ConnectionState.done;
+                        return _HomeHeader(
+                          deviceClass: deviceClass,
+                          month: data.displayMonth,
+                          greetingKey: homeGreetingKey(_now),
+                          onMonthTap: loading ? null : () => _selectMonth(data),
+                        );
+                      },
+                    ),
+                  ).build(context, 0, false),
+                );
+
+                final scrollView = CustomScrollView(
+                  physics: useCupertinoRefresh
+                      ? const BouncingScrollPhysics(
+                          parent: AlwaysScrollableScrollPhysics(),
+                        )
+                      : const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    if (useCupertinoRefresh)
+                      CupertinoSliverRefreshControl(
+                        key: const ValueKey('home-cupertino-refresh-control'),
+                        onRefresh: _refresh,
+                      ),
+                    SliverLayoutBuilder(
+                      builder: (context, constraints) {
+                        final contentMaxWidth = ButlerlyLayout.contentMaxWidth(
+                          MediaQuery.sizeOf(context),
+                        );
+                        final extraWidth =
+                            constraints.crossAxisExtent - contentMaxWidth;
+                        final horizontalInset = extraWidth > 0 ? extraWidth / 2 : 0.0;
+                        return SliverPadding(
+                          padding: EdgeInsets.symmetric(horizontal: horizontalInset),
+                          sliver: SliverToBoxAdapter(
+                            child: ColoredBox(
+                              key: const ValueKey('home-page-content-surface'),
+                              color: context.colors.background,
+                              child: SizedBox(
+                                key: const ValueKey('home-page-content'),
+                                width: double.infinity,
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    ButlerlySize.phoneGutter,
+                                    ButlerlySpacing.small,
+                                    ButlerlySize.phoneGutter,
+                                    ButlerlySpacing.large,
+                                  ),
+                                  child: FutureBuilder<_HomeData>(
+                                    future: future,
+                                    builder: (context, snapshot) {
+                                      final data =
+                                          snapshot.data ??
+                                          _HomeData.empty(
+                                            _now,
+                                            selectedMonth: _selectedMonth,
+                                          );
+                                      final loading =
+                                          snapshot.connectionState !=
+                                          ConnectionState.done;
+                                      return _homeContent(context, data, loading);
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                );
+
+                final body = useCupertinoRefresh
+                    ? scrollView
+                    : RefreshIndicator(
+                        key: const ValueKey('home-refresh-indicator'),
+                        onRefresh: _refresh,
+                        triggerMode: RefreshIndicatorTriggerMode.anywhere,
+                        child: scrollView,
+                      );
+
+                return Column(
+                  children: [
+                    header,
+                    Expanded(child: body),
+                  ],
+                );
+              },
+            ),
+          );
+          '''
+
+          if old_layout not in text:
+            raise SystemExit('layout block not found')
+          text = text.replace(old_layout, new_layout, 1)
+          path.write_text(text)
+          PY
+
+          dart format apps/butlerly/lib/features/foundation/presentation/home_page.dart
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/butlerly/lib/features/foundation/presentation/home_page.dart
+          git commit -m "Fix Home refresh and content layout"
+          git push origin HEAD:fix/post-197-review-cleanup
