@@ -43,8 +43,13 @@ jobs:
           )
           replace_exact(
               home,
+              "  static DateTime? debugCurrentDate;",
+              "  static DateTime? debugCurrentDate;\n  static TargetPlatform? debugTargetPlatform;",
+          )
+          replace_exact(
+              home,
               "    final useCupertinoRefresh =\n        !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;",
-              "    final useCupertinoRefresh =\n        !kIsWeb && Theme.of(context).platform == TargetPlatform.iOS;",
+              "    final targetPlatform =\n        HomePage.debugTargetPlatform ?? Theme.of(context).platform;\n    final useCupertinoRefresh =\n        !kIsWeb && targetPlatform == TargetPlatform.iOS;",
           )
 
           refresh_test = 'apps/butlerly/test/features/home/home_pull_to_refresh_test.dart'
@@ -55,13 +60,18 @@ jobs:
           )
           replace_exact(
               refresh_test,
-              "    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;\n    addTearDown(() => debugDefaultTargetPlatformOverride = null);\n    expect(defaultTargetPlatform, TargetPlatform.iOS);\n\n",
-              "",
+              "    HomePage.debugCurrentDate = DateTime(2026, 9, 16, 15);",
+              "    HomePage.debugCurrentDate = DateTime(2026, 9, 16, 15);\n    HomePage.debugTargetPlatform = TargetPlatform.iOS;",
           )
           replace_exact(
               refresh_test,
-              "    theme: AppTheme.light,",
-              "    theme: AppTheme.light.copyWith(platform: TargetPlatform.iOS),",
+              "    HomePage.debugCurrentDate = null;",
+              "    HomePage.debugCurrentDate = null;\n    HomePage.debugTargetPlatform = null;",
+          )
+          replace_exact(
+              refresh_test,
+              "    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;\n    addTearDown(() => debugDefaultTargetPlatformOverride = null);\n    expect(defaultTargetPlatform, TargetPlatform.iOS);\n\n",
+              "",
           )
 
           for shell in (
@@ -97,6 +107,9 @@ jobs:
           )
           PY
 
+          cd apps/butlerly
+          flutter pub get
+          cd ../..
           dart format \
             apps/butlerly/lib/features/foundation/presentation/home_page.dart \
             apps/butlerly/lib/app/shell/iphone/iphone_primary_shell.dart \
@@ -108,7 +121,6 @@ jobs:
         shell: bash
         run: |
           cd apps/butlerly
-          flutter pub get
           flutter test \
             test/features/home/home_pull_to_refresh_test.dart \
             test/features/home/home_header_device_identity_test.dart \
