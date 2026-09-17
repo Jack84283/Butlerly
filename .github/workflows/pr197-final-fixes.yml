@@ -1,0 +1,131 @@
+name: PR 197 final fixes
+
+on:
+  push:
+    branches:
+      - fix/ios-home-pull-to-refresh
+    paths:
+      - .github/workflows/pr197-final-fixes.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/ios-home-pull-to-refresh
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-toolchain
+
+      - name: Apply reviewed P1 and P2 fixes
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          def replace_exact(path, old, new, count=1):
+              p = Path(path)
+              text = p.read_text()
+              actual = text.count(old)
+              if actual != count:
+                  raise SystemExit(f'{path}: expected {count} occurrence(s), found {actual}: {old!r}')
+              p.write_text(text.replace(old, new, count))
+
+          home = 'apps/butlerly/lib/features/foundation/presentation/home_page.dart'
+          replace_exact(
+              home,
+              "import 'package:flutter/foundation.dart'\n    show TargetPlatform, defaultTargetPlatform, kIsWeb;",
+              "import 'package:flutter/foundation.dart' show TargetPlatform, kIsWeb;",
+          )
+          replace_exact(
+              home,
+              "    final useCupertinoRefresh =\n        !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;",
+              "    final useCupertinoRefresh =\n        !kIsWeb && Theme.of(context).platform == TargetPlatform.iOS;",
+          )
+
+          refresh_test = 'apps/butlerly/test/features/home/home_pull_to_refresh_test.dart'
+          replace_exact(
+              refresh_test,
+              "import 'package:flutter/foundation.dart';\n",
+              "",
+          )
+          replace_exact(
+              refresh_test,
+              "    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;\n    addTearDown(() => debugDefaultTargetPlatformOverride = null);\n    expect(defaultTargetPlatform, TargetPlatform.iOS);\n\n",
+              "",
+          )
+          replace_exact(
+              refresh_test,
+              "    theme: AppTheme.light,",
+              "    theme: AppTheme.light.copyWith(platform: TargetPlatform.iOS),",
+          )
+
+          for shell in (
+              'apps/butlerly/lib/app/shell/iphone/iphone_primary_shell.dart',
+              'apps/butlerly/lib/app/shell/ipad/ipad_primary_shell.dart',
+          ):
+              replace_exact(
+                  shell,
+                  "  Widget build(BuildContext context) => Scaffold(\n    body:",
+                  "  Widget build(BuildContext context) => Scaffold(\n    extendBody: true,\n    body:",
+              )
+
+          nav_test = 'apps/butlerly/test/app/ui_redesign_foundation_fixes_test.dart'
+          replace_exact(
+              nav_test,
+              "  test('phone navigation preserves the established 78 px height at 1x', () {",
+              "  test('phone navigation preserves the compact baseline height at 1x', () {",
+          )
+          replace_exact(
+              nav_test,
+              "    expect(height, ButlerlySize.navigationBarHeight);",
+              "    expect(ButlerlySize.navigationBarHeight, 64);\n    expect(ButlerlySize.primaryNavigationAddIconSize, 44);\n    expect(height, ButlerlySize.navigationBarHeight);",
+          )
+          replace_exact(
+              nav_test,
+              "      final addRequiredHeight =\n          52 +",
+              "      final addRequiredHeight =\n          ButlerlySize.primaryNavigationAddIconSize +",
+          )
+          replace_exact(
+              nav_test,
+              "      final impossibleMixedHeight =\n          52 + ButlerlySpacing.micro + maxStandardLabelHeight;",
+              "      final impossibleMixedHeight =\n          ButlerlySize.primaryNavigationAddIconSize +\n          ButlerlySpacing.micro +\n          maxStandardLabelHeight;",
+          )
+          PY
+
+          dart format \
+            apps/butlerly/lib/features/foundation/presentation/home_page.dart \
+            apps/butlerly/lib/app/shell/iphone/iphone_primary_shell.dart \
+            apps/butlerly/lib/app/shell/ipad/ipad_primary_shell.dart \
+            apps/butlerly/test/features/home/home_pull_to_refresh_test.dart \
+            apps/butlerly/test/app/ui_redesign_foundation_fixes_test.dart
+
+      - name: Run focused Flutter regression tests
+        shell: bash
+        run: |
+          cd apps/butlerly
+          flutter pub get
+          flutter test \
+            test/features/home/home_pull_to_refresh_test.dart \
+            test/features/home/home_header_device_identity_test.dart \
+            test/app/ui_redesign_foundation_fixes_test.dart \
+            test/app/responsive_shell_test.dart
+
+      - name: Commit fixes and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name "Jack"
+          git config user.email "jack84283@gmail.com"
+          git rm .github/workflows/pr197-final-fixes.yml
+          git add \
+            apps/butlerly/lib/features/foundation/presentation/home_page.dart \
+            apps/butlerly/lib/app/shell/iphone/iphone_primary_shell.dart \
+            apps/butlerly/lib/app/shell/ipad/ipad_primary_shell.dart \
+            apps/butlerly/test/features/home/home_pull_to_refresh_test.dart \
+            apps/butlerly/test/app/ui_redesign_foundation_fixes_test.dart
+          git commit -m "Fix PR 197 review findings"
+          git push origin HEAD:fix/ios-home-pull-to-refresh
