@@ -155,6 +155,43 @@ if old not in dtext:
     raise SystemExit('desktop expanded body not found')
 desktop.write_text(dtext.replace(old, new, 1))
 
+home = Path('apps/butlerly/lib/features/foundation/presentation/home_page.dart')
+htext = home.read_text()
+old = "  late Future<_HomeData> _data;\n  String? _loadedLanguageCode;"
+new = "  late Future<_HomeData> _data;\n  int _loadGeneration = 0;\n  String? _loadedLanguageCode;"
+if old not in htext:
+    raise SystemExit('Home load state fields not found')
+htext = htext.replace(old, new, 1)
+old = "    _loadedLanguageCode = languageCode;\n    _data = _load(languageCode: languageCode);"
+new = "    _loadedLanguageCode = languageCode;\n    _loadGeneration++;\n    _data = _load(languageCode: languageCode);"
+if old not in htext:
+    raise SystemExit('Home dependency load not found')
+htext = htext.replace(old, new, 1)
+old = '''  Future<void> _refresh() async {
+    final refreshed = await _load(forceAnalysisRefresh: true);
+    if (!mounted) return;
+    setState(() {
+      _data = Future.value(refreshed);
+    });
+  }'''
+new = '''  Future<void> _refresh() async {
+    final generation = ++_loadGeneration;
+    final refreshed = await _load(forceAnalysisRefresh: true);
+    if (!mounted || generation != _loadGeneration) return;
+    setState(() {
+      _data = Future.value(refreshed);
+    });
+  }'''
+if old not in htext:
+    raise SystemExit('Home refresh implementation not found')
+htext = htext.replace(old, new, 1)
+old = "    if (!mounted || selected == null) return;\n    setState(() {\n      _selectedMonth ="
+new = "    if (!mounted || selected == null) return;\n    _loadGeneration++;\n    setState(() {\n      _selectedMonth ="
+if old not in htext:
+    raise SystemExit('Home month selection state update not found')
+htext = htext.replace(old, new, 1)
+home.write_text(htext)
+
 test = Path('apps/butlerly/test/design_system/content_surface_policy_test.dart')
 test.write_text('''import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
