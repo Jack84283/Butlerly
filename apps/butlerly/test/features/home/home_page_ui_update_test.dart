@@ -1,10 +1,6 @@
 import 'package:butlerly/app/theme/app_theme.dart';
-import 'package:butlerly/core/di/finance_services.dart';
-import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
-import 'package:butlerly_finance_application/butlerly_finance_application.dart';
-import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,19 +9,7 @@ import 'package:go_router/go_router.dart';
 void main() {
   late GoRouter router;
 
-  setUp(() async {
-    await services.reset();
-    services.registerSingleton<FinanceServices>(
-      FinanceServices(
-        _HomeTransactions(),
-        _HomePaymentSources(),
-        _HomeMerchants(),
-        _HomeCategories(),
-        _HomeTags(),
-        const _HomeEvidence(),
-        _HomePreferences(),
-      ),
-    );
+  setUp(() {
     HomePage.debugCurrentDate = DateTime(2026, 9, 14, 13);
     router = GoRouter(
       initialLocation: '/',
@@ -64,10 +48,9 @@ void main() {
     );
   });
 
-  tearDown(() async {
+  tearDown(() {
     HomePage.debugCurrentDate = null;
     router.dispose();
-    await services.reset();
   });
 
   testWidgets(
@@ -198,24 +181,35 @@ void main() {
     },
   );
 
-  testWidgets('Home spending trend grid uses the bar baseline', (tester) async {
-    HomePage.debugCurrentDate = DateTime.utc(2026, 8, 15, 12);
-
-    await services<FinanceServices>().createTransaction(
-      CreateTransactionCommand(
-        id: 'trend-baseline',
-        provenanceId: 'manual-trend-baseline',
-        timing: KnownTransactionTime(DateTime.utc(2026, 8, 11)),
-        money: Money(
-          amount: DecimalValue.parse('42.00'),
-          currency: CurrencyCode('USD'),
+  testWidgets('Home spending trend grid uses the bar baseline', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: homeSpendingTrendForTest([
+            (
+              month: DateTime(2026, 7),
+              value: 20,
+              selected: false,
+            ),
+            (
+              month: DateTime(2026, 8),
+              value: 42,
+              selected: true,
+            ),
+          ]),
         ),
-        direction: TransactionDirection.expense,
-        description: 'Trend baseline',
       ),
     );
-
-    await tester.pumpWidget(_testApp(router));
     await tester.pumpAndSettle();
 
     final plot = find.byKey(const ValueKey('home-spending-trend-plot'));
@@ -276,102 +270,3 @@ Widget _testApp(GoRouter router, {Locale? locale}) => MaterialApp.router(
     GlobalCupertinoLocalizations.delegate,
   ],
 );
-
-final class _HomeTransactions implements TransactionRepository {
-  final values = <String, Transaction>{};
-
-  @override
-  Future<Transaction?> findById(TransactionId id) async => values[id.value];
-
-  @override
-  Future<List<Transaction>> listAll() async => values.values.toList();
-
-  @override
-  Future<List<Transaction>> query(TransactionRepositoryQuery query) async =>
-      values.values.toList();
-
-  @override
-  Future<void> removePermanently(TransactionId id) async {
-    values.remove(id.value);
-  }
-
-  @override
-  Future<void> save(Transaction transaction) async {
-    values[transaction.id.value] = transaction;
-  }
-}
-
-final class _HomePaymentSources implements PaymentSourceRepository {
-  @override
-  Future<PaymentSource?> findById(PaymentSourceId id) async => null;
-
-  @override
-  Future<List<PaymentSource>> listAll() async => const [];
-
-  @override
-  Future<void> save(PaymentSource paymentSource) async {}
-}
-
-final class _HomeMerchants implements MerchantRepository {
-  @override
-  Future<Merchant?> findById(MerchantId id) async => null;
-
-  @override
-  Future<List<Merchant>> listAll() async => const [];
-
-  @override
-  Future<void> save(Merchant merchant) async {}
-}
-
-final class _HomeCategories implements CategoryRepository {
-  @override
-  Future<Category?> findById(CategoryId id) async => null;
-
-  @override
-  Future<List<Category>> listAll() async => const [];
-
-  @override
-  Future<void> save(Category category) async {}
-}
-
-final class _HomeTags implements TagRepository {
-  @override
-  Future<Tag?> findById(TagId id) async => null;
-
-  @override
-  Future<List<Tag>> listAll() async => const [];
-
-  @override
-  Future<void> save(Tag tag) async {}
-}
-
-final class _HomeEvidence implements EvidenceRepository {
-  const _HomeEvidence();
-
-  @override
-  Future<EvidenceItem?> findById(EvidenceId id) async => null;
-
-  @override
-  Future<void> link(AttachmentLink link) async {}
-
-  @override
-  Future<List<EvidenceItem>> listForTransaction(TransactionId id) async =>
-      const [];
-
-  @override
-  Future<void> remove(EvidenceId id) async {}
-
-  @override
-  Future<void> save(EvidenceItem evidence) async {}
-
-  @override
-  Future<void> saveExtraction(Extraction extraction) async {}
-}
-
-final class _HomePreferences implements UserPreferenceRepository {
-  @override
-  Future<UserPreference?> load() async => null;
-
-  @override
-  Future<void> save(UserPreference preference) async {}
-}
