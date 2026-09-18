@@ -1258,7 +1258,9 @@ void main() {
       ),
     );
 
-    await tester.pumpWidget(const MaterialApp(home: PaymentSourcesPage()));
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: PaymentSourcesPage())),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Travel card'));
