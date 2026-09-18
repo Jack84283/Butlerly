@@ -357,9 +357,9 @@ class _ReviewPageState extends State<ReviewPage>
         dividerColor: Colors.transparent,
         labelColor: Theme.of(context).colorScheme.primary,
         unselectedLabelColor: Theme.of(context).colorScheme.onSurface,
-        labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
-          fontWeight: FontWeight.w600,
-        ),
+        labelStyle: Theme.of(
+          context,
+        ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
         unselectedLabelStyle: Theme.of(context).textTheme.labelLarge,
         tabs: [
           Tab(text: context.l10n.text('uncategorized')),
