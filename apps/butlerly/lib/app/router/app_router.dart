@@ -2,6 +2,7 @@ import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
 import 'package:butlerly/features/foundation/presentation/add_page.dart';
 import 'package:butlerly/features/foundation/presentation/butlerly_launch_page.dart';
@@ -42,6 +43,13 @@ NoTransitionPage<void> _primaryPage(
   key: key,
   name: '$primaryShellRouteNamePrefix$name',
   child: child,
+);
+
+Widget _responsiveStateScaffold({
+  required Key contentKey,
+  required Widget child,
+}) => Scaffold(
+  body: ButlerlyResponsiveBody(contentKey: contentKey, child: child),
 );
 
 final appRouter = GoRouter(
@@ -197,8 +205,11 @@ final appRouter = GoRouter(
       path: '/transactions/add',
       builder: (context, state) => services.isRegistered<FinanceServices>()
           ? TransactionEditorPage(finance: services<FinanceServices>())
-          : Scaffold(
-              body: ButlerlyEmptyState(
+          : _responsiveStateScaffold(
+              contentKey: const ValueKey(
+                'transaction-storage-unavailable-content',
+              ),
+              child: ButlerlyEmptyState(
                 icon: Icons.storage_outlined,
                 title: context.l10n.text('localStorageUnavailable'),
                 message: context.l10n.text('dataPreserved'),
@@ -221,8 +232,11 @@ final appRouter = GoRouter(
       path: '/statements',
       builder: (context, _) => services.isRegistered<FinanceServices>()
           ? const StatementCapturePage()
-          : Scaffold(
-              body: ButlerlyEmptyState(
+          : _responsiveStateScaffold(
+              contentKey: const ValueKey(
+                'statement-storage-unavailable-content',
+              ),
+              child: ButlerlyEmptyState(
                 icon: Icons.storage_outlined,
                 title: context.l10n.text('localStorageUnavailable'),
                 message: context.l10n.text('dataPreserved'),
@@ -240,8 +254,9 @@ final appRouter = GoRouter(
       builder: (_, _) => const AssistantUnavailablePage(),
     ),
   ],
-  errorBuilder: (context, state) => Scaffold(
-    body: ButlerlyErrorState(
+  errorBuilder: (context, state) => _responsiveStateScaffold(
+    contentKey: const ValueKey('router-error-content'),
+    child: ButlerlyErrorState(
       title: context.l10n.text('pageUnavailable'),
       message: context.l10n.text('pageUnavailableBody'),
       preserved: context.l10n.text('dataPreserved'),
