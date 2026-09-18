@@ -193,9 +193,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
             FilledButton(
               onPressed: () async {
                 final safeLastFour = lastFour.text.trim();
-                final validLastFour = RegExp(r'^\d{4}$').hasMatch(
-                  safeLastFour,
-                );
+                final validLastFour = RegExp(r'^\d{4}$').hasMatch(safeLastFour);
                 if ((paymentSourceRequiresLastFour(type) && !validLastFour) ||
                     (safeLastFour.isNotEmpty && !validLastFour)) {
                   ScaffoldMessenger.of(context).showSnackBar(
