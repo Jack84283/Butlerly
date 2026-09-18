@@ -321,7 +321,9 @@ class ButlerlyDonutVisualization extends StatelessWidget {
                       bottom: ButlerlySpacing.micro,
                     ),
                     child: InkWell(
-                      onTap: onDatumTap == null ? null : () => onDatumTap!(index),
+                      onTap: onDatumTap == null
+                          ? null
+                          : () => onDatumTap!(index),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                           vertical: ButlerlySpacing.xxs,
