@@ -375,44 +375,44 @@ class _StartupFailureBody extends StatelessWidget {
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 520),
-            child: Padding(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.error_outline_rounded, size: 48),
-                  const SizedBox(height: 20),
-                  Text(
-                    context.l10n.text(
-                      storageUnavailable
-                          ? 'localStorageUnavailable'
-                          : 'pageUnavailable',
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline_rounded, size: 48),
+                    const SizedBox(height: 20),
+                    Text(
+                      context.l10n.text(
+                        storageUnavailable
+                            ? 'localStorageUnavailable'
+                            : 'pageUnavailable',
+                      ),
+                      key: const ValueKey('butlerly-startup-error'),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineSmall,
                     ),
-                    key: const ValueKey('butlerly-startup-error'),
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    context.l10n.text('dataPreserved'),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Diagnostic: $diagnosticCode',
-                    key: const ValueKey('butlerly-startup-diagnostic'),
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.labelMedium,
-                  ),
-                  const SizedBox(height: 20),
-                  FilledButton.icon(
-                    key: const ValueKey('butlerly-startup-retry'),
-                    onPressed: onRetry,
-                    icon: const Icon(Icons.refresh_rounded),
-                    label: Text(context.l10n.text('tryAgain')),
-                  ),
-                ],
-              ),
+                    const SizedBox(height: 12),
+                    Text(
+                      context.l10n.text('dataPreserved'),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Diagnostic: $diagnosticCode',
+                      key: const ValueKey('butlerly-startup-diagnostic'),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                    const SizedBox(height: 20),
+                    FilledButton.icon(
+                      key: const ValueKey('butlerly-startup-retry'),
+                      onPressed: onRetry,
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: Text(context.l10n.text('tryAgain')),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
