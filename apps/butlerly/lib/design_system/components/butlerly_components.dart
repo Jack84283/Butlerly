@@ -1,4 +1,5 @@
 import 'package:butlerly/design_system/components/butlerly_category_icon.dart';
+import 'package:butlerly/design_system/components/butlerly_content_surface.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -30,9 +31,6 @@ class ButlerlyPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final contentMaxWidth = ButlerlyLayout.contentMaxWidth(
-      MediaQuery.sizeOf(context),
-    );
     final contentPadding =
         padding ??
         const EdgeInsets.fromLTRB(
@@ -41,11 +39,8 @@ class ButlerlyPage extends StatelessWidget {
           ButlerlySize.phoneGutter,
           ButlerlySpacing.large,
         );
-    final surfaceMaxWidth = contentMaxWidth + contentPadding.horizontal;
-
-    return ColoredBox(
-      key: const ValueKey('butlerly-page-canvas'),
-      color: context.colors.subtleSurface,
+    return ButlerlyContentCanvas(
+      canvasKey: const ValueKey('butlerly-page-canvas'),
       child: CustomScrollView(
         controller: controller,
         physics: const AlwaysScrollableScrollPhysics(),
@@ -64,44 +59,35 @@ class ButlerlyPage extends StatelessWidget {
               pinned: true,
               delegate: _ButlerlyPinnedHeaderDelegate(child: pinnedHeader!),
             ),
-          SliverLayoutBuilder(
-            builder: (context, constraints) {
-              final extraWidth = constraints.crossAxisExtent - surfaceMaxWidth;
-              final horizontalInset = extraWidth > 0 ? extraWidth / 2 : 0.0;
-              return SliverPadding(
-                padding: EdgeInsets.symmetric(horizontal: horizontalInset),
-                sliver: DecoratedSliver(
-                  key: const ValueKey('butlerly-page-content-surface'),
-                  decoration: BoxDecoration(color: context.colors.background),
-                  sliver: SliverMainAxisGroup(
-                    slivers: [
-                      SliverPadding(
-                        padding: contentPadding,
-                        sliver: SliverList.list(
-                          key: const ValueKey('butlerly-page-content-sliver'),
-                          children: [
-                            if (subtitle != null) ...[
-                              Text(
-                                subtitle!,
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
-                              const SizedBox(height: ButlerlySpacing.section),
-                            ],
-                            ...children,
-                          ],
+          ButlerlySliverContentSurface(
+            surfaceKey: const ValueKey('butlerly-page-content-surface'),
+            surfaceHorizontalPadding: contentPadding.horizontal,
+            sliver: SliverMainAxisGroup(
+              slivers: [
+                SliverPadding(
+                  padding: contentPadding,
+                  sliver: SliverList.list(
+                    key: const ValueKey('butlerly-page-content-sliver'),
+                    children: [
+                      if (subtitle != null) ...[
+                        Text(
+                          subtitle!,
+                          style: Theme.of(context).textTheme.bodyMedium,
                         ),
-                      ),
-                      const SliverFillRemaining(
-                        hasScrollBody: false,
-                        child: SizedBox.shrink(
-                          key: ValueKey('butlerly-page-content-filler'),
-                        ),
-                      ),
+                        const SizedBox(height: ButlerlySpacing.section),
+                      ],
+                      ...children,
                     ],
                   ),
                 ),
-              );
-            },
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: SizedBox.shrink(
+                    key: ValueKey('butlerly-page-content-filler'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
