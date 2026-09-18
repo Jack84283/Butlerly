@@ -344,7 +344,7 @@ class _InsightsContent extends StatelessWidget {
                   : double.tryParse(totalText);
               if (share == null || total == null) {
                 return shareText == null
-                    ? context.l10n.text('unavailableValue')
+                    ? '—'
                     : '${localizedDecimal(context, shareText)}%';
               }
               final amount = total * share / 100;
