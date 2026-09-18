@@ -353,6 +353,14 @@ class _ReviewPageState extends State<ReviewPage>
       pinnedHeader: TabBar(
         controller: _tabController,
         isScrollable: false,
+        indicatorColor: Colors.transparent,
+        dividerColor: Colors.transparent,
+        labelColor: Theme.of(context).colorScheme.primary,
+        unselectedLabelColor: Theme.of(context).colorScheme.onSurface,
+        labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: Theme.of(context).textTheme.labelLarge,
         tabs: [
           Tab(text: context.l10n.text('uncategorized')),
           Tab(
