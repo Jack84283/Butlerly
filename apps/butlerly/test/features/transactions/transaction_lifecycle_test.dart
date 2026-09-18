@@ -442,7 +442,6 @@ void main() {
     expect(find.byIcon(Icons.close_rounded), findsNothing);
   });
 
-
   testWidgets(
     'Transactions Review and Master Data menus start directly below the app bar',
     (tester) async {
@@ -460,9 +459,7 @@ void main() {
             .dy;
         expect(selectorTop - appBarBottom, closeTo(0, 0.01));
         expect(
-          tester
-              .getSize(find.byType(ButlerlyCompactSectionSelector))
-              .height,
+          tester.getSize(find.byType(ButlerlyCompactSectionSelector)).height,
           ButlerlySize.minimumTarget,
         );
       }

@@ -198,9 +198,7 @@ void main() {
     },
   );
 
-  testWidgets('Home spending trend grid uses the bar baseline', (
-    tester,
-  ) async {
+  testWidgets('Home spending trend grid uses the bar baseline', (tester) async {
     HomePage.debugCurrentDate = DateTime.utc(2026, 8, 15, 12);
 
     await services<FinanceServices>().createTransaction(
@@ -278,7 +276,6 @@ Widget _testApp(GoRouter router, {Locale? locale}) => MaterialApp.router(
     GlobalCupertinoLocalizations.delegate,
   ],
 );
-
 
 final class _HomeTransactions implements TransactionRepository {
   final values = <String, Transaction>{};
