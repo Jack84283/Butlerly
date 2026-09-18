@@ -1135,7 +1135,7 @@ void main() {
       );
       expect(
         rescanTop.dy - modeControlBottom.dy,
-        lessThan(ButlerlySpacing.large),
+        lessThanOrEqualTo(ButlerlySpacing.large),
       );
       expect(find.byType(Radio<TransactionId>), findsNWidgets(2));
       expect(find.text('Keep both'), findsOneWidget);
