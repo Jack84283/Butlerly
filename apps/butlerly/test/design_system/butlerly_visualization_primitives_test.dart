@@ -4,19 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  Widget app(
-    Widget child, {
-    double textScale = 1,
-    double width = 320,
-  }) => MaterialApp(
-    theme: ThemeData(extensions: const [ButlerlySemanticColors.light]),
-    home: MediaQuery(
-      data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
-      child: Scaffold(
-        body: SingleChildScrollView(child: SizedBox(width: width, child: child)),
-      ),
-    ),
-  );
+  Widget app(Widget child, {double textScale = 1, double width = 320}) =>
+      MaterialApp(
+        theme: ThemeData(extensions: const [ButlerlySemanticColors.light]),
+        home: MediaQuery(
+          data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
+          child: Scaffold(
+            body: SingleChildScrollView(
+              child: SizedBox(width: width, child: child),
+            ),
+          ),
+        ),
+      );
 
   testWidgets('donut stacks safely at narrow width and large text', (
     tester,
