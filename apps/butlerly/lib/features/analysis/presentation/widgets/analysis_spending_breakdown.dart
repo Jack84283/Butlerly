@@ -50,30 +50,32 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
           currency: chartValues.first.currency?.value,
         ),
     ];
+    final chartData = [
+      for (final slice in chartSlices)
+        ButlerlyChartDatum(
+          label: slice.label,
+          value: slice.value,
+          color: ButlerlyChartColors.category(slice.categoryId),
+          valueLabel:
+              '${localizedDecimal(context, slice.value.toString())} ${slice.currency ?? ''}'
+                  .trim(),
+        ),
+    ];
     return ButlerlyVisualizationCard(
       title: context.l10n.text('spendingDistribution'),
       child: Column(
         children: [
           ButlerlyDonutVisualization(
             density: ButlerlyVisualizationDensity.regular,
-            data: [
-              for (final slice in chartSlices)
-                ButlerlyChartDatum(
-                  label: slice.label,
-                  value: slice.value,
-                  color: ButlerlyChartColors.category(slice.categoryId),
-                  valueLabel:
-                      '${localizedDecimal(context, slice.value.toString())} ${slice.currency ?? ''}'
-                          .trim(),
-                ),
-            ],
+            data: chartData,
             valueLabel: (value, _) =>
                 localizedDecimal(context, value.toString()),
             legendBelow: true,
             onDatumTap: onCategoryTap == null
                 ? null
-                : (index) {
-                    if (index < chartValues.length) {
+                : (datum) {
+                    final index = chartData.indexOf(datum);
+                    if (index >= 0 && index < chartValues.length) {
                       onCategoryTap!(chartValues[index]);
                     }
                   },
