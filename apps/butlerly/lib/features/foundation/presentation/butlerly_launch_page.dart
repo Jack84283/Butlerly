@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:butlerly/app/session/butlerly_session_guard.dart';
+import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -22,8 +23,10 @@ class ButlerlyLaunchSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     key: screenKey,
-    body: Semantics(
-      label: context.l10n.text('appName'),
+    body: ButlerlyResponsiveBody(
+      contentKey: const ValueKey('butlerly-launch-content'),
+      child: Semantics(
+        label: context.l10n.text('appName'),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -52,6 +55,7 @@ class ButlerlyLaunchSurface extends StatelessWidget {
             ],
           ],
         ),
+      ),
       ),
     ),
   );
