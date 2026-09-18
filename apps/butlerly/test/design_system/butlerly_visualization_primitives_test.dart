@@ -27,6 +27,16 @@ void main() {
     expect(ButlerlyChartColors.category('other'), const Color(0xFF1B9E77));
   });
 
+  test('multi-category collision mapping stays within legacy palette', () {
+    final assigned = ButlerlyChartColors.forCategories([
+      'collision-5',
+      'collision-49',
+    ]);
+
+    expect(assigned['collision-5'], const Color(0xFF4D9221));
+    expect(assigned['collision-49'], const Color(0xFF0072B2));
+  });
+
   test('donut color resolver removes duplicate and near-duplicate colors', () {
     const repeated = Color(0xFF0072B2);
     const nearRepeated = Color(0xFF0173B3);
