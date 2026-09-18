@@ -43,7 +43,7 @@ void main() {
   testWidgets('donut can force centered chart with detail rows below', (
     tester,
   ) async {
-    var tapped = -1;
+    ButlerlyChartDatum? tapped;
     await tester.pumpWidget(
       app(
         ButlerlyDonutVisualization(
@@ -62,7 +62,7 @@ void main() {
             ),
           ],
           valueLabel: (value, total) => '${value / total * 100}%',
-          onDatumTap: (index) => tapped = index,
+          onDatumTap: (datum) => tapped = datum,
         ),
         width: 600,
       ),
@@ -70,14 +70,18 @@ void main() {
     await tester.pumpAndSettle();
 
     final chart = find.byType(CustomPaint).first;
-    expect(tester.getCenter(chart).dx, closeTo(300, 1));
+    final visualization = find.byType(ButlerlyDonutVisualization);
+    expect(
+      tester.getCenter(chart).dx,
+      closeTo(tester.getCenter(visualization).dx, 1),
+    );
     expect(find.text('Food'), findsOneWidget);
     expect(find.text('600.00 USD'), findsOneWidget);
     expect(find.text('Rent'), findsOneWidget);
     expect(find.text('400.00 USD'), findsOneWidget);
 
     await tester.tap(find.text('Food'));
-    expect(tapped, 0);
+    expect(tapped?.label, 'Food');
   });
 
   testWidgets('donut keeps a single positive datum visible', (tester) async {
