@@ -4,6 +4,7 @@ import 'package:butlerly/app/bootstrap.dart';
 import 'package:butlerly/app/router/app_router.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -85,6 +86,48 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'startup failure inherits the shared wide outside-content surface',
+    (tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        ButlerlyStartupGate(
+          logger: logger,
+          initialize: () async => throw StateError('simulated startup failure'),
+          minimumLaunchDuration: Duration.zero,
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(
+        tester
+            .getSize(
+              find.byKey(
+                const ValueKey('butlerly-responsive-body-canvas'),
+              ),
+            )
+            .width,
+        1200,
+      );
+      expect(
+        tester
+            .getSize(
+              find.byKey(
+                const ValueKey('butlerly-startup-failure-content'),
+              ),
+            )
+            .width,
+        ButlerlySize.pageContentMaxWidth,
+      );
+      expect(find.byKey(const ValueKey('butlerly-startup-error')), findsOneWidget);
+    },
+  );
 
   test('classifies database migration failures without exposing details', () {
     final failure = classifyStartupFailure(
