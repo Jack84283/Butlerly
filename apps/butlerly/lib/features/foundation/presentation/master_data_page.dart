@@ -52,7 +52,10 @@ class _MasterDataPageState extends State<MasterDataPage> {
 
   void _refresh() {
     if (!mounted) return;
-    setState(() => _data = _load());
+    final data = _load();
+    setState(() {
+      _data = data;
+    });
   }
 
   bool _accepted<T>(ApplicationResult<T> result) {
