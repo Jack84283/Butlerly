@@ -25,7 +25,9 @@ void main() {
     );
 
     expect(
-      tester.getSize(find.byKey(const ValueKey('compact-section-selector'))).height,
+      tester
+          .getSize(find.byKey(const ValueKey('compact-section-selector')))
+          .height,
       ButlerlySize.minimumTarget,
     );
     expect(find.byType(TextButton), findsNWidgets(4));
