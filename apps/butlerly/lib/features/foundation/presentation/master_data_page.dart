@@ -354,7 +354,9 @@ class _MasterDataList extends StatelessWidget {
                   ? context.l10n.text('builtin')
                   : context.l10n.text('user'),
               active: tag.status == TagStatus.active,
-              onEdit: tag.id.value.startsWith('tag.') ? null : () => onEdit(tag),
+              onEdit: tag.id.value.startsWith('tag.')
+                  ? null
+                  : () => onEdit(tag),
               onToggle: finance == null
                   ? null
                   : () async {
@@ -424,9 +426,7 @@ class _MasterDataList extends StatelessWidget {
             subtitle: index == 1
                 ? data.categories
                       .where((parent) => parent.id == category.parentId)
-                      .map(
-                        (parent) => categoryDisplayLabel(parent, language),
-                      )
+                      .map((parent) => categoryDisplayLabel(parent, language))
                       .firstOrNull
                 : '${data.categories.where((child) => child.parentId == category.id).length} ${context.l10n.text('subcategories').toLowerCase()}',
             origin: category.origin == CategoryOrigin.system
