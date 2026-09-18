@@ -442,6 +442,30 @@ void main() {
     expect(find.byIcon(Icons.close_rounded), findsNothing);
   });
 
+  testWidgets(
+    'Transactions Review and Master Data menus start directly below the app bar',
+    (tester) async {
+      for (final page in const <Widget>[
+        TransactionsPage(),
+        ReviewPage(),
+        MasterDataPage(),
+      ]) {
+        await tester.pumpWidget(MaterialApp(home: page));
+        await tester.pumpAndSettle();
+
+        final appBarBottom = tester.getBottomLeft(find.byType(AppBar)).dy;
+        final selectorTop = tester
+            .getTopLeft(find.byType(ButlerlyCompactSectionSelector))
+            .dy;
+        expect(selectorTop - appBarBottom, closeTo(0, 0.01));
+        expect(
+          tester.getSize(find.byType(ButlerlyCompactSectionSelector)).height,
+          ButlerlySize.minimumTarget,
+        );
+      }
+    },
+  );
+
   testWidgets('Home refreshes when a transaction changes outside its route', (
     tester,
   ) async {

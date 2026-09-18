@@ -17,7 +17,12 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/cupertino.dart' show CupertinoSliverRefreshControl;
 import 'package:flutter/foundation.dart'
-    show SynchronousFuture, TargetPlatform, defaultTargetPlatform, kIsWeb;
+    show
+        SynchronousFuture,
+        TargetPlatform,
+        defaultTargetPlatform,
+        kIsWeb,
+        visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -876,6 +881,21 @@ class _SpendingHero extends StatelessWidget {
   }
 }
 
+@visibleForTesting
+Widget homeSpendingTrendForTest(
+  List<({DateTime month, double value, bool selected})> points,
+) => _SpendingTrend(
+  points: [
+    for (final point in points)
+      _HomeTrendPoint(
+        month: point.month,
+        value: point.value,
+        metric: null,
+        selected: point.selected,
+      ),
+  ],
+);
+
 class _SpendingTrend extends StatelessWidget {
   const _SpendingTrend({required this.points});
 
@@ -917,25 +937,25 @@ class _SpendingTrend extends StatelessWidget {
           const SizedBox(height: ButlerlySpacing.small),
           SizedBox(
             height: 156,
-            child: Stack(
+            child: Column(
               children: [
-                Positioned.fill(
-                  bottom: ButlerlySpacing.section + ButlerlySpacing.compact,
-                  child: const _SpendingTrendGrid(
-                    key: ValueKey('home-spending-trend-grid'),
-                  ),
-                ),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (final point in points)
-                      Expanded(
-                        child: Semantics(
-                          label:
-                              '${DateFormat.yMMMM(locale).format(point.month)}, ${point.metric == null ? context.l10n.text('noSpendingInPeriod') : analysisMoney(context, point.metric!)}',
-                          child: Column(
-                            children: [
-                              Expanded(
+                Expanded(
+                  child: Stack(
+                    key: const ValueKey('home-spending-trend-plot'),
+                    children: [
+                      const Positioned.fill(
+                        child: _SpendingTrendGrid(
+                          key: ValueKey('home-spending-trend-grid'),
+                        ),
+                      ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (final point in points)
+                            Expanded(
+                              child: Semantics(
+                                label:
+                                    '${DateFormat.yMMMM(locale).format(point.month)}, ${point.metric == null ? context.l10n.text('noSpendingInPeriod') : analysisMoney(context, point.metric!)}',
                                 child: Align(
                                   alignment: Alignment.bottomCenter,
                                   child: FractionallySizedBox(
@@ -947,6 +967,9 @@ class _SpendingTrend extends StatelessWidget {
                                               .toDouble(),
                                     widthFactor: 0.42,
                                     child: DecoratedBox(
+                                      key: ValueKey(
+                                        'home-spending-trend-bar-${point.month.year}-${point.month.month}',
+                                      ),
                                       decoration: BoxDecoration(
                                         color: point.selected
                                             ? context.colors.interactive
@@ -963,23 +986,33 @@ class _SpendingTrend extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: ButlerlySpacing.compact),
-                              Text(
-                                DateFormat.MMM(
-                                  locale,
-                                ).format(point.month).toUpperCase(),
-                                maxLines: 1,
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(
-                                      color: point.selected
-                                          ? context.colors.interactive
-                                          : null,
-                                      fontWeight: point.selected
-                                          ? FontWeight.w600
-                                          : null,
-                                    ),
-                              ),
-                            ],
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: ButlerlySpacing.compact),
+                Row(
+                  children: [
+                    for (final point in points)
+                      Expanded(
+                        child: ExcludeSemantics(
+                          child: Text(
+                            DateFormat.MMM(
+                              locale,
+                            ).format(point.month).toUpperCase(),
+                            maxLines: 1,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: point.selected
+                                      ? context.colors.interactive
+                                      : null,
+                                  fontWeight: point.selected
+                                      ? FontWeight.w600
+                                      : null,
+                                ),
                           ),
                         ),
                       ),
@@ -1004,6 +1037,7 @@ class _SpendingTrendGrid extends StatelessWidget {
       children: [
         for (var index = 0; index < 4; index++)
           Divider(
+            key: ValueKey('home-spending-trend-grid-line-$index'),
             height: 1,
             thickness: 1,
             color: context.colors.cardDivider.withValues(alpha: 0.7),

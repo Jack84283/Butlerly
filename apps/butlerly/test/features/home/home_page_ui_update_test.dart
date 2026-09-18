@@ -181,6 +181,47 @@ void main() {
     },
   );
 
+  testWidgets('Home spending trend grid uses the bar baseline', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: homeSpendingTrendForTest([
+            (month: DateTime(2026, 7), value: 20, selected: false),
+            (month: DateTime(2026, 8), value: 42, selected: true),
+          ]),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final plot = find.byKey(const ValueKey('home-spending-trend-plot'));
+    final baseline = find.byKey(
+      const ValueKey('home-spending-trend-grid-line-3'),
+    );
+    final selectedBar = find.byKey(
+      const ValueKey('home-spending-trend-bar-2026-8'),
+    );
+    expect(plot, findsOneWidget);
+    expect(baseline, findsOneWidget);
+    expect(selectedBar, findsOneWidget);
+    expect(
+      tester.getBottomLeft(baseline).dy,
+      closeTo(tester.getBottomLeft(plot).dy, 0.01),
+    );
+    expect(
+      tester.getBottomLeft(selectedBar).dy,
+      closeTo(tester.getBottomLeft(plot).dy, 0.01),
+    );
+  });
+
   testWidgets(
     'Home keeps essential header text readable at 3x accessibility scale',
     (tester) async {
