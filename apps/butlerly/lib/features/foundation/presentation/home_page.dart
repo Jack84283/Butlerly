@@ -2,6 +2,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_content_surface.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -363,13 +364,11 @@ class _HomePageState extends State<HomePage> {
       MediaQuery.sizeOf(context),
       deviceDisplaySize: deviceDisplaySize,
     );
-    final canvasColor = context.colors.subtleSurface;
     final useCupertinoRefresh =
         !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
-    final content = ColoredBox(
-      key: const ValueKey('home-page-canvas'),
-      color: canvasColor,
+    final content = ButlerlyContentCanvas(
+      canvasKey: const ValueKey('home-page-canvas'),
       child: LayoutBuilder(
         builder: (context, constraints) => CustomScrollView(
           physics: useCupertinoRefresh
@@ -408,60 +407,47 @@ class _HomePageState extends State<HomePage> {
                 key: const ValueKey('home-cupertino-refresh-control'),
                 onRefresh: _refresh,
               ),
-            SliverLayoutBuilder(
-              builder: (context, constraints) {
-                final contentMaxWidth = ButlerlyLayout.contentMaxWidth(
-                  MediaQuery.sizeOf(context),
-                );
-                final surfaceMaxWidth =
-                    contentMaxWidth + ButlerlySize.phoneGutter * 2;
-                final extraWidth =
-                    constraints.crossAxisExtent - surfaceMaxWidth;
-                final horizontalInset = extraWidth > 0 ? extraWidth / 2 : 0.0;
-                return SliverPadding(
-                  padding: EdgeInsets.symmetric(horizontal: horizontalInset),
-                  sliver: SliverToBoxAdapter(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: constraints.remainingPaintExtent,
+            ButlerlySliverContentSurface(
+              surfaceKey: const ValueKey('home-page-content-surface'),
+              surfaceHorizontalPadding: ButlerlySize.phoneGutter * 2,
+              sliver: SliverLayoutBuilder(
+                builder: (context, constraints) => SliverToBoxAdapter(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.remainingPaintExtent,
+                    ),
+                    child: Padding(
+                      key: const ValueKey('home-page-content-padding'),
+                      padding: const EdgeInsets.fromLTRB(
+                        ButlerlySize.phoneGutter,
+                        ButlerlySpacing.small,
+                        ButlerlySize.phoneGutter,
+                        ButlerlySpacing.large,
                       ),
-                      child: ColoredBox(
-                        key: const ValueKey('home-page-content-surface'),
-                        color: context.colors.background,
-                        child: Padding(
-                          key: const ValueKey('home-page-content-padding'),
-                          padding: const EdgeInsets.fromLTRB(
-                            ButlerlySize.phoneGutter,
-                            ButlerlySpacing.small,
-                            ButlerlySize.phoneGutter,
-                            ButlerlySpacing.large,
-                          ),
-                          child: SizedBox(
-                            key: const ValueKey('home-page-content'),
-                            width: double.infinity,
-                            child: FutureBuilder<_HomeData>(
-                              key: const ValueKey('home-body-data'),
-                              future: future,
-                              builder: (context, snapshot) {
-                                final data =
-                                    snapshot.data ??
-                                    _HomeData.empty(
-                                      _now,
-                                      selectedMonth: _selectedMonth,
-                                    );
-                                final loading =
-                                    snapshot.connectionState !=
-                                    ConnectionState.done;
-                                return _homeContent(context, data, loading);
-                              },
-                            ),
-                          ),
+                      child: SizedBox(
+                        key: const ValueKey('home-page-content'),
+                        width: double.infinity,
+                        child: FutureBuilder<_HomeData>(
+                          key: const ValueKey('home-body-data'),
+                          future: future,
+                          builder: (context, snapshot) {
+                            final data =
+                                snapshot.data ??
+                                _HomeData.empty(
+                                  _now,
+                                  selectedMonth: _selectedMonth,
+                                );
+                            final loading =
+                                snapshot.connectionState !=
+                                ConnectionState.done;
+                            return _homeContent(context, data, loading);
+                          },
                         ),
                       ),
                     ),
                   ),
-                );
-              },
+                ),
+              ),
             ),
           ],
         ),
