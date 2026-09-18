@@ -44,7 +44,10 @@ void main() {
     );
     final first = tester.getRect(find.text('All'));
     final last = tester.getRect(find.text('Archived'));
-    expect((first.left + last.right) / 2, closeTo(400 / 2, 2));
+    final selectorCenter = tester.getCenter(
+      find.byKey(const ValueKey('compact-section-selector')),
+    );
+    expect((first.left + last.right) / 2, closeTo(selectorCenter.dx, 2));
     expect(
       tester
           .widget<Semantics>(
