@@ -300,7 +300,12 @@ class _InsightsContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activeFindings = evaluation.activeFindings
-        .where((result) => result.outputType != InsightOutputType.dataQuality)
+        .where(
+          (result) =>
+              result.outputType != InsightOutputType.dataQuality &&
+              result.presentation.visualizationType !=
+                  InsightVisualizationType.pie,
+        )
         .toList(growable: false);
     final summaryPieResults = evaluation.results
         .where(
@@ -329,13 +334,19 @@ class _InsightsContent extends StatelessWidget {
             pieDensity: ButlerlyVisualizationDensity.regular,
             pieLegendBelow: true,
             pieValueLabel: (result) {
-              final share =
-                  double.tryParse(result.currentValue?.toString() ?? '') ?? 0;
-              final total =
-                  double.tryParse(
-                    evaluation.summary.expenseSpending?.toString() ?? '',
-                  ) ??
-                  0;
+              final shareText = result.currentValue?.toString();
+              final totalText = evaluation.summary.expenseSpending?.toString();
+              final share = shareText == null
+                  ? null
+                  : double.tryParse(shareText);
+              final total = totalText == null
+                  ? null
+                  : double.tryParse(totalText);
+              if (share == null || total == null) {
+                return shareText == null
+                    ? context.l10n.text('unavailableValue')
+                    : '${localizedDecimal(context, shareText)}%';
+              }
               final amount = total * share / 100;
               final currency = evaluation.summary.currency?.value ?? '';
               return '${localizedDecimal(context, amount.toString())}${currency.isEmpty ? '' : ' $currency'}';
@@ -383,7 +394,7 @@ class _InsightsContent extends StatelessWidget {
             title: context.l10n.text('insightsInsufficientHistory'),
             message: context.l10n.text('insightsInsufficientHistoryBody'),
           )
-        else
+        else if (summaryPieResults.isEmpty)
           ButlerlyEmptyState(
             icon: Icons.check_circle_outline,
             title: context.l10n.text('insightsNothingNoteworthy'),
