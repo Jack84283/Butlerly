@@ -2,6 +2,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/components/butlerly_visualization_primitives.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_custom_period_sheet.dart';
@@ -299,7 +300,12 @@ class _InsightsContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activeFindings = evaluation.activeFindings
-        .where((result) => result.outputType != InsightOutputType.dataQuality)
+        .where(
+          (result) =>
+              result.outputType != InsightOutputType.dataQuality &&
+              result.presentation.visualizationType !=
+                  InsightVisualizationType.pie,
+        )
         .toList(growable: false);
     final summaryPieResults = evaluation.results
         .where(
@@ -319,11 +325,34 @@ class _InsightsContent extends StatelessWidget {
       children: [
         AnalysisPeriodSelector(value: period, onChanged: onPeriodChanged),
         const SizedBox(height: ButlerlySpacing.standard),
-        _PeriodSummaryCard(
-          summary: evaluation.summary,
-          pieResults: summaryPieResults,
-          masterData: masterData,
-        ),
+        _PeriodSummaryCard(summary: evaluation.summary),
+        if (summaryPieResults.isNotEmpty) ...[
+          const SizedBox(height: ButlerlySpacing.standard),
+          InsightGroupVisualizations(
+            results: summaryPieResults,
+            masterData: masterData,
+            pieDensity: ButlerlyVisualizationDensity.regular,
+            pieLegendBelow: true,
+            pieValueLabel: (result) {
+              final shareText = result.currentValue?.toString();
+              final totalText = evaluation.summary.expenseSpending?.toString();
+              final share = shareText == null
+                  ? null
+                  : double.tryParse(shareText);
+              final total = totalText == null
+                  ? null
+                  : double.tryParse(totalText);
+              if (share == null || total == null) {
+                return shareText == null
+                    ? '—'
+                    : '${localizedDecimal(context, shareText)}%';
+              }
+              final amount = total * share / 100;
+              final currency = evaluation.summary.currency?.value ?? '';
+              return '${localizedDecimal(context, amount.toString())}${currency.isEmpty ? '' : ' $currency'}';
+            },
+          ),
+        ],
         if (evaluation.limitations.isNotEmpty) ...[
           ButlerlySectionHeader(
             title: context.l10n.text('dataQualityLimitations'),
@@ -365,7 +394,7 @@ class _InsightsContent extends StatelessWidget {
             title: context.l10n.text('insightsInsufficientHistory'),
             message: context.l10n.text('insightsInsufficientHistoryBody'),
           )
-        else
+        else if (summaryPieResults.isEmpty)
           ButlerlyEmptyState(
             icon: Icons.check_circle_outline,
             title: context.l10n.text('insightsNothingNoteworthy'),
@@ -377,15 +406,9 @@ class _InsightsContent extends StatelessWidget {
 }
 
 class _PeriodSummaryCard extends StatelessWidget {
-  const _PeriodSummaryCard({
-    required this.summary,
-    required this.pieResults,
-    required this.masterData,
-  });
+  const _PeriodSummaryCard({required this.summary});
 
   final PeriodSummary summary;
-  final List<InsightResult> pieResults;
-  final TransactionMasterData masterData;
 
   @override
   Widget build(BuildContext context) {
@@ -446,14 +469,6 @@ class _PeriodSummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: ButlerlySpacing.small),
           ...values.where((value) => value.value != null),
-          if (pieResults.isNotEmpty) ...[
-            const SizedBox(height: ButlerlySpacing.standard),
-            InsightGroupVisualizations(
-              results: pieResults,
-              masterData: masterData,
-              embedded: true,
-            ),
-          ],
           if (!summary.comparisonAvailable)
             Text(
               '${context.l10n.text('comparisonUnavailable')}: '

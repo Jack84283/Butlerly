@@ -258,11 +258,15 @@ class ButlerlyDonutVisualization extends StatelessWidget {
     required this.data,
     required this.valueLabel,
     this.density = ButlerlyVisualizationDensity.compact,
+    this.legendBelow = false,
+    this.onDatumTap,
   });
 
   final List<ButlerlyChartDatum> data;
   final String Function(double value, double total) valueLabel;
   final ButlerlyVisualizationDensity density;
+  final bool legendBelow;
+  final ValueChanged<ButlerlyChartDatum>? onDatumTap;
 
   @override
   Widget build(BuildContext context) {
@@ -295,10 +299,12 @@ class ButlerlyDonutVisualization extends StatelessWidget {
           builder: (context, constraints) {
             final largeText = MediaQuery.textScalerOf(context).scale(1) > 1.5;
             final stacked =
+                legendBelow ||
                 constraints.maxWidth <
                     ButlerlyVisualizationTokens.narrowLayoutWidth ||
                 largeText;
             final chart = SizedBox.square(
+              key: const ValueKey('butlerly-donut-chart'),
               dimension: size,
               child: CustomPaint(
                 painter: _ButlerlyDonutPainter(
@@ -315,24 +321,37 @@ class ButlerlyDonutVisualization extends StatelessWidget {
                     padding: const EdgeInsets.only(
                       bottom: ButlerlySpacing.micro,
                     ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: ButlerlyVisualizationTokens.legendMarkerSize,
-                          height: ButlerlyVisualizationTokens.legendMarkerSize,
-                          decoration: BoxDecoration(
-                            color: colors[index],
-                            shape: BoxShape.circle,
-                          ),
+                    child: InkWell(
+                      onTap: onDatumTap == null
+                          ? null
+                          : () => onDatumTap!(usable[index]),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: ButlerlySpacing.xxs,
                         ),
-                        const SizedBox(width: ButlerlySpacing.compact),
-                        Expanded(child: Text(usable[index].label)),
-                        const SizedBox(width: ButlerlySpacing.compact),
-                        Text(
-                          usable[index].valueLabel ??
-                              valueLabel(usable[index].value, total),
+                        child: Row(
+                          children: [
+                            Container(
+                              width:
+                                  ButlerlyVisualizationTokens.legendMarkerSize,
+                              height:
+                                  ButlerlyVisualizationTokens.legendMarkerSize,
+                              decoration: BoxDecoration(
+                                color: colors[index],
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: ButlerlySpacing.compact),
+                            Expanded(child: Text(usable[index].label)),
+                            const SizedBox(width: ButlerlySpacing.compact),
+                            Text(
+                              usable[index].valueLabel ??
+                                  valueLabel(usable[index].value, total),
+                              textAlign: TextAlign.end,
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
               ],

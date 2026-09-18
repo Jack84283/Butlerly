@@ -1,5 +1,6 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/design_system/components/butlerly_compact_section_selector.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -24,13 +25,11 @@ class ReviewPage extends StatefulWidget {
   State<ReviewPage> createState() => _ReviewPageState();
 }
 
-class _ReviewPageState extends State<ReviewPage>
-    with SingleTickerProviderStateMixin {
+class _ReviewPageState extends State<ReviewPage> {
   late Future<List<_ReviewEntry>> _items;
   late Future<List<TransactionDto>> _uncategorized;
   late Future<List<DuplicateCandidateGroup>> _duplicateGroups;
   late Future<TransactionMasterDataSnapshot> _masterData;
-  late final TabController _tabController;
   _ReviewView _view = _ReviewView.needsReview;
   String? _loadedLanguageCode;
 
@@ -44,11 +43,6 @@ class _ReviewPageState extends State<ReviewPage>
     _view = widget.showPossibleDuplicates
         ? _ReviewView.duplicates
         : _ReviewView.uncategorized;
-    _tabController = TabController(
-      length: _reviewTabs.length,
-      initialIndex: _tabIndex(_view),
-      vsync: this,
-    );
     _items = _load();
     _uncategorized = _loadUncategorized();
     _duplicateGroups = _loadDuplicateGroups();
@@ -57,7 +51,6 @@ class _ReviewPageState extends State<ReviewPage>
 
   @override
   void dispose() {
-    _tabController.dispose();
     transactionChanges.removeListener(_handleTransactionChange);
     super.dispose();
   }
@@ -76,7 +69,6 @@ class _ReviewPageState extends State<ReviewPage>
       _view = widget.showPossibleDuplicates
           ? _ReviewView.duplicates
           : _ReviewView.uncategorized;
-      _tabController.index = _tabIndex(_view);
     });
   }
 
@@ -350,37 +342,21 @@ class _ReviewPageState extends State<ReviewPage>
     }
     return ButlerlyPage(
       title: context.l10n.text('review'),
-      pinnedHeader: TabBar(
-        controller: _tabController,
-        isScrollable: false,
-        indicatorColor: Colors.transparent,
-        dividerColor: Colors.transparent,
-        labelColor: Theme.of(context).colorScheme.primary,
-        unselectedLabelColor: Theme.of(context).colorScheme.onSurface,
-        labelStyle: Theme.of(
-          context,
-        ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
-        unselectedLabelStyle: Theme.of(context).textTheme.labelLarge,
-        tabs: [
-          Tab(text: context.l10n.text('uncategorized')),
-          Tab(
-            child: FutureBuilder<List<DuplicateCandidateGroup>>(
-              future: _duplicateGroups,
-              builder: (context, snapshot) {
-                final count = snapshot.data?.length;
-                final label = context.l10n.text('possibleDuplicates');
-                return Center(
-                  child: Text(
-                    count == null ? label : '$label ($count)',
-                    textAlign: TextAlign.center,
-                  ),
-                );
-              },
-            ),
-          ),
-          Tab(text: context.l10n.text('needsReview')),
-        ],
-        onTap: (index) => setState(() => _view = _reviewTabs[index]),
+      pinnedHeader: FutureBuilder<List<DuplicateCandidateGroup>>(
+        future: _duplicateGroups,
+        builder: (context, snapshot) {
+          final count = snapshot.data?.length;
+          final duplicates = context.l10n.text('possibleDuplicates');
+          return ButlerlyCompactSectionSelector(
+            labels: [
+              context.l10n.text('uncategorized'),
+              count == null ? duplicates : '$duplicates ($count)',
+              context.l10n.text('needsReview'),
+            ],
+            selectedIndex: _tabIndex(_view),
+            onSelected: (index) => setState(() => _view = _reviewTabs[index]),
+          );
+        },
       ),
       children: [
         if (_view != _ReviewView.duplicates)

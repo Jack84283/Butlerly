@@ -4,15 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  Widget app(Widget child, {double textScale = 1}) => MaterialApp(
-    theme: ThemeData(extensions: const [ButlerlySemanticColors.light]),
-    home: MediaQuery(
-      data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
-      child: Scaffold(
-        body: SingleChildScrollView(child: SizedBox(width: 320, child: child)),
-      ),
-    ),
-  );
+  Widget app(Widget child, {double textScale = 1, double width = 320}) =>
+      MaterialApp(
+        theme: ThemeData(extensions: const [ButlerlySemanticColors.light]),
+        home: MediaQuery(
+          data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
+          child: Scaffold(
+            body: SingleChildScrollView(
+              child: SizedBox(width: width, child: child),
+            ),
+          ),
+        ),
+      );
 
   testWidgets('donut stacks safely at narrow width and large text', (
     tester,
@@ -35,6 +38,50 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Food & Dining'), findsOneWidget);
     expect(find.text('Housing'), findsOneWidget);
+  });
+
+  testWidgets('donut can force centered chart with detail rows below', (
+    tester,
+  ) async {
+    ButlerlyChartDatum? tapped;
+    await tester.pumpWidget(
+      app(
+        ButlerlyDonutVisualization(
+          density: ButlerlyVisualizationDensity.regular,
+          legendBelow: true,
+          data: const [
+            ButlerlyChartDatum(
+              label: 'Food',
+              value: 60,
+              valueLabel: '600.00 USD',
+            ),
+            ButlerlyChartDatum(
+              label: 'Rent',
+              value: 40,
+              valueLabel: '400.00 USD',
+            ),
+          ],
+          valueLabel: (value, total) => '${value / total * 100}%',
+          onDatumTap: (datum) => tapped = datum,
+        ),
+        width: 600,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final chart = find.byKey(const ValueKey('butlerly-donut-chart'));
+    final visualization = find.byType(ButlerlyDonutVisualization);
+    expect(
+      tester.getCenter(chart).dx,
+      closeTo(tester.getCenter(visualization).dx, 1),
+    );
+    expect(find.text('Food'), findsOneWidget);
+    expect(find.text('600.00 USD'), findsOneWidget);
+    expect(find.text('Rent'), findsOneWidget);
+    expect(find.text('400.00 USD'), findsOneWidget);
+
+    await tester.tap(find.text('Food'));
+    expect(tapped?.label, 'Food');
   });
 
   testWidgets('donut keeps a single positive datum visible', (tester) async {

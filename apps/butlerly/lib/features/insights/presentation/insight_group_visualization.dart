@@ -1,4 +1,5 @@
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_visualization_primitives.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/insights/presentation/insight_presentation.dart';
@@ -16,11 +17,17 @@ class InsightGroupVisualizations extends StatelessWidget {
     required this.results,
     required this.masterData,
     this.embedded = false,
+    this.pieDensity = ButlerlyVisualizationDensity.compact,
+    this.pieLegendBelow = false,
+    this.pieValueLabel,
   });
 
   final List<InsightResult> results;
   final TransactionMasterData masterData;
   final bool embedded;
+  final ButlerlyVisualizationDensity pieDensity;
+  final bool pieLegendBelow;
+  final String Function(InsightResult result)? pieValueLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +58,9 @@ class InsightGroupVisualizations extends StatelessWidget {
               color: entry.rule.grouping == RuleGrouping.category
                   ? ButlerlyChartColors.category(_rawDimension(entry))
                   : null,
+              valueLabel: type == InsightVisualizationType.pie
+                  ? pieValueLabel?.call(entry)
+                  : null,
             ),
           )
           .toList(growable: false);
@@ -71,6 +81,8 @@ class InsightGroupVisualizations extends StatelessWidget {
         InsightVisualizationType.pie => InsightDonutVisualization(
           data: data,
           percentageLabel: percentage,
+          density: pieDensity,
+          legendBelow: pieLegendBelow,
         ),
         InsightVisualizationType.bar => InsightBarVisualization(
           data: data,

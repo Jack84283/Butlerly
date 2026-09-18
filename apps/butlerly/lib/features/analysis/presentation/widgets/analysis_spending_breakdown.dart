@@ -29,9 +29,6 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
       return ButlerlyCard(child: Text(context.l10n.text('noSpendingInPeriod')));
     }
 
-    final max = model.categories
-        .map(analysisNumber)
-        .fold<double>(0, (a, b) => a > b ? a : b);
     final chartValues = model.categories.take(5).toList(growable: false);
     final remainingValue = model.categories
         .skip(chartValues.length)
@@ -53,60 +50,36 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
           currency: chartValues.first.currency?.value,
         ),
     ];
+    final chartData = [
+      for (final slice in chartSlices)
+        ButlerlyChartDatum(
+          label: slice.label,
+          value: slice.value,
+          color: ButlerlyChartColors.category(slice.categoryId),
+          valueLabel:
+              '${localizedDecimal(context, slice.value.toString())} ${slice.currency ?? ''}'
+                  .trim(),
+        ),
+    ];
     return ButlerlyVisualizationCard(
       title: context.l10n.text('spendingDistribution'),
       child: Column(
         children: [
           ButlerlyDonutVisualization(
             density: ButlerlyVisualizationDensity.regular,
-            data: [
-              for (final slice in chartSlices)
-                ButlerlyChartDatum(
-                  label: slice.label,
-                  value: slice.value,
-                  color: ButlerlyChartColors.category(slice.categoryId),
-                  valueLabel:
-                      '${localizedDecimal(context, slice.value.toString())} ${slice.currency ?? ''}'
-                          .trim(),
-                ),
-            ],
+            data: chartData,
             valueLabel: (value, _) =>
                 localizedDecimal(context, value.toString()),
+            legendBelow: true,
+            onDatumTap: onCategoryTap == null
+                ? null
+                : (datum) {
+                    final index = chartData.indexOf(datum);
+                    if (index >= 0 && index < chartValues.length) {
+                      onCategoryTap!(chartValues[index]);
+                    }
+                  },
           ),
-          const SizedBox(height: ButlerlySpacing.small),
-          for (final metric in model.categories.take(5))
-            Padding(
-              padding: const EdgeInsets.only(bottom: ButlerlySpacing.small),
-              child: Semantics(
-                label:
-                    '${analysisDimension(context, metric, masterData)}, ${analysisMoney(context, metric)}',
-                button: onCategoryTap != null,
-                child: InkWell(
-                  onTap: onCategoryTap == null
-                      ? null
-                      : () => onCategoryTap!(metric),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              analysisDimension(context, metric, masterData),
-                            ),
-                          ),
-                          Text(analysisMoney(context, metric)),
-                        ],
-                      ),
-                      const SizedBox(height: ButlerlySpacing.micro),
-                      LinearProgressIndicator(
-                        value: max == 0 ? 0 : analysisNumber(metric) / max,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
           if (onViewAll != null)
             Align(
               alignment: Alignment.centerLeft,
