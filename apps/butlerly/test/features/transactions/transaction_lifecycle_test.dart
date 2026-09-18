@@ -453,10 +453,17 @@ void main() {
         await tester.pumpWidget(MaterialApp(home: page));
         await tester.pumpAndSettle();
 
+        final sliverAppBar = tester.widget<SliverAppBar>(
+          find.byType(SliverAppBar),
+        );
         final appBarBottom = tester.getBottomLeft(find.byType(AppBar)).dy;
         final selectorTop = tester
             .getTopLeft(find.byType(ButlerlyCompactSectionSelector))
             .dy;
+        expect(
+          sliverAppBar.toolbarHeight,
+          ButlerlySize.compactPageToolbarHeight,
+        );
         expect(selectorTop - appBarBottom, closeTo(0, 0.01));
         expect(
           tester.getSize(find.byType(ButlerlyCompactSectionSelector)).height,
