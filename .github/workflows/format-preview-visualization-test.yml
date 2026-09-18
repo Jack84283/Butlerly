@@ -1,0 +1,22 @@
+name: Format Preview Visualization Test
+
+on:
+  push:
+    branches:
+      - codex/analysis-insights-visualization-system
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-toolchain
+      - run: ./tool/setup.sh
+      - name: Format visualization test and print diff
+        run: |
+          cd apps/butlerly
+          dart format test/design_system/butlerly_visualization_primitives_test.dart
+          git diff -- test/design_system/butlerly_visualization_primitives_test.dart
