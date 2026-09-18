@@ -58,18 +58,62 @@ abstract final class ButlerlyChartColors {
     Color(0xFFE6AB02),
     Color(0xFFA6761D),
     Color(0xFF666666),
-    Color(0xFF3B5BA5),
-    Color(0xFFB2182B),
-    Color(0xFF2166AC),
-    Color(0xFF762A83),
-    Color(0xFF1B7837),
-    Color(0xFFB35806),
-    Color(0xFF5E3C99),
-    Color(0xFF4D9221),
+    Color(0xFF1F77B4),
+    Color(0xFFFF7F0E),
+    Color(0xFF2CA02C),
+    Color(0xFFD62728),
+    Color(0xFF9467BD),
+    Color(0xFF8C564B),
+    Color(0xFFE377C2),
+    Color(0xFF17BECF),
+    Color(0xFF393B79),
+    Color(0xFF637939),
+    Color(0xFF8C6D31),
+    Color(0xFF843C39),
+    Color(0xFF7B4173),
+    Color(0xFF3182BD),
+    Color(0xFF31A354),
+    Color(0xFF756BB1),
+    Color(0xFFE6550D),
+    Color(0xFF6BAED6),
+    Color(0xFF74C476),
+    Color(0xFF9E9AC8),
+    Color(0xFFFD8D3C),
+    Color(0xFF65C2A5),
+    Color(0xFFE78AC3),
+    Color(0xFFA6D854),
   ];
 
   static Color category(String categoryId) {
     return categoryPalette[_paletteIndex(categoryId)];
+  }
+
+  static List<Color> distinctSeriesColors(
+    Iterable<Color?> requestedColors,
+  ) {
+    final resolved = <Color>[];
+    final used = <Color>{};
+    var paletteCursor = 0;
+
+    Color nextPaletteColor() {
+      while (paletteCursor < categoryPalette.length &&
+          used.contains(categoryPalette[paletteCursor])) {
+        paletteCursor++;
+      }
+      if (paletteCursor < categoryPalette.length) {
+        return categoryPalette[paletteCursor++];
+      }
+      return categoryPalette[resolved.length % categoryPalette.length];
+    }
+
+    for (final requested in requestedColors) {
+      final color = requested != null && !used.contains(requested)
+          ? requested
+          : nextPaletteColor();
+      resolved.add(color);
+      used.add(color);
+    }
+    return resolved;
   }
 
   static Map<String, Color> forCategories(Iterable<String> categoryIds) {
@@ -113,6 +157,7 @@ abstract final class ButlerlyRadius {
 abstract final class ButlerlySize {
   static const minimumTarget = 44.0;
   static const preferredTarget = 48.0;
+  static const compactPageToolbarHeight = 40.0;
   static const phoneBreakpoint = 600.0;
   static const tabletBreakpoint = phoneBreakpoint;
   static const desktopBreakpoint = 1024.0;
