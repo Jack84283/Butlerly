@@ -354,8 +354,7 @@ class _ReviewPageState extends State<ReviewPage> {
               context.l10n.text('needsReview'),
             ],
             selectedIndex: _tabIndex(_view),
-            onSelected: (index) =>
-                setState(() => _view = _reviewTabs[index]),
+            onSelected: (index) => setState(() => _view = _reviewTabs[index]),
           );
         },
       ),
