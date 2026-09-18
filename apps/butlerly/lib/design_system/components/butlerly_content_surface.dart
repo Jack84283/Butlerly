@@ -7,11 +7,7 @@ import 'package:flutter/material.dart';
 /// Page chrome may span the viewport, but body regions outside the readable
 /// content surface always use the semantic subtle-surface color.
 class ButlerlyContentCanvas extends StatelessWidget {
-  const ButlerlyContentCanvas({
-    required this.child,
-    this.canvasKey,
-    super.key,
-  });
+  const ButlerlyContentCanvas({required this.child, this.canvasKey, super.key});
 
   final Widget child;
   final Key? canvasKey;
@@ -42,8 +38,7 @@ class ButlerlyContentSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final resolvedMaxWidth =
-        maxWidth ??
-        ButlerlyLayout.contentMaxWidth(MediaQuery.sizeOf(context));
+        maxWidth ?? ButlerlyLayout.contentMaxWidth(MediaQuery.sizeOf(context));
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(

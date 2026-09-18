@@ -99,74 +99,76 @@ class _RestoreRecoveryRequiredPageState
         child: ButlerlyResponsiveBody(
           contentKey: const ValueKey('restore-recovery-required-content'),
           child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: ButlerlySize.phoneGutter,
-                vertical: ButlerlySpacing.section,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.health_and_safety_outlined,
-                    size: 52,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    context.l10n.backupText('recoveryRequiredTitle'),
-                    style: Theme.of(context).textTheme.headlineSmall,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    context.l10n.backupText(
-                      hasSafetyCopy
-                          ? 'recoveryRequiredBody'
-                          : 'recoveryUnavailableBody',
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: ButlerlySize.phoneGutter,
+                  vertical: ButlerlySpacing.section,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.health_and_safety_outlined,
+                      size: 52,
+                      color: Theme.of(context).colorScheme.error,
                     ),
-                    style: Theme.of(context).textTheme.bodyLarge,
-                    textAlign: TextAlign.center,
-                  ),
-                  if (_failed) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 20),
                     Text(
-                      context.l10n.backupText('recoveryStillRequired'),
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
+                      context.l10n.backupText('recoveryRequiredTitle'),
+                      style: Theme.of(context).textTheme.headlineSmall,
                       textAlign: TextAlign.center,
                     ),
+                    const SizedBox(height: 12),
+                    Text(
+                      context.l10n.backupText(
+                        hasSafetyCopy
+                            ? 'recoveryRequiredBody'
+                            : 'recoveryUnavailableBody',
+                      ),
+                      style: Theme.of(context).textTheme.bodyLarge,
+                      textAlign: TextAlign.center,
+                    ),
+                    if (_failed) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        context.l10n.backupText('recoveryStillRequired'),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    if (hasSafetyCopy)
+                      FilledButton.icon(
+                        onPressed: _busy ? null : _recover,
+                        icon: _busy
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.restore),
+                        label: Text(context.l10n.backupText('recoverButlerly')),
+                      ),
+                    if (hasSafetyCopy) const SizedBox(height: 12),
+                    TextButton.icon(
+                      onPressed: _busy ? null : _resetLocalData,
+                      icon: const Icon(Icons.delete_forever_outlined),
+                      label: Text(
+                        context.l10n.backupText('eraseLocalRecoveryData'),
+                      ),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
                   ],
-                  const SizedBox(height: 24),
-                  if (hasSafetyCopy)
-                    FilledButton.icon(
-                      onPressed: _busy ? null : _recover,
-                      icon: _busy
-                          ? const SizedBox.square(
-                              dimension: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.restore),
-                      label: Text(context.l10n.backupText('recoverButlerly')),
-                    ),
-                  if (hasSafetyCopy) const SizedBox(height: 12),
-                  TextButton.icon(
-                    onPressed: _busy ? null : _resetLocalData,
-                    icon: const Icon(Icons.delete_forever_outlined),
-                    label: Text(
-                      context.l10n.backupText('eraseLocalRecoveryData'),
-                    ),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
           ),
         ),
       ),
