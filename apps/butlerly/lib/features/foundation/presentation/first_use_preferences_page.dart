@@ -1,5 +1,6 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/time_zone_catalog.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -15,141 +16,145 @@ class FirstUsePreferencesPage extends ConsumerWidget {
     final preference = ref.watch(userPreferenceProvider).value!;
     return Scaffold(
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(
-            horizontal: ButlerlySize.phoneGutter,
-            vertical: ButlerlySpacing.section,
-          ),
-          children: [
-            const SizedBox(height: ButlerlySpacing.large),
-            const Icon(Icons.lock_outline_rounded, size: 48),
-            const SizedBox(height: ButlerlySpacing.section),
-            Text(
-              context.l10n.text('firstUseTitle'),
-              style: Theme.of(context).textTheme.headlineLarge,
-              textAlign: TextAlign.center,
+        child: ButlerlyResponsiveBody(
+          contentKey: const ValueKey('first-use-preferences-content'),
+          child: ListView(
+            padding: const EdgeInsets.symmetric(
+              horizontal: ButlerlySize.phoneGutter,
+              vertical: ButlerlySpacing.section,
             ),
-            const SizedBox(height: ButlerlySpacing.small),
-            Text(
-              context.l10n.text('firstUseBody'),
-              style: Theme.of(context).textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-            ButlerlySectionHeader(title: context.l10n.text('preferences')),
-            ButlerlyCard(
-              padding: EdgeInsets.zero,
-              child: Padding(
-                padding: const EdgeInsets.all(ButlerlySpacing.standard),
-                child: Column(
-                  children: [
-                    _SetupDropdown<String>(
-                      label: context.l10n.text('language'),
-                      value: preference.locale,
-                      entries: [
-                        DropdownMenuEntry(
-                          value: 'en',
-                          label: context.l10n.text('english'),
-                        ),
-                        DropdownMenuEntry(
-                          value: 'es',
-                          label: context.l10n.text('spanish'),
-                        ),
-                        DropdownMenuEntry(
-                          value: 'zh',
-                          label: context.l10n.text('chinese'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          ref
-                              .read(userPreferenceProvider.notifier)
-                              .saveChanges(locale: value);
-                        }
-                      },
-                    ),
-                    const SizedBox(height: ButlerlySpacing.standard),
-                    _SetupDropdown<String>(
-                      label: context.l10n.text('baseCurrency'),
-                      value: preference.baseCurrency.value,
-                      entries: [
-                        for (final value in const [
-                          'USD',
-                          'EUR',
-                          'GBP',
-                          'CNY',
-                          'JPY',
-                        ])
-                          DropdownMenuEntry(value: value, label: value),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          ref
-                              .read(userPreferenceProvider.notifier)
-                              .saveChanges(baseCurrency: value);
-                        }
-                      },
-                    ),
-                    const SizedBox(height: ButlerlySpacing.standard),
-                    FutureBuilder<List<TimezoneInfo>>(
-                      future: FlutterTimezone.getAvailableTimezones(
-                        Localizations.localeOf(context).toLanguageTag(),
+            children: [
+              const SizedBox(height: ButlerlySpacing.large),
+              const Icon(Icons.lock_outline_rounded, size: 48),
+              const SizedBox(height: ButlerlySpacing.section),
+              Text(
+                context.l10n.text('firstUseTitle'),
+                style: Theme.of(context).textTheme.headlineLarge,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: ButlerlySpacing.small),
+              Text(
+                context.l10n.text('firstUseBody'),
+                style: Theme.of(context).textTheme.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
+              ButlerlySectionHeader(title: context.l10n.text('preferences')),
+              ButlerlyCard(
+                padding: EdgeInsets.zero,
+                child: Padding(
+                  padding: const EdgeInsets.all(ButlerlySpacing.standard),
+                  child: Column(
+                    children: [
+                      _SetupDropdown<String>(
+                        label: context.l10n.text('language'),
+                        value: preference.locale,
+                        entries: [
+                          DropdownMenuEntry(
+                            value: 'en',
+                            label: context.l10n.text('english'),
+                          ),
+                          DropdownMenuEntry(
+                            value: 'es',
+                            label: context.l10n.text('spanish'),
+                          ),
+                          DropdownMenuEntry(
+                            value: 'zh',
+                            label: context.l10n.text('chinese'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            ref
+                                .read(userPreferenceProvider.notifier)
+                                .saveChanges(locale: value);
+                          }
+                        },
                       ),
-                      builder: (context, snapshot) {
-                        final available =
-                            snapshot.data ??
-                            timeZoneCatalog
-                                .map(
-                                  (zone) => TimezoneInfo(identifier: zone.id),
+                      const SizedBox(height: ButlerlySpacing.standard),
+                      _SetupDropdown<String>(
+                        label: context.l10n.text('baseCurrency'),
+                        value: preference.baseCurrency.value,
+                        entries: [
+                          for (final value in const [
+                            'USD',
+                            'EUR',
+                            'GBP',
+                            'CNY',
+                            'JPY',
+                          ])
+                            DropdownMenuEntry(value: value, label: value),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            ref
+                                .read(userPreferenceProvider.notifier)
+                                .saveChanges(baseCurrency: value);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: ButlerlySpacing.standard),
+                      FutureBuilder<List<TimezoneInfo>>(
+                        future: FlutterTimezone.getAvailableTimezones(
+                          Localizations.localeOf(context).toLanguageTag(),
+                        ),
+                        builder: (context, snapshot) {
+                          final available =
+                              snapshot.data ??
+                              timeZoneCatalog
+                                  .map(
+                                    (zone) => TimezoneInfo(identifier: zone.id),
+                                  )
+                                  .toList(growable: false);
+                          final zones =
+                              {
+                                for (final zone in available)
+                                  zone.identifier: zone,
+                              }.values.toList(growable: false)..sort(
+                                (left, right) =>
+                                    left.identifier.compareTo(right.identifier),
+                              );
+                          return _SetupDropdown<String>(
+                            label: context.l10n.text('timeZone'),
+                            value:
+                                zones.any(
+                                  (zone) =>
+                                      zone.identifier == preference.timeZoneId,
                                 )
-                                .toList(growable: false);
-                        final zones =
-                            {
-                              for (final zone in available)
-                                zone.identifier: zone,
-                            }.values.toList(growable: false)..sort(
-                              (left, right) =>
-                                  left.identifier.compareTo(right.identifier),
-                            );
-                        return _SetupDropdown<String>(
-                          label: context.l10n.text('timeZone'),
-                          value:
-                              zones.any(
-                                (zone) =>
-                                    zone.identifier == preference.timeZoneId,
-                              )
-                              ? preference.timeZoneId
-                              : 'UTC',
-                          leadingIcon: Icons.schedule_rounded,
-                          entries: [
-                            for (final zone in zones)
-                              DropdownMenuEntry(
-                                value: zone.identifier,
-                                label:
-                                    zone.localizedName?.name ?? zone.identifier,
-                              ),
-                          ],
-                          onChanged: (value) {
-                            if (value != null) {
-                              ref
-                                  .read(userPreferenceProvider.notifier)
-                                  .saveChanges(timeZoneId: value);
-                            }
-                          },
-                        );
-                      },
-                    ),
-                  ],
+                                ? preference.timeZoneId
+                                : 'UTC',
+                            leadingIcon: Icons.schedule_rounded,
+                            entries: [
+                              for (final zone in zones)
+                                DropdownMenuEntry(
+                                  value: zone.identifier,
+                                  label:
+                                      zone.localizedName?.name ??
+                                      zone.identifier,
+                                ),
+                            ],
+                            onChanged: (value) {
+                              if (value != null) {
+                                ref
+                                    .read(userPreferenceProvider.notifier)
+                                    .saveChanges(timeZoneId: value);
+                              }
+                            },
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: ButlerlySpacing.section),
-            FilledButton(
-              onPressed: () => ref
-                  .read(userPreferenceProvider.notifier)
-                  .saveChanges(firstUseCompleted: true),
-              child: Text(context.l10n.text('continueLocally')),
-            ),
-          ],
+              const SizedBox(height: ButlerlySpacing.section),
+              FilledButton(
+                onPressed: () => ref
+                    .read(userPreferenceProvider.notifier)
+                    .saveChanges(firstUseCompleted: true),
+                child: Text(context.l10n.text('continueLocally')),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -156,10 +156,11 @@ void main() {
       final canvas = tester.widget<ColoredBox>(
         find.byKey(const ValueKey('home-page-canvas')),
       );
-      final contentSurface = tester.widget<ColoredBox>(
+      final contentSurface = tester.widget<DecoratedSliver>(
         find.byKey(const ValueKey('home-page-content-surface')),
       );
-      expect(canvas.color, isNot(contentSurface.color));
+      final contentColor = (contentSurface.decoration as BoxDecoration).color;
+      expect(canvas.color, isNot(contentColor));
       final navigation = find.byKey(const ValueKey('primary-phone-navigation'));
       expect(tester.getSize(navigation).width, size.width);
       expect(tester.getRect(navigation).bottom, size.height);
@@ -316,19 +317,52 @@ void main() {
         tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
         ButlerlySize.pageContentMaxWidth,
       );
+      final contentSurfaceRender = tester.renderObject<RenderSliver>(
+        find.byKey(const ValueKey('home-page-content-surface')),
+      );
       expect(
-        tester
-            .getSize(find.byKey(const ValueKey('home-page-content-surface')))
-            .width,
+        contentSurfaceRender.constraints.crossAxisExtent,
         ButlerlySize.pageContentMaxWidth + ButlerlySize.phoneGutter * 2,
       );
       final canvas = tester.widget<ColoredBox>(
         find.byKey(const ValueKey('home-page-canvas')),
       );
-      final contentSurface = tester.widget<ColoredBox>(
+      final contentSurface = tester.widget<DecoratedSliver>(
         find.byKey(const ValueKey('home-page-content-surface')),
       );
-      expect(canvas.color, isNot(contentSurface.color));
+      final contentColor = (contentSurface.decoration as BoxDecoration).color;
+      expect(canvas.color, isNot(contentColor));
+    },
+  );
+
+  _testWidgetsOnMacOs(
+    'router error inherits the shared wide outside-content surface',
+    (tester) async {
+      const size = Size(1200, 800);
+      await _pumpAt(tester, size);
+
+      appRouter.go('/missing-page-for-surface-test');
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('router-error-content')),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('router-error-content')))
+            .width,
+        ButlerlySize.pageContentMaxWidth,
+      );
+      expect(
+        tester
+            .getSize(
+              find.byKey(const ValueKey('butlerly-responsive-body-canvas')),
+            )
+            .width,
+        size.width,
+      );
+      expect(find.text('Page unavailable'), findsOneWidget);
     },
   );
 

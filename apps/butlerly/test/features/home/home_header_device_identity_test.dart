@@ -42,10 +42,11 @@ void main() {
       final canvas = tester.widget<ColoredBox>(
         find.byKey(const ValueKey('home-page-canvas')),
       );
-      final contentSurface = tester.widget<ColoredBox>(
+      final contentSurface = tester.widget<DecoratedSliver>(
         find.byKey(const ValueKey('home-page-content-surface')),
       );
-      expect(canvas.color, isNot(contentSurface.color));
+      final contentColor = (contentSurface.decoration as BoxDecoration).color;
+      expect(canvas.color, isNot(contentColor));
     },
     variant: TargetPlatformVariant.only(TargetPlatform.iOS),
   );
@@ -69,10 +70,11 @@ void main() {
       final canvas = tester.widget<ColoredBox>(
         find.byKey(const ValueKey('home-page-canvas')),
       );
-      final contentSurface = tester.widget<ColoredBox>(
+      final contentSurface = tester.widget<DecoratedSliver>(
         find.byKey(const ValueKey('home-page-content-surface')),
       );
-      expect(canvas.color, isNot(contentSurface.color));
+      final contentColor = (contentSurface.decoration as BoxDecoration).color;
+      expect(canvas.color, isNot(contentColor));
     },
     variant: TargetPlatformVariant.only(TargetPlatform.iOS),
   );

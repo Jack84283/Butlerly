@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:butlerly/app/session/butlerly_session_guard.dart';
+import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -22,35 +23,38 @@ class ButlerlyLaunchSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     key: screenKey,
-    body: Semantics(
-      label: context.l10n.text('appName'),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: context.colors.brand,
-                borderRadius: BorderRadius.circular(ButlerlyRadius.large),
+    body: ButlerlyResponsiveBody(
+      contentKey: const ValueKey('butlerly-launch-content'),
+      child: Semantics(
+        label: context.l10n.text('appName'),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: context.colors.brand,
+                  borderRadius: BorderRadius.circular(ButlerlyRadius.large),
+                ),
+                child: const Icon(
+                  Icons.shield_outlined,
+                  color: Colors.white,
+                  size: 44,
+                ),
               ),
-              child: const Icon(
-                Icons.shield_outlined,
-                color: Colors.white,
-                size: 44,
-              ),
-            ),
-            const SizedBox(height: ButlerlySpacing.section),
-            Text(
-              context.l10n.text('appName'),
-              style: Theme.of(context).textTheme.displaySmall,
-            ),
-            if (footer != null) ...[
               const SizedBox(height: ButlerlySpacing.section),
-              footer!,
+              Text(
+                context.l10n.text('appName'),
+                style: Theme.of(context).textTheme.displaySmall,
+              ),
+              if (footer != null) ...[
+                const SizedBox(height: ButlerlySpacing.section),
+                footer!,
+              ],
             ],
-          ],
+          ),
         ),
       ),
     ),

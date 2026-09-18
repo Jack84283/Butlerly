@@ -13,6 +13,7 @@ import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
+import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/features/foundation/presentation/butlerly_launch_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -369,46 +370,49 @@ class _StartupFailureBody extends StatelessWidget {
     return Scaffold(
       key: const ValueKey('butlerly-startup-screen'),
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
-            child: Padding(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.error_outline_rounded, size: 48),
-                  const SizedBox(height: 20),
-                  Text(
-                    context.l10n.text(
-                      storageUnavailable
-                          ? 'localStorageUnavailable'
-                          : 'pageUnavailable',
+        child: ButlerlyResponsiveBody(
+          contentKey: const ValueKey('butlerly-startup-failure-content'),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline_rounded, size: 48),
+                    const SizedBox(height: 20),
+                    Text(
+                      context.l10n.text(
+                        storageUnavailable
+                            ? 'localStorageUnavailable'
+                            : 'pageUnavailable',
+                      ),
+                      key: const ValueKey('butlerly-startup-error'),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineSmall,
                     ),
-                    key: const ValueKey('butlerly-startup-error'),
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    context.l10n.text('dataPreserved'),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Diagnostic: $diagnosticCode',
-                    key: const ValueKey('butlerly-startup-diagnostic'),
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.labelMedium,
-                  ),
-                  const SizedBox(height: 20),
-                  FilledButton.icon(
-                    key: const ValueKey('butlerly-startup-retry'),
-                    onPressed: onRetry,
-                    icon: const Icon(Icons.refresh_rounded),
-                    label: Text(context.l10n.text('tryAgain')),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    Text(
+                      context.l10n.text('dataPreserved'),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Diagnostic: $diagnosticCode',
+                      key: const ValueKey('butlerly-startup-diagnostic'),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                    const SizedBox(height: 20),
+                    FilledButton.icon(
+                      key: const ValueKey('butlerly-startup-retry'),
+                      onPressed: onRetry,
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: Text(context.l10n.text('tryAgain')),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

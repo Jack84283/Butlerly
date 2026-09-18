@@ -99,12 +99,13 @@ void main() {
       final canvas = tester.widget<ColoredBox>(
         find.byKey(const ValueKey('home-page-canvas')),
       );
-      final bodySurface = tester.widget<ColoredBox>(
+      final bodySurface = tester.widget<DecoratedSliver>(
         find.byKey(const ValueKey('home-page-content-surface')),
       );
+      final bodyColor = (bodySurface.decoration as BoxDecoration).color;
       expect(canvas.color, colors.subtleSurface);
-      expect(bodySurface.color, colors.background);
-      expect(canvas.color, isNot(bodySurface.color));
+      expect(bodyColor, colors.background);
+      expect(canvas.color, isNot(bodyColor));
 
       final bodyPadding = tester.widget<Padding>(
         find.byKey(const ValueKey('home-page-content-padding')),

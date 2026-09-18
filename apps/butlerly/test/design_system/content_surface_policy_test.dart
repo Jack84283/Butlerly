@@ -29,6 +29,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.byType(ButlerlyContentCanvas), findsOneWidget);
+    expect(find.byType(ButlerlySliverContentSurface), findsOneWidget);
+
     final canvas = tester.widget<ColoredBox>(
       find.byKey(const ValueKey('butlerly-page-canvas')),
     );
@@ -50,6 +53,34 @@ void main() {
     expect(childRect.top, closeTo(ButlerlySpacing.standard, 0.01));
   });
 
+  testWidgets('responsive surface stays full width on narrow viewports', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: const Scaffold(body: ButlerlyResponsiveBody(child: SizedBox())),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .getSize(
+            find.byKey(
+              const ValueKey('butlerly-responsive-body-content-surface'),
+            ),
+          )
+          .width,
+      390,
+    );
+  });
+
   testWidgets('responsive body distinguishes content from outside canvas', (
     tester,
   ) async {
@@ -65,6 +96,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+
+    expect(find.byType(ButlerlyContentCanvas), findsOneWidget);
+    expect(find.byType(ButlerlyContentSurface), findsOneWidget);
 
     final canvas = tester.widget<ColoredBox>(
       find.byKey(const ValueKey('butlerly-responsive-body-canvas')),

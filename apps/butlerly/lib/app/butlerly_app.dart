@@ -5,6 +5,7 @@ import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/app/theme/theme_mode_provider.dart';
 import 'package:butlerly/core/data/restore_recovery_state.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/features/foundation/presentation/first_use_preferences_page.dart';
 import 'package:butlerly/features/foundation/presentation/restore_recovery_required_page.dart';
@@ -54,7 +55,10 @@ class ButlerlyApp extends ConsumerWidget {
             Widget normalContent() {
               if (preference.isLoading) {
                 return const Scaffold(
-                  body: Center(child: CircularProgressIndicator()),
+                  body: ButlerlyResponsiveBody(
+                    contentKey: ValueKey('preference-loading-content'),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
                 );
               }
               if (firstUse) {
