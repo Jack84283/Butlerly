@@ -467,11 +467,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Dining'), findsNWidgets(2));
+    expect(find.text('Dining'), findsOneWidget);
     expect(find.text('category-id'), findsNothing);
     expect(find.text('View all categories'), findsNothing);
-    await tester.ensureVisible(find.text('Dining').last);
-    await tester.tap(find.text('Dining').last);
+    await tester.ensureVisible(find.text('Dining'));
+    await tester.tap(find.text('Dining'));
     expect(requestedNavigation, contains('from=2026-08-01'));
     expect(requestedNavigation, contains('to=2026-08-31'));
     expect(requestedNavigation, contains('category=category-id'));
