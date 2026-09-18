@@ -69,7 +69,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final chart = find.byType(CustomPaint).first;
+    final chart = find.byKey(const ValueKey('butlerly-donut-chart'));
     final visualization = find.byType(ButlerlyDonutVisualization);
     expect(
       tester.getCenter(chart).dx,
