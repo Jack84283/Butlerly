@@ -6,7 +6,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('chart palette provides at least 40 unique colors', () {
-    expect(ButlerlyChartColors.categoryPalette.length, greaterThanOrEqualTo(40));
+    expect(
+      ButlerlyChartColors.categoryPalette.length,
+      greaterThanOrEqualTo(40),
+    );
     expect(
       ButlerlyChartColors.categoryPalette.toSet().length,
       ButlerlyChartColors.categoryPalette.length,

@@ -88,9 +88,7 @@ abstract final class ButlerlyChartColors {
     return categoryPalette[_paletteIndex(categoryId)];
   }
 
-  static List<Color> distinctSeriesColors(
-    Iterable<Color?> requestedColors,
-  ) {
+  static List<Color> distinctSeriesColors(Iterable<Color?> requestedColors) {
     final resolved = <Color>[];
     final used = <Color>{};
 
