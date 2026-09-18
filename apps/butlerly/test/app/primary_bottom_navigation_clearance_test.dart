@@ -85,14 +85,14 @@ void main() {
       );
       expect(archRect.bottom, greaterThan(navigationRect.top));
       expect(arch.foregroundDecoration, isNotNull);
-        expect(
-          navigationContentRect.height,
-          ButlerlySize.navigationBarHeight,
-        );
+      expect(
+        navigationContentRect.height,
+        ButlerlySize.navigationBarHeight,
+      );
 
-        await tester.tap(find.byKey(const ValueKey('bottom-page-action')));
-        expect(tapped, isTrue);
-        expect(tester.takeException(), isNull);
+      await tester.tap(find.byKey(const ValueKey('bottom-page-action')));
+      expect(tapped, isTrue);
+      expect(tester.takeException(), isNull);
     },
     variant: TargetPlatformVariant.only(TargetPlatform.iOS),
   );
