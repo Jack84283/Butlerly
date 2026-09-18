@@ -26,7 +26,10 @@ void main() {
     final ids = List<String>.generate(32, (index) => 'category-$index');
     final colors = ButlerlyChartColors.forCategories(ids).values.toSet();
 
-    expect(ButlerlyChartColors.categoryPalette.length, greaterThanOrEqualTo(32));
+    expect(
+      ButlerlyChartColors.categoryPalette.length,
+      greaterThanOrEqualTo(32),
+    );
     expect(colors, hasLength(32));
     expect(
       ButlerlyChartColors.forCategories(ids),
