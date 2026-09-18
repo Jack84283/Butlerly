@@ -253,7 +253,6 @@ class PrimaryBottomNavigation extends StatelessWidget {
   }
 }
 
-
 class _PrimaryNavigationArchEdge extends Decoration {
   const _PrimaryNavigationArchEdge({
     required this.color,
