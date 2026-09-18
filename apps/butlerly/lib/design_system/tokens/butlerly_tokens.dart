@@ -33,6 +33,8 @@ abstract final class ButlerlySpacing {
 
 /// Stable categorical colors shared by charts and their legends.
 abstract final class ButlerlyChartColors {
+  static const _stableCategoryPaletteLength = 32;
+
   static const categoryPalette = <Color>[
     Color(0xFF0072B2),
     Color(0xFFE69F00),
@@ -66,10 +68,61 @@ abstract final class ButlerlyChartColors {
     Color(0xFFB35806),
     Color(0xFF5E3C99),
     Color(0xFF4D9221),
+    Color(0xFF1F77B4),
+    Color(0xFFFF7F0E),
+    Color(0xFF2CA02C),
+    Color(0xFFD62728),
+    Color(0xFF9467BD),
+    Color(0xFF8C564B),
+    Color(0xFFE377C2),
+    Color(0xFF17BECF),
+    Color(0xFF393B79),
+    Color(0xFF637939),
+    Color(0xFF8C6D31),
+    Color(0xFF843C39),
+    Color(0xFF7B4173),
+    Color(0xFF3182BD),
+    Color(0xFF31A354),
+    Color(0xFF756BB1),
   ];
 
   static Color category(String categoryId) {
     return categoryPalette[_paletteIndex(categoryId)];
+  }
+
+  static List<Color> distinctSeriesColors(Iterable<Color?> requestedColors) {
+    final resolved = <Color>[];
+    final used = <Color>{};
+
+    bool isSeparated(Color candidate) =>
+        !used.contains(candidate) &&
+        used.every((color) => !_colorsTooClose(color, candidate));
+
+    Color nextPaletteColor() {
+      for (final candidate in categoryPalette) {
+        if (isSeparated(candidate)) return candidate;
+      }
+      for (final candidate in categoryPalette) {
+        if (!used.contains(candidate)) return candidate;
+      }
+      return categoryPalette[resolved.length % categoryPalette.length];
+    }
+
+    for (final requested in requestedColors) {
+      final color = requested != null && isSeparated(requested)
+          ? requested
+          : nextPaletteColor();
+      resolved.add(color);
+      used.add(color);
+    }
+    return resolved;
+  }
+
+  static bool _colorsTooClose(Color left, Color right) {
+    final red = (left.r - right.r) * 255;
+    final green = (left.g - right.g) * 255;
+    final blue = (left.b - right.b) * 255;
+    return red * red + green * green + blue * blue < 3600;
   }
 
   static Map<String, Color> forCategories(Iterable<String> categoryIds) {
@@ -79,8 +132,9 @@ abstract final class ButlerlyChartColors {
     for (final id in ids) {
       final base = _paletteIndex(id);
       var index = base;
-      while (used.contains(index) && used.length < categoryPalette.length) {
-        index = (index + 1) % categoryPalette.length;
+      while (used.contains(index) &&
+          used.length < _stableCategoryPaletteLength) {
+        index = (index + 1) % _stableCategoryPaletteLength;
       }
       assigned[id] = categoryPalette[index];
       used.add(index);
@@ -93,7 +147,7 @@ abstract final class ButlerlyChartColors {
     for (final codeUnit in categoryId.codeUnits) {
       hash = (hash * 31 + codeUnit) & 0x7fffffff;
     }
-    return hash % categoryPalette.length;
+    return hash % _stableCategoryPaletteLength;
   }
 }
 
@@ -113,6 +167,7 @@ abstract final class ButlerlyRadius {
 abstract final class ButlerlySize {
   static const minimumTarget = 44.0;
   static const preferredTarget = 48.0;
+  static const compactPageToolbarHeight = 40.0;
   static const phoneBreakpoint = 600.0;
   static const tabletBreakpoint = phoneBreakpoint;
   static const desktopBreakpoint = 1024.0;
@@ -131,7 +186,7 @@ abstract final class ButlerlySize {
   static const navigationLabelGap = ButlerlySpacing.xxs;
   static const sourcePreviewWidth = 64.0;
   static const sourcePreviewHeight = 80.0;
-  static const navigationBarHeight = 64.0;
+  static const navigationBarHeight = 60.0;
   static const primaryNavigationAddIconSize = 44.0;
   static const primaryNavigationAddGlyphSize = 28.0;
   static const primaryNavigationArchRise = 12.0;

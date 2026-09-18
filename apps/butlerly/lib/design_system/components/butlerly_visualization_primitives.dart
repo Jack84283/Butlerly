@@ -274,11 +274,9 @@ class ButlerlyDonutVisualization extends StatelessWidget {
     final total = usable.fold<double>(0, (sum, item) => sum + item.value);
     if (usable.isEmpty || total <= 0) return const SizedBox.shrink();
 
-    final fallback = ButlerlyChartColors.categoryPalette;
-    final colors = [
-      for (var index = 0; index < usable.length; index++)
-        usable[index].color ?? fallback[index % fallback.length],
-    ];
+    final colors = ButlerlyChartColors.distinctSeriesColors(
+      usable.map((item) => item.color),
+    );
     final size = switch (density) {
       ButlerlyVisualizationDensity.compact =>
         ButlerlyVisualizationTokens.compactDonutSize,

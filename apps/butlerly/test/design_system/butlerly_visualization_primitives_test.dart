@@ -1,9 +1,68 @@
 import 'package:butlerly/design_system/components/butlerly_visualization_primitives.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('chart palette provides at least 40 unique colors', () {
+    expect(
+      ButlerlyChartColors.categoryPalette.length,
+      greaterThanOrEqualTo(40),
+    );
+    expect(
+      ButlerlyChartColors.categoryPalette.toSet().length,
+      ButlerlyChartColors.categoryPalette.length,
+    );
+  });
+
+  test('existing category IDs keep their legacy base colors', () {
+    expect(ButlerlyChartColors.category('food'), const Color(0xFF5E3C99));
+    expect(ButlerlyChartColors.category('housing'), const Color(0xFFB35806));
+    expect(ButlerlyChartColors.category('category-1'), const Color(0xFF009E73));
+    expect(
+      ButlerlyChartColors.category('uncategorized'),
+      const Color(0xFF7570B3),
+    );
+    expect(ButlerlyChartColors.category('other'), const Color(0xFF1B9E77));
+  });
+
+  test('multi-category collision mapping stays within legacy palette', () {
+    final assigned = ButlerlyChartColors.forCategories([
+      'collision-15',
+      'collision-26',
+    ]);
+
+    expect(assigned['collision-15'], const Color(0xFF4D9221));
+    expect(assigned['collision-26'], const Color(0xFF0072B2));
+  });
+
+  test('donut color resolver removes duplicate and near-duplicate colors', () {
+    const repeated = Color(0xFF0072B2);
+    const nearRepeated = Color(0xFF0173B3);
+    final resolved = ButlerlyChartColors.distinctSeriesColors([
+      repeated,
+      repeated,
+      nearRepeated,
+      null,
+      null,
+      null,
+    ]);
+
+    expect(resolved.toSet().length, resolved.length);
+    expect(resolved.first, repeated);
+    expect(resolved[1], isNot(repeated));
+    expect(resolved[2], isNot(nearRepeated));
+  });
+
+  test('donut color resolver keeps 40 slices unique', () {
+    final resolved = ButlerlyChartColors.distinctSeriesColors(
+      List<Color?>.filled(40, null),
+    );
+    expect(resolved.length, 40);
+    expect(resolved.toSet().length, 40);
+  });
+
   Widget app(Widget child, {double textScale = 1, double width = 320}) =>
       MaterialApp(
         theme: ThemeData(extensions: const [ButlerlySemanticColors.light]),

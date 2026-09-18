@@ -22,11 +22,14 @@ void main() {
     );
   });
 
-  test('visible categories receive unique colors up to the palette size', () {
+  test('legacy category pool keeps 32 visible categories unique', () {
     final ids = List<String>.generate(32, (index) => 'category-$index');
     final colors = ButlerlyChartColors.forCategories(ids).values.toSet();
 
-    expect(ButlerlyChartColors.categoryPalette, hasLength(32));
+    expect(
+      ButlerlyChartColors.categoryPalette.length,
+      greaterThanOrEqualTo(32),
+    );
     expect(colors, hasLength(32));
     expect(
       ButlerlyChartColors.forCategories(ids),

@@ -79,7 +79,7 @@ void main() {
       textDirection: TextDirection.ltr,
     );
 
-    expect(ButlerlySize.navigationBarHeight, 64);
+    expect(ButlerlySize.navigationBarHeight, 60);
     expect(ButlerlySize.primaryNavigationAddIconSize, 44);
     expect(height, ButlerlySize.navigationBarHeight);
   });

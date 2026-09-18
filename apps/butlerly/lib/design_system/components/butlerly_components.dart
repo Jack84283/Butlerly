@@ -49,6 +49,9 @@ class ButlerlyPage extends StatelessWidget {
           if (title != null)
             SliverAppBar(
               pinned: true,
+              toolbarHeight: pinnedHeader == null
+                  ? kToolbarHeight
+                  : ButlerlySize.compactPageToolbarHeight,
               title: Text(title!),
               actions: actions,
               backgroundColor: context.colors.background.withValues(
