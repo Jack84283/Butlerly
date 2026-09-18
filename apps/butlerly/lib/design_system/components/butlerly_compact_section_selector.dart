@@ -85,7 +85,10 @@ class _ButlerlyCompactSectionSelectorState
                   horizontal: ButlerlySpacing.micro,
                 ),
                 child: ConstrainedBox(
-                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                  constraints: BoxConstraints(
+                    minWidth:
+                        constraints.maxWidth - (2 * ButlerlySpacing.micro),
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
