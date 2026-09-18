@@ -420,37 +420,41 @@ class _HomePageState extends State<HomePage> {
                 final horizontalInset = extraWidth > 0 ? extraWidth / 2 : 0.0;
                 return SliverPadding(
                   padding: EdgeInsets.symmetric(horizontal: horizontalInset),
-                  sliver: SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: ColoredBox(
-                      key: const ValueKey('home-page-content-surface'),
-                      color: context.colors.background,
-                      child: Padding(
-                        key: const ValueKey('home-page-content-padding'),
-                        padding: const EdgeInsets.fromLTRB(
-                          ButlerlySize.phoneGutter,
-                          ButlerlySpacing.small,
-                          ButlerlySize.phoneGutter,
-                          ButlerlySpacing.large,
-                        ),
-                        child: SizedBox(
-                          key: const ValueKey('home-page-content'),
-                          width: double.infinity,
-                          child: FutureBuilder<_HomeData>(
-                            key: const ValueKey('home-body-data'),
-                            future: future,
-                            builder: (context, snapshot) {
-                              final data =
-                                  snapshot.data ??
-                                  _HomeData.empty(
-                                    _now,
-                                    selectedMonth: _selectedMonth,
-                                  );
-                              final loading =
-                                  snapshot.connectionState !=
-                                  ConnectionState.done;
-                              return _homeContent(context, data, loading);
-                            },
+                  sliver: SliverToBoxAdapter(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.remainingPaintExtent,
+                      ),
+                      child: ColoredBox(
+                        key: const ValueKey('home-page-content-surface'),
+                        color: context.colors.background,
+                        child: Padding(
+                          key: const ValueKey('home-page-content-padding'),
+                          padding: const EdgeInsets.fromLTRB(
+                            ButlerlySize.phoneGutter,
+                            ButlerlySpacing.small,
+                            ButlerlySize.phoneGutter,
+                            ButlerlySpacing.large,
+                          ),
+                          child: SizedBox(
+                            key: const ValueKey('home-page-content'),
+                            width: double.infinity,
+                            child: FutureBuilder<_HomeData>(
+                              key: const ValueKey('home-body-data'),
+                              future: future,
+                              builder: (context, snapshot) {
+                                final data =
+                                    snapshot.data ??
+                                    _HomeData.empty(
+                                      _now,
+                                      selectedMonth: _selectedMonth,
+                                    );
+                                final loading =
+                                    snapshot.connectionState !=
+                                    ConnectionState.done;
+                                return _homeContent(context, data, loading);
+                              },
+                            ),
                           ),
                         ),
                       ),
