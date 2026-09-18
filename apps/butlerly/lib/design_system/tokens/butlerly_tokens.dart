@@ -33,6 +33,8 @@ abstract final class ButlerlySpacing {
 
 /// Stable categorical colors shared by charts and their legends.
 abstract final class ButlerlyChartColors {
+  static const _stableCategoryPaletteLength = 32;
+
   static const categoryPalette = <Color>[
     Color(0xFF0072B2),
     Color(0xFFE69F00),
@@ -58,6 +60,14 @@ abstract final class ButlerlyChartColors {
     Color(0xFFE6AB02),
     Color(0xFFA6761D),
     Color(0xFF666666),
+    Color(0xFF3B5BA5),
+    Color(0xFFB2182B),
+    Color(0xFF2166AC),
+    Color(0xFF762A83),
+    Color(0xFF1B7837),
+    Color(0xFFB35806),
+    Color(0xFF5E3C99),
+    Color(0xFF4D9221),
     Color(0xFF1F77B4),
     Color(0xFFFF7F0E),
     Color(0xFF2CA02C),
@@ -74,14 +84,6 @@ abstract final class ButlerlyChartColors {
     Color(0xFF3182BD),
     Color(0xFF31A354),
     Color(0xFF756BB1),
-    Color(0xFFE6550D),
-    Color(0xFF6BAED6),
-    Color(0xFF74C476),
-    Color(0xFF9E9AC8),
-    Color(0xFFFD8D3C),
-    Color(0xFF65C2A5),
-    Color(0xFFE78AC3),
-    Color(0xFFA6D854),
   ];
 
   static Color category(String categoryId) {
@@ -144,7 +146,7 @@ abstract final class ButlerlyChartColors {
     for (final codeUnit in categoryId.codeUnits) {
       hash = (hash * 31 + codeUnit) & 0x7fffffff;
     }
-    return hash % categoryPalette.length;
+    return hash % _stableCategoryPaletteLength;
   }
 }
 
