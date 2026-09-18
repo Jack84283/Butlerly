@@ -8,7 +8,11 @@ void main() {
     theme: ThemeData(extensions: const [ButlerlySemanticColors.light]),
     home: MediaQuery(
       data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
-      child: Scaffold(body: SizedBox(width: 320, child: child)),
+      child: Scaffold(
+        body: SingleChildScrollView(
+          child: SizedBox(width: 320, child: child),
+        ),
+      ),
     ),
   );
 
@@ -33,6 +37,28 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Food & Dining'), findsOneWidget);
     expect(find.text('Housing'), findsOneWidget);
+  });
+
+  testWidgets('donut keeps a single positive datum visible', (tester) async {
+    await tester.pumpWidget(
+      app(
+        ButlerlyDonutVisualization(
+          data: const [
+            ButlerlyChartDatum(
+              label: 'Dining',
+              value: 100,
+              valueLabel: '100 USD',
+            ),
+          ],
+          valueLabel: (value, total) => '${value / total * 100}%',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Dining'), findsOneWidget);
+    expect(find.text('100 USD'), findsOneWidget);
+    expect(find.bySemanticsLabel('Dining: 100 USD'), findsOneWidget);
   });
 
   testWidgets('horizontal value row stacks without overflow at large text', (
@@ -61,8 +87,16 @@ void main() {
       app(
         ButlerlyTrendVisualization(
           data: const [
-            ButlerlyChartDatum(label: 'Jan', value: 10),
-            ButlerlyChartDatum(label: 'Feb', value: 20),
+            ButlerlyChartDatum(
+              label: 'Jan',
+              value: 10,
+              valueLabel: '10.0 USD',
+            ),
+            ButlerlyChartDatum(
+              label: 'Feb',
+              value: 20,
+              valueLabel: '20.0 USD',
+            ),
           ],
           valueLabel: (value) => '$value USD',
         ),
