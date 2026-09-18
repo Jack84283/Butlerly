@@ -9,9 +9,7 @@ void main() {
     home: MediaQuery(
       data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
       child: Scaffold(
-        body: SingleChildScrollView(
-          child: SizedBox(width: 320, child: child),
-        ),
+        body: SingleChildScrollView(child: SizedBox(width: 320, child: child)),
       ),
     ),
   );
@@ -87,16 +85,8 @@ void main() {
       app(
         ButlerlyTrendVisualization(
           data: const [
-            ButlerlyChartDatum(
-              label: 'Jan',
-              value: 10,
-              valueLabel: '10.0 USD',
-            ),
-            ButlerlyChartDatum(
-              label: 'Feb',
-              value: 20,
-              valueLabel: '20.0 USD',
-            ),
+            ButlerlyChartDatum(label: 'Jan', value: 10, valueLabel: '10.0 USD'),
+            ButlerlyChartDatum(label: 'Feb', value: 20, valueLabel: '20.0 USD'),
           ],
           valueLabel: (value) => '$value USD',
         ),
