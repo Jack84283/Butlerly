@@ -258,11 +258,13 @@ class ButlerlyDonutVisualization extends StatelessWidget {
     required this.data,
     required this.valueLabel,
     this.density = ButlerlyVisualizationDensity.compact,
+    this.legendBelow = false,
   });
 
   final List<ButlerlyChartDatum> data;
   final String Function(double value, double total) valueLabel;
   final ButlerlyVisualizationDensity density;
+  final bool legendBelow;
 
   @override
   Widget build(BuildContext context) {
@@ -295,6 +297,7 @@ class ButlerlyDonutVisualization extends StatelessWidget {
           builder: (context, constraints) {
             final largeText = MediaQuery.textScalerOf(context).scale(1) > 1.5;
             final stacked =
+                legendBelow ||
                 constraints.maxWidth <
                     ButlerlyVisualizationTokens.narrowLayoutWidth ||
                 largeText;
