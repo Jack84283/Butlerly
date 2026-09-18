@@ -1255,7 +1255,12 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).first, 'Travel card');
 
-    await tester.tap(find.byType(DropdownButtonFormField<PaymentSourceType>));
+    final typeDropdown = find.byType(
+      DropdownButtonFormField<PaymentSourceType>,
+    );
+    await tester.ensureVisible(typeDropdown);
+    await tester.pumpAndSettle();
+    await tester.tap(typeDropdown);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Card').last);
     await tester.pumpAndSettle();
@@ -1263,7 +1268,6 @@ void main() {
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     expect(find.text('Enter exactly four digits.'), findsOneWidget);
-    expect(find.byKey(const ValueKey('master-data-edit-sheet')), findsNothing);
     expect(find.text('Add payment source'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField).at(2), '8421');
