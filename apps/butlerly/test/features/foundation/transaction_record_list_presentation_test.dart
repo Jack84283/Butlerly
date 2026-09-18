@@ -88,4 +88,43 @@ void main() {
       expect(find.text('CAFE RAW'), findsNothing);
     },
   );
+  testWidgets('canonical payment source label wins over a raw page override', (
+    tester,
+  ) async {
+    final now = DateTime.utc(2026, 9, 15, 12);
+    final transaction = TransactionDto(
+      id: 'transaction-card',
+      amount: '42.00',
+      currency: 'USD',
+      direction: 'expense',
+      status: 'active',
+      reviewState: 'needsReview',
+      transactionDate: '2026-09-15',
+      createdAt: now,
+      updatedAt: now,
+      description: 'Dinner',
+      paymentSourceId: 'card-1',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        localizationsDelegates: const [AppLocalizations.delegate],
+        supportedLocales: const [Locale('en')],
+        home: Scaffold(
+          body: TransactionRecordList(
+            transactions: [transaction],
+            masterData: const TransactionMasterData(
+              paymentSourceNames: {'card-1': 'Travel card •••• 8421'},
+            ),
+            paymentSourceNames: const {'card-1': 'Travel card'},
+            onTap: (_) {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.textContaining('Travel card •••• 8421'), findsOneWidget);
+    expect(find.text('Travel card'), findsNothing);
+  });
 }

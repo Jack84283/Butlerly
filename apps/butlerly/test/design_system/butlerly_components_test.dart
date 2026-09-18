@@ -6,6 +6,7 @@ import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/add_page.dart';
 import 'package:butlerly/features/foundation/presentation/payment_sources_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -66,6 +67,38 @@ void main() {
       );
     },
   );
+
+  testWidgets('page content surface fills the remaining viewport', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: const ButlerlyPage(
+          title: 'Page',
+          children: [SizedBox(height: 20)],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('butlerly-page-content-sliver')),
+      findsOneWidget,
+    );
+    final surface = tester.renderObject<RenderSliver>(
+      find.byKey(const ValueKey('butlerly-page-content-surface')),
+    );
+    expect(
+      surface.geometry?.paintExtent,
+      greaterThanOrEqualTo(844 - kToolbarHeight),
+    );
+  });
 
   testWidgets('shared loading state is available in both themes', (
     tester,

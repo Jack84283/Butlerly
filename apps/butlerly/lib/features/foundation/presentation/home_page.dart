@@ -421,35 +421,40 @@ class _HomePageState extends State<HomePage> {
                 return SliverPadding(
                   padding: EdgeInsets.symmetric(horizontal: horizontalInset),
                   sliver: SliverToBoxAdapter(
-                    child: ColoredBox(
-                      key: const ValueKey('home-page-content-surface'),
-                      color: context.colors.background,
-                      child: Padding(
-                        key: const ValueKey('home-page-content-padding'),
-                        padding: const EdgeInsets.fromLTRB(
-                          ButlerlySize.phoneGutter,
-                          ButlerlySpacing.small,
-                          ButlerlySize.phoneGutter,
-                          ButlerlySpacing.large,
-                        ),
-                        child: SizedBox(
-                          key: const ValueKey('home-page-content'),
-                          width: double.infinity,
-                          child: FutureBuilder<_HomeData>(
-                            key: const ValueKey('home-body-data'),
-                            future: future,
-                            builder: (context, snapshot) {
-                              final data =
-                                  snapshot.data ??
-                                  _HomeData.empty(
-                                    _now,
-                                    selectedMonth: _selectedMonth,
-                                  );
-                              final loading =
-                                  snapshot.connectionState !=
-                                  ConnectionState.done;
-                              return _homeContent(context, data, loading);
-                            },
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.remainingPaintExtent,
+                      ),
+                      child: ColoredBox(
+                        key: const ValueKey('home-page-content-surface'),
+                        color: context.colors.background,
+                        child: Padding(
+                          key: const ValueKey('home-page-content-padding'),
+                          padding: const EdgeInsets.fromLTRB(
+                            ButlerlySize.phoneGutter,
+                            ButlerlySpacing.small,
+                            ButlerlySize.phoneGutter,
+                            ButlerlySpacing.large,
+                          ),
+                          child: SizedBox(
+                            key: const ValueKey('home-page-content'),
+                            width: double.infinity,
+                            child: FutureBuilder<_HomeData>(
+                              key: const ValueKey('home-body-data'),
+                              future: future,
+                              builder: (context, snapshot) {
+                                final data =
+                                    snapshot.data ??
+                                    _HomeData.empty(
+                                      _now,
+                                      selectedMonth: _selectedMonth,
+                                    );
+                                final loading =
+                                    snapshot.connectionState !=
+                                    ConnectionState.done;
+                                return _homeContent(context, data, loading);
+                              },
+                            ),
                           ),
                         ),
                       ),
@@ -927,62 +932,74 @@ class _SpendingTrend extends StatelessWidget {
           const SizedBox(height: ButlerlySpacing.small),
           SizedBox(
             height: 156,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            child: Stack(
               children: [
-                for (final point in points)
-                  Expanded(
-                    child: Semantics(
-                      label:
-                          '${DateFormat.yMMMM(locale).format(point.month)}, ${point.metric == null ? context.l10n.text('noSpendingInPeriod') : analysisMoney(context, point.metric!)}',
-                      child: Column(
-                        children: [
-                          Expanded(
-                            child: Align(
-                              alignment: Alignment.bottomCenter,
-                              child: FractionallySizedBox(
-                                heightFactor: maxValue <= 0 || point.value <= 0
-                                    ? 0
-                                    : (point.value / maxValue)
-                                          .clamp(0.04, 1.0)
-                                          .toDouble(),
-                                widthFactor: 0.42,
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    color: point.selected
-                                        ? context.colors.interactive
-                                        : context.colors.secondaryText
-                                              .withValues(alpha: 0.35),
-                                    borderRadius: const BorderRadius.vertical(
-                                      top: Radius.circular(
-                                        ButlerlyRadius.small,
+                Positioned.fill(
+                  bottom: ButlerlySpacing.section + ButlerlySpacing.compact,
+                  child: const _SpendingTrendGrid(
+                    key: ValueKey('home-spending-trend-grid'),
+                  ),
+                ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final point in points)
+                      Expanded(
+                        child: Semantics(
+                          label:
+                              '${DateFormat.yMMMM(locale).format(point.month)}, ${point.metric == null ? context.l10n.text('noSpendingInPeriod') : analysisMoney(context, point.metric!)}',
+                          child: Column(
+                            children: [
+                              Expanded(
+                                child: Align(
+                                  alignment: Alignment.bottomCenter,
+                                  child: FractionallySizedBox(
+                                    heightFactor:
+                                        maxValue <= 0 || point.value <= 0
+                                        ? 0
+                                        : (point.value / maxValue)
+                                              .clamp(0.04, 1.0)
+                                              .toDouble(),
+                                    widthFactor: 0.42,
+                                    child: DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        color: point.selected
+                                            ? context.colors.interactive
+                                            : context.colors.secondaryText
+                                                  .withValues(alpha: 0.35),
+                                        borderRadius:
+                                            const BorderRadius.vertical(
+                                              top: Radius.circular(
+                                                ButlerlyRadius.small,
+                                              ),
+                                            ),
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
+                              const SizedBox(height: ButlerlySpacing.compact),
+                              Text(
+                                DateFormat.MMM(
+                                  locale,
+                                ).format(point.month).toUpperCase(),
+                                maxLines: 1,
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: point.selected
+                                          ? context.colors.interactive
+                                          : null,
+                                      fontWeight: point.selected
+                                          ? FontWeight.w600
+                                          : null,
+                                    ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: ButlerlySpacing.compact),
-                          Text(
-                            DateFormat.MMM(
-                              locale,
-                            ).format(point.month).toUpperCase(),
-                            maxLines: 1,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: point.selected
-                                      ? context.colors.interactive
-                                      : null,
-                                  fontWeight: point.selected
-                                      ? FontWeight.w600
-                                      : null,
-                                ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -990,6 +1007,25 @@ class _SpendingTrend extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SpendingTrendGrid extends StatelessWidget {
+  const _SpendingTrendGrid({super.key});
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        for (var index = 0; index < 4; index++)
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: context.colors.cardDivider.withValues(alpha: 0.7),
+          ),
+      ],
+    ),
+  );
 }
 
 class _CategorySummary extends StatelessWidget {

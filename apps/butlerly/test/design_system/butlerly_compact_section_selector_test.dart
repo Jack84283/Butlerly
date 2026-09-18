@@ -31,6 +31,23 @@ void main() {
       ButlerlySize.minimumTarget,
     );
     expect(find.byType(TextButton), findsNWidgets(4));
+    final selectedButton = tester.widget<TextButton>(
+      find.byKey(const ValueKey('compact-section-0')),
+    );
+    expect(
+      selectedButton.style?.backgroundColor?.resolve({}),
+      Colors.transparent,
+    );
+    expect(
+      selectedButton.style?.foregroundColor?.resolve({}),
+      AppTheme.light.colorScheme.primary,
+    );
+    final first = tester.getRect(find.text('All'));
+    final last = tester.getRect(find.text('Archived'));
+    final selectorCenter = tester.getCenter(
+      find.byKey(const ValueKey('compact-section-selector')),
+    );
+    expect((first.left + last.right) / 2, closeTo(selectorCenter.dx, 2));
     expect(
       tester
           .widget<Semantics>(

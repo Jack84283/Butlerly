@@ -76,52 +76,65 @@ class _ButlerlyCompactSectionSelectorState
               );
               return false;
             },
-            child: SingleChildScrollView(
-              key: const ValueKey('compact-section-selector-scroll'),
-              controller: _controller,
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(
-                horizontal: ButlerlySpacing.micro,
-              ),
-              child: Row(
-                children: [
-                  for (var index = 0; index < widget.labels.length; index++)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: ButlerlySpacing.xxs,
-                      ),
-                      child: Semantics(
-                        key: ValueKey('compact-section-semantics-$index'),
-                        selected: index == widget.selectedIndex,
-                        child: TextButton(
-                          key: ValueKey('compact-section-$index'),
-                          style: TextButton.styleFrom(
-                            minimumSize: const Size(
-                              ButlerlySize.minimumTarget,
-                              ButlerlySize.minimumTarget,
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: ButlerlySpacing.small,
-                            ),
-                            foregroundColor: index == widget.selectedIndex
-                                ? colors.onSecondaryContainer
-                                : colors.onSurface,
-                            backgroundColor: index == widget.selectedIndex
-                                ? colors.secondaryContainer
-                                : Colors.transparent,
-                            shape: const StadiumBorder(),
+            child: LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                key: const ValueKey('compact-section-selector-scroll'),
+                controller: _controller,
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: ButlerlySpacing.micro,
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minWidth:
+                        constraints.maxWidth - (2 * ButlerlySpacing.micro),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (var index = 0; index < widget.labels.length; index++)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: ButlerlySpacing.xxs,
                           ),
-                          onPressed: () => widget.onSelected(index),
-                          child: Text(
-                            widget.labels[index],
-                            maxLines: 1,
-                            overflow: TextOverflow.fade,
-                            softWrap: false,
+                          child: Semantics(
+                            key: ValueKey('compact-section-semantics-$index'),
+                            selected: index == widget.selectedIndex,
+                            child: TextButton(
+                              key: ValueKey('compact-section-$index'),
+                              style: TextButton.styleFrom(
+                                minimumSize: const Size(
+                                  ButlerlySize.minimumTarget,
+                                  ButlerlySize.minimumTarget,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: ButlerlySpacing.small,
+                                ),
+                                foregroundColor: index == widget.selectedIndex
+                                    ? colors.primary
+                                    : colors.onSurface,
+                                backgroundColor: Colors.transparent,
+                                shape: const StadiumBorder(),
+                              ),
+                              onPressed: () => widget.onSelected(index),
+                              child: Text(
+                                widget.labels[index],
+                                maxLines: 1,
+                                overflow: TextOverflow.fade,
+                                softWrap: false,
+                                style: TextStyle(
+                                  fontWeight: index == widget.selectedIndex
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                ],
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
