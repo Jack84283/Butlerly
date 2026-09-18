@@ -28,11 +28,13 @@ final class ButlerlyChartDatum {
     required this.label,
     required this.value,
     this.color,
+    this.valueLabel,
   });
 
   final String label;
   final double value;
   final Color? color;
+  final String? valueLabel;
 }
 
 class ButlerlyHorizontalValueRow extends StatelessWidget {
@@ -266,7 +268,7 @@ class ButlerlyDonutVisualization extends StatelessWidget {
   Widget build(BuildContext context) {
     final usable = data.where((item) => item.value > 0).toList(growable: false);
     final total = usable.fold<double>(0, (sum, item) => sum + item.value);
-    if (usable.length < 2 || total <= 0) return const SizedBox.shrink();
+    if (usable.isEmpty || total <= 0) return const SizedBox.shrink();
 
     final fallback = ButlerlyChartColors.categoryPalette;
     final colors = [
@@ -280,7 +282,10 @@ class ButlerlyDonutVisualization extends StatelessWidget {
         ButlerlyVisualizationTokens.regularDonutSize,
     };
     final semanticLabel = usable
-        .map((item) => '${item.label}: ${valueLabel(item.value, total)}')
+        .map(
+          (item) =>
+              '${item.label}: ${item.valueLabel ?? valueLabel(item.value, total)}',
+        )
         .join(', ');
 
     return Semantics(
@@ -323,7 +328,10 @@ class ButlerlyDonutVisualization extends StatelessWidget {
                         const SizedBox(width: ButlerlySpacing.compact),
                         Expanded(child: Text(usable[index].label)),
                         const SizedBox(width: ButlerlySpacing.compact),
-                        Text(valueLabel(usable[index].value, total)),
+                        Text(
+                          usable[index].valueLabel ??
+                              valueLabel(usable[index].value, total),
+                        ),
                       ],
                     ),
                   ),
@@ -381,7 +389,10 @@ class ButlerlyTrendVisualization extends StatelessWidget {
     };
     return Semantics(
       label: data
-          .map((item) => '${item.label}: ${valueLabel(item.value)}')
+          .map(
+            (item) =>
+                '${item.label}: ${item.valueLabel ?? valueLabel(item.value)}',
+          )
           .join(', '),
       child: ExcludeSemantics(
         child: Column(
