@@ -67,6 +67,31 @@ void main() {
     },
   );
 
+  testWidgets('page content surface fills the remaining viewport', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: const ButlerlyPage(
+          title: 'Page',
+          children: [SizedBox(height: 20)],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final body = tester.getSize(
+      find.byKey(const ValueKey('butlerly-page-content-body')),
+    );
+    expect(body.height, greaterThanOrEqualTo(844 - kToolbarHeight));
+  });
+
   testWidgets('shared loading state is available in both themes', (
     tester,
   ) async {
