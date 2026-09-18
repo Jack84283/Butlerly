@@ -127,5 +127,4 @@ void main() {
     expect(find.textContaining('Travel card •••• 8421'), findsOneWidget);
     expect(find.text('Travel card'), findsNothing);
   });
-
 }
