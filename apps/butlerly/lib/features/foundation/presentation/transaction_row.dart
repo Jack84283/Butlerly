@@ -58,8 +58,8 @@ class TransactionRow extends StatelessWidget {
     final parent = masterData.categoryName(parentId);
     final source = transaction.paymentSourceId == null
         ? null
-        : paymentSourceNames[transaction.paymentSourceId!] ??
-              masterData.paymentSourceName(transaction.paymentSourceId);
+        : masterData.paymentSourceName(transaction.paymentSourceId) ??
+              paymentSourceNames[transaction.paymentSourceId!];
     final sourceLabel = source == null || source.trim().isEmpty
         ? null
         : source.trim();
