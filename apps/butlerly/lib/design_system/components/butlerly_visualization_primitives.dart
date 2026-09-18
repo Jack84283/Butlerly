@@ -304,6 +304,7 @@ class ButlerlyDonutVisualization extends StatelessWidget {
                     ButlerlyVisualizationTokens.narrowLayoutWidth ||
                 largeText;
             final chart = SizedBox.square(
+              key: const ValueKey('butlerly-donut-chart'),
               dimension: size,
               child: CustomPaint(
                 painter: _ButlerlyDonutPainter(
