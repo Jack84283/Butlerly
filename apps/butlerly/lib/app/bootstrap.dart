@@ -13,6 +13,7 @@ import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
+import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/features/foundation/presentation/butlerly_launch_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -369,9 +370,11 @@ class _StartupFailureBody extends StatelessWidget {
     return Scaffold(
       key: const ValueKey('butlerly-startup-screen'),
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
+        child: ButlerlyResponsiveBody(
+          contentKey: const ValueKey('butlerly-startup-failure-content'),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
             child: Padding(
               padding: const EdgeInsets.all(32),
               child: Column(
@@ -409,6 +412,7 @@ class _StartupFailureBody extends StatelessWidget {
                     label: Text(context.l10n.text('tryAgain')),
                   ),
                 ],
+              ),
               ),
             ),
           ),
