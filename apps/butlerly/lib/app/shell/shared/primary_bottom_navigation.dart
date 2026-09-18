@@ -25,8 +25,7 @@ double phoneNavigationHeightForLabels({
   }
 
   var requiredHeight =
-      ButlerlySize.primaryNavigationAddIconSize +
-      labelHeight(addLabel);
+      ButlerlySize.primaryNavigationAddIconSize + labelHeight(addLabel);
 
   for (final label in standardLabels) {
     final destinationHeight =
@@ -253,10 +252,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
 }
 
 class _PrimaryNavigationArchEdge extends Decoration {
-  const _PrimaryNavigationArchEdge({
-    required this.color,
-    required this.width,
-  });
+  const _PrimaryNavigationArchEdge({required this.color, required this.width});
 
   final Color color;
   final double width;
@@ -267,10 +263,7 @@ class _PrimaryNavigationArchEdge extends Decoration {
 }
 
 class _PrimaryNavigationArchEdgePainter extends BoxPainter {
-  _PrimaryNavigationArchEdgePainter({
-    required this.color,
-    required this.width,
-  });
+  _PrimaryNavigationArchEdgePainter({required this.color, required this.width});
 
   final Color color;
   final double width;
@@ -282,9 +275,8 @@ class _PrimaryNavigationArchEdgePainter extends BoxPainter {
 
     final rect = offset & size;
     final radius = ButlerlySize.primaryNavigationArchWidth / 2;
-    final rrect = BorderRadius.vertical(
-      top: Radius.circular(radius),
-    ).toRRect(rect);
+    final rrect = BorderRadius.vertical(top: Radius.circular(radius))
+        .toRRect(rect);
 
     canvas.save();
     canvas.clipRect(
