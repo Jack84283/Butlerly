@@ -1,0 +1,22 @@
+name: Format Preview Presentation Refinement
+
+on:
+  push:
+    branches:
+      - codex/review-analysis-insights-presentation
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-toolchain
+      - run: ./tool/setup.sh
+      - name: Format affected files and print diff
+        run: |
+          cd apps/butlerly
+          dart format             lib/design_system/components/butlerly_visualization_primitives.dart             lib/features/foundation/presentation/review_page.dart             test/design_system/butlerly_visualization_primitives_test.dart
+          git diff --             lib/design_system/components/butlerly_visualization_primitives.dart             lib/features/foundation/presentation/review_page.dart             test/design_system/butlerly_visualization_primitives_test.dart
