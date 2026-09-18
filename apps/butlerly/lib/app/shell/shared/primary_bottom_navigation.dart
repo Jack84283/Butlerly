@@ -26,7 +26,7 @@ double phoneNavigationHeightForLabels({
 
   var requiredHeight =
       ButlerlySize.primaryNavigationAddIconSize +
-      ButlerlySpacing.micro +
+      ButlerlySpacing.xxs +
       labelHeight(addLabel);
 
   for (final label in standardLabels) {
@@ -129,7 +129,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
               icon,
               SizedBox(
                 height: add
-                    ? ButlerlySpacing.micro
+                    ? ButlerlySpacing.xxs
                     : ButlerlySize.navigationLabelGap,
               ),
               Text(
@@ -215,6 +215,10 @@ class PrimaryBottomNavigation extends StatelessWidget {
                             ),
                           ),
                         ),
+                        foregroundDecoration: _PrimaryNavigationArchEdge(
+                          color: divider.color,
+                          width: divider.width,
+                        ),
                       ),
                     ),
                   ),
@@ -246,5 +250,60 @@ class PrimaryBottomNavigation extends StatelessWidget {
         },
       ),
     );
+  }
+}
+
+
+class _PrimaryNavigationArchEdge extends Decoration {
+  const _PrimaryNavigationArchEdge({
+    required this.color,
+    required this.width,
+  });
+
+  final Color color;
+  final double width;
+
+  @override
+  BoxPainter createBoxPainter([VoidCallback? onChanged]) =>
+      _PrimaryNavigationArchEdgePainter(color: color, width: width);
+}
+
+class _PrimaryNavigationArchEdgePainter extends BoxPainter {
+  _PrimaryNavigationArchEdgePainter({
+    required this.color,
+    required this.width,
+  });
+
+  final Color color;
+  final double width;
+
+  @override
+  void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
+    final size = configuration.size;
+    if (size == null) return;
+
+    final rect = offset & size;
+    final radius = ButlerlySize.primaryNavigationArchWidth / 2;
+    final rrect = BorderRadius.vertical(
+      top: Radius.circular(radius),
+    ).toRRect(rect);
+
+    canvas.save();
+    canvas.clipRect(
+      Rect.fromLTWH(
+        rect.left - width,
+        rect.top - width,
+        rect.width + (width * 2),
+        ButlerlySize.primaryNavigationArchRise + width,
+      ),
+    );
+    canvas.drawRRect(
+      rrect,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = width
+        ..color = color,
+    );
+    canvas.restore();
   }
 }
