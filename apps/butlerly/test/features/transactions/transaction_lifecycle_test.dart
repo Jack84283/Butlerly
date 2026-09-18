@@ -610,8 +610,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.byType(Tab).at(2));
-    await tester.tap(find.byType(Tab).at(2));
+    await tester.ensureVisible(find.byKey(const ValueKey('compact-section-2')));
+    await tester.tap(find.byKey(const ValueKey('compact-section-2')));
     await tester.pumpAndSettle();
     expect(find.text('Lunch'), findsOneWidget);
     expect(find.text('Resolve'), findsNothing);
@@ -768,22 +768,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(SegmentedButton), findsNothing);
     final uncategorizedPosition = tester.getTopLeft(
-      find.descendant(
-        of: find.byType(Tab).at(0),
-        matching: find.text('Not categorized'),
-      ),
+      find.byKey(const ValueKey('compact-section-0')),
     );
     final duplicatesPosition = tester.getTopLeft(
-      find.descendant(
-        of: find.byType(Tab).at(1),
-        matching: find.textContaining('Possible duplicates'),
-      ),
+      find.byKey(const ValueKey('compact-section-1')),
     );
     final needsReviewPosition = tester.getTopLeft(
-      find.descendant(
-        of: find.byType(Tab).at(2),
-        matching: find.text('Needs review'),
-      ),
+      find.byKey(const ValueKey('compact-section-2')),
     );
     expect(uncategorizedPosition.dx, lessThan(duplicatesPosition.dx));
     expect(duplicatesPosition.dx, lessThan(needsReviewPosition.dx));
@@ -805,16 +796,16 @@ void main() {
     router.go('/review');
     await tester.pumpAndSettle();
     expect(find.text('Canonical review row'), findsOneWidget);
-    await tester.ensureVisible(find.byType(Tab).at(2));
-    await tester.tap(find.byType(Tab).at(2));
+    await tester.ensureVisible(find.byKey(const ValueKey('compact-section-2')));
+    await tester.tap(find.byKey(const ValueKey('compact-section-2')));
     await tester.pumpAndSettle();
     expect(find.byType(ButlerlyCard), findsNothing);
     expect(find.byType(ButlerlyRecordRow), findsOneWidget);
     expect(find.text('Needs a category'), findsOneWidget);
     expect(find.text('Resolve'), findsNothing);
 
-    await tester.ensureVisible(find.byType(Tab).at(0));
-    await tester.tap(find.byType(Tab).at(0));
+    await tester.ensureVisible(find.byKey(const ValueKey('compact-section-0')));
+    await tester.tap(find.byKey(const ValueKey('compact-section-0')));
     await tester.pumpAndSettle();
     expect(find.byType(ButlerlyTransactionList), findsOneWidget);
     expect(find.byType(ButlerlyRecordRow), findsOneWidget);
@@ -864,7 +855,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(ButlerlyCard), findsNothing);
     expect(find.text('Category and subcategory are missing'), findsNWidgets(3));
-    await tester.tap(find.byType(Tab).at(2));
+    await tester.tap(find.byKey(const ValueKey('compact-section-2')));
     await tester.pumpAndSettle();
     expect(find.byType(ButlerlyCard), findsNothing);
     expect(find.byType(ButlerlyRecordRow), findsNWidgets(3));
@@ -925,7 +916,7 @@ void main() {
       const MaterialApp(home: Scaffold(body: ReviewPage())),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byType(Tab).at(2));
+    await tester.tap(find.byKey(const ValueKey('compact-section-2')));
     await tester.pumpAndSettle();
     expect(find.byType(TextField), findsNothing);
     await tester.tap(find.text('Normalize me'));
@@ -951,7 +942,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(TabBar), findsOneWidget);
+    expect(find.byType(ButlerlyCompactSectionSelector), findsOneWidget);
+    expect(find.byType(TabBar), findsNothing);
     expect(find.byType(SegmentedButton), findsNothing);
     expect(
       find
@@ -962,21 +954,41 @@ void main() {
           ),
       isNotEmpty,
     );
-    final tabBar = tester.widget<TabBar>(find.byType(TabBar));
 
-    await tester.tap(find.byType(Tab).at(0));
+    await tester.tap(find.byKey(const ValueKey('compact-section-0')));
     await tester.pumpAndSettle();
-    expect(tabBar.controller?.index, 0);
+    expect(
+      tester
+          .widget<ButlerlyCompactSectionSelector>(
+            find.byType(ButlerlyCompactSectionSelector),
+          )
+          .selectedIndex,
+      0,
+    );
     expect(find.text('You’re all caught up'), findsOneWidget);
 
-    await tester.tap(find.byType(Tab).at(1));
+    await tester.tap(find.byKey(const ValueKey('compact-section-1')));
     await tester.pumpAndSettle();
-    expect(tabBar.controller?.index, 1);
+    expect(
+      tester
+          .widget<ButlerlyCompactSectionSelector>(
+            find.byType(ButlerlyCompactSectionSelector),
+          )
+          .selectedIndex,
+      1,
+    );
     expect(find.text('No possible duplicates found'), findsOneWidget);
 
-    await tester.tap(find.byType(Tab).at(2));
+    await tester.tap(find.byKey(const ValueKey('compact-section-2')));
     await tester.pumpAndSettle();
-    expect(tabBar.controller?.index, 2);
+    expect(
+      tester
+          .widget<ButlerlyCompactSectionSelector>(
+            find.byType(ButlerlyCompactSectionSelector),
+          )
+          .selectedIndex,
+      2,
+    );
     expect(find.text('You’re all caught up'), findsOneWidget);
   });
 
@@ -1048,8 +1060,8 @@ void main() {
     );
     await tester.pumpWidget(const MaterialApp(home: ReviewPage()));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byType(Tab).at(0));
-    await tester.tap(find.byType(Tab).at(0));
+    await tester.ensureVisible(find.byKey(const ValueKey('compact-section-0')));
+    await tester.tap(find.byKey(const ValueKey('compact-section-0')));
     await tester.pumpAndSettle();
     expect(find.text('Refresh me'), findsOneWidget);
     expect(find.text('(1)'), findsNothing);
@@ -1072,8 +1084,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.pumpWidget(const MaterialApp(home: ReviewPage()));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byType(Tab).at(0));
-    await tester.tap(find.byType(Tab).at(0));
+    await tester.ensureVisible(find.byKey(const ValueKey('compact-section-0')));
+    await tester.tap(find.byKey(const ValueKey('compact-section-0')));
     await tester.pumpAndSettle();
     expect(find.text('Added after refresh'), findsOneWidget);
     expect(find.text('(2)'), findsNothing);
@@ -1115,7 +1127,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Possible duplicate group'), findsOneWidget);
-      final modeControlBottom = tester.getBottomLeft(find.byType(TabBar));
+      final modeControlBottom = tester.getBottomLeft(
+        find.byType(ButlerlyCompactSectionSelector),
+      );
       final rescanTop = tester.getTopLeft(
         find.text('Rescan possible duplicates'),
       );
