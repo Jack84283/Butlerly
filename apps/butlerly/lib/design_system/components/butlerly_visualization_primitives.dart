@@ -266,7 +266,7 @@ class ButlerlyDonutVisualization extends StatelessWidget {
   final String Function(double value, double total) valueLabel;
   final ButlerlyVisualizationDensity density;
   final bool legendBelow;
-  final ValueChanged<int>? onDatumTap;
+  final ValueChanged<ButlerlyChartDatum>? onDatumTap;
 
   @override
   Widget build(BuildContext context) {
@@ -323,7 +323,7 @@ class ButlerlyDonutVisualization extends StatelessWidget {
                     child: InkWell(
                       onTap: onDatumTap == null
                           ? null
-                          : () => onDatumTap!(index),
+                          : () => onDatumTap!(usable[index]),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                           vertical: ButlerlySpacing.xxs,
