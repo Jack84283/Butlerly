@@ -341,7 +341,10 @@ void main() {
       appRouter.go('/missing-page-for-surface-test');
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('router-error-content')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('router-error-content')),
+        findsOneWidget,
+      );
       expect(
         tester
             .getSize(find.byKey(const ValueKey('router-error-content')))
@@ -351,9 +354,7 @@ void main() {
       expect(
         tester
             .getSize(
-              find.byKey(
-                const ValueKey('butlerly-responsive-body-canvas'),
-              ),
+              find.byKey(const ValueKey('butlerly-responsive-body-canvas')),
             )
             .width,
         size.width,

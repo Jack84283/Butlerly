@@ -108,9 +108,7 @@ void main() {
       expect(
         tester
             .getSize(
-              find.byKey(
-                const ValueKey('butlerly-responsive-body-canvas'),
-              ),
+              find.byKey(const ValueKey('butlerly-responsive-body-canvas')),
             )
             .width,
         1200,
@@ -118,14 +116,15 @@ void main() {
       expect(
         tester
             .getSize(
-              find.byKey(
-                const ValueKey('butlerly-startup-failure-content'),
-              ),
+              find.byKey(const ValueKey('butlerly-startup-failure-content')),
             )
             .width,
         ButlerlySize.pageContentMaxWidth,
       );
-      expect(find.byKey(const ValueKey('butlerly-startup-error')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('butlerly-startup-error')),
+        findsOneWidget,
+      );
     },
   );
 
