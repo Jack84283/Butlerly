@@ -38,6 +38,7 @@ class AnalysisTrend extends StatelessWidget {
             ButlerlyChartDatum(
               label: analysisPeriodLabel(context, metric),
               value: analysisNumber(metric),
+              valueLabel: analysisMoney(context, metric),
             ),
         ],
         valueLabel: (value) => localizedDecimal(context, value.toString()),
