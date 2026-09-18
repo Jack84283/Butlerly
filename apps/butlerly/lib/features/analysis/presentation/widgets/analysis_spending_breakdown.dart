@@ -70,6 +70,13 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
             valueLabel: (value, _) =>
                 localizedDecimal(context, value.toString()),
             legendBelow: true,
+            onDatumTap: onCategoryTap == null
+                ? null
+                : (index) {
+                    if (index < chartValues.length) {
+                      onCategoryTap!(chartValues[index]);
+                    }
+                  },
           ),
           if (onViewAll != null)
             Align(
