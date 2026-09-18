@@ -25,9 +25,7 @@ double phoneNavigationHeightForLabels({
   }
 
   var requiredHeight =
-      ButlerlySize.primaryNavigationAddIconSize +
-      ButlerlySpacing.xxs +
-      labelHeight(addLabel);
+      ButlerlySize.primaryNavigationAddIconSize + labelHeight(addLabel);
 
   for (final label in standardLabels) {
     final destinationHeight =
@@ -129,7 +127,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
               icon,
               SizedBox(
                 height: add
-                    ? ButlerlySpacing.xxs
+                    ? ButlerlySpacing.none
                     : ButlerlySize.navigationLabelGap,
               ),
               Text(
