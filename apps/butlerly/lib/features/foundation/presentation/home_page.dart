@@ -935,8 +935,7 @@ class _SpendingTrend extends StatelessWidget {
             child: Stack(
               children: [
                 Positioned.fill(
-                  bottom:
-                      ButlerlySpacing.section + ButlerlySpacing.compact,
+                  bottom: ButlerlySpacing.section + ButlerlySpacing.compact,
                   child: const _SpendingTrendGrid(
                     key: ValueKey('home-spending-trend-grid'),
                   ),
