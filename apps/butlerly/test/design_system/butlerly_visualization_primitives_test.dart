@@ -17,26 +17,14 @@ void main() {
   });
 
   test('existing category IDs keep their legacy base colors', () {
-    expect(
-      ButlerlyChartColors.category('food'),
-      const Color(0xFF5E3C99),
-    );
-    expect(
-      ButlerlyChartColors.category('housing'),
-      const Color(0xFFB35806),
-    );
-    expect(
-      ButlerlyChartColors.category('category-1'),
-      const Color(0xFF009E73),
-    );
+    expect(ButlerlyChartColors.category('food'), const Color(0xFF5E3C99));
+    expect(ButlerlyChartColors.category('housing'), const Color(0xFFB35806));
+    expect(ButlerlyChartColors.category('category-1'), const Color(0xFF009E73));
     expect(
       ButlerlyChartColors.category('uncategorized'),
       const Color(0xFF7570B3),
     );
-    expect(
-      ButlerlyChartColors.category('other'),
-      const Color(0xFF1B9E77),
-    );
+    expect(ButlerlyChartColors.category('other'), const Color(0xFF1B9E77));
   });
 
   test('donut color resolver removes duplicate and near-duplicate colors', () {
