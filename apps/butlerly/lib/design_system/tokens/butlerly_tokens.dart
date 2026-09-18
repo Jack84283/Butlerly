@@ -93,27 +93,36 @@ abstract final class ButlerlyChartColors {
   ) {
     final resolved = <Color>[];
     final used = <Color>{};
-    var paletteCursor = 0;
+
+    bool isSeparated(Color candidate) =>
+        !used.contains(candidate) &&
+        used.every((color) => !_colorsTooClose(color, candidate));
 
     Color nextPaletteColor() {
-      while (paletteCursor < categoryPalette.length &&
-          used.contains(categoryPalette[paletteCursor])) {
-        paletteCursor++;
+      for (final candidate in categoryPalette) {
+        if (isSeparated(candidate)) return candidate;
       }
-      if (paletteCursor < categoryPalette.length) {
-        return categoryPalette[paletteCursor++];
+      for (final candidate in categoryPalette) {
+        if (!used.contains(candidate)) return candidate;
       }
       return categoryPalette[resolved.length % categoryPalette.length];
     }
 
     for (final requested in requestedColors) {
-      final color = requested != null && !used.contains(requested)
+      final color = requested != null && isSeparated(requested)
           ? requested
           : nextPaletteColor();
       resolved.add(color);
       used.add(color);
     }
     return resolved;
+  }
+
+  static bool _colorsTooClose(Color left, Color right) {
+    final red = (left.r - right.r) * 255;
+    final green = (left.g - right.g) * 255;
+    final blue = (left.b - right.b) * 255;
+    return red * red + green * green + blue * blue < 3600;
   }
 
   static Map<String, Color> forCategories(Iterable<String> categoryIds) {
