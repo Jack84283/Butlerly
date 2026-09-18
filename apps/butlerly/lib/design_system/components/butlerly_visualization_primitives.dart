@@ -54,7 +54,8 @@ class ButlerlyHorizontalValueRow extends StatelessWidget {
     builder: (context, constraints) {
       final largeText = MediaQuery.textScalerOf(context).scale(1) > 1.5;
       final stacked =
-          constraints.maxWidth < ButlerlyVisualizationTokens.narrowLayoutWidth ||
+          constraints.maxWidth <
+              ButlerlyVisualizationTokens.narrowLayoutWidth ||
           largeText;
       final track = ClipRRect(
         borderRadius: BorderRadius.circular(ButlerlyRadius.small),
@@ -390,7 +391,9 @@ class ButlerlyTrendVisualization extends StatelessWidget {
               width: double.infinity,
               child: CustomPaint(
                 painter: _ButlerlyTrendPainter(
-                  values: data.map((item) => item.value).toList(growable: false),
+                  values: data
+                      .map((item) => item.value)
+                      .toList(growable: false),
                   lineColor: lineColor ?? context.colors.info,
                   axisColor: context.colors.cardDivider,
                   showPoints: density == ButlerlyVisualizationDensity.regular,
