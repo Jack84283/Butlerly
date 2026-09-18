@@ -468,8 +468,8 @@ class _ButlerlyTrendPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (values.isEmpty) return;
-    final minValue = values.reduce(math.min);
-    final maxValue = values.reduce(math.max);
+    final minValue = values.reduce((a, b) => a < b ? a : b);
+    final maxValue = values.reduce((a, b) => a > b ? a : b);
     final range = maxValue == minValue ? 1.0 : maxValue - minValue;
     final axisPaint = Paint()
       ..color = axisColor
