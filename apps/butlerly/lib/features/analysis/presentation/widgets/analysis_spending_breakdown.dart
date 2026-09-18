@@ -53,10 +53,6 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
           currency: chartValues.first.currency?.value,
         ),
     ];
-    final colorsByCategory = ButlerlyChartColors.forCategories(
-      chartSlices.map((slice) => slice.categoryId),
-    );
-
     return ButlerlyVisualizationCard(
       title: context.l10n.text('spendingDistribution'),
       child: Column(
@@ -68,12 +64,14 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
                 ButlerlyChartDatum(
                   label: slice.label,
                   value: slice.value,
-                  color: colorsByCategory[slice.categoryId],
+                  color: ButlerlyChartColors.category(slice.categoryId),
+                  valueLabel:
+                      '${localizedDecimal(context, slice.value.toString())} ${slice.currency ?? ''}'
+                          .trim(),
                 ),
             ],
             valueLabel: (value, _) =>
-                '${localizedDecimal(context, value.toString())} ${chartSlices.first.currency ?? ''}'
-                    .trim(),
+                localizedDecimal(context, value.toString()),
           ),
           const SizedBox(height: ButlerlySpacing.small),
           for (final metric in model.categories.take(5))
