@@ -86,10 +86,17 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final body = tester.getSize(
-      find.byKey(const ValueKey('butlerly-page-content-body')),
+    expect(
+      find.byKey(const ValueKey('butlerly-page-content-sliver')),
+      findsOneWidget,
     );
-    expect(body.height, greaterThanOrEqualTo(844 - kToolbarHeight));
+    final surface = tester.renderObject<RenderSliver>(
+      find.byKey(const ValueKey('butlerly-page-content-surface')),
+    );
+    expect(
+      surface.geometry?.paintExtent,
+      greaterThanOrEqualTo(844 - kToolbarHeight),
+    );
   });
 
   testWidgets('shared loading state is available in both themes', (
