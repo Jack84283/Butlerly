@@ -1,0 +1,40 @@
+name: Format Shared Surface P1 P2 Fixes
+
+on:
+  push:
+    branches:
+      - codex/shared-outside-content-layout
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/shared-outside-content-layout
+      - uses: ./.github/actions/setup-toolchain
+      - run: ./tool/setup.sh
+      - name: Format touched Dart files
+        run: |
+          cd apps/butlerly
+          dart format \
+            lib/app/router/app_router.dart \
+            lib/app/bootstrap.dart \
+            lib/app/butlerly_app.dart \
+            lib/features/foundation/presentation/home_page.dart \
+            test/design_system/content_surface_policy_test.dart \
+            test/app/startup_gate_test.dart \
+            test/app/responsive_shell_test.dart
+      - name: Commit formatter output
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/butlerly/lib apps/butlerly/test
+          git commit -m "Format shared surface P1 P2 fixes"
+          git push origin HEAD:codex/shared-outside-content-layout
