@@ -275,8 +275,9 @@ class _PrimaryNavigationArchEdgePainter extends BoxPainter {
 
     final rect = offset & size;
     final radius = ButlerlySize.primaryNavigationArchWidth / 2;
-    final rrect = BorderRadius.vertical(top: Radius.circular(radius))
-        .toRRect(rect);
+    final rrect = BorderRadius.vertical(
+      top: Radius.circular(radius),
+    ).toRRect(rect);
 
     canvas.save();
     canvas.clipRect(
