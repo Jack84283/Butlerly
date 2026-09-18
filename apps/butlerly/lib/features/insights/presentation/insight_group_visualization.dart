@@ -48,6 +48,9 @@ class InsightGroupVisualizations extends StatelessWidget {
             (entry) => InsightChartDatum(
               label: _dimensionLabel(context, entry),
               value: double.tryParse(entry.currentValue.toString()) ?? 0,
+              color: entry.rule.grouping == RuleGrouping.category
+                  ? ButlerlyChartColors.category(_rawDimension(entry))
+                  : null,
             ),
           )
           .toList(growable: false);

@@ -1,4 +1,5 @@
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_visualization_primitives.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
@@ -16,6 +17,7 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
     this.onCategoryTap,
     this.onViewAll,
   });
+
   final AnalysisModel model;
   final TransactionMasterData? masterData;
   final ValueChanged<AnalysisMetric>? onCategoryTap;
@@ -26,6 +28,7 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
     if (model.categories.isEmpty) {
       return ButlerlyCard(child: Text(context.l10n.text('noSpendingInPeriod')));
     }
+
     final max = model.categories
         .map(analysisNumber)
         .fold<double>(0, (a, b) => a > b ? a : b);
@@ -50,41 +53,26 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
           currency: chartValues.first.currency?.value,
         ),
     ];
-    final colorsByCategory = ButlerlyChartColors.forCategories(
-      chartSlices.map((slice) => slice.categoryId),
-    );
-    final chartColors = chartSlices
-        .map((slice) => colorsByCategory[slice.categoryId]!)
-        .toList(growable: false);
     return ButlerlyVisualizationCard(
       title: context.l10n.text('spendingDistribution'),
       child: Column(
         children: [
-          Semantics(
-            label:
-                '${context.l10n.text('spendingDistribution')}: ${chartSlices.map((slice) => '${slice.label} ${_sliceMoney(context, slice)}').join(', ')}',
-            child: SizedBox(
-              height: 180,
-              width: double.infinity,
-              child: CustomPaint(
-                painter: _SpendingDonutPainter(
-                  values: chartSlices.map((slice) => slice.value).toList(),
-                  colors: chartColors,
+          ButlerlyDonutVisualization(
+            density: ButlerlyVisualizationDensity.regular,
+            data: [
+              for (final slice in chartSlices)
+                ButlerlyChartDatum(
+                  label: slice.label,
+                  value: slice.value,
+                  color: ButlerlyChartColors.category(slice.categoryId),
+                  valueLabel:
+                      '${localizedDecimal(context, slice.value.toString())} ${slice.currency ?? ''}'
+                          .trim(),
                 ),
-              ),
-            ),
+            ],
+            valueLabel: (value, _) =>
+                localizedDecimal(context, value.toString()),
           ),
-          for (var index = 0; index < chartSlices.length; index++)
-            Padding(
-              padding: const EdgeInsets.only(bottom: ButlerlySpacing.micro),
-              child: Row(
-                children: [
-                  Icon(Icons.circle, size: 8, color: chartColors[index]),
-                  const SizedBox(width: ButlerlySpacing.micro),
-                  Expanded(child: Text(chartSlices[index].label)),
-                ],
-              ),
-            ),
           const SizedBox(height: ButlerlySpacing.small),
           for (final metric in model.categories.take(5))
             Padding(
@@ -133,40 +121,6 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
   }
 }
 
-class _SpendingDonutPainter extends CustomPainter {
-  const _SpendingDonutPainter({required this.values, required this.colors});
-  final List<double> values;
-  final List<Color> colors;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final total = values.fold<double>(0, (sum, value) => sum + value);
-    if (total <= 0) return;
-    final center = size.center(Offset.zero);
-    final radius = size.shortestSide / 2 - 12;
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 28;
-    var start = -3.141592653589793 / 2;
-    for (var index = 0; index < values.length; index++) {
-      final sweep = values[index] / total * 2 * 3.141592653589793;
-      paint.color = colors[index % colors.length];
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        start,
-        sweep,
-        false,
-        paint,
-      );
-      start += sweep;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _SpendingDonutPainter old) =>
-      old.values != values || old.colors != colors;
-}
-
 class _SpendingSlice {
   const _SpendingSlice({
     required this.categoryId,
@@ -180,7 +134,3 @@ class _SpendingSlice {
   final double value;
   final String? currency;
 }
-
-String _sliceMoney(BuildContext context, _SpendingSlice slice) =>
-    '${localizedDecimal(context, slice.value.toString())} ${slice.currency ?? ''}'
-        .trim();
