@@ -442,6 +442,75 @@ void main() {
     expect(find.byIcon(Icons.close_rounded), findsNothing);
   });
 
+  testWidgets('Home spending trend grid uses the bar baseline', (
+    tester,
+  ) async {
+    HomePage.debugCurrentDate = DateTime.utc(2026, 8, 15, 12);
+    addTearDown(() => HomePage.debugCurrentDate = null);
+
+    await services<FinanceServices>().createTransaction(
+      CreateTransactionCommand(
+        id: 'trend-baseline',
+        provenanceId: 'manual-trend-baseline',
+        timing: KnownTransactionTime(DateTime.utc(2026, 8, 11)),
+        money: Money(
+          amount: DecimalValue.parse('42.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        description: 'Trend baseline',
+      ),
+    );
+
+    await tester.pumpWidget(const MaterialApp(home: HomePage()));
+    await tester.pumpAndSettle();
+
+    final plot = find.byKey(const ValueKey('home-spending-trend-plot'));
+    final baseline = find.byKey(
+      const ValueKey('home-spending-trend-grid-line-3'),
+    );
+    final selectedBar = find.byKey(
+      const ValueKey('home-spending-trend-bar-2026-8'),
+    );
+    expect(plot, findsOneWidget);
+    expect(baseline, findsOneWidget);
+    expect(selectedBar, findsOneWidget);
+    expect(
+      tester.getBottomLeft(baseline).dy,
+      closeTo(tester.getBottomLeft(plot).dy, 0.01),
+    );
+    expect(
+      tester.getBottomLeft(selectedBar).dy,
+      closeTo(tester.getBottomLeft(plot).dy, 0.01),
+    );
+  });
+
+  testWidgets(
+    'Transactions Review and Master Data menus start directly below the app bar',
+    (tester) async {
+      for (final page in const <Widget>[
+        TransactionsPage(),
+        ReviewPage(),
+        MasterDataPage(),
+      ]) {
+        await tester.pumpWidget(MaterialApp(home: page));
+        await tester.pumpAndSettle();
+
+        final appBarBottom = tester.getBottomLeft(find.byType(AppBar)).dy;
+        final selectorTop = tester
+            .getTopLeft(find.byType(ButlerlyCompactSectionSelector))
+            .dy;
+        expect(selectorTop - appBarBottom, closeTo(0, 0.01));
+        expect(
+          tester
+              .getSize(find.byType(ButlerlyCompactSectionSelector))
+              .height,
+          ButlerlySize.minimumTarget,
+        );
+      }
+    },
+  );
+
   testWidgets('Home refreshes when a transaction changes outside its route', (
     tester,
   ) async {
