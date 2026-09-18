@@ -1,0 +1,38 @@
+name: Temp Format Primary Navigation
+
+on:
+  push:
+    branches:
+      - codex/compact-section-header-distinct-donut-colors
+    paths:
+      - apps/butlerly/lib/app/shell/shared/primary_bottom_navigation.dart
+      - .github/workflows/temp-format-primary-navigation.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/compact-section-header-distinct-donut-colors
+
+      - uses: ./.github/actions/setup-toolchain
+
+      - name: Format primary navigation in app package context
+        working-directory: apps/butlerly
+        run: dart format lib/app/shell/shared/primary_bottom_navigation.dart
+
+      - name: Commit formatter output
+        run: |
+          if git diff --quiet; then
+            echo "No formatting changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/butlerly/lib/app/shell/shared/primary_bottom_navigation.dart
+          git commit -m "Format primary navigation in app package context"
+          git push origin HEAD:codex/compact-section-header-distinct-donut-colors
