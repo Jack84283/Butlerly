@@ -102,10 +102,10 @@ class _ButlerlyPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;
 
   @override
-  double get minExtent => ButlerlySize.preferredTarget;
+  double get minExtent => ButlerlySize.minimumTarget;
 
   @override
-  double get maxExtent => ButlerlySize.preferredTarget;
+  double get maxExtent => ButlerlySize.minimumTarget;
 
   @override
   Widget build(
