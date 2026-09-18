@@ -50,7 +50,7 @@ class ButlerlyPage extends StatelessWidget {
             SliverAppBar(
               pinned: true,
               toolbarHeight: pinnedHeader == null
-                  ? null
+                  ? kToolbarHeight
                   : ButlerlySize.compactPageToolbarHeight,
               title: Text(title!),
               actions: actions,
