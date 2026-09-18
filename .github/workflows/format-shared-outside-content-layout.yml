@@ -1,0 +1,38 @@
+name: Format Shared Outside Content Layout
+
+on:
+  push:
+    branches:
+      - codex/shared-outside-content-layout
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-toolchain
+      - run: ./tool/setup.sh
+      - name: Format changed Dart files and print diff
+        run: |
+          cd apps/butlerly
+          dart format \
+            lib/design_system/components/butlerly_content_surface.dart \
+            lib/design_system/components/butlerly_responsive_body.dart \
+            lib/design_system/components/butlerly_components.dart \
+            lib/features/foundation/presentation/home_page.dart \
+            lib/features/foundation/presentation/first_use_preferences_page.dart \
+            lib/features/foundation/presentation/restore_recovery_required_page.dart \
+            lib/features/foundation/presentation/butlerly_launch_page.dart \
+            test/design_system/content_surface_policy_test.dart
+          git diff -- \
+            lib/design_system/components/butlerly_content_surface.dart \
+            lib/design_system/components/butlerly_responsive_body.dart \
+            lib/design_system/components/butlerly_components.dart \
+            lib/features/foundation/presentation/home_page.dart \
+            lib/features/foundation/presentation/first_use_preferences_page.dart \
+            lib/features/foundation/presentation/restore_recovery_required_page.dart \
+            lib/features/foundation/presentation/butlerly_launch_page.dart \
+            test/design_system/content_surface_policy_test.dart
