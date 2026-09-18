@@ -181,9 +181,7 @@ void main() {
     },
   );
 
-  testWidgets('Home spending trend grid uses the bar baseline', (
-    tester,
-  ) async {
+  testWidgets('Home spending trend grid uses the bar baseline', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.light,
@@ -196,16 +194,8 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: homeSpendingTrendForTest([
-            (
-              month: DateTime(2026, 7),
-              value: 20,
-              selected: false,
-            ),
-            (
-              month: DateTime(2026, 8),
-              value: 42,
-              selected: true,
-            ),
+            (month: DateTime(2026, 7), value: 20, selected: false),
+            (month: DateTime(2026, 8), value: 42, selected: true),
           ]),
         ),
       ),
