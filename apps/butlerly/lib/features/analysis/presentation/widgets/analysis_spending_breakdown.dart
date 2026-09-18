@@ -71,14 +71,9 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
                   color: colorsByCategory[slice.categoryId],
                 ),
             ],
-            valueLabel: (value, _) {
-              final currency = chartSlices
-                  .where((slice) => slice.value == value)
-                  .map((slice) => slice.currency)
-                  .firstOrNull;
-              return '${localizedDecimal(context, value.toString())} ${currency ?? ''}'
-                  .trim();
-            },
+            valueLabel: (value, _) =>
+                '${localizedDecimal(context, value.toString())} ${chartSlices.first.currency ?? ''}'
+                    .trim(),
           ),
           const SizedBox(height: ButlerlySpacing.small),
           for (final metric in model.categories.take(5))
