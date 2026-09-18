@@ -17,7 +17,12 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/cupertino.dart' show CupertinoSliverRefreshControl;
 import 'package:flutter/foundation.dart'
-    show SynchronousFuture, TargetPlatform, defaultTargetPlatform, kIsWeb;
+    show
+        SynchronousFuture,
+        TargetPlatform,
+        defaultTargetPlatform,
+        kIsWeb,
+        visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -875,6 +880,21 @@ class _SpendingHero extends StatelessWidget {
     );
   }
 }
+
+@visibleForTesting
+Widget homeSpendingTrendForTest(
+  List<({DateTime month, double value, bool selected})> points,
+) => _SpendingTrend(
+  points: [
+    for (final point in points)
+      _HomeTrendPoint(
+        month: point.month,
+        value: point.value,
+        metric: null,
+        selected: point.selected,
+      ),
+  ],
+);
 
 class _SpendingTrend extends StatelessWidget {
   const _SpendingTrend({required this.points});
