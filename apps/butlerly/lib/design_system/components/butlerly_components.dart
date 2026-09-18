@@ -73,25 +73,29 @@ class ButlerlyPage extends StatelessWidget {
                 sliver: DecoratedSliver(
                   key: const ValueKey('butlerly-page-content-surface'),
                   decoration: BoxDecoration(color: context.colors.background),
-                  sliver: SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: SizedBox(
-                      key: const ValueKey('butlerly-page-content-body'),
-                      width: double.infinity,
-                      child: Padding(
-                        padding: contentPadding,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            if (subtitle != null) ...[
-                              Text(
-                                subtitle!,
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
-                              const SizedBox(height: ButlerlySpacing.section),
+                  sliver: SliverToBoxAdapter(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.remainingPaintExtent,
+                      ),
+                      child: SizedBox(
+                        key: const ValueKey('butlerly-page-content-body'),
+                        width: double.infinity,
+                        child: Padding(
+                          padding: contentPadding,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (subtitle != null) ...[
+                                Text(
+                                  subtitle!,
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
+                                const SizedBox(height: ButlerlySpacing.section),
+                              ],
+                              ...children,
                             ],
-                            ...children,
-                          ],
+                          ),
                         ),
                       ),
                     ),
