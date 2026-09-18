@@ -21,7 +21,10 @@ jobs:
 
       - uses: ./.github/actions/setup-toolchain
 
-      - name: Format primary navigation in app package context
+      - name: Run repository setup
+        run: ./tool/setup.sh
+
+      - name: Format primary navigation in validation context
         working-directory: apps/butlerly
         run: dart format lib/app/shell/shared/primary_bottom_navigation.dart
 
@@ -34,5 +37,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add apps/butlerly/lib/app/shell/shared/primary_bottom_navigation.dart
-          git commit -m "Format primary navigation in app package context"
+          git commit -m "Format primary navigation in validation context"
           git push origin HEAD:codex/compact-section-header-distinct-donut-colors
