@@ -6,16 +6,18 @@ on:
       - codex/shared-outside-content-layout
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  preview:
+  format:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: codex/shared-outside-content-layout
       - uses: ./.github/actions/setup-toolchain
       - run: ./tool/setup.sh
-      - name: Format changed Dart files and print diff
+      - name: Format changed Dart files
         run: |
           cd apps/butlerly
           dart format \
@@ -27,12 +29,13 @@ jobs:
             lib/features/foundation/presentation/restore_recovery_required_page.dart \
             lib/features/foundation/presentation/butlerly_launch_page.dart \
             test/design_system/content_surface_policy_test.dart
-          git diff -- \
-            lib/design_system/components/butlerly_content_surface.dart \
-            lib/design_system/components/butlerly_responsive_body.dart \
-            lib/design_system/components/butlerly_components.dart \
-            lib/features/foundation/presentation/home_page.dart \
-            lib/features/foundation/presentation/first_use_preferences_page.dart \
-            lib/features/foundation/presentation/restore_recovery_required_page.dart \
-            lib/features/foundation/presentation/butlerly_launch_page.dart \
-            test/design_system/content_surface_policy_test.dart
+      - name: Commit formatter output
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/butlerly/lib apps/butlerly/test/design_system/content_surface_policy_test.dart
+          git commit -m "Format shared outside-content layout"
+          git push origin HEAD:codex/shared-outside-content-layout
