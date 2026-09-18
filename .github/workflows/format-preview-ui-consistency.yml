@@ -1,0 +1,22 @@
+name: Format Preview UI Consistency
+
+on:
+  push:
+    branches:
+      - codex/ui-consistency-review-body-menu-home-grid
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-toolchain
+      - run: ./tool/setup.sh
+      - name: Format affected files and print diff
+        run: |
+          cd apps/butlerly
+          dart format             lib/features/foundation/presentation/home_page.dart             lib/features/foundation/presentation/review_page.dart             test/features/foundation/transaction_record_list_presentation_test.dart
+          git diff --             lib/features/foundation/presentation/home_page.dart             lib/features/foundation/presentation/review_page.dart             test/features/foundation/transaction_record_list_presentation_test.dart
