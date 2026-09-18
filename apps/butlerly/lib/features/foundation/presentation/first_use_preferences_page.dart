@@ -1,5 +1,6 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/time_zone_catalog.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -15,7 +16,9 @@ class FirstUsePreferencesPage extends ConsumerWidget {
     final preference = ref.watch(userPreferenceProvider).value!;
     return Scaffold(
       body: SafeArea(
-        child: ListView(
+        child: ButlerlyResponsiveBody(
+          contentKey: const ValueKey('first-use-preferences-content'),
+          child: ListView(
           padding: const EdgeInsets.symmetric(
             horizontal: ButlerlySize.phoneGutter,
             vertical: ButlerlySpacing.section,
@@ -150,6 +153,7 @@ class FirstUsePreferencesPage extends ConsumerWidget {
               child: Text(context.l10n.text('continueLocally')),
             ),
           ],
+          ),
         ),
       ),
     );
