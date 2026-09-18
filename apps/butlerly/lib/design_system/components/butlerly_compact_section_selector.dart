@@ -90,30 +90,34 @@ class _ButlerlyCompactSectionSelectorState
                       padding: const EdgeInsets.symmetric(
                         horizontal: ButlerlySpacing.xxs,
                       ),
-                      child: TextButton(
-                        key: ValueKey('compact-section-$index'),
-                        style: TextButton.styleFrom(
-                          minimumSize: const Size(
-                            ButlerlySize.minimumTarget,
-                            ButlerlySize.minimumTarget,
+                      child: Semantics(
+                        key: ValueKey('compact-section-semantics-$index'),
+                        selected: index == widget.selectedIndex,
+                        child: TextButton(
+                          key: ValueKey('compact-section-$index'),
+                          style: TextButton.styleFrom(
+                            minimumSize: const Size(
+                              ButlerlySize.minimumTarget,
+                              ButlerlySize.minimumTarget,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: ButlerlySpacing.small,
+                            ),
+                            foregroundColor: index == widget.selectedIndex
+                                ? colors.onSecondaryContainer
+                                : colors.onSurface,
+                            backgroundColor: index == widget.selectedIndex
+                                ? colors.secondaryContainer
+                                : Colors.transparent,
+                            shape: const StadiumBorder(),
                           ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: ButlerlySpacing.small,
+                          onPressed: () => widget.onSelected(index),
+                          child: Text(
+                            widget.labels[index],
+                            maxLines: 1,
+                            overflow: TextOverflow.fade,
+                            softWrap: false,
                           ),
-                          foregroundColor: index == widget.selectedIndex
-                              ? colors.onSecondaryContainer
-                              : colors.onSurface,
-                          backgroundColor: index == widget.selectedIndex
-                              ? colors.secondaryContainer
-                              : Colors.transparent,
-                          shape: const StadiumBorder(),
-                        ),
-                        onPressed: () => widget.onSelected(index),
-                        child: Text(
-                          widget.labels[index],
-                          maxLines: 1,
-                          overflow: TextOverflow.fade,
-                          softWrap: false,
                         ),
                       ),
                     ),

@@ -449,15 +449,16 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
       final decision =
           await showButlerlyBottomSheet<ButlerlyDuplicateConfirmationResult>(
             context: context,
-            builder: (dialogContext) => ButlerlyDuplicateTransactionConfirmation(
-              proposed: proposed,
-              candidates: check.candidates,
-              paymentSourceLabels: {
-                for (final source in editorData.paymentSources)
-                  source.id.value: paymentSourceDisplayLabel(source),
-              },
-              onDecision: (value) => Navigator.pop(dialogContext, value),
-            ),
+            builder: (dialogContext) =>
+                ButlerlyDuplicateTransactionConfirmation(
+                  proposed: proposed,
+                  candidates: check.candidates,
+                  paymentSourceLabels: {
+                    for (final source in editorData.paymentSources)
+                      source.id.value: paymentSourceDisplayLabel(source),
+                  },
+                  onDecision: (value) => Navigator.pop(dialogContext, value),
+                ),
           );
       if (!mounted || decision == null) {
         return;

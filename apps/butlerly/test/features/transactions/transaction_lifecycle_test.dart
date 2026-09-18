@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/design_system/components/butlerly_compact_section_selector.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/add_page.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
+import 'package:butlerly/features/foundation/presentation/master_data_page.dart';
 import 'package:butlerly/features/foundation/presentation/payment_sources_page.dart';
 import 'package:butlerly/features/foundation/presentation/review_page.dart';
 import 'package:butlerly/features/foundation/presentation/search_page.dart';
@@ -566,7 +568,9 @@ void main() {
     expect(find.text('Aug 10, 2026'), findsOneWidget);
     expect(find.byType(Card), findsNothing);
     expect(find.byType(ButlerlyRecordRow), findsNWidgets(2));
-    final filterBottom = tester.getBottomLeft(find.byType(TabBar));
+    final filterBottom = tester.getBottomLeft(
+      find.byType(ButlerlyCompactSectionSelector),
+    );
     final firstRowTop = tester.getTopLeft(find.byType(ButlerlyRecordRow).first);
     expect(
       firstRowTop.dy - filterBottom.dy,
@@ -619,7 +623,7 @@ void main() {
     expect(find.text('You’re all caught up'), findsOneWidget);
   });
 
-  testWidgets('Transactions tabs preserve filter selection and content', (
+  testWidgets('Transactions compact filters preserve selection and content', (
     tester,
   ) async {
     await services<FinanceServices>().createTransaction(
@@ -652,7 +656,8 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: TransactionsPage()));
     await tester.pumpAndSettle();
 
-    expect(find.byType(TabBar), findsOneWidget);
+    expect(find.byType(ButlerlyCompactSectionSelector), findsOneWidget);
+    expect(find.byType(TabBar), findsNothing);
     expect(find.byType(SegmentedButton), findsNothing);
     expect(
       find
@@ -663,24 +668,51 @@ void main() {
           ),
       isNotEmpty,
     );
-    final tabBar = tester.widget<TabBar>(find.byType(TabBar));
-    expect(tabBar.controller?.index, 0);
+    expect(
+      tester
+          .widget<ButlerlyCompactSectionSelector>(
+            find.byType(ButlerlyCompactSectionSelector),
+          )
+          .selectedIndex,
+      0,
+    );
 
-    await tester.tap(find.byType(Tab).at(1));
+    await tester.tap(find.byKey(const ValueKey('compact-section-1')));
     await tester.pumpAndSettle();
-    expect(tabBar.controller?.index, 1);
+    expect(
+      tester
+          .widget<ButlerlyCompactSectionSelector>(
+            find.byType(ButlerlyCompactSectionSelector),
+          )
+          .selectedIndex,
+      1,
+    );
     expect(find.text('Tab income'), findsOneWidget);
     expect(find.text('Tab expense'), findsNothing);
 
-    await tester.tap(find.byType(Tab).at(2));
+    await tester.tap(find.byKey(const ValueKey('compact-section-2')));
     await tester.pumpAndSettle();
-    expect(tabBar.controller?.index, 2);
+    expect(
+      tester
+          .widget<ButlerlyCompactSectionSelector>(
+            find.byType(ButlerlyCompactSectionSelector),
+          )
+          .selectedIndex,
+      2,
+    );
     expect(find.text('Tab income'), findsNothing);
     expect(find.text('Tab expense'), findsOneWidget);
 
-    await tester.tap(find.byType(Tab).at(3));
+    await tester.tap(find.byKey(const ValueKey('compact-section-3')));
     await tester.pumpAndSettle();
-    expect(tabBar.controller?.index, 3);
+    expect(
+      tester
+          .widget<ButlerlyCompactSectionSelector>(
+            find.byType(ButlerlyCompactSectionSelector),
+          )
+          .selectedIndex,
+      3,
+    );
     expect(find.text('No records found'), findsOneWidget);
   });
 
@@ -1211,6 +1243,128 @@ void main() {
     await tester.tap(find.byTooltip('Archive payment source'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Archived'), findsOneWidget);
+  });
+
+  testWidgets('credit cards require and display exactly four digits', (
+    tester,
+  ) async {
+    final finance = services<FinanceServices>();
+    await finance.savePaymentSource(
+      PaymentSource(
+        id: PaymentSourceId('legacy-card'),
+        name: 'Travel card',
+        type: PaymentSourceType.card,
+        displayIdentity: 'Travel card',
+      ),
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: PaymentSourcesPage())),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Travel card'));
+    await tester.pumpAndSettle();
+    expect(find.text('Edit payment source'), findsOneWidget);
+
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(find.text('Enter exactly four digits.'), findsOneWidget);
+    expect(find.text('Edit payment source'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField).at(2), '8421');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Travel card •••• 8421'), findsOneWidget);
+    final result = await finance.listPaymentSources();
+    expect(result, isA<ApplicationSuccess<List<PaymentSource>>>());
+    final values = (result as ApplicationSuccess<List<PaymentSource>>).value;
+    expect(values.single.type, PaymentSourceType.card);
+    expect(values.single.lastFour, '8421');
+  });
+
+  testWidgets('Master Data manages merchants through bottom sheets', (
+    tester,
+  ) async {
+    final finance = services<FinanceServices>();
+    await finance.saveMerchant(
+      Merchant(id: MerchantId('merchant-existing'), name: 'Corner Store'),
+    );
+
+    await tester.pumpWidget(const MaterialApp(home: MasterDataPage()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('compact-section-3')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Corner Store'), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.edit_outlined).first);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('master-data-edit-sheet')),
+      findsOneWidget,
+    );
+    await tester.enterText(find.byType(TextField).last, 'Corner Market');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(find.text('Corner Market'), findsOneWidget);
+    expect(find.text('Corner Store'), findsNothing);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Add'));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('master-data-edit-sheet')),
+      findsOneWidget,
+    );
+    await tester.enterText(find.byType(TextField).last, 'New Merchant');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(find.text('New Merchant'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Deactivate').first);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Archived'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Reactivate').first);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Archived'), findsNothing);
+  });
+
+  testWidgets('Master Data chooses subcategory parent in a bottom sheet', (
+    tester,
+  ) async {
+    final finance = services<FinanceServices>();
+    await finance.saveCategory(
+      Category(
+        id: CategoryId('category-food'),
+        name: 'Food',
+        origin: CategoryOrigin.user,
+      ),
+    );
+
+    await tester.pumpWidget(const MaterialApp(home: MasterDataPage()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('compact-section-1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Add'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('master-data-edit-sheet')),
+      findsOneWidget,
+    );
+    await tester.enterText(find.byType(TextField).last, 'Dining');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('master-data-parent-sheet')),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Food'));
+    await tester.pumpAndSettle();
+    expect(find.text('Dining'), findsOneWidget);
+    expect(find.textContaining('Food'), findsOneWidget);
   });
 
   testWidgets('detail presents only the canonical transaction calendar date', (

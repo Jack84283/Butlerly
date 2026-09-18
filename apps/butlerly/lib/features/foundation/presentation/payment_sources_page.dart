@@ -5,6 +5,7 @@ import 'package:butlerly/core/evidence/platform_ocr_recognizer.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -192,8 +193,9 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
             FilledButton(
               onPressed: () async {
                 final safeLastFour = lastFour.text.trim();
-                if (safeLastFour.isNotEmpty &&
-                    !RegExp(r'^\d{4}$').hasMatch(safeLastFour)) {
+                final validLastFour = RegExp(r'^\d{4}$').hasMatch(safeLastFour);
+                if ((paymentSourceRequiresLastFour(type) && !validLastFour) ||
+                    (safeLastFour.isNotEmpty && !validLastFour)) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(context.l10n.text('invalidLastFour')),
@@ -285,9 +287,6 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
         SnackBar(content: Text(context.l10n.text('paymentSourceSaveFailed'))),
       );
     }
-    // The dialog route may still be completing its closing animation when
-    // showDialog returns. Dispose after that frame so TextField transitions
-    // never retain a disposed controller.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       name.dispose();
       issuer.dispose();
@@ -356,11 +355,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                           horizontal: ButlerlySpacing.standard,
                           vertical: ButlerlySpacing.compact,
                         ),
-                        title: Text(
-                          value.lastFour == null
-                              ? value.name
-                              : '${value.name} ••••${value.lastFour}',
-                        ),
+                        title: Text(paymentSourceDisplayLabel(value)),
                         subtitle: Text(
                           [
                             _typeLabel(context, value.type),
