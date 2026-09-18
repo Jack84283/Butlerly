@@ -66,8 +66,13 @@ void main() {
     final navigationRect = tester.getRect(
       find.byKey(const ValueKey('primary-phone-navigation')),
     );
-    final archRect = tester.getRect(
-      find.byKey(const ValueKey('primary-navigation-add-arch')),
+    final archFinder = find.byKey(
+      const ValueKey('primary-navigation-add-arch'),
+    );
+    final archRect = tester.getRect(archFinder);
+    final arch = tester.widget<Container>(archFinder);
+    final navigationContentRect = tester.getRect(
+      find.byKey(const ValueKey('primary-navigation-content')),
     );
 
     expect(bodyRect.bottom, closeTo(navigationRect.top, 0.01));
@@ -79,6 +84,11 @@ void main() {
       ),
     );
     expect(archRect.bottom, greaterThan(navigationRect.top));
+    expect(arch.foregroundDecoration, isNotNull);
+    expect(
+      navigationContentRect.height,
+      ButlerlySize.navigationBarHeight,
+    );
 
     await tester.tap(find.byKey(const ValueKey('bottom-page-action')));
     expect(tapped, isTrue);
