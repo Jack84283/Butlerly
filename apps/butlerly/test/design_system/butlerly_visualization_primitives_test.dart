@@ -70,6 +70,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.bySemanticsLabel('Jan: 10.0 USD, Feb: 20.0 USD'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel('Jan: 10.0 USD, Feb: 20.0 USD'),
+      findsOneWidget,
+    );
   });
 }
