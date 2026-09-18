@@ -8,6 +8,7 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 export 'butlerly_category_icon.dart';
+export 'butlerly_content_surface.dart';
 
 class ButlerlyPage extends StatelessWidget {
   const ButlerlyPage({
