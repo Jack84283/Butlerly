@@ -132,8 +132,9 @@ abstract final class ButlerlyChartColors {
     for (final id in ids) {
       final base = _paletteIndex(id);
       var index = base;
-      while (used.contains(index) && used.length < categoryPalette.length) {
-        index = (index + 1) % categoryPalette.length;
+      while (used.contains(index) &&
+          used.length < _stableCategoryPaletteLength) {
+        index = (index + 1) % _stableCategoryPaletteLength;
       }
       assigned[id] = categoryPalette[index];
       used.add(index);
