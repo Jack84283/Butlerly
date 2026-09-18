@@ -25,7 +25,8 @@ double phoneNavigationHeightForLabels({
   }
 
   var requiredHeight =
-      ButlerlySize.primaryNavigationAddIconSize + labelHeight(addLabel);
+      ButlerlySize.primaryNavigationAddIconSize +
+      labelHeight(addLabel);
 
   for (final label in standardLabels) {
     final destinationHeight =
