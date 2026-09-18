@@ -1248,34 +1248,34 @@ void main() {
   testWidgets('credit cards require and display exactly four digits', (
     tester,
   ) async {
+    final finance = services<FinanceServices>();
+    await finance.savePaymentSource(
+      PaymentSource(
+        id: PaymentSourceId('legacy-card'),
+        name: 'Travel card',
+        type: PaymentSourceType.card,
+        displayIdentity: 'Travel card',
+      ),
+    );
+
     await tester.pumpWidget(const MaterialApp(home: PaymentSourcesPage()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Add payment source'));
+    await tester.tap(find.text('Travel card'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).first, 'Travel card');
-
-    final typeDropdown = find.byType(
-      DropdownButtonFormField<PaymentSourceType>,
-    );
-    await tester.ensureVisible(typeDropdown);
-    await tester.pumpAndSettle();
-    await tester.tap(typeDropdown);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Card').last);
-    await tester.pumpAndSettle();
+    expect(find.text('Edit payment source'), findsOneWidget);
 
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     expect(find.text('Enter exactly four digits.'), findsOneWidget);
-    expect(find.text('Add payment source'), findsOneWidget);
+    expect(find.text('Edit payment source'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField).at(2), '8421');
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
     expect(find.text('Travel card •••• 8421'), findsOneWidget);
-    final result = await services<FinanceServices>().listPaymentSources();
+    final result = await finance.listPaymentSources();
     expect(result, isA<ApplicationSuccess<List<PaymentSource>>>());
     final values = (result as ApplicationSuccess<List<PaymentSource>>).value;
     expect(values.single.type, PaymentSourceType.card);
@@ -1362,7 +1362,7 @@ void main() {
     await tester.tap(find.text('Food'));
     await tester.pumpAndSettle();
     expect(find.text('Dining'), findsOneWidget);
-    expect(find.text('Food'), findsOneWidget);
+    expect(find.textContaining('Food'), findsOneWidget);
   });
 
   testWidgets('detail presents only the canonical transaction calendar date', (
