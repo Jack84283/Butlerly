@@ -19,6 +19,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_selector/file_selector.dart' as files;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -79,6 +80,8 @@ void main() {
     double textScale = 1,
     Locale locale = const Locale('en'),
     ThemeData? theme,
+    bool fromFile = false,
+    File? sourceFile,
   }) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     await tester.pumpWidget(
@@ -101,12 +104,21 @@ void main() {
           ),
           child: StatementCapturePage(
             pickImage: (_) async => XFile(original.path),
+            openFile: (group) async {
+              expect(group.extensions, contains('pdf'));
+              final selected = sourceFile ?? original;
+              return files.XFile(selected.path, name: selected.uri.pathSegments.last);
+            },
           ),
         ),
       ),
     );
     await tester.runAsync(() async {
-      await tester.tap(find.byIcon(Icons.photo_library_outlined));
+      await tester.tap(
+        find.byIcon(
+          fromFile ? Icons.folder_open_outlined : Icons.photo_library_outlined,
+        ),
+      );
       for (var attempt = 0; attempt < 100; attempt++) {
         if ((await database.database.query(
           'financial_statements',
@@ -136,6 +148,36 @@ void main() {
     }
     expect(tester.takeException(), isNull);
   }
+
+  testWidgets('accepts an existing PDF statement from Files', (tester) async {
+    final pdf = File('${root.path}/statement.pdf');
+    await pdf.writeAsBytes(originalBytes);
+    const rawText = '2026-08-12 MARKET -12.34 USD';
+    messenger.setMockMethodCallHandler(
+      channel,
+      (_) async => {
+        'text': rawText,
+        'observations': [
+          {
+            'text': rawText,
+            'confidence': .95,
+            'left': .1,
+            'top': .2,
+            'width': .8,
+            'height': .03,
+            'pageIndex': 0,
+            'order': 0,
+          },
+        ],
+      },
+    );
+
+    await capture(tester, fromFile: true, sourceFile: pdf);
+
+    final rows = await database.database.query('financial_statements');
+    expect(rows, hasLength(1));
+    expect(rows.single['original_filename'], 'statement.pdf');
+  });
 
   testWidgets(
     'statement review and correction remain operable at narrow 2x text scale',
