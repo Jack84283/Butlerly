@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:butlerly/core/analysis/bundled_analysis_rules.dart';
 import 'package:butlerly/core/config/app_configuration.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
-import 'package:butlerly/core/database/initial_master_data.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
@@ -52,7 +51,6 @@ final class V1IntegrationHarness {
       documentsDirectory: documents,
       localEvidenceDirectory: evidence,
     );
-    await finance.seedInitialMasterData(buildInitialMasterData());
   }
 
   Future<void> restart() async {
