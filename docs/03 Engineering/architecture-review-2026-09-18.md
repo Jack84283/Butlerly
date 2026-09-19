@@ -70,7 +70,7 @@ Cycle 2 retraced bootstrap, restore, recovery, erase, rule selection and decimal
 
 Cycle 3 reviewed the resulting complete diff and callers again, including restore refresh ordering, existing schema/backup compatibility, declarative roles after SQLite reconstruction, failure states and localization. No further consequential in-scope defect was identified by self-review.
 
-Final canonical validation passed: `./tool/validate.sh` with Flutter 3.47.1 / Dart 3.13.1, zero formatter changes, no static-analysis issues, 32 domain + 44 database + 171 application + 528 Flutter tests (775 total), and the web build. `git diff --check` passed.
+Final canonical validation passed: `./tool/validate.sh` with the Flutter and Dart versions pinned in [`tool/toolchain.env`](../../tool/toolchain.env) at the reviewed commit, zero formatter changes, no static-analysis issues, 32 domain + 44 database + 171 application + 528 Flutter tests (775 total), and the web build. `git diff --check` passed.
 
 All seven iOS simulator integration journeys passed using `BUTLERLY_IOS_DEVICE_ID=613A1429-7ADD-41D5-8242-83D2C6D14396 ./tool/validate.sh integration_test`. They exercise first-use preferences, transaction creation/restart, CSV import/duplicates, receipt evidence/reconciliation, search/edit/analysis/export/erase, and recoverable unsupported OCR.
 
