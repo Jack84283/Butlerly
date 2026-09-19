@@ -281,7 +281,6 @@ void main() {
       expect(confirmations, 1);
     },
   );
-
 }
 
 TransactionDto _dto(ImportTransactionCommand command) {

@@ -38,10 +38,7 @@ class _MasterDataPageState extends State<MasterDataPage> {
       finance.listTags(),
       finance.listMerchants(),
       finance.loadMasterTranslations(masterType: 'category', locale: 'en'),
-      finance.loadMasterTranslations(
-        masterType: 'category',
-        locale: 'zh-Hans',
-      ),
+      finance.loadMasterTranslations(masterType: 'category', locale: 'zh-Hans'),
       finance.loadMasterTranslations(masterType: 'category', locale: 'es'),
       finance.loadMasterTranslations(masterType: 'tag', locale: 'en'),
       finance.loadMasterTranslations(masterType: 'tag', locale: 'zh-Hans'),
@@ -63,16 +60,8 @@ class _MasterDataPageState extends State<MasterDataPage> {
       categories.value,
       tags.value,
       merchants.value,
-      {
-        'en': labelsAt(3),
-        'zh-Hans': labelsAt(4),
-        'es': labelsAt(5),
-      },
-      {
-        'en': labelsAt(6),
-        'zh-Hans': labelsAt(7),
-        'es': labelsAt(8),
-      },
+      {'en': labelsAt(3), 'zh-Hans': labelsAt(4), 'es': labelsAt(5)},
+      {'en': labelsAt(6), 'zh-Hans': labelsAt(7), 'es': labelsAt(8)},
     );
   }
 

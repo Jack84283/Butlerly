@@ -107,7 +107,10 @@ void main() {
             openFile: (group) async {
               expect(group.extensions, contains('pdf'));
               final selected = sourceFile ?? original;
-              return files.XFile(selected.path, name: selected.uri.pathSegments.last);
+              return files.XFile(
+                selected.path,
+                name: selected.uri.pathSegments.last,
+              );
             },
           ),
         ),

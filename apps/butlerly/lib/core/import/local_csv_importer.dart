@@ -385,8 +385,7 @@ final class LocalCsvImporter {
     );
   }
 
-  Future<ApplicationResult<DuplicateTransactionCheckResult>>
-  _checkDuplicate({
+  Future<ApplicationResult<DuplicateTransactionCheckResult>> _checkDuplicate({
     required String transactionDate,
     required String amount,
     required String currency,

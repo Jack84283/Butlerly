@@ -542,10 +542,12 @@ final class StatementServices {
     List<StatementRow> rows,
   ) => rows
       .map((row) {
-        final defaultedCurrency =
-            row.currency == null ? intakePolicy.defaultCurrency : null;
-        final defaultedDirection =
-            row.direction == null ? intakePolicy.defaultDirection : null;
+        final defaultedCurrency = row.currency == null
+            ? intakePolicy.defaultCurrency
+            : null;
+        final defaultedDirection = row.direction == null
+            ? intakePolicy.defaultDirection
+            : null;
         final appliedDefault =
             defaultedCurrency != null || defaultedDirection != null;
         return StatementRow(
@@ -580,5 +582,4 @@ final class StatementServices {
         );
       })
       .toList(growable: false);
-
 }
