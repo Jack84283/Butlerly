@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:butlerly/app/theme/app_theme.dart';
-import 'package:butlerly/core/database/initial_master_data.dart';
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
@@ -9,22 +8,29 @@ import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  final builtInIds = buildInitialMasterData().categories
-      .map((category) => category.id.value)
-      .toList(growable: false);
+  List<String> builtInIds() {
+    final catalog = File(
+      '../../packages/butlerly_database/database/seed/catalog.sql',
+    ).readAsStringSync();
+    return RegExp(
+      r"INSERT OR IGNORE INTO categories .*?VALUES \('([^']+)'",
+    ).allMatches(catalog).map((match) => match.group(1)!).toSet().toList()
+      ..sort();
+  }
 
   test('defines exactly eight persistent category colors', () {
     expect(ButlerlyCategoryColors.palette, hasLength(8));
     expect(ButlerlyCategoryColors.palette.values.toSet(), hasLength(8));
   });
 
-  test('maps every built-in category to an asset and color', () {
+  test('maps every database-owned built-in category to an asset and color', () {
+    final ids = builtInIds();
     expect(
       ButlerlyCategoryIdentity.builtInCategoryIds.toSet(),
-      equals(builtInIds.toSet()),
+      equals(ids.toSet()),
     );
 
-    for (final categoryId in builtInIds) {
+    for (final categoryId in ids) {
       final identity = ButlerlyCategoryIdentity.forBuiltInId(categoryId)!;
       expect(identity.categoryId, categoryId);
       expect(identity.localizationKey, categoryId);
