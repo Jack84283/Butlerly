@@ -41,14 +41,14 @@ void main() {
   );
 
   test(
-    'batch import saves only complete pending rows and leaves unresolved rows for review',
+    'batch import persists minimum-valid exceptions and leaves invalid rows unsaved',
     () async {
       final result = await service.importBatch(_statement(), [
         _row('low', amount: '12', confidence: .49),
         _row(
           'unresolved',
           amount: '8',
-          confidence: .50,
+          confidence: .90,
           status: StatementRowStatus.unresolved,
         ),
         _row('high', amount: '4', confidence: .51),
@@ -56,7 +56,7 @@ void main() {
       ], 'source');
       final value =
           (result as ApplicationSuccess<StatementImportSummary>).value;
-      expect(value.imported, 2);
+      expect(value.imported, 3);
       expect(value.needsReview, 2);
       expect(value.possibleDuplicates, 0);
       expect(value.failed, 1);
@@ -64,7 +64,11 @@ void main() {
         transactions.values['statement-statement-row-low']!.reviewIssues,
         hasLength(1),
       );
-      expect(transactions.values['statement-statement-row-unresolved'], isNull);
+      expect(
+        transactions.values['statement-statement-row-unresolved']!.reviewIssues,
+        hasLength(1),
+      );
+      expect(transactions.values['statement-statement-row-invalid'], isNull);
       expect(
         transactions.values['statement-statement-row-high']!.reviewIssues,
         isEmpty,
@@ -73,7 +77,7 @@ void main() {
   );
 
   test(
-    'batch import withholds duplicate candidates for an explicit row decision',
+    'batch import persists duplicate candidates for later Review resolution',
     () async {
       transactions.values['existing'] = _transaction('existing', amount: '12');
       final rows = [
@@ -89,10 +93,24 @@ void main() {
           (await service.importBatch(_statement(), rows, 'source')
                   as ApplicationSuccess<StatementImportSummary>)
               .value;
-      expect(summary.imported, 1);
+      expect(summary.imported, 2);
       expect(summary.possibleDuplicates, 1);
-      expect(transactions.values['statement-statement-row-duplicate'], isNull);
-      expect(groups.values, isEmpty);
+      expect(
+        transactions.values['statement-statement-row-duplicate'],
+        isNotNull,
+      );
+      expect(groups.values, hasLength(1));
+      expect(
+        groups.values.values.single.status,
+        DuplicateCandidateGroupStatus.unresolved,
+      );
+      expect(
+        groups.values.values.single.transactionIds.map((id) => id.value),
+        containsAll([
+          'statement-statement-row-duplicate',
+          'existing',
+        ]),
+      );
     },
   );
 
