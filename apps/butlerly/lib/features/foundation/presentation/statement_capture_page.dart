@@ -21,6 +21,7 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:file_selector/file_selector.dart' show XTypeGroup, openFile;
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -44,9 +45,15 @@ final class CancelStatementReconciliation
 }
 
 class StatementCapturePage extends StatefulWidget {
-  const StatementCapturePage({this.pickImage, this.ocrRecognizer, super.key});
+  const StatementCapturePage({
+    this.pickImage,
+    this.pickFile,
+    this.ocrRecognizer,
+    super.key,
+  });
 
   final Future<XFile?> Function(ImageSource source)? pickImage;
+  final Future<XFile?> Function()? pickFile;
   final OcrRecognizer? ocrRecognizer;
   @override
   State<StatementCapturePage> createState() => _StatementCapturePageState();
@@ -151,6 +158,18 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
               imageQuality: 100,
               requestFullMetadata: false,
             ));
+    if (file == null || !mounted) return;
+    await _ingest(file);
+  }
+
+  Future<void> _selectExistingFile() async {
+    const group = XTypeGroup(
+      label: 'Statement',
+      extensions: ['pdf', 'jpg', 'jpeg', 'png', 'heic', 'heif'],
+    );
+    final file =
+        await (widget.pickFile?.call() ??
+            openFile(acceptedTypeGroups: const [group]));
     if (file == null || !mounted) return;
     await _ingest(file);
   }
@@ -425,6 +444,11 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
           onPressed: _busy ? null : () => _captureImage(ImageSource.camera),
           icon: const Icon(Icons.camera_alt_outlined),
           tooltip: context.l10n.text('scanReceipt'),
+        ),
+        IconButton(
+          onPressed: _busy ? null : _selectExistingFile,
+          icon: const Icon(Icons.file_open_outlined),
+          tooltip: context.l10n.text('importData'),
         ),
         IconButton(
           onPressed: _busy ? null : () => _captureImage(ImageSource.gallery),
