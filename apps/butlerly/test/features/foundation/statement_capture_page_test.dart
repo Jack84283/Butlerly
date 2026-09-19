@@ -373,7 +373,7 @@ void main() {
                     )
                     as ApplicationSuccess<StatementImportSummary>)
                 .value;
-        expect(imported.imported, 0);
+        expect(imported.imported, 1);
         expect(imported.needsReview, 1);
         expect(rows.single.status, StatementRowStatus.unresolved);
         expect(rows.single.confidence, lessThanOrEqualTo(.5));
@@ -390,13 +390,13 @@ void main() {
             (await finance.listReviewItems()
                     as ApplicationSuccess<List<ReviewItemDto>>)
                 .value;
-        expect(review, isEmpty);
-        expect(
-          (await database.database.query(
-            'statement_rows',
-          )).single['original_text'],
-          rawText,
-        );
+        expect(review, hasLength(1));
+        expect(review.single.transaction.description, isNull);
+        final persistedRow = (await database.database.query(
+          'statement_rows',
+        )).single;
+        expect(persistedRow['original_text'], rawText);
+        expect(persistedRow['status'], StatementRowStatus.saved.name);
       });
     },
   );
