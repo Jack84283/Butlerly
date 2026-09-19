@@ -41,84 +41,61 @@ void main() {
   );
 
   test(
-    'imports valid rows, retains low-confidence review, and tolerates invalid rows',
+    'batch canonicalization is rejected so rows require explicit decisions',
     () async {
       final result = await service.importBatch(_statement(), [
         _row('low', amount: '12', confidence: .49),
-        _row('boundary', amount: '8', confidence: .50),
         _row('high', amount: '4', confidence: .51),
-        _row('invalid', amount: null),
       ], 'source');
-      final value =
-          (result as ApplicationSuccess<StatementImportSummary>).value;
-      expect(value.imported, 3);
-      expect(value.needsReview, 2);
-      expect(value.possibleDuplicates, 0);
-      expect(value.failed, 1);
-      expect(
-        transactions.values['statement-statement-row-low']!.reviewIssues,
-        hasLength(1),
-      );
-      expect(
-        transactions.values['statement-statement-row-boundary']!.reviewIssues,
-        hasLength(1),
-      );
-      expect(
-        transactions.values['statement-statement-row-high']!.reviewIssues,
-        isEmpty,
-      );
+      expect(result, isA<ApplicationFailure<StatementImportSummary>>());
+      expect(transactions.values, isEmpty);
     },
   );
 
   test(
-    'assesses and persists duplicate candidates without blocking other rows',
+    'batch path cannot create a duplicate before row-level confirmation',
     () async {
       transactions.values['existing'] = _transaction('existing', amount: '12');
-      final rows = [
-        _row('duplicate', amount: '12'),
-        _row('other', amount: '7'),
-      ];
+      final rows = [_row('duplicate', amount: '12')];
       final assessment =
           (await service.assessBatch(_statement(), rows, 'source')
                   as ApplicationSuccess<StatementImportAssessment>)
               .value;
       expect(assessment.possibleDuplicateCount, 1);
-      final summary =
-          (await service.importBatch(_statement(), rows, 'source')
-                  as ApplicationSuccess<StatementImportSummary>)
-              .value;
-      expect(summary.imported, 2);
-      expect(summary.possibleDuplicates, 1);
-      expect(groups.values, hasLength(1));
+
+      final result = await service.importBatch(_statement(), rows, 'source');
+      expect(result, isA<ApplicationFailure<StatementImportSummary>>());
+      expect(transactions.values.keys, contains('existing'));
       expect(
-        groups.values.values.single.status,
-        DuplicateCandidateGroupStatus.unresolved,
+        transactions.values.keys,
+        isNot(contains('statement-statement-row-duplicate')),
       );
-      expect(
-        groups.values.values.single.transactionIds.map((id) => id.value),
-        contains('statement-statement-row-duplicate'),
-      );
+      expect(groups.values, isEmpty);
     },
   );
 
   test(
-    'rejects a mismatched statement PaymentSource safely and is idempotent for saved rows',
+    'row-level save rejects a mismatched statement PaymentSource and is idempotent',
     () async {
       final statement = _statement(paymentSourceId: 'source-a');
-      expect(
-        await service.importBatch(statement, [_row('one')], 'source-b'),
-        isA<ApplicationFailure<StatementImportSummary>>(),
+      final mismatched = await service.assessBatch(
+        statement,
+        [_row('one')],
+        'source-b',
       );
-      final first = await service.importBatch(_statement(), [
-        _row('one'),
-      ], 'source');
-      final second = await service.importBatch(_statement(), [
-        _row('one'),
-      ], 'source');
-      expect((first as ApplicationSuccess).value.imported, 1);
-      expect((second as ApplicationSuccess).value.imported, 1);
-      expect(transactions.values, hasLength(2));
-      expect(statements.rows.single.status, StatementRowStatus.saved);
+      expect(mismatched, isA<ApplicationFailure<StatementImportAssessment>>());
+
+      final row = _row('one');
+      final first = await service.save(row, 'source', allowCreateNew: true);
+      final savedRow = statements.rows.single;
+      final second = await service.save(
+        savedRow,
+        'source',
+        allowCreateNew: true,
+      );
+      expect(first, isA<ApplicationSuccess<TransactionDto>>());
+      expect(second, isA<ApplicationSuccess<TransactionDto>>());
+      expect(transactions.values, hasLength(1));
       final imported = transactions.values['statement-statement-row-one']!;
       expect(imported.provenance.single.sourceId, 'statement');
       expect(
@@ -183,54 +160,15 @@ void main() {
     }
   });
 
-  test('statement intake defaults missing currency and direction', () async {
-    final row = _row('defaults', currency: null, direction: null);
+  test('statement intake preserves missing currency and direction', () async {
+    final row = _row('unknowns', currency: null, direction: null);
     final result = await service.create(_statement(), [row]);
     expect(result, isA<ApplicationSuccess<void>>());
-    expect(statements.rows.single.currency, 'USD');
-    expect(statements.rows.single.direction, TransactionDirection.expense.name);
+    expect(statements.rows.single.currency, isNull);
+    expect(statements.rows.single.direction, isNull);
     expect(statements.rows.single.originalText, row.originalText);
-    expect(
-      statements.rows.single.sourceContext,
-      contains('statement intake default applied'),
-    );
+    expect(statements.rows.single.sourceContext, row.sourceContext);
   });
-
-  test(
-    'configured intake defaults do not overwrite extracted values',
-    () async {
-      service = StatementServices(
-        statements,
-        transactions,
-        statements,
-        _Clock(now),
-        duplicateGroups: groups,
-        duplicateChecker: DuplicateTransactionChecker(transactions),
-        intakePolicy: const StatementIntakePolicy(
-          defaultCurrency: 'EUR',
-          defaultDirection: TransactionDirection.income,
-        ),
-      );
-      await service.create(_statement(), [
-        _row('missing', currency: null, direction: null),
-        _row('explicit', currency: 'JPY', direction: 'expense'),
-      ]);
-      expect(statements.rows[0].currency, 'EUR');
-      expect(statements.rows[0].direction, 'income');
-      expect(statements.rows[1].currency, 'JPY');
-      expect(statements.rows[1].direction, 'expense');
-    },
-  );
-
-  test(
-    'confidence policy preserves the inclusive threshold and missing value',
-    () {
-      const policy = StatementIntakePolicy(lowConfidenceThreshold: .7);
-      expect(policy.needsConfidenceReview(.7), isTrue);
-      expect(policy.needsConfidenceReview(.71), isFalse);
-      expect(policy.needsConfidenceReview(null), isFalse);
-    },
-  );
 
   test('abandon import cannot remove a protected statement', () async {
     statements.rows.add(
