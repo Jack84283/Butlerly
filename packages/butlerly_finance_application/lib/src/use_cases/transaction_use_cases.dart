@@ -28,7 +28,7 @@ final class CreateTransaction {
     CreateTransactionCommand command,
   ) => runApplication('create transaction', () async {
     final now = clock.now();
-    final proposal = command.categoryId == null && classifier != null
+    final proposal = classifier != null
         ? await classifier!.call(
             merchantId: command.merchantId == null
                 ? null
@@ -64,7 +64,10 @@ final class CreateTransaction {
         command.subcategoryId ?? proposed?.subcategoryId?.value,
         CategoryId.new,
       ),
-      tagIds: command.tagIds.map(TagId.new).toList(growable: false),
+      tagIds: (command.tagIds.isNotEmpty
+              ? command.tagIds.map(TagId.new)
+              : proposed?.tagIds ?? const <TagId>[])
+          .toList(growable: false),
       provenance: [
         Provenance(
           id: ProvenanceId(command.provenanceId),
@@ -195,6 +198,7 @@ final class ImportTransaction {
       merchantId: proposed?.merchantId,
       categoryId: proposed?.categoryId,
       subcategoryId: proposed?.subcategoryId,
+      tagIds: proposed?.tagIds ?? const [],
       provenance: [
         Provenance(
           id: ProvenanceId(command.provenanceId),
