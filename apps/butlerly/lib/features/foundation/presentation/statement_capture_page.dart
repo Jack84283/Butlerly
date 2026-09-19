@@ -21,6 +21,7 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -151,6 +152,23 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
               imageQuality: 100,
               requestFullMetadata: false,
             ));
+    if (file == null || !mounted) return;
+    await _ingest(file);
+  }
+
+  Future<void> _pickStatementFile() async {
+    const group = XTypeGroup(
+      label: 'Statement',
+      extensions: ['pdf', 'png', 'jpg', 'jpeg', 'heic'],
+      mimeTypes: ['application/pdf', 'image/png', 'image/jpeg', 'image/heic'],
+      uniformTypeIdentifiers: [
+        'com.adobe.pdf',
+        'public.png',
+        'public.jpeg',
+        'public.heic',
+      ],
+    );
+    final file = await openFile(acceptedTypeGroups: const [group]);
     if (file == null || !mounted) return;
     await _ingest(file);
   }
@@ -431,6 +449,11 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
           icon: const Icon(Icons.photo_library_outlined),
           tooltip: context.l10n.text('importData'),
         ),
+        IconButton(
+          onPressed: _busy ? null : _pickStatementFile,
+          icon: const Icon(Icons.upload_file_outlined),
+          tooltip: context.l10n.text('importFromFile'),
+        ),
       ],
     ),
     body: ButlerlyResponsiveBody(
@@ -672,101 +695,6 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
   void _message(String text) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
-    }
-  }
-
-  Future<void> _importBatch() async {
-    final sourceId = _sourceId;
-    if (sourceId == null) {
-      _message(context.l10n.text('choosePaymentSourceToContinue'));
-      return;
-    }
-    final candidates = _rows
-        .where(
-          (row) =>
-              row.status == StatementRowStatus.pending ||
-              row.status == StatementRowStatus.unresolved,
-        )
-        .toList(growable: false);
-    final assessmentResult = await widget.service.assessBatch(
-      widget.statement,
-      candidates,
-      sourceId,
-    );
-    if (!mounted) return;
-    if (assessmentResult is! ApplicationSuccess<StatementImportAssessment>) {
-      _message(context.l10n.text('statementAssessmentFailed'));
-      return;
-    }
-    final assessment = assessmentResult.value;
-    final confirmed = await showButlerlyBottomSheet<bool>(
-      context: context,
-      builder: (context) => ButlerlySheet(
-        title: Text(context.l10n.text('reviewStatementImport')),
-        content: Text(
-          [
-            '${context.l10n.text('candidateTransactions')}: ${assessment.candidateCount}',
-            if (assessment.aggregateAmount != null)
-              '${context.l10n.text('aggregateAmount')}: ${assessment.currency} ${assessment.aggregateAmount}',
-            '${context.l10n.text('statementNeedsReview')}: ${assessment.lowConfidenceCount}',
-            '${context.l10n.text('possibleDuplicates')}: ${assessment.possibleDuplicateCount}',
-            '${context.l10n.text('unresolvedRows')}: ${assessment.invalidCount}',
-          ].join('\n'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(context.l10n.text('cancel')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(context.l10n.text('importData')),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-    final result = await widget.service.importBatch(
-      widget.statement,
-      candidates,
-      sourceId,
-    );
-    if (!mounted) return;
-    if (result case ApplicationSuccess<StatementImportSummary>(
-      value: final summary,
-    )) {
-      notifyTransactionChanged();
-      await showButlerlyBottomSheet<void>(
-        context: context,
-        builder: (context) => ButlerlySheet(
-          title: Text(context.l10n.text('importSummary')),
-          content: Text(
-            '${summary.imported} ${context.l10n.text('statementSaved')} · '
-            '${summary.needsReview} ${context.l10n.text('statementNeedsReview')} · '
-            '${summary.possibleDuplicates} ${context.l10n.text('possibleDuplicates')} · '
-            '${summary.failed} ${context.l10n.text('statementFailed')}',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                if (summary.failed > 0) {
-                  Navigator.pop(context);
-                } else {
-                  context.go('/review');
-                }
-              },
-              child: Text(
-                context.l10n.text(summary.failed > 0 ? 'done' : 'review'),
-              ),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(context.l10n.text('done')),
-            ),
-          ],
-        ),
-      );
-      if (mounted) context.pop();
     }
   }
 
@@ -1347,22 +1275,6 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                 ),
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.only(
-              top: ButlerlySpacing.micro,
-              bottom: ButlerlySpacing.bottomActionSpacing,
-            ),
-            child: SafeArea(
-              top: false,
-              child: FilledButton.icon(
-                onPressed: _sourceId == null || _rows.isEmpty
-                    ? null
-                    : _importBatch,
-                icon: const Icon(Icons.download_done_outlined),
-                label: Text(context.l10n.text('importData')),
-              ),
-            ),
-          ),
         ],
       ),
     ),
