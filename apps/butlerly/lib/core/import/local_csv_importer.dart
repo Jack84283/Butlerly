@@ -174,7 +174,6 @@ final class LocalCsvImporter {
     final errors = [...preview.errors];
     for (final row in preview.rows.where((value) => value.isValid)) {
       try {
-        var duplicateDetected = false;
         final duplicateResult = await _checkDuplicate(
           transactionDate: row.date,
           amount: row.amount,
@@ -195,12 +194,13 @@ final class LocalCsvImporter {
                     as ApplicationSuccess<DuplicateTransactionCheckResult>)
                 .value;
         if (duplicate.requiresConfirmation) {
-          duplicateDetected = true;
-          duplicates++;
           final confirmed =
               confirmDuplicate != null &&
               await confirmDuplicate(row, duplicate.candidates);
-          if (!confirmed) continue;
+          if (!confirmed) {
+            duplicates++;
+            continue;
+          }
         }
 
         final fingerprint = _fingerprint(
@@ -239,7 +239,7 @@ final class LocalCsvImporter {
                 .failure
                 .code ==
             ApplicationFailureCode.conflict) {
-          if (!duplicateDetected) duplicates++;
+          duplicates++;
         } else {
           failed++;
           errors.add('Row ${row.rowNumber}: could not be imported.');
