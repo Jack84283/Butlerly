@@ -141,45 +141,26 @@ final class StatementServices {
         failed++;
         continue;
       }
-      final duplicate = await duplicates(row);
-      final result = await save(row, paymentSourceId, allowCreateNew: true);
-      if (result is! ApplicationSuccess<TransactionDto>) {
-        failed++;
+      if (row.status != StatementRowStatus.pending) {
+        if (row.status == StatementRowStatus.unresolved) needsReview++;
         continue;
       }
-      imported++;
-      if (intakePolicy.needsConfidenceReview(row.confidence)) needsReview++;
+      final duplicate = await duplicates(row);
       final candidates =
           duplicate is ApplicationSuccess<DuplicateTransactionCheckResult>
           ? duplicate.value.candidates
           : const <DuplicateTransactionCandidate>[];
       if (candidates.isNotEmpty) {
         possibleDuplicates++;
-        final transactionIds = [
-          result.value.id,
-          ...candidates.map((candidate) => candidate.transaction.id),
-        ].map(TransactionId.new).toList();
-        final key = DuplicateTransactionKey(
-          transactionDate: row.transactionDate!.toIso8601String().substring(
-            0,
-            10,
-          ),
-          amount: DecimalValue.parse(row.amount!),
-          currency: row.currency!,
-          direction: _directionForRow(row).name,
-        );
-        final now = clock.now();
-        await duplicateGroups.save(
-          DuplicateCandidateGroup(
-            id: 'statement-duplicate-${row.id}',
-            transactionIds: transactionIds,
-            duplicateKey: key,
-            status: DuplicateCandidateGroupStatus.unresolved,
-            createdAt: now,
-            updatedAt: now,
-          ),
-        );
+        continue;
       }
+      final result = await save(row, paymentSourceId);
+      if (result is! ApplicationSuccess<TransactionDto>) {
+        failed++;
+        continue;
+      }
+      imported++;
+      if (intakePolicy.needsConfidenceReview(row.confidence)) needsReview++;
     }
     return StatementImportSummary(
       imported: imported,
@@ -222,10 +203,10 @@ final class StatementServices {
   Future<ApplicationResult<void>> create(
     FinancialStatement statement,
     List<StatementRow> rows,
-  ) => runApplication('create statement', () async {
-    final intakeRows = _applyStatementIntakeDefaults(rows);
-    await statements.saveStatementWithRows(statement, intakeRows);
-  });
+  ) => runApplication(
+    'create statement',
+    () => statements.saveStatementWithRows(statement, rows),
+  );
 
   Future<ApplicationResult<List<FinancialStatement>>> list() =>
       runApplication('list statements', () => statements.listStatements());
@@ -234,10 +215,7 @@ final class StatementServices {
       runApplication('list statement rows', () => statements.listRows(id));
 
   Future<ApplicationResult<void>> addRows(List<StatementRow> rows) =>
-      runApplication(
-        'add statement rows',
-        () => statements.saveRows(_applyStatementIntakeDefaults(rows)),
-      );
+      runApplication('add statement rows', () => statements.saveRows(rows));
 
   Future<ApplicationResult<void>> assignSource(String id, String sourceId) =>
       runApplication(
@@ -592,40 +570,5 @@ final class StatementServices {
     return TransactionDirection.expense;
   }
 
-  List<StatementRow> _applyStatementIntakeDefaults(
-    List<StatementRow> rows,
-  ) => rows
-      .map(
-        (row) => StatementRow(
-          id: row.id,
-          statementId: row.statementId,
-          position: row.position,
-          originalText: row.originalText,
-          transactionDate: row.transactionDate,
-          postingDate: row.postingDate,
-          description: row.description,
-          amount: row.amount,
-          currency: row.currency ?? intakePolicy.defaultCurrency,
-          direction: row.direction ?? intakePolicy.defaultDirection.name,
-          kind: row.kind,
-          confidence: row.confidence,
-          sourceContext: row.currency == null || row.direction == null
-              ? '${row.sourceContext ?? ''}${row.sourceContext == null ? '' : '; '}statement intake default applied'
-              : row.sourceContext,
-          status: row.status,
-          transactionId: row.transactionId,
-          merchantId: row.merchantId,
-          categoryId: row.categoryId,
-          subcategoryId: row.subcategoryId,
-          tagIds: row.tagIds,
-          paymentSourceId: row.paymentSourceId,
-          sourceReferenceId: row.sourceReferenceId,
-          reviewReason: row.reviewReason,
-          dispositionReason: row.dispositionReason,
-          statusBeforeSkip: row.statusBeforeSkip,
-          createdAt: row.createdAt,
-          updatedAt: row.updatedAt,
-        ),
-      )
-      .toList(growable: false);
+
 }
