@@ -23,10 +23,15 @@ jobs:
       - name: Run repository setup
         run: ./tool/setup.sh
 
-      - name: Format follow-up Flutter changes
+      - name: Format finance application changes
+        working-directory: packages/butlerly_finance_application
+        run: |
+          dart format             lib/src/use_cases/statement_use_cases.dart             lib/src/use_cases/statement_intake_policy.dart             test/statement_batch_import_test.dart
+
+      - name: Format Flutter application changes
         working-directory: apps/butlerly
         run: |
-          dart format             integration_test/support/v1_integration_harness.dart             lib/features/foundation/presentation/statement_capture_page.dart             test/core/database/system_catalog_reseed_test.dart             test/design_system/butlerly_category_identity_test.dart             test/features/foundation/statement_capture_page_test.dart
+          dart format             integration_test/support/v1_integration_harness.dart             lib/core/import/local_csv_importer.dart             lib/features/foundation/presentation/master_data_page.dart             lib/features/foundation/presentation/statement_capture_page.dart             test/core/database/system_catalog_reseed_test.dart             test/core/import/local_csv_importer_test.dart             test/design_system/butlerly_category_identity_test.dart             test/features/foundation/statement_capture_page_test.dart
 
       - name: Commit formatter output
         run: |
@@ -36,6 +41,6 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add             apps/butlerly/integration_test/support/v1_integration_harness.dart             apps/butlerly/lib/features/foundation/presentation/statement_capture_page.dart             apps/butlerly/test/core/database/system_catalog_reseed_test.dart             apps/butlerly/test/design_system/butlerly_category_identity_test.dart             apps/butlerly/test/features/foundation/statement_capture_page_test.dart
-          git commit -m "Format P0 audit follow-up fixes"
+          git add             packages/butlerly_finance_application/lib/src/use_cases/statement_use_cases.dart             packages/butlerly_finance_application/lib/src/use_cases/statement_intake_policy.dart             packages/butlerly_finance_application/test/statement_batch_import_test.dart             apps/butlerly/integration_test/support/v1_integration_harness.dart             apps/butlerly/lib/core/import/local_csv_importer.dart             apps/butlerly/lib/features/foundation/presentation/master_data_page.dart             apps/butlerly/lib/features/foundation/presentation/statement_capture_page.dart             apps/butlerly/test/core/database/system_catalog_reseed_test.dart             apps/butlerly/test/core/import/local_csv_importer_test.dart             apps/butlerly/test/design_system/butlerly_category_identity_test.dart             apps/butlerly/test/features/foundation/statement_capture_page_test.dart
+          git commit -m "Format final P0 audit fixes"
           git push origin HEAD:codex/p0-audit-correctness-fixes
