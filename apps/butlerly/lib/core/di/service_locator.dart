@@ -4,7 +4,6 @@ import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_gateway.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/data/restore_recovery_state.dart';
-import 'package:butlerly/core/database/initial_master_data.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
@@ -46,13 +45,7 @@ void configureDependencies({
         services<LocalBackupManager>(),
         localDataManager,
       ),
-      refreshSystemData: () async {
-        await requireApplicationSuccess(
-          services<FinanceServices>().seedInitialMasterData(
-            buildInitialMasterData(),
-          ),
-        );
-      },
+      refreshSystemData: database.reseedSystemCatalog,
     ),
   );
 
