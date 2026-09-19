@@ -176,6 +176,7 @@ void main() {
         preview,
         sourceId: 'fixture.csv',
         sourceLanguage: 'en',
+        confirmDuplicate: (_, _) async => false,
       );
       expect(duplicate.imported, 0);
       expect(duplicate.duplicates, 1);
