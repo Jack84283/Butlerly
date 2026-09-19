@@ -116,76 +116,22 @@ final class StatementServices {
     );
   });
 
+  /// Legacy batch entry point retained for source compatibility.
+  ///
+  /// Finance V1 requires every statement row to be explicitly validated and
+  /// duplicate/reconciliation decisions to be made before a canonical
+  /// transaction is created. Callers must therefore use [save], [link], or
+  /// [setDisposition] for individual rows.
   Future<ApplicationResult<StatementImportSummary>> importBatch(
     FinancialStatement statement,
     List<StatementRow> rows,
     String paymentSourceId,
   ) => runApplication('import statement batch', () async {
-    if (statement.paymentSourceId != null &&
-        statement.paymentSourceId != paymentSourceId) {
-      throw const DomainValidationException(
-        code: DomainErrorCode.invalidState,
-        field: 'paymentSourceId',
-        message: 'The selected payment source does not match the statement.',
-      );
-    }
-    var imported = 0;
-    var needsReview = 0;
-    var possibleDuplicates = 0;
-    var failed = 0;
-    for (final row in rows) {
-      if (row.amount == null ||
-          row.currency == null ||
-          row.transactionDate == null ||
-          row.direction == null) {
-        failed++;
-        continue;
-      }
-      final duplicate = await duplicates(row);
-      final result = await save(row, paymentSourceId, allowCreateNew: true);
-      if (result is! ApplicationSuccess<TransactionDto>) {
-        failed++;
-        continue;
-      }
-      imported++;
-      if (intakePolicy.needsConfidenceReview(row.confidence)) needsReview++;
-      final candidates =
-          duplicate is ApplicationSuccess<DuplicateTransactionCheckResult>
-          ? duplicate.value.candidates
-          : const <DuplicateTransactionCandidate>[];
-      if (candidates.isNotEmpty) {
-        possibleDuplicates++;
-        final transactionIds = [
-          result.value.id,
-          ...candidates.map((candidate) => candidate.transaction.id),
-        ].map(TransactionId.new).toList();
-        final key = DuplicateTransactionKey(
-          transactionDate: row.transactionDate!.toIso8601String().substring(
-            0,
-            10,
-          ),
-          amount: DecimalValue.parse(row.amount!),
-          currency: row.currency!,
-          direction: _directionForRow(row).name,
-        );
-        final now = clock.now();
-        await duplicateGroups.save(
-          DuplicateCandidateGroup(
-            id: 'statement-duplicate-${row.id}',
-            transactionIds: transactionIds,
-            duplicateKey: key,
-            status: DuplicateCandidateGroupStatus.unresolved,
-            createdAt: now,
-            updatedAt: now,
-          ),
-        );
-      }
-    }
-    return StatementImportSummary(
-      imported: imported,
-      needsReview: needsReview,
-      possibleDuplicates: possibleDuplicates,
-      failed: failed,
+    throw const DomainValidationException(
+      code: DomainErrorCode.invalidState,
+      field: 'statementRows',
+      message:
+          'Statement rows must be reviewed and saved individually before import.',
     );
   });
 
@@ -595,8 +541,14 @@ final class StatementServices {
   List<StatementRow> _applyStatementIntakeDefaults(
     List<StatementRow> rows,
   ) => rows
-      .map(
-        (row) => StatementRow(
+      .map((row) {
+        final defaultedCurrency =
+            row.currency == null ? intakePolicy.defaultCurrency : null;
+        final defaultedDirection =
+            row.direction == null ? intakePolicy.defaultDirection : null;
+        final appliedDefault =
+            defaultedCurrency != null || defaultedDirection != null;
+        return StatementRow(
           id: row.id,
           statementId: row.statementId,
           position: row.position,
@@ -605,11 +557,11 @@ final class StatementServices {
           postingDate: row.postingDate,
           description: row.description,
           amount: row.amount,
-          currency: row.currency ?? intakePolicy.defaultCurrency,
-          direction: row.direction ?? intakePolicy.defaultDirection.name,
+          currency: row.currency ?? defaultedCurrency,
+          direction: row.direction ?? defaultedDirection?.name,
           kind: row.kind,
           confidence: row.confidence,
-          sourceContext: row.currency == null || row.direction == null
+          sourceContext: appliedDefault
               ? '${row.sourceContext ?? ''}${row.sourceContext == null ? '' : '; '}statement intake default applied'
               : row.sourceContext,
           status: row.status,
@@ -625,7 +577,8 @@ final class StatementServices {
           statusBeforeSkip: row.statusBeforeSkip,
           createdAt: row.createdAt,
           updatedAt: row.updatedAt,
-        ),
-      )
+        );
+      })
       .toList(growable: false);
+
 }
