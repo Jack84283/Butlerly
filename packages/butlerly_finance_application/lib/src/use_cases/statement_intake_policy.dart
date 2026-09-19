@@ -1,15 +1,10 @@
-import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
-
-/// Existing intake defaults, explicit and injectable. Changing defaults is a
-/// financial product decision; extraction and import logic must not invent one.
+/// Review-only intake policy for statement extraction.
+///
+/// Missing financial facts remain missing until the user confirms or corrects
+/// them. This policy must never invent currency, direction, dates, or amounts.
 final class StatementIntakePolicy {
-  const StatementIntakePolicy({
-    this.defaultCurrency = 'USD',
-    this.defaultDirection = TransactionDirection.expense,
-    this.lowConfidenceThreshold = 0.5,
-  });
-  final String defaultCurrency;
-  final TransactionDirection defaultDirection;
+  const StatementIntakePolicy({this.lowConfidenceThreshold = 0.5});
+
   final double lowConfidenceThreshold;
 
   bool needsConfidenceReview(double? confidence) =>
