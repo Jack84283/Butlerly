@@ -203,7 +203,6 @@ void main() {
       expect(attempts.values, contains(1));
     },
   );
-}
 
   test(
     'shared duplicate candidates require explicit confirmation before import',
@@ -279,6 +278,8 @@ void main() {
       expect(imports, 1);
     },
   );
+
+}
 
 TransactionDto _dto(ImportTransactionCommand command) {
   final now = DateTime.utc(2026, 8, 13);
