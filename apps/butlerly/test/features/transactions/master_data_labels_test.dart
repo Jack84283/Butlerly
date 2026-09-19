@@ -1,34 +1,31 @@
-import 'package:butlerly/features/foundation/presentation/master_data_labels.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('system labels switch language without changing stable IDs', () {
+  test('repository-provided labels localize system IDs without changing them', () {
     final category = Category(
       id: CategoryId('category.food'),
       name: 'Food & Dining',
       origin: CategoryOrigin.system,
     );
+    final tag = Tag(id: TagId('tag.business'), name: 'Business');
 
-    expect(categoryDisplayLabel(category, 'en'), 'Food & Dining');
-    expect(categoryDisplayLabel(category, 'zh'), '餐饮');
-    expect(categoryDisplayLabel(category, 'es'), 'Comida y restaurantes');
-    expect(
-      categoryDisplayLabel(
-        Category(
-          id: CategoryId('category.food.groceries'),
-          name: 'Groceries',
-          origin: CategoryOrigin.system,
-          parentId: category.id,
-        ),
-        'es',
-      ),
-      'Comestibles',
+    final data = TransactionMasterData.fromEntities(
+      merchants: const [],
+      categories: [category],
+      tags: [tag],
+      categoryLabels: const {'category.food': '餐饮'},
+      tagLabels: const {'tag.business': '商务'},
+      languageCode: 'zh',
     );
+
+    expect(data.categoryName(category.id.value), '餐饮');
+    expect(data.tagName(tag.id.value), '商务');
     expect(category.id.value, 'category.food');
   });
 
-  test('user-created labels are never translated by the system catalog', () {
+  test('user-created values remain unchanged when no system translation exists', () {
     final category = Category(
       id: CategoryId('custom-food'),
       name: '我的餐馆',
@@ -36,30 +33,16 @@ void main() {
     );
     final tag = Tag(id: TagId('custom-tag'), name: '出差');
 
-    expect(categoryDisplayLabel(category, 'en'), '我的餐馆');
-    expect(tagDisplayLabel(tag, 'zh'), '出差');
-    expect(
-      tagDisplayLabel(Tag(id: TagId('tag.business'), name: 'Business'), 'es'),
-      'Negocios',
+    final data = TransactionMasterData.fromEntities(
+      merchants: const [],
+      categories: [category],
+      tags: [tag],
+      categoryLabels: const {},
+      tagLabels: const {},
+      languageCode: 'en',
     );
-  });
 
-  test(
-    'legacy system category names still resolve to MD-0001 translations',
-    () {
-      final legacy = Category(
-        id: CategoryId('system-category-food-dining'),
-        name: 'Food & dining',
-        origin: CategoryOrigin.system,
-      );
-
-      expect(categoryDisplayLabel(legacy, 'zh'), '餐饮');
-    },
-  );
-
-  test('legacy system tag IDs resolve to MD-0001 translations', () {
-    final legacy = Tag(id: TagId('system-tag-business'), name: 'Business');
-
-    expect(tagDisplayLabel(legacy, 'zh'), '商务');
+    expect(data.categoryName(category.id.value), '我的餐馆');
+    expect(data.tagName(tag.id.value), '出差');
   });
 }
