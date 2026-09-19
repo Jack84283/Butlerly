@@ -14,6 +14,7 @@ export 'src/use_cases/reconciliation_use_cases.dart';
 export 'src/use_cases/transaction_use_cases.dart';
 export 'src/use_cases/statement_use_cases.dart';
 export 'src/use_cases/classification_use_cases.dart';
+export 'src/use_cases/classification_rule_use_cases.dart';
 export 'src/use_cases/duplicate_transaction_use_cases.dart';
 export 'src/use_cases/duplicate_review_use_cases.dart';
 export 'src/repositories/duplicate_reviewing_transaction_repository.dart';
