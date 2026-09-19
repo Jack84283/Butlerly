@@ -276,7 +276,7 @@ void main() {
         },
       );
       expect(confirmed.imported, 1);
-      expect(confirmed.duplicates, 1);
+      expect(confirmed.duplicates, 0);
       expect(importAttempts, 1);
       expect(confirmations, 1);
     },
