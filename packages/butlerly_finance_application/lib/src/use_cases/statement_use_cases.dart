@@ -141,8 +141,8 @@ final class StatementServices {
         failed++;
         continue;
       }
-      if (row.status != StatementRowStatus.pending) {
-        if (row.status == StatementRowStatus.unresolved) needsReview++;
+      final transactionId = _transactionIdForRow(row);
+      if (await transactions.findById(TransactionId(transactionId)) != null) {
         continue;
       }
       final duplicate = await duplicates(row);
@@ -150,17 +150,42 @@ final class StatementServices {
           duplicate is ApplicationSuccess<DuplicateTransactionCheckResult>
           ? duplicate.value.candidates
           : const <DuplicateTransactionCandidate>[];
-      if (candidates.isNotEmpty) {
-        possibleDuplicates++;
-        continue;
-      }
-      final result = await save(row, paymentSourceId);
+      final result = await save(row, paymentSourceId, allowCreateNew: true);
       if (result is! ApplicationSuccess<TransactionDto>) {
         failed++;
         continue;
       }
       imported++;
-      if (intakePolicy.needsConfidenceReview(row.confidence)) needsReview++;
+      if (intakePolicy.needsConfidenceReview(row.confidence) ||
+          row.status == StatementRowStatus.unresolved) {
+        needsReview++;
+      }
+      if (candidates.isNotEmpty) {
+        possibleDuplicates++;
+        final transactionIds = [
+          result.value.id,
+          ...candidates.map((candidate) => candidate.transaction.id),
+        ].map(TransactionId.new).toList(growable: false);
+        final now = clock.now();
+        await duplicateGroups.save(
+          DuplicateCandidateGroup(
+            id: 'statement-duplicate-${row.id}',
+            transactionIds: transactionIds,
+            duplicateKey: DuplicateTransactionKey(
+              transactionDate: row.transactionDate!.toIso8601String().substring(
+                0,
+                10,
+              ),
+              amount: DecimalValue.parse(row.amount!),
+              currency: row.currency!,
+              direction: _directionForRow(row).name,
+            ),
+            status: DuplicateCandidateGroupStatus.unresolved,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+      }
     }
     return StatementImportSummary(
       imported: imported,
@@ -409,7 +434,7 @@ final class StatementServices {
       }
     }
     final now = clock.now();
-    final transactionId = 'statement-${row.statementId}-${row.id}';
+    final transactionId = _transactionIdForRow(row);
     final proposal = classifier == null
         ? null
         : await classifier!.call(
@@ -464,17 +489,26 @@ final class StatementServices {
           originalRepresentation: row.originalText,
         ),
       ],
-      reviewIssues: intakePolicy.needsConfidenceReview(row.confidence)
-          ? [
-              ReviewIssue(
-                id: ReviewIssueId('statement-confidence-${row.id}'),
-                transactionId: TransactionId(transactionId),
-                reason: ReviewIssueReason.uncertain,
-                detail: 'We were not confident reading this statement row.',
-                createdAt: now,
-              ),
-            ]
-          : const [],
+      reviewIssues: [
+        if (intakePolicy.needsConfidenceReview(row.confidence))
+          ReviewIssue(
+            id: ReviewIssueId('statement-confidence-${row.id}'),
+            transactionId: TransactionId(transactionId),
+            reason: ReviewIssueReason.uncertain,
+            detail: 'We were not confident reading this statement row.',
+            createdAt: now,
+          )
+        else if (row.status == StatementRowStatus.unresolved)
+          ReviewIssue(
+            id: ReviewIssueId('statement-unresolved-${row.id}'),
+            transactionId: TransactionId(transactionId),
+            reason: ReviewIssueReason.uncertain,
+            detail: row.reviewReason?.trim().isNotEmpty == true
+                ? row.reviewReason!
+                : 'This statement row still needs review.',
+            createdAt: now,
+          ),
+      ],
       createdAt: now,
       updatedAt: now,
     );
