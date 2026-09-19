@@ -41,92 +41,50 @@ void main() {
   );
 
   test(
-    'imports valid rows, retains low-confidence review, and tolerates invalid rows',
+    'batch import is rejected because statement rows require explicit decisions',
     () async {
       final result = await service.importBatch(_statement(), [
         _row('low', amount: '12', confidence: .49),
-        _row('boundary', amount: '8', confidence: .50),
-        _row('high', amount: '4', confidence: .51),
-        _row('invalid', amount: null),
+        _row('high', amount: '4', confidence: .9),
       ], 'source');
-      final value =
-          (result as ApplicationSuccess<StatementImportSummary>).value;
-      expect(value.imported, 3);
-      expect(value.needsReview, 2);
-      expect(value.possibleDuplicates, 0);
-      expect(value.failed, 1);
+
+      expect(result, isA<ApplicationFailure<StatementImportSummary>>());
       expect(
-        transactions.values['statement-statement-row-low']!.reviewIssues,
-        hasLength(1),
-      );
-      expect(
-        transactions.values['statement-statement-row-boundary']!.reviewIssues,
-        hasLength(1),
-      );
-      expect(
-        transactions.values['statement-statement-row-high']!.reviewIssues,
+        transactions.values.keys.where(
+          (id) => id.startsWith('statement-statement-row-'),
+        ),
         isEmpty,
       );
+      expect(groups.values, isEmpty);
     },
   );
 
   test(
-    'assesses and persists duplicate candidates without blocking other rows',
+    'individual save blocks likely duplicates until the caller explicitly decides',
     () async {
       transactions.values['existing'] = _transaction('existing', amount: '12');
-      final rows = [
-        _row('duplicate', amount: '12'),
-        _row('other', amount: '7'),
-      ];
-      final assessment =
-          (await service.assessBatch(_statement(), rows, 'source')
-                  as ApplicationSuccess<StatementImportAssessment>)
-              .value;
-      expect(assessment.possibleDuplicateCount, 1);
-      final summary =
-          (await service.importBatch(_statement(), rows, 'source')
-                  as ApplicationSuccess<StatementImportSummary>)
-              .value;
-      expect(summary.imported, 2);
-      expect(summary.possibleDuplicates, 1);
-      expect(groups.values, hasLength(1));
+      final row = _row('duplicate', amount: '12');
+
+      final blocked = await service.save(row, 'source');
+      expect(blocked, isA<ApplicationFailure<TransactionDto>>());
       expect(
-        groups.values.values.single.status,
-        DuplicateCandidateGroupStatus.unresolved,
+        transactions.values.containsKey('statement-statement-row-duplicate'),
+        isFalse,
       );
+
+      final explicit = await service.save(
+        row,
+        'source',
+        allowCreateNew: true,
+      );
+      expect(explicit, isA<ApplicationSuccess<TransactionDto>>());
       expect(
-        groups.values.values.single.transactionIds.map((id) => id.value),
-        contains('statement-statement-row-duplicate'),
+        transactions.values.containsKey('statement-statement-row-duplicate'),
+        isTrue,
       );
     },
   );
 
-  test(
-    'rejects a mismatched statement PaymentSource safely and is idempotent for saved rows',
-    () async {
-      final statement = _statement(paymentSourceId: 'source-a');
-      expect(
-        await service.importBatch(statement, [_row('one')], 'source-b'),
-        isA<ApplicationFailure<StatementImportSummary>>(),
-      );
-      final first = await service.importBatch(_statement(), [
-        _row('one'),
-      ], 'source');
-      final second = await service.importBatch(_statement(), [
-        _row('one'),
-      ], 'source');
-      expect((first as ApplicationSuccess).value.imported, 1);
-      expect((second as ApplicationSuccess).value.imported, 1);
-      expect(transactions.values, hasLength(2));
-      expect(statements.rows.single.status, StatementRowStatus.saved);
-      final imported = transactions.values['statement-statement-row-one']!;
-      expect(imported.provenance.single.sourceId, 'statement');
-      expect(
-        imported.provenance.single.originalRepresentation,
-        contains('Merchant'),
-      );
-    },
-  );
 
   test(
     'preserves an explicit parent when history proposes another category',
@@ -183,17 +141,14 @@ void main() {
     }
   });
 
-  test('statement intake defaults missing currency and direction', () async {
+  test('statement intake keeps missing currency and direction unresolved', () async {
     final row = _row('defaults', currency: null, direction: null);
     final result = await service.create(_statement(), [row]);
     expect(result, isA<ApplicationSuccess<void>>());
-    expect(statements.rows.single.currency, 'USD');
-    expect(statements.rows.single.direction, TransactionDirection.expense.name);
+    expect(statements.rows.single.currency, isNull);
+    expect(statements.rows.single.direction, isNull);
     expect(statements.rows.single.originalText, row.originalText);
-    expect(
-      statements.rows.single.sourceContext,
-      contains('statement intake default applied'),
-    );
+    expect(statements.rows.single.sourceContext, row.sourceContext);
   });
 
   test(
