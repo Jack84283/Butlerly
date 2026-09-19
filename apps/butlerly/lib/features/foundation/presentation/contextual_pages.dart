@@ -69,12 +69,76 @@ Future<void> startLocalFileImport(
           _StatementPreviewDialog(preview: preview, sources: activeSources),
     );
     if (!context.mounted || paymentSourceId == null) return;
+    final selectedSourceId = paymentSourceId.isEmpty ? null : paymentSourceId;
+    final duplicateWarnings = await importer.checkDuplicates(
+      preview,
+      paymentSourceId: selectedSourceId,
+    );
+    if (!context.mounted) return;
+    var confirmedDuplicateRows = const <int>{};
+    if (duplicateWarnings.isNotEmpty) {
+      final continueImport = await showButlerlyBottomSheet<bool>(
+        context: context,
+        builder: (context) => ButlerlySheet(
+          title: Text(context.l10n.text('possibleDuplicates')),
+          content: SizedBox(
+            width: 520,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final warning in duplicateWarnings) ...[
+                    Text(
+                      'Row ${warning.row.rowNumber}: '
+                      '${warning.row.date} · '
+                      '${warning.row.currency} ${warning.row.amount} · '
+                      '${warning.row.description}',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    for (final candidate in warning.candidates)
+                      ListTile(
+                        dense: true,
+                        title: Text(
+                          '${candidate.transaction.transactionDate} · '
+                          '${candidate.transaction.currency} '
+                          '${candidate.transaction.amount}',
+                        ),
+                        subtitle: Text(
+                          candidate.transaction.description ??
+                              candidate.transaction.rawCounterparty ??
+                              context.l10n.text('possibleDuplicate'),
+                        ),
+                      ),
+                    const SizedBox(height: ButlerlySpacing.small),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(context.l10n.text('cancel')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(context.l10n.text('continueAnyway')),
+            ),
+          ],
+        ),
+      );
+      if (continueImport != true || !context.mounted) return;
+      confirmedDuplicateRows = {
+        for (final warning in duplicateWarnings) warning.row.rowNumber,
+      };
+    }
     onImportingChanged?.call(true);
     final summary = await importer.commitPreview(
       preview,
       sourceId: file.name,
       sourceLanguage: sourceLanguage,
-      paymentSourceId: paymentSourceId.isEmpty ? null : paymentSourceId,
+      paymentSourceId: selectedSourceId,
+      confirmedDuplicateRows: confirmedDuplicateRows,
     );
     if (!context.mounted) return;
     onImportingChanged?.call(false);
