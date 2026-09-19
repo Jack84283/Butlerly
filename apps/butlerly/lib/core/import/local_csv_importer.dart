@@ -194,9 +194,14 @@ final class LocalCsvImporter {
                     as ApplicationSuccess<DuplicateTransactionCheckResult>)
                 .value;
         if (duplicate.requiresConfirmation) {
-          final confirmed =
-              confirmDuplicate != null &&
-              await confirmDuplicate(row, duplicate.candidates);
+          if (confirmDuplicate == null) {
+            failed++;
+            errors.add(
+              'Row ${row.rowNumber}: possible duplicate requires explicit confirmation.',
+            );
+            continue;
+          }
+          final confirmed = await confirmDuplicate(row, duplicate.candidates);
           if (!confirmed) {
             duplicates++;
             continue;
