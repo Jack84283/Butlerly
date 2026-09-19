@@ -5,6 +5,7 @@ export 'src/analysis/analysis_roles.dart';
 export 'src/entities/account.dart';
 export 'src/entities/attachment_link.dart';
 export 'src/entities/category.dart';
+export 'src/entities/classification_rule.dart';
 export 'src/entities/duplicate_candidate_group.dart';
 export 'src/entities/evidence_item.dart';
 export 'src/entities/exchange_rate.dart';
