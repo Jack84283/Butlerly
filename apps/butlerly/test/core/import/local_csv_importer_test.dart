@@ -203,6 +203,85 @@ void main() {
       expect(attempts.values, contains(1));
     },
   );
+  test(
+    'shared duplicate check requires explicit confirmation before import',
+    () async {
+      final preview = CsvStatementPreview(
+        rows: [
+          CsvStatementRow(
+            rowNumber: 2,
+            date: '2026-08-09',
+            description: 'Existing purchase',
+            amount: '12.50',
+            currency: 'USD',
+            direction: TransactionDirection.expense,
+            cardReference: null,
+            externalReference: 'bank-duplicate',
+            original: 'duplicate-row',
+          ),
+        ],
+        errors: const [],
+      );
+      var importAttempts = 0;
+      var confirmations = 0;
+      final existing = TransactionDto(
+        id: 'existing',
+        amount: '12.5',
+        currency: 'USD',
+        direction: TransactionDirection.expense.name,
+        status: TransactionStatus.active.name,
+        reviewState: TransactionReviewState.clear.name,
+        transactionDate: '2026-08-09',
+        createdAt: DateTime.utc(2026, 8, 9),
+        updatedAt: DateTime.utc(2026, 8, 9),
+        description: 'Existing purchase',
+      );
+      final importer = LocalCsvImporter.withHandler(
+        (command) async {
+          importAttempts++;
+          return ApplicationSuccess<TransactionDto>(_dto(command));
+        },
+        duplicateCheck: (_) async => ApplicationSuccess(
+          DuplicateTransactionCheckResult([
+            DuplicateTransactionCandidate(
+              transaction: existing,
+              confidence: .75,
+              matchingReasons: const [
+                'transaction date matches',
+                'exact amount and currency match',
+                'financial direction matches',
+              ],
+            ),
+          ]),
+        ),
+      );
+
+      final blocked = await importer.commitPreview(
+        preview,
+        sourceId: 'statement.csv',
+        sourceLanguage: 'en',
+      );
+      expect(blocked.imported, 0);
+      expect(blocked.duplicates, 1);
+      expect(importAttempts, 0);
+
+      final confirmed = await importer.commitPreview(
+        preview,
+        sourceId: 'statement.csv',
+        sourceLanguage: 'en',
+        confirmDuplicate: (_, candidates) async {
+          confirmations++;
+          expect(candidates.single.transaction.id, 'existing');
+          return true;
+        },
+      );
+      expect(confirmed.imported, 1);
+      expect(confirmed.duplicates, 1);
+      expect(importAttempts, 1);
+      expect(confirmations, 1);
+    },
+  );
+
 }
 
 TransactionDto _dto(ImportTransactionCommand command) {
