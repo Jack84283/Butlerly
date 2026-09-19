@@ -554,6 +554,9 @@ final class StatementServices {
     );
   });
 
+  static String _transactionIdForRow(StatementRow row) =>
+      'statement-${row.statementId}-${row.id}';
+
   static StatementRow _copy(
     StatementRow row, {
     required StatementRowStatus status,
