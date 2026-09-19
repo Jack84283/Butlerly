@@ -101,6 +101,14 @@ class LocalDatabase {
     _logger.info('Local database initialized.');
   }
 
+  Future<void> reseedSystemCatalog() async {
+    final database = _database;
+    if (database == null) {
+      throw StateError('The local database is not available.');
+    }
+    await database.applySeed();
+  }
+
   Future<void> close() async {
     await _database?.close();
     _database = null;
