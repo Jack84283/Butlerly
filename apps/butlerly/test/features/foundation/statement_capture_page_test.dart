@@ -17,9 +17,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:file_selector/file_selector.dart' as files;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:file_selector/file_selector.dart' as files;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -294,7 +294,7 @@ void main() {
   }
 
   testWidgets(
-    'unreadable description remains Needs Review after capture and batch import',
+    'unreadable description stays unresolved and cannot be batch imported',
     (tester) async {
       const rawText = '2026-08-12 ??? -123.45 USD';
       messenger.setMockMethodCallHandler(
@@ -337,40 +337,21 @@ void main() {
                     as ApplicationSuccess<List<StatementRow>>)
                 .value;
         expect(rows.single.description, isNull);
-        final imported =
-            (await finance.statementServices!.importBatch(
-                      statement,
-                      rows,
-                      'review-source',
-                    )
-                    as ApplicationSuccess<StatementImportSummary>)
-                .value;
-        expect(imported.imported, 1);
-        expect(imported.needsReview, 1);
         expect(rows.single.status, StatementRowStatus.unresolved);
-        expect(rows.single.confidence, lessThanOrEqualTo(.5));
-        await database.close();
-        await database.initialize();
-        await services.reset();
-        configureDependencies(
-          configuration: const AppConfiguration(),
-          database: database,
-          logger: AppLogger(),
+
+        final batch = await finance.statementServices!.importBatch(
+          statement,
+          rows,
+          'review-source',
         );
-        finance = services<FinanceServices>();
-        final review =
-            (await finance.listReviewItems()
-                    as ApplicationSuccess<List<ReviewItemDto>>)
-                .value;
-        expect(review, hasLength(1));
-        expect(review.single.reason, 'uncertain');
-        expect(review.single.amount, '123.45');
+        expect(batch, isA<ApplicationFailure<StatementImportSummary>>());
         expect(
-          (await database.database.query(
-            'statement_rows',
-          )).single['original_text'],
-          rawText,
+          await database.database.query('transactions'),
+          isEmpty,
         );
+        final persistedRows = await database.database.query('statement_rows');
+        expect(persistedRows.single['original_text'], rawText);
+        expect(persistedRows.single['status'], StatementRowStatus.unresolved.name);
       });
     },
   );
@@ -416,11 +397,11 @@ void main() {
         expect(rows.single.transactionDate, isNull);
         expect(rows.single.amount, '18.25');
         expect(rows.single.originalText, rawText);
-        expect(rows.single.currency, 'USD');
-        expect(rows.single.direction, 'expense');
+        expect(rows.single.currency, isNull);
+        expect(rows.single.direction, isNull);
         expect(
           rows.single.sourceContext,
-          contains('statement intake default applied'),
+          isNot(contains('statement intake default applied')),
         );
         final extraction =
             (await finance.getExtractionForEvidence(statement.evidenceId)
