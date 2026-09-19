@@ -29,6 +29,7 @@ void main() {
       final categoryTranslations = await database.database.query(
         'category_translations',
       );
+      final tagTranslations = await database.database.query('tag_translations');
       final referenceTranslations = await database.database.query(
         'reference_data_translations',
       );
@@ -63,6 +64,24 @@ void main() {
             )
             .single['label'],
         '餐饮',
+      );
+      expect(
+        categoryTranslations
+            .where(
+              (row) =>
+                  row['category_id'] == 'category.food' &&
+                  row['locale'] == 'es',
+            )
+            .single['label'],
+        'Comida y restaurantes',
+      );
+      expect(
+        tagTranslations
+            .where(
+              (row) => row['tag_id'] == 'tag.business' && row['locale'] == 'es',
+            )
+            .single['label'],
+        'Negocios',
       );
       expect(
         referenceTranslations
