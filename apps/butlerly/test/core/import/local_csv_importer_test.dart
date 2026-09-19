@@ -322,7 +322,20 @@ void main() {
         sourceLanguage: 'en',
       );
       expect(blocked.imported, 0);
-      expect(blocked.duplicates, 1);
+      expect(blocked.duplicates, 0);
+      expect(blocked.failed, 1);
+      expect(blocked.errors.single, contains('explicit confirmation'));
+      expect(importAttempts, 0);
+
+      final skipped = await importer.commitPreview(
+        preview,
+        sourceId: 'statement.csv',
+        sourceLanguage: 'en',
+        confirmDuplicate: (_, _) async => false,
+      );
+      expect(skipped.imported, 0);
+      expect(skipped.duplicates, 1);
+      expect(skipped.failed, 0);
       expect(importAttempts, 0);
 
       final confirmed = await importer.commitPreview(
