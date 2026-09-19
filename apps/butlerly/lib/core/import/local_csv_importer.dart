@@ -260,6 +260,7 @@ final class LocalCsvImporter {
   Future<CsvImportSummary> import(
     XFile file, {
     required String sourceLanguage,
+    CsvDuplicateConfirmation? confirmDuplicate,
   }) async {
     final content = await file.readAsString();
     final rows = _parseCsv(content);
@@ -319,12 +320,44 @@ final class LocalCsvImporter {
             (duplicateResult
                     as ApplicationSuccess<DuplicateTransactionCheckResult>)
                 .value;
+        final original = _encodeCsvRow(values);
         if (duplicate.requiresConfirmation) {
-          duplicates++;
-          continue;
+          final candidate = CsvStatementRow(
+            rowNumber: index + 1,
+            date: row['date']!.trim(),
+            description:
+                _optional(row['description']) ??
+                _optional(row['counterparty']) ??
+                '',
+            amount: row['amount']!.trim(),
+            currency: row['currency']!.trim().toUpperCase(),
+            direction: direction,
+            cardReference:
+                _optional(row['card_reference']) ??
+                _optional(row['account_reference']),
+            externalReference:
+                _optional(row['transaction_id']) ??
+                _optional(row['reference']),
+            original: original,
+          );
+          if (confirmDuplicate == null) {
+            failed++;
+            errors.add(
+              'Row ${index + 1}: possible duplicate requires explicit confirmation.',
+            );
+            continue;
+          }
+          final confirmed = await confirmDuplicate(
+            candidate,
+            duplicate.candidates,
+          );
+          if (!confirmed) {
+            duplicates++;
+            continue;
+          }
         }
 
-        final original = _encodeCsvRow(values);
+
         final fingerprint = _fingerprint(
           [
             row['date']!,
