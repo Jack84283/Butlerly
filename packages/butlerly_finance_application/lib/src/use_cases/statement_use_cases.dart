@@ -569,6 +569,4 @@ final class StatementServices {
     }
     return TransactionDirection.expense;
   }
-
-
 }

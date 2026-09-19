@@ -569,7 +569,9 @@ class _StatementPreviewDialogState extends State<_StatementPreviewDialog> {
                             ? Icons.warning_amber_outlined
                             : Icons.check_circle_outline,
                         color:
-                            widget.duplicateCandidates.containsKey(row.rowNumber)
+                            widget.duplicateCandidates.containsKey(
+                              row.rowNumber,
+                            )
                             ? context.colors.warning
                             : context.colors.success,
                       )
@@ -627,9 +629,7 @@ class _StatementPreviewDialogState extends State<_StatementPreviewDialog> {
           context,
           _CsvImportDecision(
             paymentSourceId: _sourceId,
-            confirmedDuplicateRows: Set.unmodifiable(
-              _confirmedDuplicateRows,
-            ),
+            confirmedDuplicateRows: Set.unmodifiable(_confirmedDuplicateRows),
           ),
         ),
         child: Text(context.l10n.text('importValidRows')),

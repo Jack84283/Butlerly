@@ -278,7 +278,6 @@ void main() {
       expect(imports, 1);
     },
   );
-
 }
 
 TransactionDto _dto(ImportTransactionCommand command) {

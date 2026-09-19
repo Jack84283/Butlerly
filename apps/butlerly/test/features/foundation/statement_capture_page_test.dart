@@ -180,7 +180,9 @@ void main() {
     await tester.runAsync(() async {
       await tester.tap(find.byIcon(Icons.file_open_outlined));
       for (var attempt = 0; attempt < 100; attempt++) {
-        if ((await database.database.query('financial_statements')).isNotEmpty) {
+        if ((await database.database.query(
+          'financial_statements',
+        )).isNotEmpty) {
           return;
         }
         await Future<void>.delayed(const Duration(milliseconds: 10));

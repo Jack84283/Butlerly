@@ -64,10 +64,7 @@ void main() {
         transactions.values['statement-statement-row-low']!.reviewIssues,
         hasLength(1),
       );
-      expect(
-        transactions.values['statement-statement-row-unresolved'],
-        isNull,
-      );
+      expect(transactions.values['statement-statement-row-unresolved'], isNull);
       expect(
         transactions.values['statement-statement-row-high']!.reviewIssues,
         isEmpty,
@@ -94,10 +91,7 @@ void main() {
               .value;
       expect(summary.imported, 1);
       expect(summary.possibleDuplicates, 1);
-      expect(
-        transactions.values['statement-statement-row-duplicate'],
-        isNull,
-      );
+      expect(transactions.values['statement-statement-row-duplicate'], isNull);
       expect(groups.values, isEmpty);
     },
   );

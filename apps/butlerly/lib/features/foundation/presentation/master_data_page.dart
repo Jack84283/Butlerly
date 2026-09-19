@@ -232,9 +232,7 @@ class _MasterDataPageState extends State<MasterDataPage> {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 onTap: () => Navigator.pop(context, category.id),
-                title: Text(
-                  data.categoryLabel(category),
-                ),
+                title: Text(data.categoryLabel(category)),
               ),
           ],
         ),
