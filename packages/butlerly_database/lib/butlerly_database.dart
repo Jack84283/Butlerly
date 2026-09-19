@@ -4,6 +4,7 @@ export 'src/backup/backup_hash.dart';
 export 'src/database/butlerly_database.dart';
 export 'src/database/sqflite_helpers.dart';
 export 'src/repositories/sqlite_analysis_repository.dart';
+export 'src/repositories/sqlite_classification_rule_repository.dart';
 export 'src/repositories/sqlite_duplicate_candidate_group_repository.dart';
 export 'src/repositories/sqlite_evidence_repository.dart';
 export 'src/repositories/sqlite_exchange_rate_repository.dart';
