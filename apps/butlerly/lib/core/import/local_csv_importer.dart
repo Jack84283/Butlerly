@@ -334,6 +334,27 @@ final class LocalCsvImporter {
             row['transaction_id'] ?? row['reference'] ?? '',
           ].join('|'),
         );
+        final direction = _direction(row['direction']!);
+        final checker = _duplicateChecker;
+        if (checker != null) {
+          final duplicate = await checker(
+            DuplicateTransactionCheckCommand(
+              transactionDate: row['date']!.trim(),
+              amount: row['amount']!.trim(),
+              currency: row['currency']!.trim().toUpperCase(),
+              direction: direction,
+            ),
+          );
+          if (duplicate case ApplicationSuccess<DuplicateTransactionCheckResult>(
+            value: final value,
+          ) when value.requiresConfirmation) {
+            duplicates++;
+            errors.add(
+              'Row ${index + 1}: possible duplicate requires confirmation.',
+            );
+            continue;
+          }
+        }
         final result = await _importTransaction(
           ImportTransactionCommand(
             id: 'import-$fingerprint',
@@ -344,7 +365,7 @@ final class LocalCsvImporter {
               amount: DecimalValue.parse(row['amount']!),
               currency: CurrencyCode(row['currency']!),
             ),
-            direction: _direction(row['direction']!),
+            direction: direction,
             transactionDate: row['date']!.trim(),
             occurredAtUtc: _optionalInstant(row['occurred_at_utc']),
             timeZoneId: _optional(row['time_zone_id']),
