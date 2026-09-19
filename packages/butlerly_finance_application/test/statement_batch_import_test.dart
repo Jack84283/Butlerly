@@ -97,7 +97,7 @@ void main() {
   );
 
   test(
-    'rejects a mismatched statement PaymentSource safely and is idempotent for saved rows',
+    'rejects a mismatched PaymentSource and does not re-import a saved row',
     () async {
       final statement = _statement(paymentSourceId: 'source-a');
       expect(
@@ -111,7 +111,7 @@ void main() {
         _row('one'),
       ], 'source');
       expect((first as ApplicationSuccess).value.imported, 1);
-      expect((second as ApplicationSuccess).value.imported, 1);
+      expect((second as ApplicationSuccess).value.imported, 0);
       expect(transactions.values, hasLength(2));
       expect(statements.rows.single.status, StatementRowStatus.saved);
       final imported = transactions.values['statement-statement-row-one']!;
