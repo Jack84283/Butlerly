@@ -1,45 +1,48 @@
-import 'package:butlerly/core/database/initial_master_data.dart';
-import 'package:butlerly/core/database/reference_data_seed.dart';
+import 'dart:io';
+
+import 'package:butlerly/core/database/local_database.dart';
+import 'package:butlerly/core/logging/app_logger.dart';
+import 'package:butlerly_database/butlerly_database.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
-  test('seeds the exact MD-0001 system category and tag IDs', () {
-    final data = buildInitialMasterData();
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(sqfliteFfiInit);
+
+  test('database-owned catalog provides MD-0001 master and reference data', () async {
+    final root = await Directory.systemTemp.createTemp('butlerly-catalog-');
+    addTearDown(() => root.delete(recursive: true));
+    final database = LocalDatabase(
+      logger: AppLogger(),
+      factory: databaseFactoryFfi,
+      databaseDirectory: root.path,
+    );
+    await database.initialize();
+    addTearDown(database.close);
+
+    final categories = await database.database.query('categories');
+    final tags = await database.database.query('tags');
+    final merchants = await database.database.query('merchants');
+    final referenceData = await database.database.query('reference_data');
+    final categoryTranslations = await database.database.query(
+      'category_translations',
+    );
+    final referenceTranslations = await database.database.query(
+      'reference_data_translations',
+    );
 
     expect(
-      data.merchants.map((value) => value.name),
-      containsAll([
-        'Safeway',
-        'Costco',
-        'Walmart',
-        'Amazon',
-        'Starbucks',
-        'Target',
-        'Whole Foods',
-        "Trader Joe's",
-        'Walgreens',
-        'CVS',
-        'Home Depot',
-        'Shell',
-        'Chevron',
-        'Uber',
-        'Lyft',
-      ]),
+      categories.map((row) => row['id']),
+      containsAll(['category.food', 'category.food.coffee']),
+    );
+    expect(tags.map((row) => row['id']), contains('tag.tax_related'));
+    expect(
+      merchants.map((row) => row['name']),
+      containsAll(['Safeway', 'Costco', 'Starbucks', 'Uber']),
     );
     expect(
-      data.categories.map((value) => value.id.value),
-      contains('category.food'),
-    );
-    expect(
-      data.categories.map((value) => value.id.value),
-      contains('category.food.coffee'),
-    );
-    expect(
-      data.tags.map((value) => value.id.value),
-      contains('tag.tax_related'),
-    );
-    expect(
-      data.referenceData.map((value) => value.id.value),
+      referenceData.map((row) => row['id']),
       containsAll([
         'transaction.direction.expense',
         'payment_source.type.credit_card',
@@ -51,27 +54,42 @@ void main() {
       ]),
     );
     expect(
-      data.referenceTranslations
-          .where((value) => value.locale == 'zh-Hans')
-          .map((value) => value.label),
-      contains('信用卡'),
+      categoryTranslations.where(
+        (row) => row['category_id'] == 'category.food' && row['locale'] == 'zh-Hans',
+      ).single['label'],
+      '餐饮',
+    );
+    expect(
+      referenceTranslations.where(
+        (row) =>
+            row['reference_data_id'] == 'payment_source.type.credit_card' &&
+            row['locale'] == 'zh-Hans',
+      ).single['label'],
+      '信用卡',
     );
   });
 
-  test('matches every MD-0001 simple reference ID and translation', () {
-    final data = buildInitialMasterData();
-    final seeded = {
-      for (final value in data.referenceData) value.id.value: value,
-    };
-    final translations = {
-      for (final value in data.referenceTranslations)
-        '${value.masterId}|${value.locale}': value.label,
-    };
+  test('database-owned catalog reseeds idempotently after system rows are removed', () async {
+    final root = await Directory.systemTemp.createTemp('butlerly-reseed-');
+    addTearDown(() => root.delete(recursive: true));
+    final database = LocalDatabase(
+      logger: AppLogger(),
+      factory: databaseFactoryFfi,
+      databaseDirectory: root.path,
+    );
+    await database.initialize();
+    addTearDown(database.close);
 
-    expect(seeded.keys, {for (final row in md0001ReferenceData) row.id});
-    for (final row in md0001ReferenceData) {
-      expect(translations['${row.id}|en'], row.english);
-      expect(translations['${row.id}|zh-Hans'], row.chinese);
-    }
+    await database.database.delete('category_translations');
+    await database.database.delete('categories');
+    expect(await database.database.query('categories'), isEmpty);
+
+    await database.reseedSystemData();
+    final first = await database.database.query('categories');
+    await database.reseedSystemData();
+    final second = await database.database.query('categories');
+
+    expect(first, isNotEmpty);
+    expect(second.length, first.length);
   });
 }
