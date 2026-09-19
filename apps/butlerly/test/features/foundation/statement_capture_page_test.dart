@@ -345,13 +345,13 @@ void main() {
           'review-source',
         );
         expect(batch, isA<ApplicationFailure<StatementImportSummary>>());
-        expect(
-          await database.database.query('transactions'),
-          isEmpty,
-        );
+        expect(await database.database.query('transactions'), isEmpty);
         final persistedRows = await database.database.query('statement_rows');
         expect(persistedRows.single['original_text'], rawText);
-        expect(persistedRows.single['status'], StatementRowStatus.unresolved.name);
+        expect(
+          persistedRows.single['status'],
+          StatementRowStatus.unresolved.name,
+        );
       });
     },
   );

@@ -13,8 +13,8 @@ void main() {
       '../../packages/butlerly_database/database/seed/catalog.sql',
     ).readAsStringSync();
     return RegExp(
-      r"INSERT OR IGNORE INTO categories .*?VALUES \('([^']+)'",
-    ).allMatches(catalog).map((match) => match.group(1)!).toSet().toList()
+        r"INSERT OR IGNORE INTO categories .*?VALUES \('([^']+)'",
+      ).allMatches(catalog).map((match) => match.group(1)!).toSet().toList()
       ..sort();
   }
 
