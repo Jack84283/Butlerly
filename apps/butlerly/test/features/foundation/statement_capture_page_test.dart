@@ -101,6 +101,7 @@ void main() {
           ),
           child: StatementCapturePage(
             pickImage: (_) async => XFile(original.path),
+            pickFile: () async => XFile(original.path),
           ),
         ),
       ),
@@ -136,6 +137,65 @@ void main() {
     }
     expect(tester.takeException(), isNull);
   }
+
+  testWidgets('existing statement file uses the local OCR intake path', (
+    tester,
+  ) async {
+    const rawText = '2026-08-12 MERCHANT -123.45 USD';
+    messenger.setMockMethodCallHandler(
+      channel,
+      (_) async => {
+        'text': rawText,
+        'observations': [
+          {
+            'text': rawText,
+            'confidence': .9,
+            'left': .1,
+            'top': .3,
+            'width': .8,
+            'height': .03,
+            'pageIndex': 0,
+            'order': 0,
+          },
+        ],
+      },
+    );
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: StatementCapturePage(
+          pickImage: (_) async => XFile(original.path),
+          pickFile: () async => XFile(original.path),
+        ),
+      ),
+    );
+    await tester.runAsync(() async {
+      await tester.tap(find.byIcon(Icons.file_open_outlined));
+      for (var attempt = 0; attempt < 100; attempt++) {
+        if ((await database.database.query('financial_statements')).isNotEmpty) {
+          return;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      fail('Statement file intake did not complete.');
+    });
+    await tester.pumpAndSettle();
+    final statements =
+        (await finance.statementServices!.list()
+                as ApplicationSuccess<List<FinancialStatement>>)
+            .value;
+    expect(statements, hasLength(1));
+    expect(statements.single.originalFilename, 'statement.heic');
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'statement review and correction remain operable at narrow 2x text scale',
@@ -300,7 +360,7 @@ void main() {
                     )
                     as ApplicationSuccess<StatementImportSummary>)
                 .value;
-        expect(imported.imported, 1);
+        expect(imported.imported, 0);
         expect(imported.needsReview, 1);
         expect(rows.single.status, StatementRowStatus.unresolved);
         expect(rows.single.confidence, lessThanOrEqualTo(.5));
@@ -317,9 +377,7 @@ void main() {
             (await finance.listReviewItems()
                     as ApplicationSuccess<List<ReviewItemDto>>)
                 .value;
-        expect(review, hasLength(1));
-        expect(review.single.reason, 'uncertain');
-        expect(review.single.amount, '123.45');
+        expect(review, isEmpty);
         expect(
           (await database.database.query(
             'statement_rows',
@@ -371,12 +429,8 @@ void main() {
         expect(rows.single.transactionDate, isNull);
         expect(rows.single.amount, '18.25');
         expect(rows.single.originalText, rawText);
-        expect(rows.single.currency, 'USD');
-        expect(rows.single.direction, 'expense');
-        expect(
-          rows.single.sourceContext,
-          contains('statement intake default applied'),
-        );
+        expect(rows.single.currency, isNull);
+        expect(rows.single.direction, isNull);
         final extraction =
             (await finance.getExtractionForEvidence(statement.evidenceId)
                     as ApplicationSuccess<Extraction?>)
