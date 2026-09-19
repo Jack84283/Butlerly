@@ -336,8 +336,7 @@ final class LocalCsvImporter {
                 _optional(row['card_reference']) ??
                 _optional(row['account_reference']),
             externalReference:
-                _optional(row['transaction_id']) ??
-                _optional(row['reference']),
+                _optional(row['transaction_id']) ?? _optional(row['reference']),
             original: original,
           );
           if (confirmDuplicate == null) {
@@ -356,7 +355,6 @@ final class LocalCsvImporter {
             continue;
           }
         }
-
 
         final fingerprint = _fingerprint(
           [

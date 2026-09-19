@@ -77,68 +77,65 @@ void main() {
     expect(summary.errors, hasLength(1));
   });
 
-  test(
-    'direct import never silently skips a shared duplicate',
-    () async {
-      final root = await Directory.systemTemp.createTemp('butlerly-csv-test-');
-      addTearDown(() => root.delete(recursive: true));
-      final file = File('${root.path}/transactions.csv');
-      await file.writeAsString(
-        'date,amount,currency,direction,description\n'
-        '2026-08-09,12.50,USD,expense,Existing purchase\n',
-      );
-      var importAttempts = 0;
-      final importer = LocalCsvImporter.withHandler(
-        (command) async {
-          importAttempts++;
-          return ApplicationSuccess<TransactionDto>(_dto(command));
-        },
-        duplicateCheck: (_) async => ApplicationSuccess(
-          DuplicateTransactionCheckResult([
-            DuplicateTransactionCandidate(
-              transaction: TransactionDto(
-                id: 'existing',
-                amount: '12.5',
-                currency: 'USD',
-                direction: TransactionDirection.expense.name,
-                status: TransactionStatus.active.name,
-                reviewState: TransactionReviewState.clear.name,
-                transactionDate: '2026-08-09',
-                createdAt: DateTime.utc(2026, 8, 9),
-                updatedAt: DateTime.utc(2026, 8, 9),
-                description: 'Existing purchase',
-              ),
-              confidence: .75,
-              matchingReasons: const ['same financial identity'],
+  test('direct import never silently skips a shared duplicate', () async {
+    final root = await Directory.systemTemp.createTemp('butlerly-csv-test-');
+    addTearDown(() => root.delete(recursive: true));
+    final file = File('${root.path}/transactions.csv');
+    await file.writeAsString(
+      'date,amount,currency,direction,description\n'
+      '2026-08-09,12.50,USD,expense,Existing purchase\n',
+    );
+    var importAttempts = 0;
+    final importer = LocalCsvImporter.withHandler(
+      (command) async {
+        importAttempts++;
+        return ApplicationSuccess<TransactionDto>(_dto(command));
+      },
+      duplicateCheck: (_) async => ApplicationSuccess(
+        DuplicateTransactionCheckResult([
+          DuplicateTransactionCandidate(
+            transaction: TransactionDto(
+              id: 'existing',
+              amount: '12.5',
+              currency: 'USD',
+              direction: TransactionDirection.expense.name,
+              status: TransactionStatus.active.name,
+              reviewState: TransactionReviewState.clear.name,
+              transactionDate: '2026-08-09',
+              createdAt: DateTime.utc(2026, 8, 9),
+              updatedAt: DateTime.utc(2026, 8, 9),
+              description: 'Existing purchase',
             ),
-          ]),
-        ),
-      );
+            confidence: .75,
+            matchingReasons: const ['same financial identity'],
+          ),
+        ]),
+      ),
+    );
 
-      final blocked = await importer.import(
-        XFile(file.path),
-        sourceLanguage: 'en',
-      );
-      expect(blocked.imported, 0);
-      expect(blocked.duplicates, 0);
-      expect(blocked.failed, 1);
-      expect(blocked.errors.single, contains('explicit confirmation'));
-      expect(importAttempts, 0);
+    final blocked = await importer.import(
+      XFile(file.path),
+      sourceLanguage: 'en',
+    );
+    expect(blocked.imported, 0);
+    expect(blocked.duplicates, 0);
+    expect(blocked.failed, 1);
+    expect(blocked.errors.single, contains('explicit confirmation'));
+    expect(importAttempts, 0);
 
-      final confirmed = await importer.import(
-        XFile(file.path),
-        sourceLanguage: 'en',
-        confirmDuplicate: (_, candidates) async {
-          expect(candidates.single.transaction.id, 'existing');
-          return true;
-        },
-      );
-      expect(confirmed.imported, 1);
-      expect(confirmed.duplicates, 0);
-      expect(confirmed.failed, 0);
-      expect(importAttempts, 1);
-    },
-  );
+    final confirmed = await importer.import(
+      XFile(file.path),
+      sourceLanguage: 'en',
+      confirmDuplicate: (_, candidates) async {
+        expect(candidates.single.transaction.id, 'existing');
+        return true;
+      },
+    );
+    expect(confirmed.imported, 1);
+    expect(confirmed.duplicates, 0);
+    expect(confirmed.failed, 0);
+    expect(importAttempts, 1);
+  });
 
   test('previews bank aliases and validates rows before commit', () async {
     final root = await Directory.systemTemp.createTemp('butlerly-csv-test-');

@@ -183,15 +183,18 @@ void main() {
     }
   });
 
-  test('statement intake keeps missing currency and direction unresolved', () async {
-    final row = _row('defaults', currency: null, direction: null);
-    final result = await service.create(_statement(), [row]);
-    expect(result, isA<ApplicationSuccess<void>>());
-    expect(statements.rows.single.currency, isNull);
-    expect(statements.rows.single.direction, isNull);
-    expect(statements.rows.single.originalText, row.originalText);
-    expect(statements.rows.single.sourceContext, row.sourceContext);
-  });
+  test(
+    'statement intake keeps missing currency and direction unresolved',
+    () async {
+      final row = _row('defaults', currency: null, direction: null);
+      final result = await service.create(_statement(), [row]);
+      expect(result, isA<ApplicationSuccess<void>>());
+      expect(statements.rows.single.currency, isNull);
+      expect(statements.rows.single.direction, isNull);
+      expect(statements.rows.single.originalText, row.originalText);
+      expect(statements.rows.single.sourceContext, row.sourceContext);
+    },
+  );
 
   test(
     'configured intake defaults do not overwrite extracted values',
