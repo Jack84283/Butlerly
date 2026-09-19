@@ -84,15 +84,7 @@ final class ButlerlyDatabase {
           },
         ),
       );
-      if (seedSql.isNotEmpty) {
-        await transaction((tx) async {
-          for (final sql in seedSql) {
-            for (final statement in splitSqlStatements(sql)) {
-              await tx.execute(statement);
-            }
-          }
-        });
-      }
+      await reseed();
     } on DatabaseException catch (error) {
       await _database?.close();
       _database = null;
@@ -137,6 +129,26 @@ final class ButlerlyDatabase {
         where: 'id = ?',
         whereArgs: [row['id']],
       );
+    }
+  }
+
+  /// Re-applies the database-owned idempotent seed assets.
+  ///
+  /// This is used after destructive local-data operations so the database
+  /// remains the single source of truth for Butlerly-owned master/reference
+  /// data and translations.
+  Future<void> reseed() async {
+    if (seedSql.isEmpty) return;
+    try {
+      await transaction((tx) async {
+        for (final sql in seedSql) {
+          for (final statement in splitSqlStatements(sql)) {
+            await tx.execute(statement);
+          }
+        }
+      });
+    } on DatabaseException catch (error) {
+      throw mapDatabaseException(error, 'reseed system catalog');
     }
   }
 
