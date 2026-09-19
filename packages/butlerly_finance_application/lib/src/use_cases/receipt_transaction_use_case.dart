@@ -98,7 +98,12 @@ final class CreateReceiptTransaction {
         paymentSourceId: command.paymentSourceId == null
             ? null
             : PaymentSourceId(command.paymentSourceId!),
-        tagIds: command.tagIds.map(TagId.new).toList(growable: false),
+        tagIds: (command.tagIds.isNotEmpty
+                ? command.tagIds.map(TagId.new)
+                : proposal is ApplicationSuccess<ClassificationProposal>
+                ? proposal.value.tagIds
+                : const <TagId>[])
+            .toList(growable: false),
         provenance: [
           Provenance(
             id: ProvenanceId(command.provenanceId),
