@@ -70,11 +70,48 @@ Future<void> startLocalFileImport(
     );
     if (!context.mounted || paymentSourceId == null) return;
     onImportingChanged?.call(true);
+    final resolvedPaymentSourceId = paymentSourceId.isEmpty
+        ? null
+        : paymentSourceId;
     final summary = await importer.commitPreview(
       preview,
       sourceId: file.name,
       sourceLanguage: sourceLanguage,
-      paymentSourceId: paymentSourceId.isEmpty ? null : paymentSourceId,
+      paymentSourceId: resolvedPaymentSourceId,
+      confirmDuplicate: (row, candidates) async {
+        if (!context.mounted) return false;
+        final now = DateTime.now().toUtc();
+        final proposed = TransactionDto(
+          id: '__csv-proposed-${row.rowNumber}',
+          amount: row.amount,
+          currency: row.currency,
+          direction: row.direction!.name,
+          status: TransactionStatus.active.name,
+          reviewState: TransactionReviewState.clear.name,
+          transactionDate: row.date,
+          createdAt: now,
+          updatedAt: now,
+          description: row.description,
+          rawCounterparty: row.description,
+          paymentSourceId: resolvedPaymentSourceId,
+        );
+        final decision =
+            await showButlerlyBottomSheet<ButlerlyDuplicateConfirmationResult>(
+              context: context,
+              builder: (_) => ButlerlyDuplicateTransactionConfirmation(
+                proposed: proposed,
+                candidates: candidates,
+                paymentSourceLabels: {
+                  for (final source in activeSources)
+                    source.id.value: source.lastFour == null
+                        ? (source.displayIdentity ?? source.name)
+                        : '${source.displayIdentity ?? source.name} ••••${source.lastFour}',
+                },
+                onDecision: (value) => Navigator.pop(context, value),
+              ),
+            );
+        return decision?.decision == ButlerlyDuplicateDecision.continueAnyway;
+      },
     );
     if (!context.mounted) return;
     onImportingChanged?.call(false);
