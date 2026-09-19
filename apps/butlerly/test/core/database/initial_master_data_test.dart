@@ -92,9 +92,15 @@ void main() {
       await database.initialize();
       addTearDown(database.close);
 
+      await database.database.delete('reference_data_translations');
+      await database.database.delete('reference_data');
+      await database.database.delete('tag_translations');
+      await database.database.delete('tags');
       await database.database.delete('category_translations');
+      await database.database.delete('merchants');
       await database.database.delete('categories');
       expect(await database.database.query('categories'), isEmpty);
+      expect(await database.database.query('reference_data'), isEmpty);
 
       await database.reseedSystemData();
       final first = await database.database.query('categories');
