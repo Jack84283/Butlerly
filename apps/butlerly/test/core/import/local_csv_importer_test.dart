@@ -149,6 +149,77 @@ void main() {
   );
 
   test(
+    'shared duplicate detection blocks preview rows until explicitly confirmed',
+    () async {
+      final preview = CsvStatementPreview(
+        rows: [
+          CsvStatementRow(
+            rowNumber: 2,
+            date: '2026-08-09',
+            description: 'Market',
+            amount: '12.50',
+            currency: 'USD',
+            direction: TransactionDirection.expense,
+            cardReference: null,
+            externalReference: 'bank-1',
+            original: 'original-row',
+          ),
+        ],
+        errors: const [],
+      );
+      var imports = 0;
+      final importer = LocalCsvImporter.withHandler(
+        (command) async {
+          imports++;
+          return ApplicationSuccess<TransactionDto>(_dto(command));
+        },
+        duplicateChecker: (command) async =>
+            ApplicationSuccess<DuplicateTransactionCheckResult>(
+              DuplicateTransactionCheckResult([
+                DuplicateTransactionCandidate(
+                  transaction: TransactionDto(
+                    id: 'existing',
+                    amount: command.amount,
+                    currency: command.currency,
+                    direction: command.direction.name,
+                    status: 'active',
+                    reviewState: 'clear',
+                    transactionDate: command.transactionDate,
+                    createdAt: DateTime.utc(2026, 8, 1),
+                    updatedAt: DateTime.utc(2026, 8, 1),
+                    description: 'Existing market purchase',
+                  ),
+                  confidence: .75,
+                  matchingReasons: const ['exact identity fields match'],
+                ),
+              ]),
+            ),
+      );
+
+      final warnings = await importer.checkDuplicates(preview);
+      expect(warnings, hasLength(1));
+
+      final blocked = await importer.commitPreview(
+        preview,
+        sourceId: 'statement.csv',
+        sourceLanguage: 'en',
+      );
+      expect(blocked.imported, 0);
+      expect(blocked.duplicates, 1);
+      expect(imports, 0);
+
+      final confirmed = await importer.commitPreview(
+        preview,
+        sourceId: 'statement.csv',
+        sourceLanguage: 'en',
+        confirmedDuplicateRows: const {2},
+      );
+      expect(confirmed.imported, 1);
+      expect(imports, 1);
+    },
+  );
+
+  test(
     'continues after a partial row failure without duplicating successes',
     () async {
       final preview = CsvStatementPreview(
