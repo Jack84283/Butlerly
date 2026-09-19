@@ -93,6 +93,12 @@ final class LocalBackupManager {
       createdAt: 'created_at',
     ),
     _TableSpec(
+      'classification_rules',
+      ['id'],
+      updatedAt: 'updated_at',
+      createdAt: 'created_at',
+    ),
+    _TableSpec(
       'categories',
       ['id'],
       updatedAt: 'updated_at',
