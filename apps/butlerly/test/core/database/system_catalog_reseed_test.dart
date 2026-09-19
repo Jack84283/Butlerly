@@ -66,10 +66,16 @@ void main() {
       where: 'tag_id = ? AND locale = ?',
       whereArgs: ['tag.travel', 'es'],
     );
+    final categoryTranslation = await database.database.query(
+      'category_translations',
+      where: 'category_id = ? AND locale = ?',
+      whereArgs: ['category.food', 'zh-Hans'],
+    );
 
     expect(recurring.single['status'], 'archived');
     expect(subscription.single['status'], 'active');
     expect(userTag.single['name'], 'Keep me');
     expect(translation.single['label'], 'Viajes');
+    expect(categoryTranslation.single['label'], '餐饮');
   });
 }
