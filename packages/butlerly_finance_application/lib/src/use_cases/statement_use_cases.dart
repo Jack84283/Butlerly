@@ -475,7 +475,12 @@ final class StatementServices {
                 ? proposal.value.subcategoryId
                 : null
           : CategoryId(row.subcategoryId!),
-      tagIds: row.tagIds.map(TagId.new).toList(growable: false),
+      tagIds: (row.tagIds.isNotEmpty
+              ? row.tagIds.map(TagId.new)
+              : proposal is ApplicationSuccess<ClassificationProposal>
+              ? proposal.value.tagIds
+              : const <TagId>[])
+          .toList(growable: false),
       externalReference: 'statement-row:${row.id}',
       provenance: [
         Provenance(
