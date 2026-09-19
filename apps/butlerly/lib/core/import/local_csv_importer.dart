@@ -55,16 +55,33 @@ final class CsvStatementPreview {
   int get validCount => rows.where((row) => row.isValid).length;
 }
 
+final class CsvDuplicateWarning {
+  const CsvDuplicateWarning({required this.row, required this.candidates});
+
+  final CsvStatementRow row;
+  final List<DuplicateTransactionCandidate> candidates;
+}
+
+typedef CsvDuplicateChecker =
+    Future<ApplicationResult<DuplicateTransactionCheckResult>> Function(
+      DuplicateTransactionCheckCommand command,
+    );
+
 final class LocalCsvImporter {
   LocalCsvImporter(FinanceServices finance)
-    : _importTransaction = finance.importTransaction.call;
+    : _importTransaction = finance.importTransaction.call,
+      _duplicateChecker = finance.duplicateTransactionChecker.call;
 
-  const LocalCsvImporter.withHandler(this._importTransaction);
+  const LocalCsvImporter.withHandler(
+    this._importTransaction, {
+    CsvDuplicateChecker? duplicateChecker,
+  }) : _duplicateChecker = duplicateChecker;
 
   final Future<ApplicationResult<TransactionDto>> Function(
     ImportTransactionCommand command,
   )
   _importTransaction;
+  final CsvDuplicateChecker? _duplicateChecker;
 
   static const acceptedHeaders = <String>{
     'date',
@@ -145,11 +162,40 @@ final class LocalCsvImporter {
     return CsvStatementPreview(rows: parsed, errors: errors);
   }
 
+  Future<List<CsvDuplicateWarning>> checkDuplicates(
+    CsvStatementPreview preview, {
+    String? paymentSourceId,
+  }) async {
+    final checker = _duplicateChecker;
+    if (checker == null) return const [];
+    final warnings = <CsvDuplicateWarning>[];
+    for (final row in preview.rows.where((value) => value.isValid)) {
+      final result = await checker(
+        DuplicateTransactionCheckCommand(
+          transactionDate: row.date,
+          amount: row.amount,
+          currency: row.currency,
+          direction: row.direction!,
+          paymentSourceId: paymentSourceId,
+        ),
+      );
+      if (result case ApplicationSuccess<DuplicateTransactionCheckResult>(
+        value: final duplicate,
+      ) when duplicate.requiresConfirmation) {
+        warnings.add(
+          CsvDuplicateWarning(row: row, candidates: duplicate.candidates),
+        );
+      }
+    }
+    return List.unmodifiable(warnings);
+  }
+
   Future<CsvImportSummary> commitPreview(
     CsvStatementPreview preview, {
     required String sourceId,
     required String sourceLanguage,
     String? paymentSourceId,
+    Set<int> confirmedDuplicateRows = const {},
   }) async {
     var imported = 0;
     var duplicates = 0;
@@ -157,6 +203,27 @@ final class LocalCsvImporter {
     final errors = [...preview.errors];
     for (final row in preview.rows.where((value) => value.isValid)) {
       try {
+        final checker = _duplicateChecker;
+        if (checker != null && !confirmedDuplicateRows.contains(row.rowNumber)) {
+          final duplicate = await checker(
+            DuplicateTransactionCheckCommand(
+              transactionDate: row.date,
+              amount: row.amount,
+              currency: row.currency,
+              direction: row.direction!,
+              paymentSourceId: paymentSourceId,
+            ),
+          );
+          if (duplicate case ApplicationSuccess<DuplicateTransactionCheckResult>(
+            value: final value,
+          ) when value.requiresConfirmation) {
+            duplicates++;
+            errors.add(
+              'Row ${row.rowNumber}: possible duplicate requires confirmation.',
+            );
+            continue;
+          }
+        }
         final fingerprint = _fingerprint(
           [
             row.date,
