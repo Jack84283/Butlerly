@@ -44,6 +44,10 @@ final class CategoryId extends DomainId {
   CategoryId(super.value);
 }
 
+final class ClassificationRuleId extends DomainId {
+  ClassificationRuleId(super.value);
+}
+
 final class EvidenceId extends DomainId {
   EvidenceId(super.value);
 }
