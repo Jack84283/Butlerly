@@ -19,43 +19,48 @@ void main() {
     expect(ButlerlyCategoryColors.palette.values.toSet(), hasLength(8));
   });
 
-  test('maps every database-owned built-in category to an asset and color', () async {
-    final root = await Directory.systemTemp.createTemp('butlerly-category-identity-');
-    addTearDown(() => root.delete(recursive: true));
-    final database = LocalDatabase(
-      logger: AppLogger(),
-      factory: databaseFactoryFfi,
-      databaseDirectory: root.path,
-    );
-    await database.initialize();
-    addTearDown(database.close);
-    final builtInIds = (await database.database.query(
-      'categories',
-      columns: ['id'],
-      where: 'origin = ?',
-      whereArgs: ['system'],
-    )).map((row) => row['id']! as String).toList(growable: false);
-
-    expect(
-      ButlerlyCategoryIdentity.builtInCategoryIds.toSet(),
-      equals(builtInIds.toSet()),
-    );
-
-    for (final categoryId in builtInIds) {
-      final identity = ButlerlyCategoryIdentity.forBuiltInId(categoryId)!;
-      expect(identity.categoryId, categoryId);
-      expect(identity.localizationKey, categoryId);
-      expect(
-        File(identity.assetPath).existsSync(),
-        isTrue,
-        reason: 'Missing category asset for $categoryId',
+  test(
+    'maps every database-owned built-in category to an asset and color',
+    () async {
+      final root = await Directory.systemTemp.createTemp(
+        'butlerly-category-identity-',
       );
-      expect(
-        ButlerlyCategoryColors.palette,
-        contains(identity.categoryColorId),
+      addTearDown(() => root.delete(recursive: true));
+      final database = LocalDatabase(
+        logger: AppLogger(),
+        factory: databaseFactoryFfi,
+        databaseDirectory: root.path,
       );
-    }
-  });
+      await database.initialize();
+      addTearDown(database.close);
+      final builtInIds = (await database.database.query(
+        'categories',
+        columns: ['id'],
+        where: 'origin = ?',
+        whereArgs: ['system'],
+      )).map((row) => row['id']! as String).toList(growable: false);
+
+      expect(
+        ButlerlyCategoryIdentity.builtInCategoryIds.toSet(),
+        equals(builtInIds.toSet()),
+      );
+
+      for (final categoryId in builtInIds) {
+        final identity = ButlerlyCategoryIdentity.forBuiltInId(categoryId)!;
+        expect(identity.categoryId, categoryId);
+        expect(identity.localizationKey, categoryId);
+        expect(
+          File(identity.assetPath).existsSync(),
+          isTrue,
+          reason: 'Missing category asset for $categoryId',
+        );
+        expect(
+          ButlerlyCategoryColors.palette,
+          contains(identity.categoryColorId),
+        );
+      }
+    },
+  );
 
   test('custom categories use the canonical custom asset and stable color', () {
     final first = ButlerlyCategoryIdentity.custom(
