@@ -3,19 +3,14 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:cryptography/cryptography.dart';
 
-final class BackupPasswordRequiredException implements Exception {
-  const BackupPasswordRequiredException();
-}
-
-final class BackupPasswordTooShortException implements Exception {
-  const BackupPasswordTooShortException();
-}
-
-final class BackupPasswordOrIntegrityException implements Exception {
-  const BackupPasswordOrIntegrityException();
-}
+export 'package:butlerly_finance_application/butlerly_finance_application.dart'
+    show
+        BackupPasswordRequiredException,
+        BackupPasswordTooShortException,
+        BackupPasswordOrIntegrityException;
 
 /// Password-protected wrapper for user-managed portable Butlerly backups.
 ///
@@ -28,7 +23,8 @@ final class BackupEncryption {
 
   static final magic = utf8.encode('BUTLERLYENC1');
   static const version = 1;
-  static const minimumPasswordLength = 12;
+  static const minimumPasswordLength =
+      PortableBackupPolicy.minimumPasswordLength;
   static const _maximumHeaderLength = 64 * 1024;
   static const _macLength = 16;
 

@@ -2,12 +2,12 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:timezone/data/latest.dart' as time_zone_data;
 import 'package:timezone/timezone.dart' as time_zone;
 
-import '../result/application_result.dart';
-import '../dto/transaction_dto.dart';
 import '../analysis/dataset_builder.dart';
 import '../analysis/period_resolver.dart';
-import '../analysis/rule_engine.dart';
 import '../analysis/result_materialization.dart';
+import '../analysis/rule_engine.dart';
+import '../dto/transaction_dto.dart';
+import '../result/application_result.dart';
 
 final class CalculateAnalysisOverview {
   const CalculateAnalysisOverview(
@@ -328,12 +328,15 @@ final class CalculateInsights {
         .map((result) => result.metric)
         .whereType<AnalysisMetric>()
         .firstOrNull;
-    final expense = summaryMetric('expenseTotal');
-    final income = summaryMetric('incomeTotal');
-    final net = summaryMetric('netCashFlow');
-    final count = summaryMetric('eligibleTransactionCount');
-    final expenseResult = _roleResult(results, 'expenseTotal');
-    final incomeResult = _roleResult(results, 'incomeTotal');
+    final expense = summaryMetric(AnalysisSemanticRole.expenseTotal);
+    final income = summaryMetric(AnalysisSemanticRole.incomeTotal);
+    final net = summaryMetric(AnalysisSemanticRole.netCashFlow);
+    final count = summaryMetric(AnalysisSemanticRole.eligibleTransactionCount);
+    final expenseResult = _roleResult(
+      results,
+      AnalysisSemanticRole.expenseTotal,
+    );
+    final incomeResult = _roleResult(results, AnalysisSemanticRole.incomeTotal);
     final baselineContext = _baselineContext(context);
     final summaryLimitations = _issues(results);
     final netComparison = _comparison(
@@ -433,7 +436,7 @@ final class CalculateInsights {
     final expenseValue = expense?.comparison?.baselineValue;
     final incomeValue = income?.comparison?.baselineValue;
     if (expenseValue == null && incomeValue == null) return null;
-    return _subtract(incomeValue ?? _zero(), expenseValue ?? _zero());
+    return (incomeValue ?? _zero()).subtract(expenseValue ?? _zero());
   }
 
   AnalysisComparison? _comparison({
@@ -441,7 +444,7 @@ final class CalculateInsights {
     required DecimalValue? baseline,
   }) {
     if (current == null) return null;
-    final absolute = baseline == null ? null : _subtract(current, baseline);
+    final absolute = baseline == null ? null : current.subtract(baseline);
     final percentage = baseline == null
         ? null
         : calculatePercentageChange(absolute!, baseline);
@@ -569,26 +572,12 @@ final class CalculateInsights {
     if (left == null || right == null) {
       return left == null ? (right == null ? 0 : 1) : -1;
     }
-    final leftCoefficient = left.coefficient.abs();
-    final rightCoefficient = right.coefficient.abs();
-    final scale = left.scale > right.scale ? left.scale : right.scale;
-    return (leftCoefficient * BigInt.from(10).pow(scale - left.scale))
-        .compareTo(rightCoefficient * BigInt.from(10).pow(scale - right.scale));
+    return left.abs().compareTo(right.abs());
   }
 }
 
 DecimalValue _zero() =>
     DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0);
-
-DecimalValue _subtract(DecimalValue left, DecimalValue right) {
-  final scale = left.scale > right.scale ? left.scale : right.scale;
-  return DecimalValue.fromParts(
-    coefficient:
-        left.coefficient * BigInt.from(10).pow(scale - left.scale) -
-        right.coefficient * BigInt.from(10).pow(scale - right.scale),
-    scale: scale,
-  );
-}
 
 /// Converts an instant to the calendar date in the persisted financial zone.
 /// The returned value is used only for its calendar components.
@@ -706,8 +695,8 @@ final class CalculateAnalysisCalendar {
             orElse: () => null,
           );
       final countMetric = named('transactionCount');
-      final expenseMetric = named('expenseTotal');
-      final incomeMetric = named('incomeTotal');
+      final expenseMetric = named(AnalysisSemanticRole.expenseTotal);
+      final incomeMetric = named(AnalysisSemanticRole.incomeTotal);
       Money? money(AnalysisMetric? metric) => metric?.currency == null
           ? null
           : Money(amount: metric!.value, currency: metric.currency!);

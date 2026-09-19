@@ -1,63 +1,20 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:butlerly/core/data/backup_container_format.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly_database/butlerly_database.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common/sqlite_api.dart';
 
-enum LocalRestoreMode { merge, replace }
-
-final class BackupChangeSummary {
-  const BackupChangeSummary({
-    required this.transactionsAdded,
-    required this.transactionsChanged,
-    required this.masterDataChanged,
-    required this.deletedEntities,
-  });
-
-  final int transactionsAdded;
-  final int transactionsChanged;
-  final int masterDataChanged;
-  final int deletedEntities;
-
-  bool get hasChanges =>
-      transactionsAdded > 0 ||
-      transactionsChanged > 0 ||
-      masterDataChanged > 0 ||
-      deletedEntities > 0;
-}
-
-final class BackupInspection {
-  const BackupInspection({
-    required this.createdAtUtc,
-    required this.recordCount,
-    required this.evidenceCount,
-    required this.changes,
-  });
-
-  final DateTime createdAtUtc;
-  final int recordCount;
-  final int evidenceCount;
-  final BackupChangeSummary changes;
-
-  bool get hasNewerLocalData => changes.hasChanges;
-}
-
-final class LocalRestoreResult {
-  const LocalRestoreResult({
-    required this.mode,
-    required this.restoredRows,
-    required this.keptNewerLocalRows,
-    required this.restoredEvidence,
-  });
-
-  final LocalRestoreMode mode;
-  final int restoredRows;
-  final int keptNewerLocalRows;
-  final int restoredEvidence;
-}
+export 'package:butlerly_finance_application/butlerly_finance_application.dart'
+    show
+        LocalRestoreMode,
+        BackupChangeSummary,
+        BackupInspection,
+        LocalRestoreResult;
 
 final class _TableSpec {
   const _TableSpec(
@@ -123,10 +80,10 @@ final class LocalBackupManager {
   final LocalDatabase database;
   final LocalDataManager localDataManager;
 
-  static const format = 'butlerly-backup';
-  static const formatVersion = 2;
-  static const schemaVersion = 8;
-  static final _magic = utf8.encode('BUTLERLYBACKUP2');
+  static const format = BackupContainerFormat.name;
+  static const formatVersion = BackupContainerFormat.version;
+  static const schemaVersion = BackupContainerFormat.schemaVersion;
+  static final _magic = BackupContainerFormat.magic;
 
   static const _tables = <_TableSpec>[
     _TableSpec(

@@ -2,22 +2,26 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 
-void main() {
-  test('application source has no Flutter or infrastructure imports', () {
-    final forbidden = RegExp(
-      r'''import ['"](?:package:flutter|package:sqflite|package:butlerly_database|dart:io|dart:ffi|dart:html)''',
-    );
-    final files = Directory('lib')
-        .listSync(recursive: true)
-        .whereType<File>()
-        .where((file) => file.path.endsWith('.dart'));
+import '../../../tool/architecture_policy.dart';
 
-    for (final file in files) {
+void main() {
+  test(
+    'application imports, exports, and conditional directives respect layer boundaries',
+    () {
       expect(
-        file.readAsStringSync(),
-        isNot(matches(forbidden)),
-        reason: '${file.path} must remain infrastructure-independent.',
+        packageBoundaryViolations(
+          Directory('.'),
+          packageName: 'butlerly_finance_application',
+          allowedPackages: {
+            'butlerly_finance_domain',
+            'crypto',
+            'timezone',
+            'yaml',
+          },
+          platformIndependent: true,
+        ),
+        isEmpty,
       );
-    }
-  });
+    },
+  );
 }

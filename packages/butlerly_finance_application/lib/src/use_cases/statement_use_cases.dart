@@ -2,10 +2,11 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
 import '../dto/transaction_dto.dart';
 import '../result/application_result.dart';
-import 'transaction_use_cases.dart';
-import 'reconciliation_use_cases.dart';
-import 'duplicate_transaction_use_cases.dart';
 import 'classification_use_cases.dart';
+import 'duplicate_transaction_use_cases.dart';
+import 'reconciliation_use_cases.dart';
+import 'statement_intake_policy.dart';
+import 'transaction_use_cases.dart';
 
 final class StatementImportSummary {
   const StatementImportSummary({
@@ -47,7 +48,9 @@ final class StatementServices {
     required this.duplicateGroups,
     required this.duplicateChecker,
     this.classifier,
+    this.intakePolicy = const StatementIntakePolicy(),
   });
+  final StatementIntakePolicy intakePolicy;
   final StatementRepository statements;
   final TransactionRepository transactions;
   final StatementWorkflowRepository workflow;
@@ -97,20 +100,8 @@ final class StatementServices {
     String? currency;
     if (currencies.length == 1) {
       currency = currencies.single;
-      var coefficient = BigInt.zero;
-      var scale = 0;
-      for (final row in valid) {
-        final amount = DecimalValue.parse(row.amount!);
-        final targetScale = scale > amount.scale ? scale : amount.scale;
-        coefficient =
-            coefficient * BigInt.from(10).pow(targetScale - scale) +
-            amount.coefficient *
-                BigInt.from(10).pow(targetScale - amount.scale);
-        scale = targetScale;
-      }
-      aggregate = DecimalValue.fromParts(
-        coefficient: coefficient,
-        scale: scale,
+      aggregate = DecimalValue.sum(
+        valid.map((row) => DecimalValue.parse(row.amount!)),
       ).toString();
     }
     return StatementImportAssessment(
@@ -118,7 +109,7 @@ final class StatementServices {
       aggregateAmount: aggregate,
       currency: currency,
       lowConfidenceCount: rows
-          .where((row) => (row.confidence ?? 1) <= .5)
+          .where((row) => intakePolicy.needsConfidenceReview(row.confidence))
           .length,
       possibleDuplicateCount: duplicates,
       invalidCount: rows.length - valid.length,
@@ -157,7 +148,7 @@ final class StatementServices {
         continue;
       }
       imported++;
-      if ((row.confidence ?? 1) <= .5) needsReview++;
+      if (intakePolicy.needsConfidenceReview(row.confidence)) needsReview++;
       final candidates =
           duplicate is ApplicationSuccess<DuplicateTransactionCheckResult>
           ? duplicate.value.candidates
@@ -495,7 +486,7 @@ final class StatementServices {
           originalRepresentation: row.originalText,
         ),
       ],
-      reviewIssues: row.confidence != null && row.confidence! <= .5
+      reviewIssues: intakePolicy.needsConfidenceReview(row.confidence)
           ? [
               ReviewIssue(
                 id: ReviewIssueId('statement-confidence-${row.id}'),
@@ -601,7 +592,7 @@ final class StatementServices {
     return TransactionDirection.expense;
   }
 
-  static List<StatementRow> _applyStatementIntakeDefaults(
+  List<StatementRow> _applyStatementIntakeDefaults(
     List<StatementRow> rows,
   ) => rows
       .map(
@@ -614,8 +605,8 @@ final class StatementServices {
           postingDate: row.postingDate,
           description: row.description,
           amount: row.amount,
-          currency: row.currency ?? 'USD',
-          direction: row.direction ?? TransactionDirection.expense.name,
+          currency: row.currency ?? intakePolicy.defaultCurrency,
+          direction: row.direction ?? intakePolicy.defaultDirection.name,
           kind: row.kind,
           confidence: row.confidence,
           sourceContext: row.currency == null || row.direction == null

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:butlerly/core/data/backup_container_format.dart';
 import 'package:butlerly/core/data/backup_encryption.dart';
 import 'package:butlerly/core/data/local_backup_engine.dart' as engine;
 import 'package:butlerly/core/data/local_backup_snapshot_writer.dart';
@@ -46,8 +47,8 @@ final class LocalBackupManager {
   final LocalBackupSnapshotWriter _snapshotWriter;
   final BackupEncryption _encryption = const BackupEncryption();
 
-  static final _backupMagic = utf8.encode('BUTLERLYBACKUP2');
-  static const _supportedSchemaVersion = 8;
+  static final _backupMagic = BackupContainerFormat.magic;
+  static const _supportedSchemaVersion = BackupContainerFormat.schemaVersion;
 
   Future<File> createBackup(File destination) =>
       EvidenceMutationLock.runExclusive(

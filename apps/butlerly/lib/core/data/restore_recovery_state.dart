@@ -4,6 +4,9 @@ import 'dart:io';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:flutter/foundation.dart';
 
+export 'package:butlerly_finance_application/butlerly_finance_application.dart'
+    show RestoreRecoveryRequiredException;
+
 final class RestoreRecoveryIncident {
   const RestoreRecoveryIncident({
     required this.operationId,
@@ -179,8 +182,4 @@ final class RestoreRecoveryState extends ChangeNotifier {
     final evidence = await localDataManager.evidenceDirectory();
     return File('${evidence.path}.restore-recovery-required.json');
   }
-}
-
-final class RestoreRecoveryRequiredException implements Exception {
-  const RestoreRecoveryRequiredException();
 }

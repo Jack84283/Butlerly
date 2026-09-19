@@ -1,9 +1,11 @@
 import 'dart:io';
 
 import 'package:butlerly/core/data/local_backup_manager.dart';
+import 'package:butlerly/core/data/local_data_gateway.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -87,15 +89,16 @@ void main() {
       );
 
       var refreshCalls = 0;
+      var failRefresh = true;
+      final workspace = WorkspaceDataService(
+        LocalWorkspaceDataGateway(fixture.manager, fixture.data),
+        refreshSystemData: () async {
+          refreshCalls++;
+          if (failRefresh) throw StateError('synthetic refresh failure');
+        },
+      );
       await expectLater(
-        fixture.manager.restore(
-          backup,
-          mode: LocalRestoreMode.replace,
-          postActivationRefresh: () async {
-            refreshCalls++;
-            throw StateError('synthetic refresh failure');
-          },
-        ),
+        workspace.restore(backup.path, mode: LocalRestoreMode.replace),
         throwsA(isA<RestoreRecoveryRequiredException>()),
       );
 
@@ -118,9 +121,9 @@ void main() {
         isNotEmpty,
       );
 
-      await fixture.manager.recoverControlledState(
-        postActivationRefresh: () async => refreshCalls++,
-      );
+      failRefresh = false;
+      expect(workspace.hasRecoverySafetyCopy, isTrue);
+      await workspace.recoverControlledState();
 
       expect(refreshCalls, 2);
       expect(fixture.manager.recoveryState.isRecoveryRequired, isFalse);
