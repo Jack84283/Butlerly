@@ -2,7 +2,7 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
 import '../result/application_result.dart';
 
-enum ClassificationSource { history, merchantDefault, unresolved }
+enum ClassificationSource { rule, history, merchantDefault, unresolved }
 
 final class ClassificationProposal {
   const ClassificationProposal({
@@ -12,6 +12,8 @@ final class ClassificationProposal {
     required this.source,
     this.confidence,
     this.reason,
+    this.tagIds = const [],
+    this.ruleId,
   });
 
   final MerchantId? merchantId;
@@ -20,6 +22,8 @@ final class ClassificationProposal {
   final ClassificationSource source;
   final double? confidence;
   final String? reason;
+  final List<TagId> tagIds;
+  final ClassificationRuleId? ruleId;
 }
 
 /// Resolves a deterministic proposal without mutating the transaction.
@@ -28,11 +32,13 @@ final class ProposeTransactionClassification {
     this.transactions,
     this.merchants, {
     this.historical,
+    this.rules,
   });
 
   final TransactionRepository transactions;
   final MerchantRepository merchants;
   final HistoricalClassificationRepository? historical;
+  final ClassificationRuleRepository? rules;
 
   Future<ApplicationResult<ClassificationProposal>> call({
     MerchantId? merchantId,
@@ -44,6 +50,35 @@ final class ProposeTransactionClassification {
         ? _resolveMerchant(allMerchants, description)
         : allMerchants.where((value) => value.id == merchantId).firstOrNull;
     final normalizedDescription = normalizeMerchantName(description ?? '');
+    final configuredRules = rules == null
+        ? const <ClassificationRule>[]
+        : await rules!.listAll();
+    final matches = configuredRules
+        .where((rule) => rule.matches(description ?? ''))
+        .toList(growable: false)
+      ..sort((left, right) {
+        final mode = left.matchMode == right.matchMode
+            ? 0
+            : left.matchMode == ClassificationRuleMatchMode.exact
+            ? -1
+            : 1;
+        if (mode != 0) return mode;
+        final pattern = right.pattern.length.compareTo(left.pattern.length);
+        return pattern != 0 ? pattern : left.id.value.compareTo(right.id.value);
+      });
+    if (matches.isNotEmpty) {
+      final rule = matches.first;
+      return ClassificationProposal(
+        merchantId: rule.merchantId ?? merchant?.id,
+        categoryId: rule.categoryId,
+        subcategoryId: rule.subcategoryId,
+        tagIds: rule.tagIds,
+        source: ClassificationSource.rule,
+        confidence: 1,
+        reason: 'matched user-approved classification rule',
+        ruleId: rule.id,
+      );
+    }
     final candidates = historical == null
         ? (await transactions.listAll())
               .where((value) {
