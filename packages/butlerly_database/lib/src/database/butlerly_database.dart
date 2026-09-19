@@ -85,7 +85,6 @@ final class ButlerlyDatabase {
         ),
       );
       await applySeed();
-
     } on DatabaseException catch (error) {
       await _database?.close();
       _database = null;

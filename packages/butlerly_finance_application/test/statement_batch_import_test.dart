@@ -78,11 +78,9 @@ void main() {
     'row-level save rejects a mismatched statement PaymentSource and is idempotent',
     () async {
       final statement = _statement(paymentSourceId: 'source-a');
-      final mismatched = await service.assessBatch(
-        statement,
-        [_row('one')],
-        'source-b',
-      );
+      final mismatched = await service.assessBatch(statement, [
+        _row('one'),
+      ], 'source-b');
       expect(mismatched, isA<ApplicationFailure<StatementImportAssessment>>());
 
       final row = _row('one');

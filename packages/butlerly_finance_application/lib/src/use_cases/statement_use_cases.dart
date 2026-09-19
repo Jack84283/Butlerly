@@ -537,7 +537,6 @@ final class StatementServices {
     return TransactionDirection.expense;
   }
 
-  List<StatementRow> _applyStatementIntakeDefaults(
-    List<StatementRow> rows,
-  ) => List<StatementRow>.unmodifiable(rows);
+  List<StatementRow> _applyStatementIntakeDefaults(List<StatementRow> rows) =>
+      List<StatementRow>.unmodifiable(rows);
 }

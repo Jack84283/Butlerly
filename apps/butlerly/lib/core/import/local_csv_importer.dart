@@ -204,7 +204,8 @@ final class LocalCsvImporter {
     for (final row in preview.rows.where((value) => value.isValid)) {
       try {
         final checker = _duplicateChecker;
-        if (checker != null && !confirmedDuplicateRows.contains(row.rowNumber)) {
+        if (checker != null &&
+            !confirmedDuplicateRows.contains(row.rowNumber)) {
           final duplicate = await checker(
             DuplicateTransactionCheckCommand(
               transactionDate: row.date,
@@ -214,9 +215,10 @@ final class LocalCsvImporter {
               paymentSourceId: paymentSourceId,
             ),
           );
-          if (duplicate case ApplicationSuccess<DuplicateTransactionCheckResult>(
-            value: final value,
-          ) when value.requiresConfirmation) {
+          if (duplicate
+              case ApplicationSuccess<DuplicateTransactionCheckResult>(
+                value: final value,
+              ) when value.requiresConfirmation) {
             duplicates++;
             errors.add(
               'Row ${row.rowNumber}: possible duplicate requires confirmation.',
@@ -345,9 +347,10 @@ final class LocalCsvImporter {
               direction: direction,
             ),
           );
-          if (duplicate case ApplicationSuccess<DuplicateTransactionCheckResult>(
-            value: final value,
-          ) when value.requiresConfirmation) {
+          if (duplicate
+              case ApplicationSuccess<DuplicateTransactionCheckResult>(
+                value: final value,
+              ) when value.requiresConfirmation) {
             duplicates++;
             errors.add(
               'Row ${index + 1}: possible duplicate requires confirmation.',
