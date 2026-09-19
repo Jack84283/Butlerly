@@ -116,76 +116,21 @@ final class StatementServices {
     );
   });
 
+  /// Bulk canonicalization is intentionally disabled for Finance V1.
+  ///
+  /// Every extracted statement row must receive an explicit row-level
+  /// save/link/skip/defer decision so duplicate and reconciliation context is
+  /// shown before a canonical transaction is created.
   Future<ApplicationResult<StatementImportSummary>> importBatch(
     FinancialStatement statement,
     List<StatementRow> rows,
     String paymentSourceId,
   ) => runApplication('import statement batch', () async {
-    if (statement.paymentSourceId != null &&
-        statement.paymentSourceId != paymentSourceId) {
-      throw const DomainValidationException(
-        code: DomainErrorCode.invalidState,
-        field: 'paymentSourceId',
-        message: 'The selected payment source does not match the statement.',
-      );
-    }
-    var imported = 0;
-    var needsReview = 0;
-    var possibleDuplicates = 0;
-    var failed = 0;
-    for (final row in rows) {
-      if (row.amount == null ||
-          row.currency == null ||
-          row.transactionDate == null ||
-          row.direction == null) {
-        failed++;
-        continue;
-      }
-      final duplicate = await duplicates(row);
-      final result = await save(row, paymentSourceId, allowCreateNew: true);
-      if (result is! ApplicationSuccess<TransactionDto>) {
-        failed++;
-        continue;
-      }
-      imported++;
-      if (intakePolicy.needsConfidenceReview(row.confidence)) needsReview++;
-      final candidates =
-          duplicate is ApplicationSuccess<DuplicateTransactionCheckResult>
-          ? duplicate.value.candidates
-          : const <DuplicateTransactionCandidate>[];
-      if (candidates.isNotEmpty) {
-        possibleDuplicates++;
-        final transactionIds = [
-          result.value.id,
-          ...candidates.map((candidate) => candidate.transaction.id),
-        ].map(TransactionId.new).toList();
-        final key = DuplicateTransactionKey(
-          transactionDate: row.transactionDate!.toIso8601String().substring(
-            0,
-            10,
-          ),
-          amount: DecimalValue.parse(row.amount!),
-          currency: row.currency!,
-          direction: _directionForRow(row).name,
-        );
-        final now = clock.now();
-        await duplicateGroups.save(
-          DuplicateCandidateGroup(
-            id: 'statement-duplicate-${row.id}',
-            transactionIds: transactionIds,
-            duplicateKey: key,
-            status: DuplicateCandidateGroupStatus.unresolved,
-            createdAt: now,
-            updatedAt: now,
-          ),
-        );
-      }
-    }
-    return StatementImportSummary(
-      imported: imported,
-      needsReview: needsReview,
-      possibleDuplicates: possibleDuplicates,
-      failed: failed,
+    throw const DomainValidationException(
+      code: DomainErrorCode.invalidState,
+      field: 'statementRows',
+      message:
+          'Statement rows must be reviewed and saved individually before canonicalization.',
     );
   });
 
@@ -594,38 +539,5 @@ final class StatementServices {
 
   List<StatementRow> _applyStatementIntakeDefaults(
     List<StatementRow> rows,
-  ) => rows
-      .map(
-        (row) => StatementRow(
-          id: row.id,
-          statementId: row.statementId,
-          position: row.position,
-          originalText: row.originalText,
-          transactionDate: row.transactionDate,
-          postingDate: row.postingDate,
-          description: row.description,
-          amount: row.amount,
-          currency: row.currency ?? intakePolicy.defaultCurrency,
-          direction: row.direction ?? intakePolicy.defaultDirection.name,
-          kind: row.kind,
-          confidence: row.confidence,
-          sourceContext: row.currency == null || row.direction == null
-              ? '${row.sourceContext ?? ''}${row.sourceContext == null ? '' : '; '}statement intake default applied'
-              : row.sourceContext,
-          status: row.status,
-          transactionId: row.transactionId,
-          merchantId: row.merchantId,
-          categoryId: row.categoryId,
-          subcategoryId: row.subcategoryId,
-          tagIds: row.tagIds,
-          paymentSourceId: row.paymentSourceId,
-          sourceReferenceId: row.sourceReferenceId,
-          reviewReason: row.reviewReason,
-          dispositionReason: row.dispositionReason,
-          statusBeforeSkip: row.statusBeforeSkip,
-          createdAt: row.createdAt,
-          updatedAt: row.updatedAt,
-        ),
-      )
-      .toList(growable: false);
+  ) => List<StatementRow>.unmodifiable(rows);
 }
