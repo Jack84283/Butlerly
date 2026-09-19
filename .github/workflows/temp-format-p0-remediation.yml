@@ -1,0 +1,52 @@
+name: Temp Format P0 Remediation
+
+on:
+  push:
+    branches:
+      - codex/p0-correctness-and-architecture-fixes
+    paths:
+      - .github/workflows/temp-format-p0-remediation.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/p0-correctness-and-architecture-fixes
+
+      - uses: ./.github/actions/setup-toolchain
+
+      - name: Run repository setup
+        run: ./tool/setup.sh
+
+      - name: Format finance application
+        working-directory: packages/butlerly_finance_application
+        run: dart format lib/src/use_cases/statement_use_cases.dart test/statement_batch_import_test.dart
+
+      - name: Format database
+        working-directory: packages/butlerly_database
+        run: dart format lib/src/database/butlerly_database.dart
+
+      - name: Format Flutter app
+        working-directory: apps/butlerly
+        run: dart format lib/core/import/local_csv_importer.dart lib/features/foundation/presentation/master_data_page.dart
+
+      - name: Commit formatter output
+        run: |
+          if git diff --quiet; then
+            echo "No formatting changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/butlerly_finance_application/lib/src/use_cases/statement_use_cases.dart
+          git add packages/butlerly_finance_application/test/statement_batch_import_test.dart
+          git add packages/butlerly_database/lib/src/database/butlerly_database.dart
+          git add apps/butlerly/lib/core/import/local_csv_importer.dart
+          git add apps/butlerly/lib/features/foundation/presentation/master_data_page.dart
+          git commit -m "Format P0 remediation with repo toolchain"
+          git push origin HEAD:codex/p0-correctness-and-architecture-fixes
