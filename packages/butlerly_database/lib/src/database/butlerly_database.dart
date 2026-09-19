@@ -84,15 +84,8 @@ final class ButlerlyDatabase {
           },
         ),
       );
-      if (seedSql.isNotEmpty) {
-        await transaction((tx) async {
-          for (final sql in seedSql) {
-            for (final statement in splitSqlStatements(sql)) {
-              await tx.execute(statement);
-            }
-          }
-        });
-      }
+      await applySeed();
+
     } on DatabaseException catch (error) {
       await _database?.close();
       _database = null;
@@ -138,6 +131,17 @@ final class ButlerlyDatabase {
         whereArgs: [row['id']],
       );
     }
+  }
+
+  Future<void> applySeed() async {
+    if (seedSql.isEmpty) return;
+    await transaction((tx) async {
+      for (final sql in seedSql) {
+        for (final statement in splitSqlStatements(sql)) {
+          await tx.execute(statement);
+        }
+      }
+    });
   }
 
   Future<void> close() async {
