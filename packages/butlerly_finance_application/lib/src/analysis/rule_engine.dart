@@ -391,7 +391,7 @@ final class AnalysisRuleEngine {
     final baselineValue = usableBaseline?.value;
     final absolute = baselineValue == null
         ? null
-        : _subtract(current.value, baselineValue);
+        : current.value.subtract(baselineValue);
     final percentage = baselineValue == null
         ? null
         : calculatePercentageChange(absolute!, baselineValue);
@@ -487,16 +487,6 @@ final class AnalysisRuleEngine {
         ? baselineEligible
         : _group(baselineEligible, rule.grouping)[dimension] ??
               const <AnalysisEconomicTransaction>[];
-  }
-
-  DecimalValue _subtract(DecimalValue left, DecimalValue right) {
-    final scale = left.scale > right.scale ? left.scale : right.scale;
-    return DecimalValue.fromParts(
-      coefficient:
-          left.coefficient * BigInt.from(10).pow(scale - left.scale) -
-          right.coefficient * BigInt.from(10).pow(scale - right.scale),
-      scale: scale,
-    );
   }
 
   RuleMeasure _baselineMeasure(AnalysisRuleDefinition rule) {
@@ -1306,33 +1296,10 @@ final class AnalysisRuleEngine {
     if (income == null || expense == null) {
       throw StateError('Metric dependency result is unavailable.');
     }
-    final scale = income.value.scale > expense.value.scale
-        ? income.value.scale
-        : expense.value.scale;
-    return DecimalValue.fromParts(
-      coefficient:
-          income.value.coefficient *
-              BigInt.from(10).pow(scale - income.value.scale) -
-          expense.value.coefficient *
-              BigInt.from(10).pow(scale - expense.value.scale),
-      scale: scale,
-    );
+    return income.value.subtract(expense.value);
   }
 
-  DecimalValue _sum(List<DecimalValue> values) {
-    if (values.isEmpty) {
-      return DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0);
-    }
-    final scale = values
-        .map((value) => value.scale)
-        .reduce((a, b) => a > b ? a : b);
-    final coefficient = values.fold<BigInt>(
-      BigInt.zero,
-      (sum, value) =>
-          sum + value.coefficient * BigInt.from(10).pow(scale - value.scale),
-    );
-    return DecimalValue.fromParts(coefficient: coefficient, scale: scale);
-  }
+  DecimalValue _sum(List<DecimalValue> values) => DecimalValue.sum(values);
 }
 
 AnalysisContext _contextForWindow(

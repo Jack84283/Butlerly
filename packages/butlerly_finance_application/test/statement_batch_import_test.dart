@@ -196,6 +196,42 @@ void main() {
     );
   });
 
+  test(
+    'configured intake defaults do not overwrite extracted values',
+    () async {
+      service = StatementServices(
+        statements,
+        transactions,
+        statements,
+        _Clock(now),
+        duplicateGroups: groups,
+        duplicateChecker: DuplicateTransactionChecker(transactions),
+        intakePolicy: const StatementIntakePolicy(
+          defaultCurrency: 'EUR',
+          defaultDirection: TransactionDirection.income,
+        ),
+      );
+      await service.create(_statement(), [
+        _row('missing', currency: null, direction: null),
+        _row('explicit', currency: 'JPY', direction: 'expense'),
+      ]);
+      expect(statements.rows[0].currency, 'EUR');
+      expect(statements.rows[0].direction, 'income');
+      expect(statements.rows[1].currency, 'JPY');
+      expect(statements.rows[1].direction, 'expense');
+    },
+  );
+
+  test(
+    'confidence policy preserves the inclusive threshold and missing value',
+    () {
+      const policy = StatementIntakePolicy(lowConfidenceThreshold: .7);
+      expect(policy.needsConfidenceReview(.7), isTrue);
+      expect(policy.needsConfidenceReview(.71), isFalse);
+      expect(policy.needsConfidenceReview(null), isFalse);
+    },
+  );
+
   test('abandon import cannot remove a protected statement', () async {
     statements.rows.add(
       _row('protected', transactionId: 'existing-transaction'),

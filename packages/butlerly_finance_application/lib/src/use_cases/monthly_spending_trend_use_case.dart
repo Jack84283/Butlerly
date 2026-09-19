@@ -69,7 +69,7 @@ final class CalculateMonthlySpendingTrend {
     final expenseRule = definitions
         .where(
           (rule) =>
-              rule.role == 'expenseTotal' &&
+              rule.role == AnalysisSemanticRole.expenseTotal &&
               rule.type == AnalysisRuleType.metric,
         )
         .firstOrNull;

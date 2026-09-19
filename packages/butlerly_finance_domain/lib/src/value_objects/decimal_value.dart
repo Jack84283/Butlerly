@@ -53,6 +53,40 @@ final class DecimalValue implements Comparable<DecimalValue> {
   bool get isNegative => coefficient < BigInt.zero;
   bool get isZero => coefficient == BigInt.zero;
 
+  /// Exact arithmetic on decimal coefficients; no rounding or binary floats.
+  DecimalValue add(DecimalValue other) {
+    final commonScale = scale > other.scale ? scale : other.scale;
+    return DecimalValue.fromParts(
+      coefficient:
+          _scaledCoefficient(commonScale) +
+          other._scaledCoefficient(commonScale),
+      scale: commonScale,
+    );
+  }
+
+  DecimalValue subtract(DecimalValue other) {
+    final commonScale = scale > other.scale ? scale : other.scale;
+    return DecimalValue.fromParts(
+      coefficient:
+          _scaledCoefficient(commonScale) -
+          other._scaledCoefficient(commonScale),
+      scale: commonScale,
+    );
+  }
+
+  DecimalValue multiply(DecimalValue other) => DecimalValue.fromParts(
+    coefficient: coefficient * other.coefficient,
+    scale: scale + other.scale,
+  );
+
+  DecimalValue abs() =>
+      DecimalValue.fromParts(coefficient: coefficient.abs(), scale: scale);
+
+  static DecimalValue sum(Iterable<DecimalValue> values) => values.fold(
+    DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0),
+    (total, value) => total.add(value),
+  );
+
   @override
   int compareTo(DecimalValue other) {
     final commonScale = scale > other.scale ? scale : other.scale;

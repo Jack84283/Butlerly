@@ -1,6 +1,5 @@
 import '../entities/exchange_rate.dart';
 import '../value_objects/currency_code.dart';
-import '../value_objects/decimal_value.dart';
 import '../value_objects/money.dart';
 
 enum NormalizationStatus { notRequired, resolved, missingRate }
@@ -59,10 +58,7 @@ CurrencyNormalizationResult normalizeMoney({
       baseCurrency: baseCurrency,
     );
   }
-  final amount = DecimalValue.fromParts(
-    coefficient: original.amount.coefficient * exchangeRate.rate.coefficient,
-    scale: original.amount.scale + exchangeRate.rate.scale,
-  );
+  final amount = original.amount.multiply(exchangeRate.rate);
   return CurrencyNormalizationResult(
     status: NormalizationStatus.resolved,
     original: original,

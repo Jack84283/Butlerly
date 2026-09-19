@@ -335,19 +335,12 @@ class _InsightsContent extends StatelessWidget {
             pieLegendBelow: true,
             pieValueLabel: (result) {
               final shareText = result.currentValue?.toString();
-              final totalText = evaluation.summary.expenseSpending?.toString();
-              final share = shareText == null
-                  ? null
-                  : double.tryParse(shareText);
-              final total = totalText == null
-                  ? null
-                  : double.tryParse(totalText);
-              if (share == null || total == null) {
+              final amount = result.impactValue;
+              if (amount == null) {
                 return shareText == null
                     ? '—'
                     : '${localizedDecimal(context, shareText)}%';
               }
-              final amount = total * share / 100;
               final currency = evaluation.summary.currency?.value ?? '';
               return '${localizedDecimal(context, amount.toString())}${currency.isEmpty ? '' : ' $currency'}';
             },

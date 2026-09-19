@@ -1,11 +1,4 @@
-import 'dart:io';
-
 import 'package:butlerly/app/locale/locale_provider.dart';
-import 'package:butlerly/core/application/application_result_guard.dart';
-import 'package:butlerly/core/data/local_backup_manager.dart';
-import 'package:butlerly/core/data/local_data_manager.dart';
-import 'package:butlerly/core/database/initial_master_data.dart';
-import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
@@ -15,11 +8,12 @@ import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/app_localizations_backup.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as path;
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart' as share;
 
 class PrivacyDataPage extends ConsumerStatefulWidget {
@@ -32,14 +26,16 @@ class PrivacyDataPage extends ConsumerStatefulWidget {
 class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
   static const _backupType = XTypeGroup(
     label: 'Butlerly backup',
-    extensions: ['butlerlybackup'],
-    uniformTypeIdentifiers: ['com.butlerly.backup'],
+    extensions: [PortableBackupPolicy.extension],
+    uniformTypeIdentifiers: [PortableBackupPolicy.uniformTypeIdentifier],
   );
-  static const _minimumBackupPasswordLength = 12;
 
   bool _busy = false;
 
-  bool get _usesNativeMobileShare => Platform.isIOS || Platform.isAndroid;
+  bool get _usesNativeMobileShare =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.android);
 
   Future<void> _backup() async {
     final timestamp = DateTime.now().toUtc().toIso8601String().replaceAll(
@@ -66,8 +62,8 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
 
     setState(() => _busy = true);
     try {
-      await services<LocalBackupManager>().createPortableBackup(
-        File(location.path),
+      await services<WorkspaceDataService>().createPortableBackup(
+        location.path,
         password: password,
       );
       if (mounted) _message(context.l10n.backupText('backupComplete'));
@@ -85,12 +81,10 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     String password,
   ) async {
     setState(() => _busy = true);
-    File? file;
+    String? filePath;
     try {
-      final temporaryDirectory = await getTemporaryDirectory();
-      file = File(path.join(temporaryDirectory.path, fileName));
-      await services<LocalBackupManager>().createPortableBackup(
-        file,
+      filePath = await services<WorkspaceDataService>().createTemporaryBackup(
+        fileName,
         password: password,
       );
       if (!mounted) return;
@@ -102,7 +96,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       final result = await share.SharePlus.instance.share(
         share.ShareParams(
           files: [
-            share.XFile(file.path, mimeType: 'application/vnd.butlerly.backup'),
+            share.XFile(filePath, mimeType: PortableBackupPolicy.mimeType),
           ],
           title: fileName,
           sharePositionOrigin: shareOrigin,
@@ -116,9 +110,9 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     } catch (_) {
       if (mounted) _message(context.l10n.backupText('backupFailed'));
     } finally {
-      try {
-        if (file != null && await file.exists()) await file.delete();
-      } catch (_) {}
+      if (filePath != null) {
+        await services<WorkspaceDataService>().discardTemporaryBackup(filePath);
+      }
       if (mounted) setState(() => _busy = false);
     }
   }
@@ -127,8 +121,8 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     final selected = await openFile(acceptedTypeGroups: const [_backupType]);
     if (selected == null) return;
 
-    final file = File(selected.path);
-    final manager = services<LocalBackupManager>();
+    final file = selected.path;
+    final manager = services<WorkspaceDataService>();
     String? password;
     try {
       if (await manager.isEncryptedBackup(file)) {
@@ -150,12 +144,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         file,
         mode: mode,
         password: password,
-        postActivationRefresh: () async {
-          await requireApplicationSuccess(
-            services<FinanceServices>().seedInitialMasterData(
-              buildInitialMasterData(),
-            ),
-          );
+        refreshPresentation: () async {
           ref.invalidate(userPreferenceProvider);
           notifyTransactionChanged();
         },
@@ -233,7 +222,8 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
               ),
               FilledButton(
                 onPressed: () {
-                  if (password.text.length < _minimumBackupPasswordLength) {
+                  if (password.text.length <
+                      PortableBackupPolicy.minimumPasswordLength) {
                     setSheetState(
                       () => error = context.l10n.backupText(
                         'backupPasswordTooShort',
@@ -403,11 +393,11 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
   Future<void> _export() async {
     setState(() => _busy = true);
     try {
-      final result = await services<LocalDataManager>().exportAll();
+      final result = await services<WorkspaceDataService>().exportAll();
       if (!mounted) return;
-      final displayPath = Platform.isIOS
-          ? 'Files → On My iPhone → Butlerly → ${path.basename(result.directory.path)}'
-          : result.directory.path;
+      final displayPath = defaultTargetPlatform == TargetPlatform.iOS
+          ? 'Files → On My iPhone → Butlerly → ${path.basename(result.directoryPath)}'
+          : result.directoryPath;
       await showButlerlyBottomSheet<void>(
         context: context,
         builder: (context) => ButlerlySheet(
@@ -455,14 +445,12 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     if (confirmed != true) return;
     setState(() => _busy = true);
     try {
-      await services<LocalDataManager>().eraseAll();
-      await requireApplicationSuccess(
-        services<FinanceServices>().seedInitialMasterData(
-          buildInitialMasterData(),
-        ),
+      await services<WorkspaceDataService>().eraseAll(
+        refreshPresentation: () async {
+          ref.invalidate(userPreferenceProvider);
+          notifyTransactionChanged();
+        },
       );
-      ref.invalidate(userPreferenceProvider);
-      notifyTransactionChanged();
       if (mounted) _message(context.l10n.text('eraseComplete'));
     } catch (_) {
       if (mounted) _message(context.l10n.text('eraseFailed'));

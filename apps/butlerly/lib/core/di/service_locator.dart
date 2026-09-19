@@ -1,7 +1,10 @@
+import 'package:butlerly/core/application/application_result_guard.dart';
 import 'package:butlerly/core/config/app_configuration.dart';
 import 'package:butlerly/core/data/local_backup_manager.dart';
+import 'package:butlerly/core/data/local_data_gateway.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/data/restore_recovery_state.dart';
+import 'package:butlerly/core/database/initial_master_data.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
@@ -36,6 +39,22 @@ void configureDependencies({
         recoveryState: restoreRecoveryState,
       ),
     );
+
+  services.registerSingleton<WorkspaceDataService>(
+    WorkspaceDataService(
+      LocalWorkspaceDataGateway(
+        services<LocalBackupManager>(),
+        localDataManager,
+      ),
+      refreshSystemData: () async {
+        await requireApplicationSuccess(
+          services<FinanceServices>().seedInitialMasterData(
+            buildInitialMasterData(),
+          ),
+        );
+      },
+    ),
+  );
 
   if (database.status == DatabaseStatus.ready) {
     final duplicateGroups = SqliteDuplicateCandidateGroupRepository(

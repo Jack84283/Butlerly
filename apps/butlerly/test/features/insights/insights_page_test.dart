@@ -44,6 +44,61 @@ void main() {
     );
   }
 
+  testWidgets('summary pie uses source amounts instead of rounded shares', (
+    tester,
+  ) async {
+    final rule = _groupedRule(
+      presentation: const InsightPresentation(
+        semanticType: InsightSemanticType.neutral,
+        visualizationType: InsightVisualizationType.pie,
+        primaryMetric: InsightPrimaryMetric.share,
+      ),
+    );
+    final context = _context();
+    await tester.pumpWidget(
+      app(
+        (_) async => ApplicationSuccess(
+          InsightsEvaluation(
+            summary: PeriodSummary(
+              context: context,
+              expenseSpending: DecimalValue.parse('300'),
+              currency: CurrencyCode('USD'),
+              comparisonAvailable: false,
+            ),
+            results: [
+              InsightResult(
+                outputType: InsightOutputType.pattern,
+                rule: rule,
+                context: context,
+                currentValue: DecimalValue.parse('33.33'),
+                impactValue: DecimalValue.parse('100'),
+                currency: CurrencyCode('USD'),
+                dimension: 'category.food',
+              ),
+              InsightResult(
+                outputType: InsightOutputType.pattern,
+                rule: rule,
+                context: context,
+                currentValue: DecimalValue.parse('66.67'),
+                currency: CurrencyCode('USD'),
+                dimension: 'category.other',
+              ),
+            ],
+            hasSufficientHistory: true,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('100.00 USD'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('100.00 USD'), findsOneWidget);
+    expect(find.text('99.99 USD'), findsNothing);
+  });
+
   testWidgets('shows an R020 finding with its comparison values', (
     tester,
   ) async {
@@ -442,6 +497,7 @@ AnalysisRuleDefinition _groupedRule({
   RuleGrouping grouping = RuleGrouping.category,
   String nameKey = 'analysis.rule.r021.name',
   String descriptionKey = 'analysis.rule.r021.description',
+  InsightPresentation? presentation,
 }) => AnalysisRuleDefinition(
   identity: RuleIdentity(id),
   version: RuleVersion('1.1.0'),
@@ -459,6 +515,7 @@ AnalysisRuleDefinition _groupedRule({
   severity: RuleSeverity.attention,
   definitionHash: RuleDefinitionHash('b' * 64),
   surface: AnalysisSurface.insights,
+  presentation: presentation,
 );
 
 AnalysisContext _context() => AnalysisContext(
