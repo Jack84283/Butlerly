@@ -2,6 +2,7 @@ import '../analysis/analysis.dart';
 import '../entities/account.dart';
 import '../entities/attachment_link.dart';
 import '../entities/category.dart';
+import '../entities/classification_rule.dart';
 import '../entities/duplicate_candidate_group.dart';
 import '../entities/evidence_item.dart';
 import '../entities/exchange_rate.dart';
@@ -147,6 +148,13 @@ final class TransactionRepositoryQuery {
   final TransactionStatus? status;
   final bool? needsReview;
   final bool uncategorized;
+}
+
+abstract interface class ClassificationRuleRepository {
+  Future<void> save(ClassificationRule rule);
+  Future<ClassificationRule?> findById(ClassificationRuleId id);
+  Future<List<ClassificationRule>> listAll();
+  Future<void> remove(ClassificationRuleId id);
 }
 
 abstract interface class PaymentSourceRepository {
