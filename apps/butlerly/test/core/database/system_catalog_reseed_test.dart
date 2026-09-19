@@ -43,6 +43,11 @@ void main() {
       where: 'tag_id = ? AND locale = ?',
       whereArgs: ['tag.travel', 'es'],
     );
+    await database.database.delete(
+      'category_translations',
+      where: 'category_id = ? AND locale = ?',
+      whereArgs: ['category.food', 'zh-Hans'],
+    );
 
     await database.reseedSystemCatalog();
 
