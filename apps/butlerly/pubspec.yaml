@@ -36,6 +36,7 @@ dependencies:
   share_plus: ^13.3.0
 
 dev_dependencies:
+  analyzer: ^14.1.0
   flutter_test:
     sdk: flutter
   integration_test:

@@ -1,14 +1,11 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
-import 'package:butlerly/core/application/application_result_guard.dart';
-import 'package:butlerly/core/data/local_backup_manager.dart';
-import 'package:butlerly/core/database/initial_master_data.dart';
-import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/app_localizations_backup.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -28,11 +25,6 @@ class _RestoreRecoveryRequiredPageState
   bool _failed = false;
 
   Future<void> _refreshRuntime() async {
-    await requireApplicationSuccess(
-      services<FinanceServices>().seedInitialMasterData(
-        buildInitialMasterData(),
-      ),
-    );
     ref.invalidate(userPreferenceProvider);
     notifyTransactionChanged();
   }
@@ -43,8 +35,8 @@ class _RestoreRecoveryRequiredPageState
       _failed = false;
     });
     try {
-      await services<LocalBackupManager>().recoverControlledState(
-        postActivationRefresh: _refreshRuntime,
+      await services<WorkspaceDataService>().recoverControlledState(
+        refreshPresentation: _refreshRuntime,
       );
     } catch (_) {
       if (mounted) setState(() => _failed = true);
@@ -78,8 +70,8 @@ class _RestoreRecoveryRequiredPageState
       _failed = false;
     });
     try {
-      await services<LocalBackupManager>().resetControlledRecovery(
-        postResetRefresh: _refreshRuntime,
+      await services<WorkspaceDataService>().resetControlledRecovery(
+        refreshPresentation: _refreshRuntime,
       );
     } catch (_) {
       if (mounted) setState(() => _failed = true);
@@ -90,9 +82,8 @@ class _RestoreRecoveryRequiredPageState
 
   @override
   Widget build(BuildContext context) {
-    final manager = services<LocalBackupManager>();
-    final hasSafetyCopy =
-        manager.recoveryState.incident?.safetyBackupPath.isNotEmpty == true;
+    final manager = services<WorkspaceDataService>();
+    final hasSafetyCopy = manager.hasRecoverySafetyCopy;
 
     return Scaffold(
       body: SafeArea(

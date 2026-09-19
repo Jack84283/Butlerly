@@ -27,6 +27,7 @@ dependencies:
   sqflite_common: ^2.5.11
 
 dev_dependencies:
+  analyzer: ^14.1.0
   butlerly_finance_application:
     path: ../butlerly_finance_application
   lints: ^6.0.0

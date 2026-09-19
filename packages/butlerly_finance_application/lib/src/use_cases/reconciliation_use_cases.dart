@@ -1,7 +1,8 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
-import '../result/application_result.dart';
 import '../dto/transaction_dto.dart';
+import '../result/application_result.dart';
+import 'reconciliation_policy.dart';
 
 final class ReceiptPaymentMatchCommand {
   const ReceiptPaymentMatchCommand({
@@ -62,7 +63,8 @@ final class FindReceiptPaymentMatch {
               transaction.sourceType == TransactionSourceType.manual);
       if (!isPayment) continue;
       final assessment = ReconciliationMatcher.assess(receipt, transaction);
-      if (!assessment.incompatible && assessment.score >= 0.45) {
+      if (!assessment.incompatible &&
+          assessment.score >= ReconciliationPolicy.candidateMinimumScore) {
         scored.add(
           ReconciliationMatchCandidate(
             transaction: TransactionDto.fromDomain(transaction),
@@ -116,7 +118,7 @@ final class ReconciliationCandidateGenerator {
         final assessment = ReconciliationMatcher.assess(receipt, payment);
         if (assessment.incompatible) continue;
         final score = assessment.score;
-        if (score < 0.45) continue;
+        if (score < ReconciliationPolicy.candidateMinimumScore) continue;
         candidates.add(
           ReconciliationCandidate(
             id: 'candidate-${receipt.id.value}-${payment.id.value}',
@@ -177,13 +179,14 @@ final class ReconciliationMatcher {
         conflicts.add('amount differs');
       }
     } else if (receipt.money == payment.money) {
-      score += 0.55;
+      score += ReconciliationPolicy.exactAmountWeight;
       reasons.add('amount and currency match');
-    } else if (amountRatio != null && amountRatio <= 0.10) {
+    } else if (amountRatio != null &&
+        amountRatio <= ReconciliationPolicy.maximumAmountDifferenceRatio) {
       // A receipt total can differ from the posted amount because of a tip or
       // a small bank adjustment. Keep this below an exact match so it cannot
       // silently outrank an exact same-day transaction.
-      score += 0.35;
+      score += ReconciliationPolicy.nearbyAmountWeight;
       reasons.add('amount is within 10% (possible tip or adjustment)');
       conflicts.add('amount differs');
     } else {
@@ -195,21 +198,23 @@ final class ReconciliationMatcher {
       payment.transactionDate,
     );
     if (dateDistance == 0) {
-      score += 0.25;
+      score += ReconciliationPolicy.sameDateWeight;
       reasons.add('transaction date matches');
-    } else if (dateDistance != null && dateDistance <= 1) {
-      score += 0.15;
+    } else if (dateDistance != null &&
+        dateDistance <= ReconciliationPolicy.maximumDateDistanceDays) {
+      score += ReconciliationPolicy.nearbyDateWeight;
       reasons.add('transaction date is within one day');
     } else if (dateDistance != null) {
       conflicts.add('transaction date differs');
     }
 
     final merchantScore = _merchantSimilarity(receipt, payment);
-    if (merchantScore >= 0.99) {
-      score += 0.15;
+    if (merchantScore >= ReconciliationPolicy.exactMerchantSimilarity) {
+      score += ReconciliationPolicy.exactMerchantWeight;
       reasons.add('merchant text matches');
-    } else if (merchantScore >= 0.50) {
-      score += 0.10;
+    } else if (merchantScore >=
+        ReconciliationPolicy.partialMerchantSimilarity) {
+      score += ReconciliationPolicy.partialMerchantWeight;
       reasons.add('merchant text is similar');
     } else if (merchantScore == 0 &&
         (receipt.rawCounterparty != null || payment.rawCounterparty != null)) {
@@ -218,7 +223,7 @@ final class ReconciliationMatcher {
 
     if (receipt.paymentSourceId != null &&
         receipt.paymentSourceId == payment.paymentSourceId) {
-      score += 0.05;
+      score += ReconciliationPolicy.paymentSourceWeight;
       reasons.add('payment source matches');
     } else if (receipt.paymentSourceId != null &&
         payment.paymentSourceId != null) {

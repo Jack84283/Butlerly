@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:butlerly/core/data/backup_container_format.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly_database/butlerly_database.dart';
 import 'package:path/path.dart' as path;
@@ -14,18 +15,12 @@ final class LocalBackupSnapshotWriter {
 
   final LocalDataManager localDataManager;
 
-  static const format = 'butlerly-backup';
-  static const formatVersion = 2;
-  static const schemaVersion = 8;
-  static const appVersion = String.fromEnvironment(
-    'BUTLERLY_APP_VERSION',
-    defaultValue: '1.0.0',
-  );
-  static const appBuild = String.fromEnvironment(
-    'BUTLERLY_APP_BUILD',
-    defaultValue: '1',
-  );
-  static final _magic = utf8.encode('BUTLERLYBACKUP2');
+  static const format = BackupContainerFormat.name;
+  static const formatVersion = BackupContainerFormat.version;
+  static const schemaVersion = BackupContainerFormat.schemaVersion;
+  static const appVersion = BackupContainerFormat.appVersion;
+  static const appBuild = BackupContainerFormat.appBuild;
+  static final _magic = BackupContainerFormat.magic;
 
   static const _plainTables = <String>[
     'payment_sources',

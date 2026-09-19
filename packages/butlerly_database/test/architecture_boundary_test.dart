@@ -6,14 +6,14 @@ import '../../../tool/architecture_policy.dart';
 
 void main() {
   test(
-    'domain imports, exports, and conditional directives respect layer boundaries',
+    'database imports, exports, and conditional directives respect layer boundaries',
     () {
       expect(
         packageBoundaryViolations(
           Directory('.'),
-          packageName: 'butlerly_finance_domain',
-          allowedPackages: {},
-          platformIndependent: true,
+          packageName: 'butlerly_database',
+          allowedPackages: {'butlerly_finance_domain', 'sqflite_common'},
+          platformIndependent: false,
         ),
         isEmpty,
       );
