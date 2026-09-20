@@ -470,7 +470,7 @@ class _AnalysisContent extends StatelessWidget {
       title: context.l10n.text('analysis'),
       onRefresh: onRefresh,
       refreshKey: const ValueKey('analysis-pull-to-refresh'),
-      pinnedSpacing: ButlerlyPinnedPageSpacing.primary,
+      pinnedSpacing: ButlerlyPinnedPageSpacing.tightHeader,
       pinnedHeaderExtent: AnalysisPeriodPinnedHeader.extent(context, subtitle),
       pinnedHeader: AnalysisPeriodPinnedHeader(
         subtitle: subtitle,
