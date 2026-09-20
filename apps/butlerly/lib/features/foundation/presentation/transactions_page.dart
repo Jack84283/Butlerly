@@ -585,6 +585,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   ),
                   const SizedBox(height: ButlerlySpacing.section),
                   TextFormField(
+                    key: const ValueKey('transaction-amount-field'),
                     controller: _amount,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
@@ -641,6 +642,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   ),
                   const SizedBox(height: ButlerlySpacing.standard),
                   TextFormField(
+                    key: const ValueKey('transaction-description-field'),
                     controller: _description,
                     decoration: InputDecoration(
                       labelText: context.l10n.text('descriptionOptional'),
