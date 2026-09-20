@@ -83,7 +83,7 @@ void main() {
         0.01,
       ),
     );
-    expect(archRect.bottom, greaterThan(navigationRect.top));
+    expect(archRect.bottom, closeTo(navigationRect.top, 0.01));
     expect(arch.decoration, isNotNull);
     expect(arch.foregroundDecoration, isNull);
     expect(
