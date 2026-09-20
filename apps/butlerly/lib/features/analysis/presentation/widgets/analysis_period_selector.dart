@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -46,24 +48,58 @@ class AnalysisPeriodPinnedHeader extends StatelessWidget {
   });
 
   static double extent(BuildContext context, String subtitle) {
-    final style = Theme.of(context).textTheme.bodyMedium!;
-    final painter =
-        TextPainter(
-          text: TextSpan(text: subtitle, style: style),
-          textScaler: MediaQuery.textScalerOf(context),
-          textDirection: Directionality.of(context),
-          maxLines: 1,
-        )..layout(
-          maxWidth:
-              MediaQuery.sizeOf(context).width - ButlerlySize.phoneGutter * 2,
-        );
-    final selectorHeight = MediaQuery.textScalerOf(
-      context,
-    ).scale(ButlerlySize.analysisPeriodSelectorHeight);
+    final theme = Theme.of(context);
+    final textScaler = MediaQuery.textScalerOf(context);
+    final textDirection = Directionality.of(context);
+    final maxWidth =
+        MediaQuery.sizeOf(context).width - ButlerlySize.phoneGutter * 2;
+    final subtitleHeight = _textHeight(
+      subtitle,
+      style: theme.textTheme.bodyMedium!,
+      textScaler: textScaler,
+      textDirection: textDirection,
+      maxWidth: maxWidth,
+    );
+    final selectorTextStyle = theme.textTheme.bodyLarge!;
+    final selectorLabel = context.l10n.text('analysisPeriod');
+    final baseSelectorTextHeight = _textHeight(
+      selectorLabel,
+      style: selectorTextStyle,
+      textScaler: TextScaler.noScaling,
+      textDirection: textDirection,
+      maxWidth: maxWidth,
+    );
+    final scaledSelectorTextHeight = _textHeight(
+      selectorLabel,
+      style: selectorTextStyle,
+      textScaler: textScaler,
+      textDirection: textDirection,
+      maxWidth: maxWidth,
+    );
+    final selectorHeight =
+        ButlerlySize.analysisPeriodSelectorHeight +
+        math.max(0, scaledSelectorTextHeight - baseSelectorTextHeight);
     return ButlerlySpacing.pinnedHeaderVerticalPadding * 2 +
-        painter.height +
+        subtitleHeight +
         ButlerlySpacing.periodSelectorGap +
         selectorHeight;
+  }
+
+  static double _textHeight(
+    String text, {
+    required TextStyle style,
+    required TextScaler textScaler,
+    required TextDirection textDirection,
+    required double maxWidth,
+  }) {
+    final painter =
+        TextPainter(
+          text: TextSpan(text: text, style: style),
+          textScaler: textScaler,
+          textDirection: textDirection,
+          maxLines: 1,
+        )..layout(maxWidth: maxWidth);
+    return painter.height;
   }
 
   final String subtitle;
