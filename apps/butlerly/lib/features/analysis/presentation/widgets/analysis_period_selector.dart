@@ -36,7 +36,6 @@ class AnalysisPeriodSelector extends StatelessWidget {
   );
 }
 
-
 class AnalysisPeriodPinnedHeader extends StatelessWidget {
   const AnalysisPeriodPinnedHeader({
     super.key,
