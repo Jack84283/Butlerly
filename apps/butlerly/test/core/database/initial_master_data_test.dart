@@ -79,6 +79,12 @@ void main() {
           'category.utilities.mobile_phone',
           'category.utilities.cable_tv',
           'category.utilities.other',
+          'category.digital_services',
+          'category.digital_services.cloud_storage',
+          'category.digital_services.software_subscription',
+          'category.digital_services.productivity',
+          'category.digital_services.online_services',
+          'category.digital_services.other',
         ]),
       );
       expect(tags.map((row) => row['id']), contains('tag.tax_related'));
@@ -94,6 +100,9 @@ void main() {
           'Costco',
           'Starbucks',
           'Uber',
+          'Netflix',
+          'Apple iCloud',
+          'Shopify',
         ]),
       );
       expect(
@@ -256,6 +265,40 @@ void main() {
             )
             .single['label'],
         'Yard & Landscaping',
+      );
+      expect(
+        categoryTranslations
+            .where(
+              (row) =>
+                  row['category_id'] == 'category.digital_services.cloud_storage' &&
+                  row['locale'] == 'en',
+            )
+            .single['label'],
+        'Cloud Storage',
+      );
+      final netflix = merchants.singleWhere(
+        (row) => row['id'] == 'merchant.netflix',
+      );
+      expect(netflix['default_category_id'], 'category.entertainment');
+      expect(
+        netflix['default_subcategory_id'],
+        'category.entertainment.streaming',
+      );
+      final iCloud = merchants.singleWhere(
+        (row) => row['id'] == 'merchant.apple_icloud',
+      );
+      expect(iCloud['default_category_id'], 'category.digital_services');
+      expect(
+        iCloud['default_subcategory_id'],
+        'category.digital_services.cloud_storage',
+      );
+      final shopify = merchants.singleWhere(
+        (row) => row['id'] == 'merchant.shopify',
+      );
+      expect(shopify['default_category_id'], 'category.digital_services');
+      expect(
+        shopify['default_subcategory_id'],
+        'category.digital_services.online_services',
       );
       expect(
         referenceTranslations
