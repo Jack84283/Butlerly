@@ -341,8 +341,8 @@ class _AnalysisPageState extends State<AnalysisPage> {
   Widget build(BuildContext context) => Scaffold(
     body: FutureBuilder<ApplicationResult<List<RuleExecutionResult>>>(
       future: _result,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
             return ButlerlyPage(
               title: context.l10n.text('analysis'),
               onRefresh: _refresh,
@@ -398,9 +398,10 @@ class _AnalysisPageState extends State<AnalysisPage> {
             onRefresh: _refresh,
             onSelectDate: _selectDate,
           );
-        },
+      },
     ),
   );
+
   Future<ApplicationResult<AnalysisCalendarResult>>?
   _loadCalendarForTestOnly() {
     if (widget.loadCalendar == null) return null;
