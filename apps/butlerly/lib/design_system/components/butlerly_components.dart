@@ -5,6 +5,8 @@ import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:flutter/cupertino.dart' show CupertinoSliverRefreshControl;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 export 'butlerly_category_icon.dart';
@@ -19,6 +21,8 @@ class ButlerlyPage extends StatelessWidget {
     this.padding,
     this.controller,
     this.pinnedHeader,
+    this.onRefresh,
+    this.refreshKey,
     super.key,
   });
 
@@ -29,6 +33,8 @@ class ButlerlyPage extends StatelessWidget {
   final EdgeInsets? padding;
   final ScrollController? controller;
   final Widget? pinnedHeader;
+  final RefreshCallback? onRefresh;
+  final Key? refreshKey;
 
   @override
   Widget build(BuildContext context) {
@@ -40,18 +46,34 @@ class ButlerlyPage extends StatelessWidget {
           ButlerlySize.phoneGutter,
           ButlerlySpacing.large,
         );
-    return ButlerlyContentCanvas(
+    final useCupertinoRefresh =
+        onRefresh != null &&
+        !kIsWeb &&
+        defaultTargetPlatform == TargetPlatform.iOS;
+    final toolbarHeight = title == null
+        ? 0.0
+        : pinnedHeader == null
+        ? kToolbarHeight
+        : ButlerlySize.compactPageToolbarHeight;
+    final pinnedHeaderHeight = pinnedHeader == null
+        ? 0.0
+        : ButlerlySize.minimumTarget;
+    final refreshEdgeOffset = toolbarHeight + pinnedHeaderHeight;
+
+    final content = ButlerlyContentCanvas(
       canvasKey: const ValueKey('butlerly-page-canvas'),
       child: CustomScrollView(
         controller: controller,
-        physics: const AlwaysScrollableScrollPhysics(),
+        physics: useCupertinoRefresh
+            ? const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
+              )
+            : const AlwaysScrollableScrollPhysics(),
         slivers: [
           if (title != null)
             SliverAppBar(
               pinned: true,
-              toolbarHeight: pinnedHeader == null
-                  ? kToolbarHeight
-                  : ButlerlySize.compactPageToolbarHeight,
+              toolbarHeight: toolbarHeight,
               title: Text(title!),
               actions: actions,
               backgroundColor: context.colors.background.withValues(
@@ -62,6 +84,11 @@ class ButlerlyPage extends StatelessWidget {
             SliverPersistentHeader(
               pinned: true,
               delegate: _ButlerlyPinnedHeaderDelegate(child: pinnedHeader!),
+            ),
+          if (useCupertinoRefresh)
+            CupertinoSliverRefreshControl(
+              key: refreshKey,
+              onRefresh: onRefresh,
             ),
           ButlerlySliverContentSurface(
             surfaceKey: const ValueKey('butlerly-page-content-surface'),
@@ -95,6 +122,17 @@ class ButlerlyPage extends StatelessWidget {
           ),
         ],
       ),
+    );
+
+    if (onRefresh == null || useCupertinoRefresh) return content;
+
+    return RefreshIndicator(
+      key: refreshKey,
+      onRefresh: onRefresh!,
+      edgeOffset: refreshEdgeOffset,
+      displacement: refreshEdgeOffset + 40,
+      triggerMode: RefreshIndicatorTriggerMode.anywhere,
+      child: content,
     );
   }
 }
