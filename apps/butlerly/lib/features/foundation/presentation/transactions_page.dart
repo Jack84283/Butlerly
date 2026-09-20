@@ -217,10 +217,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
           title: context.l10n.text('transactions'),
           onRefresh: _refresh,
           refreshKey: const ValueKey('transactions-pull-to-refresh'),
-          headerBottomGap: ButlerlySpacing.pinnedPageHeaderBottomGap,
-          pinnedHeaderTopGap: ButlerlySpacing.pinnedPageTopGap,
-          pinnedHeaderBottomGap: ButlerlySpacing.pinnedPageBottomGap,
-          contentTopGap: ButlerlySpacing.pinnedPageBodyTopGap,
+          pinnedSpacing: ButlerlyPinnedPageSpacing.primary,
           pinnedHeader: ButlerlyCompactSectionSelector(
             labels: [
               context.l10n.text('all'),
