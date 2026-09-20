@@ -149,8 +149,7 @@ final appRouter = GoRouter(
       builder: (context, state) => ReviewPage(
         showPossibleDuplicates:
             state.uri.queryParameters['view'] == 'duplicates',
-        showNeedsReview:
-            state.uri.queryParameters['view'] == 'needsReview',
+        showNeedsReview: state.uri.queryParameters['view'] == 'needsReview',
       ),
     ),
     GoRoute(
