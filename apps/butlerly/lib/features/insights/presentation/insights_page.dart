@@ -355,7 +355,7 @@ class _InsightsContent extends StatelessWidget {
       title: context.l10n.text('insights'),
       onRefresh: onRefresh,
       refreshKey: const ValueKey('insights-pull-to-refresh'),
-      pinnedSpacing: ButlerlyPinnedPageSpacing.primary,
+      pinnedSpacing: ButlerlyPinnedPageSpacing.tightHeader,
       pinnedHeaderExtent: AnalysisPeriodPinnedHeader.extent(context, subtitle),
       pinnedHeader: AnalysisPeriodPinnedHeader(
         subtitle: subtitle,
