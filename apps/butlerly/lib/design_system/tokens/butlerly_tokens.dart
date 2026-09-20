@@ -29,6 +29,9 @@ abstract final class ButlerlySpacing {
   static const sectionSpacing = section;
   static const compactActionSpacing = compact;
   static const bottomActionSpacing = section;
+  static const pinnedControlTopGap = compact;
+  static const periodSelectorGap = compact;
+  static const pinnedHeaderVerticalPadding = compact;
 }
 
 /// Stable categorical colors shared by charts and their legends.
@@ -168,6 +171,7 @@ abstract final class ButlerlySize {
   static const minimumTarget = 44.0;
   static const preferredTarget = 48.0;
   static const compactPageToolbarHeight = 40.0;
+  static const refreshIndicatorDisplacement = compactPageToolbarHeight;
   static const phoneBreakpoint = 600.0;
   static const tabletBreakpoint = phoneBreakpoint;
   static const desktopBreakpoint = 1024.0;
@@ -192,6 +196,10 @@ abstract final class ButlerlySize {
   static const primaryNavigationArchRise = 12.0;
   static const primaryNavigationArchWidth = 76.0;
   static const primaryNavigationArchHeight = 32.0;
+  static const searchPinnedHeaderHeight =
+      minimumTarget + ButlerlySpacing.pinnedControlTopGap;
+  static const analysisPeriodSelectorHeight =
+      minimumTarget + ButlerlySpacing.small;
   static const desktopNavigationLeadingIconSize = 14.0;
   static const dividerWidth = 1.0;
 }

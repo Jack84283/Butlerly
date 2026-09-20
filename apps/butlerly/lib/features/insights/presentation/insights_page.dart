@@ -195,9 +195,9 @@ class _InsightsPageState extends State<InsightsPage> {
             AnalysisInvalidationReason.transactionChanged,
             DateTime.now().toUtc(),
           );
-    final result = invalidated.then((_) => _load(_period));
-    setState(() => _result = result);
-    await result;
+    final result = await invalidated.then((_) => _load(_period));
+    if (!mounted) return;
+    setState(() => _result = Future.value(result));
   }
 
   void _selectPeriod(String period) {
@@ -331,7 +331,10 @@ class _InsightsContent extends StatelessWidget {
       title: context.l10n.text('insights'),
       onRefresh: onRefresh,
       refreshKey: const ValueKey('insights-pull-to-refresh'),
-      pinnedHeaderExtent: AnalysisPeriodPinnedHeader.extent,
+      pinnedHeaderExtent: AnalysisPeriodPinnedHeader.extent(
+        context,
+        subtitle,
+      ),
       pinnedHeader: AnalysisPeriodPinnedHeader(
         subtitle: subtitle,
         value: period,

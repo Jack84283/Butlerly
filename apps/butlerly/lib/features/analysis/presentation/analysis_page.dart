@@ -219,16 +219,14 @@ class _AnalysisPageState extends State<AnalysisPage> {
             AnalysisInvalidationReason.transactionChanged,
             DateTime.now().toUtc(),
           );
-    final result = reload.then((_) => _load(_period));
+    final result = await reload.then((_) => _load(_period));
+    if (!mounted) return;
     setState(() {
-      _result = result;
+      _result = Future.value(result);
       _calendar = null;
-      _transactions = null;
-    });
-    await result;
-    if (!mounted || selected == null || selected != _selectedDate) return;
-    setState(() {
-      _transactions = _loadTransactions(selected);
+      if (selected == _selectedDate) {
+        _transactions = selected == null ? null : _loadTransactions(selected);
+      }
     });
   }
 
@@ -454,7 +452,10 @@ class _AnalysisContent extends StatelessWidget {
       title: context.l10n.text('analysis'),
       onRefresh: onRefresh,
       refreshKey: const ValueKey('analysis-pull-to-refresh'),
-      pinnedHeaderExtent: AnalysisPeriodPinnedHeader.extent,
+      pinnedHeaderExtent: AnalysisPeriodPinnedHeader.extent(
+        context,
+        subtitle,
+      ),
       pinnedHeader: AnalysisPeriodPinnedHeader(
         subtitle: subtitle,
         value: period,

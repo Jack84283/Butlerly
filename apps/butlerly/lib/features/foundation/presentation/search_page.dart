@@ -492,9 +492,11 @@ class _SearchPageState extends State<SearchPage>
     }
   }
 
-  Widget _searchControls(BuildContext context) => Row(
-    key: const ValueKey('search-pinned-controls'),
-    children: [
+  Widget _searchControls(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: ButlerlySpacing.pinnedControlTopGap),
+    child: Row(
+      key: const ValueKey('search-pinned-controls'),
+      children: [
       Expanded(
         child: SearchBar(
           controller: _text,
@@ -537,7 +539,8 @@ class _SearchPageState extends State<SearchPage>
         onPressed: _openFilters,
         icon: const Icon(Icons.tune_rounded),
       ),
-    ],
+      ],
+    ),
   );
 
   @override
@@ -550,6 +553,9 @@ class _SearchPageState extends State<SearchPage>
         await _refreshAfterTransactionChange();
       },
       refreshKey: const ValueKey('search-pull-to-refresh'),
+      pinnedHeaderExtent: widget.readOnly
+          ? ButlerlySize.minimumTarget
+          : ButlerlySize.searchPinnedHeaderHeight,
       pinnedHeader: widget.readOnly ? null : _searchControls(context),
       children: [
         if (!widget.readOnly) ...[

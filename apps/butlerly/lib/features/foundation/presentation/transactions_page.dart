@@ -122,10 +122,18 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
   Future<void> _refresh() async {
     final reloaded = _load();
-    setState(() {
-      _transactions = reloaded;
-    });
-    await reloaded;
+    try {
+      final data = await reloaded;
+      if (!mounted) return;
+      setState(() {
+        _transactions = Future.value(data);
+      });
+    } catch (error, stackTrace) {
+      if (!mounted) return;
+      setState(() {
+        _transactions = Future.error(error, stackTrace);
+      });
+    }
   }
 
   Future<void> _openDetail(TransactionDto transaction) async {

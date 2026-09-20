@@ -1,4 +1,5 @@
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
@@ -44,26 +45,49 @@ class AnalysisPeriodPinnedHeader extends StatelessWidget {
     required this.onChanged,
   });
 
-  static const extent = 92.0;
+  static double extent(BuildContext context, String subtitle) {
+    final style = Theme.of(context).textTheme.bodyMedium!;
+    final painter = TextPainter(
+      text: TextSpan(text: subtitle, style: style),
+      textScaler: MediaQuery.textScalerOf(context),
+      textDirection: Directionality.of(context),
+      maxLines: 1,
+    )..layout(
+      maxWidth:
+          MediaQuery.sizeOf(context).width - ButlerlySize.phoneGutter * 2,
+    );
+    final selectorHeight = MediaQuery.textScalerOf(
+      context,
+    ).scale(ButlerlySize.analysisPeriodSelectorHeight);
+    return ButlerlySpacing.pinnedHeaderVerticalPadding * 2 +
+        painter.height +
+        ButlerlySpacing.periodSelectorGap +
+        selectorHeight;
+  }
 
   final String subtitle;
   final String value;
   final ValueChanged<String> onChanged;
 
   @override
-  Widget build(BuildContext context) => Column(
-    key: const ValueKey('analysis-period-pinned-header'),
-    mainAxisAlignment: MainAxisAlignment.center,
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(
+      vertical: ButlerlySpacing.pinnedHeaderVerticalPadding,
+    ),
+    child: Column(
+      key: const ValueKey('analysis-period-pinned-header'),
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
       Text(
         subtitle,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: Theme.of(context).textTheme.bodyMedium,
       ),
-      const SizedBox(height: 4),
-      AnalysisPeriodSelector(value: value, onChanged: onChanged),
-    ],
+        const SizedBox(height: ButlerlySpacing.periodSelectorGap),
+        AnalysisPeriodSelector(value: value, onChanged: onChanged),
+      ],
+    ),
   );
 }
