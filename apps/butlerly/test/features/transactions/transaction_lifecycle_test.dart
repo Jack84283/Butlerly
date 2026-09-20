@@ -1412,11 +1412,7 @@ void main() {
       );
       expect(
         tester.getTopLeft(addButton).dy - tester.getBottomLeft(selector).dy,
-        closeTo(
-          ButlerlySpacing.pinnedPageBottomGap +
-              ButlerlySize.masterDataAddButtonVerticalOffset,
-          0.01,
-        ),
+        closeTo(ButlerlySpacing.pinnedPageBottomGap, 0.01),
       );
     },
   );
