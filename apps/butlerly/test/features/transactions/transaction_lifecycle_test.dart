@@ -1406,9 +1406,7 @@ void main() {
       final iconButton = tester.widget<IconButton>(addButton);
       expect(
         iconButton.style?.backgroundColor?.resolve({}),
-        Theme.of(
-          tester.element(addButton),
-        ).extension<ButlerlySemanticColors>()!.interactive,
+        tester.element(addButton).colors.interactive,
       );
       expect(
         tester.getTopLeft(addButton).dy - tester.getBottomLeft(selector).dy,
