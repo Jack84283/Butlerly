@@ -449,12 +449,12 @@ final class ButlerlyCategoryIdentity {
     ),
     'category.digital_services.software_subscription':
         ButlerlyCategoryIdentity._(
-      kind: ButlerlyCategoryIdentityKind.builtIn,
-      categoryId: 'category.digital_services.software_subscription',
-      assetName: 'subscriptions',
-      categoryColorId: ButlerlyCategoryColorId.purple,
-      localizationKey: 'category.digital_services.software_subscription',
-    ),
+          kind: ButlerlyCategoryIdentityKind.builtIn,
+          categoryId: 'category.digital_services.software_subscription',
+          assetName: 'subscriptions',
+          categoryColorId: ButlerlyCategoryColorId.purple,
+          localizationKey: 'category.digital_services.software_subscription',
+        ),
     'category.digital_services.productivity': ButlerlyCategoryIdentity._(
       kind: ButlerlyCategoryIdentityKind.builtIn,
       categoryId: 'category.digital_services.productivity',
@@ -765,12 +765,12 @@ final class ButlerlyCategoryIdentity {
     ),
     'category.professional_services.tax_preparation':
         ButlerlyCategoryIdentity._(
-      kind: ButlerlyCategoryIdentityKind.builtIn,
-      categoryId: 'category.professional_services.tax_preparation',
-      assetName: 'taxes',
-      categoryColorId: ButlerlyCategoryColorId.gold,
-      localizationKey: 'category.professional_services.tax_preparation',
-    ),
+          kind: ButlerlyCategoryIdentityKind.builtIn,
+          categoryId: 'category.professional_services.tax_preparation',
+          assetName: 'taxes',
+          categoryColorId: ButlerlyCategoryColorId.gold,
+          localizationKey: 'category.professional_services.tax_preparation',
+        ),
     'category.professional_services.accounting': ButlerlyCategoryIdentity._(
       kind: ButlerlyCategoryIdentityKind.builtIn,
       categoryId: 'category.professional_services.accounting',
