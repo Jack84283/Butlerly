@@ -280,17 +280,22 @@ class _MasterDataPageState extends State<MasterDataPage> {
     title: context.l10n.text('masterData'),
     pinnedSpacing: ButlerlyPinnedPageSpacing.primary,
     actions: [
-      IconButton.filled(
-        key: const ValueKey('master-data-add'),
-        tooltip: context.l10n.text('add'),
-        onPressed: _add,
-        icon: const Icon(Icons.add),
-        style: IconButton.styleFrom(
-          backgroundColor: context.colors.interactive,
-          foregroundColor: Colors.white,
-          shape: const CircleBorder(),
-          minimumSize: const Size.square(ButlerlySize.minimumTarget),
-          maximumSize: const Size.square(ButlerlySize.minimumTarget),
+      Padding(
+        padding: const EdgeInsetsDirectional.only(
+          end: ButlerlySize.phoneGutter,
+        ),
+        child: IconButton.filled(
+          key: const ValueKey('master-data-add'),
+          tooltip: context.l10n.text('add'),
+          onPressed: _add,
+          icon: const Icon(Icons.add),
+          style: IconButton.styleFrom(
+            backgroundColor: context.colors.interactive,
+            foregroundColor: Colors.white,
+            shape: const CircleBorder(),
+            minimumSize: const Size.square(ButlerlySize.minimumTarget),
+            maximumSize: const Size.square(ButlerlySize.minimumTarget),
+          ),
         ),
       ),
     ],
