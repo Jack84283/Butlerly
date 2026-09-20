@@ -69,6 +69,16 @@ void main() {
           'category.health.dental',
           'category.health.vision',
           'category.health.mental',
+          'category.housing.landscaping',
+          'category.utilities',
+          'category.utilities.electricity',
+          'category.utilities.gas',
+          'category.utilities.water_sewer',
+          'category.utilities.trash_recycling',
+          'category.utilities.internet',
+          'category.utilities.mobile_phone',
+          'category.utilities.cable_tv',
+          'category.utilities.other',
         ]),
       );
       expect(tags.map((row) => row['id']), contains('tag.tax_related'));
@@ -226,6 +236,26 @@ void main() {
             )
             .single['label'],
         '牙科',
+      );
+      expect(
+        categoryTranslations
+            .where(
+              (row) =>
+                  row['category_id'] == 'category.utilities.internet' &&
+                  row['locale'] == 'en',
+            )
+            .single['label'],
+        'Internet',
+      );
+      expect(
+        categoryTranslations
+            .where(
+              (row) =>
+                  row['category_id'] == 'category.housing.landscaping' &&
+                  row['locale'] == 'en',
+            )
+            .single['label'],
+        'Yard & Landscaping',
       );
       expect(
         referenceTranslations
