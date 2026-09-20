@@ -199,7 +199,9 @@ abstract final class ButlerlySize {
   static const navigationBarHeight = 60.0;
   static const primaryNavigationAddIconSize = 44.0;
   static const primaryNavigationAddGlyphSize = 28.0;
-  static const primaryNavigationArchRise = 12.0;
+  static const primaryNavigationAddLift = ButlerlySpacing.compact;
+  static const primaryNavigationArchRise =
+      ButlerlySpacing.small + primaryNavigationAddLift;
   static const primaryNavigationArchWidth = 76.0;
   static const primaryNavigationArchHeight = 32.0;
   static const searchPinnedHeaderHeight = minimumTarget;
