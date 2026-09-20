@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
@@ -7,6 +9,7 @@ import 'package:butlerly/features/foundation/presentation/transaction_master_dat
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -68,6 +71,64 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    'refresh keeps analysis content and pinned controls visible',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      var loads = 0;
+      final refreshResult =
+          Completer<ApplicationResult<List<RuleExecutionResult>>>();
+
+      Future<ApplicationResult<List<RuleExecutionResult>>> loadForPeriod(
+        String _,
+      ) {
+        loads++;
+        if (loads == 1) {
+          return Future.value(
+            const ApplicationSuccess(<RuleExecutionResult>[]),
+          );
+        }
+        return refreshResult.future;
+      }
+
+      await tester.pumpWidget(
+        app(
+          () async => const ApplicationSuccess(<RuleExecutionResult>[]),
+          loadForPeriod: loadForPeriod,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final selector = find.byKey(
+        const ValueKey('analysis-period-selector'),
+      );
+      expect(selector, findsOneWidget);
+      expect(find.text('Financial calendar'), findsOneWidget);
+
+      final indicator = tester.widget<RefreshIndicator>(
+        find.byKey(const ValueKey('analysis-pull-to-refresh')),
+      );
+      final pendingRefresh = indicator.onRefresh();
+      await tester.pump();
+
+      expect(selector, findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('analysis-period-pinned-header')),
+        findsOneWidget,
+      );
+      expect(find.text('Financial calendar'), findsOneWidget);
+
+      refreshResult.complete(
+        const ApplicationSuccess(<RuleExecutionResult>[]),
+      );
+      await pendingRefresh;
+      await tester.pumpAndSettle();
+
+      expect(loads, 2);
+    },
+  );
 
   testWidgets('custom period uses a staged bottom sheet range editor', (
     tester,
