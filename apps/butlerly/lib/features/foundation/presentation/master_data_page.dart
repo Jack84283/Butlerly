@@ -282,7 +282,7 @@ class _MasterDataPageState extends State<MasterDataPage> {
     actions: [
       Padding(
         padding: const EdgeInsetsDirectional.only(
-          end: ButlerlySize.phoneGutter,
+          end: ButlerlySpacing.headerActionTrailing,
         ),
         child: IconButton.filled(
           key: const ValueKey('master-data-add'),
