@@ -79,9 +79,7 @@ class AnalysisPeriodPinnedHeader extends StatelessWidget {
     final selectorHeight =
         ButlerlySize.analysisPeriodSelectorHeight +
         math.max(0.0, scaledSelectorTextHeight - baseSelectorTextHeight);
-    return subtitleHeight +
-        ButlerlySpacing.periodSelectorGap +
-        selectorHeight;
+    return subtitleHeight + ButlerlySpacing.periodSelectorGap + selectorHeight;
   }
 
   static double _textHeight(
@@ -110,13 +108,13 @@ class AnalysisPeriodPinnedHeader extends StatelessWidget {
     mainAxisAlignment: MainAxisAlignment.center,
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-        Text(
-          subtitle,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        const SizedBox(height: ButlerlySpacing.periodSelectorGap),
+      Text(
+        subtitle,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.bodyMedium,
+      ),
+      const SizedBox(height: ButlerlySpacing.periodSelectorGap),
       AnalysisPeriodSelector(value: value, onChanged: onChanged),
     ],
   );

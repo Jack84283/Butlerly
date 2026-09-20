@@ -83,10 +83,13 @@ class ButlerlyPage extends StatelessWidget {
         ? kToolbarHeight
         : ButlerlySize.compactPageToolbarHeight;
     final appBarHeight =
-        toolbarHeight + (title == null ? ButlerlySpacing.none : pinnedSpacing.headerBottomGap);
+        toolbarHeight +
+        (title == null ? ButlerlySpacing.none : pinnedSpacing.headerBottomGap);
     final pinnedHeaderHeight = pinnedHeader == null
         ? ButlerlySpacing.none
-        : pinnedHeaderExtent + pinnedSpacing.pinnedTopGap + pinnedSpacing.pinnedBottomGap;
+        : pinnedHeaderExtent +
+              pinnedSpacing.pinnedTopGap +
+              pinnedSpacing.pinnedBottomGap;
     final refreshEdgeOffset = appBarHeight + pinnedHeaderHeight;
 
     final content = ButlerlyContentCanvas(
@@ -107,7 +110,9 @@ class ButlerlyPage extends StatelessWidget {
               actions: actions,
               bottom: pinnedSpacing.headerBottomGap > ButlerlySpacing.none
                   ? PreferredSize(
-                      preferredSize: Size.fromHeight(pinnedSpacing.headerBottomGap),
+                      preferredSize: Size.fromHeight(
+                        pinnedSpacing.headerBottomGap,
+                      ),
                       child: SizedBox(height: pinnedSpacing.headerBottomGap),
                     )
                   : null,
