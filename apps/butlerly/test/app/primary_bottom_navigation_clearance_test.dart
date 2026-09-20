@@ -84,8 +84,18 @@ void main() {
       ),
     );
     expect(archRect.bottom, greaterThan(navigationRect.top));
-    expect(arch.foregroundDecoration, isNotNull);
-    expect(navigationContentRect.height, ButlerlySize.navigationBarHeight);
+    expect(arch.decoration, isNotNull);
+    expect(arch.foregroundDecoration, isNull);
+    expect(
+      navigationContentRect.height,
+      greaterThanOrEqualTo(ButlerlySize.navigationBarHeight),
+    );
+
+    final addLabelTop = tester.getTopLeft(find.text('Add')).dy;
+    for (final label in ['Home', 'Transactions', 'More']) {
+      final labelTop = tester.getTopLeft(find.text(label)).dy;
+      expect(labelTop, closeTo(addLabelTop, 0.01));
+    }
 
     await tester.tap(find.byKey(const ValueKey('bottom-page-action')));
     expect(tapped, isTrue);

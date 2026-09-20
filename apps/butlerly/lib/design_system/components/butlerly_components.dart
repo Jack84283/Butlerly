@@ -21,6 +21,7 @@ class ButlerlyPage extends StatelessWidget {
     this.padding,
     this.controller,
     this.pinnedHeader,
+    this.pinnedHeaderExtent = ButlerlySize.minimumTarget,
     this.onRefresh,
     this.refreshKey,
     super.key,
@@ -33,6 +34,7 @@ class ButlerlyPage extends StatelessWidget {
   final EdgeInsets? padding;
   final ScrollController? controller;
   final Widget? pinnedHeader;
+  final double pinnedHeaderExtent;
   final RefreshCallback? onRefresh;
   final Key? refreshKey;
 
@@ -55,9 +57,7 @@ class ButlerlyPage extends StatelessWidget {
         : pinnedHeader == null
         ? kToolbarHeight
         : ButlerlySize.compactPageToolbarHeight;
-    final pinnedHeaderHeight = pinnedHeader == null
-        ? 0.0
-        : ButlerlySize.minimumTarget;
+    final pinnedHeaderHeight = pinnedHeader == null ? 0.0 : pinnedHeaderExtent;
     final refreshEdgeOffset = toolbarHeight + pinnedHeaderHeight;
 
     final content = ButlerlyContentCanvas(
@@ -83,7 +83,10 @@ class ButlerlyPage extends StatelessWidget {
           if (pinnedHeader != null)
             SliverPersistentHeader(
               pinned: true,
-              delegate: _ButlerlyPinnedHeaderDelegate(child: pinnedHeader!),
+              delegate: _ButlerlyPinnedHeaderDelegate(
+                child: pinnedHeader!,
+                extent: pinnedHeaderExtent,
+              ),
             ),
           if (useCupertinoRefresh)
             CupertinoSliverRefreshControl(
@@ -138,15 +141,19 @@ class ButlerlyPage extends StatelessWidget {
 }
 
 class _ButlerlyPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
-  const _ButlerlyPinnedHeaderDelegate({required this.child});
+  const _ButlerlyPinnedHeaderDelegate({
+    required this.child,
+    required this.extent,
+  });
 
   final Widget child;
+  final double extent;
 
   @override
-  double get minExtent => ButlerlySize.minimumTarget;
+  double get minExtent => extent;
 
   @override
-  double get maxExtent => ButlerlySize.minimumTarget;
+  double get maxExtent => extent;
 
   @override
   Widget build(
@@ -174,7 +181,7 @@ class _ButlerlyPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(covariant _ButlerlyPinnedHeaderDelegate oldDelegate) =>
-      oldDelegate.child != child;
+      oldDelegate.child != child || oldDelegate.extent != extent;
 }
 
 class ButlerlyCard extends StatelessWidget {

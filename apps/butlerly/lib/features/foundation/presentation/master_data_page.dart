@@ -275,60 +275,68 @@ class _MasterDataPageState extends State<MasterDataPage> {
   }
 
   @override
-  Widget build(BuildContext context) => ButlerlyPage(
-    title: context.l10n.text('masterData'),
-    pinnedHeader: ButlerlyCompactSectionSelector(
-      labels: [
-        context.l10n.text('categories'),
-        context.l10n.text('subcategories'),
-        context.l10n.text('tags'),
-        context.l10n.text('merchants'),
-      ],
-      selectedIndex: _sectionIndex,
-      onSelected: (index) => setState(() => _sectionIndex = index),
-    ),
+  Widget build(BuildContext context) => Stack(
     children: [
-      const SizedBox(height: 0),
-      FutureBuilder<_MasterData>(
-        future: _data,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const ButlerlyLoadingState();
-          }
-          if (snapshot.hasError) {
-            return ButlerlyErrorState(
-              title: context.l10n.text('reviewLoadError'),
-              message: context.l10n.text('tryAgain'),
-              preserved: context.l10n.text('dataPreserved'),
-              actionLabel: context.l10n.text('tryAgain'),
-              onAction: _refresh,
-            );
-          }
-          final data = snapshot.requireData;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton.icon(
-                  onPressed: _add,
-                  icon: const Icon(Icons.add),
-                  label: Text(context.l10n.text('add')),
-                ),
-              ),
-              const SizedBox(height: ButlerlySpacing.small),
-              _MasterDataList(
+      ButlerlyPage(
+        title: context.l10n.text('masterData'),
+        pinnedHeader: ButlerlyCompactSectionSelector(
+          labels: [
+            context.l10n.text('categories'),
+            context.l10n.text('subcategories'),
+            context.l10n.text('tags'),
+            context.l10n.text('merchants'),
+          ],
+          selectedIndex: _sectionIndex,
+          onSelected: (index) => setState(() => _sectionIndex = index),
+        ),
+        children: [
+          const SizedBox(height: ButlerlySize.minimumTarget),
+          FutureBuilder<_MasterData>(
+            future: _data,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const ButlerlyLoadingState();
+              }
+              if (snapshot.hasError) {
+                return ButlerlyErrorState(
+                  title: context.l10n.text('reviewLoadError'),
+                  message: context.l10n.text('tryAgain'),
+                  preserved: context.l10n.text('dataPreserved'),
+                  actionLabel: context.l10n.text('tryAgain'),
+                  onAction: _refresh,
+                );
+              }
+              final data = snapshot.requireData;
+              return _MasterDataList(
                 index: _sectionIndex,
                 data: data,
                 onChanged: _refresh,
                 finance: _finance,
                 onEdit: _editExisting,
-              ),
-            ],
-          );
-        },
+              );
+            },
+          ),
+          const SizedBox(height: ButlerlySpacing.structural),
+        ],
       ),
-      const SizedBox(height: ButlerlySpacing.structural),
+      PositionedDirectional(
+        top:
+            ButlerlySize.compactPageToolbarHeight +
+            ButlerlySize.minimumTarget +
+            ButlerlySpacing.compact,
+        end: ButlerlySize.phoneGutter,
+        child: IconButton.filled(
+          key: const ValueKey('master-data-add'),
+          tooltip: context.l10n.text('add'),
+          onPressed: _add,
+          icon: const Icon(Icons.add),
+          style: IconButton.styleFrom(
+            shape: const CircleBorder(),
+            minimumSize: const Size.square(ButlerlySize.minimumTarget),
+            maximumSize: const Size.square(ButlerlySize.minimumTarget),
+          ),
+        ),
+      ),
     ],
   );
 }

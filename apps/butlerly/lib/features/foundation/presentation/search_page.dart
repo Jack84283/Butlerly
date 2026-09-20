@@ -492,6 +492,54 @@ class _SearchPageState extends State<SearchPage>
     }
   }
 
+  Widget _searchControls(BuildContext context) => Row(
+    key: const ValueKey('search-pinned-controls'),
+    children: [
+      Expanded(
+        child: SearchBar(
+          controller: _text,
+          constraints: const BoxConstraints(
+            minHeight: ButlerlySize.minimumTarget,
+            maxHeight: ButlerlySize.minimumTarget,
+          ),
+          hintText: context.l10n.text('searchHint'),
+          leading: const Icon(Icons.search_rounded),
+          trailing: [
+            IconButton(
+              key: const ValueKey('search-submit'),
+              tooltip: context.l10n.text('search'),
+              onPressed: _submit,
+              icon: const Icon(Icons.search_rounded),
+            ),
+            if (_text.text.isNotEmpty)
+              IconButton(
+                tooltip: context.l10n.text('clear'),
+                onPressed: () {
+                  _text.clear();
+                  _submit();
+                },
+                icon: const Icon(Icons.close_rounded),
+              ),
+          ],
+          onChanged: (_) {
+            setState(() {});
+            _scheduleSearch();
+          },
+          onSubmitted: (_) => _submit(),
+        ),
+      ),
+      const SizedBox(width: ButlerlySpacing.compact),
+      IconButton(
+        isSelected: _activeFilterCount > 0,
+        tooltip: _activeFilterCount > 0
+            ? '${context.l10n.text('filters')} ($_activeFilterCount)'
+            : context.l10n.text('filters'),
+        onPressed: _openFilters,
+        icon: const Icon(Icons.tune_rounded),
+      ),
+    ],
+  );
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -502,50 +550,9 @@ class _SearchPageState extends State<SearchPage>
         await _refreshAfterTransactionChange();
       },
       refreshKey: const ValueKey('search-pull-to-refresh'),
+      pinnedHeader: widget.readOnly ? null : _searchControls(context),
       children: [
         if (!widget.readOnly) ...[
-          Row(
-            children: [
-              Expanded(
-                child: SearchBar(
-                  controller: _text,
-                  hintText: context.l10n.text('searchHint'),
-                  leading: const Icon(Icons.search_rounded),
-                  trailing: [
-                    IconButton(
-                      key: const ValueKey('search-submit'),
-                      tooltip: context.l10n.text('search'),
-                      onPressed: _submit,
-                      icon: const Icon(Icons.search_rounded),
-                    ),
-                    if (_text.text.isNotEmpty)
-                      IconButton(
-                        tooltip: context.l10n.text('clear'),
-                        onPressed: () {
-                          _text.clear();
-                          _submit();
-                        },
-                        icon: const Icon(Icons.close_rounded),
-                      ),
-                  ],
-                  onChanged: (_) {
-                    setState(() {});
-                    _scheduleSearch();
-                  },
-                  onSubmitted: (_) => _submit(),
-                ),
-              ),
-              const SizedBox(width: ButlerlySpacing.compact),
-              IconButton(
-                isSelected: _activeFilterCount > 0,
-                tooltip: _activeFilterCount > 0
-                    ? '${context.l10n.text('filters')} ($_activeFilterCount)'
-                    : context.l10n.text('filters'),
-                onPressed: _openFilters,
-                icon: const Icon(Icons.tune_rounded),
-              ),
-            ],
-          ),
           if (_activeFilterCount > 0)
             Align(
               alignment: AlignmentDirectional.centerEnd,
@@ -554,8 +561,6 @@ class _SearchPageState extends State<SearchPage>
                 child: Text(context.l10n.text('clearFilters')),
               ),
             ),
-          if (_activeFilterCount == 0)
-            const SizedBox(height: ButlerlySpacing.section),
         ] else ...[
           _LockedSearchCriteria(
             transactionIds: _transactionIds,

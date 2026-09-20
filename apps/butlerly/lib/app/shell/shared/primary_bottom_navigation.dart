@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
@@ -24,18 +26,16 @@ double phoneNavigationHeightForLabels({
     return painter.height;
   }
 
-  var requiredHeight =
-      ButlerlySize.primaryNavigationAddIconSize + labelHeight(addLabel);
-
+  var maximumLabelHeight = labelHeight(addLabel);
   for (final label in standardLabels) {
-    final destinationHeight =
-        ButlerlySize.standardIcon +
-        ButlerlySize.navigationLabelGap +
-        labelHeight(label);
-    if (destinationHeight > requiredHeight) {
-      requiredHeight = destinationHeight;
+    final height = labelHeight(label);
+    if (height > maximumLabelHeight) {
+      maximumLabelHeight = height;
     }
   }
+
+  final requiredHeight =
+      ButlerlySize.primaryNavigationAddIconSize + maximumLabelHeight;
 
   return requiredHeight < ButlerlySize.navigationBarHeight
       ? ButlerlySize.navigationBarHeight
@@ -62,6 +62,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
     BuildContext context,
     NavigationDestination destination,
     int branchIndex,
+    double labelSlotHeight,
   ) {
     final selected = currentIndex == branchIndex;
     final add = branchIndex == 1;
@@ -110,6 +111,18 @@ class PrimaryBottomNavigation extends StatelessWidget {
             ),
             child: baseIcon,
           );
+    final iconSlot = add
+        ? SizedBox(
+            height: ButlerlySize.primaryNavigationAddIconSize,
+            child: icon,
+          )
+        : SizedBox(
+            height:
+                ButlerlySize.primaryNavigationAddIconSize -
+                ButlerlySize.navigationLabelGap,
+            child: Align(alignment: Alignment.bottomCenter, child: icon),
+          );
+
     return Semantics(
       button: true,
       selected: selected,
@@ -124,17 +137,21 @@ class PrimaryBottomNavigation extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              icon,
+              iconSlot,
               SizedBox(
                 height: add
                     ? ButlerlySpacing.none
                     : ButlerlySize.navigationLabelGap,
               ),
-              Text(
-                destination.label,
-                textAlign: TextAlign.center,
-                softWrap: true,
-                style: labelStyle,
+              SizedBox(
+                width: double.infinity,
+                height: labelSlotHeight,
+                child: Text(
+                  destination.label,
+                  textAlign: TextAlign.center,
+                  softWrap: true,
+                  style: labelStyle,
+                ),
               ),
             ],
           ),
@@ -205,17 +222,10 @@ class PrimaryBottomNavigation extends StatelessWidget {
                         key: const ValueKey('primary-navigation-add-arch'),
                         width: ButlerlySize.primaryNavigationArchWidth,
                         height: ButlerlySize.primaryNavigationArchHeight,
-                        decoration: BoxDecoration(
-                          color: navigationColor,
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(
-                              ButlerlySize.primaryNavigationArchWidth / 2,
-                            ),
-                          ),
-                        ),
-                        foregroundDecoration: _PrimaryNavigationArchEdge(
-                          color: divider.color,
-                          width: divider.width,
+                        decoration: _PrimaryNavigationCircularArch(
+                          fillColor: navigationColor,
+                          edgeColor: divider.color,
+                          edgeWidth: divider.width,
                         ),
                       ),
                     ),
@@ -236,6 +246,8 @@ class PrimaryBottomNavigation extends StatelessWidget {
                               context,
                               destinations[branchIndex]!,
                               branchIndex,
+                              navigationHeight -
+                                  ButlerlySize.primaryNavigationAddIconSize,
                             ),
                           ),
                       ],
@@ -251,50 +263,77 @@ class PrimaryBottomNavigation extends StatelessWidget {
   }
 }
 
-class _PrimaryNavigationArchEdge extends Decoration {
-  const _PrimaryNavigationArchEdge({required this.color, required this.width});
+class _PrimaryNavigationCircularArch extends Decoration {
+  const _PrimaryNavigationCircularArch({
+    required this.fillColor,
+    required this.edgeColor,
+    required this.edgeWidth,
+  });
 
-  final Color color;
-  final double width;
+  final Color fillColor;
+  final Color edgeColor;
+  final double edgeWidth;
 
   @override
   BoxPainter createBoxPainter([VoidCallback? onChanged]) =>
-      _PrimaryNavigationArchEdgePainter(color: color, width: width);
+      _PrimaryNavigationCircularArchPainter(
+        fillColor: fillColor,
+        edgeColor: edgeColor,
+        edgeWidth: edgeWidth,
+      );
 }
 
-class _PrimaryNavigationArchEdgePainter extends BoxPainter {
-  _PrimaryNavigationArchEdgePainter({required this.color, required this.width});
+class _PrimaryNavigationCircularArchPainter extends BoxPainter {
+  _PrimaryNavigationCircularArchPainter({
+    required this.fillColor,
+    required this.edgeColor,
+    required this.edgeWidth,
+  });
 
-  final Color color;
-  final double width;
+  final Color fillColor;
+  final Color edgeColor;
+  final double edgeWidth;
 
   @override
   void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
     final size = configuration.size;
     if (size == null) return;
 
-    final rect = offset & size;
     final radius = ButlerlySize.primaryNavigationArchWidth / 2;
-    final rrect = BorderRadius.vertical(
-      top: Radius.circular(radius),
-    ).toRRect(rect);
+    final circle = Rect.fromCircle(
+      center: Offset(offset.dx + size.width / 2, offset.dy + radius),
+      radius: radius,
+    );
+    final clip = Rect.fromLTWH(
+      offset.dx,
+      offset.dy,
+      size.width,
+      ButlerlySize.primaryNavigationArchHeight,
+    );
 
     canvas.save();
-    canvas.clipRect(
-      Rect.fromLTWH(
-        rect.left - width,
-        rect.top - width,
-        rect.width + (width * 2),
-        ButlerlySize.primaryNavigationArchRise + width,
-      ),
+    canvas.clipRect(clip);
+
+    canvas.drawCircle(
+      circle.center,
+      radius,
+      Paint()
+        ..style = PaintingStyle.fill
+        ..color = fillColor,
     );
-    canvas.drawRRect(
-      rrect,
+
+    canvas.drawArc(
+      circle,
+      math.pi,
+      math.pi,
+      false,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = width
-        ..color = color,
+        ..strokeWidth = edgeWidth
+        ..strokeCap = StrokeCap.round
+        ..color = edgeColor,
     );
+
     canvas.restore();
   }
 }

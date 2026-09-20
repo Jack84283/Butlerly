@@ -2,7 +2,6 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
-import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_activity.dart';
@@ -339,66 +338,69 @@ class _AnalysisPageState extends State<AnalysisPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    body: RefreshIndicator(
-      onRefresh: _refresh,
-      child: FutureBuilder<ApplicationResult<List<RuleExecutionResult>>>(
-        future: _result,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return ButlerlyPage(
-              title: context.l10n.text('analysis'),
-              children: const [AnalysisSkeleton()],
-            );
-          }
-          final result = snapshot.data;
-          if (result is! ApplicationSuccess<List<RuleExecutionResult>>) {
-            return ButlerlyPage(
-              title: context.l10n.text('analysis'),
-              children: [
-                ButlerlyErrorState(
-                  title: context.l10n.text('analysisUnavailable'),
-                  message: context.l10n.text('analysisUnavailableBody'),
-                  preserved: context.l10n.text('dataPreserved'),
-                  actionLabel: context.l10n.text('tryAgain'),
-                  onAction: _refresh,
-                ),
-              ],
-            );
-          }
-          final analysisContext =
-              _context ??
-              result.value
-                  .map((r) => r.metric?.context ?? r.finding?.context)
-                  .whereType<AnalysisContext>()
-                  .firstOrNull;
-          _calendar ??= analysisContext == null
-              ? _loadCalendarForTestOnly()
-              : _loadCalendar(analysisContext);
-          return _AnalysisContent(
-            results: result.value,
-            analysisContext: analysisContext,
-            period: _period,
-            masterData: _masterData,
-            onNavigationRequested: widget.onNavigationRequested,
-            calendar: _calendar,
-            selectedDate: _selectedDate,
-            transactions: _transactions,
-            canPreviousMonth: analysisContext == null
-                ? false
-                : _canChangeCalendarMonth(analysisContext, previous: true),
-            canNextMonth: analysisContext == null
-                ? false
-                : _canChangeCalendarMonth(analysisContext, previous: false),
-            onMonthChanged: _selectCalendarMonth,
-            onTransactionRequested:
-                widget.onTransactionRequested ?? _openTransactionDetail,
-            onPeriodChanged: _selectPeriod,
-            onSelectDate: _selectDate,
+    body: FutureBuilder<ApplicationResult<List<RuleExecutionResult>>>(
+      future: _result,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return ButlerlyPage(
+            title: context.l10n.text('analysis'),
+            onRefresh: _refresh,
+            refreshKey: const ValueKey('analysis-pull-to-refresh'),
+            children: const [AnalysisSkeleton()],
           );
-        },
-      ),
+        }
+        final result = snapshot.data;
+        if (result is! ApplicationSuccess<List<RuleExecutionResult>>) {
+          return ButlerlyPage(
+            title: context.l10n.text('analysis'),
+            onRefresh: _refresh,
+            refreshKey: const ValueKey('analysis-pull-to-refresh'),
+            children: [
+              ButlerlyErrorState(
+                title: context.l10n.text('analysisUnavailable'),
+                message: context.l10n.text('analysisUnavailableBody'),
+                preserved: context.l10n.text('dataPreserved'),
+                actionLabel: context.l10n.text('tryAgain'),
+                onAction: _refresh,
+              ),
+            ],
+          );
+        }
+        final analysisContext =
+            _context ??
+            result.value
+                .map((r) => r.metric?.context ?? r.finding?.context)
+                .whereType<AnalysisContext>()
+                .firstOrNull;
+        _calendar ??= analysisContext == null
+            ? _loadCalendarForTestOnly()
+            : _loadCalendar(analysisContext);
+        return _AnalysisContent(
+          results: result.value,
+          analysisContext: analysisContext,
+          period: _period,
+          masterData: _masterData,
+          onNavigationRequested: widget.onNavigationRequested,
+          calendar: _calendar,
+          selectedDate: _selectedDate,
+          transactions: _transactions,
+          canPreviousMonth: analysisContext == null
+              ? false
+              : _canChangeCalendarMonth(analysisContext, previous: true),
+          canNextMonth: analysisContext == null
+              ? false
+              : _canChangeCalendarMonth(analysisContext, previous: false),
+          onMonthChanged: _selectCalendarMonth,
+          onTransactionRequested:
+              widget.onTransactionRequested ?? _openTransactionDetail,
+          onPeriodChanged: _selectPeriod,
+          onRefresh: _refresh,
+          onSelectDate: _selectDate,
+        );
+      },
     ),
   );
+
   Future<ApplicationResult<AnalysisCalendarResult>>?
   _loadCalendarForTestOnly() {
     if (widget.loadCalendar == null) return null;
@@ -419,6 +421,7 @@ class _AnalysisContent extends StatelessWidget {
     required this.selectedDate,
     required this.transactions,
     required this.onPeriodChanged,
+    required this.onRefresh,
     required this.onSelectDate,
     required this.canPreviousMonth,
     required this.canNextMonth,
@@ -434,6 +437,7 @@ class _AnalysisContent extends StatelessWidget {
   final String? selectedDate;
   final Future<ApplicationResult<List<TransactionDto>>>? transactions;
   final ValueChanged<String> onPeriodChanged;
+  final RefreshCallback onRefresh;
   final ValueChanged<String> onSelectDate;
   final bool canPreviousMonth;
   final bool canNextMonth;
@@ -441,16 +445,22 @@ class _AnalysisContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final model = AnalysisModel.fromResults(results);
+    final subtitle = analysisPeriodDescription(
+      context,
+      period,
+      analysisContext?.period,
+    );
     return ButlerlyPage(
       title: context.l10n.text('analysis'),
-      subtitle: analysisPeriodDescription(
-        context,
-        period,
-        analysisContext?.period,
+      onRefresh: onRefresh,
+      refreshKey: const ValueKey('analysis-pull-to-refresh'),
+      pinnedHeaderExtent: AnalysisPeriodPinnedHeader.extent,
+      pinnedHeader: AnalysisPeriodPinnedHeader(
+        subtitle: subtitle,
+        value: period,
+        onChanged: onPeriodChanged,
       ),
       children: [
-        AnalysisPeriodSelector(value: period, onChanged: onPeriodChanged),
-        const SizedBox(height: ButlerlySpacing.standard),
         AnalysisSummary(model: model),
         _SectionHeader(title: context.l10n.text('spending')),
         AnalysisSpendingBreakdown(

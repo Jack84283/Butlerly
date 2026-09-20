@@ -64,85 +64,79 @@ void main() {
     );
   });
 
-  test('phone navigation preserves the compact baseline height at 1x', () {
+  test('phone navigation grows for a wrapped label at 1x', () {
     final labelStyle = ButlerlyTypography.navigationLabel(
       AppTheme.light.textTheme.labelSmall!,
       color: Colors.black,
       selected: true,
     );
+    const itemWidth = 78.0;
+    const labels = ['Home', 'Transactions', 'Tools', 'More', 'Add'];
     final height = phoneNavigationHeightForLabels(
       textScaler: TextScaler.noScaling,
-      itemWidth: 78,
-      standardLabels: const ['Home', 'Transactions', 'Tools', 'More'],
-      addLabel: 'Add',
+      itemWidth: itemWidth,
+      standardLabels: labels.take(4),
+      addLabel: labels.last,
+      labelStyle: labelStyle,
+      textDirection: TextDirection.ltr,
+    );
+    final maximumLabelHeight = labels
+        .map(
+          (label) => _navigationLabelHeight(
+            label,
+            style: labelStyle,
+            textScaler: TextScaler.noScaling,
+            maxWidth: itemWidth,
+          ),
+        )
+        .reduce((left, right) => left > right ? left : right);
+
+    expect(ButlerlySize.navigationBarHeight, 60);
+    expect(ButlerlySize.primaryNavigationAddIconSize, 44);
+    expect(
+      height,
+      ButlerlySize.primaryNavigationAddIconSize + maximumLabelHeight,
+    );
+    expect(height, greaterThan(ButlerlySize.navigationBarHeight));
+  });
+
+  test('phone navigation uses one label slot across destinations', () {
+    const scaler = TextScaler.linear(3);
+    const itemWidth = 78.0;
+    const standardLabels = ['Home', 'Transacciones', 'Herramientas', 'Más'];
+    const addLabel = 'Add';
+    final labelStyle = ButlerlyTypography.navigationLabel(
+      AppTheme.light.textTheme.labelSmall!,
+      color: Colors.black,
+      selected: true,
+    );
+
+    final height = phoneNavigationHeightForLabels(
+      textScaler: scaler,
+      itemWidth: itemWidth,
+      standardLabels: standardLabels,
+      addLabel: addLabel,
       labelStyle: labelStyle,
       textDirection: TextDirection.ltr,
     );
 
-    expect(ButlerlySize.navigationBarHeight, 60);
-    expect(ButlerlySize.primaryNavigationAddIconSize, 44);
-    expect(height, ButlerlySize.navigationBarHeight);
-  });
-
-  test(
-    'phone navigation measures wrapped standard destination independently from Add',
-    () {
-      const scaler = TextScaler.linear(3);
-      const itemWidth = 78.0;
-      const standardLabels = ['Home', 'Transacciones', 'Herramientas', 'Más'];
-      const addLabel = 'Add';
-      final labelStyle = ButlerlyTypography.navigationLabel(
-        AppTheme.light.textTheme.labelSmall!,
-        color: Colors.black,
-        selected: true,
-      );
-
-      final height = phoneNavigationHeightForLabels(
-        textScaler: scaler,
-        itemWidth: itemWidth,
-        standardLabels: standardLabels,
-        addLabel: addLabel,
-        labelStyle: labelStyle,
-        textDirection: TextDirection.ltr,
-      );
-
-      final maxStandardLabelHeight = standardLabels
-          .map(
-            (label) => _navigationLabelHeight(
-              label,
-              style: labelStyle,
-              textScaler: scaler,
-              maxWidth: itemWidth,
-            ),
-          )
-          .reduce((left, right) => left > right ? left : right);
-      final standardRequiredHeight =
-          ButlerlySize.standardIcon +
-          ButlerlySize.navigationLabelGap +
-          maxStandardLabelHeight;
-      final addRequiredHeight =
-          ButlerlySize.primaryNavigationAddIconSize +
-          ButlerlySpacing.micro +
-          _navigationLabelHeight(
-            addLabel,
+    final maximumLabelHeight = [...standardLabels, addLabel]
+        .map(
+          (label) => _navigationLabelHeight(
+            label,
             style: labelStyle,
             textScaler: scaler,
             maxWidth: itemWidth,
-          );
-      final expectedHeight = [
-        ButlerlySize.navigationBarHeight,
-        standardRequiredHeight,
-        addRequiredHeight,
-      ].reduce((left, right) => left > right ? left : right);
-      final impossibleMixedHeight =
-          ButlerlySize.primaryNavigationAddIconSize +
-          ButlerlySpacing.micro +
-          maxStandardLabelHeight;
+          ),
+        )
+        .reduce((left, right) => left > right ? left : right);
+    final expectedHeight = [
+      ButlerlySize.navigationBarHeight,
+      ButlerlySize.primaryNavigationAddIconSize + maximumLabelHeight,
+    ].reduce((left, right) => left > right ? left : right);
 
-      expect(height, expectedHeight);
-      expect(height, lessThan(impossibleMixedHeight));
-    },
-  );
+    expect(height, expectedHeight);
+  });
 
   test('phone navigation uses actual localized nonlinear label geometry', () {
     const scaler = _NavigationNonlinearTextScaler();

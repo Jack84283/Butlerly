@@ -121,7 +121,7 @@ void main() {
         tester
             .getSize(find.byKey(const ValueKey('primary-navigation-content')))
             .height,
-        ButlerlySize.navigationBarHeight,
+        greaterThanOrEqualTo(ButlerlySize.navigationBarHeight),
       );
       expect(
         find.byKey(const ValueKey('primary-navigation-add-arch')),
