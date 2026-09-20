@@ -30,7 +30,7 @@ abstract final class ButlerlySpacing {
   static const compactActionSpacing = compact;
   static const bottomActionSpacing = section;
   static const pinnedControlTopGap = compact;
-  static const periodSelectorGap = compact;
+  static const periodSelectorGap = standard;
   static const pinnedHeaderVerticalPadding = compact;
 }
 
