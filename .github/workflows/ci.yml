@@ -49,6 +49,7 @@ jobs:
       - name: Commit Dart formatter output
         if: failure() && github.event_name == 'pull_request'
         run: |
+          dart format apps/butlerly/lib apps/butlerly/test
           if ! git diff --quiet -- apps/butlerly/lib apps/butlerly/test; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
