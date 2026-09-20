@@ -120,11 +120,12 @@ class _TransactionsPageState extends State<TransactionsPage> {
     };
   }
 
-  void _refresh() {
+  Future<void> _refresh() async {
     final reloaded = _load();
     setState(() {
       _transactions = reloaded;
     });
+    await reloaded;
   }
 
   Future<void> _openDetail(TransactionDto transaction) async {
@@ -180,6 +181,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
             .toList(growable: false);
         return ButlerlyPage(
           title: context.l10n.text('transactions'),
+          onRefresh: _refresh,
+          refreshKey: const ValueKey('transactions-pull-to-refresh'),
           pinnedHeader: ButlerlyCompactSectionSelector(
             labels: [
               context.l10n.text('all'),

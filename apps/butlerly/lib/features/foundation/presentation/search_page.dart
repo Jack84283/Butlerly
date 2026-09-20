@@ -495,146 +495,144 @@ class _SearchPageState extends State<SearchPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return RefreshIndicator(
-      key: const ValueKey('search-pull-to-refresh'),
+    return ButlerlyPage(
+      title: context.l10n.text('search'),
       onRefresh: () async {
         if (_results == null) return;
         await _refreshAfterTransactionChange();
       },
-      child: ButlerlyPage(
-        title: context.l10n.text('search'),
-        children: [
-          if (!widget.readOnly) ...[
-            Row(
-              children: [
-                Expanded(
-                  child: SearchBar(
-                    controller: _text,
-                    hintText: context.l10n.text('searchHint'),
-                    leading: const Icon(Icons.search_rounded),
-                    trailing: [
+      refreshKey: const ValueKey('search-pull-to-refresh'),
+      children: [
+        if (!widget.readOnly) ...[
+          Row(
+            children: [
+              Expanded(
+                child: SearchBar(
+                  controller: _text,
+                  hintText: context.l10n.text('searchHint'),
+                  leading: const Icon(Icons.search_rounded),
+                  trailing: [
+                    IconButton(
+                      key: const ValueKey('search-submit'),
+                      tooltip: context.l10n.text('search'),
+                      onPressed: _submit,
+                      icon: const Icon(Icons.search_rounded),
+                    ),
+                    if (_text.text.isNotEmpty)
                       IconButton(
-                        key: const ValueKey('search-submit'),
-                        tooltip: context.l10n.text('search'),
-                        onPressed: _submit,
-                        icon: const Icon(Icons.search_rounded),
+                        tooltip: context.l10n.text('clear'),
+                        onPressed: () {
+                          _text.clear();
+                          _submit();
+                        },
+                        icon: const Icon(Icons.close_rounded),
                       ),
-                      if (_text.text.isNotEmpty)
-                        IconButton(
-                          tooltip: context.l10n.text('clear'),
-                          onPressed: () {
-                            _text.clear();
-                            _submit();
-                          },
-                          icon: const Icon(Icons.close_rounded),
-                        ),
-                    ],
-                    onChanged: (_) {
-                      setState(() {});
-                      _scheduleSearch();
-                    },
-                    onSubmitted: (_) => _submit(),
-                  ),
-                ),
-                const SizedBox(width: ButlerlySpacing.compact),
-                IconButton(
-                  isSelected: _activeFilterCount > 0,
-                  tooltip: _activeFilterCount > 0
-                      ? '${context.l10n.text('filters')} ($_activeFilterCount)'
-                      : context.l10n.text('filters'),
-                  onPressed: _openFilters,
-                  icon: const Icon(Icons.tune_rounded),
-                ),
-              ],
-            ),
-            if (_activeFilterCount > 0)
-              Align(
-                alignment: AlignmentDirectional.centerEnd,
-                child: TextButton(
-                  onPressed: _clearFilters,
-                  child: Text(context.l10n.text('clearFilters')),
+                  ],
+                  onChanged: (_) {
+                    setState(() {});
+                    _scheduleSearch();
+                  },
+                  onSubmitted: (_) => _submit(),
                 ),
               ),
-            if (_activeFilterCount == 0)
-              const SizedBox(height: ButlerlySpacing.section),
-          ] else ...[
-            _LockedSearchCriteria(
-              transactionIds: _transactionIds,
-              from: _from,
-              to: _to,
-              categoryId: _categoryId,
-              paymentSourceId: _paymentSourceId,
-              currency: _currency,
-              direction: _direction,
-              uncategorized: _uncategorized,
-              presentation: _presentation,
-              paymentSourceNames: _paymentSourceNames,
+              const SizedBox(width: ButlerlySpacing.compact),
+              IconButton(
+                isSelected: _activeFilterCount > 0,
+                tooltip: _activeFilterCount > 0
+                    ? '${context.l10n.text('filters')} ($_activeFilterCount)'
+                    : context.l10n.text('filters'),
+                onPressed: _openFilters,
+                icon: const Icon(Icons.tune_rounded),
+              ),
+            ],
+          ),
+          if (_activeFilterCount > 0)
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: TextButton(
+                onPressed: _clearFilters,
+                child: Text(context.l10n.text('clearFilters')),
+              ),
             ),
-            const SizedBox(height: ButlerlySpacing.standard),
-          ],
-          if (_results == null)
-            ButlerlyEmptyState(
-              icon: Icons.search_rounded,
-              title: context.l10n.text('noSearchYet'),
-              message: context.l10n.text('noSearchYetBody'),
-            )
-          else
-            FutureBuilder<List<TransactionDto>>(
-              future: _results,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState != ConnectionState.done) {
-                  return const ButlerlyLoadingState();
-                }
-                if (snapshot.hasError) {
-                  return ButlerlyErrorState(
-                    title: context.l10n.text('noResults'),
-                    message: context.l10n.text('tryAgain'),
-                    preserved: context.l10n.text('dataPreserved'),
-                    actionLabel: context.l10n.text('tryAgain'),
-                    onAction: _retriesInsightDrillDown
-                        ? _refreshAfterTransactionChange
-                        : _submit,
-                  );
-                }
-                final values = snapshot.requireData;
-                if (values.isEmpty) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      TransactionCountText(count: values.length),
-                      const SizedBox(height: ButlerlySpacing.compact),
-                      ButlerlyEmptyState(
-                        icon: Icons.search_off_rounded,
-                        title: context.l10n.text('noResults'),
-                        message: context.l10n.text('noResultsBody'),
-                        actionLabel: widget.readOnly
-                            ? null
-                            : context.l10n.text('clearSearch'),
-                        onAction: widget.readOnly ? null : _resetSearch,
-                      ),
-                    ],
-                  );
-                }
+          if (_activeFilterCount == 0)
+            const SizedBox(height: ButlerlySpacing.section),
+        ] else ...[
+          _LockedSearchCriteria(
+            transactionIds: _transactionIds,
+            from: _from,
+            to: _to,
+            categoryId: _categoryId,
+            paymentSourceId: _paymentSourceId,
+            currency: _currency,
+            direction: _direction,
+            uncategorized: _uncategorized,
+            presentation: _presentation,
+            paymentSourceNames: _paymentSourceNames,
+          ),
+          const SizedBox(height: ButlerlySpacing.standard),
+        ],
+        if (_results == null)
+          ButlerlyEmptyState(
+            icon: Icons.search_rounded,
+            title: context.l10n.text('noSearchYet'),
+            message: context.l10n.text('noSearchYetBody'),
+          )
+        else
+          FutureBuilder<List<TransactionDto>>(
+            future: _results,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const ButlerlyLoadingState();
+              }
+              if (snapshot.hasError) {
+                return ButlerlyErrorState(
+                  title: context.l10n.text('noResults'),
+                  message: context.l10n.text('tryAgain'),
+                  preserved: context.l10n.text('dataPreserved'),
+                  actionLabel: context.l10n.text('tryAgain'),
+                  onAction: _retriesInsightDrillDown
+                      ? _refreshAfterTransactionChange
+                      : _submit,
+                );
+              }
+              final values = snapshot.requireData;
+              if (values.isEmpty) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     TransactionCountText(count: values.length),
                     const SizedBox(height: ButlerlySpacing.compact),
-                    TransactionRecordList(
-                      transactions: values,
-                      masterData: _presentation,
-                      paymentSourceNames: _paymentSourceNames,
-                      groupByFinancialDate: true,
-                      onTap: _openDetail,
-                      navigates: true,
+                    ButlerlyEmptyState(
+                      icon: Icons.search_off_rounded,
+                      title: context.l10n.text('noResults'),
+                      message: context.l10n.text('noResultsBody'),
+                      actionLabel: widget.readOnly
+                          ? null
+                          : context.l10n.text('clearSearch'),
+                      onAction: widget.readOnly ? null : _resetSearch,
                     ),
                   ],
                 );
-              },
-            ),
-          const SizedBox(height: ButlerlySpacing.structural),
-        ],
-      ),
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TransactionCountText(count: values.length),
+                  const SizedBox(height: ButlerlySpacing.compact),
+                  TransactionRecordList(
+                    transactions: values,
+                    masterData: _presentation,
+                    paymentSourceNames: _paymentSourceNames,
+                    groupByFinancialDate: true,
+                    onTap: _openDetail,
+                    navigates: true,
+                  ),
+                ],
+              );
+            },
+          ),
+        const SizedBox(height: ButlerlySpacing.structural),
+      ],
     );
   }
 }
