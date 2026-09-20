@@ -277,6 +277,16 @@ When blocked:
 - Require upgrade tests when an installed rule definition changes.
 - Preserve historical versions referenced by findings.
 
+### Merchant classification
+
+- Preserve the domain rule `Merchant → Subcategory → Category`: each merchant has one deterministic built-in default classification.
+- Keep broad merchant identities when adding specific service/business-context variants. For example, adding `Costco Gas` must not replace or repurpose `Costco`.
+- Prefer the most specific merchant identity supported by source evidence; otherwise fall back to the broad merchant. Never infer a specific variant without supporting descriptor, receipt, OCR, import, or user evidence.
+- Treat formatting/store-number variations as aliases or normalization inputs, not new merchants, unless the variation represents a materially different and stable financial context.
+- Built-in defaults remain user-overridable. Prefer broad-but-correct classification over precise-but-guessed classification.
+- Do not rely on `INSERT OR IGNORE` to change existing built-in merchant meaning on installed databases. Changes to an existing built-in merchant's name, status, category, or subcategory require an explicit catalog upgrade/migration path and production-path migration tests.
+- See `docs/03 Engineering/merchant-classification-contract.md` for the authoritative engineering contract.
+
 ### Financial periods
 
 - Primary and baseline calculations must use independently resolved windows.
