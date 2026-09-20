@@ -55,20 +55,19 @@ void main() {
       expect(find.text('No transactions yet'), findsOneWidget);
       expect(find.text('All'), findsOneWidget);
 
-      unawaited(
-        tester
-            .state<RefreshIndicatorState>(
-              find.byKey(const ValueKey('transactions-pull-to-refresh')),
-            )
-            .show(),
-      );
-      await tester.pump();
+      final refresh = tester
+          .state<RefreshIndicatorState>(
+            find.byKey(const ValueKey('transactions-pull-to-refresh')),
+          )
+          .show();
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(transactions.queryCount, 2);
       expect(find.text('No transactions yet'), findsOneWidget);
       expect(find.text('All'), findsOneWidget);
 
       transactions.completeRefresh();
+      await refresh;
       await tester.pumpAndSettle();
 
       expect(find.text('No transactions yet'), findsOneWidget);
