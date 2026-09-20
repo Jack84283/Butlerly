@@ -1,4 +1,5 @@
 import 'package:butlerly/app/theme/app_theme.dart';
+import 'package:butlerly/design_system/components/butlerly_action_group.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
@@ -98,6 +99,38 @@ void main() {
       surface.geometry?.paintExtent,
       greaterThanOrEqualTo(844 - kToolbarHeight),
     );
+  });
+
+  testWidgets('action group divider spans the icon column like More cards', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: ButlerlyActionGroup(
+            actions: [
+              ButlerlyActionItem(
+                icon: Icons.search,
+                title: 'Search',
+                subtitle: 'Find transactions',
+                onTap: () {},
+              ),
+              ButlerlyActionItem(
+                icon: Icons.analytics_outlined,
+                title: 'Analysis',
+                subtitle: 'Analyze spending',
+                onTap: () {},
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final divider = tester.widget<Divider>(find.byType(Divider));
+    expect(divider.indent, ButlerlySpacing.standard);
+    expect(divider.endIndent, ButlerlySpacing.standard);
   });
 
   testWidgets('shared loading state is available in both themes', (
