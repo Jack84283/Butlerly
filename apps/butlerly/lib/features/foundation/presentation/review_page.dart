@@ -134,12 +134,32 @@ class _ReviewPageState extends State<ReviewPage> {
     );
   }
 
-  void _refresh() => setState(() {
-    _items = _load();
-    _statementExceptions = _loadStatementExceptions();
-    _uncategorized = _loadUncategorized();
-    _duplicateGroups = _loadDuplicateGroups();
-  });
+  Future<void> _refresh() async {
+    final items = _load();
+    final statementExceptions = _loadStatementExceptions();
+    final uncategorized = _loadUncategorized();
+    final duplicateGroups = _loadDuplicateGroups();
+    setState(() {
+      _items = items;
+      _statementExceptions = statementExceptions;
+      _uncategorized = uncategorized;
+      _duplicateGroups = duplicateGroups;
+    });
+    await Future.wait<Object?>([
+      items,
+      statementExceptions,
+      uncategorized,
+      duplicateGroups,
+    ]);
+  }
+
+  Future<void> _pullToRefresh() async {
+    if (_view == _ReviewView.duplicates) {
+      final scan = _finance?.scanExistingTransactionsForDuplicates;
+      if (scan != null) await scan();
+    }
+    await _refresh();
+  }
 
   Future<List<StatementReviewException>> _loadStatementExceptions() async {
     final service = _finance?.statementServices;
@@ -176,42 +196,6 @@ class _ReviewPageState extends State<ReviewPage> {
       return const [];
     }
     final result = await finance.listDuplicateCandidateGroups!();
-    return switch (result) {
-      ApplicationSuccess<List<DuplicateCandidateGroup>>(:final value) => value,
-      ApplicationFailure<List<DuplicateCandidateGroup>>() => throw StateError(
-        'Possible duplicates could not be loaded.',
-      ),
-    };
-  }
-
-  Future<void> _rescanDuplicates() async {
-    final scan = _finance?.scanExistingTransactionsForDuplicates;
-    if (scan == null) return;
-    final result = await scan();
-    if (!mounted) return;
-    if (result is ApplicationFailure<List<DuplicateCandidateGroup>>) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.l10n.text('possibleDuplicatesScanFailed')),
-        ),
-      );
-      return;
-    }
-    final groups = _loadDuplicateGroupsWithoutScan();
-    notifyTransactionChanged();
-    setState(() {
-      _duplicateGroups = groups;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(context.l10n.text('possibleDuplicatesScanComplete')),
-      ),
-    );
-  }
-
-  Future<List<DuplicateCandidateGroup>>
-  _loadDuplicateGroupsWithoutScan() async {
-    final result = await _finance!.listDuplicateCandidateGroups!();
     return switch (result) {
       ApplicationSuccess<List<DuplicateCandidateGroup>>(:final value) => value,
       ApplicationFailure<List<DuplicateCandidateGroup>>() => throw StateError(
@@ -368,6 +352,8 @@ class _ReviewPageState extends State<ReviewPage> {
     }
     return ButlerlyPage(
       title: context.l10n.text('review'),
+      onRefresh: _pullToRefresh,
+      refreshKey: ValueKey('review-pull-to-refresh-${_view.name}'),
       pinnedHeader: FutureBuilder<List<DuplicateCandidateGroup>>(
         future: _duplicateGroups,
         builder: (context, snapshot) {
@@ -405,38 +391,14 @@ class _ReviewPageState extends State<ReviewPage> {
               }
               final groups = snapshot.data ?? const [];
               if (groups.isEmpty) {
-                return Column(
-                  children: [
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton.icon(
-                        onPressed: _rescanDuplicates,
-                        icon: const Icon(Icons.refresh),
-                        label: Text(
-                          context.l10n.text('rescanPossibleDuplicates'),
-                        ),
-                      ),
-                    ),
-                    ButlerlyEmptyState(
-                      icon: Icons.copy_all_outlined,
-                      title: context.l10n.text('noPossibleDuplicates'),
-                      message: context.l10n.text('reviewEmptyBody'),
-                    ),
-                  ],
+                return ButlerlyEmptyState(
+                  icon: Icons.copy_all_outlined,
+                  title: context.l10n.text('noPossibleDuplicates'),
+                  message: context.l10n.text('reviewEmptyBody'),
                 );
               }
               return Column(
                 children: [
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton.icon(
-                      onPressed: _rescanDuplicates,
-                      icon: const Icon(Icons.refresh),
-                      label: Text(
-                        context.l10n.text('rescanPossibleDuplicates'),
-                      ),
-                    ),
-                  ),
                   for (final group in groups)
                     _DuplicateGroupCard(
                       group: group,
