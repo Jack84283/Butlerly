@@ -92,12 +92,14 @@ void main() {
     );
     expect(amountField, findsOneWidget);
     await tester.enterText(amountField, '18.75');
-    tester.testTextInput.hide();
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pump();
     await tester.fling(find.byType(ListView).last, const Offset(0, -500), 1000);
     await tester.pump(const Duration(milliseconds: 500));
     expect(descriptionField, findsOneWidget);
     await tester.enterText(descriptionField, 'UI merchant');
-    tester.testTextInput.hide();
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pump();
     await tester.fling(find.byType(ListView).last, const Offset(0, -500), 1000);
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('Save locally'), findsOneWidget);
