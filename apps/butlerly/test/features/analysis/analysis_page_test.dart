@@ -184,6 +184,7 @@ void main() {
     refreshResult.complete(const ApplicationSuccess(<RuleExecutionResult>[]));
     await refresh;
     await tester.pumpAndSettle();
+    debugDefaultTargetPlatformOverride = null;
   });
 
   testWidgets('custom period uses a staged bottom sheet range editor', (
