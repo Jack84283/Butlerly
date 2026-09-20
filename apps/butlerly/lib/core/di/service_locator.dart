@@ -1,3 +1,4 @@
+import 'package:butlerly/core/analysis/bundled_analysis_rules.dart';
 import 'package:butlerly/core/config/app_configuration.dart';
 import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_gateway.dart';
@@ -44,7 +45,17 @@ void configureDependencies({
         services<LocalBackupManager>(),
         localDataManager,
       ),
-      refreshSystemData: database.reseedSystemData,
+      refreshSystemData: () async {
+        await database.reseedSystemData();
+        final installer = services<FinanceServices>().installBuiltInRules;
+        if (installer == null) {
+          throw StateError('Bundled analysis rule installer is unavailable.');
+        }
+        final installation = await installBundledAnalysisRules(installer);
+        if (installation.diagnostics.isNotEmpty) {
+          throw StateError('Bundled analysis rules failed validation.');
+        }
+      },
     ),
   );
 
