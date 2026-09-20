@@ -1402,11 +1402,16 @@ void main() {
       );
       expect(addIcon, findsOneWidget);
       expect(tester.widget<Icon>(addIcon).color, Colors.white);
+      final iconButton = tester.widget<IconButton>(addButton);
+      expect(
+        iconButton.style?.backgroundColor?.resolve({}),
+        Colors.transparent,
+      );
       expect(
         tester.getTopLeft(addButton).dy - tester.getBottomLeft(selector).dy,
         closeTo(
           ButlerlySpacing.pinnedPageBottomGap +
-              ButlerlySpacing.masterDataAddButtonTopGap,
+              ButlerlySize.masterDataAddButtonVerticalOffset,
           0.01,
         ),
       );
