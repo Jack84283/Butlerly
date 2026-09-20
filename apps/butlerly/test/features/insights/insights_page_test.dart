@@ -75,12 +75,13 @@ void main() {
       expect(selector, findsOneWidget);
       expect(find.text('Period summary'), findsOneWidget);
 
-      final indicator = tester.widget<RefreshIndicator>(
-        find.byKey(const ValueKey('insights-pull-to-refresh')),
+      await tester.drag(
+        find.byType(CustomScrollView),
+        const Offset(0, 320),
       );
-      final pendingRefresh = indicator.onRefresh();
       await tester.pump();
 
+      expect(loads, 2);
       expect(selector, findsOneWidget);
       expect(
         find.byKey(const ValueKey('analysis-period-pinned-header')),
@@ -91,10 +92,8 @@ void main() {
       refreshResult.complete(
         const ApplicationSuccess(<RuleExecutionResult>[]),
       );
-      await pendingRefresh;
       await tester.pumpAndSettle();
 
-      expect(loads, 2);
     },
   );
 
