@@ -443,13 +443,9 @@ void main() {
   });
 
   testWidgets(
-    'Transactions Review and Master Data menus start directly below the app bar',
+    'Transactions and Review use the shared primary pinned-page spacing',
     (tester) async {
-      for (final page in const <Widget>[
-        TransactionsPage(),
-        ReviewPage(),
-        MasterDataPage(),
-      ]) {
+      for (final page in const <Widget>[TransactionsPage(), ReviewPage()]) {
         await tester.pumpWidget(MaterialApp(home: page));
         await tester.pumpAndSettle();
 
@@ -464,7 +460,14 @@ void main() {
           sliverAppBar.toolbarHeight,
           ButlerlySize.compactPageToolbarHeight,
         );
-        expect(selectorTop - appBarBottom, closeTo(0, 0.01));
+        expect(
+          sliverAppBar.bottom?.preferredSize.height,
+          ButlerlySpacing.pinnedPageHeaderBottomGap,
+        );
+        expect(
+          selectorTop - appBarBottom,
+          closeTo(ButlerlySpacing.pinnedPageTopGap, 0.01),
+        );
         expect(
           tester.getSize(find.byType(ButlerlyCompactSectionSelector)).height,
           ButlerlySize.minimumTarget,
