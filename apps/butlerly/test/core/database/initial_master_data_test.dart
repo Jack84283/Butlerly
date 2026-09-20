@@ -70,7 +70,17 @@ void main() {
       expect(tags.map((row) => row['id']), contains('tag.tax_related'));
       expect(
         merchants.map((row) => row['name']),
-        containsAll(['Safeway', 'Costco', 'Starbucks', 'Uber']),
+        containsAll([
+          'Safeway',
+          'Kroger',
+          'H-E-B',
+          'ALDI',
+          "Andronico's Community Markets",
+          'Albertsons',
+          'Costco',
+          'Starbucks',
+          'Uber',
+        ]),
       );
       expect(
         referenceData.map((row) => row['id']),
