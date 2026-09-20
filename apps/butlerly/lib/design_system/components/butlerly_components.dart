@@ -12,6 +12,29 @@ import 'package:flutter/material.dart';
 export 'butlerly_category_icon.dart';
 export 'butlerly_content_surface.dart';
 
+class ButlerlyPinnedPageSpacing {
+  const ButlerlyPinnedPageSpacing({
+    this.headerBottomGap = ButlerlySpacing.none,
+    this.pinnedTopGap = ButlerlySpacing.none,
+    this.pinnedBottomGap = ButlerlySpacing.none,
+    this.bodyTopGap,
+  });
+
+  static const none = ButlerlyPinnedPageSpacing();
+
+  static const primary = ButlerlyPinnedPageSpacing(
+    headerBottomGap: ButlerlySpacing.pinnedPageHeaderBottomGap,
+    pinnedTopGap: ButlerlySpacing.pinnedPageTopGap,
+    pinnedBottomGap: ButlerlySpacing.pinnedPageBottomGap,
+    bodyTopGap: ButlerlySpacing.pinnedPageBodyTopGap,
+  );
+
+  final double headerBottomGap;
+  final double pinnedTopGap;
+  final double pinnedBottomGap;
+  final double? bodyTopGap;
+}
+
 class ButlerlyPage extends StatelessWidget {
   const ButlerlyPage({
     required this.children,
@@ -22,10 +45,7 @@ class ButlerlyPage extends StatelessWidget {
     this.controller,
     this.pinnedHeader,
     this.pinnedHeaderExtent = ButlerlySize.minimumTarget,
-    this.headerBottomGap = ButlerlySpacing.none,
-    this.pinnedHeaderTopGap = ButlerlySpacing.none,
-    this.pinnedHeaderBottomGap = ButlerlySpacing.none,
-    this.contentTopGap,
+    this.pinnedSpacing = ButlerlyPinnedPageSpacing.none,
     this.onRefresh,
     this.refreshKey,
     super.key,
@@ -39,10 +59,7 @@ class ButlerlyPage extends StatelessWidget {
   final ScrollController? controller;
   final Widget? pinnedHeader;
   final double pinnedHeaderExtent;
-  final double headerBottomGap;
-  final double pinnedHeaderTopGap;
-  final double pinnedHeaderBottomGap;
-  final double? contentTopGap;
+  final ButlerlyPinnedPageSpacing pinnedSpacing;
   final RefreshCallback? onRefresh;
   final Key? refreshKey;
 
@@ -52,7 +69,7 @@ class ButlerlyPage extends StatelessWidget {
         padding ??
         EdgeInsets.fromLTRB(
           ButlerlySize.phoneGutter,
-          contentTopGap ?? ButlerlySpacing.standard,
+          pinnedSpacing.bodyTopGap ?? ButlerlySpacing.standard,
           ButlerlySize.phoneGutter,
           ButlerlySpacing.large,
         );
@@ -66,10 +83,10 @@ class ButlerlyPage extends StatelessWidget {
         ? kToolbarHeight
         : ButlerlySize.compactPageToolbarHeight;
     final appBarHeight =
-        toolbarHeight + (title == null ? ButlerlySpacing.none : headerBottomGap);
+        toolbarHeight + (title == null ? ButlerlySpacing.none : pinnedSpacing.headerBottomGap);
     final pinnedHeaderHeight = pinnedHeader == null
         ? ButlerlySpacing.none
-        : pinnedHeaderExtent + pinnedHeaderTopGap + pinnedHeaderBottomGap;
+        : pinnedHeaderExtent + pinnedSpacing.pinnedTopGap + pinnedSpacing.pinnedBottomGap;
     final refreshEdgeOffset = appBarHeight + pinnedHeaderHeight;
 
     final content = ButlerlyContentCanvas(
@@ -88,10 +105,10 @@ class ButlerlyPage extends StatelessWidget {
               toolbarHeight: toolbarHeight,
               title: Text(title!),
               actions: actions,
-              bottom: headerBottomGap > ButlerlySpacing.none
+              bottom: pinnedSpacing.headerBottomGap > ButlerlySpacing.none
                   ? PreferredSize(
-                      preferredSize: Size.fromHeight(headerBottomGap),
-                      child: SizedBox(height: headerBottomGap),
+                      preferredSize: Size.fromHeight(pinnedSpacing.headerBottomGap),
+                      child: SizedBox(height: pinnedSpacing.headerBottomGap),
                     )
                   : null,
               backgroundColor: context.colors.background.withValues(
@@ -104,8 +121,8 @@ class ButlerlyPage extends StatelessWidget {
               delegate: _ButlerlyPinnedHeaderDelegate(
                 child: pinnedHeader!,
                 extent: pinnedHeaderExtent,
-                topGap: pinnedHeaderTopGap,
-                bottomGap: pinnedHeaderBottomGap,
+                topGap: pinnedSpacing.pinnedTopGap,
+                bottomGap: pinnedSpacing.pinnedBottomGap,
               ),
             ),
           if (useCupertinoRefresh)
