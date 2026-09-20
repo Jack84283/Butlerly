@@ -112,6 +112,29 @@ class PrimaryBottomNavigation extends StatelessWidget {
             ),
             child: baseIcon,
           );
+    final content = Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        icon,
+        SizedBox(
+          height: add
+              ? ButlerlySpacing.none
+              : ButlerlySize.navigationLabelGap,
+        ),
+        Text(
+          destination.label,
+          textAlign: TextAlign.center,
+          softWrap: true,
+          style: labelStyle,
+        ),
+      ],
+    );
+    final standardOffset =
+        (ButlerlySize.primaryNavigationAddIconSize -
+            ButlerlySize.standardIcon -
+            ButlerlySize.navigationLabelGap) /
+        2;
+
     return Semantics(
       button: true,
       selected: selected,
@@ -123,23 +146,12 @@ class PrimaryBottomNavigation extends StatelessWidget {
         onTap: () => onSelected(branchIndex),
         child: SizedBox(
           height: double.infinity,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              icon,
-              SizedBox(
-                height: add
-                    ? ButlerlySpacing.none
-                    : ButlerlySize.navigationLabelGap,
-              ),
-              Text(
-                destination.label,
-                textAlign: TextAlign.center,
-                softWrap: true,
-                style: labelStyle,
-              ),
-            ],
-          ),
+          child: add
+              ? content
+              : Transform.translate(
+                  offset: Offset(0, standardOffset),
+                  child: content,
+                ),
         ),
       ),
     );
