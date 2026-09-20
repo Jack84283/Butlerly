@@ -47,14 +47,16 @@ class AnalysisPeriodPinnedHeader extends StatelessWidget {
 
   static double extent(BuildContext context, String subtitle) {
     final style = Theme.of(context).textTheme.bodyMedium!;
-    final painter = TextPainter(
-      text: TextSpan(text: subtitle, style: style),
-      textScaler: MediaQuery.textScalerOf(context),
-      textDirection: Directionality.of(context),
-      maxLines: 1,
-    )..layout(
-      maxWidth: MediaQuery.sizeOf(context).width - ButlerlySize.phoneGutter * 2,
-    );
+    final painter =
+        TextPainter(
+          text: TextSpan(text: subtitle, style: style),
+          textScaler: MediaQuery.textScalerOf(context),
+          textDirection: Directionality.of(context),
+          maxLines: 1,
+        )..layout(
+          maxWidth:
+              MediaQuery.sizeOf(context).width - ButlerlySize.phoneGutter * 2,
+        );
     final selectorHeight = MediaQuery.textScalerOf(
       context,
     ).scale(ButlerlySize.analysisPeriodSelectorHeight);
