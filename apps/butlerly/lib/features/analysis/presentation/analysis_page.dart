@@ -377,24 +377,24 @@ class _AnalysisPageState extends State<AnalysisPage> {
             ? _loadCalendarForTestOnly()
             : _loadCalendar(analysisContext);
         return _AnalysisContent(
-            results: result.value,
-            analysisContext: analysisContext,
-            period: _period,
-            masterData: _masterData,
-            onNavigationRequested: widget.onNavigationRequested,
-            calendar: _calendar,
-            selectedDate: _selectedDate,
-            transactions: _transactions,
-            canPreviousMonth: analysisContext == null
-                ? false
-                : _canChangeCalendarMonth(analysisContext, previous: true),
-            canNextMonth: analysisContext == null
-                ? false
-                : _canChangeCalendarMonth(analysisContext, previous: false),
-            onMonthChanged: _selectCalendarMonth,
-            onTransactionRequested:
-                widget.onTransactionRequested ?? _openTransactionDetail,
-            onPeriodChanged: _selectPeriod,
+          results: result.value,
+          analysisContext: analysisContext,
+          period: _period,
+          masterData: _masterData,
+          onNavigationRequested: widget.onNavigationRequested,
+          calendar: _calendar,
+          selectedDate: _selectedDate,
+          transactions: _transactions,
+          canPreviousMonth: analysisContext == null
+              ? false
+              : _canChangeCalendarMonth(analysisContext, previous: true),
+          canNextMonth: analysisContext == null
+              ? false
+              : _canChangeCalendarMonth(analysisContext, previous: false),
+          onMonthChanged: _selectCalendarMonth,
+          onTransactionRequested:
+              widget.onTransactionRequested ?? _openTransactionDetail,
+          onPeriodChanged: _selectPeriod,
           onRefresh: _refresh,
           onSelectDate: _selectDate,
         );
