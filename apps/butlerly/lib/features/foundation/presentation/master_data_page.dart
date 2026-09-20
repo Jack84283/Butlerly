@@ -276,12 +276,25 @@ class _MasterDataPageState extends State<MasterDataPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Stack(
-    children: [
-      ButlerlyPage(
-        title: context.l10n.text('masterData'),
-        pinnedSpacing: ButlerlyPinnedPageSpacing.primary,
-        pinnedHeader: ButlerlyCompactSectionSelector(
+  Widget build(BuildContext context) => ButlerlyPage(
+    title: context.l10n.text('masterData'),
+    pinnedSpacing: ButlerlyPinnedPageSpacing.primary,
+    actions: [
+      IconButton.filled(
+        key: const ValueKey('master-data-add'),
+        tooltip: context.l10n.text('add'),
+        onPressed: _add,
+        icon: const Icon(Icons.add),
+        style: IconButton.styleFrom(
+          backgroundColor: context.colors.interactive,
+          foregroundColor: Colors.white,
+          shape: const CircleBorder(),
+          minimumSize: const Size.square(ButlerlySize.minimumTarget),
+          maximumSize: const Size.square(ButlerlySize.minimumTarget),
+        ),
+      ),
+    ],
+    pinnedHeader: ButlerlyCompactSectionSelector(
           labels: [
             context.l10n.text('categories'),
             context.l10n.text('subcategories'),
@@ -318,32 +331,6 @@ class _MasterDataPageState extends State<MasterDataPage> {
             },
           ),
           const SizedBox(height: ButlerlySpacing.structural),
-        ],
-      ),
-      PositionedDirectional(
-        top:
-            MediaQuery.paddingOf(context).top +
-            ButlerlySize.compactPageToolbarHeight +
-            ButlerlySpacing.pinnedPageHeaderBottomGap +
-            ButlerlySpacing.pinnedPageTopGap +
-            ButlerlySize.minimumTarget +
-            ButlerlySpacing.pinnedPageBottomGap -
-            (ButlerlySize.minimumTarget / 2),
-        end: ButlerlySize.phoneGutter,
-        child: IconButton.filled(
-          key: const ValueKey('master-data-add'),
-          tooltip: context.l10n.text('add'),
-          onPressed: _add,
-          icon: const Icon(Icons.add),
-          style: IconButton.styleFrom(
-            backgroundColor: context.colors.interactive,
-            foregroundColor: Colors.white,
-            shape: const CircleBorder(),
-            minimumSize: const Size.square(ButlerlySize.minimumTarget),
-            maximumSize: const Size.square(ButlerlySize.minimumTarget),
-          ),
-        ),
-      ),
     ],
   );
 }

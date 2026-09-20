@@ -1387,18 +1387,20 @@ void main() {
   });
 
   testWidgets(
-    'Master Data follows primary pinned spacing and keeps add glyph white',
+    'Master Data keeps primary pinned spacing and exposes add in header',
     (tester) async {
-      tester.view.padding = const FakeViewPadding(top: 44);
-      addTearDown(() => tester.view.padding = FakeViewPadding.zero);
-
       await tester.pumpWidget(const MaterialApp(home: MasterDataPage()));
       await tester.pumpAndSettle();
 
       final page = tester.widget<ButlerlyPage>(find.byType(ButlerlyPage));
       expect(page.pinnedSpacing, same(ButlerlyPinnedPageSpacing.primary));
+      expect(
+        page.actions.any(
+          (action) => action.key == const ValueKey('master-data-add'),
+        ),
+        isTrue,
+      );
 
-      final selector = find.byType(ButlerlyCompactSectionSelector);
       final addButton = find.byKey(const ValueKey('master-data-add'));
       final addIcon = find.descendant(
         of: addButton,
@@ -1411,14 +1413,6 @@ void main() {
         tester.element(addButton).colors.interactive,
       );
       expect(iconButton.style?.foregroundColor?.resolve({}), Colors.white);
-      expect(
-        tester.getTopLeft(addButton).dy - tester.getBottomLeft(selector).dy,
-        closeTo(
-          ButlerlySpacing.pinnedPageBottomGap -
-              (ButlerlySize.minimumTarget / 2),
-          0.01,
-        ),
-      );
     },
   );
 
