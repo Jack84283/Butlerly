@@ -497,8 +497,8 @@ class _SearchPageState extends State<SearchPage>
     child: Row(
       key: const ValueKey('search-pinned-controls'),
       children: [
-      Expanded(
-        child: SearchBar(
+        Expanded(
+          child: SearchBar(
           controller: _text,
           constraints: const BoxConstraints(
             minHeight: ButlerlySize.minimumTarget,
@@ -527,18 +527,18 @@ class _SearchPageState extends State<SearchPage>
             setState(() {});
             _scheduleSearch();
           },
-          onSubmitted: (_) => _submit(),
+            onSubmitted: (_) => _submit(),
+          ),
         ),
-      ),
-      const SizedBox(width: ButlerlySpacing.compact),
-      IconButton(
-        isSelected: _activeFilterCount > 0,
-        tooltip: _activeFilterCount > 0
-            ? '${context.l10n.text('filters')} ($_activeFilterCount)'
-            : context.l10n.text('filters'),
-        onPressed: _openFilters,
-        icon: const Icon(Icons.tune_rounded),
-      ),
+        const SizedBox(width: ButlerlySpacing.compact),
+        IconButton(
+          isSelected: _activeFilterCount > 0,
+          tooltip: _activeFilterCount > 0
+              ? '${context.l10n.text('filters')} ($_activeFilterCount)'
+              : context.l10n.text('filters'),
+          onPressed: _openFilters,
+          icon: const Icon(Icons.tune_rounded),
+        ),
       ],
     ),
   );
