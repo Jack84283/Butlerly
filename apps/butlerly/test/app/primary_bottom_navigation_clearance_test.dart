@@ -84,7 +84,8 @@ void main() {
       ),
     );
     expect(archRect.bottom, greaterThan(navigationRect.top));
-    expect(arch.foregroundDecoration, isNotNull);
+    expect(arch.decoration, isNotNull);
+    expect(arch.foregroundDecoration, isNull);
     expect(navigationContentRect.height, ButlerlySize.navigationBarHeight);
 
     final addLabelTop = tester.getTopLeft(find.text('Add')).dy;
