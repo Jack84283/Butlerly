@@ -269,7 +269,9 @@ final class LocalCsvImporter {
     return switch (result) {
       ApplicationSuccess<DuplicateTransactionCheckResult>(:final value) =>
         value.candidates,
-      _ => const [],
+      ApplicationFailure<DuplicateTransactionCheckResult>() => throw StateError(
+        'Duplicate check could not be completed.',
+      ),
     };
   }
 
