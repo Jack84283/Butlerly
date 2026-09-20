@@ -1,0 +1,18 @@
+schemaVersion: "1.0.0"
+ruleId: ANL-R001
+ruleVersion: "1.2.0"
+enabled: true
+surface: overview
+type: metric
+nameKey: analysis.rule.r001.name
+descriptionKey: analysis.rule.r001.description
+period: selected_period
+measure:
+  operation: sum
+  field: amount
+  currencyBasis: baseCurrency
+filters:
+  direction: expense
+result:
+  persistence: materialized
+  refresh: onInvalidation
