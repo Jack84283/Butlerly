@@ -167,14 +167,12 @@ void main() {
     expect(selector, findsOneWidget);
     expect(find.text('Financial calendar'), findsOneWidget);
 
-    unawaited(
-      tester
-          .state<RefreshIndicatorState>(
-            find.byKey(const ValueKey('analysis-pull-to-refresh')),
-          )
-          .show(),
-    );
-    await tester.pump();
+    final refresh = tester
+        .state<RefreshIndicatorState>(
+          find.byKey(const ValueKey('analysis-pull-to-refresh')),
+        )
+        .show();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(loads, 2);
     expect(selector, findsOneWidget);
@@ -185,6 +183,7 @@ void main() {
     expect(find.text('Financial calendar'), findsOneWidget);
 
     refreshResult.complete(const ApplicationSuccess(<RuleExecutionResult>[]));
+    await refresh;
     await tester.pumpAndSettle();
   });
 
