@@ -85,6 +85,26 @@ void main() {
           'category.digital_services.productivity',
           'category.digital_services.online_services',
           'category.digital_services.other',
+          'category.gifts.personal',
+          'category.gifts.family_support',
+          'category.gifts.charity',
+          'category.gifts.religious',
+          'category.gifts.crowdfunding',
+          'category.gifts.other',
+          'category.fees.bank',
+          'category.fees.credit_card',
+          'category.fees.atm',
+          'category.fees.late_penalty',
+          'category.fees.foreign_transaction',
+          'category.fees.transfer_wire',
+          'category.fees.account_service',
+          'category.fees.other',
+          'category.transfer.own_accounts',
+          'category.transfer.credit_card_payment',
+          'category.transfer.brokerage',
+          'category.transfer.savings',
+          'category.transfer.cash',
+          'category.transfer.other',
         ]),
       );
       expect(tags.map((row) => row['id']), contains('tag.tax_related'));
@@ -275,6 +295,36 @@ void main() {
             )
             .single['label'],
         'Cloud Storage',
+      );
+      expect(
+        categoryTranslations
+            .where(
+              (row) =>
+                  row['category_id'] == 'category.gifts.charity' &&
+                  row['locale'] == 'en',
+            )
+            .single['label'],
+        'Charitable Donations',
+      );
+      expect(
+        categoryTranslations
+            .where(
+              (row) =>
+                  row['category_id'] == 'category.fees.foreign_transaction' &&
+                  row['locale'] == 'en',
+            )
+            .single['label'],
+        'Foreign Transaction Fees',
+      );
+      expect(
+        categoryTranslations
+            .where(
+              (row) =>
+                  row['category_id'] == 'category.transfer.credit_card_payment' &&
+                  row['locale'] == 'en',
+            )
+            .single['label'],
+        'Credit Card Payment',
       );
       final netflix = merchants.singleWhere(
         (row) => row['id'] == 'merchant.netflix',
