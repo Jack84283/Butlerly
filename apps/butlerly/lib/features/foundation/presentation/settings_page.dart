@@ -134,12 +134,13 @@ class SettingsPage extends ConsumerWidget {
                         .map((zone) => TimezoneInfo(identifier: zone.id))
                         .toList(growable: false);
                 final zones =
-                    {
-                      for (final zone in availableZones) zone.identifier: zone,
-                    }.values.toList(growable: false)..sort(
-                      (left, right) =>
-                          left.identifier.compareTo(right.identifier),
-                    );
+                    {for (final zone in availableZones) zone.identifier: zone}
+                        .values
+                        .toList(growable: false)
+                      ..sort(
+                        (left, right) =>
+                            left.identifier.compareTo(right.identifier),
+                      );
                 final selected = preference?.timeZoneId ?? 'UTC';
                 return _SettingsDropdownRow<String>(
                   value: zones.any((zone) => zone.identifier == selected)
@@ -337,9 +338,9 @@ class _SettingsRow extends StatelessWidget {
   );
 }
 
-TextStyle? _settingsSubtitleStyle(BuildContext context) => Theme.of(
-  context,
-).textTheme.bodySmall?.copyWith(color: context.colors.secondaryText);
+TextStyle? _settingsSubtitleStyle(BuildContext context) =>
+    Theme.of(context).textTheme.bodySmall
+        ?.copyWith(color: context.colors.secondaryText);
 
 class _SettingsSectionCard extends StatelessWidget {
   const _SettingsSectionCard({required this.children});

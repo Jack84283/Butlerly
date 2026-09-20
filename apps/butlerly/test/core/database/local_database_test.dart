@@ -46,93 +46,90 @@ void main() {
     await database.close();
   });
 
-  test(
-    'preserves all finding lifecycles and financial data across repeated restarts',
-    () async {
-      var database = localDatabase();
-      await database.initialize();
-      final db = database.database;
-      final now = DateTime.utc(2026, 9, 11).toIso8601String();
+  test('preserves all finding lifecycles and financial data across repeated restarts', () async {
+    var database = localDatabase();
+    await database.initialize();
+    final db = database.database;
+    final now = DateTime.utc(2026, 9, 11).toIso8601String();
 
-      await db.insert('transactions', {
-        'id': 'tx-keep',
-        'unknown_time_reason': 'not supplied',
-        'amount_coefficient': '42',
-        'amount_scale': 0,
-        'currency': 'USD',
-        'direction': 'expense',
-        'source_type': 'manual',
-        'status': 'active',
-        'created_at': now,
-        'updated_at': now,
-        'transaction_date': '2026-09-11',
-      });
-      await _insertFinding(
-        db,
-        id: 'dismissed-insight',
-        ruleId: 'ANL-R024',
-        lifecycle: 'dismissed',
-        now: now,
-      );
-      await _insertFinding(
-        db,
-        id: 'active-insight',
-        ruleId: 'ANL-R025',
-        lifecycle: 'active',
-        now: now,
-      );
-      await _insertFinding(
-        db,
-        id: 'acknowledged-insight',
-        ruleId: 'ANL-R020',
-        lifecycle: 'acknowledged',
-        now: now,
-      );
-      await _insertFinding(
-        db,
-        id: 'unrelated-finding',
-        ruleId: 'ANL-R999',
-        lifecycle: 'dismissed',
-        now: now,
-      );
-      await _insertResult(
-        db,
-        id: 'insight-result',
-        ruleId: 'ANL-R024',
-        surface: 'insights',
-        now: now,
-      );
-      await _insertResult(
-        db,
-        id: 'overview-result',
-        ruleId: 'ANL-R999',
-        surface: 'overview',
-        now: now,
-      );
-      const tables = [
-        'analysis_findings',
-        'analysis_rule_results',
-        'transactions',
-      ];
-      final before = <String, List<Map<String, Object?>>>{};
-      for (final table in tables) {
-        before[table] = await db.query(table, orderBy: 'id');
-      }
-      for (var restart = 0; restart < 2; restart++) {
-        await database.close();
-        database = localDatabase();
-        await database.initialize();
-        for (final table in tables) {
-          expect(
-            await database.database.query(table, orderBy: 'id'),
-            before[table],
-            reason: '$table must survive restart $restart unchanged',
-          );
-        }
-      }
+    await db.insert('transactions', {
+      'id': 'tx-keep',
+      'unknown_time_reason': 'not supplied',
+      'amount_coefficient': '42',
+      'amount_scale': 0,
+      'currency': 'USD',
+      'direction': 'expense',
+      'source_type': 'manual',
+      'status': 'active',
+      'created_at': now,
+      'updated_at': now,
+      'transaction_date': '2026-09-11',
+    });
+    await _insertFinding(
+      db,
+      id: 'dismissed-insight',
+      ruleId: 'ANL-R024',
+      lifecycle: 'dismissed',
+      now: now,
+    );
+    await _insertFinding(
+      db,
+      id: 'active-insight',
+      ruleId: 'ANL-R025',
+      lifecycle: 'active',
+      now: now,
+    );
+    await _insertFinding(
+      db,
+      id: 'acknowledged-insight',
+      ruleId: 'ANL-R020',
+      lifecycle: 'acknowledged',
+      now: now,
+    );
+    await _insertFinding(
+      db,
+      id: 'unrelated-finding',
+      ruleId: 'ANL-R999',
+      lifecycle: 'dismissed',
+      now: now,
+    );
+    await _insertResult(
+      db,
+      id: 'insight-result',
+      ruleId: 'ANL-R024',
+      surface: 'insights',
+      now: now,
+    );
+    await _insertResult(
+      db,
+      id: 'overview-result',
+      ruleId: 'ANL-R999',
+      surface: 'overview',
+      now: now,
+    );
+    const tables = [
+      'analysis_findings',
+      'analysis_rule_results',
+      'transactions',
+    ];
+    final before = <String, List<Map<String, Object?>>>{};
+    for (final table in tables) {
+      before[table] = await db.query(table, orderBy: 'id');
+    }
+    for (var restart = 0; restart < 2; restart++) {
       await database.close();
-    },
-  );
+      database = localDatabase();
+      await database.initialize();
+      for (final table in tables) {
+        expect(
+          await database.database.query(table, orderBy: 'id'),
+          before[table],
+          reason: '$table must survive restart $restart unchanged',
+        );
+      }
+    }
+    await database.close();
+  });
 
   test('keeps active Insight state when no legacy dismissal exists', () async {
     var database = localDatabase();

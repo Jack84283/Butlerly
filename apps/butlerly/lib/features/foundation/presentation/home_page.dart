@@ -670,10 +670,8 @@ class _HomeHeader extends StatelessWidget {
               context.l10n.text('homeTagline'),
               maxLines: stacked ? null : 2,
               overflow: stacked ? null : TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                letterSpacing: 2.2,
-                fontSize: 9.5,
-              ),
+              style: Theme.of(context).textTheme.labelMedium
+                  ?.copyWith(letterSpacing: 2.2, fontSize: 9.5),
             ),
           ],
         );
@@ -845,9 +843,8 @@ class _SpendingHero extends StatelessWidget {
                   ),
                   child: Text(
                     context.l10n.text('spent'),
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: context.colors.secondaryText,
-                    ),
+                    style: Theme.of(context).textTheme.headlineMedium
+                        ?.copyWith(color: context.colors.secondaryText),
                   ),
                 ),
               ],
@@ -999,9 +996,9 @@ class _SpendingTrend extends StatelessWidget {
                       Expanded(
                         child: ExcludeSemantics(
                           child: Text(
-                            DateFormat.MMM(
-                              locale,
-                            ).format(point.month).toUpperCase(),
+                            DateFormat.MMM(locale)
+                                .format(point.month)
+                                .toUpperCase(),
                             maxLines: 1,
                             textAlign: TextAlign.center,
                             style: Theme.of(context).textTheme.bodySmall
@@ -1397,9 +1394,8 @@ class _HomeMonthPickerState extends State<_HomeMonthPicker> {
         ),
         itemBuilder: (context, index) {
           final candidate = DateTime(_year, index + 1, 1);
-          final future = _monthStart(
-            candidate,
-          ).isAfter(_monthStart(widget.currentMonth));
+          final future = _monthStart(candidate)
+              .isAfter(_monthStart(widget.currentMonth));
           final selected = _sameMonth(candidate, widget.selectedMonth);
           final label = DateFormat.MMM(locale).format(candidate);
           return selected

@@ -84,12 +84,12 @@ class _InsightsPageState extends State<InsightsPage> {
         ? services<FinanceServices>()
         : null;
     if (finance == null) return;
-    TransactionMasterDataProvider(
-      finance,
-    ).load(languageCode: languageCode).then((snapshot) {
-      if (!mounted || _loadedLanguageCode != languageCode) return;
-      setState(() => _presentation = snapshot.presentation);
-    });
+    TransactionMasterDataProvider(finance)
+        .load(languageCode: languageCode)
+        .then((snapshot) {
+          if (!mounted || _loadedLanguageCode != languageCode) return;
+          setState(() => _presentation = snapshot.presentation);
+        });
   }
 
   Future<ApplicationResult<InsightsEvaluation>> _load(

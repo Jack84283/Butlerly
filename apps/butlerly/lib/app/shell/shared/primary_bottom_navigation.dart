@@ -281,7 +281,8 @@ class PrimaryBottomNavigation extends StatelessWidget {
                                     destinations[branchIndex]!,
                                     branchIndex,
                                     navigationHeight -
-                                        ButlerlySize.primaryNavigationAddIconSize,
+                                        ButlerlySize
+                                            .primaryNavigationAddIconSize,
                                   )
                                 : Padding(
                                     padding: EdgeInsets.only(top: archRise),
@@ -290,7 +291,8 @@ class PrimaryBottomNavigation extends StatelessWidget {
                                       destinations[branchIndex]!,
                                       branchIndex,
                                       navigationHeight -
-                                          ButlerlySize.primaryNavigationAddIconSize,
+                                          ButlerlySize
+                                              .primaryNavigationAddIconSize,
                                     ),
                                   ),
                           ),

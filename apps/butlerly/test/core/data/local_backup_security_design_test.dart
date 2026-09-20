@@ -86,9 +86,9 @@ void main() {
     );
     final headerStart = magicLength + 8;
     final headerEnd = headerStart + headerLength;
-    final header =
-        (jsonDecode(utf8.decode(bytes.sublist(headerStart, headerEnd))) as Map)
-            .cast<String, Object?>();
+    final header = (jsonDecode(
+      utf8.decode(bytes.sublist(headerStart, headerEnd)),
+    ) as Map).cast<String, Object?>();
     header['kdfIterations'] = 3;
     final headerBytes = utf8.encode(jsonEncode(header));
     final rebuilt = BytesBuilder(copy: false)
@@ -255,9 +255,8 @@ void main() {
       await plain.writeAsString('plaintext');
       await verify.writeAsString('plaintext');
       await stage.create();
-      await File(
-        path.join(stage.path, 'copy.db'),
-      ).writeAsString('private-copy');
+      await File(path.join(stage.path, 'copy.db'))
+          .writeAsString('private-copy');
 
       final safetyDirectory = await fixture.data.safetyBackupDirectory();
       final safety = File(

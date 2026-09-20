@@ -196,12 +196,11 @@ final class LocalDataManager {
       tables[table] = rows;
       recordCount += rows.length;
     }
-    await File(
-      path.join(destination.path, 'butlerly-export.json'),
-    ).writeAsString(
-      const JsonEncoder.withIndent('  ').convert(data),
-      flush: true,
-    );
+    await File(path.join(destination.path, 'butlerly-export.json'))
+        .writeAsString(
+          const JsonEncoder.withIndent('  ').convert(data),
+          flush: true,
+        );
 
     final evidence = await evidenceDirectory();
     if (await evidence.exists()) {

@@ -60,12 +60,10 @@ void main() {
       final previousB = Directory(
         '${fixture.evidence.path}.restore-previous-restore-b',
       )..createSync(recursive: true);
-      await File(
-        path.join(previousA.path, 'receipt.bin'),
-      ).writeAsString('old-a');
-      await File(
-        path.join(previousB.path, 'receipt.bin'),
-      ).writeAsString('old-b');
+      await File(path.join(previousA.path, 'receipt.bin'))
+          .writeAsString('old-a');
+      await File(path.join(previousB.path, 'receipt.bin'))
+          .writeAsString('old-b');
       final safety = File(
         path.join(fixture.root.path, 'safety.butlerlybackup'),
       );
@@ -110,15 +108,13 @@ void main() {
     final currentPrevious = Directory(
       '${fixture.evidence.path}.restore-previous-$operation',
     )..createSync(recursive: true);
-    await File(
-      path.join(currentPrevious.path, 'receipt.bin'),
-    ).writeAsString('expected-old');
+    await File(path.join(currentPrevious.path, 'receipt.bin'))
+        .writeAsString('expected-old');
     final unrelated = Directory(
       '${fixture.evidence.path}.restore-previous-restore-stale',
     )..createSync(recursive: true);
-    await File(
-      path.join(unrelated.path, 'receipt.bin'),
-    ).writeAsString('stale-old');
+    await File(path.join(unrelated.path, 'receipt.bin'))
+        .writeAsString('stale-old');
 
     final journal = File('${fixture.evidence.path}.restore-journal.json');
     await journal.writeAsString(
@@ -144,9 +140,8 @@ void main() {
 
       const operation = 'restore-empty-origin';
       await fixture.evidence.create(recursive: true);
-      await File(
-        path.join(fixture.evidence.path, 'restored.bin'),
-      ).writeAsString('new');
+      await File(path.join(fixture.evidence.path, 'restored.bin'))
+          .writeAsString('new');
       await _writeOrigin(
         fixture.evidence,
         operationId: 'wrapper-empty-origin',

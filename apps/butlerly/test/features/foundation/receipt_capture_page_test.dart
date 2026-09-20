@@ -347,9 +347,8 @@ Future<void> _openReceiptRoute(
           body: Center(
             child: FilledButton(
               onPressed: () async {
-                final result = await Navigator.of(
-                  context,
-                ).push<bool>(MaterialPageRoute(builder: (_) => page));
+                final result = await Navigator.of(context)
+                    .push<bool>(MaterialPageRoute(builder: (_) => page));
                 onResult(result);
               },
               child: const Text('Open receipt'),

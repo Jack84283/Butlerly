@@ -109,9 +109,8 @@ void main() {
     await tester.runAsync(() async {
       await tester.tap(find.byIcon(Icons.photo_library_outlined));
       for (var attempt = 0; attempt < 100; attempt++) {
-        if ((await database.database.query(
-          'financial_statements',
-        )).isNotEmpty) {
+        if ((await database.database.query('financial_statements'))
+            .isNotEmpty) {
           return;
         }
         await Future<void>.delayed(const Duration(milliseconds: 10));
@@ -190,9 +189,8 @@ void main() {
     await tester.runAsync(() async {
       await tester.tap(find.byIcon(Icons.file_open_outlined));
       for (var attempt = 0; attempt < 100; attempt++) {
-        if ((await database.database.query(
-          'financial_statements',
-        )).isNotEmpty) {
+        if ((await database.database.query('financial_statements'))
+            .isNotEmpty) {
           return;
         }
         await Future<void>.delayed(const Duration(milliseconds: 10));
@@ -377,19 +375,15 @@ void main() {
                     as ApplicationSuccess<List<FinancialStatement>>)
                 .value
                 .single;
-        final rows =
-            (await finance.statementServices!.rows(statement.id)
-                    as ApplicationSuccess<List<StatementRow>>)
-                .value;
+        final rows = (await finance.statementServices!.rows(
+          statement.id,
+        ) as ApplicationSuccess<List<StatementRow>>).value;
         expect(rows.single.description, isNull);
-        final imported =
-            (await finance.statementServices!.importBatch(
-                      statement,
-                      rows,
-                      'review-source',
-                    )
-                    as ApplicationSuccess<StatementImportSummary>)
-                .value;
+        final imported = (await finance.statementServices!.importBatch(
+          statement,
+          rows,
+          'review-source',
+        ) as ApplicationSuccess<StatementImportSummary>).value;
         expect(imported.imported, 1);
         expect(imported.needsReview, 1);
         expect(rows.single.status, StatementRowStatus.unresolved);
@@ -409,9 +403,8 @@ void main() {
                 .value;
         expect(review, hasLength(1));
         expect(review.single.description, isNull);
-        final persistedRow = (await database.database.query(
-          'statement_rows',
-        )).single;
+        final persistedRow = (await database.database.query('statement_rows'))
+            .single;
         expect(persistedRow['original_text'], rawText);
         expect(persistedRow['status'], StatementRowStatus.saved.name);
       });
@@ -451,20 +444,18 @@ void main() {
                     as ApplicationSuccess<List<FinancialStatement>>)
                 .value;
         final statement = statements.single;
-        final rows =
-            (await finance.statementServices!.rows(statement.id)
-                    as ApplicationSuccess<List<StatementRow>>)
-                .value;
+        final rows = (await finance.statementServices!.rows(
+          statement.id,
+        ) as ApplicationSuccess<List<StatementRow>>).value;
         expect(rows.single.status, StatementRowStatus.unresolved);
         expect(rows.single.transactionDate, isNull);
         expect(rows.single.amount, '18.25');
         expect(rows.single.originalText, rawText);
         expect(rows.single.currency, isNull);
         expect(rows.single.direction, isNull);
-        final extraction =
-            (await finance.getExtractionForEvidence(statement.evidenceId)
-                    as ApplicationSuccess<Extraction?>)
-                .value;
+        final extraction = (await finance.getExtractionForEvidence(
+          statement.evidenceId,
+        ) as ApplicationSuccess<Extraction?>).value;
         expect(extraction?.values['rawText'], rawText);
         expect(statement.rawTextReference, statement.evidenceId);
         final preserved = await evidenceDirectory

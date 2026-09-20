@@ -58,72 +58,73 @@ void main() {
     },
   );
 
-  test(
-    'merge keeps a durable duplicate membership re-added after backup',
-    () async {
-      final fixture = await _Fixture.create();
-      addTearDown(fixture.dispose);
-      final old = DateTime.utc(2026, 1, 1);
-      await fixture.insertTransaction('tx-duplicate', old);
-      await fixture.database.database.insert('duplicate_candidate_groups', {
-        'id': 'duplicate-group-1',
-        'transaction_date': '2026-01-01',
-        'amount_coefficient': '100',
-        'amount_scale': 2,
-        'currency': 'USD',
-        'direction': 'expense',
-        // keepBoth is a durable user decision; unresolved groups are derived and
-        // intentionally regenerated rather than merged.
-        'status': 'keepBoth',
+  test('merge keeps a durable duplicate membership re-added after backup', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final old = DateTime.utc(2026, 1, 1);
+    await fixture.insertTransaction('tx-duplicate', old);
+    await fixture.database.database.insert('duplicate_candidate_groups', {
+      'id': 'duplicate-group-1',
+      'transaction_date': '2026-01-01',
+      'amount_coefficient': '100',
+      'amount_scale': 2,
+      'currency': 'USD',
+      'direction': 'expense',
+      // keepBoth is a durable user decision; unresolved groups are derived and
+      // intentionally regenerated rather than merged.
+      'status': 'keepBoth',
+      'created_at': old.toIso8601String(),
+      'updated_at': old.toIso8601String(),
+    });
+    await fixture.database.database.insert(
+      'duplicate_candidate_group_transactions',
+      {
+        'group_id': 'duplicate-group-1',
+        'transaction_id': 'tx-duplicate',
         'created_at': old.toIso8601String(),
-        'updated_at': old.toIso8601String(),
-      });
-      await fixture.database.database
-          .insert('duplicate_candidate_group_transactions', {
-            'group_id': 'duplicate-group-1',
-            'transaction_id': 'tx-duplicate',
-            'created_at': old.toIso8601String(),
-          });
-      await fixture.database.database.delete(
-        'duplicate_candidate_group_transactions',
-        where: 'group_id = ? AND transaction_id = ?',
-        whereArgs: ['duplicate-group-1', 'tx-duplicate'],
-      );
-      final backup = File(
-        path.join(fixture.root.path, 'membership.butlerlybackup'),
-      );
-      await fixture.manager.createBackup(backup);
+      },
+    );
+    await fixture.database.database.delete(
+      'duplicate_candidate_group_transactions',
+      where: 'group_id = ? AND transaction_id = ?',
+      whereArgs: ['duplicate-group-1', 'tx-duplicate'],
+    );
+    final backup = File(
+      path.join(fixture.root.path, 'membership.butlerlybackup'),
+    );
+    await fixture.manager.createBackup(backup);
 
-      final future = DateTime.now().toUtc().add(const Duration(minutes: 5));
-      await fixture.database.database
-          .insert('duplicate_candidate_group_transactions', {
-            'group_id': 'duplicate-group-1',
-            'transaction_id': 'tx-duplicate',
-            'created_at': future.toIso8601String(),
-          });
+    final future = DateTime.now().toUtc().add(const Duration(minutes: 5));
+    await fixture.database.database.insert(
+      'duplicate_candidate_group_transactions',
+      {
+        'group_id': 'duplicate-group-1',
+        'transaction_id': 'tx-duplicate',
+        'created_at': future.toIso8601String(),
+      },
+    );
 
-      await fixture.manager.restore(backup, mode: LocalRestoreMode.merge);
+    await fixture.manager.restore(backup, mode: LocalRestoreMode.merge);
 
-      final memberships = await fixture.database.database.query(
-        'duplicate_candidate_group_transactions',
-        where: 'group_id = ? AND transaction_id = ?',
-        whereArgs: ['duplicate-group-1', 'tx-duplicate'],
-      );
-      expect(memberships, hasLength(1));
-      expect(memberships.single['created_at'], future.toIso8601String());
-      expect(
-        await fixture.database.database.query(
-          'entity_tombstones',
-          where: 'entity_type = ? AND entity_id = ?',
-          whereArgs: [
-            'duplicate_candidate_group_transactions',
-            'duplicate-group-1|tx-duplicate',
-          ],
-        ),
-        isEmpty,
-      );
-    },
-  );
+    final memberships = await fixture.database.database.query(
+      'duplicate_candidate_group_transactions',
+      where: 'group_id = ? AND transaction_id = ?',
+      whereArgs: ['duplicate-group-1', 'tx-duplicate'],
+    );
+    expect(memberships, hasLength(1));
+    expect(memberships.single['created_at'], future.toIso8601String());
+    expect(
+      await fixture.database.database.query(
+        'entity_tombstones',
+        where: 'entity_type = ? AND entity_id = ?',
+        whereArgs: [
+          'duplicate_candidate_group_transactions',
+          'duplicate-group-1|tx-duplicate',
+        ],
+      ),
+      isEmpty,
+    );
+  });
 
   test(
     'merge preserves a newer local tombstone over backup deletion',
