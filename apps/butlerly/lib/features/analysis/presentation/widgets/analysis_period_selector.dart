@@ -53,8 +53,7 @@ class AnalysisPeriodPinnedHeader extends StatelessWidget {
       textDirection: Directionality.of(context),
       maxLines: 1,
     )..layout(
-      maxWidth:
-          MediaQuery.sizeOf(context).width - ButlerlySize.phoneGutter * 2,
+      maxWidth: MediaQuery.sizeOf(context).width - ButlerlySize.phoneGutter * 2,
     );
     final selectorHeight = MediaQuery.textScalerOf(
       context,
