@@ -142,6 +142,20 @@ void main() {
           'Spotify',
           'Venmo',
           'PayPal',
+          'Holiday Inn',
+          'Comfort Inn',
+          'Motel 6',
+          'Super 8',
+          'Hampton Inn',
+          'Best Western',
+          'Days Inn',
+          'La Quinta',
+          'Courtyard by Marriott',
+          'Residence Inn',
+          'DoubleTree',
+          'Embassy Suites',
+          'Sheraton',
+          'Westin',
         ]),
       );
       expect(
@@ -411,6 +425,22 @@ void main() {
       );
       expect(venmo['default_category_id'], isNull);
       expect(venmo['default_subcategory_id'], isNull);
+      for (final merchantId in [
+        'merchant.holiday_inn',
+        'merchant.comfort_inn',
+        'merchant.motel_6',
+        'merchant.super_8',
+        'merchant.hampton_inn',
+        'merchant.best_western',
+        'merchant.days_inn',
+        'merchant.la_quinta',
+      ]) {
+        final merchant = merchants.singleWhere(
+          (row) => row['id'] == merchantId,
+        );
+        expect(merchant['default_category_id'], 'category.travel');
+        expect(merchant['default_subcategory_id'], 'category.travel.hotel');
+      }
       expect(
         referenceTranslations
             .where(
