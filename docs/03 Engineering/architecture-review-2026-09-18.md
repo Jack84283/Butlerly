@@ -122,5 +122,19 @@ latest PRD-0003 v1.1 semantics rather than older audit interpretations.
   platforms where the native OCR adapter supports PDF input; Android currently
   remains image-only for statement file OCR.
 
+- **Merchant classification:** Butlerly keeps one deterministic default
+  classification per merchant (`Merchant → Subcategory → Category`). Broad
+  merchant identities remain valid while materially distinct service contexts
+  may be represented as specific variants such as `AT&T Wireless`,
+  `Costco Gas`, and `Safeway Pharmacy`. Specific variants take precedence
+  only when supported by source evidence; otherwise matching falls back to the
+  broad merchant. Store numbers and formatting variations are normalization
+  concerns rather than new merchant identities. The detailed contract is in
+  `docs/03 Engineering/merchant-classification-contract.md`.
+- **Built-in catalog upgrades:** New built-in rows remain compatible with
+  idempotent seeding. Future changes to existing built-in merchant meaning must
+  use an explicit catalog upgrade/database migration path rather than relying
+  on `INSERT OR IGNORE`, with production-path migration coverage.
+
 These changes do not introduce a schema-version change, cloud dependency,
 mandatory account, or AI dependency.
