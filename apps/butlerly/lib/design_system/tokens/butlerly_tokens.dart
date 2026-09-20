@@ -33,8 +33,8 @@ abstract final class ButlerlySpacing {
   static const bottomActionSpacing = section;
   static const pinnedControlTopGap = compact;
   static const periodSelectorGap = standard;
-  static const pinnedPageHeaderBottomGap = microSmall;
-  static const pinnedPageTopGap = microSmall;
+  static const pinnedPageHeaderBottomGap = nanoSmall;
+  static const pinnedPageTopGap = nanoSmall;
   static const pinnedPageBottomGap = microSmall;
   static const pinnedPageBodyTopGap = small;
   static const masterDataAddButtonTopGap = microSmall;
