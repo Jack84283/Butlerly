@@ -783,14 +783,24 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
           actions: [
             TextButton(
               onPressed: () {
-                if (summary.failed > 0) {
-                  Navigator.pop(context);
+                final hasReviewItems =
+                    summary.failed > 0 ||
+                    summary.needsReview > 0 ||
+                    summary.possibleDuplicates > 0;
+                if (hasReviewItems) {
+                  context.go('/review?view=needsReview');
                 } else {
-                  context.go('/review');
+                  Navigator.pop(context);
                 }
               },
               child: Text(
-                context.l10n.text(summary.failed > 0 ? 'done' : 'review'),
+                context.l10n.text(
+                  summary.failed > 0 ||
+                          summary.needsReview > 0 ||
+                          summary.possibleDuplicates > 0
+                      ? 'review'
+                      : 'done',
+                ),
               ),
             ),
             FilledButton(
