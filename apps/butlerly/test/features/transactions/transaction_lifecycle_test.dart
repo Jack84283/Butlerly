@@ -4,7 +4,6 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_compact_section_selector.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
-import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/add_page.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
@@ -1402,14 +1401,11 @@ void main() {
         matching: find.byIcon(Icons.add),
       );
       expect(addIcon, findsOneWidget);
-      expect(
-        tester.widget<Icon>(addIcon).color,
-        Theme.of(tester.element(addButton)).extension<ButlerlySemanticColors>()!.interactive,
-      );
+      expect(tester.widget<Icon>(addIcon).color, Colors.white);
       final iconButton = tester.widget<IconButton>(addButton);
       expect(
         iconButton.style?.backgroundColor?.resolve({}),
-        Colors.transparent,
+        Theme.of(tester.element(addButton)).colorScheme.primary,
       );
       expect(
         tester.getTopLeft(addButton).dy - tester.getBottomLeft(selector).dy,
