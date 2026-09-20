@@ -1275,10 +1275,7 @@ void main() {
     expect(find.text('Possible duplicate group'), findsOneWidget);
     expect(duplicateGroups.fullScanCalls, 0);
 
-    await tester.drag(
-      find.byType(CustomScrollView),
-      const Offset(0, 320),
-    );
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, 320));
     await tester.pumpAndSettle();
     expect(duplicateGroups.fullScanCalls, 1);
     expect(transactionChanges.value, notificationBeforeRescan);
