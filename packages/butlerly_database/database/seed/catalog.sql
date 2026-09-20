@@ -236,6 +236,12 @@ INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,def
 INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.quiktrip','QuikTrip','quiktrip','category.transportation','category.transportation.fuel',1,'active');
 INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.wawa','Wawa','wawa','category.transportation','category.transportation.fuel',1,'active');
 INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.sheetz','Sheetz','sheetz','category.transportation','category.transportation.fuel',1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.temu','Temu','temu','category.shopping','category.shopping.general',1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.ebay','eBay','ebay','category.shopping','category.shopping.general',1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.etsy','Etsy','etsy','category.shopping','category.shopping.general',1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.shein','SHEIN','shein','category.shopping','category.shopping.clothing',1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.wayfair','Wayfair','wayfair','category.household','category.household.supplies',1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.newegg','Newegg','newegg','category.shopping','category.shopping.electronics',1,'active');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.income','en','Income');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.income.salary','en','Salary');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.income.bonus','en','Bonus');
