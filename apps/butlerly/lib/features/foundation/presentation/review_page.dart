@@ -354,10 +354,7 @@ class _ReviewPageState extends State<ReviewPage> {
       title: context.l10n.text('review'),
       onRefresh: _pullToRefresh,
       refreshKey: ValueKey('review-pull-to-refresh-${_view.name}'),
-      headerBottomGap: ButlerlySpacing.pinnedPageHeaderBottomGap,
-      pinnedHeaderTopGap: ButlerlySpacing.pinnedPageTopGap,
-      pinnedHeaderBottomGap: ButlerlySpacing.pinnedPageBottomGap,
-      contentTopGap: ButlerlySpacing.pinnedPageBodyTopGap,
+      pinnedSpacing: ButlerlyPinnedPageSpacing.primary,
       pinnedHeader: FutureBuilder<List<DuplicateCandidateGroup>>(
         future: _duplicateGroups,
         builder: (context, snapshot) {
