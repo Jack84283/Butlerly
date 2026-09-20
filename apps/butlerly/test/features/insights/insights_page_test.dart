@@ -88,6 +88,7 @@ void main() {
     refreshResult.complete(const ApplicationSuccess(<RuleExecutionResult>[]));
     await refresh;
     await tester.pumpAndSettle();
+    debugDefaultTargetPlatformOverride = null;
   });
 
   testWidgets('summary pie uses source amounts instead of rounded shares', (
