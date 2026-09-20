@@ -343,40 +343,40 @@ class _AnalysisPageState extends State<AnalysisPage> {
       future: _result,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
-            return ButlerlyPage(
-              title: context.l10n.text('analysis'),
-              onRefresh: _refresh,
-              refreshKey: const ValueKey('analysis-pull-to-refresh'),
-              children: const [AnalysisSkeleton()],
-            );
-          }
-          final result = snapshot.data;
-          if (result is! ApplicationSuccess<List<RuleExecutionResult>>) {
-            return ButlerlyPage(
-              title: context.l10n.text('analysis'),
-              onRefresh: _refresh,
-              refreshKey: const ValueKey('analysis-pull-to-refresh'),
-              children: [
-                ButlerlyErrorState(
-                  title: context.l10n.text('analysisUnavailable'),
-                  message: context.l10n.text('analysisUnavailableBody'),
-                  preserved: context.l10n.text('dataPreserved'),
-                  actionLabel: context.l10n.text('tryAgain'),
-                  onAction: _refresh,
-                ),
-              ],
-            );
-          }
-          final analysisContext =
-              _context ??
-              result.value
-                  .map((r) => r.metric?.context ?? r.finding?.context)
-                  .whereType<AnalysisContext>()
-                  .firstOrNull;
-          _calendar ??= analysisContext == null
-              ? _loadCalendarForTestOnly()
-              : _loadCalendar(analysisContext);
-          return _AnalysisContent(
+          return ButlerlyPage(
+            title: context.l10n.text('analysis'),
+            onRefresh: _refresh,
+            refreshKey: const ValueKey('analysis-pull-to-refresh'),
+            children: const [AnalysisSkeleton()],
+          );
+        }
+        final result = snapshot.data;
+        if (result is! ApplicationSuccess<List<RuleExecutionResult>>) {
+          return ButlerlyPage(
+            title: context.l10n.text('analysis'),
+            onRefresh: _refresh,
+            refreshKey: const ValueKey('analysis-pull-to-refresh'),
+            children: [
+              ButlerlyErrorState(
+                title: context.l10n.text('analysisUnavailable'),
+                message: context.l10n.text('analysisUnavailableBody'),
+                preserved: context.l10n.text('dataPreserved'),
+                actionLabel: context.l10n.text('tryAgain'),
+                onAction: _refresh,
+              ),
+            ],
+          );
+        }
+        final analysisContext =
+            _context ??
+            result.value
+                .map((r) => r.metric?.context ?? r.finding?.context)
+                .whereType<AnalysisContext>()
+                .firstOrNull;
+        _calendar ??= analysisContext == null
+            ? _loadCalendarForTestOnly()
+            : _loadCalendar(analysisContext);
+        return _AnalysisContent(
             results: result.value,
             analysisContext: analysisContext,
             period: _period,
@@ -395,9 +395,9 @@ class _AnalysisPageState extends State<AnalysisPage> {
             onTransactionRequested:
                 widget.onTransactionRequested ?? _openTransactionDetail,
             onPeriodChanged: _selectPeriod,
-            onRefresh: _refresh,
-            onSelectDate: _selectDate,
-          );
+          onRefresh: _refresh,
+          onSelectDate: _selectDate,
+        );
       },
     ),
   );
