@@ -26,18 +26,16 @@ double phoneNavigationHeightForLabels({
     return painter.height;
   }
 
-  var requiredHeight =
-      ButlerlySize.primaryNavigationAddIconSize + labelHeight(addLabel);
-
+  var maximumLabelHeight = labelHeight(addLabel);
   for (final label in standardLabels) {
-    final destinationHeight =
-        ButlerlySize.standardIcon +
-        ButlerlySize.navigationLabelGap +
-        labelHeight(label);
-    if (destinationHeight > requiredHeight) {
-      requiredHeight = destinationHeight;
+    final height = labelHeight(label);
+    if (height > maximumLabelHeight) {
+      maximumLabelHeight = height;
     }
   }
+
+  final requiredHeight =
+      ButlerlySize.primaryNavigationAddIconSize + maximumLabelHeight;
 
   return requiredHeight < ButlerlySize.navigationBarHeight
       ? ButlerlySize.navigationBarHeight
@@ -64,6 +62,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
     BuildContext context,
     NavigationDestination destination,
     int branchIndex,
+    double labelSlotHeight,
   ) {
     final selected = currentIndex == branchIndex;
     final add = branchIndex == 1;
@@ -144,11 +143,15 @@ class PrimaryBottomNavigation extends StatelessWidget {
                     ? ButlerlySpacing.none
                     : ButlerlySize.navigationLabelGap,
               ),
-              Text(
-                destination.label,
-                textAlign: TextAlign.center,
-                softWrap: true,
-                style: labelStyle,
+              SizedBox(
+                width: double.infinity,
+                height: labelSlotHeight,
+                child: Text(
+                  destination.label,
+                  textAlign: TextAlign.center,
+                  softWrap: true,
+                  style: labelStyle,
+                ),
               ),
             ],
           ),
@@ -243,6 +246,8 @@ class PrimaryBottomNavigation extends StatelessWidget {
                               context,
                               destinations[branchIndex]!,
                               branchIndex,
+                              navigationHeight -
+                                  ButlerlySize.primaryNavigationAddIconSize,
                             ),
                           ),
                       ],
