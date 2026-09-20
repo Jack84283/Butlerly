@@ -54,6 +54,13 @@ void main() {
           'category.insurance.health',
           'category.insurance.life',
           'category.insurance.other',
+          'category.income.tax_refund',
+          'category.income.interest',
+          'category.income.dividends',
+          'category.income.rental',
+          'category.income.reimbursement',
+          'category.professional_services',
+          'category.professional_services.tax_preparation',
         ]),
       );
       expect(tags.map((row) => row['id']), contains('tag.tax_related'));
@@ -120,6 +127,37 @@ void main() {
             )
             .single['label'],
         '租车',
+      );
+      expect(
+        categoryTranslations
+            .where(
+              (row) =>
+                  row['category_id'] == 'category.income.tax_refund' &&
+                  row['locale'] == 'en',
+            )
+            .single['label'],
+        'Tax Refund',
+      );
+      expect(
+        categoryTranslations
+            .where(
+              (row) =>
+                  row['category_id'] == 'category.income.refund' &&
+                  row['locale'] == 'en',
+            )
+            .single['label'],
+        'Merchant Refund',
+      );
+      expect(
+        categoryTranslations
+            .where(
+              (row) =>
+                  row['category_id'] ==
+                      'category.professional_services.tax_preparation' &&
+                  row['locale'] == 'en',
+            )
+            .single['label'],
+        'Tax Preparation',
       );
       expect(
         referenceTranslations
