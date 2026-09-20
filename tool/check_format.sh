@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Report formatting drift without changing the caller's files.
-dart format --output=none --set-exit-if-changed "$@"
+# TEMPORARY PR diagnostic: print the exact formatter diff before failing.
+dart format "$@"
+if ! git diff --quiet -- "$@"; then
+  git diff -- "$@"
+  exit 1
+fi
