@@ -1399,7 +1399,9 @@ void main() {
       expect(headerAction, isA<Padding>());
       expect(
         (headerAction as Padding).padding,
-        const EdgeInsetsDirectional.only(end: ButlerlySize.phoneGutter),
+        const EdgeInsetsDirectional.only(
+          end: ButlerlySpacing.headerActionTrailing,
+        ),
       );
 
       final addButton = find.byKey(const ValueKey('master-data-add'));
