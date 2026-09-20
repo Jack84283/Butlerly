@@ -31,7 +31,9 @@ abstract final class ButlerlySpacing {
   static const bottomActionSpacing = section;
   static const pinnedControlTopGap = compact;
   static const periodSelectorGap = standard;
-  static const pinnedHeaderVerticalPadding = compact;
+  static const periodPinnedHeaderTopGap = none;
+  static const periodPinnedHeaderBottomGap = none;
+  static const periodPinnedBodyGap = none;
 }
 
 /// Stable categorical colors shared by charts and their legends.
