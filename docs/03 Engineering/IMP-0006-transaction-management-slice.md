@@ -14,6 +14,7 @@ Status: Active P0 vertical slice implemented locally
 - Privacy-safe logging redaction and test before financial fields reach presentation
 - Local text search with currency, direction, date-range, category, and review-state filters
 - Explicit local merchant, category, and tag creation/assignment from transaction detail
+- Deterministic built-in merchant defaults follow the merchant classification contract, including broad merchants plus evidence-backed specific service variants
 - Search results open the same canonical local transaction detail
 - Review-state indicator on transaction detail and a local Review queue for active issues
 - Explicit local resolve and dismiss actions for review issues
@@ -23,6 +24,8 @@ Status: Active P0 vertical slice implemented locally
 ## Architecture
 
 Flutter presentation calls `FinanceServices`, which composes IMP-0004 application use cases over the SQLite transaction repository. Presentation code does not query SQLite directly.
+
+Built-in merchant classification follows `docs/03 Engineering/merchant-classification-contract.md`: one default subcategory/category per merchant, specific variants only for materially different stable contexts, and broad merchants retained as fallbacks.
 
 ## Intentional limits
 

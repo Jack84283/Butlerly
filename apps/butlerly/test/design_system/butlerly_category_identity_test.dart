@@ -1,44 +1,66 @@
 import 'dart:io';
 
 import 'package:butlerly/app/theme/app_theme.dart';
-import 'package:butlerly/core/database/initial_master_data.dart';
+import 'package:butlerly/core/database/local_database.dart';
+import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
-  final builtInIds = buildInitialMasterData().categories
-      .map((category) => category.id.value)
-      .toList(growable: false);
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(sqfliteFfiInit);
 
   test('defines exactly eight persistent category colors', () {
     expect(ButlerlyCategoryColors.palette, hasLength(8));
     expect(ButlerlyCategoryColors.palette.values.toSet(), hasLength(8));
   });
 
-  test('maps every built-in category to an asset and color', () {
-    expect(
-      ButlerlyCategoryIdentity.builtInCategoryIds.toSet(),
-      equals(builtInIds.toSet()),
-    );
+  test(
+    'maps every database-owned built-in category to an asset and color',
+    () async {
+      final root = await Directory.systemTemp.createTemp(
+        'butlerly-category-identity-',
+      );
+      addTearDown(() => root.delete(recursive: true));
+      final database = LocalDatabase(
+        logger: AppLogger(),
+        factory: databaseFactoryFfi,
+        databaseDirectory: root.path,
+      );
+      await database.initialize();
+      addTearDown(database.close);
+      final builtInIds = (await database.database.query(
+        'categories',
+        columns: ['id'],
+        where: 'origin = ?',
+        whereArgs: ['system'],
+      )).map((row) => row['id']! as String).toList(growable: false);
 
-    for (final categoryId in builtInIds) {
-      final identity = ButlerlyCategoryIdentity.forBuiltInId(categoryId)!;
-      expect(identity.categoryId, categoryId);
-      expect(identity.localizationKey, categoryId);
       expect(
-        File(identity.assetPath).existsSync(),
-        isTrue,
-        reason: 'Missing category asset for $categoryId',
+        ButlerlyCategoryIdentity.builtInCategoryIds.toSet(),
+        equals(builtInIds.toSet()),
       );
-      expect(
-        ButlerlyCategoryColors.palette,
-        contains(identity.categoryColorId),
-      );
-    }
-  });
+
+      for (final categoryId in builtInIds) {
+        final identity = ButlerlyCategoryIdentity.forBuiltInId(categoryId)!;
+        expect(identity.categoryId, categoryId);
+        expect(identity.localizationKey, categoryId);
+        expect(
+          File(identity.assetPath).existsSync(),
+          isTrue,
+          reason: 'Missing category asset for $categoryId',
+        );
+        expect(
+          ButlerlyCategoryColors.palette,
+          contains(identity.categoryColorId),
+        );
+      }
+    },
+  );
 
   test('custom categories use the canonical custom asset and stable color', () {
     final first = ButlerlyCategoryIdentity.custom(

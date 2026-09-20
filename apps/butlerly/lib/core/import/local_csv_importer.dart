@@ -55,16 +55,26 @@ final class CsvStatementPreview {
   int get validCount => rows.where((row) => row.isValid).length;
 }
 
+typedef CsvDuplicateChecker =
+    Future<ApplicationResult<DuplicateTransactionCheckResult>> Function(
+      DuplicateTransactionCheckCommand command,
+    );
+
 final class LocalCsvImporter {
   LocalCsvImporter(FinanceServices finance)
-    : _importTransaction = finance.importTransaction.call;
+    : _importTransaction = finance.importTransaction.call,
+      _duplicateChecker = finance.duplicateTransactionChecker.call;
 
-  const LocalCsvImporter.withHandler(this._importTransaction);
+  const LocalCsvImporter.withHandler(
+    this._importTransaction, {
+    CsvDuplicateChecker? duplicateChecker,
+  }) : _duplicateChecker = duplicateChecker;
 
   final Future<ApplicationResult<TransactionDto>> Function(
     ImportTransactionCommand command,
   )
   _importTransaction;
+  final CsvDuplicateChecker? _duplicateChecker;
 
   static const acceptedHeaders = <String>{
     'date',
@@ -110,9 +120,7 @@ final class LocalCsvImporter {
       final rawCurrency = valueAt('currency').toUpperCase();
       final rawDirection = valueAt('direction');
       final signed = rawAmount.startsWith('-');
-      final amount = rawAmount
-          .replaceFirst(RegExp(r'^[+-]'), '')
-          .replaceAll(',', '');
+      final amount = _normalizedAmount(rawAmount);
       String? error;
       if (values.length != headers.length) {
         error = 'column count does not match the header';
@@ -145,11 +153,27 @@ final class LocalCsvImporter {
     return CsvStatementPreview(rows: parsed, errors: errors);
   }
 
+  Future<Map<int, List<DuplicateTransactionCandidate>>> findDuplicates(
+    CsvStatementPreview preview, {
+    String? paymentSourceId,
+  }) async {
+    final result = <int, List<DuplicateTransactionCandidate>>{};
+    for (final row in preview.rows.where((value) => value.isValid)) {
+      final candidates = await _duplicatesFor(
+        row,
+        paymentSourceId: paymentSourceId,
+      );
+      if (candidates.isNotEmpty) result[row.rowNumber] = candidates;
+    }
+    return Map.unmodifiable(result);
+  }
+
   Future<CsvImportSummary> commitPreview(
     CsvStatementPreview preview, {
     required String sourceId,
     required String sourceLanguage,
     String? paymentSourceId,
+    Map<int, String> confirmedDuplicateTokens = const {},
   }) async {
     var imported = 0;
     var duplicates = 0;
@@ -157,6 +181,24 @@ final class LocalCsvImporter {
     final errors = [...preview.errors];
     for (final row in preview.rows.where((value) => value.isValid)) {
       try {
+        final duplicateCandidates = await _duplicatesFor(
+          row,
+          paymentSourceId: paymentSourceId,
+        );
+        if (duplicateCandidates.isNotEmpty) {
+          final currentToken = duplicateConfirmationToken(
+            row,
+            duplicateCandidates,
+            paymentSourceId: paymentSourceId,
+          );
+          if (confirmedDuplicateTokens[row.rowNumber] != currentToken) {
+            duplicates++;
+            errors.add(
+              'Row ${row.rowNumber}: possible duplicate requires confirmation.',
+            );
+            continue;
+          }
+        }
         final fingerprint = _fingerprint(
           [
             row.date,
@@ -211,6 +253,53 @@ final class LocalCsvImporter {
     );
   }
 
+  static String duplicateConfirmationToken(
+    CsvStatementRow row,
+    List<DuplicateTransactionCandidate> candidates, {
+    String? paymentSourceId,
+  }) {
+    final candidateIds =
+        candidates
+            .map((candidate) => candidate.transaction.id)
+            .toList(growable: false)
+          ..sort();
+    return [
+      '${row.rowNumber}',
+      row.date,
+      row.amount,
+      row.currency,
+      row.direction?.name ?? '',
+      paymentSourceId ?? '',
+      ...candidateIds,
+    ].join('|');
+  }
+
+  Future<List<DuplicateTransactionCandidate>> _duplicatesFor(
+    CsvStatementRow row, {
+    String? paymentSourceId,
+  }) async {
+    final checker = _duplicateChecker;
+    if (checker == null || row.direction == null || !row.isValid) {
+      return const [];
+    }
+    final result = await checker(
+      DuplicateTransactionCheckCommand(
+        transactionDate: row.date,
+        amount: row.amount,
+        currency: row.currency,
+        direction: row.direction!,
+        paymentSourceId: paymentSourceId,
+      ),
+    );
+    return switch (result) {
+      ApplicationSuccess<DuplicateTransactionCheckResult>(:final value) =>
+        value.candidates,
+      ApplicationFailure<DuplicateTransactionCheckResult>() => throw StateError(
+        'Duplicate check could not be completed.',
+      ),
+    };
+  }
+
   Future<CsvImportSummary> import(
     XFile file, {
     required String sourceLanguage,
@@ -254,13 +343,37 @@ final class LocalCsvImporter {
           headers[column]: values[column],
       };
       try {
-        final original = _encodeCsvRow(values);
+        final direction = _direction(row['direction']!);
+        final amount = _normalizedAmount(row['amount']!);
+        final currency = row['currency']!.trim().toUpperCase();
+        final importRow = CsvStatementRow(
+          rowNumber: index + 1,
+          date: row['date']!.trim(),
+          description: _optional(row['description']) ?? '',
+          amount: amount,
+          currency: currency,
+          direction: direction,
+          cardReference:
+              _optional(row['card_reference']) ??
+              _optional(row['account_reference']),
+          externalReference:
+              _optional(row['transaction_id']) ?? _optional(row['reference']),
+          original: _encodeCsvRow(values),
+        );
+        if ((await _duplicatesFor(importRow)).isNotEmpty) {
+          duplicates++;
+          errors.add(
+            'Row ${index + 1}: possible duplicate requires preview confirmation.',
+          );
+          continue;
+        }
+        final original = importRow.original;
         final fingerprint = _fingerprint(
           [
-            row['date']!,
-            row['amount']!,
-            row['currency']!,
-            row['direction']!,
+            row['date']!.trim(),
+            amount,
+            currency,
+            direction.name,
             row['description'] ?? '',
             row['counterparty'] ?? '',
             row['card_reference'] ?? row['account_reference'] ?? '',
@@ -274,10 +387,10 @@ final class LocalCsvImporter {
             sourceId: file.name,
             originalRepresentation: original,
             money: Money(
-              amount: DecimalValue.parse(row['amount']!),
-              currency: CurrencyCode(row['currency']!),
+              amount: DecimalValue.parse(amount),
+              currency: CurrencyCode(currency),
             ),
-            direction: _direction(row['direction']!),
+            direction: direction,
             transactionDate: row['date']!.trim(),
             occurredAtUtc: _optionalInstant(row['occurred_at_utc']),
             timeZoneId: _optional(row['time_zone_id']),
@@ -314,6 +427,9 @@ final class LocalCsvImporter {
       errors: List.unmodifiable(errors),
     );
   }
+
+  static String _normalizedAmount(String value) =>
+      value.trim().replaceFirst(RegExp(r'^[+-]'), '').replaceAll(',', '');
 
   static String _header(String value) => value
       .trim()

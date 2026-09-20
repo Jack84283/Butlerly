@@ -89,3 +89,52 @@ The workspace system refresh now installs and activates the current packaged rul
 The owner explicitly requested local review/validation and commit/push without waiting for subsequent GitHub CI results. Remote results on the next pushed head are therefore not claimed here.
 
 A new separate-context review of this correction and its relevant callers found no actionable P0/P1/P2 findings. Local validation covers 779 tests (including the four new production restore tests), static analysis, formatting and the web build; the final committed tree is checked again before push.
+
+## Follow-up — consolidated P0 correctness remediation (19 September 2026)
+
+PR #214 consolidates the useful P0 correctness work that had been split across
+the earlier #211 and #212 branches. The current implementation follows the
+latest PRD-0003 v1.1 semantics rather than older audit interpretations.
+
+- **Database-owned catalog:** `database/seed/catalog.sql` is the runtime source
+  of truth for Butlerly-owned master/reference seed data and persisted
+  translations. Restore/erase recovery reseeds through the database asset,
+  presentation reads persisted translations through application/repository
+  APIs, and duplicate Dart category/tag/merchant/reference catalogs are
+  removed. Reseeding restores missing system rows/translations without
+  overwriting archived system state or user-created master data. English,
+  Simplified Chinese, and Spanish category/tag translations remain
+  database-owned.
+- **Statement intake:** missing extracted currency or direction remains unknown
+  rather than being filled with USD/expense. Candidates lacking minimum
+  financial validity remain attached to the statement for correction instead
+  of becoming canonical transactions.
+- **Statement batch semantics:** PRD-0003 FIN-108–115 is authoritative.
+  Batch confirmation may persist minimum-valid statement rows without
+  transaction-by-transaction confirmation. Low-confidence/unresolved
+  exceptions enter Needs Review, possible duplicates are persisted in
+  Review → Possible Duplicates, and unaffected rows complete normally.
+- **Structured CSV duplicate checks:** CSV candidates use the shared
+  `DuplicateTransactionChecker`. A FIN-095 duplicate requires explicit
+  confirmation before a separate canonical transaction is created.
+- **Statement document intake:** Statement Capture supports existing image/file
+  selection in addition to camera/photo acquisition. PDF is exposed only on
+  platforms where the native OCR adapter supports PDF input; Android currently
+  remains image-only for statement file OCR.
+
+- **Merchant classification:** Butlerly keeps one deterministic default
+  classification per merchant (`Merchant → Subcategory → Category`). Broad
+  merchant identities remain valid while materially distinct service contexts
+  may be represented as specific variants such as `AT&T Wireless`,
+  `Costco Gas`, and `Safeway Pharmacy`. Specific variants take precedence
+  only when supported by source evidence; otherwise matching falls back to the
+  broad merchant. Store numbers and formatting variations are normalization
+  concerns rather than new merchant identities. The detailed contract is in
+  `docs/03 Engineering/merchant-classification-contract.md`.
+- **Built-in catalog upgrades:** New built-in rows remain compatible with
+  idempotent seeding. Future changes to existing built-in merchant meaning must
+  use an explicit catalog upgrade/database migration path rather than relying
+  on `INSERT OR IGNORE`, with production-path migration coverage.
+
+These changes do not introduce a schema-version change, cloud dependency,
+mandatory account, or AI dependency.

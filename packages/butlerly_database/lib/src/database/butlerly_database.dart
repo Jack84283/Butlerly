@@ -84,15 +84,7 @@ final class ButlerlyDatabase {
           },
         ),
       );
-      if (seedSql.isNotEmpty) {
-        await transaction((tx) async {
-          for (final sql in seedSql) {
-            for (final statement in splitSqlStatements(sql)) {
-              await tx.execute(statement);
-            }
-          }
-        });
-      }
+      await seedSystemData();
     } on DatabaseException catch (error) {
       await _database?.close();
       _database = null;
@@ -138,6 +130,21 @@ final class ButlerlyDatabase {
         whereArgs: [row['id']],
       );
     }
+  }
+
+  /// Re-applies database-owned system catalog assets idempotently.
+  ///
+  /// This is used after erase/restore so master/reference data remains owned by
+  /// the database package rather than duplicated in application constants.
+  Future<void> seedSystemData() async {
+    if (seedSql.isEmpty) return;
+    await transaction((tx) async {
+      for (final sql in seedSql) {
+        for (final statement in splitSqlStatements(sql)) {
+          await tx.execute(statement);
+        }
+      }
+    });
   }
 
   Future<void> close() async {

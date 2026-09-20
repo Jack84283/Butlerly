@@ -18,6 +18,7 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
+import 'package:file_selector/file_selector.dart' show XTypeGroup, openFile;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -43,10 +44,29 @@ final class CancelStatementReconciliation
   const CancelStatementReconciliation();
 }
 
+XTypeGroup statementFileTypeGroupForPlatform(TargetPlatform platform) {
+  if (platform == TargetPlatform.iOS) {
+    return const XTypeGroup(
+      label: 'Statement',
+      uniformTypeIdentifiers: ['com.adobe.pdf', 'public.image'],
+    );
+  }
+  return const XTypeGroup(
+    label: 'Statement',
+    extensions: ['jpg', 'jpeg', 'png', 'heic', 'heif'],
+  );
+}
+
 class StatementCapturePage extends StatefulWidget {
-  const StatementCapturePage({this.pickImage, this.ocrRecognizer, super.key});
+  const StatementCapturePage({
+    this.pickImage,
+    this.pickFile,
+    this.ocrRecognizer,
+    super.key,
+  });
 
   final Future<XFile?> Function(ImageSource source)? pickImage;
+  final Future<XFile?> Function()? pickFile;
   final OcrRecognizer? ocrRecognizer;
   @override
   State<StatementCapturePage> createState() => _StatementCapturePageState();
@@ -151,6 +171,15 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
               imageQuality: 100,
               requestFullMetadata: false,
             ));
+    if (file == null || !mounted) return;
+    await _ingest(file);
+  }
+
+  Future<void> _selectExistingFile() async {
+    final group = statementFileTypeGroupForPlatform(defaultTargetPlatform);
+    final file =
+        await (widget.pickFile?.call() ??
+            openFile(acceptedTypeGroups: [group]));
     if (file == null || !mounted) return;
     await _ingest(file);
   }
@@ -425,6 +454,11 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
           onPressed: _busy ? null : () => _captureImage(ImageSource.camera),
           icon: const Icon(Icons.camera_alt_outlined),
           tooltip: context.l10n.text('scanReceipt'),
+        ),
+        IconButton(
+          onPressed: _busy ? null : _selectExistingFile,
+          icon: const Icon(Icons.file_open_outlined),
+          tooltip: context.l10n.text('importData'),
         ),
         IconButton(
           onPressed: _busy ? null : () => _captureImage(ImageSource.gallery),
@@ -749,14 +783,24 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
           actions: [
             TextButton(
               onPressed: () {
-                if (summary.failed > 0) {
-                  Navigator.pop(context);
+                final hasReviewItems =
+                    summary.failed > 0 ||
+                    summary.needsReview > 0 ||
+                    summary.possibleDuplicates > 0;
+                if (hasReviewItems) {
+                  context.go('/review?view=needsReview');
                 } else {
-                  context.go('/review');
+                  Navigator.pop(context);
                 }
               },
               child: Text(
-                context.l10n.text(summary.failed > 0 ? 'done' : 'review'),
+                context.l10n.text(
+                  summary.failed > 0 ||
+                          summary.needsReview > 0 ||
+                          summary.possibleDuplicates > 0
+                      ? 'review'
+                      : 'done',
+                ),
               ),
             ),
             FilledButton(

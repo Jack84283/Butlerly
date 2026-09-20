@@ -101,6 +101,8 @@ class LocalDatabase {
     _logger.info('Local database initialized.');
   }
 
+  Future<void> reseedSystemData() => persistenceDatabase.seedSystemData();
+
   Future<void> close() async {
     await _database?.close();
     _database = null;

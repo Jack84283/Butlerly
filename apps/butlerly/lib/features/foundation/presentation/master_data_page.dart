@@ -4,7 +4,6 @@ import 'package:butlerly/design_system/components/butlerly_compact_section_selec
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
-import 'package:butlerly/features/foundation/presentation/master_data_labels.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -19,6 +18,7 @@ class MasterDataPage extends StatefulWidget {
 
 class _MasterDataPageState extends State<MasterDataPage> {
   late Future<_MasterData> _data;
+  String? _languageCode;
   int _sectionIndex = 0;
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
@@ -28,16 +28,30 @@ class _MasterDataPageState extends State<MasterDataPage> {
   @override
   void initState() {
     super.initState();
-    _data = _load();
+    _data = Future.value(const _MasterData([], [], [], {}, {}));
   }
 
-  Future<_MasterData> _load() async {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final languageCode = Localizations.localeOf(context).languageCode;
+    if (_languageCode == languageCode) return;
+    _languageCode = languageCode;
+    _data = _load(languageCode);
+  }
+
+  Future<_MasterData> _load(String languageCode) async {
     final finance = _finance;
-    if (finance == null) return const _MasterData([], [], []);
+    if (finance == null) return const _MasterData([], [], [], {}, {});
+    final locale = languageCode == 'zh' ? 'zh-Hans' : languageCode;
     final results = await Future.wait([
       finance.listCategories(),
       finance.listTags(),
       finance.listMerchants(),
+      finance.loadMasterTranslations(masterType: 'category', locale: locale),
+      finance.loadMasterTranslations(masterType: 'category', locale: 'en'),
+      finance.loadMasterTranslations(masterType: 'tag', locale: locale),
+      finance.loadMasterTranslations(masterType: 'tag', locale: 'en'),
     ]);
     final categories = results[0];
     final tags = results[1];
@@ -47,12 +61,22 @@ class _MasterDataPageState extends State<MasterDataPage> {
         merchants is! ApplicationSuccess<List<Merchant>>) {
       throw StateError('Master data could not be loaded.');
     }
-    return _MasterData(categories.value, tags.value, merchants.value);
+    Map<String, String> labelsAt(int index) => switch (results[index]) {
+      ApplicationSuccess<Map<String, String>>(:final value) => value,
+      _ => const <String, String>{},
+    };
+    return _MasterData(
+      categories.value,
+      tags.value,
+      merchants.value,
+      {...labelsAt(4), ...labelsAt(3)},
+      {...labelsAt(6), ...labelsAt(5)},
+    );
   }
 
   void _refresh() {
     if (!mounted) return;
-    final data = _load();
+    final data = _load(_languageCode ?? 'en');
     setState(() {
       _data = data;
     });
@@ -208,12 +232,7 @@ class _MasterDataPageState extends State<MasterDataPage> {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 onTap: () => Navigator.pop(context, category.id),
-                title: Text(
-                  categoryDisplayLabel(
-                    category,
-                    Localizations.localeOf(context).languageCode,
-                  ),
-                ),
+                title: Text(data.categoryLabel(category)),
               ),
           ],
         ),
@@ -315,11 +334,24 @@ class _MasterDataPageState extends State<MasterDataPage> {
 }
 
 final class _MasterData {
-  const _MasterData(this.categories, this.tags, this.merchants);
+  const _MasterData(
+    this.categories,
+    this.tags,
+    this.merchants,
+    this.categoryLabels,
+    this.tagLabels,
+  );
 
   final List<Category> categories;
   final List<Tag> tags;
   final List<Merchant> merchants;
+  final Map<String, String> categoryLabels;
+  final Map<String, String> tagLabels;
+
+  String categoryLabel(Category value) =>
+      categoryLabels[value.id.value] ?? value.name;
+
+  String tagLabel(Tag value) => tagLabels[value.id.value] ?? value.name;
 }
 
 class _MasterDataList extends StatelessWidget {
@@ -346,13 +378,12 @@ class _MasterDataList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final language = Localizations.localeOf(context).languageCode;
     if (index == 2) {
       return _ListCard(
         children: [
           for (final tag in data.tags)
             _Row(
-              title: tagDisplayLabel(tag, language),
+              title: data.tagLabel(tag),
               origin: tag.id.value.startsWith('tag.')
                   ? context.l10n.text('builtin')
                   : context.l10n.text('user'),
@@ -425,11 +456,11 @@ class _MasterDataList extends StatelessWidget {
       children: [
         for (final category in values)
           _Row(
-            title: categoryDisplayLabel(category, language),
+            title: data.categoryLabel(category),
             subtitle: index == 1
                 ? data.categories
                       .where((parent) => parent.id == category.parentId)
-                      .map((parent) => categoryDisplayLabel(parent, language))
+                      .map(data.categoryLabel)
                       .firstOrNull
                 : '${data.categories.where((child) => child.parentId == category.id).length} ${context.l10n.text('subcategories').toLowerCase()}',
             origin: category.origin == CategoryOrigin.system

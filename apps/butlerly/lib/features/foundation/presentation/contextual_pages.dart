@@ -63,18 +63,26 @@ Future<void> startLocalFileImport(
               .where((value) => value.status == PaymentSourceStatus.active)
               .toList()
         : const <PaymentSource>[];
-    final paymentSourceId = await showButlerlyBottomSheet<String>(
+    final duplicateCandidates = await importer.findDuplicates(preview);
+    if (!context.mounted) return;
+    final decision = await showButlerlyBottomSheet<_CsvImportDecision>(
       context: context,
-      builder: (context) =>
-          _StatementPreviewDialog(preview: preview, sources: activeSources),
+      builder: (context) => _StatementPreviewDialog(
+        preview: preview,
+        sources: activeSources,
+        duplicateCandidates: duplicateCandidates,
+      ),
     );
-    if (!context.mounted || paymentSourceId == null) return;
+    if (!context.mounted || decision == null) return;
     onImportingChanged?.call(true);
     final summary = await importer.commitPreview(
       preview,
       sourceId: file.name,
       sourceLanguage: sourceLanguage,
-      paymentSourceId: paymentSourceId.isEmpty ? null : paymentSourceId,
+      paymentSourceId: decision.paymentSourceId?.isEmpty == true
+          ? null
+          : decision.paymentSourceId,
+      confirmedDuplicateTokens: decision.confirmedDuplicateTokens,
     );
     if (!context.mounted) return;
     onImportingChanged?.call(false);
@@ -489,11 +497,26 @@ class _SinglePaymentDialogState extends State<_SinglePaymentDialog> {
 String _isoDate(DateTime value) =>
     '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 
+final class _CsvImportDecision {
+  const _CsvImportDecision({
+    required this.paymentSourceId,
+    required this.confirmedDuplicateTokens,
+  });
+
+  final String? paymentSourceId;
+  final Map<int, String> confirmedDuplicateTokens;
+}
+
 class _StatementPreviewDialog extends StatefulWidget {
-  const _StatementPreviewDialog({required this.preview, required this.sources});
+  const _StatementPreviewDialog({
+    required this.preview,
+    required this.sources,
+    required this.duplicateCandidates,
+  });
 
   final CsvStatementPreview preview;
   final List<PaymentSource> sources;
+  final Map<int, List<DuplicateTransactionCandidate>> duplicateCandidates;
 
   @override
   State<_StatementPreviewDialog> createState() =>
@@ -502,6 +525,7 @@ class _StatementPreviewDialog extends StatefulWidget {
 
 class _StatementPreviewDialogState extends State<_StatementPreviewDialog> {
   String? _sourceId;
+  final Map<int, String> _confirmedDuplicateTokens = {};
 
   @override
   Widget build(BuildContext context) => ButlerlySheet(
@@ -531,7 +555,10 @@ class _StatementPreviewDialogState extends State<_StatementPreviewDialog> {
               label: context.l10n.text('paymentSource'),
               clearLabel: context.l10n.text('unassigned'),
               sources: widget.sources,
-              onChanged: (value) => setState(() => _sourceId = value),
+              onChanged: (value) => setState(() {
+                _sourceId = value;
+                _confirmedDuplicateTokens.clear();
+              }),
             ),
             const SizedBox(height: ButlerlySpacing.small),
             for (final row in widget.preview.rows.take(8))
@@ -541,11 +568,61 @@ class _StatementPreviewDialogState extends State<_StatementPreviewDialog> {
                 subtitle: Text('${row.date} · ${row.currency} ${row.amount}'),
                 trailing: row.isValid
                     ? Icon(
-                        Icons.check_circle_outline,
-                        color: context.colors.success,
+                        widget.duplicateCandidates.containsKey(row.rowNumber)
+                            ? Icons.warning_amber_outlined
+                            : Icons.check_circle_outline,
+                        color:
+                            widget.duplicateCandidates.containsKey(
+                              row.rowNumber,
+                            )
+                            ? context.colors.warning
+                            : context.colors.success,
                       )
                     : Icon(Icons.error_outline, color: context.colors.warning),
               ),
+            if (widget.duplicateCandidates.isNotEmpty) ...[
+              const SizedBox(height: ButlerlySpacing.standard),
+              Text(
+                context.l10n.text('possibleDuplicates'),
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: ButlerlySpacing.compact),
+              for (final entry in widget.duplicateCandidates.entries)
+                Builder(
+                  builder: (context) {
+                    final row = widget.preview.rows.firstWhere(
+                      (value) => value.rowNumber == entry.key,
+                    );
+                    final existing = entry.value.first.transaction;
+                    return CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: _confirmedDuplicateTokens.containsKey(entry.key),
+                      title: Text(row.description),
+                      subtitle: Text(
+                        '${row.date} · ${row.currency} ${row.amount}\n'
+                        '${context.l10n.text('possibleDuplicates')}: '
+                        '${existing.transactionDate} · '
+                        '${existing.currency} ${existing.amount} · '
+                        '${existing.rawCounterparty ?? existing.description ?? existing.id}',
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          if (value == true) {
+                            _confirmedDuplicateTokens[entry.key] =
+                                LocalCsvImporter.duplicateConfirmationToken(
+                                  row,
+                                  entry.value,
+                                  paymentSourceId: _sourceId,
+                                );
+                          } else {
+                            _confirmedDuplicateTokens.remove(entry.key);
+                          }
+                        });
+                      },
+                    );
+                  },
+                ),
+            ],
           ],
         ),
       ),
@@ -556,7 +633,15 @@ class _StatementPreviewDialogState extends State<_StatementPreviewDialog> {
         child: Text(context.l10n.text('cancel')),
       ),
       FilledButton(
-        onPressed: () => Navigator.pop(context, _sourceId ?? ''),
+        onPressed: () => Navigator.pop(
+          context,
+          _CsvImportDecision(
+            paymentSourceId: _sourceId,
+            confirmedDuplicateTokens: Map.unmodifiable(
+              _confirmedDuplicateTokens,
+            ),
+          ),
+        ),
         child: Text(context.l10n.text('importValidRows')),
       ),
     ],
