@@ -332,9 +332,9 @@ class _MasterDataPageState extends State<MasterDataPage> {
           key: const ValueKey('master-data-add'),
           tooltip: context.l10n.text('add'),
           onPressed: _add,
-          icon: Icon(Icons.add, color: context.colors.interactive),
+          icon: const Icon(Icons.add, color: Colors.white),
           style: IconButton.styleFrom(
-            backgroundColor: Colors.transparent,
+            backgroundColor: context.colors.interactive,
             shape: const CircleBorder(),
             minimumSize: const Size.square(ButlerlySize.minimumTarget),
             maximumSize: const Size.square(ButlerlySize.minimumTarget),
