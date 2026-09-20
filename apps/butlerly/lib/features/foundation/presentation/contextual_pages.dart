@@ -82,7 +82,7 @@ Future<void> startLocalFileImport(
       paymentSourceId: decision.paymentSourceId?.isEmpty == true
           ? null
           : decision.paymentSourceId,
-      confirmedDuplicateRows: decision.confirmedDuplicateRows,
+      confirmedDuplicateTokens: decision.confirmedDuplicateTokens,
     );
     if (!context.mounted) return;
     onImportingChanged?.call(false);
@@ -500,11 +500,11 @@ String _isoDate(DateTime value) =>
 final class _CsvImportDecision {
   const _CsvImportDecision({
     required this.paymentSourceId,
-    required this.confirmedDuplicateRows,
+    required this.confirmedDuplicateTokens,
   });
 
   final String? paymentSourceId;
-  final Set<int> confirmedDuplicateRows;
+  final Map<int, String> confirmedDuplicateTokens;
 }
 
 class _StatementPreviewDialog extends StatefulWidget {
@@ -525,7 +525,7 @@ class _StatementPreviewDialog extends StatefulWidget {
 
 class _StatementPreviewDialogState extends State<_StatementPreviewDialog> {
   String? _sourceId;
-  final Set<int> _confirmedDuplicateRows = {};
+  final Map<int, String> _confirmedDuplicateTokens = {};
 
   @override
   Widget build(BuildContext context) => ButlerlySheet(
@@ -593,7 +593,7 @@ class _StatementPreviewDialogState extends State<_StatementPreviewDialog> {
                     final existing = entry.value.first.transaction;
                     return CheckboxListTile(
                       contentPadding: EdgeInsets.zero,
-                      value: _confirmedDuplicateRows.contains(entry.key),
+                      value: _confirmedDuplicateTokens.containsKey(entry.key),
                       title: Text(row.description),
                       subtitle: Text(
                         '${row.date} · ${row.currency} ${row.amount}\n'
@@ -605,9 +605,13 @@ class _StatementPreviewDialogState extends State<_StatementPreviewDialog> {
                       onChanged: (value) {
                         setState(() {
                           if (value == true) {
-                            _confirmedDuplicateRows.add(entry.key);
+                            _confirmedDuplicateTokens[entry.key] =
+                                LocalCsvImporter.duplicateConfirmationToken(
+                                  row,
+                                  entry.value,
+                                );
                           } else {
-                            _confirmedDuplicateRows.remove(entry.key);
+                            _confirmedDuplicateTokens.remove(entry.key);
                           }
                         });
                       },
@@ -629,7 +633,9 @@ class _StatementPreviewDialogState extends State<_StatementPreviewDialog> {
           context,
           _CsvImportDecision(
             paymentSourceId: _sourceId,
-            confirmedDuplicateRows: Set.unmodifiable(_confirmedDuplicateRows),
+            confirmedDuplicateTokens: Map.unmodifiable(
+              _confirmedDuplicateTokens,
+            ),
           ),
         ),
         child: Text(context.l10n.text('importValidRows')),
