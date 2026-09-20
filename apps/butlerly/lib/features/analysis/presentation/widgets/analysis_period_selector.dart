@@ -78,7 +78,7 @@ class AnalysisPeriodPinnedHeader extends StatelessWidget {
     );
     final selectorHeight =
         ButlerlySize.analysisPeriodSelectorHeight +
-        math.max(0, scaledSelectorTextHeight - baseSelectorTextHeight);
+        math.max(0.0, scaledSelectorTextHeight - baseSelectorTextHeight);
     return ButlerlySpacing.pinnedHeaderVerticalPadding * 2 +
         subtitleHeight +
         ButlerlySpacing.periodSelectorGap +
