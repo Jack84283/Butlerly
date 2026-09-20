@@ -199,6 +199,7 @@ void main() {
       }
       fail('Statement file intake did not complete.');
     });
+    debugDefaultTargetPlatformOverride = null;
     var completed = false;
     for (var attempt = 0; attempt < 50; attempt++) {
       await tester.runAsync(
