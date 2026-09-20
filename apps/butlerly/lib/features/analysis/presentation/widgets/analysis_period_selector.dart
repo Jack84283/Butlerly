@@ -79,11 +79,9 @@ class AnalysisPeriodPinnedHeader extends StatelessWidget {
     final selectorHeight =
         ButlerlySize.analysisPeriodSelectorHeight +
         math.max(0.0, scaledSelectorTextHeight - baseSelectorTextHeight);
-    return ButlerlySpacing.periodPinnedHeaderTopGap +
-        subtitleHeight +
+    return subtitleHeight +
         ButlerlySpacing.periodSelectorGap +
-        selectorHeight +
-        ButlerlySpacing.periodPinnedHeaderBottomGap;
+        selectorHeight;
   }
 
   static double _textHeight(
@@ -107,16 +105,11 @@ class AnalysisPeriodPinnedHeader extends StatelessWidget {
   final ValueChanged<String> onChanged;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(
-      top: ButlerlySpacing.periodPinnedHeaderTopGap,
-      bottom: ButlerlySpacing.periodPinnedHeaderBottomGap,
-    ),
-    child: Column(
-      key: const ValueKey('analysis-period-pinned-header'),
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
+  Widget build(BuildContext context) => Column(
+    key: const ValueKey('analysis-period-pinned-header'),
+    mainAxisAlignment: MainAxisAlignment.center,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
         Text(
           subtitle,
           maxLines: 1,
@@ -124,8 +117,7 @@ class AnalysisPeriodPinnedHeader extends StatelessWidget {
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: ButlerlySpacing.periodSelectorGap),
-        AnalysisPeriodSelector(value: value, onChanged: onChanged),
-      ],
-    ),
+      AnalysisPeriodSelector(value: value, onChanged: onChanged),
+    ],
   );
 }
