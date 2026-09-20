@@ -89,9 +89,7 @@ void main() {
 
     final homeLabelTop = tester.getTopLeft(find.text('Home')).dy;
     final addLabelTop = tester.getTopLeft(find.text('Add')).dy;
-    final transactionsLabelTop = tester.getTopLeft(
-      find.text('Transactions'),
-    ).dy;
+    final transactionsLabelTop = tester.getTopLeft(find.text('Transactions')).dy;
     final moreLabelTop = tester.getTopLeft(find.text('More')).dy;
     expect(homeLabelTop, closeTo(addLabelTop, 0.01));
     expect(transactionsLabelTop, closeTo(addLabelTop, 0.01));
