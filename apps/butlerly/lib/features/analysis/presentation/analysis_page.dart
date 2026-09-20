@@ -67,6 +67,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
   Future<ApplicationResult<List<TransactionDto>>>? _transactions;
   TransactionMasterData? _masterData;
   String? _masterDataLocale;
+  int _loadGeneration = 0;
 
   @override
   void initState() {
@@ -77,7 +78,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
     } else if (_customRange != null) {
       _period = 'selected_period';
     }
-    _result = _load(_period);
+    _result = _load(_period, generation: ++_loadGeneration);
     transactionChanges.addListener(_reload);
   }
 
@@ -106,7 +107,10 @@ class _AnalysisPageState extends State<AnalysisPage> {
     super.dispose();
   }
 
-  Future<ApplicationResult<List<RuleExecutionResult>>> _load(String period) {
+  Future<ApplicationResult<List<RuleExecutionResult>>> _load(
+    String period, {
+    required int generation,
+  }) {
     if (widget.loadForPeriod != null) return widget.loadForPeriod!(period);
     if (widget.load != null && period == _defaultPeriod) return widget.load!();
     final finance = services.isRegistered<FinanceServices>()
@@ -132,7 +136,9 @@ class _AnalysisPageState extends State<AnalysisPage> {
               )
               .whereType<AnalysisContext>()
               .firstOrNull;
-          if (context != null) _context = context;
+          if (context != null && generation == _loadGeneration) {
+            _context = context;
+          }
         }
         return value;
       });
@@ -167,7 +173,9 @@ class _AnalysisPageState extends State<AnalysisPage> {
           ),
         );
       }
-      _context = resolved.value;
+      if (generation == _loadGeneration) {
+        _context = resolved.value;
+      }
       return useCase.call(resolved.value);
     });
   }
@@ -208,6 +216,8 @@ class _AnalysisPageState extends State<AnalysisPage> {
 
   Future<void> _reload() async {
     if (!mounted) return;
+    final generation = ++_loadGeneration;
+    final period = _period;
     final selected = _selectedDate;
     final finance = services.isRegistered<FinanceServices>()
         ? services<FinanceServices>()
@@ -219,8 +229,10 @@ class _AnalysisPageState extends State<AnalysisPage> {
             AnalysisInvalidationReason.transactionChanged,
             DateTime.now().toUtc(),
           );
-    final result = await reload.then((_) => _load(_period));
-    if (!mounted) return;
+    final result = await reload.then(
+      (_) => _load(period, generation: generation),
+    );
+    if (!mounted || generation != _loadGeneration) return;
     setState(() {
       _result = Future.value(result);
       _calendar = null;
@@ -244,7 +256,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
       _transactions = null;
       _calendar = null;
       _calendarMonth = null;
-      _result = _load(period);
+      _result = _load(period, generation: ++_loadGeneration);
     });
   }
 
@@ -270,7 +282,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
       _transactions = null;
       _calendar = null;
       _calendarMonth = null;
-      _result = _load(_period);
+      _result = _load(_period, generation: ++_loadGeneration);
     });
   }
 
