@@ -822,7 +822,15 @@ void main() {
     await tester.pumpAndSettle();
     router.go('/review?view=duplicates');
     await tester.pumpAndSettle();
-    expect(find.text('Rescan possible duplicates'), findsOneWidget);
+    expect(find.text('Rescan possible duplicates'), findsNothing);
+    expect(
+      tester
+          .widget<ButlerlyCompactSectionSelector>(
+            find.byType(ButlerlyCompactSectionSelector),
+          )
+          .selectedIndex,
+      1,
+    );
     expect(find.text('Canonical review row'), findsNothing);
     router.go('/review');
     await tester.pumpAndSettle();
@@ -1041,7 +1049,15 @@ void main() {
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await tester.pumpAndSettle();
 
-    expect(find.text('Rescan possible duplicates'), findsOneWidget);
+    expect(find.text('Rescan possible duplicates'), findsNothing);
+    expect(
+      tester
+          .widget<ButlerlyCompactSectionSelector>(
+            find.byType(ButlerlyCompactSectionSelector),
+          )
+          .selectedIndex,
+      1,
+    );
     router.go('/review');
     await tester.pumpAndSettle();
     expect(find.text('Rescan possible duplicates'), findsNothing);
@@ -1158,16 +1174,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Possible duplicate group'), findsOneWidget);
-      final modeControlBottom = tester.getBottomLeft(
-        find.byType(ButlerlyCompactSectionSelector),
-      );
-      final rescanTop = tester.getTopLeft(
-        find.text('Rescan possible duplicates'),
-      );
-      expect(
-        rescanTop.dy - modeControlBottom.dy,
-        lessThanOrEqualTo(ButlerlySpacing.large),
-      );
+      expect(find.text('Rescan possible duplicates'), findsNothing);
       expect(find.byType(Radio<TransactionId>), findsNWidgets(2));
       expect(find.text('Keep both'), findsOneWidget);
       expect(
@@ -1268,10 +1275,13 @@ void main() {
     expect(find.text('Possible duplicate group'), findsOneWidget);
     expect(duplicateGroups.fullScanCalls, 0);
 
-    await tester.tap(find.text('Rescan possible duplicates'));
+    await tester.drag(
+      find.byType(CustomScrollView),
+      const Offset(0, 320),
+    );
     await tester.pumpAndSettle();
     expect(duplicateGroups.fullScanCalls, 1);
-    expect(transactionChanges.value, notificationBeforeRescan + 1);
+    expect(transactionChanges.value, notificationBeforeRescan);
   });
 
   testWidgets('creates and archives a local payment source', (tester) async {
@@ -1355,7 +1365,7 @@ void main() {
     expect(find.text('Corner Market'), findsOneWidget);
     expect(find.text('Corner Store'), findsNothing);
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Add'));
+    await tester.tap(find.byKey(const ValueKey('master-data-add')));
     await tester.pumpAndSettle();
     expect(
       find.byKey(const ValueKey('master-data-edit-sheet')),
@@ -1391,7 +1401,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('compact-section-1')));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Add'));
+    await tester.tap(find.byKey(const ValueKey('master-data-add')));
     await tester.pumpAndSettle();
 
     expect(
