@@ -444,13 +444,9 @@ void main() {
   });
 
   testWidgets(
-    'Transactions Search and Review use the shared primary pinned-page spacing',
+    'Transactions and Search tighten header-to-sticky spacing while Review stays primary',
     (tester) async {
-      for (final page in const <Widget>[
-        TransactionsPage(),
-        SearchPage(),
-        ReviewPage(),
-      ]) {
+      for (final page in const <Widget>[TransactionsPage(), SearchPage()]) {
         await tester.pumpWidget(MaterialApp(home: page));
         await tester.pumpAndSettle();
 
@@ -458,22 +454,28 @@ void main() {
           find.byType(ButlerlyPage),
         );
         expect(
+          butlerlyPage.pinnedSpacing,
+          same(ButlerlyPinnedPageSpacing.tightHeader),
+        );
+        expect(
           butlerlyPage.pinnedSpacing.headerBottomGap,
-          ButlerlySpacing.pinnedPageHeaderBottomGap,
+          ButlerlySpacing.none,
         );
         expect(
           butlerlyPage.pinnedSpacing.pinnedTopGap,
           ButlerlySpacing.pinnedPageTopGap,
         );
-        expect(
-          butlerlyPage.pinnedSpacing.pinnedBottomGap,
-          ButlerlySpacing.pinnedPageBottomGap,
-        );
-        expect(
-          butlerlyPage.pinnedSpacing.bodyTopGap,
-          ButlerlySpacing.pinnedPageBodyTopGap,
-        );
       }
+
+      await tester.pumpWidget(const MaterialApp(home: ReviewPage()));
+      await tester.pumpAndSettle();
+      final reviewPage = tester.widget<ButlerlyPage>(
+        find.byType(ButlerlyPage),
+      );
+      expect(
+        reviewPage.pinnedSpacing,
+        same(ButlerlyPinnedPageSpacing.primary),
+      );
     },
   );
 
@@ -1387,13 +1389,16 @@ void main() {
   });
 
   testWidgets(
-    'Master Data keeps primary pinned spacing and exposes add in header',
+    'Master Data uses tight header spacing and exposes add in header',
     (tester) async {
       await tester.pumpWidget(const MaterialApp(home: MasterDataPage()));
       await tester.pumpAndSettle();
 
       final page = tester.widget<ButlerlyPage>(find.byType(ButlerlyPage));
-      expect(page.pinnedSpacing, same(ButlerlyPinnedPageSpacing.primary));
+      expect(
+        page.pinnedSpacing,
+        same(ButlerlyPinnedPageSpacing.tightHeader),
+      );
       expect(page.actions, hasLength(1));
       final headerAction = page.actions.single;
       expect(headerAction, isA<Padding>());
