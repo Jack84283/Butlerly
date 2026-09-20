@@ -422,6 +422,63 @@ void main() {
       expect(imports, 0);
     },
   );
+
+
+  test(
+    'duplicate confirmation is scoped to the selected payment source',
+    () async {
+      final preview = CsvStatementPreview(
+        rows: [
+          CsvStatementRow(
+            rowNumber: 2,
+            date: '2026-08-09',
+            description: 'Market',
+            amount: '12.50',
+            currency: 'USD',
+            direction: TransactionDirection.expense,
+            cardReference: null,
+            externalReference: 'bank-1',
+            original: 'original-row',
+          ),
+        ],
+        errors: const [],
+      );
+      var imports = 0;
+      final importer = LocalCsvImporter.withHandler(
+        (command) async {
+          imports++;
+          return ApplicationSuccess<TransactionDto>(_dto(command));
+        },
+        duplicateChecker: (command) async => ApplicationSuccess(
+          DuplicateTransactionCheckResult([
+            _duplicateCandidate('existing'),
+          ]),
+        ),
+      );
+
+      final candidates = await importer.findDuplicates(
+        preview,
+        paymentSourceId: 'source-a',
+      );
+      final confirmationToken = LocalCsvImporter.duplicateConfirmationToken(
+        preview.rows.single,
+        candidates[2]!,
+        paymentSourceId: 'source-a',
+      );
+
+      final summary = await importer.commitPreview(
+        preview,
+        sourceId: 'statement.csv',
+        sourceLanguage: 'en',
+        paymentSourceId: 'source-b',
+        confirmedDuplicateTokens: {2: confirmationToken},
+      );
+
+      expect(summary.imported, 0);
+      expect(summary.duplicates, 1);
+      expect(imports, 0);
+    },
+  );
 }
 
 DuplicateTransactionCandidate _duplicateCandidate(String id) =>
