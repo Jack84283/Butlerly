@@ -55,20 +55,19 @@ void main() {
       expect(find.text('No transactions'), findsOneWidget);
       expect(find.text('All'), findsOneWidget);
 
-      final indicator = tester.widget<RefreshIndicator>(
-        find.byKey(const ValueKey('transactions-pull-to-refresh')),
+      await tester.drag(
+        find.byType(CustomScrollView),
+        const Offset(0, 320),
       );
-      final pendingRefresh = indicator.onRefresh();
       await tester.pump();
 
+      expect(transactions.queryCount, 2);
       expect(find.text('No transactions'), findsOneWidget);
       expect(find.text('All'), findsOneWidget);
 
       transactions.completeRefresh();
-      await pendingRefresh;
       await tester.pumpAndSettle();
 
-      expect(transactions.queryCount, 2);
       expect(find.text('No transactions'), findsOneWidget);
     },
   );
