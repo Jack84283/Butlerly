@@ -462,10 +462,7 @@ void main() {
           (row) => row['id'] == merchantId,
         );
         expect(merchant['default_category_id'], 'category.shopping');
-        expect(
-          merchant['default_subcategory_id'],
-          'category.shopping.general',
-        );
+        expect(merchant['default_subcategory_id'], 'category.shopping.general');
       }
       final caltrain = merchants.singleWhere(
         (row) => row['id'] == 'merchant.caltrain',
@@ -475,14 +472,10 @@ void main() {
         caltrain['default_subcategory_id'],
         'category.transportation.public',
       );
-      final att = merchants.singleWhere(
-        (row) => row['id'] == 'merchant.att',
-      );
+      final att = merchants.singleWhere((row) => row['id'] == 'merchant.att');
       expect(att['default_category_id'], 'category.utilities');
       expect(att['default_subcategory_id'], isNull);
-      final pge = merchants.singleWhere(
-        (row) => row['id'] == 'merchant.pge',
-      );
+      final pge = merchants.singleWhere((row) => row['id'] == 'merchant.pge');
       expect(pge['default_category_id'], 'category.utilities');
       expect(pge['default_subcategory_id'], isNull);
       final paypal = merchants.singleWhere(
@@ -533,9 +526,7 @@ void main() {
           'category.transportation.fuel',
         );
       }
-      final temu = merchants.singleWhere(
-        (row) => row['id'] == 'merchant.temu',
-      );
+      final temu = merchants.singleWhere((row) => row['id'] == 'merchant.temu');
       expect(temu['default_category_id'], 'category.shopping');
       expect(temu['default_subcategory_id'], 'category.shopping.general');
 
@@ -549,19 +540,13 @@ void main() {
         (row) => row['id'] == 'merchant.wayfair',
       );
       expect(wayfair['default_category_id'], 'category.household');
-      expect(
-        wayfair['default_subcategory_id'],
-        'category.household.supplies',
-      );
+      expect(wayfair['default_subcategory_id'], 'category.household.supplies');
 
       final newegg = merchants.singleWhere(
         (row) => row['id'] == 'merchant.newegg',
       );
       expect(newegg['default_category_id'], 'category.shopping');
-      expect(
-        newegg['default_subcategory_id'],
-        'category.shopping.electronics',
-      );
+      expect(newegg['default_subcategory_id'], 'category.shopping.electronics');
       for (final merchantId in [
         'merchant.generic_chinese_restaurant',
         'merchant.generic_indian_restaurant',
@@ -582,10 +567,7 @@ void main() {
           (row) => row['id'] == merchantId,
         );
         expect(merchant['default_category_id'], 'category.food');
-        expect(
-          merchant['default_subcategory_id'],
-          'category.food.restaurants',
-        );
+        expect(merchant['default_subcategory_id'], 'category.food.restaurants');
       }
       final panera = merchants.singleWhere(
         (row) => row['id'] == 'merchant.panera_bread',
@@ -626,10 +608,7 @@ void main() {
           (row) => row['id'] == merchantId,
         );
         expect(merchant['default_category_id'], 'category.health');
-        expect(
-          merchant['default_subcategory_id'],
-          'category.health.pharmacy',
-        );
+        expect(merchant['default_subcategory_id'], 'category.health.pharmacy');
       }
 
       final costcoGas = merchants.singleWhere(
