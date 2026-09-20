@@ -37,6 +37,7 @@ abstract final class ButlerlySpacing {
   static const pinnedPageTopGap = nanoSmall;
   static const pinnedPageBottomGap = microSmall;
   static const pinnedPageBodyTopGap = small;
+  static const headerActionTrailing = standard;
 }
 
 /// Stable categorical colors shared by charts and their legends.
