@@ -97,8 +97,7 @@ final class _ControllableTransactionRepository
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-final class _EmptyPaymentSourceRepository
-    implements PaymentSourceRepository {
+final class _EmptyPaymentSourceRepository implements PaymentSourceRepository {
   @override
   Future<List<PaymentSource>> listAll() async => const <PaymentSource>[];
 
