@@ -326,14 +326,15 @@ class _MasterDataPageState extends State<MasterDataPage> {
             ButlerlySpacing.pinnedPageTopGap +
             ButlerlySize.minimumTarget +
             ButlerlySpacing.pinnedPageBottomGap +
-            ButlerlySpacing.masterDataAddButtonTopGap,
+            ButlerlySize.masterDataAddButtonVerticalOffset,
         end: ButlerlySize.phoneGutter,
-        child: IconButton.filled(
+        child: IconButton(
           key: const ValueKey('master-data-add'),
           tooltip: context.l10n.text('add'),
           onPressed: _add,
           icon: const Icon(Icons.add, color: Colors.white),
           style: IconButton.styleFrom(
+            backgroundColor: Colors.transparent,
             shape: const CircleBorder(),
             minimumSize: const Size.square(ButlerlySize.minimumTarget),
             maximumSize: const Size.square(ButlerlySize.minimumTarget),
