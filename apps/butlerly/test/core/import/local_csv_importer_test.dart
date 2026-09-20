@@ -77,6 +77,46 @@ void main() {
     expect(summary.errors, hasLength(1));
   });
 
+  test(
+    'direct import normalizes signed amounts before duplicate detection',
+    () async {
+      final root = await Directory.systemTemp.createTemp('butlerly-csv-test-');
+      addTearDown(() => root.delete(recursive: true));
+      final file = File('${root.path}/transactions.csv');
+      await file.writeAsString(
+        'date,amount,currency,direction,description\n'
+        '2026-08-09,-12.50,usd,expense,Market\n',
+      );
+      var imports = 0;
+      String? checkedAmount;
+      final importer = LocalCsvImporter.withHandler(
+        (command) async {
+          imports++;
+          return ApplicationSuccess<TransactionDto>(_dto(command));
+        },
+        duplicateChecker: (command) async {
+          checkedAmount = command.amount;
+          return ApplicationSuccess(
+            DuplicateTransactionCheckResult([
+              _duplicateCandidate('existing'),
+            ]),
+          );
+        },
+      );
+
+      final summary = await importer.import(
+        XFile(file.path),
+        sourceLanguage: 'en',
+      );
+
+      expect(checkedAmount, '12.50');
+      expect(summary.imported, 0);
+      expect(summary.duplicates, 1);
+      expect(summary.failed, 0);
+      expect(imports, 0);
+    },
+  );
+
   test('previews bank aliases and validates rows before commit', () async {
     final root = await Directory.systemTemp.createTemp('butlerly-csv-test-');
     addTearDown(() => root.delete(recursive: true));
@@ -311,18 +351,100 @@ void main() {
       expect(blocked.duplicates, 1);
       expect(imports, 0);
 
+      final confirmationToken = LocalCsvImporter.duplicateConfirmationToken(
+        preview.rows.single,
+        duplicates[2]!,
+      );
       final confirmed = await importer.commitPreview(
         preview,
         sourceId: 'statement.csv',
         sourceLanguage: 'en',
-        confirmedDuplicateRows: const {2},
+        confirmedDuplicateTokens: {2: confirmationToken},
       );
       expect(confirmed.imported, 1);
       expect(confirmed.duplicates, 0);
       expect(imports, 1);
     },
   );
+
+  test(
+    'changed duplicate candidates invalidate an earlier confirmation',
+    () async {
+      final preview = CsvStatementPreview(
+        rows: [
+          CsvStatementRow(
+            rowNumber: 2,
+            date: '2026-08-09',
+            description: 'Market',
+            amount: '12.50',
+            currency: 'USD',
+            direction: TransactionDirection.expense,
+            cardReference: null,
+            externalReference: 'bank-1',
+            original: 'original-row',
+          ),
+        ],
+        errors: const [],
+      );
+      var checks = 0;
+      var imports = 0;
+      final importer = LocalCsvImporter.withHandler(
+        (command) async {
+          imports++;
+          return ApplicationSuccess<TransactionDto>(_dto(command));
+        },
+        duplicateChecker: (command) async {
+          checks++;
+          return ApplicationSuccess(
+            DuplicateTransactionCheckResult([
+              _duplicateCandidate(checks == 1 ? 'candidate-a' : 'candidate-b'),
+            ]),
+          );
+        },
+      );
+
+      final initialCandidates = await importer.findDuplicates(preview);
+      final confirmationToken = LocalCsvImporter.duplicateConfirmationToken(
+        preview.rows.single,
+        initialCandidates[2]!,
+      );
+
+      final summary = await importer.commitPreview(
+        preview,
+        sourceId: 'statement.csv',
+        sourceLanguage: 'en',
+        confirmedDuplicateTokens: {2: confirmationToken},
+      );
+
+      expect(checks, 2);
+      expect(summary.imported, 0);
+      expect(summary.duplicates, 1);
+      expect(imports, 0);
+    },
+  );
 }
+
+DuplicateTransactionCandidate _duplicateCandidate(String id) =>
+    DuplicateTransactionCandidate(
+      transaction: TransactionDto(
+        id: id,
+        amount: '12.50',
+        currency: 'USD',
+        direction: 'expense',
+        status: 'active',
+        reviewState: 'clear',
+        transactionDate: '2026-08-09',
+        description: 'Existing Market',
+        createdAt: DateTime.utc(2026, 8, 9),
+        updatedAt: DateTime.utc(2026, 8, 9),
+      ),
+      confidence: .75,
+      matchingReasons: const [
+        'transaction date matches',
+        'exact amount and currency match',
+        'financial direction matches',
+      ],
+    );
 
 TransactionDto _dto(ImportTransactionCommand command) {
   final now = DateTime.utc(2026, 8, 13);
