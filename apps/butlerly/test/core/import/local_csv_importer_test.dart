@@ -423,7 +423,6 @@ void main() {
     },
   );
 
-
   test(
     'duplicate confirmation is scoped to the selected payment source',
     () async {
