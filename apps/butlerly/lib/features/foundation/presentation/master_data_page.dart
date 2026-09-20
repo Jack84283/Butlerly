@@ -322,6 +322,7 @@ class _MasterDataPageState extends State<MasterDataPage> {
       ),
       PositionedDirectional(
         top:
+            MediaQuery.paddingOf(context).top +
             ButlerlySize.compactPageToolbarHeight +
             ButlerlySpacing.pinnedPageHeaderBottomGap +
             ButlerlySpacing.pinnedPageTopGap +
