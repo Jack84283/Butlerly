@@ -554,7 +554,8 @@ class _ReviewPageState extends State<ReviewPage> {
                   }
                   final items = snapshot.requireData;
                   final statementIssues =
-                      statementSnapshot.data ?? const <StatementReviewException>[];
+                      statementSnapshot.data ??
+                      const <StatementReviewException>[];
                   if (items.isEmpty && statementIssues.isEmpty) {
                     return ButlerlyEmptyState(
                       icon: Icons.check_circle_outline_rounded,

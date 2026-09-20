@@ -106,10 +106,7 @@ void main() {
       );
       expect(
         groups.values.values.single.transactionIds.map((id) => id.value),
-        containsAll([
-          'statement-statement-row-duplicate',
-          'existing',
-        ]),
+        containsAll(['statement-statement-row-duplicate', 'existing']),
       );
     },
   );
@@ -119,7 +116,10 @@ void main() {
     final row = _row('repair', amount: '12');
 
     final first = await service.importBatch(_statement(), [row], 'source');
-    expect((first as ApplicationSuccess<StatementImportSummary>).value.imported, 1);
+    expect(
+      (first as ApplicationSuccess<StatementImportSummary>).value.imported,
+      1,
+    );
 
     final key = DuplicateTransactionKey(
       transactionDate: '2026-08-20',
@@ -132,7 +132,10 @@ void main() {
     groups.values.remove(groupId);
 
     final retry = await service.importBatch(_statement(), [row], 'source');
-    expect((retry as ApplicationSuccess<StatementImportSummary>).value.imported, 0);
+    expect(
+      (retry as ApplicationSuccess<StatementImportSummary>).value.imported,
+      0,
+    );
     expect(retry.value.possibleDuplicates, 1);
     expect(groups.values[groupId], isNotNull);
   });
@@ -463,10 +466,7 @@ final class _Groups implements DuplicateCandidateGroupRepository {
   Future<List<TransactionId>> findActiveTransactionIdsForKey(
     DuplicateTransactionKey key,
   ) async => transactions.values.values
-      .where(
-        (value) =>
-            DuplicateTransactionKey.fromTransaction(value) == key,
-      )
+      .where((value) => DuplicateTransactionKey.fromTransaction(value) == key)
       .map((value) => value.id)
       .toList(growable: false);
   @override

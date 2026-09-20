@@ -158,7 +158,9 @@ final class StatementServices {
         continue;
       }
       final transactionId = _transactionIdForRow(row);
-      final existing = await transactions.findById(TransactionId(transactionId));
+      final existing = await transactions.findById(
+        TransactionId(transactionId),
+      );
       if (existing == null) {
         final result = await save(row, paymentSourceId, allowCreateNew: true);
         if (result is! ApplicationSuccess<TransactionDto>) {
@@ -224,7 +226,8 @@ final class StatementServices {
   Future<ApplicationResult<List<FinancialStatement>>> list() =>
       runApplication('list statements', () => statements.listStatements());
 
-  Future<ApplicationResult<List<StatementReviewException>>> reviewExceptions() =>
+  Future<ApplicationResult<List<StatementReviewException>>>
+  reviewExceptions() =>
       runApplication('list statement review exceptions', () async {
         final result = <StatementReviewException>[];
         for (final statement in await statements.listStatements()) {
@@ -573,7 +576,9 @@ final class StatementServices {
       key,
     );
     final id = 'duplicate:${key.canonical}';
-    final existing = (await duplicateGroups.list()).where((group) => group.id == id).firstOrNull;
+    final existing = (await duplicateGroups.list())
+        .where((group) => group.id == id)
+        .firstOrNull;
     if (transactionIds.length < 2) {
       if (existing?.isUnresolved ?? false) await duplicateGroups.remove(id);
       return false;
@@ -595,8 +600,9 @@ final class StatementServices {
         status: membershipUnchanged
             ? existing.status
             : DuplicateCandidateGroupStatus.unresolved,
-        selectedTransactionId:
-            membershipUnchanged ? existing.selectedTransactionId : null,
+        selectedTransactionId: membershipUnchanged
+            ? existing.selectedTransactionId
+            : null,
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
       ),
