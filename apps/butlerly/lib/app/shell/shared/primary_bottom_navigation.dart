@@ -206,9 +206,11 @@ class PrimaryBottomNavigation extends StatelessWidget {
               children: [
                 Positioned.fill(
                   child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: navigationColor,
-                      border: Border(top: divider),
+                    decoration: _PrimaryNavigationBase(
+                      fillColor: navigationColor,
+                      edgeColor: divider.color,
+                      edgeWidth: divider.width,
+                      hasAddArch: visualBranchIndexes.contains(1),
                     ),
                   ),
                 ),
@@ -221,7 +223,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
                       child: Container(
                         key: const ValueKey('primary-navigation-add-arch'),
                         width: ButlerlySize.primaryNavigationArchWidth,
-                        height: ButlerlySize.primaryNavigationArchHeight,
+                        height: ButlerlySize.primaryNavigationArchRise,
                         decoration: _PrimaryNavigationCircularArch(
                           fillColor: navigationColor,
                           edgeColor: divider.color,
@@ -259,6 +261,87 @@ class PrimaryBottomNavigation extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+}
+
+class _PrimaryNavigationBase extends Decoration {
+  const _PrimaryNavigationBase({
+    required this.fillColor,
+    required this.edgeColor,
+    required this.edgeWidth,
+    required this.hasAddArch,
+  });
+
+  final Color fillColor;
+  final Color edgeColor;
+  final double edgeWidth;
+  final bool hasAddArch;
+
+  @override
+  BoxPainter createBoxPainter([VoidCallback? onChanged]) =>
+      _PrimaryNavigationBasePainter(
+        fillColor: fillColor,
+        edgeColor: edgeColor,
+        edgeWidth: edgeWidth,
+        hasAddArch: hasAddArch,
+      );
+}
+
+class _PrimaryNavigationBasePainter extends BoxPainter {
+  _PrimaryNavigationBasePainter({
+    required this.fillColor,
+    required this.edgeColor,
+    required this.edgeWidth,
+    required this.hasAddArch,
+  });
+
+  final Color fillColor;
+  final Color edgeColor;
+  final double edgeWidth;
+  final bool hasAddArch;
+
+  @override
+  void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
+    final size = configuration.size;
+    if (size == null) return;
+
+    final rect = offset & size;
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..style = PaintingStyle.fill
+        ..color = fillColor,
+    );
+
+    final edgePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = edgeWidth
+      ..strokeCap = StrokeCap.butt
+      ..color = edgeColor;
+    final boundaryY = rect.top;
+    if (!hasAddArch) {
+      canvas.drawLine(
+        Offset(rect.left, boundaryY),
+        Offset(rect.right, boundaryY),
+        edgePaint,
+      );
+      return;
+    }
+
+    final radius = ButlerlySize.primaryNavigationArchWidth / 2;
+    final centerY = radius - ButlerlySize.primaryNavigationArchRise;
+    final halfChord = math.sqrt(radius * radius - centerY * centerY);
+    final centerX = rect.center.dx;
+    canvas.drawLine(
+      Offset(rect.left, boundaryY),
+      Offset(centerX - halfChord, boundaryY),
+      edgePaint,
+    );
+    canvas.drawLine(
+      Offset(centerX + halfChord, boundaryY),
+      Offset(rect.right, boundaryY),
+      edgePaint,
     );
   }
 }
@@ -304,12 +387,7 @@ class _PrimaryNavigationCircularArchPainter extends BoxPainter {
       center: Offset(offset.dx + size.width / 2, offset.dy + radius),
       radius: radius,
     );
-    final clip = Rect.fromLTWH(
-      offset.dx,
-      offset.dy,
-      size.width,
-      ButlerlySize.primaryNavigationArchHeight,
-    );
+    final clip = offset & size;
 
     canvas.save();
     canvas.clipRect(clip);

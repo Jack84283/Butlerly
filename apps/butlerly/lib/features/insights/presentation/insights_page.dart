@@ -49,6 +49,7 @@ class _InsightsPageState extends State<InsightsPage> {
   DateTimeRange? _customRange;
   TransactionMasterData _presentation = const TransactionMasterData();
   String? _loadedLanguageCode;
+  int _loadGeneration = 0;
 
   @override
   void initState() {
@@ -59,7 +60,7 @@ class _InsightsPageState extends State<InsightsPage> {
     } else if (_customRange != null) {
       _period = 'selected_period';
     }
-    _result = _load(_period);
+    _result = _load(_period, generation: ++_loadGeneration);
     transactionChanges.addListener(_reload);
   }
 
@@ -91,10 +92,14 @@ class _InsightsPageState extends State<InsightsPage> {
     });
   }
 
-  Future<ApplicationResult<InsightsEvaluation>> _load(String period) {
+  Future<ApplicationResult<InsightsEvaluation>> _load(
+    String period, {
+    required int generation,
+  }) {
     if (widget.loadEvaluation != null) {
       return widget.loadEvaluation!(period).then((value) {
-        if (value is ApplicationSuccess<InsightsEvaluation>) {
+        if (value is ApplicationSuccess<InsightsEvaluation> &&
+            generation == _loadGeneration) {
           _context = value.value.summary.context;
         }
         return value;
@@ -138,7 +143,9 @@ class _InsightsPageState extends State<InsightsPage> {
                 ),
               );
             }
-            _context = value.value;
+            if (generation == _loadGeneration) {
+              _context = value.value;
+            }
             return useCase.call(value.value);
           });
     } else if (period == 'selected_period' && _customRange != null) {
@@ -156,7 +163,9 @@ class _InsightsPageState extends State<InsightsPage> {
                 ),
               );
             }
-            _context = value.value;
+            if (generation == _loadGeneration) {
+              _context = value.value;
+            }
             return useCase.call(value.value);
           });
     } else {
@@ -171,12 +180,15 @@ class _InsightsPageState extends State<InsightsPage> {
             ),
           );
         }
-        _context = value.value;
+        if (generation == _loadGeneration) {
+          _context = value.value;
+        }
         return useCase.call(value.value);
       });
     }
     return future.then((value) {
-      if (value is ApplicationSuccess<InsightsEvaluation>) {
+      if (value is ApplicationSuccess<InsightsEvaluation> &&
+          generation == _loadGeneration) {
         _context ??= value.value.summary.context;
       }
       return value;
@@ -185,6 +197,8 @@ class _InsightsPageState extends State<InsightsPage> {
 
   Future<void> _reload() async {
     if (!mounted) return;
+    final generation = ++_loadGeneration;
+    final period = _period;
     final finance = services.isRegistered<FinanceServices>()
         ? services<FinanceServices>()
         : null;
@@ -195,9 +209,19 @@ class _InsightsPageState extends State<InsightsPage> {
             AnalysisInvalidationReason.transactionChanged,
             DateTime.now().toUtc(),
           );
-    final result = invalidated.then((_) => _load(_period));
-    setState(() => _result = result);
-    await result;
+    final result = await invalidated.then(
+      (_) => _load(period, generation: generation),
+    );
+    if (!mounted || generation != _loadGeneration) return;
+    if (result is ApplicationFailure<InsightsEvaluation>) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.text('dataPreserved'))),
+      );
+      return;
+    }
+    setState(() {
+      _result = Future.value(result);
+    });
   }
 
   void _selectPeriod(String period) {
@@ -206,7 +230,7 @@ class _InsightsPageState extends State<InsightsPage> {
       _period = period;
       _customRange = null;
       _context = null;
-      _result = _load(period);
+      _result = _load(period, generation: ++_loadGeneration);
     });
   }
 
@@ -227,7 +251,7 @@ class _InsightsPageState extends State<InsightsPage> {
       _period = 'selected_period';
       _customRange = range;
       _context = null;
-      _result = _load(_period);
+      _result = _load(_period, generation: ++_loadGeneration);
     });
   }
 
@@ -331,7 +355,7 @@ class _InsightsContent extends StatelessWidget {
       title: context.l10n.text('insights'),
       onRefresh: onRefresh,
       refreshKey: const ValueKey('insights-pull-to-refresh'),
-      pinnedHeaderExtent: AnalysisPeriodPinnedHeader.extent,
+      pinnedHeaderExtent: AnalysisPeriodPinnedHeader.extent(context, subtitle),
       pinnedHeader: AnalysisPeriodPinnedHeader(
         subtitle: subtitle,
         value: period,

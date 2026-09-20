@@ -492,52 +492,55 @@ class _SearchPageState extends State<SearchPage>
     }
   }
 
-  Widget _searchControls(BuildContext context) => Row(
-    key: const ValueKey('search-pinned-controls'),
-    children: [
-      Expanded(
-        child: SearchBar(
-          controller: _text,
-          constraints: const BoxConstraints(
-            minHeight: ButlerlySize.minimumTarget,
-            maxHeight: ButlerlySize.minimumTarget,
-          ),
-          hintText: context.l10n.text('searchHint'),
-          leading: const Icon(Icons.search_rounded),
-          trailing: [
-            IconButton(
-              key: const ValueKey('search-submit'),
-              tooltip: context.l10n.text('search'),
-              onPressed: _submit,
-              icon: const Icon(Icons.search_rounded),
+  Widget _searchControls(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: ButlerlySpacing.pinnedControlTopGap),
+    child: Row(
+      key: const ValueKey('search-pinned-controls'),
+      children: [
+        Expanded(
+          child: SearchBar(
+            controller: _text,
+            constraints: const BoxConstraints(
+              minHeight: ButlerlySize.minimumTarget,
+              maxHeight: ButlerlySize.minimumTarget,
             ),
-            if (_text.text.isNotEmpty)
+            hintText: context.l10n.text('searchHint'),
+            leading: const Icon(Icons.search_rounded),
+            trailing: [
               IconButton(
-                tooltip: context.l10n.text('clear'),
-                onPressed: () {
-                  _text.clear();
-                  _submit();
-                },
-                icon: const Icon(Icons.close_rounded),
+                key: const ValueKey('search-submit'),
+                tooltip: context.l10n.text('search'),
+                onPressed: _submit,
+                icon: const Icon(Icons.search_rounded),
               ),
-          ],
-          onChanged: (_) {
-            setState(() {});
-            _scheduleSearch();
-          },
-          onSubmitted: (_) => _submit(),
+              if (_text.text.isNotEmpty)
+                IconButton(
+                  tooltip: context.l10n.text('clear'),
+                  onPressed: () {
+                    _text.clear();
+                    _submit();
+                  },
+                  icon: const Icon(Icons.close_rounded),
+                ),
+            ],
+            onChanged: (_) {
+              setState(() {});
+              _scheduleSearch();
+            },
+            onSubmitted: (_) => _submit(),
+          ),
         ),
-      ),
-      const SizedBox(width: ButlerlySpacing.compact),
-      IconButton(
-        isSelected: _activeFilterCount > 0,
-        tooltip: _activeFilterCount > 0
-            ? '${context.l10n.text('filters')} ($_activeFilterCount)'
-            : context.l10n.text('filters'),
-        onPressed: _openFilters,
-        icon: const Icon(Icons.tune_rounded),
-      ),
-    ],
+        const SizedBox(width: ButlerlySpacing.compact),
+        IconButton(
+          isSelected: _activeFilterCount > 0,
+          tooltip: _activeFilterCount > 0
+              ? '${context.l10n.text('filters')} ($_activeFilterCount)'
+              : context.l10n.text('filters'),
+          onPressed: _openFilters,
+          icon: const Icon(Icons.tune_rounded),
+        ),
+      ],
+    ),
   );
 
   @override
@@ -550,6 +553,9 @@ class _SearchPageState extends State<SearchPage>
         await _refreshAfterTransactionChange();
       },
       refreshKey: const ValueKey('search-pull-to-refresh'),
+      pinnedHeaderExtent: widget.readOnly
+          ? ButlerlySize.minimumTarget
+          : ButlerlySize.searchPinnedHeaderHeight,
       pinnedHeader: widget.readOnly ? null : _searchControls(context),
       children: [
         if (!widget.readOnly) ...[

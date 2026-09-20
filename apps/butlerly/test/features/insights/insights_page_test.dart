@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/insights/presentation/insights_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -43,6 +46,50 @@ void main() {
       ),
     );
   }
+
+  testWidgets('refresh keeps insights content and pinned controls visible', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    var loads = 0;
+    final refreshResult =
+        Completer<ApplicationResult<List<RuleExecutionResult>>>();
+
+    Future<ApplicationResult<List<RuleExecutionResult>>> load(String _) {
+      loads++;
+      if (loads == 1) {
+        return Future.value(const ApplicationSuccess(<RuleExecutionResult>[]));
+      }
+      return refreshResult.future;
+    }
+
+    await tester.pumpWidget(app(load));
+    await tester.pumpAndSettle();
+
+    final selector = find.byKey(const ValueKey('analysis-period-selector'));
+    expect(selector, findsOneWidget);
+    expect(find.text('Period summary'), findsOneWidget);
+
+    final refreshIndicator = tester.widget<RefreshIndicator>(
+      find.byKey(const ValueKey('insights-pull-to-refresh')),
+    );
+    final refresh = refreshIndicator.onRefresh();
+    await tester.pump();
+
+    expect(loads, 2);
+    expect(selector, findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('analysis-period-pinned-header')),
+      findsOneWidget,
+    );
+    expect(find.text('Period summary'), findsOneWidget);
+
+    refreshResult.complete(const ApplicationSuccess(<RuleExecutionResult>[]));
+    await refresh;
+    await tester.pumpAndSettle();
+    debugDefaultTargetPlatformOverride = null;
+  });
 
   testWidgets('summary pie uses source amounts instead of rounded shares', (
     tester,

@@ -133,7 +133,8 @@ class ButlerlyPage extends StatelessWidget {
       key: refreshKey,
       onRefresh: onRefresh!,
       edgeOffset: refreshEdgeOffset,
-      displacement: refreshEdgeOffset + 40,
+      displacement:
+          refreshEdgeOffset + ButlerlySize.refreshIndicatorDisplacement,
       triggerMode: RefreshIndicatorTriggerMode.anywhere,
       child: content,
     );
