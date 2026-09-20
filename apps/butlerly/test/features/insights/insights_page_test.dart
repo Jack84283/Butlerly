@@ -93,7 +93,6 @@ void main() {
         const ApplicationSuccess(<RuleExecutionResult>[]),
       );
       await tester.pumpAndSettle();
-
     },
   );
 
