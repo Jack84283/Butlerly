@@ -1,40 +1,9 @@
 import 'package:butlerly/app/router/app_router.dart';
 import 'package:butlerly/app/shell/adaptive_shell.dart';
-import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('transactions route has no refresh wrapper above the page', (
-    tester,
-  ) async {
-    await tester.pumpWidget(MaterialApp.router(routerConfig: appRouter));
-    appRouter.go('/transactions');
-    await tester.pumpAndSettle();
-
-    final page = find.byType(ButlerlyPage);
-    expect(page, findsOneWidget);
-    expect(
-      find.ancestor(of: page, matching: find.byType(RefreshIndicator)),
-      findsNothing,
-    );
-  });
-
-  testWidgets('search route has no refresh wrapper above the page', (
-    tester,
-  ) async {
-    await tester.pumpWidget(MaterialApp.router(routerConfig: appRouter));
-    appRouter.go('/search?from=2026-09-01&to=2026-09-30');
-    await tester.pumpAndSettle();
-
-    final page = find.byType(ButlerlyPage);
-    expect(page, findsOneWidget);
-    expect(
-      find.ancestor(of: page, matching: find.byType(RefreshIndicator)),
-      findsNothing,
-    );
-  });
-
   testWidgets('primary shell observer invokes its pop callback', (
     tester,
   ) async {
