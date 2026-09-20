@@ -205,17 +205,10 @@ class PrimaryBottomNavigation extends StatelessWidget {
                         key: const ValueKey('primary-navigation-add-arch'),
                         width: ButlerlySize.primaryNavigationArchWidth,
                         height: ButlerlySize.primaryNavigationArchHeight,
-                        decoration: BoxDecoration(
-                          color: navigationColor,
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(
-                              ButlerlySize.primaryNavigationArchWidth / 2,
-                            ),
-                          ),
-                        ),
-                        foregroundDecoration: _PrimaryNavigationArchEdge(
-                          color: divider.color,
-                          width: divider.width,
+                        decoration: _PrimaryNavigationCircularArch(
+                          fillColor: navigationColor,
+                          edgeColor: divider.color,
+                          edgeWidth: divider.width,
                         ),
                       ),
                     ),
@@ -251,50 +244,77 @@ class PrimaryBottomNavigation extends StatelessWidget {
   }
 }
 
-class _PrimaryNavigationArchEdge extends Decoration {
-  const _PrimaryNavigationArchEdge({required this.color, required this.width});
+class _PrimaryNavigationCircularArch extends Decoration {
+  const _PrimaryNavigationCircularArch({
+    required this.fillColor,
+    required this.edgeColor,
+    required this.edgeWidth,
+  });
 
-  final Color color;
-  final double width;
+  final Color fillColor;
+  final Color edgeColor;
+  final double edgeWidth;
 
   @override
   BoxPainter createBoxPainter([VoidCallback? onChanged]) =>
-      _PrimaryNavigationArchEdgePainter(color: color, width: width);
+      _PrimaryNavigationCircularArchPainter(
+        fillColor: fillColor,
+        edgeColor: edgeColor,
+        edgeWidth: edgeWidth,
+      );
 }
 
-class _PrimaryNavigationArchEdgePainter extends BoxPainter {
-  _PrimaryNavigationArchEdgePainter({required this.color, required this.width});
+class _PrimaryNavigationCircularArchPainter extends BoxPainter {
+  _PrimaryNavigationCircularArchPainter({
+    required this.fillColor,
+    required this.edgeColor,
+    required this.edgeWidth,
+  });
 
-  final Color color;
-  final double width;
+  final Color fillColor;
+  final Color edgeColor;
+  final double edgeWidth;
 
   @override
   void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
     final size = configuration.size;
     if (size == null) return;
 
-    final rect = offset & size;
     final radius = ButlerlySize.primaryNavigationArchWidth / 2;
-    final rrect = BorderRadius.vertical(
-      top: Radius.circular(radius),
-    ).toRRect(rect);
+    final circle = Rect.fromCircle(
+      center: Offset(offset.dx + size.width / 2, offset.dy + radius),
+      radius: radius,
+    );
+    final clip = Rect.fromLTWH(
+      offset.dx,
+      offset.dy,
+      size.width,
+      ButlerlySize.primaryNavigationArchHeight,
+    );
 
     canvas.save();
-    canvas.clipRect(
-      Rect.fromLTWH(
-        rect.left - width,
-        rect.top - width,
-        rect.width + (width * 2),
-        ButlerlySize.primaryNavigationArchRise + width,
-      ),
+    canvas.clipRect(clip);
+
+    canvas.drawCircle(
+      circle.center,
+      radius,
+      Paint()
+        ..style = PaintingStyle.fill
+        ..color = fillColor,
     );
-    canvas.drawRRect(
-      rrect,
+
+    canvas.drawArc(
+      circle,
+      3.141592653589793,
+      3.141592653589793,
+      false,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = width
-        ..color = color,
+        ..strokeWidth = edgeWidth
+        ..strokeCap = StrokeCap.round
+        ..color = edgeColor,
     );
+
     canvas.restore();
   }
 }
