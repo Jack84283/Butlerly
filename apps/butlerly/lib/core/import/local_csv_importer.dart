@@ -120,9 +120,7 @@ final class LocalCsvImporter {
       final rawCurrency = valueAt('currency').toUpperCase();
       final rawDirection = valueAt('direction');
       final signed = rawAmount.startsWith('-');
-      final amount = rawAmount
-          .replaceFirst(RegExp(r'^[+-]'), '')
-          .replaceAll(',', '');
+      final amount = _normalizedAmount(rawAmount);
       String? error;
       if (values.length != headers.length) {
         error = 'column count does not match the header';
@@ -175,7 +173,7 @@ final class LocalCsvImporter {
     required String sourceId,
     required String sourceLanguage,
     String? paymentSourceId,
-    Set<int> confirmedDuplicateRows = const {},
+    Map<int, String> confirmedDuplicateTokens = const {},
   }) async {
     var imported = 0;
     var duplicates = 0;
@@ -187,13 +185,18 @@ final class LocalCsvImporter {
           row,
           paymentSourceId: paymentSourceId,
         );
-        if (duplicateCandidates.isNotEmpty &&
-            !confirmedDuplicateRows.contains(row.rowNumber)) {
-          duplicates++;
-          errors.add(
-            'Row ${row.rowNumber}: possible duplicate requires confirmation.',
+        if (duplicateCandidates.isNotEmpty) {
+          final currentToken = duplicateConfirmationToken(
+            row,
+            duplicateCandidates,
           );
-          continue;
+          if (confirmedDuplicateTokens[row.rowNumber] != currentToken) {
+            duplicates++;
+            errors.add(
+              'Row ${row.rowNumber}: possible duplicate requires confirmation.',
+            );
+            continue;
+          }
         }
         final fingerprint = _fingerprint(
           [
@@ -247,6 +250,24 @@ final class LocalCsvImporter {
       failed: failed,
       errors: List.unmodifiable(errors),
     );
+  }
+
+  static String duplicateConfirmationToken(
+    CsvStatementRow row,
+    List<DuplicateTransactionCandidate> candidates,
+  ) {
+    final candidateIds = candidates
+        .map((candidate) => candidate.transaction.id)
+        .toList(growable: false)
+      ..sort();
+    return [
+      '${row.rowNumber}',
+      row.date,
+      row.amount,
+      row.currency,
+      row.direction?.name ?? '',
+      ...candidateIds,
+    ].join('|');
   }
 
   Future<List<DuplicateTransactionCandidate>> _duplicatesFor(
@@ -319,12 +340,14 @@ final class LocalCsvImporter {
       };
       try {
         final direction = _direction(row['direction']!);
+        final amount = _normalizedAmount(row['amount']!);
+        final currency = row['currency']!.trim().toUpperCase();
         final importRow = CsvStatementRow(
           rowNumber: index + 1,
           date: row['date']!.trim(),
           description: _optional(row['description']) ?? '',
-          amount: row['amount']!.trim(),
-          currency: row['currency']!.trim().toUpperCase(),
+          amount: amount,
+          currency: currency,
           direction: direction,
           cardReference:
               _optional(row['card_reference']) ??
@@ -343,10 +366,10 @@ final class LocalCsvImporter {
         final original = importRow.original;
         final fingerprint = _fingerprint(
           [
-            row['date']!,
-            row['amount']!,
-            row['currency']!,
-            row['direction']!,
+            row['date']!.trim(),
+            amount,
+            currency,
+            direction.name,
             row['description'] ?? '',
             row['counterparty'] ?? '',
             row['card_reference'] ?? row['account_reference'] ?? '',
@@ -360,8 +383,8 @@ final class LocalCsvImporter {
             sourceId: file.name,
             originalRepresentation: original,
             money: Money(
-              amount: DecimalValue.parse(row['amount']!),
-              currency: CurrencyCode(row['currency']!),
+              amount: DecimalValue.parse(amount),
+              currency: CurrencyCode(currency),
             ),
             direction: direction,
             transactionDate: row['date']!.trim(),
@@ -400,6 +423,11 @@ final class LocalCsvImporter {
       errors: List.unmodifiable(errors),
     );
   }
+
+  static String _normalizedAmount(String value) => value
+      .trim()
+      .replaceFirst(RegExp(r'^[+-]'), '')
+      .replaceAll(',', '');
 
   static String _header(String value) => value
       .trim()
