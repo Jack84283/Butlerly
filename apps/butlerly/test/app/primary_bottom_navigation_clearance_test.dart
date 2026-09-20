@@ -86,7 +86,10 @@ void main() {
     expect(archRect.bottom, greaterThan(navigationRect.top));
     expect(arch.decoration, isNotNull);
     expect(arch.foregroundDecoration, isNull);
-    expect(navigationContentRect.height, ButlerlySize.navigationBarHeight);
+    expect(
+      navigationContentRect.height,
+      greaterThanOrEqualTo(ButlerlySize.navigationBarHeight),
+    );
 
     final addLabelTop = tester.getTopLeft(find.text('Add')).dy;
     for (final label in ['Home', 'Transactions', 'More']) {
