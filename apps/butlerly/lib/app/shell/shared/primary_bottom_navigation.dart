@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
@@ -305,8 +307,8 @@ class _PrimaryNavigationCircularArchPainter extends BoxPainter {
 
     canvas.drawArc(
       circle,
-      3.141592653589793,
-      3.141592653589793,
+      math.pi,
+      math.pi,
       false,
       Paint()
         ..style = PaintingStyle.stroke
