@@ -97,9 +97,7 @@ void main() {
         duplicateChecker: (command) async {
           checkedAmount = command.amount;
           return ApplicationSuccess(
-            DuplicateTransactionCheckResult([
-              _duplicateCandidate('existing'),
-            ]),
+            DuplicateTransactionCheckResult([_duplicateCandidate('existing')]),
           );
         },
       );
@@ -449,9 +447,7 @@ void main() {
           return ApplicationSuccess<TransactionDto>(_dto(command));
         },
         duplicateChecker: (command) async => ApplicationSuccess(
-          DuplicateTransactionCheckResult([
-            _duplicateCandidate('existing'),
-          ]),
+          DuplicateTransactionCheckResult([_duplicateCandidate('existing')]),
         ),
       );
 
