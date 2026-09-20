@@ -50,7 +50,7 @@ class ButlerlyPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final contentPadding =
         padding ??
-        const EdgeInsets.fromLTRB(
+        EdgeInsets.fromLTRB(
           ButlerlySize.phoneGutter,
           contentTopGap ?? ButlerlySpacing.standard,
           ButlerlySize.phoneGutter,
@@ -195,11 +195,11 @@ class _ButlerlyPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
             horizontal: ButlerlySize.phoneGutter,
           ),
           child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: ButlerlyLayout.contentMaxWidth(
-              MediaQuery.sizeOf(context),
+            constraints: BoxConstraints(
+              maxWidth: ButlerlyLayout.contentMaxWidth(
+                MediaQuery.sizeOf(context),
+              ),
             ),
-          ),
             child: SizedBox(width: double.infinity, child: child),
           ),
         ),
