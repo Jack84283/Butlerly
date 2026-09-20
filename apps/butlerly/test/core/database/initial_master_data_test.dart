@@ -156,6 +156,17 @@ void main() {
           'Embassy Suites',
           'Sheraton',
           'Westin',
+          'Texaco',
+          'BP',
+          'Speedway',
+          'Marathon',
+          'Sunoco',
+          'Sinclair',
+          'Phillips 66',
+          'Circle K',
+          'QuikTrip',
+          'Wawa',
+          'Sheetz',
         ]),
       );
       expect(
@@ -440,6 +451,28 @@ void main() {
         );
         expect(merchant['default_category_id'], 'category.travel');
         expect(merchant['default_subcategory_id'], 'category.travel.hotel');
+      }
+      for (final merchantId in [
+        'merchant.texaco',
+        'merchant.bp',
+        'merchant.speedway',
+        'merchant.marathon',
+        'merchant.sunoco',
+        'merchant.sinclair',
+        'merchant.phillips_66',
+        'merchant.circle_k',
+        'merchant.quiktrip',
+        'merchant.wawa',
+        'merchant.sheetz',
+      ]) {
+        final merchant = merchants.singleWhere(
+          (row) => row['id'] == merchantId,
+        );
+        expect(merchant['default_category_id'], 'category.transportation');
+        expect(
+          merchant['default_subcategory_id'],
+          'category.transportation.fuel',
+        );
       }
       expect(
         referenceTranslations
