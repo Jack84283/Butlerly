@@ -199,7 +199,7 @@ abstract final class ButlerlySize {
   static const searchPinnedHeaderHeight =
       minimumTarget + ButlerlySpacing.pinnedControlTopGap;
   static const analysisPeriodSelectorHeight =
-      minimumTarget + ButlerlySpacing.small;
+      preferredTarget + ButlerlySpacing.section;
   static const desktopNavigationLeadingIconSize = 14.0;
   static const dividerWidth = 1.0;
 }
