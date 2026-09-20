@@ -61,6 +61,10 @@ void main() {
           'category.income.reimbursement',
           'category.professional_services',
           'category.professional_services.tax_preparation',
+          'category.taxes.income',
+          'category.taxes.property',
+          'category.taxes.sales_use',
+          'category.taxes.other',
         ]),
       );
       expect(tags.map((row) => row['id']), contains('tag.tax_related'));
@@ -158,6 +162,26 @@ void main() {
             )
             .single['label'],
         'Tax Preparation',
+      );
+      expect(
+        categoryTranslations
+            .where(
+              (row) =>
+                  row['category_id'] == 'category.taxes.income' &&
+                  row['locale'] == 'en',
+            )
+            .single['label'],
+        'Income Tax',
+      );
+      expect(
+        categoryTranslations
+            .where(
+              (row) =>
+                  row['category_id'] == 'category.taxes.property' &&
+                  row['locale'] == 'zh-Hans',
+            )
+            .single['label'],
+        '房产税',
       );
       expect(
         referenceTranslations
