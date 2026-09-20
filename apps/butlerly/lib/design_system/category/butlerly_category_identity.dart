@@ -447,7 +447,8 @@ final class ButlerlyCategoryIdentity {
       categoryColorId: ButlerlyCategoryColorId.blue,
       localizationKey: 'category.digital_services.cloud_storage',
     ),
-    'category.digital_services.software_subscription': ButlerlyCategoryIdentity._(
+    'category.digital_services.software_subscription':
+        ButlerlyCategoryIdentity._(
       kind: ButlerlyCategoryIdentityKind.builtIn,
       categoryId: 'category.digital_services.software_subscription',
       assetName: 'subscriptions',
@@ -762,7 +763,8 @@ final class ButlerlyCategoryIdentity {
       categoryColorId: ButlerlyCategoryColorId.orange,
       localizationKey: 'category.professional_services',
     ),
-    'category.professional_services.tax_preparation': ButlerlyCategoryIdentity._(
+    'category.professional_services.tax_preparation':
+        ButlerlyCategoryIdentity._(
       kind: ButlerlyCategoryIdentityKind.builtIn,
       categoryId: 'category.professional_services.tax_preparation',
       assetName: 'taxes',
