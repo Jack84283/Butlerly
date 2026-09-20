@@ -495,15 +495,14 @@ class _SearchPageState extends State<SearchPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return RefreshIndicator(
-      key: const ValueKey('search-pull-to-refresh'),
+    return ButlerlyPage(
+      title: context.l10n.text('search'),
       onRefresh: () async {
         if (_results == null) return;
         await _refreshAfterTransactionChange();
       },
-      child: ButlerlyPage(
-        title: context.l10n.text('search'),
-        children: [
+      refreshKey: const ValueKey('search-pull-to-refresh'),
+      children: [
           if (!widget.readOnly) ...[
             Row(
               children: [
@@ -632,9 +631,8 @@ class _SearchPageState extends State<SearchPage>
                 );
               },
             ),
-          const SizedBox(height: ButlerlySpacing.structural),
-        ],
-      ),
+        const SizedBox(height: ButlerlySpacing.structural),
+      ],
     );
   }
 }
