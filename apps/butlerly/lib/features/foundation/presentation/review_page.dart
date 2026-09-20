@@ -18,9 +18,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class ReviewPage extends StatefulWidget {
-  const ReviewPage({this.showPossibleDuplicates = false, super.key});
+  const ReviewPage({
+    this.showPossibleDuplicates = false,
+    this.showNeedsReview = false,
+    super.key,
+  });
 
   final bool showPossibleDuplicates;
+  final bool showNeedsReview;
 
   @override
   State<ReviewPage> createState() => _ReviewPageState();
@@ -44,6 +49,8 @@ class _ReviewPageState extends State<ReviewPage> {
     super.initState();
     _view = widget.showPossibleDuplicates
         ? _ReviewView.duplicates
+        : widget.showNeedsReview
+        ? _ReviewView.needsReview
         : _ReviewView.uncategorized;
     _items = _load();
     _statementExceptions = _loadStatementExceptions();
@@ -65,12 +72,15 @@ class _ReviewPageState extends State<ReviewPage> {
   @override
   void didUpdateWidget(covariant ReviewPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.showPossibleDuplicates == widget.showPossibleDuplicates) {
+    if (oldWidget.showPossibleDuplicates == widget.showPossibleDuplicates &&
+        oldWidget.showNeedsReview == widget.showNeedsReview) {
       return;
     }
     setState(() {
       _view = widget.showPossibleDuplicates
           ? _ReviewView.duplicates
+          : widget.showNeedsReview
+          ? _ReviewView.needsReview
           : _ReviewView.uncategorized;
     });
   }
