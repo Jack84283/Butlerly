@@ -278,7 +278,7 @@ class _MasterDataPageState extends State<MasterDataPage> {
   @override
   Widget build(BuildContext context) => ButlerlyPage(
     title: context.l10n.text('masterData'),
-    pinnedSpacing: ButlerlyPinnedPageSpacing.primary,
+    pinnedSpacing: ButlerlyPinnedPageSpacing.tightHeader,
     actions: [
       Padding(
         padding: const EdgeInsetsDirectional.only(
