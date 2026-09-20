@@ -77,3 +77,39 @@ All seven iOS simulator integration journeys passed using `BUTLERLY_IOS_DEVICE_I
 Fresh independent review ran in a separate context with only the owner requirements, repository instructions/approved sources, complete implementation/test diff and raw validation evidence. It returned **no actionable P0/P1/P2 findings**. Reviewed state: base `cfe6f7b7f2cb16e75a42e82d76ce86500eb757b6` plus the staged implementation diff; SHA-256 of `git diff --cached --binary <base> -- . ':(exclude)docs/03 Engineering/architecture-review-2026-09-18.md'` was `a65225673fa9bfdc7a1aac1c842216e8b65a66d4581c12ba248e2ea28b2f4206`. The reviewer completed before native integration ended; the iOS result above is subsequent local validation, not an independent post-PR merge approval.
 
 Android could not be verified locally because its SDK is absent. Linux and Windows native builds require their respective environments. The macOS debug build passed with Flutter's automatic deployment-target adjustment to 12.0. That generated Xcode project adjustment was reverted to preserve the repository's declared 10.15 target. This does not establish compatibility with macOS 10.15–11; aligning the declared minimum with the pinned Flutter toolchain remains a platform-support decision. Dependency deprecation warnings did not fail the build. Generated lockfiles and platform registrants in this isolated checkout are refreshed by the repository setup/toolchain; the six pre-existing modified files in the owner's original checkout were not edited.
+
+
+## Follow-up — consolidated P0 correctness remediation (19 September 2026)
+
+PR #214 consolidates the useful P0 correctness work that had been split across
+the earlier #211 and #212 branches. The current implementation follows the
+latest PRD-0003 v1.1 semantics rather than older audit interpretations.
+
+- **Database-owned catalog:** `database/seed/catalog.sql` is the runtime source
+  of truth for Butlerly-owned master/reference seed data and persisted
+  translations. Restore/erase recovery reseeds through the database asset,
+  presentation reads persisted translations through application/repository
+  APIs, and duplicate Dart category/tag/merchant/reference catalogs are
+  removed. Reseeding restores missing system rows/translations without
+  overwriting archived system state or user-created master data. English,
+  Simplified Chinese, and Spanish category/tag translations remain
+  database-owned.
+- **Statement intake:** missing extracted currency or direction remains unknown
+  rather than being filled with USD/expense. Candidates lacking minimum
+  financial validity remain attached to the statement for correction instead
+  of becoming canonical transactions.
+- **Statement batch semantics:** PRD-0003 FIN-108–115 is authoritative.
+  Batch confirmation may persist minimum-valid statement rows without
+  transaction-by-transaction confirmation. Low-confidence/unresolved
+  exceptions enter Needs Review, possible duplicates are persisted in
+  Review → Possible Duplicates, and unaffected rows complete normally.
+- **Structured CSV duplicate checks:** CSV candidates use the shared
+  `DuplicateTransactionChecker`. A FIN-095 duplicate requires explicit
+  confirmation before a separate canonical transaction is created.
+- **Statement document intake:** Statement Capture supports existing image/file
+  selection in addition to camera/photo acquisition. PDF is exposed only on
+  platforms where the native OCR adapter supports PDF input; Android currently
+  remains image-only for statement file OCR.
+
+These changes do not introduce a schema-version change, cloud dependency,
+mandatory account, or AI dependency.
