@@ -331,9 +331,7 @@ class _PrimaryNavigationBasePainter extends BoxPainter {
 
     final radius = ButlerlySize.primaryNavigationArchWidth / 2;
     final centerY = radius - ButlerlySize.primaryNavigationArchRise;
-    final halfChord = math.sqrt(
-      radius * radius - centerY * centerY,
-    );
+    final halfChord = math.sqrt(radius * radius - centerY * centerY);
     final centerX = rect.center.dx;
     canvas.drawLine(
       Offset(rect.left, boundaryY),
