@@ -52,20 +52,26 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('No transactions'), findsOneWidget);
+      expect(find.text('No transactions yet'), findsOneWidget);
       expect(find.text('All'), findsOneWidget);
 
-      await tester.drag(find.byType(CustomScrollView), const Offset(0, 320));
+      unawaited(
+        tester
+            .state<RefreshIndicatorState>(
+              find.byKey(const ValueKey('transactions-pull-to-refresh')),
+            )
+            .show(),
+      );
       await tester.pump();
 
       expect(transactions.queryCount, 2);
-      expect(find.text('No transactions'), findsOneWidget);
+      expect(find.text('No transactions yet'), findsOneWidget);
       expect(find.text('All'), findsOneWidget);
 
       transactions.completeRefresh();
       await tester.pumpAndSettle();
 
-      expect(find.text('No transactions'), findsOneWidget);
+      expect(find.text('No transactions yet'), findsOneWidget);
     },
   );
 }
