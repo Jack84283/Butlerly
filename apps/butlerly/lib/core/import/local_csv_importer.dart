@@ -189,6 +189,7 @@ final class LocalCsvImporter {
           final currentToken = duplicateConfirmationToken(
             row,
             duplicateCandidates,
+            paymentSourceId: paymentSourceId,
           );
           if (confirmedDuplicateTokens[row.rowNumber] != currentToken) {
             duplicates++;
@@ -254,8 +255,9 @@ final class LocalCsvImporter {
 
   static String duplicateConfirmationToken(
     CsvStatementRow row,
-    List<DuplicateTransactionCandidate> candidates,
-  ) {
+    List<DuplicateTransactionCandidate> candidates, {
+    String? paymentSourceId,
+  }) {
     final candidateIds = candidates
         .map((candidate) => candidate.transaction.id)
         .toList(growable: false)
@@ -266,6 +268,7 @@ final class LocalCsvImporter {
       row.amount,
       row.currency,
       row.direction?.name ?? '',
+      paymentSourceId ?? '',
       ...candidateIds,
     ].join('|');
   }
