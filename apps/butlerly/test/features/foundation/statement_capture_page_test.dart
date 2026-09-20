@@ -214,10 +214,13 @@ void main() {
     if (!completed) {
       fail('Statement file intake UI did not finish reloading.');
     }
-    final statements =
-        (await finance.statementServices!.list()
-                as ApplicationSuccess<List<FinancialStatement>>)
-            .value;
+    late List<FinancialStatement> statements;
+    await tester.runAsync(() async {
+      statements =
+          (await finance.statementServices!.list()
+                  as ApplicationSuccess<List<FinancialStatement>>)
+              .value;
+    });
     expect(statements, hasLength(1));
     expect(statements.single.originalFilename, 'statement.heic');
     expect(tester.takeException(), isNull);
