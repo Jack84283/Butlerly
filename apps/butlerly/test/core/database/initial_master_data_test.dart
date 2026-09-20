@@ -350,6 +350,20 @@ void main() {
         shopify['default_subcategory_id'],
         'category.digital_services.online_services',
       );
+      for (final merchantId in [
+        'merchant.walmart',
+        'merchant.amazon',
+        'merchant.target',
+      ]) {
+        final merchant = merchants.singleWhere(
+          (row) => row['id'] == merchantId,
+        );
+        expect(merchant['default_category_id'], 'category.shopping');
+        expect(
+          merchant['default_subcategory_id'],
+          'category.shopping.general',
+        );
+      }
       expect(
         referenceTranslations
             .where(
