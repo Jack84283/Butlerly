@@ -87,6 +87,34 @@ void main() {
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
+  testWidgets('custom pinned header extent offsets Material refresh', (
+    tester,
+  ) async {
+    const pinnedExtent = 92.0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ButlerlyPage(
+            title: 'Analysis',
+            pinnedHeader: const Text('Period controls'),
+            pinnedHeaderExtent: pinnedExtent,
+            onRefresh: () async {},
+            refreshKey: const ValueKey('analysis-refresh'),
+            children: const [SizedBox(height: 800)],
+          ),
+        ),
+      ),
+    );
+
+    final indicator = tester.widget<RefreshIndicator>(
+      find.byKey(const ValueKey('analysis-refresh')),
+    );
+    final headerExtent =
+        ButlerlySize.compactPageToolbarHeight + pinnedExtent;
+    expect(indicator.edgeOffset, headerExtent);
+    expect(indicator.displacement, headerExtent + 40);
+  });
+
   testWidgets('Material refresh indicator is offset below page headers', (
     tester,
   ) async {
