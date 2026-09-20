@@ -35,9 +35,10 @@ validate_database() (
 
 validate_flutter_application() (
   cd apps/butlerly
-  dart format lib/features/analysis/presentation/widgets/analysis_period_selector.dart
-  git diff -- lib/features/analysis/presentation/widgets/analysis_period_selector.dart
-  exit 1
+  format_check
+  flutter analyze
+  flutter test
+  flutter build web
 )
 
 validate_integration_test() (
