@@ -1389,6 +1389,9 @@ void main() {
   testWidgets(
     'Master Data follows primary pinned spacing and keeps add glyph white',
     (tester) async {
+      tester.view.padding = const FakeViewPadding(top: 44);
+      addTearDown(() => tester.view.padding = FakeViewPadding.zero);
+
       await tester.pumpWidget(const MaterialApp(home: MasterDataPage()));
       await tester.pumpAndSettle();
 
