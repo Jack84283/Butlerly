@@ -111,17 +111,20 @@ class PrimaryBottomNavigation extends StatelessWidget {
             ),
             child: baseIcon,
           );
-    final iconSlot = add
-        ? SizedBox(
-            height: ButlerlySize.primaryNavigationAddIconSize,
-            child: icon,
-          )
-        : SizedBox(
-            height:
-                ButlerlySize.primaryNavigationAddIconSize -
-                ButlerlySize.navigationLabelGap,
-            child: Align(alignment: Alignment.bottomCenter, child: icon),
-          );
+    final iconSlot = SizedBox(
+      height: ButlerlySize.primaryNavigationAddIconSize,
+      child: Center(
+        child: add
+            ? Transform.translate(
+                offset: const Offset(
+                  0,
+                  -ButlerlySize.primaryNavigationAddLift,
+                ),
+                child: icon,
+              )
+            : icon,
+      ),
+    );
 
     return Semantics(
       button: true,
@@ -138,11 +141,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               iconSlot,
-              SizedBox(
-                height: add
-                    ? ButlerlySpacing.none
-                    : ButlerlySize.navigationLabelGap,
-              ),
+              const SizedBox(height: ButlerlySpacing.none),
               SizedBox(
                 width: double.infinity,
                 height: labelSlotHeight,

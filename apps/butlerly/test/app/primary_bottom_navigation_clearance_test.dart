@@ -97,6 +97,18 @@ void main() {
       expect(labelTop, closeTo(addLabelTop, 0.01));
     }
 
+    final homeIconCenter = tester.getCenter(find.byIcon(Icons.home)).dy;
+    for (final icon in [Icons.receipt_long_outlined, Icons.more_horiz]) {
+      expect(tester.getCenter(find.byIcon(icon)).dy, closeTo(homeIconCenter, 0.01));
+    }
+    expect(
+      tester.getCenter(find.byIcon(Icons.add)).dy,
+      closeTo(
+        homeIconCenter - ButlerlySize.primaryNavigationAddLift,
+        0.01,
+      ),
+    );
+
     await tester.tap(find.byKey(const ValueKey('bottom-page-action')));
     expect(tapped, isTrue);
     expect(tester.takeException(), isNull);
