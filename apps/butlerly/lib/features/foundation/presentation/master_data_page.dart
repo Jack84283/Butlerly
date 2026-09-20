@@ -326,8 +326,7 @@ class _MasterDataPageState extends State<MasterDataPage> {
             ButlerlySpacing.pinnedPageHeaderBottomGap +
             ButlerlySpacing.pinnedPageTopGap +
             ButlerlySize.minimumTarget +
-            ButlerlySpacing.pinnedPageBottomGap +
-            ButlerlySpacing.pinnedPageBodyTopGap,
+            ButlerlySpacing.pinnedPageBottomGap,
         end: ButlerlySize.phoneGutter,
         child: IconButton.filled(
           key: const ValueKey('master-data-add'),
