@@ -44,16 +44,18 @@ final class CancelStatementReconciliation
   const CancelStatementReconciliation();
 }
 
-List<String> statementFileExtensionsForPlatform(
-  TargetPlatform platform,
-) => [
-  if (platform == TargetPlatform.iOS) 'pdf',
-  'jpg',
-  'jpeg',
-  'png',
-  'heic',
-  'heif',
-];
+XTypeGroup statementFileTypeGroupForPlatform(TargetPlatform platform) {
+  if (platform == TargetPlatform.iOS) {
+    return const XTypeGroup(
+      label: 'Statement',
+      uniformTypeIdentifiers: ['com.adobe.pdf', 'public.image'],
+    );
+  }
+  return const XTypeGroup(
+    label: 'Statement',
+    extensions: ['jpg', 'jpeg', 'png', 'heic', 'heif'],
+  );
+}
 
 class StatementCapturePage extends StatefulWidget {
   const StatementCapturePage({
@@ -174,10 +176,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
   }
 
   Future<void> _selectExistingFile() async {
-    final group = XTypeGroup(
-      label: 'Statement',
-      extensions: statementFileExtensionsForPlatform(defaultTargetPlatform),
-    );
+    final group = statementFileTypeGroupForPlatform(defaultTargetPlatform);
     final file =
         await (widget.pickFile?.call() ??
             openFile(acceptedTypeGroups: [group]));
