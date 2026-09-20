@@ -551,7 +551,7 @@ class _SearchPageState extends State<SearchPage>
       },
       refreshKey: const ValueKey('search-pull-to-refresh'),
       pinnedSpacing: widget.readOnly
-          ? ButlerlyPinnedPageSpacing.none
+          ? ButlerlyPinnedPageSpacing.defaults
           : ButlerlyPinnedPageSpacing.primary,
       pinnedHeaderExtent: widget.readOnly
           ? ButlerlySize.minimumTarget
