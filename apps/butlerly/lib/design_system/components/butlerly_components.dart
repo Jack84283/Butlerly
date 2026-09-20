@@ -29,6 +29,13 @@ class ButlerlyPinnedPageSpacing {
     bodyTopGap: ButlerlySpacing.pinnedPageBodyTopGap,
   );
 
+  static const tightHeader = ButlerlyPinnedPageSpacing(
+    headerBottomGap: ButlerlySpacing.none,
+    pinnedTopGap: ButlerlySpacing.pinnedPageTopGap,
+    pinnedBottomGap: ButlerlySpacing.pinnedPageBottomGap,
+    bodyTopGap: ButlerlySpacing.pinnedPageBodyTopGap,
+  );
+
   final double headerBottomGap;
   final double pinnedTopGap;
   final double pinnedBottomGap;
