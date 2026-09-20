@@ -449,10 +449,7 @@ class _SinglePaymentDialogState extends State<_SinglePaymentDialog> {
                   label: context.l10n.text('paymentSource'),
                   clearLabel: context.l10n.text('unassigned'),
                   sources: widget.sources,
-                  onChanged: (value) => setState(() {
-                _sourceId = value;
-                _confirmedDuplicateTokens.clear();
-              }),
+                  onChanged: (value) => setState(() => _sourceId = value),
                 ),
               ),
             ),
@@ -558,7 +555,10 @@ class _StatementPreviewDialogState extends State<_StatementPreviewDialog> {
               label: context.l10n.text('paymentSource'),
               clearLabel: context.l10n.text('unassigned'),
               sources: widget.sources,
-              onChanged: (value) => setState(() => _sourceId = value),
+              onChanged: (value) => setState(() {
+                _sourceId = value;
+                _confirmedDuplicateTokens.clear();
+              }),
             ),
             const SizedBox(height: ButlerlySpacing.small),
             for (final row in widget.preview.rows.take(8))
