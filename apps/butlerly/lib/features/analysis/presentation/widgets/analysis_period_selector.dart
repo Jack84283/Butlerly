@@ -79,10 +79,11 @@ class AnalysisPeriodPinnedHeader extends StatelessWidget {
     final selectorHeight =
         ButlerlySize.analysisPeriodSelectorHeight +
         math.max(0.0, scaledSelectorTextHeight - baseSelectorTextHeight);
-    return ButlerlySpacing.pinnedHeaderVerticalPadding * 2 +
+    return ButlerlySpacing.periodPinnedHeaderTopGap +
         subtitleHeight +
         ButlerlySpacing.periodSelectorGap +
-        selectorHeight;
+        selectorHeight +
+        ButlerlySpacing.periodPinnedHeaderBottomGap;
   }
 
   static double _textHeight(
@@ -107,8 +108,9 @@ class AnalysisPeriodPinnedHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(
-      vertical: ButlerlySpacing.pinnedHeaderVerticalPadding,
+    padding: const EdgeInsets.only(
+      top: ButlerlySpacing.periodPinnedHeaderTopGap,
+      bottom: ButlerlySpacing.periodPinnedHeaderBottomGap,
     ),
     child: Column(
       key: const ValueKey('analysis-period-pinned-header'),
