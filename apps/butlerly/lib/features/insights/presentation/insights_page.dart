@@ -239,6 +239,8 @@ class _InsightsPageState extends State<InsightsPage> {
         if (snapshot.connectionState != ConnectionState.done) {
           return ButlerlyPage(
             title: context.l10n.text('insights'),
+            onRefresh: _reload,
+            refreshKey: const ValueKey('insights-pull-to-refresh'),
             children: const [Center(child: CircularProgressIndicator())],
           );
         }
@@ -246,6 +248,8 @@ class _InsightsPageState extends State<InsightsPage> {
         if (result is! ApplicationSuccess<InsightsEvaluation>) {
           return ButlerlyPage(
             title: context.l10n.text('insights'),
+            onRefresh: _reload,
+            refreshKey: const ValueKey('insights-pull-to-refresh'),
             children: [
               ButlerlyErrorState(
                 title: context.l10n.text('insightsUnavailable'),
@@ -264,6 +268,7 @@ class _InsightsPageState extends State<InsightsPage> {
           onPeriodChanged: (value) => value == 'selected_period'
               ? _chooseCustomPeriod()
               : _selectPeriod(value),
+          onRefresh: _reload,
           onViewTransactions: (insight) {
             if (!_hasPreciseDrillDown(insight)) return;
             final path = Uri(
@@ -287,6 +292,7 @@ class _InsightsContent extends StatelessWidget {
     required this.evaluation,
     required this.period,
     required this.onPeriodChanged,
+    required this.onRefresh,
     required this.onViewTransactions,
     required this.masterData,
   });
@@ -294,6 +300,7 @@ class _InsightsContent extends StatelessWidget {
   final InsightsEvaluation evaluation;
   final String period;
   final ValueChanged<String> onPeriodChanged;
+  final RefreshCallback onRefresh;
   final ValueChanged<InsightResult> onViewTransactions;
   final TransactionMasterData masterData;
 
@@ -315,16 +322,22 @@ class _InsightsContent extends StatelessWidget {
         )
         .toList(growable: false);
 
+    final subtitle = analysisPeriodDescription(
+      context,
+      period,
+      evaluation.summary.context.period,
+    );
     return ButlerlyPage(
       title: context.l10n.text('insights'),
-      subtitle: analysisPeriodDescription(
-        context,
-        period,
-        evaluation.summary.context.period,
+      onRefresh: onRefresh,
+      refreshKey: const ValueKey('insights-pull-to-refresh'),
+      pinnedHeaderExtent: AnalysisPeriodPinnedHeader.extent,
+      pinnedHeader: AnalysisPeriodPinnedHeader(
+        subtitle: subtitle,
+        value: period,
+        onChanged: onPeriodChanged,
       ),
       children: [
-        AnalysisPeriodSelector(value: period, onChanged: onPeriodChanged),
-        const SizedBox(height: ButlerlySpacing.standard),
         _PeriodSummaryCard(summary: evaluation.summary),
         if (summaryPieResults.isNotEmpty) ...[
           const SizedBox(height: ButlerlySpacing.standard),
