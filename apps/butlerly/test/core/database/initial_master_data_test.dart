@@ -65,6 +65,10 @@ void main() {
           'category.taxes.property',
           'category.taxes.sales_use',
           'category.taxes.other',
+          'category.health.hospital',
+          'category.health.dental',
+          'category.health.vision',
+          'category.health.mental',
         ]),
       );
       expect(tags.map((row) => row['id']), contains('tag.tax_related'));
@@ -192,6 +196,36 @@ void main() {
             )
             .single['label'],
         '房产税',
+      );
+      expect(
+        categoryTranslations
+            .where(
+              (row) =>
+                  row['category_id'] == 'category.health.medical' &&
+                  row['locale'] == 'en',
+            )
+            .single['label'],
+        'Medical Care',
+      );
+      expect(
+        categoryTranslations
+            .where(
+              (row) =>
+                  row['category_id'] == 'category.health.pharmacy' &&
+                  row['locale'] == 'en',
+            )
+            .single['label'],
+        'Pharmacy & Prescriptions',
+      );
+      expect(
+        categoryTranslations
+            .where(
+              (row) =>
+                  row['category_id'] == 'category.health.dental' &&
+                  row['locale'] == 'zh-Hans',
+            )
+            .single['label'],
+        '牙科',
       );
       expect(
         referenceTranslations
