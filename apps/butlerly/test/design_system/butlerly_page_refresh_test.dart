@@ -109,8 +109,7 @@ void main() {
     final indicator = tester.widget<RefreshIndicator>(
       find.byKey(const ValueKey('analysis-refresh')),
     );
-    final headerExtent =
-        ButlerlySize.compactPageToolbarHeight + pinnedExtent;
+    final headerExtent = ButlerlySize.compactPageToolbarHeight + pinnedExtent;
     expect(indicator.edgeOffset, headerExtent);
     expect(indicator.displacement, headerExtent + 40);
   });
