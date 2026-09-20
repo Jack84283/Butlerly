@@ -187,6 +187,38 @@ void main() {
           'Fast Food Restaurant',
           'Bakery',
           'Other Restaurant',
+          'Panera Bread',
+          'KFC',
+          'Burger King',
+          'Wendy\'s',
+          'Taco Bell',
+          'Chick-fil-A',
+          'Popeyes',
+          'Domino\'s',
+          'Pizza Hut',
+          'AT&T Internet',
+          'Google Fiber',
+          'Spectrum',
+          'Frontier',
+          'Cox Communications',
+          'Verizon Fios',
+          'Sonic Internet',
+          'AT&T Wireless',
+          'Cricket Wireless',
+          'Metro by T-Mobile',
+          'Boost Mobile',
+          'Google Fi',
+          'Mint Mobile',
+          'Kohl\'s',
+          'Gap',
+          'Old Navy',
+          'H&M',
+          'UNIQLO',
+          'Zara',
+          'J.Crew',
+          'Banana Republic',
+          'Burlington',
+          'Forever 21',
         ]),
       );
       expect(
@@ -548,6 +580,35 @@ void main() {
           'category.food.restaurants',
         );
       }
+      final panera = merchants.singleWhere(
+        (row) => row['id'] == 'merchant.panera_bread',
+      );
+      expect(panera['default_category_id'], 'category.food');
+      expect(panera['default_subcategory_id'], 'category.food.restaurants');
+
+      final attInternet = merchants.singleWhere(
+        (row) => row['id'] == 'merchant.att_internet',
+      );
+      expect(attInternet['default_category_id'], 'category.utilities');
+      expect(
+        attInternet['default_subcategory_id'],
+        'category.utilities.internet',
+      );
+
+      final attWireless = merchants.singleWhere(
+        (row) => row['id'] == 'merchant.att_wireless',
+      );
+      expect(attWireless['default_category_id'], 'category.utilities');
+      expect(
+        attWireless['default_subcategory_id'],
+        'category.utilities.mobile_phone',
+      );
+
+      final kohls = merchants.singleWhere(
+        (row) => row['id'] == 'merchant.kohls',
+      );
+      expect(kohls['default_category_id'], 'category.shopping');
+      expect(kohls['default_subcategory_id'], 'category.shopping.clothing');
       expect(
         referenceTranslations
             .where(
