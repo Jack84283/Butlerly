@@ -123,6 +123,25 @@ void main() {
           'Netflix',
           'Apple iCloud',
           'Shopify',
+          'Sprouts',
+          '99 Ranch Market',
+          'H Mart',
+          'McDonald\'s',
+          'Best Buy',
+          'Kaiser Permanente',
+          'Caltrain',
+          'United Airlines',
+          'Marriott',
+          'AT&T',
+          'PG&E',
+          'Dropbox',
+          'Microsoft 365',
+          'Adobe',
+          'OpenAI / ChatGPT',
+          'Disney+',
+          'Spotify',
+          'Venmo',
+          'PayPal',
         ]),
       );
       expect(
@@ -364,6 +383,34 @@ void main() {
           'category.shopping.general',
         );
       }
+      final caltrain = merchants.singleWhere(
+        (row) => row['id'] == 'merchant.caltrain',
+      );
+      expect(caltrain['default_category_id'], 'category.transportation');
+      expect(
+        caltrain['default_subcategory_id'],
+        'category.transportation.public',
+      );
+      final att = merchants.singleWhere(
+        (row) => row['id'] == 'merchant.att',
+      );
+      expect(att['default_category_id'], 'category.utilities');
+      expect(att['default_subcategory_id'], isNull);
+      final pge = merchants.singleWhere(
+        (row) => row['id'] == 'merchant.pge',
+      );
+      expect(pge['default_category_id'], 'category.utilities');
+      expect(pge['default_subcategory_id'], isNull);
+      final paypal = merchants.singleWhere(
+        (row) => row['id'] == 'merchant.paypal',
+      );
+      expect(paypal['default_category_id'], isNull);
+      expect(paypal['default_subcategory_id'], isNull);
+      final venmo = merchants.singleWhere(
+        (row) => row['id'] == 'merchant.venmo',
+      );
+      expect(venmo['default_category_id'], isNull);
+      expect(venmo['default_subcategory_id'], isNull);
       expect(
         referenceTranslations
             .where(
