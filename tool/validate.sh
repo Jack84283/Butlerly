@@ -5,7 +5,9 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
 format_check() {
-  "$repo_root/tool/check_format.sh" .
+  dart format .
+  git diff -- .
+  exit 1
 }
 
 ./tool/check_toolchain_consistency.sh
