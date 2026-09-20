@@ -339,14 +339,14 @@ class _AnalysisPageState extends State<AnalysisPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    body: RefreshIndicator(
-      onRefresh: _refresh,
-      child: FutureBuilder<ApplicationResult<List<RuleExecutionResult>>>(
-        future: _result,
+    body: FutureBuilder<ApplicationResult<List<RuleExecutionResult>>>(
+      future: _result,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
             return ButlerlyPage(
               title: context.l10n.text('analysis'),
+              onRefresh: _refresh,
+              refreshKey: const ValueKey('analysis-pull-to-refresh'),
               children: const [AnalysisSkeleton()],
             );
           }
@@ -354,6 +354,8 @@ class _AnalysisPageState extends State<AnalysisPage> {
           if (result is! ApplicationSuccess<List<RuleExecutionResult>>) {
             return ButlerlyPage(
               title: context.l10n.text('analysis'),
+              onRefresh: _refresh,
+              refreshKey: const ValueKey('analysis-pull-to-refresh'),
               children: [
                 ButlerlyErrorState(
                   title: context.l10n.text('analysisUnavailable'),
@@ -393,10 +395,10 @@ class _AnalysisPageState extends State<AnalysisPage> {
             onTransactionRequested:
                 widget.onTransactionRequested ?? _openTransactionDetail,
             onPeriodChanged: _selectPeriod,
+            onRefresh: _refresh,
             onSelectDate: _selectDate,
           );
         },
-      ),
     ),
   );
   Future<ApplicationResult<AnalysisCalendarResult>>?
@@ -419,6 +421,7 @@ class _AnalysisContent extends StatelessWidget {
     required this.selectedDate,
     required this.transactions,
     required this.onPeriodChanged,
+    required this.onRefresh,
     required this.onSelectDate,
     required this.canPreviousMonth,
     required this.canNextMonth,
@@ -434,6 +437,7 @@ class _AnalysisContent extends StatelessWidget {
   final String? selectedDate;
   final Future<ApplicationResult<List<TransactionDto>>>? transactions;
   final ValueChanged<String> onPeriodChanged;
+  final RefreshCallback onRefresh;
   final ValueChanged<String> onSelectDate;
   final bool canPreviousMonth;
   final bool canNextMonth;
@@ -441,16 +445,22 @@ class _AnalysisContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final model = AnalysisModel.fromResults(results);
+    final subtitle = analysisPeriodDescription(
+      context,
+      period,
+      analysisContext?.period,
+    );
     return ButlerlyPage(
       title: context.l10n.text('analysis'),
-      subtitle: analysisPeriodDescription(
-        context,
-        period,
-        analysisContext?.period,
+      onRefresh: onRefresh,
+      refreshKey: const ValueKey('analysis-pull-to-refresh'),
+      pinnedHeaderExtent: AnalysisPeriodPinnedHeader.extent,
+      pinnedHeader: AnalysisPeriodPinnedHeader(
+        subtitle: subtitle,
+        value: period,
+        onChanged: onPeriodChanged,
       ),
       children: [
-        AnalysisPeriodSelector(value: period, onChanged: onPeriodChanged),
-        const SizedBox(height: ButlerlySpacing.standard),
         AnalysisSummary(model: model),
         _SectionHeader(title: context.l10n.text('spending')),
         AnalysisSpendingBreakdown(
