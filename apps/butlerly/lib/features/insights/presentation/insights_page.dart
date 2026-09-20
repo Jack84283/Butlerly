@@ -355,12 +355,10 @@ class _InsightsContent extends StatelessWidget {
       title: context.l10n.text('insights'),
       onRefresh: onRefresh,
       refreshKey: const ValueKey('insights-pull-to-refresh'),
-      padding: const EdgeInsets.fromLTRB(
-        ButlerlySize.phoneGutter,
-        ButlerlySpacing.periodPinnedBodyGap,
-        ButlerlySize.phoneGutter,
-        ButlerlySpacing.large,
-      ),
+      headerBottomGap: ButlerlySpacing.pinnedPageHeaderBottomGap,
+      pinnedHeaderTopGap: ButlerlySpacing.pinnedPageTopGap,
+      pinnedHeaderBottomGap: ButlerlySpacing.pinnedPageBottomGap,
+      contentTopGap: ButlerlySpacing.pinnedPageBodyTopGap,
       pinnedHeaderExtent: AnalysisPeriodPinnedHeader.extent(context, subtitle),
       pinnedHeader: AnalysisPeriodPinnedHeader(
         subtitle: subtitle,
