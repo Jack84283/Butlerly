@@ -57,6 +57,10 @@ INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('cate
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.insurance.life','Life Insurance','system','category.insurance','active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.insurance.other','Other Insurance','system','category.insurance','active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.taxes','Taxes','system',NULL,'active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.taxes.income','Income Tax','system','category.taxes','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.taxes.property','Property Tax','system','category.taxes','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.taxes.sales_use','Sales & Use Tax','system','category.taxes','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.taxes.other','Other Taxes','system','category.taxes','active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.fees','Fees & Charges','system',NULL,'active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.professional_services','Professional Services','system',NULL,'active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.professional_services.tax_preparation','Tax Preparation','system','category.professional_services','active');
@@ -158,6 +162,10 @@ INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.insurance.life','en','Life Insurance');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.insurance.other','en','Other Insurance');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.taxes','en','Taxes');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.taxes.income','en','Income Tax');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.taxes.property','en','Property Tax');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.taxes.sales_use','en','Sales & Use Tax');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.taxes.other','en','Other Taxes');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.fees','en','Fees & Charges');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.professional_services','en','Professional Services');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.professional_services.tax_preparation','en','Tax Preparation');
@@ -236,6 +244,10 @@ INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.insurance.life','zh-Hans','人寿保险');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.insurance.other','zh-Hans','其他保险');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.taxes','zh-Hans','税费');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.taxes.income','zh-Hans','所得税');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.taxes.property','zh-Hans','房产税');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.taxes.sales_use','zh-Hans','销售税与使用税');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.taxes.other','zh-Hans','其他税费');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.fees','zh-Hans','手续费与费用');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.professional_services','zh-Hans','专业服务');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.professional_services.tax_preparation','zh-Hans','报税服务');
@@ -314,6 +326,10 @@ INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.insurance.life','es','Seguro de vida');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.insurance.other','es','Otros seguros');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.taxes','es','Impuestos');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.taxes.income','es','Impuesto sobre la renta');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.taxes.property','es','Impuesto sobre la propiedad');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.taxes.sales_use','es','Impuesto sobre ventas y uso');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.taxes.other','es','Otros impuestos');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.fees','es','Comisiones y cargos');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.professional_services','es','Servicios profesionales');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.professional_services.tax_preparation','es','Preparación de impuestos');
