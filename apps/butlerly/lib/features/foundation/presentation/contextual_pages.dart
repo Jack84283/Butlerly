@@ -449,7 +449,10 @@ class _SinglePaymentDialogState extends State<_SinglePaymentDialog> {
                   label: context.l10n.text('paymentSource'),
                   clearLabel: context.l10n.text('unassigned'),
                   sources: widget.sources,
-                  onChanged: (value) => setState(() => _sourceId = value),
+                  onChanged: (value) => setState(() {
+                _sourceId = value;
+                _confirmedDuplicateTokens.clear();
+              }),
                 ),
               ),
             ),
@@ -609,6 +612,7 @@ class _StatementPreviewDialogState extends State<_StatementPreviewDialog> {
                                 LocalCsvImporter.duplicateConfirmationToken(
                                   row,
                                   entry.value,
+                                  paymentSourceId: _sourceId,
                                 );
                           } else {
                             _confirmedDuplicateTokens.remove(entry.key);
