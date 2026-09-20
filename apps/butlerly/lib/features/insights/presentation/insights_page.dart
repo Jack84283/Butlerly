@@ -213,6 +213,12 @@ class _InsightsPageState extends State<InsightsPage> {
       (_) => _load(period, generation: generation),
     );
     if (!mounted || generation != _loadGeneration) return;
+    if (result is ApplicationFailure<InsightsEvaluation>) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.text('dataPreserved'))),
+      );
+      return;
+    }
     setState(() => _result = Future.value(result));
   }
 
