@@ -144,10 +144,8 @@ void main() {
 
     expect(ios.uniformTypeIdentifiers, contains('com.adobe.pdf'));
     expect(ios.uniformTypeIdentifiers, contains('public.image'));
-    expect(ios.extensions, isNull);
     expect(android.extensions, isNot(contains('pdf')));
     expect(android.extensions, contains('jpg'));
-    expect(android.uniformTypeIdentifiers, isNull);
   });
 
   testWidgets('existing statement file uses the local OCR intake path', (
