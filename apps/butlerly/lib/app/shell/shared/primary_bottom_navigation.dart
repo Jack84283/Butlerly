@@ -78,6 +78,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
         : destination.icon;
     final icon = add
         ? Container(
+            key: const ValueKey('primary-navigation-add-button'),
             width: ButlerlySize.primaryNavigationAddIconSize,
             height: ButlerlySize.primaryNavigationAddIconSize,
             decoration: BoxDecoration(
