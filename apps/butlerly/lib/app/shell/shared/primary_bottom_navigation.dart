@@ -111,20 +111,17 @@ class PrimaryBottomNavigation extends StatelessWidget {
             ),
             child: baseIcon,
           );
-    final iconSlot = SizedBox(
-      height: ButlerlySize.primaryNavigationAddIconSize,
-      child: Center(
-        child: add
-            ? Transform.translate(
-                offset: const Offset(
-                  0,
-                  -ButlerlySize.primaryNavigationAddLift,
-                ),
-                child: icon,
-              )
-            : icon,
-      ),
-    );
+    final iconSlot = add
+        ? SizedBox(
+            height: ButlerlySize.primaryNavigationAddIconSize,
+            child: icon,
+          )
+        : SizedBox(
+            height:
+                ButlerlySize.primaryNavigationAddIconSize -
+                ButlerlySize.navigationLabelGap,
+            child: Align(alignment: Alignment.bottomCenter, child: icon),
+          );
 
     return Semantics(
       button: true,
@@ -137,23 +134,51 @@ class PrimaryBottomNavigation extends StatelessWidget {
         onTap: () => onSelected(branchIndex),
         child: SizedBox(
           height: double.infinity,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              iconSlot,
-              const SizedBox(height: ButlerlySpacing.none),
-              SizedBox(
-                width: double.infinity,
-                height: labelSlotHeight,
-                child: Text(
-                  destination.label,
-                  textAlign: TextAlign.center,
-                  softWrap: true,
-                  style: labelStyle,
+          child: add
+              ? Stack(
+                  children: [
+                    Positioned(
+                      top:
+                          ButlerlySize.primaryNavigationArchRise -
+                          ButlerlySize.primaryNavigationAddLift,
+                      left: 0,
+                      right: 0,
+                      height: ButlerlySize.primaryNavigationAddIconSize,
+                      child: iconSlot,
+                    ),
+                    Positioned(
+                      top:
+                          ButlerlySize.primaryNavigationArchRise +
+                          ButlerlySize.primaryNavigationAddIconSize,
+                      left: 0,
+                      right: 0,
+                      height: labelSlotHeight,
+                      child: Text(
+                        destination.label,
+                        textAlign: TextAlign.center,
+                        softWrap: true,
+                        style: labelStyle,
+                      ),
+                    ),
+                  ],
+                )
+              : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    iconSlot,
+                    const SizedBox(height: ButlerlySize.navigationLabelGap),
+                    SizedBox(
+                      width: double.infinity,
+                      height: labelSlotHeight,
+                      child: Text(
+                        destination.label,
+                        textAlign: TextAlign.center,
+                        softWrap: true,
+                        style: labelStyle,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -198,12 +223,18 @@ class PrimaryBottomNavigation extends StatelessWidget {
             context,
             constraints.maxWidth,
           );
+          final archRise = visualBranchIndexes.contains(1)
+              ? ButlerlySize.primaryNavigationArchRise
+              : ButlerlySpacing.none;
           return SizedBox(
-            height: navigationHeight + bottomInset,
+            height: navigationHeight + bottomInset + archRise,
             child: Stack(
-              clipBehavior: Clip.none,
               children: [
-                Positioned.fill(
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: archRise,
+                  bottom: 0,
                   child: DecoratedBox(
                     decoration: _PrimaryNavigationBase(
                       fillColor: navigationColor,
@@ -217,7 +248,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
                   Positioned(
                     left: 0,
                     right: 0,
-                    top: -ButlerlySize.primaryNavigationArchRise,
+                    top: 0,
                     child: Center(
                       child: Container(
                         key: const ValueKey('primary-navigation-add-arch'),
@@ -235,21 +266,32 @@ class PrimaryBottomNavigation extends StatelessWidget {
                   left: 0,
                   right: 0,
                   top: 0,
-                  height: navigationHeight,
+                  height: navigationHeight + archRise,
                   child: SizedBox(
                     key: const ValueKey('primary-navigation-content'),
-                    height: navigationHeight,
+                    height: navigationHeight + archRise,
                     child: Row(
                       children: [
                         for (final branchIndex in visualBranchIndexes)
                           Expanded(
-                            child: _destination(
-                              context,
-                              destinations[branchIndex]!,
-                              branchIndex,
-                              navigationHeight -
-                                  ButlerlySize.primaryNavigationAddIconSize,
-                            ),
+                            child: branchIndex == 1
+                                ? _destination(
+                                    context,
+                                    destinations[branchIndex]!,
+                                    branchIndex,
+                                    navigationHeight -
+                                        ButlerlySize.primaryNavigationAddIconSize,
+                                  )
+                                : Padding(
+                                    padding: EdgeInsets.only(top: archRise),
+                                    child: _destination(
+                                      context,
+                                      destinations[branchIndex]!,
+                                      branchIndex,
+                                      navigationHeight -
+                                          ButlerlySize.primaryNavigationAddIconSize,
+                                    ),
+                                  ),
                           ),
                       ],
                     ),
