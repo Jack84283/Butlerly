@@ -86,9 +86,7 @@ void main() {
       MaterialApp(home: TransactionEditorPage(finance: harness.finance)),
     );
     await tester.pumpAndSettle();
-    final amountField = find.byKey(
-      const ValueKey('transaction-amount-field'),
-    );
+    final amountField = find.byKey(const ValueKey('transaction-amount-field'));
     final descriptionField = find.byKey(
       const ValueKey('transaction-description-field'),
     );
