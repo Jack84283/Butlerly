@@ -300,42 +300,42 @@ class _MasterDataPageState extends State<MasterDataPage> {
       ),
     ],
     pinnedHeader: ButlerlyCompactSectionSelector(
-      labels: [
-        context.l10n.text('categories'),
-        context.l10n.text('subcategories'),
-        context.l10n.text('tags'),
-        context.l10n.text('merchants'),
-      ],
-      selectedIndex: _sectionIndex,
-      onSelected: (index) => setState(() => _sectionIndex = index),
-    ),
-    children: [
-      FutureBuilder<_MasterData>(
-        future: _data,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const ButlerlyLoadingState();
-          }
-          if (snapshot.hasError) {
-            return ButlerlyErrorState(
-              title: context.l10n.text('reviewLoadError'),
-              message: context.l10n.text('tryAgain'),
-              preserved: context.l10n.text('dataPreserved'),
-              actionLabel: context.l10n.text('tryAgain'),
-              onAction: _refresh,
-            );
-          }
-          final data = snapshot.requireData;
-          return _MasterDataList(
-            index: _sectionIndex,
-            data: data,
-            onChanged: _refresh,
-            finance: _finance,
-            onEdit: _editExisting,
-          );
-        },
-      ),
-      const SizedBox(height: ButlerlySpacing.structural),
+          labels: [
+            context.l10n.text('categories'),
+            context.l10n.text('subcategories'),
+            context.l10n.text('tags'),
+            context.l10n.text('merchants'),
+          ],
+          selectedIndex: _sectionIndex,
+          onSelected: (index) => setState(() => _sectionIndex = index),
+        ),
+        children: [
+          FutureBuilder<_MasterData>(
+            future: _data,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const ButlerlyLoadingState();
+              }
+              if (snapshot.hasError) {
+                return ButlerlyErrorState(
+                  title: context.l10n.text('reviewLoadError'),
+                  message: context.l10n.text('tryAgain'),
+                  preserved: context.l10n.text('dataPreserved'),
+                  actionLabel: context.l10n.text('tryAgain'),
+                  onAction: _refresh,
+                );
+              }
+              final data = snapshot.requireData;
+              return _MasterDataList(
+                index: _sectionIndex,
+                data: data,
+                onChanged: _refresh,
+                finance: _finance,
+                onEdit: _editExisting,
+              );
+            },
+          ),
+          const SizedBox(height: ButlerlySpacing.structural),
     ],
   );
 }
