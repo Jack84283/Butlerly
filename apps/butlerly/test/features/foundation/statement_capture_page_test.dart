@@ -390,7 +390,7 @@ void main() {
                     as ApplicationSuccess<List<ReviewItemDto>>)
                 .value;
         expect(review, hasLength(1));
-        expect(review.single.transaction.description, isNull);
+        expect(review.single.description, isNull);
         final persistedRow = (await database.database.query(
           'statement_rows',
         )).single;
