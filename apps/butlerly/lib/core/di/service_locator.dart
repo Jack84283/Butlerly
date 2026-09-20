@@ -1,3 +1,4 @@
+import 'package:butlerly/core/analysis/bundled_analysis_rules.dart';
 import 'package:butlerly/core/application/application_result_guard.dart';
 import 'package:butlerly/core/config/app_configuration.dart';
 import 'package:butlerly/core/data/local_backup_manager.dart';
@@ -52,6 +53,14 @@ void configureDependencies({
             buildInitialMasterData(),
           ),
         );
+        final installer = services<FinanceServices>().installBuiltInRules;
+        if (installer == null) {
+          throw StateError('Bundled analysis rule installer is unavailable.');
+        }
+        final installation = await installBundledAnalysisRules(installer);
+        if (installation.diagnostics.isNotEmpty) {
+          throw StateError('Bundled analysis rules failed validation.');
+        }
       },
     ),
   );
