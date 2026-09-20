@@ -219,7 +219,9 @@ class _InsightsPageState extends State<InsightsPage> {
       );
       return;
     }
-    setState(() => _result = Future.value(result));
+    setState(() {
+      _result = Future.value(result);
+    });
   }
 
   void _selectPeriod(String period) {
