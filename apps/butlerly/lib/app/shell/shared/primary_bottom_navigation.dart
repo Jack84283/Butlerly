@@ -117,9 +117,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
       children: [
         icon,
         SizedBox(
-          height: add
-              ? ButlerlySpacing.none
-              : ButlerlySize.navigationLabelGap,
+          height: add ? ButlerlySpacing.none : ButlerlySize.navigationLabelGap,
         ),
         Text(
           destination.label,
