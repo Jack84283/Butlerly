@@ -78,6 +78,17 @@ Fresh independent review ran in a separate context with only the owner requireme
 
 Android could not be verified locally because its SDK is absent. Linux and Windows native builds require their respective environments. The macOS debug build passed with Flutter's automatic deployment-target adjustment to 12.0. That generated Xcode project adjustment was reverted to preserve the repository's declared 10.15 target. This does not establish compatibility with macOS 10.15–11; aligning the declared minimum with the pinned Flutter toolchain remains a platform-support decision. Dependency deprecation warnings did not fail the build. Generated lockfiles and platform registrants in this isolated checkout are refreshed by the repository setup/toolchain; the six pre-existing modified files in the owner's original checkout were not edited.
 
+## Post-review restore compatibility correction — 19 September 2026
+
+PR #210's independent review identified that replacing data with an older schema-v8 backup can reactivate historical rules lacking semantic roles. The new overview projection then omits summary metrics until application restart. The original fresh review did not catch this persisted-version case.
+
+The workspace system refresh now installs and activates the current packaged rule catalog after seeding master data and before refreshing presentation, inside the existing restore/recovery safety gate. Invalid or unavailable rule installation fails the gate. Historical definitions are retained unchanged, and existing disabled activations remain disabled. No bundled definition or schema is modified.
+
+`workspace_restore_rules_test.dart` exercises actual dependency configuration, SQLite repositories, backup creation/restore, asset installation and analysis calculation using historical rule fixtures copied from commit `808305e`. It covers merge/replace refresh without restart, unchanged historical hashes/definitions, disabled activations, and installation failure preserving the recovery gate and financial records. The replace regression fails with the refresh fix removed; all four tests pass with it applied.
+
+The owner explicitly requested local review/validation and commit/push without waiting for subsequent GitHub CI results. Remote results on the next pushed head are therefore not claimed here.
+
+A new separate-context review of this correction and its relevant callers found no actionable P0/P1/P2 findings. Local validation covers 779 tests (including the four new production restore tests), static analysis, formatting and the web build; the final committed tree is checked again before push.
 
 ## Follow-up — consolidated P0 correctness remediation (19 September 2026)
 
