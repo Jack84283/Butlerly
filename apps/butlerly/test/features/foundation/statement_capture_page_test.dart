@@ -199,7 +199,21 @@ void main() {
       }
       fail('Statement file intake did not complete.');
     });
-    await tester.pumpAndSettle();
+    var completed = false;
+    for (var attempt = 0; attempt < 50; attempt++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 20)),
+      );
+      await tester.pump(const Duration(milliseconds: 20));
+      if (find.byType(CircularProgressIndicator).evaluate().isEmpty &&
+          find.byType(Card).evaluate().isNotEmpty) {
+        completed = true;
+        break;
+      }
+    }
+    if (!completed) {
+      fail('Statement file intake UI did not finish reloading.');
+    }
     final statements =
         (await finance.statementServices!.list()
                 as ApplicationSuccess<List<FinancialStatement>>)
