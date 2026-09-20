@@ -217,6 +217,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
           title: context.l10n.text('transactions'),
           onRefresh: _refresh,
           refreshKey: const ValueKey('transactions-pull-to-refresh'),
+          pinnedSpacing: ButlerlyPinnedPageSpacing.primary,
           pinnedHeader: ButlerlyCompactSectionSelector(
             labels: [
               context.l10n.text('all'),
@@ -231,7 +232,6 @@ class _TransactionsPageState extends State<TransactionsPage> {
             },
           ),
           children: [
-            const SizedBox(height: ButlerlySpacing.compact),
             if (values.isEmpty)
               ButlerlyEmptyState(
                 icon: Icons.receipt_long_outlined,
