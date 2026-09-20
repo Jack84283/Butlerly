@@ -275,88 +275,60 @@ class _MasterDataPageState extends State<MasterDataPage> {
   }
 
   @override
-  Widget build(BuildContext context) => ButlerlyPage(
-    title: context.l10n.text('masterData'),
-    pinnedHeaderExtent: _MasterDataPinnedHeader.extent,
-    pinnedHeader: _MasterDataPinnedHeader(
-      labels: [
-        context.l10n.text('categories'),
-        context.l10n.text('subcategories'),
-        context.l10n.text('tags'),
-        context.l10n.text('merchants'),
-      ],
-      selectedIndex: _sectionIndex,
-      onSelected: (index) => setState(() => _sectionIndex = index),
-      onAdd: _add,
-      addTooltip: context.l10n.text('add'),
-    ),
+  Widget build(BuildContext context) => Stack(
     children: [
-      const SizedBox(height: 0),
-      FutureBuilder<_MasterData>(
-        future: _data,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const ButlerlyLoadingState();
-          }
-          if (snapshot.hasError) {
-            return ButlerlyErrorState(
-              title: context.l10n.text('reviewLoadError'),
-              message: context.l10n.text('tryAgain'),
-              preserved: context.l10n.text('dataPreserved'),
-              actionLabel: context.l10n.text('tryAgain'),
-              onAction: _refresh,
-            );
-          }
-          final data = snapshot.requireData;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _MasterDataList(
+      ButlerlyPage(
+        title: context.l10n.text('masterData'),
+        pinnedHeader: ButlerlyCompactSectionSelector(
+          labels: [
+            context.l10n.text('categories'),
+            context.l10n.text('subcategories'),
+            context.l10n.text('tags'),
+            context.l10n.text('merchants'),
+          ],
+          selectedIndex: _sectionIndex,
+          onSelected: (index) => setState(() => _sectionIndex = index),
+        ),
+        children: [
+          const SizedBox(height: ButlerlySize.minimumTarget),
+          FutureBuilder<_MasterData>(
+            future: _data,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const ButlerlyLoadingState();
+              }
+              if (snapshot.hasError) {
+                return ButlerlyErrorState(
+                  title: context.l10n.text('reviewLoadError'),
+                  message: context.l10n.text('tryAgain'),
+                  preserved: context.l10n.text('dataPreserved'),
+                  actionLabel: context.l10n.text('tryAgain'),
+                  onAction: _refresh,
+                );
+              }
+              final data = snapshot.requireData;
+              return _MasterDataList(
                 index: _sectionIndex,
                 data: data,
                 onChanged: _refresh,
                 finance: _finance,
                 onEdit: _editExisting,
-              ),
-            ],
-          );
-        },
+              );
+            },
+          ),
+          const SizedBox(height: ButlerlySpacing.structural),
+        ],
       ),
-      const SizedBox(height: ButlerlySpacing.structural),
-    ],
-  );
-}
-
-class _MasterDataPinnedHeader extends StatelessWidget {
-  const _MasterDataPinnedHeader({
-    required this.labels,
-    required this.selectedIndex,
-    required this.onSelected,
-    required this.onAdd,
-    required this.addTooltip,
-  });
-
-  static const extent =
-      ButlerlySize.minimumTarget * 2 + ButlerlySpacing.micro;
-
-  final List<String> labels;
-  final int selectedIndex;
-  final ValueChanged<int> onSelected;
-  final VoidCallback onAdd;
-  final String addTooltip;
-
-  @override
-  Widget build(BuildContext context) => Column(
-    key: const ValueKey('master-data-pinned-header'),
-    mainAxisAlignment: MainAxisAlignment.center,
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Align(
-        alignment: AlignmentDirectional.centerEnd,
+      PositionedDirectional(
+        top:
+            ButlerlySize.compactPageToolbarHeight +
+            ButlerlySize.minimumTarget +
+            ButlerlySpacing.compact,
+        end: ButlerlySize.phoneGutter,
         child: IconButton.filled(
           key: const ValueKey('master-data-add'),
-          tooltip: addTooltip,
-          onPressed: onAdd,
+          tooltip: context.l10n.text('add'),
+          onPressed: _add,
           icon: const Icon(Icons.add),
           style: IconButton.styleFrom(
             shape: const CircleBorder(),
@@ -364,12 +336,6 @@ class _MasterDataPinnedHeader extends StatelessWidget {
             maximumSize: const Size.square(ButlerlySize.minimumTarget),
           ),
         ),
-      ),
-      const SizedBox(height: ButlerlySpacing.micro),
-      ButlerlyCompactSectionSelector(
-        labels: labels,
-        selectedIndex: selectedIndex,
-        onSelected: onSelected,
       ),
     ],
   );
