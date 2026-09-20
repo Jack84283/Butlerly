@@ -277,7 +277,8 @@ class _MasterDataPageState extends State<MasterDataPage> {
   @override
   Widget build(BuildContext context) => ButlerlyPage(
     title: context.l10n.text('masterData'),
-    pinnedHeader: ButlerlyCompactSectionSelector(
+    pinnedHeaderExtent: _MasterDataPinnedHeader.extent,
+    pinnedHeader: _MasterDataPinnedHeader(
       labels: [
         context.l10n.text('categories'),
         context.l10n.text('subcategories'),
@@ -286,6 +287,8 @@ class _MasterDataPageState extends State<MasterDataPage> {
       ],
       selectedIndex: _sectionIndex,
       onSelected: (index) => setState(() => _sectionIndex = index),
+      onAdd: _add,
+      addTooltip: context.l10n.text('add'),
     ),
     children: [
       const SizedBox(height: 0),
@@ -308,15 +311,6 @@ class _MasterDataPageState extends State<MasterDataPage> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton.icon(
-                  onPressed: _add,
-                  icon: const Icon(Icons.add),
-                  label: Text(context.l10n.text('add')),
-                ),
-              ),
-              const SizedBox(height: ButlerlySpacing.small),
               _MasterDataList(
                 index: _sectionIndex,
                 data: data,
@@ -329,6 +323,54 @@ class _MasterDataPageState extends State<MasterDataPage> {
         },
       ),
       const SizedBox(height: ButlerlySpacing.structural),
+    ],
+  );
+}
+
+class _MasterDataPinnedHeader extends StatelessWidget {
+  const _MasterDataPinnedHeader({
+    required this.labels,
+    required this.selectedIndex,
+    required this.onSelected,
+    required this.onAdd,
+    required this.addTooltip,
+  });
+
+  static const extent =
+      ButlerlySize.minimumTarget * 2 + ButlerlySpacing.micro;
+
+  final List<String> labels;
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+  final VoidCallback onAdd;
+  final String addTooltip;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    key: const ValueKey('master-data-pinned-header'),
+    mainAxisAlignment: MainAxisAlignment.center,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Align(
+        alignment: AlignmentDirectional.centerEnd,
+        child: IconButton.filled(
+          key: const ValueKey('master-data-add'),
+          tooltip: addTooltip,
+          onPressed: onAdd,
+          icon: const Icon(Icons.add),
+          style: IconButton.styleFrom(
+            shape: const CircleBorder(),
+            minimumSize: const Size.square(ButlerlySize.minimumTarget),
+            maximumSize: const Size.square(ButlerlySize.minimumTarget),
+          ),
+        ),
+      ),
+      const SizedBox(height: ButlerlySpacing.micro),
+      ButlerlyCompactSectionSelector(
+        labels: labels,
+        selectedIndex: selectedIndex,
+        onSelected: onSelected,
+      ),
     ],
   );
 }
