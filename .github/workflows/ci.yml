@@ -6,7 +6,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   finance_domain:
@@ -41,23 +41,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: ./.github/actions/setup-toolchain
       - run: ./tool/setup.sh
       - run: ./tool/validate.sh flutter_application
-      - name: Capture canonical Master Data formatting
-        if: failure() && github.event_name == 'pull_request'
-        run: |
-          chmod +x ./tool/format_ci_target.sh
-          ./tool/format_ci_target.sh
-          if ! git diff --quiet -- apps/butlerly/lib/features/foundation/presentation/master_data_page.dart; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add apps/butlerly/lib/features/foundation/presentation/master_data_page.dart
-            git commit -m "Format current Master Data page"
-            git push origin HEAD:${{ github.head_ref }}
-          fi
 
   # macOS checks remain post-merge main checks for now to conserve limited
   # GitHub-hosted macOS capacity and avoid PRs waiting on scarce runners.
