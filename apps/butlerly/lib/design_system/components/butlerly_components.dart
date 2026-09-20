@@ -20,7 +20,7 @@ class ButlerlyPinnedPageSpacing {
     this.bodyTopGap,
   });
 
-  static const none = ButlerlyPinnedPageSpacing();
+  static const defaults = ButlerlyPinnedPageSpacing();
 
   static const primary = ButlerlyPinnedPageSpacing(
     headerBottomGap: ButlerlySpacing.pinnedPageHeaderBottomGap,
@@ -45,7 +45,7 @@ class ButlerlyPage extends StatelessWidget {
     this.controller,
     this.pinnedHeader,
     this.pinnedHeaderExtent = ButlerlySize.minimumTarget,
-    this.pinnedSpacing = ButlerlyPinnedPageSpacing.none,
+    this.pinnedSpacing = ButlerlyPinnedPageSpacing.defaults,
     this.onRefresh,
     this.refreshKey,
     super.key,
