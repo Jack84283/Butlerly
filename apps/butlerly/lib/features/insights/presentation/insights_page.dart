@@ -80,8 +80,6 @@ class _InsightsPageState extends State<InsightsPage> {
     final languageCode = Localizations.localeOf(context).languageCode;
     if (_loadedLanguageCode == languageCode) return;
     _loadedLanguageCode = languageCode;
-    final generation = ++_loadGeneration;
-    final period = _period;
     final finance = services.isRegistered<FinanceServices>()
         ? services<FinanceServices>()
         : null;
@@ -199,6 +197,8 @@ class _InsightsPageState extends State<InsightsPage> {
 
   Future<void> _reload() async {
     if (!mounted) return;
+    final generation = ++_loadGeneration;
+    final period = _period;
     final finance = services.isRegistered<FinanceServices>()
         ? services<FinanceServices>()
         : null;
