@@ -167,6 +167,12 @@ void main() {
           'QuikTrip',
           'Wawa',
           'Sheetz',
+          'Temu',
+          'eBay',
+          'Etsy',
+          'SHEIN',
+          'Wayfair',
+          'Newegg',
         ]),
       );
       expect(
@@ -474,6 +480,35 @@ void main() {
           'category.transportation.fuel',
         );
       }
+      final temu = merchants.singleWhere(
+        (row) => row['id'] == 'merchant.temu',
+      );
+      expect(temu['default_category_id'], 'category.shopping');
+      expect(temu['default_subcategory_id'], 'category.shopping.general');
+
+      final shein = merchants.singleWhere(
+        (row) => row['id'] == 'merchant.shein',
+      );
+      expect(shein['default_category_id'], 'category.shopping');
+      expect(shein['default_subcategory_id'], 'category.shopping.clothing');
+
+      final wayfair = merchants.singleWhere(
+        (row) => row['id'] == 'merchant.wayfair',
+      );
+      expect(wayfair['default_category_id'], 'category.household');
+      expect(
+        wayfair['default_subcategory_id'],
+        'category.household.supplies',
+      );
+
+      final newegg = merchants.singleWhere(
+        (row) => row['id'] == 'merchant.newegg',
+      );
+      expect(newegg['default_category_id'], 'category.shopping');
+      expect(
+        newegg['default_subcategory_id'],
+        'category.shopping.electronics',
+      );
       expect(
         referenceTranslations
             .where(
