@@ -499,34 +499,34 @@ class _SearchPageState extends State<SearchPage>
       children: [
         Expanded(
           child: SearchBar(
-          controller: _text,
-          constraints: const BoxConstraints(
-            minHeight: ButlerlySize.minimumTarget,
-            maxHeight: ButlerlySize.minimumTarget,
-          ),
-          hintText: context.l10n.text('searchHint'),
-          leading: const Icon(Icons.search_rounded),
-          trailing: [
-            IconButton(
-              key: const ValueKey('search-submit'),
-              tooltip: context.l10n.text('search'),
-              onPressed: _submit,
-              icon: const Icon(Icons.search_rounded),
+            controller: _text,
+            constraints: const BoxConstraints(
+              minHeight: ButlerlySize.minimumTarget,
+              maxHeight: ButlerlySize.minimumTarget,
             ),
-            if (_text.text.isNotEmpty)
+            hintText: context.l10n.text('searchHint'),
+            leading: const Icon(Icons.search_rounded),
+            trailing: [
               IconButton(
-                tooltip: context.l10n.text('clear'),
-                onPressed: () {
-                  _text.clear();
-                  _submit();
-                },
-                icon: const Icon(Icons.close_rounded),
+                key: const ValueKey('search-submit'),
+                tooltip: context.l10n.text('search'),
+                onPressed: _submit,
+                icon: const Icon(Icons.search_rounded),
               ),
-          ],
-          onChanged: (_) {
-            setState(() {});
-            _scheduleSearch();
-          },
+              if (_text.text.isNotEmpty)
+                IconButton(
+                  tooltip: context.l10n.text('clear'),
+                  onPressed: () {
+                    _text.clear();
+                    _submit();
+                  },
+                  icon: const Icon(Icons.close_rounded),
+                ),
+            ],
+            onChanged: (_) {
+              setState(() {});
+              _scheduleSearch();
+            },
             onSubmitted: (_) => _submit(),
           ),
         ),
