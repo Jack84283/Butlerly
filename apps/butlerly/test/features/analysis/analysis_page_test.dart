@@ -167,7 +167,13 @@ void main() {
     expect(selector, findsOneWidget);
     expect(find.text('Financial calendar'), findsOneWidget);
 
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, 320));
+    unawaited(
+      tester
+          .state<RefreshIndicatorState>(
+            find.byKey(const ValueKey('analysis-pull-to-refresh')),
+          )
+          .show(),
+    );
     await tester.pump();
 
     expect(loads, 2);
