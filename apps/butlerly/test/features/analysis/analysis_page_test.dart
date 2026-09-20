@@ -73,129 +73,114 @@ void main() {
     );
   });
 
-  testWidgets(
-    'period header fits its pinned extent at enlarged text scale',
-    (tester) async {
-      tester.view.physicalSize = const Size(390, 844);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets('period header fits its pinned extent at enlarged text scale', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: const [
-            AppLocalizations.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          supportedLocales: AppLocalizations.supportedLocales,
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(
-              context,
-            ).copyWith(textScaler: const TextScaler.linear(2)),
-            child: child!,
-          ),
-          home: Scaffold(
-            body: Builder(
-              builder: (context) {
-                const subtitle = 'Selected period';
-                return ButlerlyPage(
-                  title: 'Analysis',
-                  pinnedHeaderExtent: AnalysisPeriodPinnedHeader.extent(
-                    context,
-                    subtitle,
-                  ),
-                  pinnedHeader: AnalysisPeriodPinnedHeader(
-                    subtitle: subtitle,
-                    value: 'current_month',
-                    onChanged: (_) {},
-                  ),
-                  children: const [SizedBox(height: 800)],
-                );
-              },
-            ),
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: Builder(
+            builder: (context) {
+              const subtitle = 'Selected period';
+              return ButlerlyPage(
+                title: 'Analysis',
+                pinnedHeaderExtent: AnalysisPeriodPinnedHeader.extent(
+                  context,
+                  subtitle,
+                ),
+                pinnedHeader: AnalysisPeriodPinnedHeader(
+                  subtitle: subtitle,
+                  value: 'current_month',
+                  onChanged: (_) {},
+                ),
+                children: const [SizedBox(height: 800)],
+              );
+            },
           ),
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(tester.takeException(), isNull);
-      final header = find.byKey(
-        const ValueKey('analysis-period-pinned-header'),
-      );
-      final selector = find.byKey(
-        const ValueKey('analysis-period-selector'),
-      );
-      final subtitle = find.text('Selected period');
-      expect(header, findsOneWidget);
-      expect(selector, findsOneWidget);
-      expect(subtitle, findsOneWidget);
+    expect(tester.takeException(), isNull);
+    final header = find.byKey(const ValueKey('analysis-period-pinned-header'));
+    final selector = find.byKey(const ValueKey('analysis-period-selector'));
+    final subtitle = find.text('Selected period');
+    expect(header, findsOneWidget);
+    expect(selector, findsOneWidget);
+    expect(subtitle, findsOneWidget);
 
-      final headerRect = tester.getRect(header);
-      final subtitleRect = tester.getRect(subtitle);
-      final selectorRect = tester.getRect(selector);
-      expect(subtitleRect.top, greaterThanOrEqualTo(headerRect.top));
-      expect(subtitleRect.bottom, lessThan(selectorRect.top));
-      expect(selectorRect.bottom, lessThanOrEqualTo(headerRect.bottom));
-    },
-  );
+    final headerRect = tester.getRect(header);
+    final subtitleRect = tester.getRect(subtitle);
+    final selectorRect = tester.getRect(selector);
+    expect(subtitleRect.top, greaterThanOrEqualTo(headerRect.top));
+    expect(subtitleRect.bottom, lessThan(selectorRect.top));
+    expect(selectorRect.bottom, lessThanOrEqualTo(headerRect.bottom));
+  });
 
-  testWidgets(
-    'refresh keeps analysis content and pinned controls visible',
-    (tester) async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.android;
-      addTearDown(() => debugDefaultTargetPlatformOverride = null);
-      var loads = 0;
-      final refreshResult =
-          Completer<ApplicationResult<List<RuleExecutionResult>>>();
+  testWidgets('refresh keeps analysis content and pinned controls visible', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    var loads = 0;
+    final refreshResult =
+        Completer<ApplicationResult<List<RuleExecutionResult>>>();
 
-      Future<ApplicationResult<List<RuleExecutionResult>>> loadForPeriod(
-        String _,
-      ) {
-        loads++;
-        if (loads == 1) {
-          return Future.value(
-            const ApplicationSuccess(<RuleExecutionResult>[]),
-          );
-        }
-        return refreshResult.future;
+    Future<ApplicationResult<List<RuleExecutionResult>>> loadForPeriod(
+      String _,
+    ) {
+      loads++;
+      if (loads == 1) {
+        return Future.value(const ApplicationSuccess(<RuleExecutionResult>[]));
       }
+      return refreshResult.future;
+    }
 
-      await tester.pumpWidget(
-        app(
-          () async => const ApplicationSuccess(<RuleExecutionResult>[]),
-          loadForPeriod: loadForPeriod,
-        ),
-      );
-      await tester.pumpAndSettle();
+    await tester.pumpWidget(
+      app(
+        () async => const ApplicationSuccess(<RuleExecutionResult>[]),
+        loadForPeriod: loadForPeriod,
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      final selector = find.byKey(
-        const ValueKey('analysis-period-selector'),
-      );
-      expect(selector, findsOneWidget);
-      expect(find.text('Financial calendar'), findsOneWidget);
+    final selector = find.byKey(const ValueKey('analysis-period-selector'));
+    expect(selector, findsOneWidget);
+    expect(find.text('Financial calendar'), findsOneWidget);
 
-      await tester.drag(
-        find.byType(CustomScrollView),
-        const Offset(0, 320),
-      );
-      await tester.pump();
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, 320));
+    await tester.pump();
 
-      expect(loads, 2);
-      expect(selector, findsOneWidget);
-      expect(
-        find.byKey(const ValueKey('analysis-period-pinned-header')),
-        findsOneWidget,
-      );
-      expect(find.text('Financial calendar'), findsOneWidget);
+    expect(loads, 2);
+    expect(selector, findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('analysis-period-pinned-header')),
+      findsOneWidget,
+    );
+    expect(find.text('Financial calendar'), findsOneWidget);
 
-      refreshResult.complete(
-        const ApplicationSuccess(<RuleExecutionResult>[]),
-      );
-      await tester.pumpAndSettle();
-    },
-  );
+    refreshResult.complete(const ApplicationSuccess(<RuleExecutionResult>[]));
+    await tester.pumpAndSettle();
+  });
 
   testWidgets('custom period uses a staged bottom sheet range editor', (
     tester,

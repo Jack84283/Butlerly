@@ -47,54 +47,44 @@ void main() {
     );
   }
 
-  testWidgets(
-    'refresh keeps insights content and pinned controls visible',
-    (tester) async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.android;
-      addTearDown(() => debugDefaultTargetPlatformOverride = null);
-      var loads = 0;
-      final refreshResult =
-          Completer<ApplicationResult<List<RuleExecutionResult>>>();
+  testWidgets('refresh keeps insights content and pinned controls visible', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    var loads = 0;
+    final refreshResult =
+        Completer<ApplicationResult<List<RuleExecutionResult>>>();
 
-      Future<ApplicationResult<List<RuleExecutionResult>>> load(String _) {
-        loads++;
-        if (loads == 1) {
-          return Future.value(
-            const ApplicationSuccess(<RuleExecutionResult>[]),
-          );
-        }
-        return refreshResult.future;
+    Future<ApplicationResult<List<RuleExecutionResult>>> load(String _) {
+      loads++;
+      if (loads == 1) {
+        return Future.value(const ApplicationSuccess(<RuleExecutionResult>[]));
       }
+      return refreshResult.future;
+    }
 
-      await tester.pumpWidget(app(load));
-      await tester.pumpAndSettle();
+    await tester.pumpWidget(app(load));
+    await tester.pumpAndSettle();
 
-      final selector = find.byKey(
-        const ValueKey('analysis-period-selector'),
-      );
-      expect(selector, findsOneWidget);
-      expect(find.text('Period summary'), findsOneWidget);
+    final selector = find.byKey(const ValueKey('analysis-period-selector'));
+    expect(selector, findsOneWidget);
+    expect(find.text('Period summary'), findsOneWidget);
 
-      await tester.drag(
-        find.byType(CustomScrollView),
-        const Offset(0, 320),
-      );
-      await tester.pump();
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, 320));
+    await tester.pump();
 
-      expect(loads, 2);
-      expect(selector, findsOneWidget);
-      expect(
-        find.byKey(const ValueKey('analysis-period-pinned-header')),
-        findsOneWidget,
-      );
-      expect(find.text('Period summary'), findsOneWidget);
+    expect(loads, 2);
+    expect(selector, findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('analysis-period-pinned-header')),
+      findsOneWidget,
+    );
+    expect(find.text('Period summary'), findsOneWidget);
 
-      refreshResult.complete(
-        const ApplicationSuccess(<RuleExecutionResult>[]),
-      );
-      await tester.pumpAndSettle();
-    },
-  );
+    refreshResult.complete(const ApplicationSuccess(<RuleExecutionResult>[]));
+    await tester.pumpAndSettle();
+  });
 
   testWidgets('summary pie uses source amounts instead of rounded shares', (
     tester,

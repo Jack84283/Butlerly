@@ -55,10 +55,7 @@ void main() {
       expect(find.text('No transactions'), findsOneWidget);
       expect(find.text('All'), findsOneWidget);
 
-      await tester.drag(
-        find.byType(CustomScrollView),
-        const Offset(0, 320),
-      );
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, 320));
       await tester.pump();
 
       expect(transactions.queryCount, 2);
