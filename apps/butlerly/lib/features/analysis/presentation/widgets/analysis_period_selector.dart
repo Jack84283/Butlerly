@@ -92,13 +92,12 @@ class AnalysisPeriodPinnedHeader extends StatelessWidget {
     required TextDirection textDirection,
     required double maxWidth,
   }) {
-    final painter =
-        TextPainter(
-          text: TextSpan(text: text, style: style),
-          textScaler: textScaler,
-          textDirection: textDirection,
-          maxLines: 1,
-        )..layout(maxWidth: maxWidth);
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textScaler: textScaler,
+      textDirection: textDirection,
+      maxLines: 1,
+    )..layout(maxWidth: maxWidth);
     return painter.height;
   }
 
