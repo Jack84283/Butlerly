@@ -1,0 +1,31 @@
+name: One-shot Dart format repair
+
+on:
+  push:
+    branches:
+      - codex/primary-pinned-page-spacing
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/primary-pinned-page-spacing
+      - uses: ./.github/actions/setup-toolchain
+      - run: ./tool/setup.sh
+      - name: Apply pinned Dart formatter
+        run: |
+          dart format             apps/butlerly/lib/design_system/components/butlerly_components.dart             apps/butlerly/lib/features/foundation/presentation/search_page.dart             apps/butlerly/test/features/transactions/transaction_lifecycle_test.dart             apps/butlerly/test/features/analysis/analysis_page_test.dart             apps/butlerly/test/features/insights/insights_page_test.dart
+      - name: Commit canonical formatting and remove this one-shot workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/one-shot-format-repair.yml
+          git add             apps/butlerly/lib/design_system/components/butlerly_components.dart             apps/butlerly/lib/features/foundation/presentation/search_page.dart             apps/butlerly/test/features/transactions/transaction_lifecycle_test.dart             apps/butlerly/test/features/analysis/analysis_page_test.dart             apps/butlerly/test/features/insights/insights_page_test.dart
+          git diff --cached --quiet && exit 0
+          git commit -m "Apply Dart formatter"
+          git push origin HEAD:codex/primary-pinned-page-spacing
