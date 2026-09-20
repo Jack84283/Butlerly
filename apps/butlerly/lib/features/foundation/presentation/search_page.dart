@@ -550,14 +550,9 @@ class _SearchPageState extends State<SearchPage>
         await _refreshAfterTransactionChange();
       },
       refreshKey: const ValueKey('search-pull-to-refresh'),
-      headerBottomGap: widget.readOnly
-          ? ButlerlySpacing.none
-          : ButlerlySpacing.pinnedPageHeaderBottomGap,
-      pinnedHeaderTopGap: ButlerlySpacing.pinnedPageTopGap,
-      pinnedHeaderBottomGap: ButlerlySpacing.pinnedPageBottomGap,
-      contentTopGap: widget.readOnly
-          ? null
-          : ButlerlySpacing.pinnedPageBodyTopGap,
+      pinnedSpacing: widget.readOnly
+          ? ButlerlyPinnedPageSpacing.none
+          : ButlerlyPinnedPageSpacing.primary,
       pinnedHeaderExtent: widget.readOnly
           ? ButlerlySize.minimumTarget
           : ButlerlySize.searchPinnedHeaderHeight,
