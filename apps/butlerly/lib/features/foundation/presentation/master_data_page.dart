@@ -3,6 +3,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_compact_section_selector.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -325,15 +326,15 @@ class _MasterDataPageState extends State<MasterDataPage> {
             ButlerlySpacing.pinnedPageHeaderBottomGap +
             ButlerlySpacing.pinnedPageTopGap +
             ButlerlySize.minimumTarget +
-            ButlerlySpacing.pinnedPageBottomGap +
-            ButlerlySpacing.masterDataAddButtonTopGap,
+            ButlerlySpacing.pinnedPageBottomGap,
         end: ButlerlySize.phoneGutter,
-        child: IconButton.filled(
+        child: IconButton(
           key: const ValueKey('master-data-add'),
           tooltip: context.l10n.text('add'),
           onPressed: _add,
           icon: const Icon(Icons.add, color: Colors.white),
           style: IconButton.styleFrom(
+            backgroundColor: context.colors.interactive,
             shape: const CircleBorder(),
             minimumSize: const Size.square(ButlerlySize.minimumTarget),
             maximumSize: const Size.square(ButlerlySize.minimumTarget),
