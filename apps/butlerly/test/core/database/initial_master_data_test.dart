@@ -219,6 +219,11 @@ void main() {
           'Banana Republic',
           'Burlington',
           'Forever 21',
+          'Safeway Pharmacy',
+          'Costco Pharmacy',
+          'Costco Gas',
+          'Walmart Pharmacy',
+          'CVS Pharmacy',
         ]),
       );
       expect(
@@ -609,6 +614,30 @@ void main() {
       );
       expect(kohls['default_category_id'], 'category.shopping');
       expect(kohls['default_subcategory_id'], 'category.shopping.clothing');
+      for (final merchantId in [
+        'merchant.safeway_pharmacy',
+        'merchant.costco_pharmacy',
+        'merchant.walmart_pharmacy',
+        'merchant.cvs_pharmacy',
+      ]) {
+        final merchant = merchants.singleWhere(
+          (row) => row['id'] == merchantId,
+        );
+        expect(merchant['default_category_id'], 'category.health');
+        expect(
+          merchant['default_subcategory_id'],
+          'category.health.pharmacy',
+        );
+      }
+
+      final costcoGas = merchants.singleWhere(
+        (row) => row['id'] == 'merchant.costco_gas',
+      );
+      expect(costcoGas['default_category_id'], 'category.transportation');
+      expect(
+        costcoGas['default_subcategory_id'],
+        'category.transportation.fuel',
+      );
       expect(
         referenceTranslations
             .where(
