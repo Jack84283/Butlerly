@@ -2236,8 +2236,9 @@ final class MemoryDuplicateGroups implements DuplicateCandidateGroupRepository {
       transactions.values.values
           .where(
             (transaction) =>
-                DuplicateTransactionKey.fromTransaction(transaction)
-                    ?.canonical ==
+                DuplicateTransactionKey.fromTransaction(
+                  transaction,
+                )?.canonical ==
                 key.canonical,
           )
           .map((transaction) => transaction.id)
