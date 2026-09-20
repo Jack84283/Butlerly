@@ -22,6 +22,10 @@ class ButlerlyPage extends StatelessWidget {
     this.controller,
     this.pinnedHeader,
     this.pinnedHeaderExtent = ButlerlySize.minimumTarget,
+    this.headerBottomGap = ButlerlySpacing.none,
+    this.pinnedHeaderTopGap = ButlerlySpacing.none,
+    this.pinnedHeaderBottomGap = ButlerlySpacing.none,
+    this.contentTopGap,
     this.onRefresh,
     this.refreshKey,
     super.key,
@@ -35,6 +39,10 @@ class ButlerlyPage extends StatelessWidget {
   final ScrollController? controller;
   final Widget? pinnedHeader;
   final double pinnedHeaderExtent;
+  final double headerBottomGap;
+  final double pinnedHeaderTopGap;
+  final double pinnedHeaderBottomGap;
+  final double? contentTopGap;
   final RefreshCallback? onRefresh;
   final Key? refreshKey;
 
@@ -44,7 +52,7 @@ class ButlerlyPage extends StatelessWidget {
         padding ??
         const EdgeInsets.fromLTRB(
           ButlerlySize.phoneGutter,
-          ButlerlySpacing.standard,
+          contentTopGap ?? ButlerlySpacing.standard,
           ButlerlySize.phoneGutter,
           ButlerlySpacing.large,
         );
@@ -57,8 +65,12 @@ class ButlerlyPage extends StatelessWidget {
         : pinnedHeader == null
         ? kToolbarHeight
         : ButlerlySize.compactPageToolbarHeight;
-    final pinnedHeaderHeight = pinnedHeader == null ? 0.0 : pinnedHeaderExtent;
-    final refreshEdgeOffset = toolbarHeight + pinnedHeaderHeight;
+    final appBarHeight =
+        toolbarHeight + (title == null ? ButlerlySpacing.none : headerBottomGap);
+    final pinnedHeaderHeight = pinnedHeader == null
+        ? ButlerlySpacing.none
+        : pinnedHeaderExtent + pinnedHeaderTopGap + pinnedHeaderBottomGap;
+    final refreshEdgeOffset = appBarHeight + pinnedHeaderHeight;
 
     final content = ButlerlyContentCanvas(
       canvasKey: const ValueKey('butlerly-page-canvas'),
@@ -76,6 +88,12 @@ class ButlerlyPage extends StatelessWidget {
               toolbarHeight: toolbarHeight,
               title: Text(title!),
               actions: actions,
+              bottom: headerBottomGap > ButlerlySpacing.none
+                  ? PreferredSize(
+                      preferredSize: Size.fromHeight(headerBottomGap),
+                      child: SizedBox(height: headerBottomGap),
+                    )
+                  : null,
               backgroundColor: context.colors.background.withValues(
                 alpha: 0.96,
               ),
@@ -86,6 +104,8 @@ class ButlerlyPage extends StatelessWidget {
               delegate: _ButlerlyPinnedHeaderDelegate(
                 child: pinnedHeader!,
                 extent: pinnedHeaderExtent,
+                topGap: pinnedHeaderTopGap,
+                bottomGap: pinnedHeaderBottomGap,
               ),
             ),
           if (useCupertinoRefresh)
@@ -145,16 +165,20 @@ class _ButlerlyPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
   const _ButlerlyPinnedHeaderDelegate({
     required this.child,
     required this.extent,
+    required this.topGap,
+    required this.bottomGap,
   });
 
   final Widget child;
   final double extent;
+  final double topGap;
+  final double bottomGap;
 
   @override
-  double get minExtent => extent;
+  double get minExtent => extent + topGap + bottomGap;
 
   @override
-  double get maxExtent => extent;
+  double get maxExtent => extent + topGap + bottomGap;
 
   @override
   Widget build(
@@ -163,18 +187,21 @@ class _ButlerlyPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
     bool overlapsContent,
   ) => ColoredBox(
     color: context.colors.background,
-    child: Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: ButlerlySize.phoneGutter,
-        ),
-        child: ConstrainedBox(
+    child: Padding(
+      padding: EdgeInsets.only(top: topGap, bottom: bottomGap),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: ButlerlySize.phoneGutter,
+          ),
+          child: ConstrainedBox(
           constraints: BoxConstraints(
             maxWidth: ButlerlyLayout.contentMaxWidth(
               MediaQuery.sizeOf(context),
             ),
           ),
-          child: SizedBox(width: double.infinity, child: child),
+            child: SizedBox(width: double.infinity, child: child),
+          ),
         ),
       ),
     ),
@@ -182,7 +209,10 @@ class _ButlerlyPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(covariant _ButlerlyPinnedHeaderDelegate oldDelegate) =>
-      oldDelegate.child != child || oldDelegate.extent != extent;
+      oldDelegate.child != child ||
+      oldDelegate.extent != extent ||
+      oldDelegate.topGap != topGap ||
+      oldDelegate.bottomGap != bottomGap;
 }
 
 class ButlerlyCard extends StatelessWidget {
