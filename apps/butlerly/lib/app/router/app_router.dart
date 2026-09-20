@@ -103,13 +103,7 @@ final appRouter = GoRouter(
                 );
                 return _primaryPage(
                   'transactions',
-                  RefreshIndicator(
-                    onRefresh: () async {
-                      notifyTransactionChanged();
-                      await WidgetsBinding.instance.endOfFrame;
-                    },
-                    child: TransactionsPage(query: query),
-                  ),
+                  TransactionsPage(query: query),
                   // StatefulShellRoute keeps branch widgets alive. A query
                   // change represents a different transaction result set, so
                   // give the page a semantic key and never retain stale state.
