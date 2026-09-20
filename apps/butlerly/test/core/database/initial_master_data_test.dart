@@ -36,7 +36,25 @@ void main() {
 
       expect(
         categories.map((row) => row['id']),
-        containsAll(['category.food', 'category.food.coffee']),
+        containsAll([
+          'category.food',
+          'category.food.coffee',
+          'category.shopping.general',
+          'category.household',
+          'category.household.cleaning',
+          'category.travel.car_rental',
+          'category.education.tuition_fees',
+          'category.education.books_supplies',
+          'category.education.training_courses',
+          'category.personal.oral',
+          'category.personal.hair',
+          'category.personal.bath_body',
+          'category.insurance.auto',
+          'category.insurance.homeowners',
+          'category.insurance.health',
+          'category.insurance.life',
+          'category.insurance.other',
+        ]),
       );
       expect(tags.map((row) => row['id']), contains('tag.tax_related'));
       expect(
@@ -82,6 +100,26 @@ void main() {
             )
             .single['label'],
         'Negocios',
+      );
+      expect(
+        categoryTranslations
+            .where(
+              (row) =>
+                  row['category_id'] == 'category.shopping.general' &&
+                  row['locale'] == 'es',
+            )
+            .single['label'],
+        'Mercancía general',
+      );
+      expect(
+        categoryTranslations
+            .where(
+              (row) =>
+                  row['category_id'] == 'category.travel.car_rental' &&
+                  row['locale'] == 'zh-Hans',
+            )
+            .single['label'],
+        '租车',
       );
       expect(
         referenceTranslations
