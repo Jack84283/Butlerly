@@ -1,27 +1,55 @@
 import 'package:butlerly/app/router/app_router.dart';
 import 'package:butlerly/app/shell/adaptive_shell.dart';
+import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:flutter/cupertino.dart' show CupertinoSliverRefreshControl;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('transactions route exposes pull to refresh', (tester) async {
+  testWidgets('transactions route has no refresh wrapper above the page', (
+    tester,
+  ) async {
     await tester.pumpWidget(MaterialApp.router(routerConfig: appRouter));
     appRouter.go('/transactions');
     await tester.pumpAndSettle();
 
-    expect(find.byType(RefreshIndicator), findsOneWidget);
+    expect(find.byType(RefreshIndicator), findsNothing);
   });
 
-  testWidgets('search results expose pull to refresh', (tester) async {
-    await tester.pumpWidget(MaterialApp.router(routerConfig: appRouter));
-    appRouter.go('/search?from=2026-09-01&to=2026-09-30');
-    await tester.pumpAndSettle();
+  testWidgets(
+    'search iOS refresh control is a body sliver below its pinned header',
+    (tester) async {
+      await tester.pumpWidget(MaterialApp.router(routerConfig: appRouter));
+      appRouter.go('/search?from=2026-09-01&to=2026-09-30');
+      await tester.pumpAndSettle();
 
-    expect(
-      find.byKey(const ValueKey('search-pull-to-refresh')),
-      findsOneWidget,
-    );
-  });
+      final refreshFinder = find.byKey(
+        const ValueKey('search-pull-to-refresh'),
+      );
+      expect(refreshFinder, findsOneWidget);
+      expect(
+        tester.widget(refreshFinder),
+        isA<CupertinoSliverRefreshControl>(),
+      );
+
+      final scrollView = tester.widget<CustomScrollView>(
+        find.descendant(
+          of: find.byType(ButlerlyPage),
+          matching: find.byType(CustomScrollView),
+        ),
+      );
+      final headerIndex = scrollView.slivers.indexWhere(
+        (sliver) => sliver is SliverAppBar,
+      );
+      final refreshIndex = scrollView.slivers.indexWhere(
+        (sliver) => sliver is CupertinoSliverRefreshControl,
+      );
+      expect(headerIndex, isNonNegative);
+      expect(refreshIndex, greaterThan(headerIndex));
+      expect(find.byType(RefreshIndicator), findsNothing);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+  );
 
   testWidgets('primary shell observer invokes its pop callback', (
     tester,
