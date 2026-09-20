@@ -354,6 +354,7 @@ class _ReviewPageState extends State<ReviewPage> {
       title: context.l10n.text('review'),
       onRefresh: _pullToRefresh,
       refreshKey: ValueKey('review-pull-to-refresh-${_view.name}'),
+      pinnedSpacing: ButlerlyPinnedPageSpacing.primary,
       pinnedHeader: FutureBuilder<List<DuplicateCandidateGroup>>(
         future: _duplicateGroups,
         builder: (context, snapshot) {
@@ -371,8 +372,6 @@ class _ReviewPageState extends State<ReviewPage> {
         },
       ),
       children: [
-        if (_view != _ReviewView.duplicates)
-          const SizedBox(height: ButlerlySpacing.section),
         if (_view == _ReviewView.duplicates)
           FutureBuilder<List<DuplicateCandidateGroup>>(
             future: _duplicateGroups,

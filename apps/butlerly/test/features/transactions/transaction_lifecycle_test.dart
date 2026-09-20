@@ -443,35 +443,84 @@ void main() {
   });
 
   testWidgets(
-    'Transactions Review and Master Data menus start directly below the app bar',
+    'Transactions Search and Review use the shared primary pinned-page spacing',
     (tester) async {
       for (final page in const <Widget>[
         TransactionsPage(),
+        SearchPage(),
         ReviewPage(),
-        MasterDataPage(),
       ]) {
         await tester.pumpWidget(MaterialApp(home: page));
         await tester.pumpAndSettle();
 
-        final sliverAppBar = tester.widget<SliverAppBar>(
-          find.byType(SliverAppBar),
+        final butlerlyPage = tester.widget<ButlerlyPage>(
+          find.byType(ButlerlyPage),
         );
-        final appBarBottom = tester.getBottomLeft(find.byType(AppBar)).dy;
-        final selectorTop = tester
-            .getTopLeft(find.byType(ButlerlyCompactSectionSelector))
-            .dy;
         expect(
-          sliverAppBar.toolbarHeight,
-          ButlerlySize.compactPageToolbarHeight,
+          butlerlyPage.pinnedSpacing.headerBottomGap,
+          ButlerlySpacing.pinnedPageHeaderBottomGap,
         );
-        expect(selectorTop - appBarBottom, closeTo(0, 0.01));
         expect(
-          tester.getSize(find.byType(ButlerlyCompactSectionSelector)).height,
-          ButlerlySize.minimumTarget,
+          butlerlyPage.pinnedSpacing.pinnedTopGap,
+          ButlerlySpacing.pinnedPageTopGap,
+        );
+        expect(
+          butlerlyPage.pinnedSpacing.pinnedBottomGap,
+          ButlerlySpacing.pinnedPageBottomGap,
+        );
+        expect(
+          butlerlyPage.pinnedSpacing.bodyTopGap,
+          ButlerlySpacing.pinnedPageBodyTopGap,
         );
       }
     },
   );
+
+  testWidgets('primary pinned-page spacing renders all four requested gaps', (
+    tester,
+  ) async {
+    const pinnedKey = ValueKey('spacing-test-pinned');
+    const bodyKey = ValueKey('spacing-test-body');
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: ButlerlyPage(
+          title: 'Spacing',
+          pinnedSpacing: ButlerlyPinnedPageSpacing.primary,
+          pinnedHeader: SizedBox(
+            key: pinnedKey,
+            height: ButlerlySize.minimumTarget,
+          ),
+          children: [
+            SizedBox(key: bodyKey, height: ButlerlySize.minimumTarget),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final sliverAppBar = tester.widget<SliverAppBar>(find.byType(SliverAppBar));
+    final appBarBottom = tester.getBottomLeft(find.byType(AppBar)).dy;
+    final pinnedRect = tester.getRect(find.byKey(pinnedKey));
+    final bodyRect = tester.getRect(find.byKey(bodyKey));
+
+    expect(
+      sliverAppBar.bottom?.preferredSize.height,
+      ButlerlySpacing.pinnedPageHeaderBottomGap,
+    );
+    expect(
+      pinnedRect.top - appBarBottom,
+      closeTo(ButlerlySpacing.pinnedPageTopGap, 0.01),
+    );
+    expect(
+      bodyRect.top - pinnedRect.bottom,
+      closeTo(
+        ButlerlySpacing.pinnedPageBottomGap +
+            ButlerlySpacing.pinnedPageBodyTopGap,
+        0.01,
+      ),
+    );
+  });
 
   testWidgets('Home refreshes when a transaction changes outside its route', (
     tester,
