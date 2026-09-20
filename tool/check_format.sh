@@ -2,4 +2,6 @@
 set -euo pipefail
 
 # Report formatting drift without changing the caller's files.
-dart format --output=none --set-exit-if-changed "$@"
+dart format "$@"
+git diff -- .
+exit 1
