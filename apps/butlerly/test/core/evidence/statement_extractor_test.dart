@@ -57,28 +57,31 @@ void main() {
     expect(result.rows.single.description, 'SAFEWAY STORE');
   });
 
-  test('supports combined and incomplete purchase-date rows without dropping evidence', () {
-    final combined = LocalStatementExtractor.parse(
-      'Statement period: 2026-08-01 - 2026-08-31\n'
-      '8/15 8/17 SAFEWAY STORE 42.19',
-    ).single;
-    expect(combined.date, DateTime(2026, 8, 15));
-    expect(combined.postingDate, DateTime(2026, 8, 17));
-    expect(combined.amount, '42.19');
+  test(
+    'supports combined and incomplete purchase-date rows without dropping evidence',
+    () {
+      final combined = LocalStatementExtractor.parse(
+        'Statement period: 2026-08-01 - 2026-08-31\n'
+        '8/15 8/17 SAFEWAY STORE 42.19',
+      ).single;
+      expect(combined.date, DateTime(2026, 8, 15));
+      expect(combined.postingDate, DateTime(2026, 8, 17));
+      expect(combined.amount, '42.19');
 
-    final missingPosting = LocalStatementExtractor.parse(
-      'Statement period: 2026-08-01 - 2026-08-31\n8/15 SAFEWAY STORE 42.19',
-    ).single;
-    expect(missingPosting.date, DateTime(2026, 8, 15));
-    expect(missingPosting.postingDate, isNull);
-    expect(missingPosting.amount, '42.19');
+      final missingPosting = LocalStatementExtractor.parse(
+        'Statement period: 2026-08-01 - 2026-08-31\n8/15 SAFEWAY STORE 42.19',
+      ).single;
+      expect(missingPosting.date, DateTime(2026, 8, 15));
+      expect(missingPosting.postingDate, isNull);
+      expect(missingPosting.amount, '42.19');
 
-    final missingAmount = LocalStatementExtractor.parse(
-      'Statement period: 2026-08-01 - 2026-08-31\n8/15 8/17 SAFEWAY STORE',
-    ).single;
-    expect(missingAmount.amount, isNull);
-    expect(missingAmount.isUnresolved, isTrue);
-  });
+      final missingAmount = LocalStatementExtractor.parse(
+        'Statement period: 2026-08-01 - 2026-08-31\n8/15 8/17 SAFEWAY STORE',
+      ).single;
+      expect(missingAmount.amount, isNull);
+      expect(missingAmount.isUnresolved, isTrue);
+    },
+  );
   test(
     'complementary incomplete rows stay separate in text and Vision paths',
     () {
@@ -306,8 +309,9 @@ void main() {
   });
 
   test('merchant text cannot fabricate a currency code', () {
-    final row = LocalStatementExtractor.parse('2026-08-12 NEURO SHOP 10.00')
-        .single;
+    final row = LocalStatementExtractor.parse(
+      '2026-08-12 NEURO SHOP 10.00',
+    ).single;
     expect(row.currency, isNull);
   });
 
@@ -371,8 +375,9 @@ void main() {
         ('DR 123.45', '123.45', 'expense'),
         ('REFUND 123.45', '123.45', 'refund'),
       ]) {
-        final row = LocalStatementExtractor.parse('$date SHOP ${item.$1}')
-            .single;
+        final row = LocalStatementExtractor.parse(
+          '$date SHOP ${item.$1}',
+        ).single;
         expect(row.date, DateTime(2026, 8, 12));
         expect(row.amount, item.$2, reason: item.$1);
         expect(row.direction, item.$3, reason: item.$1);
@@ -424,13 +429,11 @@ void main() {
   });
 
   test('merchant and amount without a readable date survive for review', () {
-    final result = LocalStatementExtractor.fromObservations(
-      'COFFEE SHOP\n18.25',
-      [
-        _observation('COFFEE SHOP', .25, .30, order: 0),
-        _observation('18.25', .82, .305, order: 1),
-      ],
-    );
+    final result =
+        LocalStatementExtractor.fromObservations('COFFEE SHOP\n18.25', [
+          _observation('COFFEE SHOP', .25, .30, order: 0),
+          _observation('18.25', .82, .305, order: 1),
+        ]);
     expect(result.rows, hasLength(1));
     expect(result.rows.single.date, isNull);
     expect(result.rows.single.amount, '18.25');
@@ -440,15 +443,13 @@ void main() {
   });
 
   test('split dollar symbol is not retained as merchant description', () {
-    final result = LocalStatementExtractor.fromObservations(
-      '08/12 SHOP \$ 123.45',
-      [
-        _observation('08/12', .05, .30, order: 0),
-        _observation('SHOP', .25, .303, order: 1),
-        _observation(r'$', .78, .306, order: 2),
-        _observation('123.45', .82, .307, order: 3),
-      ],
-    );
+    final result =
+        LocalStatementExtractor.fromObservations('08/12 SHOP \$ 123.45', [
+          _observation('08/12', .05, .30, order: 0),
+          _observation('SHOP', .25, .303, order: 1),
+          _observation(r'$', .78, .306, order: 2),
+          _observation('123.45', .82, .307, order: 3),
+        ]);
     expect(result.rows.single.description, 'SHOP');
     expect(result.rows.single.amount, '123.45');
     expect(result.rows.single.date, isNull);

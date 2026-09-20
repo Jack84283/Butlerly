@@ -427,8 +427,9 @@ class _InsightItem extends StatelessWidget {
                       difference,
                       percent,
                     ].whereType<String>().join(' · '),
-                    style: Theme.of(context).textTheme.bodyMedium
-                        ?.copyWith(color: semantic.color),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: semantic.color),
                   ),
                 ],
                 if (onViewTransactions != null) ...[

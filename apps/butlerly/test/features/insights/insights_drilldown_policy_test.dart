@@ -62,39 +62,38 @@ void main() {
     );
   });
 
-  testWidgets(
-    'category drill-down uses live criteria instead of evidence IDs',
-    (tester) async {
-      String? path;
-      await tester.pumpWidget(
-        app(
-          _categoryInsight(
-            'category.dining',
-            evidence: [
-              EvidenceReference(transactionId: TransactionId('old-support')),
-            ],
-            filters: const [
-              AnalysisFilter(
-                kind: AnalysisFilterKind.direction,
-                values: ['expense'],
-              ),
-            ],
-          ),
-          onNavigationRequested: (value) => path = value,
+  testWidgets('category drill-down uses live criteria instead of evidence IDs', (
+    tester,
+  ) async {
+    String? path;
+    await tester.pumpWidget(
+      app(
+        _categoryInsight(
+          'category.dining',
+          evidence: [
+            EvidenceReference(transactionId: TransactionId('old-support')),
+          ],
+          filters: const [
+            AnalysisFilter(
+              kind: AnalysisFilterKind.direction,
+              values: ['expense'],
+            ),
+          ],
         ),
-      );
-      await tester.pumpAndSettle();
-      await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
-      await tester.pumpAndSettle();
+        onNavigationRequested: (value) => path = value,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+    await tester.pumpAndSettle();
 
-      await tester.tap(find.textContaining('1 supporting transaction'));
-      expect(
-        path,
-        '/search?locked=true&from=2026-09-01&to=2026-09-05&direction=expense&category=category.dining',
-      );
-      expect(path, isNot(contains('ids=')));
-    },
-  );
+    await tester.tap(find.textContaining('1 supporting transaction'));
+    expect(
+      path,
+      '/search?locked=true&from=2026-09-01&to=2026-09-05&direction=expense&category=category.dining',
+    );
+    expect(path, isNot(contains('ids=')));
+  });
 
   testWidgets('overall spending drill-down carries the expense rule filter', (
     tester,

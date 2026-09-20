@@ -136,21 +136,24 @@ void main() {
     },
   );
 
-  test('derived statement OCR retains source text except established PAN redaction', () async {
-    messenger.setMockMethodCallHandler(
-      channel,
-      (_) async => {
-        'text': 'CARD 4111 1111 1111 1234\n2026-08-12 SHOP 18.25',
-        'observations': [_nativeObservation('2026-08-12 SHOP 18.25')],
-        'diagnostics': _nativeDiagnostics(1),
-      },
-    );
-    final result = await const LocalStatementExtractor().extract(
-      '/local/photo.jpg',
-    );
-    expect(result.rawText, 'CARD ****1234\n2026-08-12 SHOP 18.25');
-    expect(result.rows.single.originalText, '2026-08-12 SHOP 18.25');
-  });
+  test(
+    'derived statement OCR retains source text except established PAN redaction',
+    () async {
+      messenger.setMockMethodCallHandler(
+        channel,
+        (_) async => {
+          'text': 'CARD 4111 1111 1111 1234\n2026-08-12 SHOP 18.25',
+          'observations': [_nativeObservation('2026-08-12 SHOP 18.25')],
+          'diagnostics': _nativeDiagnostics(1),
+        },
+      );
+      final result = await const LocalStatementExtractor().extract(
+        '/local/photo.jpg',
+      );
+      expect(result.rawText, 'CARD ****1234\n2026-08-12 SHOP 18.25');
+      expect(result.rows.single.originalText, '2026-08-12 SHOP 18.25');
+    },
+  );
 }
 
 Map<String, Object> _nativeObservation(

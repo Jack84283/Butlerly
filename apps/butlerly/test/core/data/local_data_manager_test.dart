@@ -59,8 +59,9 @@ void main() {
       ]),
     );
     expect(
-      File(path.join(exported.directory.path, 'evidence', 'receipt.bin'))
-          .existsSync(),
+      File(
+        path.join(exported.directory.path, 'evidence', 'receipt.bin'),
+      ).existsSync(),
       isTrue,
     );
 

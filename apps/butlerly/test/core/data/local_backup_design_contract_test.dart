@@ -56,8 +56,9 @@ void main() {
       isTrue,
     );
     expect(
-      Directory(path.join(fixture.documents.path, 'Butlerly Safety Backups'))
-          .existsSync(),
+      Directory(
+        path.join(fixture.documents.path, 'Butlerly Safety Backups'),
+      ).existsSync(),
       isFalse,
     );
   });

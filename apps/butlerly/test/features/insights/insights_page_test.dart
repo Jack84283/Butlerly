@@ -399,18 +399,21 @@ void main() {
 
   test('supports authored insight copy in all V1 locales', () {
     expect(
-      AppLocalizations(const Locale('en'))
-          .text('analysis.rule.r020.description'),
+      AppLocalizations(
+        const Locale('en'),
+      ).text('analysis.rule.r020.description'),
       'Compare spending in the selected period with the previous equivalent period.',
     );
     expect(
-      AppLocalizations(const Locale('zh', 'CN'))
-          .text('analysis.rule.r020.description'),
+      AppLocalizations(
+        const Locale('zh', 'CN'),
+      ).text('analysis.rule.r020.description'),
       '将所选期间的支出与上一等效期间进行比较。',
     );
     expect(
-      AppLocalizations(const Locale('es'))
-          .text('analysis.rule.r020.description'),
+      AppLocalizations(
+        const Locale('es'),
+      ).text('analysis.rule.r020.description'),
       'Compara los gastos del período seleccionado con el período equivalente anterior.',
     );
   });

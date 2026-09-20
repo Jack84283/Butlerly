@@ -178,40 +178,46 @@ void main() {
     },
   );
 
-  test('rule installation failure keeps restore gated and preserves financial data', () async {
-    final source = await rootBundle.loadString(
-      'assets/analysis_rules/metrics/ANL-R001.yaml',
-    );
-    final conflicting = source.replaceFirst(
-      'role: expenseTotal',
-      'role: incompatibleRole',
-    );
-    final installed = await InstallBuiltInRules(rules)({
-      'conflicting.yaml': conflicting,
-    });
-    expect(installed.diagnostics, isEmpty);
-    final backup = File('${root.path}/conflicting.butlerlybackup');
-    await services<LocalBackupManager>().createBackup(backup);
-    var refreshed = false;
-    await expectLater(
-      services<WorkspaceDataService>().restore(
-        backup.path,
-        mode: LocalRestoreMode.replace,
-        refreshPresentation: () async {
-          refreshed = true;
-        },
-      ),
-      throwsA(isA<RestoreRecoveryRequiredException>()),
-    );
-    expect(refreshed, isFalse);
-    expect(
-      services<LocalBackupManager>().recoveryState.isRecoveryRequired,
-      isTrue,
-    );
-    expect(await database.database.query('transactions'), hasLength(1));
-    final persisted = (await rules.listDefinitions()).singleWhere(
-      (rule) => rule.identity.value == 'ANL-R001',
-    );
-    expect(persisted.definitionHash, installed.installed.single.definitionHash);
-  });
+  test(
+    'rule installation failure keeps restore gated and preserves financial data',
+    () async {
+      final source = await rootBundle.loadString(
+        'assets/analysis_rules/metrics/ANL-R001.yaml',
+      );
+      final conflicting = source.replaceFirst(
+        'role: expenseTotal',
+        'role: incompatibleRole',
+      );
+      final installed = await InstallBuiltInRules(rules)({
+        'conflicting.yaml': conflicting,
+      });
+      expect(installed.diagnostics, isEmpty);
+      final backup = File('${root.path}/conflicting.butlerlybackup');
+      await services<LocalBackupManager>().createBackup(backup);
+      var refreshed = false;
+      await expectLater(
+        services<WorkspaceDataService>().restore(
+          backup.path,
+          mode: LocalRestoreMode.replace,
+          refreshPresentation: () async {
+            refreshed = true;
+          },
+        ),
+        throwsA(isA<RestoreRecoveryRequiredException>()),
+      );
+      expect(refreshed, isFalse);
+      expect(
+        services<LocalBackupManager>().recoveryState.isRecoveryRequired,
+        isTrue,
+      );
+      expect(await database.database.query('transactions'), hasLength(1));
+      final persisted = (await rules.listDefinitions()).singleWhere(
+        (rule) => rule.identity.value == 'ANL-R001',
+      );
+      expect(
+        persisted.definitionHash,
+        installed.installed.single.definitionHash,
+      );
+    },
+  );
 }

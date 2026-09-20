@@ -62,6 +62,7 @@ String analysisPeriodLabel(BuildContext context, AnalysisMetric metric) {
   final raw = analysisPeriodKey(metric);
   final date = DateTime.tryParse('$raw-01');
   if (date == null) return raw;
-  return DateFormat.MMM(Localizations.localeOf(context).toString())
-      .format(date);
+  return DateFormat.MMM(
+    Localizations.localeOf(context).toString(),
+  ).format(date);
 }

@@ -53,8 +53,9 @@ void main() {
     var mutationObservedCompletedRestore = false;
     final mutationFuture = EvidenceMutationLock.runExclusive(() async {
       mutationObservedCompletedRestore = restoreCompleted;
-      await File(path.join(evidence.path, 'captured-during-restore.bin'))
-          .writeAsString('new evidence', flush: true);
+      await File(
+        path.join(evidence.path, 'captured-during-restore.bin'),
+      ).writeAsString('new evidence', flush: true);
     });
 
     await Future.wait<void>([restoreFuture.then((_) {}), mutationFuture]);
@@ -179,8 +180,9 @@ void main() {
       'created_at': old,
       'updated_at': old,
     });
-    await File(path.join(evidence.path, 'restored-evidence.bin'))
-        .writeAsString('backup evidence', flush: true);
+    await File(
+      path.join(evidence.path, 'restored-evidence.bin'),
+    ).writeAsString('backup evidence', flush: true);
     final backup = File(
       path.join(root.path, 'restore-then-erase.butlerlybackup'),
     );

@@ -84,8 +84,9 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _edit({PaymentSource? existing, CardScanResult? scanned}) async {

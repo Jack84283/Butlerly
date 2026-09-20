@@ -44,7 +44,8 @@ class AppLocalizations {
       'statements': 'Statements',
       'statement': 'Statement',
       'addStatement': 'Add statement',
-      'statementsEmptyBody': 'Add a bank or card statement. The original stays on this device and every row waits for your review.',
+      'statementsEmptyBody':
+          'Add a bank or card statement. The original stays on this device and every row waits for your review.',
       'choosePaymentSourceToContinue': 'Choose a payment source to continue',
       'reviewInProgress': 'Review in progress',
       'statementRows': 'Rows',
@@ -89,7 +90,8 @@ class AppLocalizations {
       'toolsInsightsDescription':
           'See useful observations from your confirmed records.',
       'addTransactionAction': 'Add transaction',
-      'addTransactionActionSubtitle': 'Add transaction yourself, from receipt, from statement and local file',
+      'addTransactionActionSubtitle':
+          'Add transaction yourself, from receipt, from statement and local file',
       'welcomeTitle': 'Welcome to Butlerly',
       'welcomeSubtitle': 'Your private financial record, under your control.',
       'privateByDefault': 'Private by default',
@@ -100,7 +102,8 @@ class AppLocalizations {
       'optionalAssistanceBody': 'Manual workflows always remain available.',
       'getStarted': 'Get started',
       'firstUseTitle': 'Set up your local workspace',
-      'firstUseBody': 'No account is needed. These defaults stay on this device and can be changed later in Settings.',
+      'firstUseBody':
+          'No account is needed. These defaults stay on this device and can be changed later in Settings.',
       'preferences': 'Preferences',
       'continueLocally': 'Continue locally',
       'skip': 'Skip',
@@ -116,14 +119,17 @@ class AppLocalizations {
       'insightsPositiveChanges': 'Positive changes',
       'insightsCategoryMovementSection':
           'Categories changed materially compared with the equivalent period.',
-      'insightsSubcategoryMovementSection': 'Subcategories changed materially compared with the equivalent period.',
+      'insightsSubcategoryMovementSection':
+          'Subcategories changed materially compared with the equivalent period.',
       'insightsMerchantMovementSection':
           'Merchants changed materially compared with the equivalent period.',
       'nothingNeedsAttention': 'Nothing needs attention',
-      'nothingNeedsAttentionBody': 'Incomplete or uncertain records will appear here without being changed automatically.',
+      'nothingNeedsAttentionBody':
+          'Incomplete or uncertain records will appear here without being changed automatically.',
       'quickActions': 'Quick actions',
       'add': 'Add',
-      'addSubtitle': 'Add transactions, receipts, statements, and other financial information to Butlerly.',
+      'addSubtitle':
+          'Add transactions, receipts, statements, and other financial information to Butlerly.',
       'addData': 'Add data',
       'addTransaction': 'Add transaction',
       'addTransactionSubtitle': 'Enter a transaction manually',
@@ -200,16 +206,19 @@ class AppLocalizations {
       'attachEvidence': 'Attach receipt or file',
       'evidenceAttached': 'Evidence stored locally.',
       'evidenceAttachFailed': 'Evidence could not be stored.',
-      'evidenceCleanupFailed': 'The transaction was not deleted because linked evidence could not be removed safely.',
+      'evidenceCleanupFailed':
+          'The transaction was not deleted because linked evidence could not be removed safely.',
       'evidencePreview': 'Evidence preview',
       'viewImage': 'View image',
       'evidenceFileMissing': 'The local evidence file could not be found.',
-      'evidenceStoredLocally': 'This file is stored privately on this device. Its local path is not displayed.',
+      'evidenceStoredLocally':
+          'This file is stored privately on this device. Its local path is not displayed.',
       'removeEvidenceTitle': 'Remove this evidence?',
       'removeEvidenceBody':
           'This permanently removes the local file and its transaction link.',
       'remove': 'Remove',
-      'evidenceLoadError': 'Evidence metadata could not be loaded. Your local records were not changed.',
+      'evidenceLoadError':
+          'Evidence metadata could not be loaded. Your local records were not changed.',
       'referenceAmounts':
           'Reference amounts (original amount remains canonical)',
       'referenceCurrency': 'Reference {currency}',
@@ -288,7 +297,8 @@ class AppLocalizations {
       'statementCouldNotBeCreated': 'The statement could not be created.',
       'paymentSourceCouldNotBeCreated':
           'The payment source could not be created.',
-      'sourceCreatedCouldNotBeLinked': 'The source was created, but could not be linked. Select it to retry.',
+      'sourceCreatedCouldNotBeLinked':
+          'The source was created, but could not be linked. Select it to retry.',
       'addRowsFromStatement': 'Add rows from statement',
       'rowsFormatHint':
           'One per line: YYYY-MM-DD | description | signed amount | currency',
@@ -303,7 +313,8 @@ class AppLocalizations {
       'amountNeedsReview': 'Amount needs review',
       'directionNeedsReview': 'Direction needs review',
       'receiptImages': 'Receipt images',
-      'receiptTextReadFailed': 'Receipt was saved locally, but its text could not be read. You can retry or enter the fields manually.',
+      'receiptTextReadFailed':
+          'Receipt was saved locally, but its text could not be read. You can retry or enter the fields manually.',
       'archiveTitle': 'Archive this transaction?',
       'archiveBody': 'You can restore it later.',
       'deleteTitle': 'Permanently delete this transaction?',
@@ -314,7 +325,8 @@ class AppLocalizations {
       'reviewSubtitle':
           'Resolve only the records that genuinely need attention.',
       'reviewEmpty': 'You’re all caught up',
-      'reviewEmptyBody': 'Butlerly will show incomplete, uncertain, or conflicting records here.',
+      'reviewEmptyBody':
+          'Butlerly will show incomplete, uncertain, or conflicting records here.',
       'reviewLoadError': 'Review items could not be loaded',
       'reviewRecommendation':
           'Open the record and confirm the correct details.',
@@ -373,7 +385,8 @@ class AppLocalizations {
       'payment': 'Payment',
       'unavailableTransaction': 'Transaction unavailable',
       'duplicatePaymentSource': 'Payment source already exists',
-      'duplicatePaymentSourceBody': 'An active source with the same card type, issuer, and last four digits already exists.',
+      'duplicatePaymentSourceBody':
+          'An active source with the same card type, issuer, and last four digits already exists.',
       'useExisting': 'Use existing',
       'createAnyway': 'Create anyway',
       'paymentSourcesBody': 'Manage local cards, cash, and other sources.',
@@ -411,7 +424,8 @@ class AppLocalizations {
       'ianaTimeZone': 'IANA time zone',
       'ianaTimeZoneHelp': 'For example, America/Los_Angeles or UTC',
       'externalAiConsent': 'Allow external AI',
-      'externalAiConsentBody': 'Off by default. Turning this on records consent only; data is never sent without a separate, explicit action.',
+      'externalAiConsentBody':
+          'Off by default. Turning this on records consent only; data is never sent without a separate, explicit action.',
       'english': 'English',
       'spanish': 'Spanish',
       'chinese': 'Chinese (Simplified)',
@@ -479,26 +493,32 @@ class AppLocalizations {
       'analysis.rule.r014.name': 'Monthly spending insight',
       'analysis.rule.r016.name': 'Transactions by day',
       'analysis.rule.r020.name': 'Spending compared with baseline',
-      'analysis.rule.r020.description': 'Compare spending in the selected period with the previous equivalent period.',
+      'analysis.rule.r020.description':
+          'Compare spending in the selected period with the previous equivalent period.',
       'analysis.rule.r021.name': 'Category movement',
       'analysis.rule.r021.description':
           'A category changed materially compared with the equivalent period.',
       'analysis.rule.r022.name': 'Subcategory movement',
-      'analysis.rule.r022.description': 'A subcategory changed materially compared with the equivalent period.',
+      'analysis.rule.r022.description':
+          'A subcategory changed materially compared with the equivalent period.',
       'analysis.rule.r023.name': 'Merchant movement',
       'analysis.rule.r023.description':
           'A merchant changed materially compared with the equivalent period.',
       'analysis.rule.r024.name': 'Material spending alert',
-      'analysis.rule.r024.description': 'Overall spending exceeded both the percentage and absolute materiality thresholds.',
+      'analysis.rule.r024.description':
+          'Overall spending exceeded both the percentage and absolute materiality thresholds.',
       'analysis.rule.r025.name': 'Unusually large purchase',
-      'analysis.rule.r025.description': 'A purchase is materially larger than the comparable spending baseline.',
+      'analysis.rule.r025.description':
+          'A purchase is materially larger than the comparable spending baseline.',
       'analysis.rule.r026.name': 'Spending concentration',
-      'analysis.rule.r026.description': 'One category represents a materially high share of spending in this period.',
+      'analysis.rule.r026.description':
+          'One category represents a materially high share of spending in this period.',
       'analysis.rule.r027.name': 'Spending decreased',
       'analysis.rule.r027.description':
           'You spent at least 20% less than in the previous equivalent period.',
       'analysis.rule.r028.name': 'Category spending decreased',
-      'analysis.rule.r028.description': 'Spending in this category fell by at least 20% from the previous equivalent period.',
+      'analysis.rule.r028.description':
+          'Spending in this category fell by at least 20% from the previous equivalent period.',
       'analysis.rule.r029.name': 'Savings improved',
       'analysis.rule.r029.description':
           'Net savings improved compared with the previous equivalent period.',
@@ -538,13 +558,16 @@ class AppLocalizations {
       'analysisDataQualityIssueGeneric': 'Some analysis data has limitations.',
       'insightRuleFailed': 'This insight could not be evaluated.',
       'insightsInsufficientHistory': 'Not enough history yet',
-      'insightsInsufficientHistoryBody': 'Insights compare your financial activity over time. Keep adding transactions and Butlerly will surface meaningful changes.',
+      'insightsInsufficientHistoryBody':
+          'Insights compare your financial activity over time. Keep adding transactions and Butlerly will surface meaningful changes.',
       'insightsNothingNoteworthy': 'Nothing needs your attention',
-      'insightsNothingNoteworthyBody': 'Your recent financial activity does not currently trigger any insights.',
+      'insightsNothingNoteworthyBody':
+          'Your recent financial activity does not currently trigger any insights.',
       'insightActionFailed': 'This insight could not be updated.',
       'assistant': 'Assistant',
       'assistantUnavailable': 'Assistant is not configured',
-      'assistantUnavailableBody': 'Your local records and manual workflows remain available. No data was sent anywhere.',
+      'assistantUnavailableBody':
+          'Your local records and manual workflows remain available. No data was sent anywhere.',
       'notifications': 'Notifications',
       'noNotifications': 'No notifications',
       'noNotificationsBody': 'Important local activity will appear here.',
@@ -552,10 +575,12 @@ class AppLocalizations {
       'importFromFileBody': 'Choose a supported transaction file.',
       'importSummary': 'Import summary',
       'importFailed': 'Unable to import this file.',
-      'importSummaryBody': 'Imported: {imported}\nDuplicates skipped: {duplicates}\nFailed: {failed}',
+      'importSummaryBody':
+          'Imported: {imported}\nDuplicates skipped: {duplicates}\nFailed: {failed}',
       'importReceipts': 'Import receipts',
       'importReceiptsBody': 'Attach receipt images or PDFs.',
-      'receiptAttachGuide': 'Choose a transaction, then use Attach receipt or file in its detail screen. The file stays on this device.',
+      'receiptAttachGuide':
+          'Choose a transaction, then use Attach receipt or file in its detail screen. The file stays on this device.',
       'viewTransactions': 'View transactions',
       'importOfflineBanner': 'CSV import and export stay on this device.',
       'exportToFile': 'Export to file',
@@ -576,11 +601,15 @@ class AppLocalizations {
           'Add more confirmed transactions to see a useful local summary.',
       'resetAllData': 'Erase all local data',
       'localDataControls': 'Local data controls',
-      'privacyScopeBody': 'Your finance records and evidence stay on this device. Review the scope before exporting or erasing them.',
-      'exportScopeBody': 'Exports finance records, preferences, provenance, and locally stored evidence to the Butlerly Documents folder.',
-      'eraseScopeBody': 'Permanently removes finance records, preferences, and every locally stored evidence file.',
+      'privacyScopeBody':
+          'Your finance records and evidence stay on this device. Review the scope before exporting or erasing them.',
+      'exportScopeBody':
+          'Exports finance records, preferences, provenance, and locally stored evidence to the Butlerly Documents folder.',
+      'eraseScopeBody':
+          'Permanently removes finance records, preferences, and every locally stored evidence file.',
       'eraseAllTitle': 'Erase all local Butlerly data?',
-      'eraseAllBody': 'This permanently removes all finance records, preferences, and evidence files from this device. This cannot be undone.',
+      'eraseAllBody':
+          'This permanently removes all finance records, preferences, and evidence files from this device. This cannot be undone.',
       'eraseAllConfirm': 'Erase everything',
       'eraseComplete': 'All local Butlerly data was erased.',
       'eraseFailed':
@@ -637,12 +666,14 @@ class AppLocalizations {
       'deleteStatement': 'Delete statement',
       'extractionDiagnostics': 'Extraction diagnostics',
       'deleteStatementTitle': 'Delete this statement?',
-      'deleteStatementBody': 'No transactions were created from this statement. The statement file and extracted data will be permanently removed.',
+      'deleteStatementBody':
+          'No transactions were created from this statement. The statement file and extracted data will be permanently removed.',
       'statementDeleted': 'Statement deleted.',
       'statementDeleteFailed': 'The statement could not be deleted safely.',
       'statementHasTransactions':
           'This statement has saved transactions and cannot be deleted here.',
-      'statementDeletionProtected': 'This statement is linked to financial records or required evidence and cannot be deleted.',
+      'statementDeletionProtected':
+          'This statement is linked to financial records or required evidence and cannot be deleted.',
       'statementNoText': 'No readable text was found in this image.',
       'statementNoRows':
           'Text was recognized, but no transaction rows could be identified.',
@@ -652,7 +683,8 @@ class AppLocalizations {
           'Statement processing failed because of a technical OCR error.',
       'abandonStatementImport': 'Abandon import',
       'abandonStatementImportTitle': 'Abandon this import?',
-      'abandonStatementImportBody': 'The scanned statement and its extracted data will be removed. Your original file will not be changed.',
+      'abandonStatementImportBody':
+          'The scanned statement and its extracted data will be removed. Your original file will not be changed.',
       'rowsNeedCorrection': '{count} row(s) need correction.',
       'importValidRows': 'Import valid rows',
       'debitExpense': 'Debit / expense',
@@ -1246,7 +1278,8 @@ class AppLocalizations {
       'statements': 'Extractos',
       'statement': 'Extracto',
       'addStatement': 'Añadir extracto',
-      'statementsEmptyBody': 'Añade un extracto bancario o de tarjeta. El original permanece en este dispositivo y cada fila espera tu revisión.',
+      'statementsEmptyBody':
+          'Añade un extracto bancario o de tarjeta. El original permanece en este dispositivo y cada fila espera tu revisión.',
       'choosePaymentSourceToContinue':
           'Elige una fuente de pago para continuar',
       'reviewInProgress': 'Revisión en curso',
@@ -1292,7 +1325,8 @@ class AppLocalizations {
       'toolsInsightsDescription':
           'Consulta observaciones útiles de tus registros confirmados.',
       'addTransactionAction': 'Añadir transacción',
-      'addTransactionActionSubtitle': 'Añade una transacción tú mismo, desde un recibo, un extracto o un archivo local',
+      'addTransactionActionSubtitle':
+          'Añade una transacción tú mismo, desde un recibo, un extracto o un archivo local',
       'welcomeTitle': 'Te damos la bienvenida a Butlerly',
       'welcomeSubtitle': 'Tu registro financiero privado, bajo tu control.',
       'privateByDefault': 'Privado de forma predeterminada',
@@ -1305,7 +1339,8 @@ class AppLocalizations {
           'Los procesos manuales siempre están disponibles.',
       'getStarted': 'Comenzar',
       'firstUseTitle': 'Configura tu espacio local',
-      'firstUseBody': 'No necesitas una cuenta. Estos valores permanecen en este dispositivo y puedes cambiarlos después en Ajustes.',
+      'firstUseBody':
+          'No necesitas una cuenta. Estos valores permanecen en este dispositivo y puedes cambiarlos después en Ajustes.',
       'preferences': 'Preferencias',
       'continueLocally': 'Continuar localmente',
       'skip': 'Omitir',
@@ -1320,15 +1355,19 @@ class AppLocalizations {
       'needsAttention': 'Requiere atención',
       'otherInsights': 'Otras perspectivas',
       'insightsPositiveChanges': 'Cambios positivos',
-      'insightsCategoryMovementSection': 'Las categorías cambiaron de forma significativa frente al período equivalente.',
-      'insightsSubcategoryMovementSection': 'Las subcategorías cambiaron de forma significativa frente al período equivalente.',
-      'insightsMerchantMovementSection': 'Los comercios cambiaron de forma significativa frente al período equivalente.',
+      'insightsCategoryMovementSection':
+          'Las categorías cambiaron de forma significativa frente al período equivalente.',
+      'insightsSubcategoryMovementSection':
+          'Las subcategorías cambiaron de forma significativa frente al período equivalente.',
+      'insightsMerchantMovementSection':
+          'Los comercios cambiaron de forma significativa frente al período equivalente.',
       'nothingNeedsAttention': 'Nada requiere atención',
       'nothingNeedsAttentionBody':
           'Los registros inciertos aparecerán aquí sin cambios automáticos.',
       'quickActions': 'Acciones rápidas',
       'add': 'Añadir',
-      'addSubtitle': 'Añade transacciones, recibos, extractos y otra información financiera a Butlerly.',
+      'addSubtitle':
+          'Añade transacciones, recibos, extractos y otra información financiera a Butlerly.',
       'addData': 'Añadir datos',
       'addTransaction': 'Añadir transacción',
       'addTransactionSubtitle': 'Introduce una transacción manualmente',
@@ -1406,17 +1445,22 @@ class AppLocalizations {
       'attachEvidence': 'Adjuntar recibo o archivo',
       'evidenceAttached': 'La evidencia se guardó localmente.',
       'evidenceAttachFailed': 'No se pudo guardar la evidencia.',
-      'evidenceCleanupFailed': 'La transacción no se eliminó porque la evidencia vinculada no pudo borrarse de forma segura.',
+      'evidenceCleanupFailed':
+          'La transacción no se eliminó porque la evidencia vinculada no pudo borrarse de forma segura.',
       'evidencePreview': 'Vista previa de evidencia',
       'viewImage': 'Ver imagen',
       'evidenceFileMissing':
           'No se pudo encontrar el archivo local de evidencia.',
-      'evidenceStoredLocally': 'Este archivo se guarda de forma privada en este dispositivo. No se muestra su ruta local.',
+      'evidenceStoredLocally':
+          'Este archivo se guarda de forma privada en este dispositivo. No se muestra su ruta local.',
       'removeEvidenceTitle': '¿Eliminar esta evidencia?',
-      'removeEvidenceBody': 'Esto elimina permanentemente el archivo local y su vínculo con la transacción.',
+      'removeEvidenceBody':
+          'Esto elimina permanentemente el archivo local y su vínculo con la transacción.',
       'remove': 'Eliminar',
-      'evidenceLoadError': 'No se pudieron cargar los metadatos de evidencia. Tus registros locales no cambiaron.',
-      'referenceAmounts': 'Importes de referencia (el importe original sigue siendo el canónico)',
+      'evidenceLoadError':
+          'No se pudieron cargar los metadatos de evidencia. Tus registros locales no cambiaron.',
+      'referenceAmounts':
+          'Importes de referencia (el importe original sigue siendo el canónico)',
       'referenceCurrency': 'Referencia {currency}',
       'reviewState': 'Revisión',
       'origin': 'Origen',
@@ -1497,9 +1541,11 @@ class AppLocalizations {
       'statementCouldNotBeStored': 'No se pudo guardar el extracto.',
       'statementCouldNotBeCreated': 'No se pudo crear el extracto.',
       'paymentSourceCouldNotBeCreated': 'No se pudo crear la fuente de pago.',
-      'sourceCreatedCouldNotBeLinked': 'La fuente se creó, pero no se pudo vincular. Selecciónala para volver a intentarlo.',
+      'sourceCreatedCouldNotBeLinked':
+          'La fuente se creó, pero no se pudo vincular. Selecciónala para volver a intentarlo.',
       'addRowsFromStatement': 'Añadir filas del extracto',
-      'rowsFormatHint': 'Una por línea: YYYY-MM-DD | descripción | importe con signo | moneda',
+      'rowsFormatHint':
+          'Una por línea: YYYY-MM-DD | descripción | importe con signo | moneda',
       'addForReview': 'Añadir para revisar',
       'correctExtractedRow': 'Corregir fila extraída',
       'dateFormat': 'Fecha (YYYY-MM-DD)',
@@ -1511,7 +1557,8 @@ class AppLocalizations {
       'amountNeedsReview': 'El importe necesita revisión',
       'directionNeedsReview': 'La dirección necesita revisión',
       'receiptImages': 'Imágenes de recibos',
-      'receiptTextReadFailed': 'El recibo se guardó localmente, pero no se pudo leer su texto. Puedes reintentarlo o introducir los campos manualmente.',
+      'receiptTextReadFailed':
+          'El recibo se guardó localmente, pero no se pudo leer su texto. Puedes reintentarlo o introducir los campos manualmente.',
       'archiveTitle': '¿Archivar esta transacción?',
       'archiveBody': 'Puedes restaurarla más tarde.',
       'deleteTitle': '¿Eliminar permanentemente esta transacción?',
@@ -1543,7 +1590,8 @@ class AppLocalizations {
       'possibleDuplicateGroup': 'Grupo de posibles duplicados',
       'keepBoth': 'Conservar ambos',
       'consolidateUseOne': 'Consolidar / usar uno',
-      'consolidateUseOneHint': 'Selecciona la transacción que conservarás. No se elimina ningún registro.',
+      'consolidateUseOneHint':
+          'Selecciona la transacción que conservarás. No se elimina ningún registro.',
       'reviewLater': 'Revisar más tarde',
       'rescanPossibleDuplicates': 'Volver a escanear posibles duplicados',
       'noPossibleDuplicates': 'No se encontraron posibles duplicados',
@@ -1569,7 +1617,8 @@ class AppLocalizations {
       'toDate': 'Fecha final',
       'paymentSources': 'Fuentes de pago',
       'scanCard': 'Escanear tarjeta',
-      'cardScanFailed': 'No se pudo escanear la tarjeta. Puedes introducir los datos manualmente.',
+      'cardScanFailed':
+          'No se pudo escanear la tarjeta. Puedes introducir los datos manualmente.',
       'multiplePaymentSourcesMatch': 'Coinciden varias fuentes de pago',
       'selectPaymentSource':
           'Selecciona la fuente de pago que termina en estos cuatro dígitos.',
@@ -1580,13 +1629,15 @@ class AppLocalizations {
       'payment': 'Pago',
       'unavailableTransaction': 'Transacción no disponible',
       'duplicatePaymentSource': 'La fuente de pago ya existe',
-      'duplicatePaymentSourceBody': 'Ya existe una fuente activa con el mismo tipo de tarjeta, emisor y últimos cuatro dígitos.',
+      'duplicatePaymentSourceBody':
+          'Ya existe una fuente activa con el mismo tipo de tarjeta, emisor y últimos cuatro dígitos.',
       'useExisting': 'Usar existente',
       'createAnyway': 'Crear de todos modos',
       'paymentSourcesBody':
           'Gestiona tarjetas, efectivo y otras fuentes locales.',
       'addPaymentSource': 'Añadir fuente de pago',
-      'paymentSourcesUnavailable': 'Las fuentes de pago estarán disponibles con el almacenamiento local.',
+      'paymentSourcesUnavailable':
+          'Las fuentes de pago estarán disponibles con el almacenamiento local.',
       'noPaymentSourcesYet': 'Aún no hay fuentes de pago.',
       'paymentSourceSaveFailed': 'No se pudo guardar la fuente de pago.',
       'archivePaymentSource': 'Archivar fuente de pago',
@@ -1618,7 +1669,8 @@ class AppLocalizations {
       'ianaTimeZone': 'Zona horaria IANA',
       'ianaTimeZoneHelp': 'Por ejemplo, America/Los_Angeles o UTC',
       'externalAiConsent': 'Permitir IA externa',
-      'externalAiConsentBody': 'Desactivado de forma predeterminada. Activarlo solo registra el consentimiento; nunca se envían datos sin una acción explícita adicional.',
+      'externalAiConsentBody':
+          'Desactivado de forma predeterminada. Activarlo solo registra el consentimiento; nunca se envían datos sin una acción explícita adicional.',
       'english': 'Inglés',
       'spanish': 'Español',
       'chinese': 'Chino simplificado',
@@ -1670,10 +1722,13 @@ class AppLocalizations {
       'nextMonth': 'Mes siguiente',
       'dataQuality': 'Calidad de datos',
       'analysisUnavailable': 'El análisis no está disponible',
-      'analysisUnavailableBody': 'No se pudieron completar los cálculos locales. No se cambió ningún registro.',
-      'offlineAnalysisStatus': 'Calculado de forma privada en este dispositivo y disponible sin conexión.',
+      'analysisUnavailableBody':
+          'No se pudieron completar los cálculos locales. No se cambió ningún registro.',
+      'offlineAnalysisStatus':
+          'Calculado de forma privada en este dispositivo y disponible sin conexión.',
       'allClear': 'Sin hallazgos',
-      'allClearBody': 'Ninguna información habilitada requiere tu atención en este período.',
+      'allClearBody':
+          'Ninguna información habilitada requiere tu atención en este período.',
       'insightsUnavailable': 'La información no está disponible',
       'insightsUnavailableBody':
           'No se pudo calcular una o más funciones de información habilitadas.',
@@ -1685,23 +1740,32 @@ class AppLocalizations {
       'analysis.rule.r014.name': 'Información de gastos mensuales',
       'analysis.rule.r016.name': 'Transacciones por día',
       'analysis.rule.r020.name': 'Gastos comparados con la base',
-      'analysis.rule.r020.description': 'Compara los gastos del período seleccionado con el período equivalente anterior.',
+      'analysis.rule.r020.description':
+          'Compara los gastos del período seleccionado con el período equivalente anterior.',
       'analysis.rule.r021.name': 'Cambio por categoría',
-      'analysis.rule.r021.description': 'Una categoría cambió de forma significativa frente al período equivalente.',
+      'analysis.rule.r021.description':
+          'Una categoría cambió de forma significativa frente al período equivalente.',
       'analysis.rule.r022.name': 'Cambio por subcategoría',
-      'analysis.rule.r022.description': 'Una subcategoría cambió de forma significativa frente al período equivalente.',
+      'analysis.rule.r022.description':
+          'Una subcategoría cambió de forma significativa frente al período equivalente.',
       'analysis.rule.r023.name': 'Cambio por comercio',
-      'analysis.rule.r023.description': 'Un comercio cambió de forma significativa frente al período equivalente.',
+      'analysis.rule.r023.description':
+          'Un comercio cambió de forma significativa frente al período equivalente.',
       'analysis.rule.r024.name': 'Alerta de gasto material',
-      'analysis.rule.r024.description': 'El gasto total superó los umbrales porcentual y absoluto de materialidad.',
+      'analysis.rule.r024.description':
+          'El gasto total superó los umbrales porcentual y absoluto de materialidad.',
       'analysis.rule.r025.name': 'Compra inusualmente grande',
-      'analysis.rule.r025.description': 'Una compra es considerablemente mayor que la base de gasto comparable.',
+      'analysis.rule.r025.description':
+          'Una compra es considerablemente mayor que la base de gasto comparable.',
       'analysis.rule.r026.name': 'Concentración del gasto',
-      'analysis.rule.r026.description': 'Una categoría representa una proporción materialmente alta del gasto del período.',
+      'analysis.rule.r026.description':
+          'Una categoría representa una proporción materialmente alta del gasto del período.',
       'analysis.rule.r027.name': 'El gasto disminuyó',
-      'analysis.rule.r027.description': 'Gastaste al menos un 20 % menos que en el período equivalente anterior.',
+      'analysis.rule.r027.description':
+          'Gastaste al menos un 20 % menos que en el período equivalente anterior.',
       'analysis.rule.r028.name': 'El gasto por categoría disminuyó',
-      'analysis.rule.r028.description': 'El gasto en esta categoría bajó al menos un 20 % frente al período equivalente anterior.',
+      'analysis.rule.r028.description':
+          'El gasto en esta categoría bajó al menos un 20 % frente al período equivalente anterior.',
       'analysis.rule.r029.name': 'El ahorro mejoró',
       'analysis.rule.r029.description':
           'El ahorro neto mejoró frente al período equivalente anterior.',
@@ -1726,7 +1790,8 @@ class AppLocalizations {
           'No hay una base comparable disponible para este período.',
       'noNotablePatterns': 'No hay patrones destacables en este período',
       'dataQualityLimitations': 'Calidad y limitaciones de los datos',
-      'analysisDataQualityIssueMissingFx': 'No se pudieron convertir algunas transacciones en moneda extranjera.',
+      'analysisDataQualityIssueMissingFx':
+          'No se pudieron convertir algunas transacciones en moneda extranjera.',
       'analysisDataQualityIssueInsufficient':
           'No hay suficientes datos elegibles para este cálculo.',
       'analysisDataQualityIssueBaseline':
@@ -1735,14 +1800,17 @@ class AppLocalizations {
           'Esta comparación usa una cobertura de período incompleta.',
       'analysisDataQualityIssueReconciliation':
           'Algunas transacciones aún requieren revisión de conciliación.',
-      'analysisDataQualityIssueRuleFailure': 'No se pudo evaluar una perspectiva; los demás resultados siguen disponibles.',
+      'analysisDataQualityIssueRuleFailure':
+          'No se pudo evaluar una perspectiva; los demás resultados siguen disponibles.',
       'analysisDataQualityIssueGeneric':
           'Algunos datos de análisis tienen limitaciones.',
       'insightRuleFailed': 'No se pudo evaluar esta perspectiva.',
       'insightsInsufficientHistory': 'Aún no hay suficiente historial',
-      'insightsInsufficientHistoryBody': 'Las perspectivas comparan tu actividad financiera a lo largo del tiempo. Sigue añadiendo transacciones y Butlerly mostrará cambios relevantes.',
+      'insightsInsufficientHistoryBody':
+          'Las perspectivas comparan tu actividad financiera a lo largo del tiempo. Sigue añadiendo transacciones y Butlerly mostrará cambios relevantes.',
       'insightsNothingNoteworthy': 'Nada requiere tu atención',
-      'insightsNothingNoteworthyBody': 'Tu actividad financiera reciente no activa ninguna perspectiva en este momento.',
+      'insightsNothingNoteworthyBody':
+          'Tu actividad financiera reciente no activa ninguna perspectiva en este momento.',
       'insightActionFailed': 'No se pudo actualizar esta perspectiva.',
       'assistant': 'Asistente',
       'assistantUnavailable': 'El Asistente no está configurado',
@@ -1755,10 +1823,12 @@ class AppLocalizations {
       'importFromFileBody': 'Elige un archivo de transacciones compatible.',
       'importSummary': 'Resumen de importación',
       'importFailed': 'No se puede importar este archivo.',
-      'importSummaryBody': 'Importados: {imported}\nDuplicados omitidos: {duplicates}\nFallidos: {failed}',
+      'importSummaryBody':
+          'Importados: {imported}\nDuplicados omitidos: {duplicates}\nFallidos: {failed}',
       'importReceipts': 'Importar recibos',
       'importReceiptsBody': 'Adjunta imágenes o PDF de recibos.',
-      'receiptAttachGuide': 'Elige una transacción y usa Adjuntar recibo o archivo en su detalle. El archivo permanece en este dispositivo.',
+      'receiptAttachGuide':
+          'Elige una transacción y usa Adjuntar recibo o archivo en su detalle. El archivo permanece en este dispositivo.',
       'viewTransactions': 'Ver transacciones',
       'importOfflineBanner':
           'La importación y exportación CSV permanecen en este dispositivo.',
@@ -1781,11 +1851,15 @@ class AppLocalizations {
           'Añade más transacciones confirmadas para ver un resumen.',
       'resetAllData': 'Borrar todos los datos locales',
       'localDataControls': 'Controles de datos locales',
-      'privacyScopeBody': 'Tus registros financieros y comprobantes permanecen en este dispositivo. Revisa el alcance antes de exportarlos o borrarlos.',
-      'exportScopeBody': 'Exporta registros, preferencias, procedencia y comprobantes locales a la carpeta Documentos de Butlerly.',
-      'eraseScopeBody': 'Elimina permanentemente los registros, preferencias y todos los comprobantes almacenados localmente.',
+      'privacyScopeBody':
+          'Tus registros financieros y comprobantes permanecen en este dispositivo. Revisa el alcance antes de exportarlos o borrarlos.',
+      'exportScopeBody':
+          'Exporta registros, preferencias, procedencia y comprobantes locales a la carpeta Documentos de Butlerly.',
+      'eraseScopeBody':
+          'Elimina permanentemente los registros, preferencias y todos los comprobantes almacenados localmente.',
       'eraseAllTitle': '¿Borrar todos los datos locales de Butlerly?',
-      'eraseAllBody': 'Esto elimina permanentemente todos los registros, preferencias y comprobantes de este dispositivo. No se puede deshacer.',
+      'eraseAllBody':
+          'Esto elimina permanentemente todos los registros, preferencias y comprobantes de este dispositivo. No se puede deshacer.',
       'eraseAllConfirm': 'Borrar todo',
       'eraseComplete': 'Se borraron todos los datos locales de Butlerly.',
       'eraseFailed':
@@ -1831,7 +1905,8 @@ class AppLocalizations {
       'addPaymentTransactionBody':
           'Introduce una transacción de tarjeta cuando no haya un extracto.',
       'addPaymentNotification': 'Añadir notificación de pago',
-      'addPaymentNotificationBody': 'Registra una notificación de tarjeta con procedencia de integración.',
+      'addPaymentNotificationBody':
+          'Registra una notificación de tarjeta con procedencia de integración.',
       'reviewStatementImport': 'Revisar importación del extracto',
       'reviewStatementImportBody':
           'Conserva y revisa localmente los extractos bancarios o de tarjeta.',
@@ -1843,21 +1918,26 @@ class AppLocalizations {
       'deleteStatement': 'Eliminar extracto',
       'extractionDiagnostics': 'Diagnóstico de extracción',
       'deleteStatementTitle': '¿Eliminar este extracto?',
-      'deleteStatementBody': 'No se crearon transacciones desde este extracto. El archivo y los datos extraídos se eliminarán permanentemente.',
+      'deleteStatementBody':
+          'No se crearon transacciones desde este extracto. El archivo y los datos extraídos se eliminarán permanentemente.',
       'statementDeleted': 'Extracto eliminado.',
       'statementDeleteFailed':
           'No se pudo eliminar el extracto de forma segura.',
-      'statementHasTransactions': 'Este extracto tiene transacciones guardadas y no se puede eliminar aquí.',
-      'statementDeletionProtected': 'Este extracto está vinculado a registros financieros o evidencia necesaria y no se puede eliminar.',
+      'statementHasTransactions':
+          'Este extracto tiene transacciones guardadas y no se puede eliminar aquí.',
+      'statementDeletionProtected':
+          'Este extracto está vinculado a registros financieros o evidencia necesaria y no se puede eliminar.',
       'statementNoText': 'No se encontró texto legible en esta imagen.',
-      'statementNoRows': 'Se reconoció texto, pero no se identificaron filas de transacciones.',
+      'statementNoRows':
+          'Se reconoció texto, pero no se identificaron filas de transacciones.',
       'statementUnresolvedEvidence':
           'Hay evidencia similar a una transacción que requiere revisión.',
       'statementProcessingFailed':
           'El procesamiento del extracto falló por un error técnico de OCR.',
       'abandonStatementImport': 'Abandonar importación',
       'abandonStatementImportTitle': '¿Abandonar esta importación?',
-      'abandonStatementImportBody': 'Se eliminarán el extracto escaneado y sus datos extraídos. El archivo original no se modificará.',
+      'abandonStatementImportBody':
+          'Se eliminarán el extracto escaneado y sus datos extraídos. El archivo original no se modificará.',
       'rowsNeedCorrection': '{count} fila(s) necesitan corrección.',
       'importValidRows': 'Importar filas válidas',
       'debitExpense': 'Débito / gasto',

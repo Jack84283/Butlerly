@@ -219,8 +219,9 @@ class _SearchPageState extends State<SearchPage>
         paymentSources: [],
       );
     }
-    return TransactionMasterDataProvider(finance)
-        .load(languageCode: languageCode);
+    return TransactionMasterDataProvider(
+      finance,
+    ).load(languageCode: languageCode);
   }
 
   Future<List<String>> _loadCurrencies() async {

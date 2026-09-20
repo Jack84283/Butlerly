@@ -157,14 +157,12 @@ void main() {
         'created_at': future.toIso8601String(),
         'updated_at': future.toIso8601String(),
       });
-      await fixture.database.database.insert(
-        'duplicate_candidate_group_transactions',
-        {
-          'group_id': 'generated-group',
-          'transaction_id': 'tx-generated',
-          'created_at': future.toIso8601String(),
-        },
-      );
+      await fixture.database.database
+          .insert('duplicate_candidate_group_transactions', {
+            'group_id': 'generated-group',
+            'transaction_id': 'tx-generated',
+            'created_at': future.toIso8601String(),
+          });
 
       await fixture.manager.restore(backup, mode: LocalRestoreMode.merge);
 
@@ -209,8 +207,9 @@ void main() {
         'created_at': old.toIso8601String(),
         'local_file_name': 'corrupt.bin',
       });
-      await File(path.join(fixture.evidence.path, 'corrupt.bin'))
-          .writeAsString('evidence-before-corruption', flush: true);
+      await File(
+        path.join(fixture.evidence.path, 'corrupt.bin'),
+      ).writeAsString('evidence-before-corruption', flush: true);
       final backup = File(
         path.join(fixture.root.path, 'corrupt.butlerlybackup'),
       );
@@ -321,8 +320,9 @@ void main() {
         'created_at': old,
         'local_file_name': 'staging-race.bin',
       });
-      await File(path.join(fixture.evidence.path, 'staging-race.bin'))
-          .writeAsBytes(List<int>.filled(8 * 1024 * 1024, 11), flush: true);
+      await File(
+        path.join(fixture.evidence.path, 'staging-race.bin'),
+      ).writeAsBytes(List<int>.filled(8 * 1024 * 1024, 11), flush: true);
       final backup = File(
         path.join(fixture.root.path, 'staging-race.butlerlybackup'),
       );
@@ -379,13 +379,15 @@ void main() {
         'local_file_name': 'receipt.bin',
       });
       const backupBytes = 'backup-evidence';
-      await File(path.join(fixture.evidence.path, 'receipt.bin'))
-          .writeAsString(backupBytes, flush: true);
+      await File(
+        path.join(fixture.evidence.path, 'receipt.bin'),
+      ).writeAsString(backupBytes, flush: true);
       final backup = File(path.join(fixture.root.path, 'remap.butlerlybackup'));
       await fixture.manager.createBackup(backup);
 
-      await File(path.join(fixture.evidence.path, 'receipt.bin'))
-          .writeAsString('newer-local-evidence', flush: true);
+      await File(
+        path.join(fixture.evidence.path, 'receipt.bin'),
+      ).writeAsString('newer-local-evidence', flush: true);
       final hash = sha256Bytes(utf8.encode(backupBytes));
       final occupiedRemap = File(
         path.join(fixture.evidence.path, 'receipt.backup-$hash.bin'),
@@ -399,8 +401,9 @@ void main() {
 
       expect(await occupiedRemap.readAsString(), 'unrelated-local-evidence');
       expect(
-        await File(path.join(fixture.evidence.path, 'receipt.bin'))
-            .readAsString(),
+        await File(
+          path.join(fixture.evidence.path, 'receipt.bin'),
+        ).readAsString(),
         'newer-local-evidence',
       );
       final safeRemap = File(

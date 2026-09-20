@@ -238,8 +238,9 @@ void main() {
       final restoredName = restored.single['local_file_name']! as String;
       expect(restoredName, isNot('receipt.bin'));
       expect(
-        await File(path.join(fixture.evidence.path, restoredName))
-            .readAsString(),
+        await File(
+          path.join(fixture.evidence.path, restoredName),
+        ).readAsString(),
         'backup-version',
       );
     },
