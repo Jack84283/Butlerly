@@ -1394,11 +1394,12 @@ void main() {
 
       final page = tester.widget<ButlerlyPage>(find.byType(ButlerlyPage));
       expect(page.pinnedSpacing, same(ButlerlyPinnedPageSpacing.primary));
+      expect(page.actions, hasLength(1));
+      final headerAction = page.actions.single;
+      expect(headerAction, isA<Padding>());
       expect(
-        page.actions.any(
-          (action) => action.key == const ValueKey('master-data-add'),
-        ),
-        isTrue,
+        (headerAction as Padding).padding,
+        const EdgeInsetsDirectional.only(end: ButlerlySize.phoneGutter),
       );
 
       final addButton = find.byKey(const ValueKey('master-data-add'));
