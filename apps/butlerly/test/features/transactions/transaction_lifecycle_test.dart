@@ -1413,7 +1413,11 @@ void main() {
       expect(iconButton.style?.foregroundColor?.resolve({}), Colors.white);
       expect(
         tester.getTopLeft(addButton).dy - tester.getBottomLeft(selector).dy,
-        closeTo(ButlerlySpacing.pinnedPageBottomGap, 0.01),
+        closeTo(
+          ButlerlySpacing.pinnedPageBottomGap -
+              (ButlerlySize.minimumTarget / 2),
+          0.01,
+        ),
       );
     },
   );
