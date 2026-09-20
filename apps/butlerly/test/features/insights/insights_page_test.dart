@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/insights/presentation/insights_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -66,6 +67,14 @@ void main() {
 
     await tester.pumpWidget(app(load));
     await tester.pumpAndSettle();
+
+    final butlerlyPage = tester.widget<ButlerlyPage>(
+      find.byType(ButlerlyPage),
+    );
+    expect(
+      butlerlyPage.pinnedSpacing,
+      same(ButlerlyPinnedPageSpacing.primary),
+    );
 
     final selector = find.byKey(const ValueKey('analysis-period-selector'));
     expect(selector, findsOneWidget);
