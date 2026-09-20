@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_custom_period_sheet.dart';
+import 'package:butlerly/features/analysis/presentation/widgets/analysis_period_selector.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -71,6 +73,49 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    'period header scales text without scaling structural control height',
+    (tester) async {
+      double? normalExtent;
+      double? scaledExtent;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) {
+              normalExtent = AnalysisPeriodPinnedHeader.extent(
+                context,
+                'Selected period',
+              );
+              return MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(textScaler: const TextScaler.linear(2)),
+                child: Builder(
+                  builder: (scaledContext) {
+                    scaledExtent = AnalysisPeriodPinnedHeader.extent(
+                      scaledContext,
+                      'Selected period',
+                    );
+                    return const SizedBox.shrink();
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      );
+
+      expect(scaledExtent, isNotNull);
+      expect(normalExtent, isNotNull);
+      expect(scaledExtent!, greaterThan(normalExtent!));
+      expect(
+        scaledExtent! - normalExtent!,
+        lessThan(ButlerlySize.analysisPeriodSelectorHeight),
+      );
+    },
+  );
 
   testWidgets(
     'refresh keeps analysis content and pinned controls visible',
