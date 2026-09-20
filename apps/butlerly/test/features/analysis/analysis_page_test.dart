@@ -75,45 +75,70 @@ void main() {
   });
 
   testWidgets(
-    'period header scales text without scaling structural control height',
+    'period header fits its pinned extent at enlarged text scale',
     (tester) async {
-      double? normalExtent;
-      double? scaledExtent;
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Builder(
-            builder: (context) {
-              normalExtent = AnalysisPeriodPinnedHeader.extent(
-                context,
-                'Selected period',
-              );
-              return MediaQuery(
-                data: MediaQuery.of(
-                  context,
-                ).copyWith(textScaler: const TextScaler.linear(2)),
-                child: Builder(
-                  builder: (scaledContext) {
-                    scaledExtent = AnalysisPeriodPinnedHeader.extent(
-                      scaledContext,
-                      'Selected period',
-                    );
-                    return const SizedBox.shrink();
-                  },
-                ),
-              );
-            },
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(2)),
+            child: child!,
+          ),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) {
+                const subtitle = 'Selected period';
+                return ButlerlyPage(
+                  title: 'Analysis',
+                  pinnedHeaderExtent: AnalysisPeriodPinnedHeader.extent(
+                    context,
+                    subtitle,
+                  ),
+                  pinnedHeader: AnalysisPeriodPinnedHeader(
+                    subtitle: subtitle,
+                    value: 'current_month',
+                    onChanged: (_) {},
+                  ),
+                  children: const [SizedBox(height: 800)],
+                );
+              },
+            ),
           ),
         ),
       );
+      await tester.pumpAndSettle();
 
-      expect(scaledExtent, isNotNull);
-      expect(normalExtent, isNotNull);
-      expect(scaledExtent!, greaterThan(normalExtent!));
-      expect(
-        scaledExtent! - normalExtent!,
-        lessThan(ButlerlySize.analysisPeriodSelectorHeight),
+      expect(tester.takeException(), isNull);
+      final header = find.byKey(
+        const ValueKey('analysis-period-pinned-header'),
       );
+      final selector = find.byKey(
+        const ValueKey('analysis-period-selector'),
+      );
+      final subtitle = find.text('Selected period');
+      expect(header, findsOneWidget);
+      expect(selector, findsOneWidget);
+      expect(subtitle, findsOneWidget);
+
+      final headerRect = tester.getRect(header);
+      final subtitleRect = tester.getRect(subtitle);
+      final selectorRect = tester.getRect(selector);
+      expect(subtitleRect.top, greaterThanOrEqualTo(headerRect.top));
+      expect(subtitleRect.bottom, lessThan(selectorRect.top));
+      expect(selectorRect.bottom, lessThanOrEqualTo(headerRect.bottom));
     },
   );
 
@@ -152,12 +177,13 @@ void main() {
       expect(selector, findsOneWidget);
       expect(find.text('Financial calendar'), findsOneWidget);
 
-      final indicator = tester.widget<RefreshIndicator>(
-        find.byKey(const ValueKey('analysis-pull-to-refresh')),
+      await tester.drag(
+        find.byType(CustomScrollView),
+        const Offset(0, 320),
       );
-      final pendingRefresh = indicator.onRefresh();
       await tester.pump();
 
+      expect(loads, 2);
       expect(selector, findsOneWidget);
       expect(
         find.byKey(const ValueKey('analysis-period-pinned-header')),
@@ -168,10 +194,8 @@ void main() {
       refreshResult.complete(
         const ApplicationSuccess(<RuleExecutionResult>[]),
       );
-      await pendingRefresh;
       await tester.pumpAndSettle();
 
-      expect(loads, 2);
     },
   );
 
