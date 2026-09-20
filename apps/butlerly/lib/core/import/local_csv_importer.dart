@@ -258,10 +258,11 @@ final class LocalCsvImporter {
     List<DuplicateTransactionCandidate> candidates, {
     String? paymentSourceId,
   }) {
-    final candidateIds = candidates
-        .map((candidate) => candidate.transaction.id)
-        .toList(growable: false)
-      ..sort();
+    final candidateIds =
+        candidates
+            .map((candidate) => candidate.transaction.id)
+            .toList(growable: false)
+          ..sort();
     return [
       '${row.rowNumber}',
       row.date,
@@ -427,10 +428,8 @@ final class LocalCsvImporter {
     );
   }
 
-  static String _normalizedAmount(String value) => value
-      .trim()
-      .replaceFirst(RegExp(r'^[+-]'), '')
-      .replaceAll(',', '');
+  static String _normalizedAmount(String value) =>
+      value.trim().replaceFirst(RegExp(r'^[+-]'), '').replaceAll(',', '');
 
   static String _header(String value) => value
       .trim()
