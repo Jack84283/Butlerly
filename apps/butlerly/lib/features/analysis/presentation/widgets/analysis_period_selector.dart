@@ -35,3 +35,36 @@ class AnalysisPeriodSelector extends StatelessWidget {
     },
   );
 }
+
+
+class AnalysisPeriodPinnedHeader extends StatelessWidget {
+  const AnalysisPeriodPinnedHeader({
+    super.key,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  static const extent = 92.0;
+
+  final String subtitle;
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    key: const ValueKey('analysis-period-pinned-header'),
+    mainAxisAlignment: MainAxisAlignment.center,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text(
+        subtitle,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.bodyMedium,
+      ),
+      const SizedBox(height: 4),
+      AnalysisPeriodSelector(value: value, onChanged: onChanged),
+    ],
+  );
+}
