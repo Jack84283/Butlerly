@@ -499,9 +499,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final sliverAppBar = tester.widget<SliverAppBar>(
-      find.byType(SliverAppBar),
-    );
+    final sliverAppBar = tester.widget<SliverAppBar>(find.byType(SliverAppBar));
     final appBarBottom = tester.getBottomLeft(find.byType(AppBar)).dy;
     final pinnedRect = tester.getRect(find.byKey(pinnedKey));
     final bodyRect = tester.getRect(find.byKey(bodyKey));

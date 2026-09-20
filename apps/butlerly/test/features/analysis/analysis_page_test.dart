@@ -163,13 +163,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final butlerlyPage = tester.widget<ButlerlyPage>(
-      find.byType(ButlerlyPage),
-    );
-    expect(
-      butlerlyPage.pinnedSpacing,
-      same(ButlerlyPinnedPageSpacing.primary),
-    );
+    final butlerlyPage = tester.widget<ButlerlyPage>(find.byType(ButlerlyPage));
+    expect(butlerlyPage.pinnedSpacing, same(ButlerlyPinnedPageSpacing.primary));
 
     final selector = find.byKey(const ValueKey('analysis-period-selector'));
     expect(selector, findsOneWidget);
