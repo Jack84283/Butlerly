@@ -138,15 +138,16 @@ void main() {
     expect(tester.takeException(), isNull);
   }
 
-  test('statement file picker advertises PDF only where OCR supports it', () {
-    expect(
-      statementFileExtensionsForPlatform(TargetPlatform.iOS),
-      contains('pdf'),
-    );
-    expect(
-      statementFileExtensionsForPlatform(TargetPlatform.android),
-      isNot(contains('pdf')),
-    );
+  test('statement file picker uses supported platform filters', () {
+    final ios = statementFileTypeGroupForPlatform(TargetPlatform.iOS);
+    final android = statementFileTypeGroupForPlatform(TargetPlatform.android);
+
+    expect(ios.uniformTypeIdentifiers, contains('com.adobe.pdf'));
+    expect(ios.uniformTypeIdentifiers, contains('public.image'));
+    expect(ios.extensions, isNull);
+    expect(android.extensions, isNot(contains('pdf')));
+    expect(android.extensions, contains('jpg'));
+    expect(android.uniformTypeIdentifiers, isNull);
   });
 
   testWidgets('existing statement file uses the local OCR intake path', (
