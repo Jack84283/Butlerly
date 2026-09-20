@@ -21,6 +21,22 @@ final class StatementImportSummary {
   final int failed;
 }
 
+final class StatementReviewException {
+  const StatementReviewException({
+    required this.statementId,
+    required this.rowId,
+    required this.description,
+    required this.originalText,
+    required this.reason,
+  });
+
+  final String statementId;
+  final String rowId;
+  final String? description;
+  final String originalText;
+  final String? reason;
+}
+
 final class StatementImportAssessment {
   const StatementImportAssessment({
     required this.candidateCount,
@@ -142,49 +158,21 @@ final class StatementServices {
         continue;
       }
       final transactionId = _transactionIdForRow(row);
-      if (await transactions.findById(TransactionId(transactionId)) != null) {
-        continue;
+      final existing = await transactions.findById(TransactionId(transactionId));
+      if (existing == null) {
+        final result = await save(row, paymentSourceId, allowCreateNew: true);
+        if (result is! ApplicationSuccess<TransactionDto>) {
+          failed++;
+          continue;
+        }
+        imported++;
+        if (intakePolicy.needsConfidenceReview(row.confidence) ||
+            row.status == StatementRowStatus.unresolved) {
+          needsReview++;
+        }
       }
-      final duplicate = await duplicates(row);
-      final candidates =
-          duplicate is ApplicationSuccess<DuplicateTransactionCheckResult>
-          ? duplicate.value.candidates
-          : const <DuplicateTransactionCandidate>[];
-      final result = await save(row, paymentSourceId, allowCreateNew: true);
-      if (result is! ApplicationSuccess<TransactionDto>) {
-        failed++;
-        continue;
-      }
-      imported++;
-      if (intakePolicy.needsConfidenceReview(row.confidence) ||
-          row.status == StatementRowStatus.unresolved) {
-        needsReview++;
-      }
-      if (candidates.isNotEmpty) {
+      if (await _repairDuplicateReview(row)) {
         possibleDuplicates++;
-        final transactionIds = [
-          result.value.id,
-          ...candidates.map((candidate) => candidate.transaction.id),
-        ].map(TransactionId.new).toList(growable: false);
-        final now = clock.now();
-        await duplicateGroups.save(
-          DuplicateCandidateGroup(
-            id: 'statement-duplicate-${row.id}',
-            transactionIds: transactionIds,
-            duplicateKey: DuplicateTransactionKey(
-              transactionDate: row.transactionDate!.toIso8601String().substring(
-                0,
-                10,
-              ),
-              amount: DecimalValue.parse(row.amount!),
-              currency: row.currency!,
-              direction: _directionForRow(row).name,
-            ),
-            status: DuplicateCandidateGroupStatus.unresolved,
-            createdAt: now,
-            updatedAt: now,
-          ),
-        );
       }
     }
     return StatementImportSummary(
@@ -235,6 +223,26 @@ final class StatementServices {
 
   Future<ApplicationResult<List<FinancialStatement>>> list() =>
       runApplication('list statements', () => statements.listStatements());
+
+  Future<ApplicationResult<List<StatementReviewException>>> reviewExceptions() =>
+      runApplication('list statement review exceptions', () async {
+        final result = <StatementReviewException>[];
+        for (final statement in await statements.listStatements()) {
+          for (final row in await statements.listRows(statement.id)) {
+            if (row.status != StatementRowStatus.unresolved) continue;
+            result.add(
+              StatementReviewException(
+                statementId: statement.id,
+                rowId: row.id,
+                description: row.description,
+                originalText: row.originalText,
+                reason: row.reviewReason,
+              ),
+            );
+          }
+        }
+        return List.unmodifiable(result);
+      });
 
   Future<ApplicationResult<List<StatementRow>>> rows(String id) =>
       runApplication('list statement rows', () => statements.listRows(id));
@@ -553,6 +561,48 @@ final class StatementServices {
           : null,
     );
   });
+
+  Future<bool> _repairDuplicateReview(StatementRow row) async {
+    final key = DuplicateTransactionKey(
+      transactionDate: row.transactionDate!.toIso8601String().substring(0, 10),
+      amount: DecimalValue.parse(row.amount!),
+      currency: row.currency!,
+      direction: _directionForRow(row).name,
+    );
+    final transactionIds = await duplicateGroups.findActiveTransactionIdsForKey(
+      key,
+    );
+    final id = 'duplicate:${key.canonical}';
+    final existing = (await duplicateGroups.list()).where((group) => group.id == id).firstOrNull;
+    if (transactionIds.length < 2) {
+      if (existing?.isUnresolved ?? false) await duplicateGroups.remove(id);
+      return false;
+    }
+    transactionIds.sort((left, right) => left.value.compareTo(right.value));
+    final membershipUnchanged =
+        existing != null &&
+        existing.transactionIds.length == transactionIds.length &&
+        List.generate(
+          transactionIds.length,
+          (index) => existing.transactionIds[index] == transactionIds[index],
+        ).every((value) => value);
+    final now = clock.now();
+    await duplicateGroups.save(
+      DuplicateCandidateGroup(
+        id: id,
+        transactionIds: transactionIds,
+        duplicateKey: key,
+        status: membershipUnchanged
+            ? existing.status
+            : DuplicateCandidateGroupStatus.unresolved,
+        selectedTransactionId:
+            membershipUnchanged ? existing.selectedTransactionId : null,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+      ),
+    );
+    return true;
+  }
 
   static String _transactionIdForRow(StatementRow row) =>
       'statement-${row.statementId}-${row.id}';
