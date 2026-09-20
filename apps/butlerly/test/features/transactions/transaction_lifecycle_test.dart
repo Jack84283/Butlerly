@@ -1401,7 +1401,10 @@ void main() {
         matching: find.byIcon(Icons.add),
       );
       expect(addIcon, findsOneWidget);
-      expect(tester.widget<Icon>(addIcon).color, Colors.white);
+      expect(
+        tester.widget<Icon>(addIcon).color,
+        Theme.of(tester.element(addButton)).extension<ButlerlySemanticColors>()!.interactive,
+      );
       final iconButton = tester.widget<IconButton>(addButton);
       expect(
         iconButton.style?.backgroundColor?.resolve({}),
