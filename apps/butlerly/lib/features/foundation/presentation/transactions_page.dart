@@ -38,6 +38,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
   late Future<_TransactionsData> _transactions;
   _TransactionFilter _filter = _TransactionFilter.all;
   String? _loadedLanguageCode;
+  int _loadGeneration = 0;
+  bool _hasLoadedTransactions = false;
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
@@ -56,7 +58,13 @@ class _TransactionsPageState extends State<TransactionsPage> {
     final languageCode = Localizations.localeOf(context).languageCode;
     if (_loadedLanguageCode == languageCode) return;
     _loadedLanguageCode = languageCode;
-    _transactions = _load(languageCode: languageCode);
+    final generation = ++_loadGeneration;
+    _transactions = _load(languageCode: languageCode).then((data) {
+      if (generation == _loadGeneration) {
+        _hasLoadedTransactions = true;
+      }
+      return data;
+    });
   }
 
   @override
@@ -121,18 +129,36 @@ class _TransactionsPageState extends State<TransactionsPage> {
   }
 
   Future<void> _refresh() async {
+    final generation = ++_loadGeneration;
     final reloaded = _load();
+    if (!_hasLoadedTransactions) {
+      final tracked = reloaded.then((data) {
+        if (generation == _loadGeneration) {
+          _hasLoadedTransactions = true;
+        }
+        return data;
+      });
+      setState(() {
+        _transactions = tracked;
+      });
+      try {
+        await tracked;
+      } catch (_) {
+        // FutureBuilder owns the initial-load error presentation.
+      }
+      return;
+    }
     try {
       final data = await reloaded;
-      if (!mounted) return;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _transactions = Future.value(data);
       });
-    } catch (error, stackTrace) {
-      if (!mounted) return;
-      setState(() {
-        _transactions = Future.error(error, stackTrace);
-      });
+    } catch (_) {
+      if (!mounted || generation != _loadGeneration) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.text('dataPreserved'))),
+      );
     }
   }
 
