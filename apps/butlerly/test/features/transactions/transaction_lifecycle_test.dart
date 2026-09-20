@@ -1385,23 +1385,33 @@ void main() {
     expect(values.single.lastFour, '8421');
   });
 
-  testWidgets('Master Data follows primary pinned spacing and keeps add glyph white', (
-    tester,
-  ) async {
-    await tester.pumpWidget(const MaterialApp(home: MasterDataPage()));
-    await tester.pumpAndSettle();
+  testWidgets(
+    'Master Data follows primary pinned spacing and keeps add glyph white',
+    (tester) async {
+      await tester.pumpWidget(const MaterialApp(home: MasterDataPage()));
+      await tester.pumpAndSettle();
 
-    final page = tester.widget<ButlerlyPage>(find.byType(ButlerlyPage));
-    expect(page.pinnedSpacing, same(ButlerlyPinnedPageSpacing.primary));
+      final page = tester.widget<ButlerlyPage>(find.byType(ButlerlyPage));
+      expect(page.pinnedSpacing, same(ButlerlyPinnedPageSpacing.primary));
 
-    final addButton = find.byKey(const ValueKey('master-data-add'));
-    final addIcon = find.descendant(
-      of: addButton,
-      matching: find.byIcon(Icons.add),
-    );
-    expect(addIcon, findsOneWidget);
-    expect(tester.widget<Icon>(addIcon).color, Colors.white);
-  });
+      final selector = find.byType(ButlerlyCompactSectionSelector);
+      final addButton = find.byKey(const ValueKey('master-data-add'));
+      final addIcon = find.descendant(
+        of: addButton,
+        matching: find.byIcon(Icons.add),
+      );
+      expect(addIcon, findsOneWidget);
+      expect(tester.widget<Icon>(addIcon).color, Colors.white);
+      expect(
+        tester.getTopLeft(addButton).dy - tester.getBottomLeft(selector).dy,
+        closeTo(
+          ButlerlySpacing.pinnedPageBottomGap +
+              ButlerlySpacing.masterDataAddButtonTopGap,
+          0.01,
+        ),
+      );
+    },
+  );
 
   testWidgets('Master Data manages merchants through bottom sheets', (
     tester,
