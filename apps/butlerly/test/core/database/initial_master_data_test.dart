@@ -173,6 +173,20 @@ void main() {
           'SHEIN',
           'Wayfair',
           'Newegg',
+          'Chinese Restaurant',
+          'Indian Restaurant',
+          'Japanese Restaurant',
+          'Korean Restaurant',
+          'Vietnamese Restaurant',
+          'Thai Restaurant',
+          'Mexican Restaurant',
+          'Italian Restaurant',
+          'Middle Eastern Restaurant',
+          'Mediterranean Restaurant',
+          'American Restaurant',
+          'Fast Food Restaurant',
+          'Bakery',
+          'Other Restaurant',
         ]),
       );
       expect(
@@ -509,6 +523,31 @@ void main() {
         newegg['default_subcategory_id'],
         'category.shopping.electronics',
       );
+      for (final merchantId in [
+        'merchant.generic_chinese_restaurant',
+        'merchant.generic_indian_restaurant',
+        'merchant.generic_japanese_restaurant',
+        'merchant.generic_korean_restaurant',
+        'merchant.generic_vietnamese_restaurant',
+        'merchant.generic_thai_restaurant',
+        'merchant.generic_mexican_restaurant',
+        'merchant.generic_italian_restaurant',
+        'merchant.generic_middle_eastern_restaurant',
+        'merchant.generic_mediterranean_restaurant',
+        'merchant.generic_american_restaurant',
+        'merchant.generic_fast_food_restaurant',
+        'merchant.generic_bakery',
+        'merchant.generic_other_restaurant',
+      ]) {
+        final merchant = merchants.singleWhere(
+          (row) => row['id'] == merchantId,
+        );
+        expect(merchant['default_category_id'], 'category.food');
+        expect(
+          merchant['default_subcategory_id'],
+          'category.food.restaurants',
+        );
+      }
       expect(
         referenceTranslations
             .where(
