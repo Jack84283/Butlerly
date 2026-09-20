@@ -1402,12 +1402,12 @@ void main() {
         matching: find.byIcon(Icons.add),
       );
       expect(addIcon, findsOneWidget);
-      expect(tester.widget<Icon>(addIcon).color, Colors.white);
       final iconButton = tester.widget<IconButton>(addButton);
       expect(
         iconButton.style?.backgroundColor?.resolve({}),
         tester.element(addButton).colors.interactive,
       );
+      expect(iconButton.style?.foregroundColor?.resolve({}), Colors.white);
       expect(
         tester.getTopLeft(addButton).dy - tester.getBottomLeft(selector).dy,
         closeTo(ButlerlySpacing.pinnedPageBottomGap, 0.01),
