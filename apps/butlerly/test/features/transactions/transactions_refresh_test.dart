@@ -70,6 +70,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('No transactions yet'), findsOneWidget);
+      debugDefaultTargetPlatformOverride = null;
     },
   );
 }
