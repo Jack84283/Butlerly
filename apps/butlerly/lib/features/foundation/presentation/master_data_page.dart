@@ -279,6 +279,7 @@ class _MasterDataPageState extends State<MasterDataPage> {
     children: [
       ButlerlyPage(
         title: context.l10n.text('masterData'),
+        pinnedSpacing: ButlerlyPinnedPageSpacing.primary,
         pinnedHeader: ButlerlyCompactSectionSelector(
           labels: [
             context.l10n.text('categories'),
@@ -290,7 +291,6 @@ class _MasterDataPageState extends State<MasterDataPage> {
           onSelected: (index) => setState(() => _sectionIndex = index),
         ),
         children: [
-          const SizedBox(height: ButlerlySize.minimumTarget),
           FutureBuilder<_MasterData>(
             future: _data,
             builder: (context, snapshot) {
@@ -322,14 +322,17 @@ class _MasterDataPageState extends State<MasterDataPage> {
       PositionedDirectional(
         top:
             ButlerlySize.compactPageToolbarHeight +
+            ButlerlySpacing.pinnedPageHeaderBottomGap +
+            ButlerlySpacing.pinnedPageTopGap +
             ButlerlySize.minimumTarget +
-            ButlerlySpacing.compact,
+            ButlerlySpacing.pinnedPageBottomGap +
+            ButlerlySpacing.masterDataAddButtonTopGap,
         end: ButlerlySize.phoneGutter,
         child: IconButton.filled(
           key: const ValueKey('master-data-add'),
           tooltip: context.l10n.text('add'),
           onPressed: _add,
-          icon: const Icon(Icons.add),
+          icon: const Icon(Icons.add, color: Colors.white),
           style: IconButton.styleFrom(
             shape: const CircleBorder(),
             minimumSize: const Size.square(ButlerlySize.minimumTarget),

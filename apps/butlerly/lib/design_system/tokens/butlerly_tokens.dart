@@ -11,6 +11,7 @@ abstract final class ButlerlySpacing {
   static const xl = large;
   static const xxl = major;
   static const micro = 4.0;
+  static const microSmall = 6.0;
   static const compact = 8.0;
   static const small = 12.0;
   static const standard = 16.0;
@@ -31,10 +32,11 @@ abstract final class ButlerlySpacing {
   static const bottomActionSpacing = section;
   static const pinnedControlTopGap = compact;
   static const periodSelectorGap = standard;
-  static const pinnedPageHeaderBottomGap = small;
-  static const pinnedPageTopGap = small;
-  static const pinnedPageBottomGap = small;
+  static const pinnedPageHeaderBottomGap = microSmall;
+  static const pinnedPageTopGap = microSmall;
+  static const pinnedPageBottomGap = microSmall;
   static const pinnedPageBodyTopGap = small;
+  static const masterDataAddButtonTopGap = microSmall;
 }
 
 /// Stable categorical colors shared by charts and their legends.
