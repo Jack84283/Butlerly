@@ -23,10 +23,7 @@ class ButlerlyActionGroup extends StatelessWidget {
 
   final List<ButlerlyActionItem> actions;
 
-  static const double _dividerInset =
-      ButlerlySpacing.standard +
-      ButlerlySize.preferredTarget +
-      ButlerlySpacing.compact;
+  static const double _dividerInset = ButlerlySpacing.standard;
 
   @override
   Widget build(BuildContext context) => Material(
