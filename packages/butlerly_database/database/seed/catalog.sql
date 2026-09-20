@@ -86,6 +86,11 @@ INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('cate
 
 -- Built-in merchant defaults are suggestions only; users may classify them differently.
 INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.safeway','Safeway','safeway','category.food','category.food.groceries',1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.kroger','Kroger','kroger','category.food','category.food.groceries',1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.heb','H-E-B','h e b','category.food','category.food.groceries',1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.aldi','ALDI','aldi','category.food','category.food.groceries',1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.andronicos','Andronico''s Community Markets','andronico s community markets','category.food','category.food.groceries',1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.albertsons','Albertsons','albertsons','category.food','category.food.groceries',1,'active');
 INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.costco','Costco','costco','category.food','category.food.groceries',1,'active');
 INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.walmart','Walmart','walmart','category.shopping',NULL,1,'active');
 INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.amazon','Amazon','amazon','category.shopping',NULL,1,'active');
