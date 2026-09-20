@@ -112,26 +112,17 @@ class PrimaryBottomNavigation extends StatelessWidget {
             ),
             child: baseIcon,
           );
-    final content = Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        icon,
-        SizedBox(
-          height: add ? ButlerlySpacing.none : ButlerlySize.navigationLabelGap,
-        ),
-        Text(
-          destination.label,
-          textAlign: TextAlign.center,
-          softWrap: true,
-          style: labelStyle,
-        ),
-      ],
-    );
-    final standardOffset =
-        (ButlerlySize.primaryNavigationAddIconSize -
-            ButlerlySize.standardIcon -
-            ButlerlySize.navigationLabelGap) /
-        2;
+    final iconSlot = add
+        ? SizedBox(
+            height: ButlerlySize.primaryNavigationAddIconSize,
+            child: icon,
+          )
+        : SizedBox(
+            height:
+                ButlerlySize.primaryNavigationAddIconSize -
+                ButlerlySize.navigationLabelGap,
+            child: Align(alignment: Alignment.bottomCenter, child: icon),
+          );
 
     return Semantics(
       button: true,
@@ -144,12 +135,23 @@ class PrimaryBottomNavigation extends StatelessWidget {
         onTap: () => onSelected(branchIndex),
         child: SizedBox(
           height: double.infinity,
-          child: add
-              ? content
-              : Transform.translate(
-                  offset: Offset(0, standardOffset),
-                  child: content,
-                ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              iconSlot,
+              SizedBox(
+                height: add
+                    ? ButlerlySpacing.none
+                    : ButlerlySize.navigationLabelGap,
+              ),
+              Text(
+                destination.label,
+                textAlign: TextAlign.center,
+                softWrap: true,
+                style: labelStyle,
+              ),
+            ],
+          ),
         ),
       ),
     );
