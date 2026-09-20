@@ -391,7 +391,8 @@ void main() {
         categoryTranslations
             .where(
               (row) =>
-                  row['category_id'] == 'category.digital_services.cloud_storage' &&
+                  row['category_id'] ==
+                      'category.digital_services.cloud_storage' &&
                   row['locale'] == 'en',
             )
             .single['label'],
@@ -421,7 +422,8 @@ void main() {
         categoryTranslations
             .where(
               (row) =>
-                  row['category_id'] == 'category.transfer.credit_card_payment' &&
+                  row['category_id'] ==
+                      'category.transfer.credit_card_payment' &&
                   row['locale'] == 'en',
             )
             .single['label'],
