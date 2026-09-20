@@ -204,6 +204,50 @@ void main() {
     },
   );
 
+  test('duplicate-check failure blocks preview and commit safely', () async {
+    final preview = CsvStatementPreview(
+      rows: [
+        CsvStatementRow(
+          rowNumber: 2,
+          date: '2026-08-09',
+          description: 'Market',
+          amount: '12.50',
+          currency: 'USD',
+          direction: TransactionDirection.expense,
+          cardReference: null,
+          externalReference: 'bank-1',
+          original: 'original-row',
+        ),
+      ],
+      errors: const [],
+    );
+    var imports = 0;
+    final importer = LocalCsvImporter.withHandler(
+      (command) async {
+        imports++;
+        return ApplicationSuccess<TransactionDto>(_dto(command));
+      },
+      duplicateChecker: (command) async =>
+          const ApplicationFailure<DuplicateTransactionCheckResult>(
+            ApplicationFailureDetail(
+              code: ApplicationFailureCode.unavailable,
+              operation: 'check duplicate transaction',
+            ),
+          ),
+    );
+
+    await expectLater(importer.findDuplicates(preview), throwsStateError);
+
+    final summary = await importer.commitPreview(
+      preview,
+      sourceId: 'statement.csv',
+      sourceLanguage: 'en',
+    );
+    expect(summary.imported, 0);
+    expect(summary.failed, 1);
+    expect(imports, 0);
+  });
+
   test(
     'shared duplicate candidates require explicit confirmation before import',
     () async {
