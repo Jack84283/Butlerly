@@ -15,6 +15,7 @@ import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class ReviewPage extends StatefulWidget {
   const ReviewPage({this.showPossibleDuplicates = false, super.key});
@@ -27,6 +28,7 @@ class ReviewPage extends StatefulWidget {
 
 class _ReviewPageState extends State<ReviewPage> {
   late Future<List<_ReviewEntry>> _items;
+  late Future<List<StatementReviewException>> _statementExceptions;
   late Future<List<TransactionDto>> _uncategorized;
   late Future<List<DuplicateCandidateGroup>> _duplicateGroups;
   late Future<TransactionMasterDataSnapshot> _masterData;
@@ -44,6 +46,7 @@ class _ReviewPageState extends State<ReviewPage> {
         ? _ReviewView.duplicates
         : _ReviewView.uncategorized;
     _items = _load();
+    _statementExceptions = _loadStatementExceptions();
     _uncategorized = _loadUncategorized();
     _duplicateGroups = _loadDuplicateGroups();
     transactionChanges.addListener(_handleTransactionChange);
@@ -123,9 +126,22 @@ class _ReviewPageState extends State<ReviewPage> {
 
   void _refresh() => setState(() {
     _items = _load();
+    _statementExceptions = _loadStatementExceptions();
     _uncategorized = _loadUncategorized();
     _duplicateGroups = _loadDuplicateGroups();
   });
+
+  Future<List<StatementReviewException>> _loadStatementExceptions() async {
+    final service = _finance?.statementServices;
+    if (service == null) return const [];
+    final result = await service.reviewExceptions();
+    return switch (result) {
+      ApplicationSuccess<List<StatementReviewException>>(:final value) => value,
+      ApplicationFailure<List<StatementReviewException>>() => throw StateError(
+        'Statement review exceptions could not be loaded.',
+      ),
+    };
+  }
 
   Future<List<TransactionDto>> _loadUncategorized() async {
     final finance = _finance;
@@ -510,62 +526,131 @@ class _ReviewPageState extends State<ReviewPage> {
                   onAction: _refresh,
                 );
               }
-              final items = snapshot.requireData;
-              if (items.isEmpty) {
-                return ButlerlyEmptyState(
-                  icon: Icons.check_circle_outline_rounded,
-                  title: context.l10n.text('reviewEmpty'),
-                  message: context.l10n.text('reviewEmptyBody'),
-                );
-              }
-              final byId = {
-                for (final entry in items) entry.transaction.id: entry,
-              };
-              return FutureBuilder<TransactionMasterDataSnapshot>(
-                future: _masterData,
-                builder: (context, masterSnapshot) => TransactionRecordList(
-                  transactions: items
-                      .map((entry) => entry.transaction)
-                      .toList(),
-                  masterData:
-                      masterSnapshot.data?.presentation ??
-                      const TransactionMasterData(),
-                  paymentSourceNames: {
-                    for (final source
-                        in masterSnapshot.data?.paymentSources ??
-                            <PaymentSource>[])
-                      source.id.value: source.name,
-                  },
-                  groupByFinancialDate: true,
-                  showDateInRows: true,
-                  missingCategoryLabel: context.l10n.text('uncategorized'),
-                  supportingContentBuilder: (context, transaction) {
-                    // Preserve the application's issue order; do not introduce a new priority policy.
-                    final item = byId[transaction.id]!.items.first;
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ExcludeSemantics(
-                          child: Icon(
-                            Icons.warning_amber_rounded,
-                            size: ButlerlyTransactionItemTokens.warningIconSize,
-                            color: context.transactionItemWarningIcon,
-                          ),
-                        ),
-                        const SizedBox(width: ButlerlySpacing.micro),
-                        Expanded(
-                          child: Text(
-                            item.detail?.trim().isNotEmpty == true
-                                ? item.detail!
-                                : _reason(item.reason, context),
-                            style: context.transactionItemMetadata,
-                          ),
-                        ),
-                      ],
+              return FutureBuilder<List<StatementReviewException>>(
+                future: _statementExceptions,
+                builder: (context, statementSnapshot) {
+                  if (statementSnapshot.connectionState !=
+                      ConnectionState.done) {
+                    return const ButlerlyLoadingState();
+                  }
+                  if (statementSnapshot.hasError) {
+                    return ButlerlyErrorState(
+                      title: context.l10n.text('reviewLoadError'),
+                      message: context.l10n.text('tryAgain'),
+                      preserved: context.l10n.text('dataPreserved'),
+                      actionLabel: context.l10n.text('tryAgain'),
+                      onAction: _refresh,
                     );
-                  },
-                  onTap: (transaction) => _openReview(byId[transaction.id]!),
-                ),
+                  }
+                  final items = snapshot.requireData;
+                  final statementIssues =
+                      statementSnapshot.data ?? const <StatementReviewException>[];
+                  if (items.isEmpty && statementIssues.isEmpty) {
+                    return ButlerlyEmptyState(
+                      icon: Icons.check_circle_outline_rounded,
+                      title: context.l10n.text('reviewEmpty'),
+                      message: context.l10n.text('reviewEmptyBody'),
+                    );
+                  }
+                  final byId = {
+                    for (final entry in items) entry.transaction.id: entry,
+                  };
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final issue in statementIssues)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            bottom: ButlerlySpacing.cardGap,
+                          ),
+                          child: ButlerlyCard(
+                            padding: EdgeInsets.zero,
+                            child: ListTile(
+                              leading: Icon(
+                                Icons.warning_amber_rounded,
+                                color: context.transactionItemWarningIcon,
+                              ),
+                              title: Text(
+                                issue.description?.trim().isNotEmpty == true
+                                    ? issue.description!
+                                    : issue.originalText,
+                              ),
+                              subtitle: Text(
+                                issue.reason?.trim().isNotEmpty == true
+                                    ? issue.reason!
+                                    : context.l10n.text('unresolvedRows'),
+                              ),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => context.go('/statements'),
+                            ),
+                          ),
+                        ),
+                      if (items.isNotEmpty)
+                        FutureBuilder<TransactionMasterDataSnapshot>(
+                          future: _masterData,
+                          builder: (context, masterSnapshot) =>
+                              TransactionRecordList(
+                                transactions: items
+                                    .map((entry) => entry.transaction)
+                                    .toList(),
+                                masterData:
+                                    masterSnapshot.data?.presentation ??
+                                    const TransactionMasterData(),
+                                paymentSourceNames: {
+                                  for (final source
+                                      in masterSnapshot.data?.paymentSources ??
+                                          <PaymentSource>[])
+                                    source.id.value: source.name,
+                                },
+                                groupByFinancialDate: true,
+                                showDateInRows: true,
+                                missingCategoryLabel: context.l10n.text(
+                                  'uncategorized',
+                                ),
+                                supportingContentBuilder:
+                                    (context, transaction) {
+                                      final item =
+                                          byId[transaction.id]!.items.first;
+                                      return Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          ExcludeSemantics(
+                                            child: Icon(
+                                              Icons.warning_amber_rounded,
+                                              size:
+                                                  ButlerlyTransactionItemTokens
+                                                      .warningIconSize,
+                                              color: context
+                                                  .transactionItemWarningIcon,
+                                            ),
+                                          ),
+                                          const SizedBox(
+                                            width: ButlerlySpacing.micro,
+                                          ),
+                                          Expanded(
+                                            child: Text(
+                                              item.detail?.trim().isNotEmpty ==
+                                                      true
+                                                  ? item.detail!
+                                                  : _reason(
+                                                      item.reason,
+                                                      context,
+                                                    ),
+                                              style: context
+                                                  .transactionItemMetadata,
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                onTap: (transaction) =>
+                                    _openReview(byId[transaction.id]!),
+                              ),
+                        ),
+                    ],
+                  );
+                },
               );
             },
           ),
