@@ -28,9 +28,9 @@ void main() {
     },
   );
 
-  testWidgets('subcategory keeps a missing stored reference visible', (
-    tester,
-  ) async {
+  testWidgets(
+    'subcategory keeps a missing stored reference visible',
+    (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -50,5 +50,6 @@ void main() {
     final editable = tester.widget<EditableText>(find.byType(EditableText));
     expect(editable.controller.text, 'subcategory-missing');
     expect(find.byTooltip('Clear'), findsOneWidget);
-  });
+    },
+  );
 }
