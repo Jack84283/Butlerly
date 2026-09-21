@@ -392,11 +392,11 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
       widget.finance,
     ).load(languageCode: languageCode);
     final data = _EditorMasterData.fromSnapshot(snapshot);
-    _normalizeLegacyClassification(data);
+    _normalizeClassification(data);
     return data;
   }
 
-  void _normalizeLegacyClassification(_EditorMasterData data) {
+  void _normalizeClassification(_EditorMasterData data) {
     if (widget.existing == null || _categoryId == null) return;
 
     if (_subcategoryId == null) {
