@@ -47,6 +47,8 @@ void main() {
     expect(appBarIndex, isNonNegative);
     final appBar = scrollView.slivers[appBarIndex] as SliverAppBar;
     expect(appBar.shape, isA<Border>());
+    expect(appBar.toolbarHeight, ButlerlySize.pageToolbarHeight);
+    expect(ButlerlySize.pageToolbarHeight, 48);
     expect((appBar.shape! as Border).bottom.width, ButlerlySize.dividerWidth);
     expect(pinnedHeaderIndex, greaterThan(appBarIndex));
     expect(refreshIndex, greaterThan(pinnedHeaderIndex));
@@ -80,7 +82,9 @@ void main() {
     expect(activity, findsOneWidget);
     expect(
       tester.getTopLeft(activity).dy,
-      greaterThanOrEqualTo(kToolbarHeight + ButlerlySize.minimumTarget),
+      greaterThanOrEqualTo(
+        ButlerlySize.pageToolbarHeight + ButlerlySize.minimumTarget,
+      ),
     );
 
     refreshGate.complete();
@@ -110,7 +114,7 @@ void main() {
     final indicator = tester.widget<RefreshIndicator>(
       find.byKey(const ValueKey('analysis-refresh')),
     );
-    final headerExtent = kToolbarHeight + pinnedExtent;
+    final headerExtent = ButlerlySize.pageToolbarHeight + pinnedExtent;
     expect(indicator.edgeOffset, headerExtent);
     expect(indicator.displacement, headerExtent + 40);
   });
@@ -135,7 +139,8 @@ void main() {
     final indicator = tester.widget<RefreshIndicator>(
       find.byKey(const ValueKey('page-refresh')),
     );
-    final headerExtent = kToolbarHeight + ButlerlySize.minimumTarget;
+    final headerExtent =
+        ButlerlySize.pageToolbarHeight + ButlerlySize.minimumTarget;
     expect(indicator.edgeOffset, headerExtent);
     expect(indicator.displacement, headerExtent + 40);
   });
