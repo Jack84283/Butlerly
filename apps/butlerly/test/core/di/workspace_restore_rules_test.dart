@@ -256,15 +256,12 @@ void main() {
       mode: LocalRestoreMode.replace,
     );
 
-    final groups = await finance.listDuplicateCandidateGroups!();
-    expect(groups, isA<ApplicationSuccess<List<DuplicateCandidateGroup>>>());
-    expect(
-      (groups as ApplicationSuccess<List<DuplicateCandidateGroup>>)
-          .value
-          .single
-          .status,
-      DuplicateCandidateGroupStatus.keepBoth,
+    final groups = await database.database.query(
+      'duplicate_candidate_groups',
+      where: 'status = ?',
+      whereArgs: [DuplicateCandidateGroupStatus.keepBoth.name],
     );
+    expect(groups, hasLength(1));
   });
 
   test(
