@@ -184,12 +184,9 @@ class ButlerlySubcategorySelector extends StatelessWidget {
               category.id.value == value) &&
           category.parentId?.value == parentId,
     );
-    final selected = children.any((category) => category.id.value == value)
-        ? value
-        : null;
     return ButlerlySelectField<String>(
       label: label,
-      value: selected,
+      value: value,
       entries: [
         for (final category in children)
           DropdownMenuEntry(
@@ -198,7 +195,7 @@ class ButlerlySubcategorySelector extends StatelessWidget {
           ),
       ],
       onChanged: onChanged,
-      onClear: selected == null ? null : () => onChanged(null),
+      onClear: value == null ? null : () => onChanged(null),
       clearTooltip: clearLabel,
     );
   }
