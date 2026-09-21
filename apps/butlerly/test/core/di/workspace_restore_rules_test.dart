@@ -198,8 +198,8 @@ void main() {
       mode: LocalRestoreMode.replace,
     );
 
-    final groups = await services<FinanceServices>()
-        .listDuplicateCandidateGroups!();
+    final groups =
+        await services<FinanceServices>().listDuplicateCandidateGroups!();
     expect(
       groups,
       isA<ApplicationSuccess<List<DuplicateCandidateGroup>>>(),
@@ -208,10 +208,10 @@ void main() {
       (groups as ApplicationSuccess<List<DuplicateCandidateGroup>>).value,
       hasLength(1),
     );
-    expect(
-      groups.value.single.transactionIds.map((id) => id.value).toSet(),
-      {'restored-expense', 'restored-expense-duplicate'},
-    );
+    expect(groups.value.single.transactionIds.map((id) => id.value).toSet(), {
+      'restored-expense',
+      'restored-expense-duplicate',
+    });
   });
 
   test('restore preserves resolved duplicate decisions', () async {
@@ -242,10 +242,9 @@ void main() {
     );
     final finance = services<FinanceServices>();
     final scanned = await finance.scanExistingTransactionsForDuplicates!();
-    final group =
-        (scanned as ApplicationSuccess<List<DuplicateCandidateGroup>>)
-            .value
-            .single;
+    final group = (scanned as ApplicationSuccess<List<DuplicateCandidateGroup>>)
+        .value
+        .single;
     await finance.resolveDuplicateCandidateGroup!(
       group.id,
       DuplicateCandidateGroupStatus.keepBoth,
