@@ -224,8 +224,12 @@ class PrimaryBottomNavigation extends StatelessWidget {
             context,
             constraints.maxWidth,
           );
-          final archRise = visualBranchIndexes.contains(1)
+          final hasAddArch = visualBranchIndexes.contains(1);
+          final archRise = hasAddArch
               ? ButlerlySize.primaryNavigationArchRise
+              : ButlerlySpacing.none;
+          final archHeight = hasAddArch
+              ? ButlerlySize.primaryNavigationArchHeight
               : ButlerlySpacing.none;
           return SizedBox(
             height: navigationHeight + bottomInset + archRise,
@@ -234,18 +238,19 @@ class PrimaryBottomNavigation extends StatelessWidget {
                 Positioned(
                   left: 0,
                   right: 0,
-                  top: archRise,
+                  top: archHeight,
                   bottom: 0,
                   child: DecoratedBox(
+                    key: const ValueKey('primary-navigation-base'),
                     decoration: _PrimaryNavigationBase(
                       fillColor: navigationColor,
                       edgeColor: divider.color,
                       edgeWidth: divider.width,
-                      hasAddArch: visualBranchIndexes.contains(1),
+                      hasAddArch: hasAddArch,
                     ),
                   ),
                 ),
-                if (visualBranchIndexes.contains(1))
+                if (hasAddArch)
                   Positioned(
                     left: 0,
                     right: 0,
@@ -254,7 +259,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
                       child: Container(
                         key: const ValueKey('primary-navigation-add-arch'),
                         width: ButlerlySize.primaryNavigationArchWidth,
-                        height: ButlerlySize.primaryNavigationArchRise,
+                        height: ButlerlySize.primaryNavigationArchHeight,
                         decoration: _PrimaryNavigationCircularArch(
                           fillColor: navigationColor,
                           edgeColor: divider.color,
@@ -374,7 +379,7 @@ class _PrimaryNavigationBasePainter extends BoxPainter {
     }
 
     final radius = ButlerlySize.primaryNavigationArchWidth / 2;
-    final centerY = radius - ButlerlySize.primaryNavigationArchRise;
+    final centerY = radius - ButlerlySize.primaryNavigationArchHeight;
     final halfChord = math.sqrt(radius * radius - centerY * centerY);
     final centerX = rect.center.dx;
     canvas.drawLine(
