@@ -102,8 +102,7 @@ void main() {
           paymentSourceId: 'source-visa',
         ),
       );
-      final transaction =
-          (created as ApplicationSuccess<TransactionDto>).value;
+      final transaction = (created as ApplicationSuccess<TransactionDto>).value;
 
       await tester.pumpWidget(const MaterialApp(home: TransactionsPage()));
       await tester.pumpAndSettle();

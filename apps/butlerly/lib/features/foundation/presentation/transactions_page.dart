@@ -1479,7 +1479,8 @@ class _TransactionMasterDataRowsState
                   data.merchantName(transaction.merchantId) ??
                   context.l10n.text('unavailableMerchant'),
             ),
-          if (transaction.categoryId != null || transaction.subcategoryId != null)
+          if (transaction.categoryId != null ||
+              transaction.subcategoryId != null)
             ..._categoryRows(
               context,
               data,
