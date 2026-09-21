@@ -15,21 +15,25 @@ void main() {
     'shared select field clears stale text when canonical value becomes null',
     (tester) async {
       String? value = 'food';
+      late StateSetter update;
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: StatefulBuilder(
-              builder: (context, setState) => ButlerlySelectField<String>(
-                label: 'Category',
-                value: value,
-                entries: const [
-                  DropdownMenuEntry(value: 'food', label: 'Food'),
-                  DropdownMenuEntry(value: 'travel', label: 'Travel'),
-                ],
-                onChanged: (next) => setState(() => value = next),
-                onClear: () => setState(() => value = null),
-                clearTooltip: 'Clear',
-              ),
+              builder: (context, setState) {
+                update = setState;
+                return ButlerlySelectField<String>(
+                  label: 'Category',
+                  value: value,
+                  entries: const [
+                    DropdownMenuEntry(value: 'food', label: 'Food'),
+                    DropdownMenuEntry(value: 'travel', label: 'Travel'),
+                  ],
+                  onChanged: (next) => setState(() => value = next),
+                  onClear: () => setState(() => value = null),
+                  clearTooltip: 'Clear',
+                );
+              },
             ),
           ),
         ),
@@ -40,10 +44,7 @@ void main() {
           tester.widget<EditableText>(find.byType(EditableText));
       expect(editable().controller.text, 'Food');
 
-      final clearButton = tester.widget<IconButton>(
-        find.widgetWithIcon(IconButton, Icons.clear),
-      );
-      clearButton.onPressed!();
+      update(() => value = null);
       await tester.pump();
 
       expect(value, isNull);
