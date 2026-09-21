@@ -47,8 +47,14 @@ void main() {
       ),
     );
 
-    final editable = tester.widget<EditableText>(find.byType(EditableText));
-    expect(editable.controller.text, 'subcategory-missing');
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is EditableText &&
+            widget.controller.text == 'subcategory-missing',
+      ),
+      findsWidgets,
+    );
     expect(find.byTooltip('Clear'), findsOneWidget);
   });
 }
