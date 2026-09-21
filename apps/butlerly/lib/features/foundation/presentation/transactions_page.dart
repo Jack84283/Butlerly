@@ -1680,14 +1680,11 @@ Future<bool?> _organizeTransaction(
     languageCode: languageCode,
   );
   if (!context.mounted) return false;
-  final activeCategories = categories
-      .where((value) => value.status == CategoryStatus.active)
-      .toList(growable: false);
   String? merchantId = transaction.merchantId;
   String? categoryId = transaction.categoryId;
   String? subcategoryId = transaction.subcategoryId;
   final selectedTagIds = transaction.tagIds.toSet();
-  final initialCategory = activeCategories
+  final initialCategory = categories
       .where((value) => value.id.value == categoryId)
       .firstOrNull;
   if (subcategoryId == null && initialCategory?.parentId != null) {
@@ -1713,7 +1710,7 @@ Future<bool?> _organizeTransaction(
               ),
               const SizedBox(height: ButlerlySpacing.small),
               ButlerlyCategorySelector(
-                categories: activeCategories,
+                categories: categories,
                 masterData: presentation,
                 value: parentCategoryId,
                 label: dialogContext.l10n.text('category'),
@@ -1726,7 +1723,7 @@ Future<bool?> _organizeTransaction(
               ),
               const SizedBox(height: ButlerlySpacing.small),
               ButlerlySubcategorySelector(
-                categories: activeCategories,
+                categories: categories,
                 masterData: presentation,
                 parentId: parentCategoryId,
                 value: subcategoryId,
