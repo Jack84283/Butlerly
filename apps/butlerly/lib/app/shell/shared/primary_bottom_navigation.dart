@@ -80,10 +80,6 @@ class PrimaryBottomNavigation extends StatelessWidget {
           : context.colors.secondaryText,
       selected: selected,
     );
-    final textScaler = MediaQuery.textScalerOf(context);
-    final normalScale =
-        textScaler.scale(ButlerlyTypography.navigationLabelFontSize) <=
-        ButlerlyTypography.navigationLabelFontSize + 0.01;
     final baseIcon = selected
         ? (destination.selectedIcon ?? destination.icon)
         : destination.icon;
