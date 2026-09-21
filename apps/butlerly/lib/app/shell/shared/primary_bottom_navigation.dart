@@ -128,7 +128,6 @@ class PrimaryBottomNavigation extends StatelessWidget {
                   destination.label,
                   textAlign: TextAlign.center,
                   softWrap: !normalScale,
-                  maxLines: normalScale ? 1 : null,
                   style: labelStyle,
                 ),
               ),
