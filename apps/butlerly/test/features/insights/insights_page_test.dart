@@ -98,6 +98,53 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
+  testWidgets('period change keeps insights shell and current body visible', (
+    tester,
+  ) async {
+    var loads = 0;
+    final periodResult =
+        Completer<ApplicationResult<List<RuleExecutionResult>>>();
+
+    Future<ApplicationResult<List<RuleExecutionResult>>> load(String _) {
+      loads++;
+      if (loads == 1) {
+        return Future.value(const ApplicationSuccess(<RuleExecutionResult>[]));
+      }
+      return periodResult.future;
+    }
+
+    await tester.pumpWidget(app(load));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Period summary'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('analysis-period-pinned-header')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('analysis-period-selector')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Last month').last);
+    await tester.pump();
+
+    expect(loads, 2);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(
+      find.byKey(const ValueKey('analysis-period-pinned-header')),
+      findsOneWidget,
+    );
+    expect(find.text('Period summary'), findsOneWidget);
+
+    periodResult.complete(const ApplicationSuccess(<RuleExecutionResult>[]));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(
+      find.byKey(const ValueKey('analysis-period-pinned-header')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('summary pie uses source amounts instead of rounded shares', (
     tester,
   ) async {
