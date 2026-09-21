@@ -397,9 +397,10 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   }
 
   void _normalizeClassification(_EditorMasterData data) {
-    if (widget.existing == null || _categoryId == null) return;
+    if (widget.existing == null) return;
 
     if (_subcategoryId == null) {
+      if (_categoryId == null) return;
       final category = data.categories
           .where((value) => value.id.value == _categoryId)
           .firstOrNull;
@@ -413,7 +414,18 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
     final subcategory = data.categories
         .where((value) => value.id.value == _subcategoryId)
         .firstOrNull;
-    if (subcategory != null && subcategory.parentId?.value != _categoryId) {
+    if (subcategory == null) return;
+
+    final parentId = subcategory.parentId?.value;
+    if (parentId == null) {
+      _subcategoryId = null;
+      return;
+    }
+    if (_categoryId == null) {
+      _categoryId = parentId;
+      return;
+    }
+    if (parentId != _categoryId) {
       _subcategoryId = null;
     }
   }
@@ -1694,9 +1706,15 @@ Future<bool?> _organizeTransaction(
     final initialSubcategory = categories
         .where((value) => value.id.value == subcategoryId)
         .firstOrNull;
-    if (initialSubcategory != null &&
-        initialSubcategory.parentId?.value != categoryId) {
-      subcategoryId = null;
+    if (initialSubcategory != null) {
+      final parentId = initialSubcategory.parentId?.value;
+      if (parentId == null) {
+        subcategoryId = null;
+      } else if (categoryId == null) {
+        categoryId = parentId;
+      } else if (parentId != categoryId) {
+        subcategoryId = null;
+      }
     }
   }
   String? parentCategoryId = categoryId;
