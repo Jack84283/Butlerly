@@ -31,6 +31,9 @@ void main() {
   late MemoryEvidence evidenceRepository;
   late MemoryDuplicateGroups duplicateGroups;
   late MemoryPaymentSources paymentSources;
+  late MemoryMerchants merchants;
+  late MemoryCategories categories;
+  late MemoryTags tags;
 
   setUp(() async {
     await services.reset();
@@ -38,13 +41,16 @@ void main() {
     evidenceRepository = MemoryEvidence();
     duplicateGroups = MemoryDuplicateGroups(repository);
     paymentSources = MemoryPaymentSources();
+    merchants = MemoryMerchants();
+    categories = MemoryCategories();
+    tags = MemoryTags();
     services.registerSingleton<FinanceServices>(
       FinanceServices(
         repository,
         paymentSources,
-        MemoryMerchants(),
-        MemoryCategories(),
-        MemoryTags(),
+        merchants,
+        categories,
+        tags,
         evidenceRepository,
         MemoryUserPreferences(),
         duplicateGroups: duplicateGroups,
@@ -53,6 +59,97 @@ void main() {
   });
 
   tearDown(() => services.reset());
+
+  testWidgets(
+    'row detail and edit preserve transaction master-data references',
+    (tester) async {
+      final finance = services<FinanceServices>();
+      merchants.values['merchant-cafe'] = Merchant(
+        id: MerchantId('merchant-cafe'),
+        name: 'Corner Cafe',
+      );
+      categories.values['category-food'] = Category(
+        id: CategoryId('category-food'),
+        name: 'Food',
+        origin: CategoryOrigin.user,
+      );
+      categories.values['subcategory-dining'] = Category(
+        id: CategoryId('subcategory-dining'),
+        name: 'Dining',
+        origin: CategoryOrigin.user,
+        parentId: CategoryId('category-food'),
+      );
+      paymentSources.values['source-visa'] = PaymentSource(
+        id: PaymentSourceId('source-visa'),
+        name: 'Visa',
+        type: PaymentSourceType.card,
+      );
+      final created = await finance.createTransaction(
+        CreateTransactionCommand(
+          id: 'master-data-consistency',
+          provenanceId: 'master-data-consistency-provenance',
+          timing: KnownTransactionTime(DateTime.utc(2026, 9, 20, 12)),
+          money: Money(
+            amount: DecimalValue.parse('24.50'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+          transactionDate: '2026-09-20',
+          description: 'Lunch',
+          merchantId: 'merchant-cafe',
+          categoryId: 'category-food',
+          subcategoryId: 'subcategory-dining',
+          paymentSourceId: 'source-visa',
+        ),
+      );
+      final transaction =
+          (created as ApplicationSuccess<TransactionDto>).value;
+
+      await tester.pumpWidget(const MaterialApp(home: TransactionsPage()));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Corner Cafe'), findsOneWidget);
+      expect(find.text('Food'), findsOneWidget);
+      expect(find.text('Dining'), findsOneWidget);
+      expect(find.text('Visa'), findsOneWidget);
+
+      await tester.tap(find.text('Corner Cafe'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Transaction detail'), findsOneWidget);
+      expect(find.text('Corner Cafe'), findsOneWidget);
+      expect(find.text('Food'), findsOneWidget);
+      expect(find.text('Dining'), findsOneWidget);
+      expect(find.text('Visa'), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.edit_outlined));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('transaction-description-field')),
+        'Updated lunch',
+      );
+      await tester.scrollUntilVisible(
+        find.text('Save locally'),
+        160,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.tap(find.text('Save locally'));
+      await tester.pumpAndSettle();
+
+      final refreshed = await finance.getTransaction(transaction.id);
+      final saved = (refreshed as ApplicationSuccess<TransactionDto>).value;
+      expect(saved.merchantId, 'merchant-cafe');
+      expect(saved.categoryId, 'category-food');
+      expect(saved.subcategoryId, 'subcategory-dining');
+      expect(saved.paymentSourceId, 'source-visa');
+
+      expect(find.text('Transaction detail'), findsOneWidget);
+      expect(find.text('Corner Cafe'), findsOneWidget);
+      expect(find.text('Food'), findsOneWidget);
+      expect(find.text('Dining'), findsOneWidget);
+      expect(find.text('Visa'), findsOneWidget);
+    },
+  );
 
   testWidgets('transaction detail refreshes evidence after a receipt scan', (
     tester,
