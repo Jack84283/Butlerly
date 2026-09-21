@@ -5,27 +5,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('select field shows canonical value when its label is unavailable', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: ButlerlySelectField<String>(
-            label: 'Merchant',
-            value: 'merchant-missing',
-            entries: const [],
-            onChanged: (_) {},
-            onClear: () {},
-            clearTooltip: 'Clear',
+  testWidgets(
+    'select field shows canonical value when its label is unavailable',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ButlerlySelectField<String>(
+              label: 'Merchant',
+              value: 'merchant-missing',
+              entries: const [],
+              onChanged: (_) {},
+              onClear: () {},
+              clearTooltip: 'Clear',
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    final editable = tester.widget<EditableText>(find.byType(EditableText));
-    expect(editable.controller.text, 'merchant-missing');
-  });
+      final editable = tester.widget<EditableText>(find.byType(EditableText));
+      expect(editable.controller.text, 'merchant-missing');
+    },
+  );
 
   testWidgets('subcategory keeps a missing stored reference visible', (
     tester,
