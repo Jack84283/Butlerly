@@ -189,8 +189,7 @@ Future<void> _scrollToTop(WidgetTester tester) async {
 void _expectSelectorValue(WidgetTester tester, String value) {
   expect(
     find.byWidgetPredicate(
-      (widget) =>
-          widget is EditableText && widget.controller.text == value,
+      (widget) => widget is EditableText && widget.controller.text == value,
     ),
     findsOneWidget,
   );
