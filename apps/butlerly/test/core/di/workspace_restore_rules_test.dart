@@ -249,9 +249,7 @@ void main() {
     final backup = File('${root.path}/resolved-duplicates.butlerlybackup');
     await services<LocalBackupManager>().createBackup(backup);
 
-    await finance.deleteTransactionPermanently(
-      TransactionId('resolved-duplicate'),
-    );
+    await finance.deleteTransactionPermanently('resolved-duplicate');
 
     await services<WorkspaceDataService>().restore(
       backup.path,
