@@ -343,7 +343,13 @@ void main() {
       if (!openedReview) {
         fail('Statement review did not finish opening.');
       }
-      expect(find.text(entry.$2), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('statement-review-content')),
+          matching: find.text(entry.$2),
+        ),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     });
   }
