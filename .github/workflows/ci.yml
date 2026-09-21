@@ -43,6 +43,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-toolchain
       - run: ./tool/setup.sh
+      - name: Show page refresh formatter output
+        run: bash ./tool/diagnose_page_refresh_format.sh
       - run: ./tool/validate.sh flutter_application
 
   # macOS checks remain post-merge main checks for now to conserve limited
