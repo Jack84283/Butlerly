@@ -226,11 +226,41 @@ class _InsightsPageState extends State<InsightsPage> {
 
   void _selectPeriod(String period) {
     if (period == _period) return;
+    _changePeriod(period);
+  }
+
+  Future<void> _changePeriod(
+    String period, {
+    DateTimeRange? customRange,
+  }) async {
+    if (!mounted) return;
+    final previousPeriod = _period;
+    final previousRange = _customRange;
+    final previousContext = _context;
+    final generation = ++_loadGeneration;
+
     setState(() {
       _period = period;
-      _customRange = null;
-      _context = null;
-      _result = _load(period, generation: ++_loadGeneration);
+      _customRange = customRange;
+    });
+
+    final result = await _load(period, generation: generation);
+    if (!mounted || generation != _loadGeneration) return;
+
+    if (result is ApplicationFailure<InsightsEvaluation>) {
+      setState(() {
+        _period = previousPeriod;
+        _customRange = previousRange;
+        _context = previousContext;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.text('dataPreserved'))),
+      );
+      return;
+    }
+
+    setState(() {
+      _result = Future.value(result);
     });
   }
 
@@ -247,12 +277,7 @@ class _InsightsPageState extends State<InsightsPage> {
       builder: (_) => AnalysisCustomPeriodSheet(initialRange: initialRange),
     );
     if (!mounted || range == null) return;
-    setState(() {
-      _period = 'selected_period';
-      _customRange = range;
-      _context = null;
-      _result = _load(_period, generation: ++_loadGeneration);
-    });
+    await _changePeriod('selected_period', customRange: range);
   }
 
   @override

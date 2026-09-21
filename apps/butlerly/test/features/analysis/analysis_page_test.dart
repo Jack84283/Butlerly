@@ -5,6 +5,7 @@ import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_custom_period_sheet.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_period_selector.dart';
+import 'package:butlerly/features/analysis/presentation/widgets/analysis_skeleton.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -191,6 +192,60 @@ void main() {
     await refresh;
     await tester.pumpAndSettle();
     debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('period change keeps analysis shell and current body visible', (
+    tester,
+  ) async {
+    var loads = 0;
+    final periodResult =
+        Completer<ApplicationResult<List<RuleExecutionResult>>>();
+
+    Future<ApplicationResult<List<RuleExecutionResult>>> loadForPeriod(
+      String _,
+    ) {
+      loads++;
+      if (loads == 1) {
+        return Future.value(const ApplicationSuccess(<RuleExecutionResult>[]));
+      }
+      return periodResult.future;
+    }
+
+    await tester.pumpWidget(
+      app(
+        () async => const ApplicationSuccess(<RuleExecutionResult>[]),
+        loadForPeriod: loadForPeriod,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Financial calendar'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('analysis-period-pinned-header')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('analysis-period-selector')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Last month').last);
+    await tester.pump();
+
+    expect(loads, 2);
+    expect(find.byType(AnalysisSkeleton), findsNothing);
+    expect(
+      find.byKey(const ValueKey('analysis-period-pinned-header')),
+      findsOneWidget,
+    );
+    expect(find.text('Financial calendar'), findsOneWidget);
+
+    periodResult.complete(const ApplicationSuccess(<RuleExecutionResult>[]));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AnalysisSkeleton), findsNothing);
+    expect(
+      find.byKey(const ValueKey('analysis-period-pinned-header')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('custom period uses a staged bottom sheet range editor', (

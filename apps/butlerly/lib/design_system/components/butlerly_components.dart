@@ -84,11 +84,7 @@ class ButlerlyPage extends StatelessWidget {
         onRefresh != null &&
         !kIsWeb &&
         defaultTargetPlatform == TargetPlatform.iOS;
-    final toolbarHeight = title == null
-        ? 0.0
-        : pinnedHeader == null
-        ? kToolbarHeight
-        : ButlerlySize.compactPageToolbarHeight;
+    final toolbarHeight = title == null ? 0.0 : kToolbarHeight;
     final appBarHeight =
         toolbarHeight +
         (title == null ? ButlerlySpacing.none : pinnedSpacing.headerBottomGap);

@@ -125,7 +125,7 @@ void main() {
       );
       expect(
         find.byKey(const ValueKey('primary-navigation-add-arch')),
-        findsOneWidget,
+        findsNothing,
       );
     },
   );
