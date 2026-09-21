@@ -52,6 +52,67 @@ final class ScanExistingTransactionsForDuplicates {
   );
 }
 
+/// Rebuilds derived duplicate-review state after restore without reopening
+/// restored user decisions when the duplicate membership is unchanged.
+final class RebuildDuplicateGroupsAfterRestore {
+  const RebuildDuplicateGroupsAfterRestore(this.groups, this.clock);
+
+  final DuplicateCandidateGroupRepository groups;
+  final ApplicationClock clock;
+
+  Future<ApplicationResult<List<DuplicateCandidateGroup>>> call() =>
+      runApplication('rebuild duplicate groups after restore', () async {
+        final matches = await groups.findActiveDuplicateGroups();
+        final existing = await groups.list();
+        final existingById = {for (final group in existing) group.id: group};
+        final activeIds = <String>{};
+        final result = <DuplicateCandidateGroup>[];
+
+        for (final match in matches) {
+          final id = 'duplicate:${match.duplicateKey.canonical}';
+          activeIds.add(id);
+          final previous = existingById[id];
+          final transactionIds = List<TransactionId>.unmodifiable(
+            match.transactionIds.toList()
+              ..sort((left, right) => left.value.compareTo(right.value)),
+          );
+          final membershipUnchanged =
+              previous != null &&
+              _sameIds(previous.transactionIds, transactionIds);
+          final group = DuplicateCandidateGroup(
+            id: id,
+            transactionIds: transactionIds,
+            duplicateKey: match.duplicateKey,
+            status: membershipUnchanged
+                ? previous.status
+                : DuplicateCandidateGroupStatus.unresolved,
+            selectedTransactionId: membershipUnchanged
+                ? previous.selectedTransactionId
+                : null,
+            createdAt: previous?.createdAt ?? clock.now(),
+            updatedAt: clock.now(),
+          );
+          await groups.save(group);
+          result.add(group);
+        }
+
+        for (final group in existing) {
+          if (!activeIds.contains(group.id) && group.isUnresolved) {
+            await groups.remove(group.id);
+          }
+        }
+        return result;
+      });
+
+  bool _sameIds(List<TransactionId> left, List<TransactionId> right) {
+    if (left.length != right.length) return false;
+    for (var index = 0; index < left.length; index++) {
+      if (left[index] != right[index]) return false;
+    }
+    return true;
+  }
+}
+
 /// Refreshes only the duplicate key(s) affected by one transaction mutation.
 /// The historical scan remains reserved for explicit rescan/repair actions.
 final class RefreshDuplicateGroupForTransaction {
