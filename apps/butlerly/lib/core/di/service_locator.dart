@@ -47,13 +47,21 @@ void configureDependencies({
       ),
       refreshSystemData: () async {
         await database.reseedSystemData();
-        final installer = services<FinanceServices>().installBuiltInRules;
+        final finance = services<FinanceServices>();
+        final installer = finance.installBuiltInRules;
         if (installer == null) {
           throw StateError('Bundled analysis rule installer is unavailable.');
         }
         final installation = await installBundledAnalysisRules(installer);
         if (installation.diagnostics.isNotEmpty) {
           throw StateError('Bundled analysis rules failed validation.');
+        }
+        final duplicateRebuild = finance.rebuildDuplicateGroupsAfterRestore;
+        if (duplicateRebuild != null) {
+          final duplicateResult = await duplicateRebuild();
+          if (duplicateResult is ApplicationFailure) {
+            throw StateError('Duplicate review state could not be rebuilt.');
+          }
         }
       },
     ),

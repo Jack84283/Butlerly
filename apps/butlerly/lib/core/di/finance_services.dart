@@ -177,6 +177,12 @@ final class FinanceServices {
                duplicateGroups,
                const SystemApplicationClock(),
              ),
+       rebuildDuplicateGroupsAfterRestore = duplicateGroups == null
+           ? null
+           : RebuildDuplicateGroupsAfterRestore(
+               duplicateGroups,
+               const SystemApplicationClock(),
+             ),
        listDuplicateCandidateGroups = duplicateGroups == null
            ? null
            : ListDuplicateCandidateGroups(duplicateGroups),
@@ -326,6 +332,7 @@ final class FinanceServices {
   final DuplicateTransactionChecker duplicateTransactionChecker;
   final ScanExistingTransactionsForDuplicates?
   scanExistingTransactionsForDuplicates;
+  final RebuildDuplicateGroupsAfterRestore? rebuildDuplicateGroupsAfterRestore;
   final ListDuplicateCandidateGroups? listDuplicateCandidateGroups;
   final ResolveDuplicateCandidateGroup? resolveDuplicateCandidateGroup;
   final InstallBuiltInRules? installBuiltInRules;
