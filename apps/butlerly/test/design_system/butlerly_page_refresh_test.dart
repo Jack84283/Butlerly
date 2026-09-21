@@ -78,7 +78,7 @@ void main() {
     expect(
       tester.getTopLeft(activity).dy,
       greaterThanOrEqualTo(
-        ButlerlySize.compactPageToolbarHeight + ButlerlySize.minimumTarget,
+        kToolbarHeight + ButlerlySize.minimumTarget,
       ),
     );
 
@@ -109,7 +109,7 @@ void main() {
     final indicator = tester.widget<RefreshIndicator>(
       find.byKey(const ValueKey('analysis-refresh')),
     );
-    final headerExtent = ButlerlySize.compactPageToolbarHeight + pinnedExtent;
+    final headerExtent = kToolbarHeight + pinnedExtent;
     expect(indicator.edgeOffset, headerExtent);
     expect(indicator.displacement, headerExtent + 40);
   });
@@ -135,7 +135,7 @@ void main() {
       find.byKey(const ValueKey('page-refresh')),
     );
     final headerExtent =
-        ButlerlySize.compactPageToolbarHeight + ButlerlySize.minimumTarget;
+        kToolbarHeight + ButlerlySize.minimumTarget;
     expect(indicator.edgeOffset, headerExtent);
     expect(indicator.displacement, headerExtent + 40);
   });
