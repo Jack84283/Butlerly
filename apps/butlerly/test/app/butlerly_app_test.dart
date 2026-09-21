@@ -459,11 +459,14 @@ void main() {
 
     await tester.tap(find.text('More').last);
     await tester.pumpAndSettle();
+    final moreScrollable = find.byType(Scrollable).first;
     await tester.scrollUntilVisible(
       find.text('Legal & licenses'),
       200,
-      scrollable: find.byType(Scrollable).first,
+      scrollable: moreScrollable,
     );
+    await tester.drag(moreScrollable, const Offset(0, -80));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Legal & licenses'));
     await tester.pumpAndSettle();
 
