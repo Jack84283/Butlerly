@@ -469,13 +469,8 @@ void main() {
 
       await tester.pumpWidget(const MaterialApp(home: ReviewPage()));
       await tester.pumpAndSettle();
-      final reviewPage = tester.widget<ButlerlyPage>(
-        find.byType(ButlerlyPage),
-      );
-      expect(
-        reviewPage.pinnedSpacing,
-        same(ButlerlyPinnedPageSpacing.primary),
-      );
+      final reviewPage = tester.widget<ButlerlyPage>(find.byType(ButlerlyPage));
+      expect(reviewPage.pinnedSpacing, same(ButlerlyPinnedPageSpacing.primary));
     },
   );
 
@@ -1395,10 +1390,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final page = tester.widget<ButlerlyPage>(find.byType(ButlerlyPage));
-      expect(
-        page.pinnedSpacing,
-        same(ButlerlyPinnedPageSpacing.tightHeader),
-      );
+      expect(page.pinnedSpacing, same(ButlerlyPinnedPageSpacing.tightHeader));
       expect(page.actions, hasLength(1));
       final headerAction = page.actions.single;
       expect(headerAction, isA<Padding>());

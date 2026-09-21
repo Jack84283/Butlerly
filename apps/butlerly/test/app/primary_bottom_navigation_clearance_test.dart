@@ -16,6 +16,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     var tapped = false;
+    var selectedBranch = -1;
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.light,
@@ -54,7 +55,7 @@ void main() {
           },
           visualBranchIndexes: const [0, 1, 2, 3],
           currentIndex: 0,
-          onSelected: (_) {},
+          onSelected: (index) => selectedBranch = index,
         ),
       ),
     );
@@ -71,19 +72,38 @@ void main() {
     );
     final archRect = tester.getRect(archFinder);
     final arch = tester.widget<Container>(archFinder);
+    final baseRect = tester.getRect(
+      find.byKey(const ValueKey('primary-navigation-base')),
+    );
     final navigationContentRect = tester.getRect(
       find.byKey(const ValueKey('primary-navigation-content')),
     );
 
     expect(bodyRect.bottom, closeTo(navigationRect.top, 0.01));
+    expect(archRect.top, closeTo(navigationRect.top, 0.01));
     expect(
-      archRect.top,
+      archRect.bottom,
       closeTo(
-        navigationRect.top - ButlerlySize.primaryNavigationArchRise,
+        navigationRect.top + ButlerlySize.primaryNavigationArchHeight,
         0.01,
       ),
     );
-    expect(archRect.bottom, closeTo(navigationRect.top, 0.01));
+    expect(baseRect.top, closeTo(archRect.bottom, 0.01));
+    final bottomInset = MediaQuery.paddingOf(
+      tester.element(find.byType(IPhonePrimaryShell)),
+    ).bottom;
+    expect(
+      navigationRect.bottom - baseRect.top - bottomInset,
+      closeTo(
+        navigationContentRect.height - ButlerlySize.primaryNavigationArchHeight,
+        0.01,
+      ),
+    );
+    expect(
+      ButlerlySize.primaryNavigationArchHeight -
+          ButlerlySize.primaryNavigationArchRise,
+      closeTo(ButlerlySpacing.small, 0.01),
+    );
     expect(arch.decoration, isNotNull);
     expect(arch.foregroundDecoration, isNull);
     expect(
@@ -97,17 +117,16 @@ void main() {
       expect(labelTop, closeTo(addLabelTop, 0.01));
     }
 
-    final homeIconCenter = tester.getCenter(find.byIcon(Icons.home)).dy;
-    for (final icon in [Icons.receipt_long_outlined, Icons.more_horiz]) {
-      expect(tester.getCenter(find.byIcon(icon)).dy, closeTo(homeIconCenter, 0.01));
-    }
-    expect(
-      tester.getCenter(find.byIcon(Icons.add)).dy,
-      closeTo(
-        homeIconCenter - ButlerlySize.primaryNavigationAddLift,
-        0.01,
-      ),
+    final addRect = tester.getRect(
+      find.byKey(const ValueKey('primary-navigation-add-button')),
     );
+    expect(
+      addLabelTop - addRect.bottom,
+      closeTo(ButlerlySize.primaryNavigationAddLift, 0.01),
+    );
+
+    await tester.tapAt(Offset(addRect.center.dx, addRect.top + 1));
+    expect(selectedBranch, 1);
 
     await tester.tap(find.byKey(const ValueKey('bottom-page-action')));
     expect(tapped, isTrue);
