@@ -1072,7 +1072,9 @@ class _ButlerlySelectFieldState<T> extends State<ButlerlySelectField<T>> {
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: _labelFor(widget.value, widget.entries));
+    _controller = TextEditingController(
+      text: _labelFor(widget.value, widget.entries),
+    );
   }
 
   @override
