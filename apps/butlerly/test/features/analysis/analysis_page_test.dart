@@ -5,6 +5,7 @@ import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_custom_period_sheet.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_period_selector.dart';
+import 'package:butlerly/features/analysis/presentation/widgets/analysis_skeleton.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
