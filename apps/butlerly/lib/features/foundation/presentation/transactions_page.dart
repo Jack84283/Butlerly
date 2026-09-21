@@ -397,24 +397,24 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   }
 
   void _normalizeLegacyClassification(_EditorMasterData data) {
-    if (widget.existing == null ||
-        _categoryId == null ||
-        _subcategoryId != null) {
-      return;
-    }
-    final category = data.categories
-        .where((value) => value.id.value == _categoryId)
-        .firstOrNull;
-    final parentId = category?.parentId?.value;
-    if (parentId == null) return;
-    if (mounted) {
-      setState(() {
-        _subcategoryId = _categoryId;
-        _categoryId = parentId;
-      });
-    } else {
+    if (widget.existing == null || _categoryId == null) return;
+
+    if (_subcategoryId == null) {
+      final category = data.categories
+          .where((value) => value.id.value == _categoryId)
+          .firstOrNull;
+      final parentId = category?.parentId?.value;
+      if (parentId == null) return;
       _subcategoryId = _categoryId;
       _categoryId = parentId;
+      return;
+    }
+
+    final subcategory = data.categories
+        .where((value) => value.id.value == _subcategoryId)
+        .firstOrNull;
+    if (subcategory != null && subcategory.parentId?.value != _categoryId) {
+      _subcategoryId = null;
     }
   }
 
