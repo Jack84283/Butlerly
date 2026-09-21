@@ -72,6 +72,9 @@ void main() {
     );
     final archRect = tester.getRect(archFinder);
     final arch = tester.widget<Container>(archFinder);
+    final baseRect = tester.getRect(
+      find.byKey(const ValueKey('primary-navigation-base')),
+    );
     final navigationContentRect = tester.getRect(
       find.byKey(const ValueKey('primary-navigation-content')),
     );
@@ -81,7 +84,17 @@ void main() {
     expect(
       archRect.bottom,
       closeTo(
-        navigationRect.top + ButlerlySize.primaryNavigationArchRise,
+        navigationRect.top + ButlerlySize.primaryNavigationArchHeight,
+        0.01,
+      ),
+    );
+    expect(baseRect.top, closeTo(archRect.bottom, 0.01));
+    expect(
+      navigationRect.bottom - baseRect.top,
+      closeTo(
+        ButlerlySize.navigationBarHeight +
+            ButlerlySize.primaryNavigationArchRise -
+            ButlerlySize.primaryNavigationArchHeight,
         0.01,
       ),
     );
