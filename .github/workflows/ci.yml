@@ -43,6 +43,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-toolchain
       - run: ./tool/setup.sh
+      - name: Show canonical formatting for missing-master-data test
+        working-directory: apps/butlerly
+        run: dart format --output=show test/design_system/butlerly_missing_master_data_test.dart
       - run: ./tool/validate.sh flutter_application
 
   # macOS checks remain post-merge main checks for now to conserve limited
