@@ -381,6 +381,91 @@ void main() {
   );
 
   testWidgets(
+    'organizer clears a stored subcategory whose parent mismatches category',
+    (tester) async {
+      final finance = services<FinanceServices>();
+      categories.values['category-food-organize-mismatch'] = Category(
+        id: CategoryId('category-food-organize-mismatch'),
+        name: 'Food organize mismatch',
+        origin: CategoryOrigin.user,
+      );
+      categories.values['category-travel-organize-mismatch'] = Category(
+        id: CategoryId('category-travel-organize-mismatch'),
+        name: 'Travel organize mismatch',
+        origin: CategoryOrigin.user,
+      );
+      categories.values['subcategory-airfare-organize-mismatch'] = Category(
+        id: CategoryId('subcategory-airfare-organize-mismatch'),
+        name: 'Airfare organize mismatch',
+        origin: CategoryOrigin.user,
+        parentId: CategoryId('category-travel-organize-mismatch'),
+      );
+      final now = DateTime.utc(2026, 9, 20, 12);
+      final existing = Transaction(
+        id: TransactionId('mismatched-organizer-shape'),
+        timing: KnownTransactionTime(now),
+        money: Money(
+          amount: DecimalValue.parse('91.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        sourceType: TransactionSourceType.manual,
+        transactionDate: '2026-09-20',
+        description: 'Mismatched organizer classification',
+        categoryId: CategoryId('category-food-organize-mismatch'),
+        subcategoryId: CategoryId('subcategory-airfare-organize-mismatch'),
+        provenance: [
+          Provenance(
+            id: ProvenanceId('mismatched-organizer-shape-provenance'),
+            sourceType: ProvenanceSourceType.userEntry,
+            capturedAt: now,
+          ),
+        ],
+        createdAt: now,
+        updatedAt: now,
+      );
+      await repository.save(existing);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TransactionDetailPage(
+            finance: finance,
+            transaction: TransactionDto.fromDomain(existing),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Organize transaction'),
+        200,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.tap(find.text('Organize transaction'));
+      await tester.pumpAndSettle();
+
+      _expectEditorSelection(tester, 'Food organize mismatch');
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is EditableText &&
+              widget.controller.text == 'Airfare organize mismatch',
+        ),
+        findsNothing,
+      );
+
+      await tester.tap(find.text('Save organization'));
+      await tester.pumpAndSettle();
+
+      final refreshed = await finance.getTransaction(
+        'mismatched-organizer-shape',
+      );
+      final saved = (refreshed as ApplicationSuccess<TransactionDto>).value;
+      expect(saved.categoryId, 'category-food-organize-mismatch');
+      expect(saved.subcategoryId, isNull);
+    },
+  );
+
+  testWidgets(
     'organizer keeps selected archived category hierarchy visible and intact',
     (tester) async {
       final finance = services<FinanceServices>();
