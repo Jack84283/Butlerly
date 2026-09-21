@@ -214,6 +214,68 @@ void main() {
     );
   });
 
+  test('restore preserves resolved duplicate decisions', () async {
+    final timestamp = DateTime.utc(2026, 9, 1);
+    await SqliteTransactionRepository(database.persistenceDatabase).save(
+      Transaction(
+        id: TransactionId('resolved-duplicate'),
+        timing: const UnknownTransactionTime(
+          UnknownTransactionTimeReason.unknown,
+        ),
+        transactionDate: '2026-09-01',
+        money: Money(
+          amount: DecimalValue.parse('12.34'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        sourceType: TransactionSourceType.manual,
+        provenance: [
+          Provenance(
+            id: ProvenanceId('resolved-origin'),
+            sourceType: ProvenanceSourceType.userEntry,
+            capturedAt: timestamp,
+          ),
+        ],
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      ),
+    );
+    final finance = services<FinanceServices>();
+    final scanned = await finance.scanExistingTransactionsForDuplicates!();
+    final group =
+        (scanned as ApplicationSuccess<List<DuplicateCandidateGroup>>)
+            .value
+            .single;
+    await finance.resolveDuplicateCandidateGroup!(
+      group.id,
+      DuplicateCandidateGroupStatus.keepBoth,
+    );
+    final backup = File('${root.path}/resolved-duplicates.butlerlybackup');
+    await services<LocalBackupManager>().createBackup(backup);
+
+    await finance.deleteTransactionPermanently(
+      TransactionId('resolved-duplicate'),
+    );
+
+    await services<WorkspaceDataService>().restore(
+      backup.path,
+      mode: LocalRestoreMode.replace,
+    );
+
+    final groups = await finance.listDuplicateCandidateGroups!();
+    expect(
+      groups,
+      isA<ApplicationSuccess<List<DuplicateCandidateGroup>>>(),
+    );
+    expect(
+      (groups as ApplicationSuccess<List<DuplicateCandidateGroup>>)
+          .value
+          .single
+          .status,
+      DuplicateCandidateGroupStatus.keepBoth,
+    );
+  });
+
   test(
     'legacy restore preserves disabled activation while upgrading definition',
     () async {
