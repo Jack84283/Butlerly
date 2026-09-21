@@ -24,6 +24,16 @@ double phoneNavigationHeightForLabels({
     return painter.height;
   }
 
+  final scaledLabelFontSize = textScaler.scale(
+    ButlerlyTypography.navigationLabelFontSize,
+  );
+  final normalScale =
+      scaledLabelFontSize <= ButlerlyTypography.navigationLabelFontSize + 0.01;
+
+  if (normalScale) {
+    return ButlerlySize.navigationBarHeight;
+  }
+
   var maximumLabelHeight = labelHeight(addLabel);
   for (final label in standardLabels) {
     final height = labelHeight(label);
@@ -113,7 +123,14 @@ class PrimaryBottomNavigation extends StatelessWidget {
                 child: Text(
                   destination.label,
                   textAlign: TextAlign.center,
-                  softWrap: true,
+                  softWrap: !MediaQuery.textScalerOf(context)
+                      .isIdentity,
+                  maxLines: MediaQuery.textScalerOf(context).isIdentity
+                      ? 1
+                      : null,
+                  overflow: MediaQuery.textScalerOf(context).isIdentity
+                      ? TextOverflow.ellipsis
+                      : TextOverflow.clip,
                   style: labelStyle,
                 ),
               ),
