@@ -77,14 +77,12 @@ void main() {
     expect(bodyRect.bottom, closeTo(navigationRect.top, 0.01));
     expect(baseRect.top, closeTo(navigationRect.top, 0.01));
     expect(baseRect.bottom, closeTo(navigationRect.bottom, 0.01));
-    expect(
-      navigationContentRect.top - navigationRect.top,
-      closeTo(ButlerlySize.primaryNavigationArchRise, 0.01),
-    );
+    expect(navigationContentRect.top, closeTo(navigationRect.top, 0.01));
     expect(
       navigationContentRect.height,
-      greaterThanOrEqualTo(ButlerlySize.navigationBarHeight),
+      closeTo(ButlerlySize.navigationBarHeight, 0.01),
     );
+    expect(ButlerlySize.navigationBarHeight, 48);
     expect(
       find.byKey(const ValueKey('primary-navigation-add-arch')),
       findsNothing,
