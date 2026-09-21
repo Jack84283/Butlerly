@@ -176,6 +176,7 @@ abstract final class ButlerlyRadius {
 abstract final class ButlerlySize {
   static const minimumTarget = 44.0;
   static const preferredTarget = 48.0;
+  static const pageToolbarHeight = 48.0;
   static const compactPageToolbarHeight = 40.0;
   static const refreshIndicatorDisplacement = compactPageToolbarHeight;
   static const phoneBreakpoint = 600.0;
