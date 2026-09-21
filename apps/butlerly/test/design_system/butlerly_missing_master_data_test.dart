@@ -31,25 +31,25 @@ void main() {
   testWidgets(
     'subcategory keeps a missing stored reference visible',
     (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: ButlerlySubcategorySelector(
-            categories: const [],
-            masterData: const TransactionMasterData(),
-            parentId: 'category-food',
-            value: 'subcategory-missing',
-            label: 'Subcategory',
-            onChanged: (_) {},
-            clearLabel: 'Clear',
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ButlerlySubcategorySelector(
+              categories: const [],
+              masterData: const TransactionMasterData(),
+              parentId: 'category-food',
+              value: 'subcategory-missing',
+              label: 'Subcategory',
+              onChanged: (_) {},
+              clearLabel: 'Clear',
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    final editable = tester.widget<EditableText>(find.byType(EditableText));
-    expect(editable.controller.text, 'subcategory-missing');
-    expect(find.byTooltip('Clear'), findsOneWidget);
+      final editable = tester.widget<EditableText>(find.byType(EditableText));
+      expect(editable.controller.text, 'subcategory-missing');
+      expect(find.byTooltip('Clear'), findsOneWidget);
     },
   );
 }
