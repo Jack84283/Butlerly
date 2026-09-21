@@ -56,9 +56,9 @@ void configureDependencies({
         if (installation.diagnostics.isNotEmpty) {
           throw StateError('Bundled analysis rules failed validation.');
         }
-        final duplicateScan = finance.scanExistingTransactionsForDuplicates;
-        if (duplicateScan != null) {
-          final duplicateResult = await duplicateScan();
+        final duplicateRebuild = finance.rebuildDuplicateGroupsAfterRestore;
+        if (duplicateRebuild != null) {
+          final duplicateResult = await duplicateRebuild();
           if (duplicateResult is ApplicationFailure) {
             throw StateError('Duplicate review state could not be rebuilt.');
           }
