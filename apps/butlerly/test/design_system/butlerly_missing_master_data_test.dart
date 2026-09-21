@@ -31,6 +31,7 @@ void main() {
   testWidgets('subcategory keeps a missing stored reference visible', (
     tester,
   ) async {
+    String? changedTo = 'unchanged';
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -40,7 +41,7 @@ void main() {
             parentId: 'category-food',
             value: 'subcategory-missing',
             label: 'Subcategory',
-            onChanged: (_) {},
+            onChanged: (value) => changedTo = value,
             clearLabel: 'Clear',
           ),
         ),
@@ -55,6 +56,11 @@ void main() {
       ),
       findsWidgets,
     );
-    expect(find.byIcon(Icons.clear), findsOneWidget);
+    final select = tester.widget<ButlerlySelectField<String>>(
+      find.byType(ButlerlySelectField<String>),
+    );
+    expect(select.onClear, isNotNull);
+    select.onClear!();
+    expect(changedTo, isNull);
   });
 }
