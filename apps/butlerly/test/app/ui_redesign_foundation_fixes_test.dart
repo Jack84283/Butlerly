@@ -64,7 +64,7 @@ void main() {
     );
   });
 
-  test('phone navigation grows for a wrapped label at 1x', () {
+  test('phone navigation stays at 48px at normal text scale', () {
     final labelStyle = ButlerlyTypography.navigationLabel(
       AppTheme.light.textTheme.labelSmall!,
       color: Colors.black,
