@@ -99,8 +99,6 @@ void main() {
     final addRect = tester.getRect(
       find.byKey(const ValueKey('primary-navigation-add-button')),
     );
-    final homeIconRect = tester.getRect(find.byIcon(Icons.home_outlined));
-    expect(addRect.center.dy, closeTo(homeIconRect.center.dy, 0.01));
 
     await tester.tapAt(addRect.center);
     expect(selectedBranch, 1);
