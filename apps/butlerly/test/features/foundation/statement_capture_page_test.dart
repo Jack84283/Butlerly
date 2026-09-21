@@ -328,12 +328,28 @@ void main() {
         await tester.tap(find.text('Done'));
         await tester.pumpAndSettle();
       }
-      await tester.runAsync(() async {
-        await tester.tap(find.textContaining('Statement ·').last);
-        await Future<void>.delayed(const Duration(milliseconds: 30));
-      });
-      await tester.pumpAndSettle();
-      expect(find.text(entry.$2), findsOneWidget);
+      await tester.tap(find.textContaining('Statement ·').last);
+      var openedReview = false;
+      for (var attempt = 0; attempt < 100; attempt++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
+        await tester.pump(const Duration(milliseconds: 10));
+        if (find.text('Review statement import').evaluate().isNotEmpty) {
+          openedReview = true;
+          break;
+        }
+      }
+      if (!openedReview) {
+        fail('Statement review did not finish opening.');
+      }
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('statement-review-content')),
+          matching: find.text(entry.$2),
+        ),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     });
   }
