@@ -163,13 +163,15 @@ void main() {
 Future<void> _chooseDropdown(
   WidgetTester tester,
   int index,
-  String value,
+  String label,
 ) async {
-  await tester.tap(find.byType(DropdownMenu<String>).at(index));
-  await tester.pumpAndSettle();
-  await tester.enterText(find.byType(TextField).last, value);
-  await tester.pumpAndSettle();
-  await tester.tap(find.byType(MenuItemButton).last);
+  final menu = tester.widget<DropdownMenu<String>>(
+    find.byType(DropdownMenu<String>).at(index),
+  );
+  final entry = menu.dropdownMenuEntries.singleWhere(
+    (entry) => entry.label == label,
+  );
+  menu.onSelected!(entry.value);
   await tester.pumpAndSettle();
 }
 
@@ -187,7 +189,7 @@ Future<void> _scrollToTop(WidgetTester tester) async {
 void _expectSelectorValue(WidgetTester tester, String value) {
   expect(
     find.byWidgetPredicate(
-      (widget) => widget is TextField && widget.controller?.text == value,
+      (widget) => widget is EditableText && widget.controller.text == value,
     ),
     findsOneWidget,
   );

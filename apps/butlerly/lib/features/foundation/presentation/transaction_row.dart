@@ -48,14 +48,20 @@ class TransactionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final categoryId = transaction.categoryId;
-    final iconCategoryId =
-        categoryId != null &&
-            ButlerlyCategoryIdentity.forBuiltInId(categoryId) != null
-        ? categoryId
+    final subcategoryId = transaction.subcategoryId;
+    final legacyParentId = subcategoryId == null
+        ? masterData.categoryParentId(categoryId)
         : null;
-    final parentId = masterData.categoryParentId(categoryId);
-    final category = masterData.categoryName(categoryId);
-    final parent = masterData.categoryName(parentId);
+    final effectiveCategoryId = legacyParentId ?? categoryId;
+    final effectiveSubcategoryId =
+        subcategoryId ?? (legacyParentId == null ? null : categoryId);
+    final iconCategoryId =
+        effectiveCategoryId != null &&
+            ButlerlyCategoryIdentity.forBuiltInId(effectiveCategoryId) != null
+        ? effectiveCategoryId
+        : null;
+    final category = masterData.categoryName(effectiveCategoryId);
+    final subcategory = masterData.categoryName(effectiveSubcategoryId);
     final source = transaction.paymentSourceId == null
         ? null
         : masterData.paymentSourceName(transaction.paymentSourceId) ??
@@ -80,8 +86,8 @@ class TransactionRow extends StatelessWidget {
       ),
       currency: transaction.currency,
       categoryId: iconCategoryId,
-      categoryLabel: parent ?? category ?? missingCategoryLabel ?? '',
-      subcategoryLabel: parent == null ? null : category,
+      categoryLabel: category ?? missingCategoryLabel ?? '',
+      subcategoryLabel: subcategory,
       paymentSource: sourceLabel,
       tags: tags,
       supportingContent: supportingContent,

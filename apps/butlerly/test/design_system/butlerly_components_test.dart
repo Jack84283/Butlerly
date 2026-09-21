@@ -11,6 +11,47 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets(
+    'shared select field clears stale text when canonical value becomes null',
+    (tester) async {
+      String? value = 'food';
+      late StateSetter update;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (context, setState) {
+                update = setState;
+                return ButlerlySelectField<String>(
+                  label: 'Category',
+                  value: value,
+                  entries: const [
+                    DropdownMenuEntry(value: 'food', label: 'Food'),
+                    DropdownMenuEntry(value: 'travel', label: 'Travel'),
+                  ],
+                  onChanged: (next) => setState(() => value = next),
+                  onClear: () => setState(() => value = null),
+                  clearTooltip: 'Clear',
+                );
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      EditableText editable() =>
+          tester.widget<EditableText>(find.byType(EditableText));
+      expect(editable().controller.text, 'Food');
+
+      update(() => value = null);
+      await tester.pump();
+
+      expect(value, isNull);
+      expect(editable().controller.text, isEmpty);
+    },
+  );
+
   testWidgets('data-entry pages use semantic theme backgrounds and surfaces', (
     tester,
   ) async {

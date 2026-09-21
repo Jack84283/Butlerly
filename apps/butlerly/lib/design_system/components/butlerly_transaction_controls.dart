@@ -142,7 +142,8 @@ class ButlerlyCategorySelector extends StatelessWidget {
     entries: [
       for (final category in categories.where(
         (category) =>
-            category.status == CategoryStatus.active &&
+            (category.status == CategoryStatus.active ||
+                category.id.value == value) &&
             category.parentId == null,
       ))
         DropdownMenuEntry(
@@ -179,15 +180,13 @@ class ButlerlySubcategorySelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final children = categories.where(
       (category) =>
-          category.status == CategoryStatus.active &&
+          (category.status == CategoryStatus.active ||
+              category.id.value == value) &&
           category.parentId?.value == parentId,
     );
-    final selected = children.any((category) => category.id.value == value)
-        ? value
-        : null;
     return ButlerlySelectField<String>(
       label: label,
-      value: selected,
+      value: value,
       entries: [
         for (final category in children)
           DropdownMenuEntry(
@@ -196,7 +195,7 @@ class ButlerlySubcategorySelector extends StatelessWidget {
           ),
       ],
       onChanged: onChanged,
-      onClear: selected == null ? null : () => onChanged(null),
+      onClear: value == null ? null : () => onChanged(null),
       clearTooltip: clearLabel,
     );
   }
@@ -229,7 +228,9 @@ class ButlerlyMerchantSelector extends StatelessWidget {
       value: value,
       entries: [
         for (final merchant in merchants.where(
-          (merchant) => merchant.status == MerchantStatus.active,
+          (merchant) =>
+              merchant.status == MerchantStatus.active ||
+              merchant.id.value == value,
         ))
           DropdownMenuEntry(value: merchant.id.value, label: merchant.name),
       ],
@@ -263,7 +264,9 @@ class ButlerlyPaymentSourceSelector extends StatelessWidget {
     value: value,
     entries: [
       for (final source in sources.where(
-        (source) => source.status == PaymentSourceStatus.active,
+        (source) =>
+            source.status == PaymentSourceStatus.active ||
+            source.id.value == value,
       ))
         DropdownMenuEntry(
           value: source.id.value,

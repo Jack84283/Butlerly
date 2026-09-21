@@ -31,6 +31,9 @@ void main() {
   late MemoryEvidence evidenceRepository;
   late MemoryDuplicateGroups duplicateGroups;
   late MemoryPaymentSources paymentSources;
+  late MemoryMerchants merchants;
+  late MemoryCategories categories;
+  late MemoryTags tags;
 
   setUp(() async {
     await services.reset();
@@ -38,13 +41,16 @@ void main() {
     evidenceRepository = MemoryEvidence();
     duplicateGroups = MemoryDuplicateGroups(repository);
     paymentSources = MemoryPaymentSources();
+    merchants = MemoryMerchants();
+    categories = MemoryCategories();
+    tags = MemoryTags();
     services.registerSingleton<FinanceServices>(
       FinanceServices(
         repository,
         paymentSources,
-        MemoryMerchants(),
-        MemoryCategories(),
-        MemoryTags(),
+        merchants,
+        categories,
+        tags,
         evidenceRepository,
         MemoryUserPreferences(),
         duplicateGroups: duplicateGroups,
@@ -53,6 +59,562 @@ void main() {
   });
 
   tearDown(() => services.reset());
+
+  testWidgets(
+    'row detail and edit preserve transaction master-data references',
+    (tester) async {
+      final finance = services<FinanceServices>();
+      merchants.values['merchant-cafe'] = Merchant(
+        id: MerchantId('merchant-cafe'),
+        name: 'Corner Cafe',
+      );
+      categories.values['category-food'] = Category(
+        id: CategoryId('category-food'),
+        name: 'Food',
+        origin: CategoryOrigin.user,
+      );
+      categories.values['subcategory-dining'] = Category(
+        id: CategoryId('subcategory-dining'),
+        name: 'Dining',
+        origin: CategoryOrigin.user,
+        parentId: CategoryId('category-food'),
+      );
+      paymentSources.values['source-visa'] = PaymentSource(
+        id: PaymentSourceId('source-visa'),
+        name: 'Visa',
+        type: PaymentSourceType.card,
+      );
+      final created = await finance.createTransaction(
+        CreateTransactionCommand(
+          id: 'master-data-consistency',
+          provenanceId: 'master-data-consistency-provenance',
+          timing: KnownTransactionTime(DateTime.utc(2026, 9, 20, 12)),
+          money: Money(
+            amount: DecimalValue.parse('24.50'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+          transactionDate: '2026-09-20',
+          description: 'Lunch',
+          merchantId: 'merchant-cafe',
+          categoryId: 'category-food',
+          subcategoryId: 'subcategory-dining',
+          paymentSourceId: 'source-visa',
+        ),
+      );
+      final transaction = (created as ApplicationSuccess<TransactionDto>).value;
+
+      await tester.pumpWidget(const MaterialApp(home: TransactionsPage()));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Corner Cafe'), findsOneWidget);
+      expect(find.text('Food · Dining · Visa'), findsOneWidget);
+
+      await tester.tap(find.text('Corner Cafe'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Transaction detail'), findsOneWidget);
+      expect(find.text('Corner Cafe'), findsOneWidget);
+      expect(find.text('Food'), findsOneWidget);
+      expect(find.text('Dining'), findsOneWidget);
+      expect(find.text('Visa'), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.edit_outlined));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('transaction-description-field')),
+        'Updated lunch',
+      );
+      await _scrollEditorToSave(tester);
+      await tester.tap(find.text('Save locally'));
+      await tester.pumpAndSettle();
+
+      final refreshed = await finance.getTransaction(transaction.id);
+      final saved = (refreshed as ApplicationSuccess<TransactionDto>).value;
+      expect(saved.merchantId, 'merchant-cafe');
+      expect(saved.categoryId, 'category-food');
+      expect(saved.subcategoryId, 'subcategory-dining');
+      expect(saved.paymentSourceId, 'source-visa');
+
+      expect(find.text('Transaction detail'), findsOneWidget);
+      expect(find.text('Corner Cafe'), findsOneWidget);
+      expect(find.text('Food'), findsOneWidget);
+      expect(find.text('Dining'), findsOneWidget);
+      expect(find.text('Visa'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'legacy child category normalizes in editor without losing classification',
+    (tester) async {
+      final finance = services<FinanceServices>();
+      categories.values['category-food'] = Category(
+        id: CategoryId('category-food'),
+        name: 'Food',
+        origin: CategoryOrigin.user,
+      );
+      categories.values['subcategory-dining'] = Category(
+        id: CategoryId('subcategory-dining'),
+        name: 'Dining',
+        origin: CategoryOrigin.user,
+        parentId: CategoryId('category-food'),
+      );
+      final legacy = Transaction(
+        id: TransactionId('legacy-category-shape'),
+        timing: KnownTransactionTime(DateTime.utc(2026, 9, 20, 12)),
+        money: Money(
+          amount: DecimalValue.parse('18.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        sourceType: TransactionSourceType.manual,
+        transactionDate: '2026-09-20',
+        description: 'Legacy lunch',
+        categoryId: CategoryId('subcategory-dining'),
+        provenance: [
+          Provenance(
+            id: ProvenanceId('legacy-category-shape-provenance'),
+            sourceType: ProvenanceSourceType.userEntry,
+            capturedAt: DateTime.utc(2026, 9, 20, 12),
+          ),
+        ],
+        createdAt: DateTime.utc(2026, 9, 20, 12),
+        updatedAt: DateTime.utc(2026, 9, 20, 12),
+      );
+      await repository.save(legacy);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: _EditorHarness(
+            finance: finance,
+            existing: TransactionDto.fromDomain(legacy),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open editor'));
+      await tester.pumpAndSettle();
+
+      await _scrollEditorToMasterData(tester);
+      _expectEditorSelection(tester, 'Food');
+      _expectEditorSelection(tester, 'Dining');
+
+      await _scrollEditorToSave(tester);
+      await tester.tap(find.text('Save locally'));
+      await tester.pumpAndSettle();
+
+      final refreshed = await finance.getTransaction('legacy-category-shape');
+      final saved = (refreshed as ApplicationSuccess<TransactionDto>).value;
+      expect(saved.categoryId, 'category-food');
+      expect(saved.subcategoryId, 'subcategory-dining');
+    },
+  );
+
+  testWidgets(
+    'editor keeps selected archived master-data references visible and intact',
+    (tester) async {
+      final finance = services<FinanceServices>();
+      merchants.values['merchant-old'] = Merchant(
+        id: MerchantId('merchant-old'),
+        name: 'Old Merchant',
+        status: MerchantStatus.archived,
+      );
+      categories.values['category-old'] = Category(
+        id: CategoryId('category-old'),
+        name: 'Old Category',
+        origin: CategoryOrigin.user,
+        status: CategoryStatus.archived,
+      );
+      categories.values['subcategory-old'] = Category(
+        id: CategoryId('subcategory-old'),
+        name: 'Old Subcategory',
+        origin: CategoryOrigin.user,
+        parentId: CategoryId('category-old'),
+        status: CategoryStatus.archived,
+      );
+      paymentSources.values['source-old'] = PaymentSource(
+        id: PaymentSourceId('source-old'),
+        name: 'Old Card',
+        type: PaymentSourceType.card,
+        status: PaymentSourceStatus.archived,
+      );
+      final now = DateTime.utc(2026, 9, 20, 12);
+      final existing = Transaction(
+        id: TransactionId('archived-master-data'),
+        timing: KnownTransactionTime(now),
+        money: Money(
+          amount: DecimalValue.parse('42.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        sourceType: TransactionSourceType.manual,
+        transactionDate: '2026-09-20',
+        description: 'Archived references',
+        merchantId: MerchantId('merchant-old'),
+        categoryId: CategoryId('category-old'),
+        subcategoryId: CategoryId('subcategory-old'),
+        paymentSourceId: PaymentSourceId('source-old'),
+        provenance: [
+          Provenance(
+            id: ProvenanceId('archived-master-data-provenance'),
+            sourceType: ProvenanceSourceType.userEntry,
+            capturedAt: now,
+          ),
+        ],
+        createdAt: now,
+        updatedAt: now,
+      );
+      await repository.save(existing);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: _EditorHarness(
+            finance: finance,
+            existing: TransactionDto.fromDomain(existing),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open editor'));
+      await tester.pumpAndSettle();
+
+      await _scrollEditorToMasterData(tester);
+      for (final selectedLabel in [
+        'Old Merchant',
+        'Old Category',
+        'Old Subcategory',
+        'Old Card',
+      ]) {
+        _expectEditorSelection(tester, selectedLabel);
+      }
+
+      await _scrollEditorToSave(tester);
+      await tester.tap(find.text('Save locally'));
+      await tester.pumpAndSettle();
+
+      final refreshed = await finance.getTransaction('archived-master-data');
+      final saved = (refreshed as ApplicationSuccess<TransactionDto>).value;
+      expect(saved.merchantId, 'merchant-old');
+      expect(saved.categoryId, 'category-old');
+      expect(saved.subcategoryId, 'subcategory-old');
+      expect(saved.paymentSourceId, 'source-old');
+    },
+  );
+
+  testWidgets(
+    'editor clears a stored subcategory whose parent mismatches category',
+    (tester) async {
+      final finance = services<FinanceServices>();
+      categories.values['category-food-mismatch'] = Category(
+        id: CategoryId('category-food-mismatch'),
+        name: 'Food mismatch',
+        origin: CategoryOrigin.user,
+      );
+      categories.values['category-travel-mismatch'] = Category(
+        id: CategoryId('category-travel-mismatch'),
+        name: 'Travel mismatch',
+        origin: CategoryOrigin.user,
+      );
+      categories.values['subcategory-airfare-mismatch'] = Category(
+        id: CategoryId('subcategory-airfare-mismatch'),
+        name: 'Airfare mismatch',
+        origin: CategoryOrigin.user,
+        parentId: CategoryId('category-travel-mismatch'),
+      );
+      final now = DateTime.utc(2026, 9, 20, 12);
+      final existing = Transaction(
+        id: TransactionId('mismatched-category-shape'),
+        timing: KnownTransactionTime(now),
+        money: Money(
+          amount: DecimalValue.parse('88.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        sourceType: TransactionSourceType.manual,
+        transactionDate: '2026-09-20',
+        description: 'Mismatched classification',
+        categoryId: CategoryId('category-food-mismatch'),
+        subcategoryId: CategoryId('subcategory-airfare-mismatch'),
+        provenance: [
+          Provenance(
+            id: ProvenanceId('mismatched-category-shape-provenance'),
+            sourceType: ProvenanceSourceType.userEntry,
+            capturedAt: now,
+          ),
+        ],
+        createdAt: now,
+        updatedAt: now,
+      );
+      await repository.save(existing);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: _EditorHarness(
+            finance: finance,
+            existing: TransactionDto.fromDomain(existing),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open editor'));
+      await tester.pumpAndSettle();
+
+      await _scrollEditorToMasterData(tester);
+      _expectEditorSelection(tester, 'Food mismatch');
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is EditableText &&
+              widget.controller.text == 'Airfare mismatch',
+        ),
+        findsNothing,
+      );
+
+      await _scrollEditorToSave(tester);
+      await tester.tap(find.text('Save locally'));
+      await tester.pumpAndSettle();
+
+      final refreshed = await finance.getTransaction(
+        'mismatched-category-shape',
+      );
+      final saved = (refreshed as ApplicationSuccess<TransactionDto>).value;
+      expect(saved.categoryId, 'category-food-mismatch');
+      expect(saved.subcategoryId, isNull);
+    },
+  );
+
+  testWidgets(
+    'editor infers the parent for a known orphaned subcategory reference',
+    (tester) async {
+      final finance = services<FinanceServices>();
+      categories.values['category-travel-orphan'] = Category(
+        id: CategoryId('category-travel-orphan'),
+        name: 'Travel orphan',
+        origin: CategoryOrigin.user,
+      );
+      categories.values['subcategory-airfare-orphan'] = Category(
+        id: CategoryId('subcategory-airfare-orphan'),
+        name: 'Airfare orphan',
+        origin: CategoryOrigin.user,
+        parentId: CategoryId('category-travel-orphan'),
+      );
+      final now = DateTime.utc(2026, 9, 20, 12);
+      final existing = Transaction(
+        id: TransactionId('orphaned-subcategory-shape'),
+        timing: KnownTransactionTime(now),
+        money: Money(
+          amount: DecimalValue.parse('101.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        sourceType: TransactionSourceType.manual,
+        transactionDate: '2026-09-20',
+        description: 'Orphaned subcategory classification',
+        subcategoryId: CategoryId('subcategory-airfare-orphan'),
+        provenance: [
+          Provenance(
+            id: ProvenanceId('orphaned-subcategory-shape-provenance'),
+            sourceType: ProvenanceSourceType.userEntry,
+            capturedAt: now,
+          ),
+        ],
+        createdAt: now,
+        updatedAt: now,
+      );
+      await repository.save(existing);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: _EditorHarness(
+            finance: finance,
+            existing: TransactionDto.fromDomain(existing),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open editor'));
+      await tester.pumpAndSettle();
+
+      await _scrollEditorToMasterData(tester);
+      _expectEditorSelection(tester, 'Travel orphan');
+      _expectEditorSelection(tester, 'Airfare orphan');
+
+      await _scrollEditorToSave(tester);
+      await tester.tap(find.text('Save locally'));
+      await tester.pumpAndSettle();
+
+      final refreshed = await finance.getTransaction(
+        'orphaned-subcategory-shape',
+      );
+      final saved = (refreshed as ApplicationSuccess<TransactionDto>).value;
+      expect(saved.categoryId, 'category-travel-orphan');
+      expect(saved.subcategoryId, 'subcategory-airfare-orphan');
+    },
+  );
+
+  testWidgets(
+    'organizer clears a stored subcategory whose parent mismatches category',
+    (tester) async {
+      final finance = services<FinanceServices>();
+      categories.values['category-food-organize-mismatch'] = Category(
+        id: CategoryId('category-food-organize-mismatch'),
+        name: 'Food organize mismatch',
+        origin: CategoryOrigin.user,
+      );
+      categories.values['category-travel-organize-mismatch'] = Category(
+        id: CategoryId('category-travel-organize-mismatch'),
+        name: 'Travel organize mismatch',
+        origin: CategoryOrigin.user,
+      );
+      categories.values['subcategory-airfare-organize-mismatch'] = Category(
+        id: CategoryId('subcategory-airfare-organize-mismatch'),
+        name: 'Airfare organize mismatch',
+        origin: CategoryOrigin.user,
+        parentId: CategoryId('category-travel-organize-mismatch'),
+      );
+      final now = DateTime.utc(2026, 9, 20, 12);
+      final existing = Transaction(
+        id: TransactionId('mismatched-organizer-shape'),
+        timing: KnownTransactionTime(now),
+        money: Money(
+          amount: DecimalValue.parse('91.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        sourceType: TransactionSourceType.manual,
+        transactionDate: '2026-09-20',
+        description: 'Mismatched organizer classification',
+        categoryId: CategoryId('category-food-organize-mismatch'),
+        subcategoryId: CategoryId('subcategory-airfare-organize-mismatch'),
+        provenance: [
+          Provenance(
+            id: ProvenanceId('mismatched-organizer-shape-provenance'),
+            sourceType: ProvenanceSourceType.userEntry,
+            capturedAt: now,
+          ),
+        ],
+        createdAt: now,
+        updatedAt: now,
+      );
+      await repository.save(existing);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TransactionDetailPage(
+            finance: finance,
+            transaction: TransactionDto.fromDomain(existing),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Organize transaction'),
+        200,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.tap(find.text('Organize transaction'));
+      await tester.pumpAndSettle();
+
+      _expectEditorSelection(tester, 'Food organize mismatch');
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is EditableText &&
+              widget.controller.text == 'Airfare organize mismatch',
+        ),
+        findsNothing,
+      );
+
+      await tester.tap(find.text('Save organization'));
+      await tester.pumpAndSettle();
+
+      final refreshed = await finance.getTransaction(
+        'mismatched-organizer-shape',
+      );
+      final saved = (refreshed as ApplicationSuccess<TransactionDto>).value;
+      expect(saved.categoryId, 'category-food-organize-mismatch');
+      expect(saved.subcategoryId, isNull);
+    },
+  );
+
+  testWidgets(
+    'organizer keeps selected archived category hierarchy visible and intact',
+    (tester) async {
+      final finance = services<FinanceServices>();
+      categories.values['category-old-organize'] = Category(
+        id: CategoryId('category-old-organize'),
+        name: 'Archived Parent',
+        origin: CategoryOrigin.user,
+        status: CategoryStatus.archived,
+      );
+      categories.values['subcategory-old-organize'] = Category(
+        id: CategoryId('subcategory-old-organize'),
+        name: 'Archived Child',
+        origin: CategoryOrigin.user,
+        parentId: CategoryId('category-old-organize'),
+        status: CategoryStatus.archived,
+      );
+      final now = DateTime.utc(2026, 9, 20, 12);
+      final existing = Transaction(
+        id: TransactionId('archived-organizer-category'),
+        timing: KnownTransactionTime(now),
+        money: Money(
+          amount: DecimalValue.parse('17.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        sourceType: TransactionSourceType.manual,
+        transactionDate: '2026-09-20',
+        description: 'Archived organizer',
+        categoryId: CategoryId('category-old-organize'),
+        subcategoryId: CategoryId('subcategory-old-organize'),
+        provenance: [
+          Provenance(
+            id: ProvenanceId('archived-organizer-category-provenance'),
+            sourceType: ProvenanceSourceType.userEntry,
+            capturedAt: now,
+          ),
+        ],
+        createdAt: now,
+        updatedAt: now,
+      );
+      await repository.save(existing);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TransactionDetailPage(
+            finance: finance,
+            transaction: TransactionDto.fromDomain(existing),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Organize transaction'),
+        200,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.tap(find.text('Organize transaction'));
+      await tester.pumpAndSettle();
+
+      for (final selectedLabel in ['Archived Parent', 'Archived Child']) {
+        expect(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget is EditableText &&
+                widget.controller.text == selectedLabel,
+          ),
+          findsOneWidget,
+        );
+      }
+
+      await tester.tap(find.text('Save organization'));
+      await tester.pumpAndSettle();
+
+      final refreshed = await finance.getTransaction(
+        'archived-organizer-category',
+      );
+      final saved = (refreshed as ApplicationSuccess<TransactionDto>).value;
+      expect(saved.categoryId, 'category-old-organize');
+      expect(saved.subcategoryId, 'subcategory-old-organize');
+    },
+  );
 
   testWidgets('transaction detail refreshes evidence after a receipt scan', (
     tester,
@@ -2137,6 +2699,36 @@ final class MemoryUserPreferences implements UserPreferenceRepository {
   Future<void> save(UserPreference preference) async {
     value = preference;
   }
+}
+
+Future<void> _scrollEditorToMasterData(WidgetTester tester) async {
+  final editorList = find.byKey(const ValueKey('transaction-editor-list'));
+  expect(editorList, findsOneWidget);
+  await tester.drag(editorList, const Offset(0, -520));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _scrollEditorToSave(WidgetTester tester) async {
+  final editorList = find.byKey(const ValueKey('transaction-editor-list'));
+  expect(editorList, findsOneWidget);
+  for (
+    var attempt = 0;
+    attempt < 5 && find.text('Save locally').evaluate().isEmpty;
+    attempt++
+  ) {
+    await tester.drag(editorList, const Offset(0, -320));
+    await tester.pumpAndSettle();
+  }
+  expect(find.text('Save locally'), findsOneWidget);
+}
+
+void _expectEditorSelection(WidgetTester tester, String label) {
+  expect(
+    find.byWidgetPredicate(
+      (widget) => widget is EditableText && widget.controller.text == label,
+    ),
+    findsOneWidget,
+  );
 }
 
 final class MemoryTransactionRepository implements TransactionRepository {
