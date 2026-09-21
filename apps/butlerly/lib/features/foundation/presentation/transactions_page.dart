@@ -397,7 +397,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   }
 
   void _normalizeLegacyClassification(_EditorMasterData data) {
-    if (widget.existing == null || _categoryId == null || _subcategoryId != null) {
+    if (widget.existing == null ||
+        _categoryId == null ||
+        _subcategoryId != null) {
       return;
     }
     final category = data.categories
