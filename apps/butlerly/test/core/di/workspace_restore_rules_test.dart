@@ -200,10 +200,7 @@ void main() {
 
     final groups =
         await services<FinanceServices>().listDuplicateCandidateGroups!();
-    expect(
-      groups,
-      isA<ApplicationSuccess<List<DuplicateCandidateGroup>>>(),
-    );
+    expect(groups, isA<ApplicationSuccess<List<DuplicateCandidateGroup>>>());
     expect(
       (groups as ApplicationSuccess<List<DuplicateCandidateGroup>>).value,
       hasLength(1),
@@ -262,10 +259,7 @@ void main() {
     );
 
     final groups = await finance.listDuplicateCandidateGroups!();
-    expect(
-      groups,
-      isA<ApplicationSuccess<List<DuplicateCandidateGroup>>>(),
-    );
+    expect(groups, isA<ApplicationSuccess<List<DuplicateCandidateGroup>>>());
     expect(
       (groups as ApplicationSuccess<List<DuplicateCandidateGroup>>)
           .value
