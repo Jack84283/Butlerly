@@ -2491,8 +2491,7 @@ Future<void> _scrollEditorToSave(WidgetTester tester) async {
 void _expectEditorSelection(WidgetTester tester, String label) {
   expect(
     find.byWidgetPredicate(
-      (widget) =>
-          widget is EditableText && widget.controller.text == label,
+      (widget) => widget is EditableText && widget.controller.text == label,
     ),
     findsOneWidget,
   );
