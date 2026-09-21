@@ -80,6 +80,10 @@ class PrimaryBottomNavigation extends StatelessWidget {
           : context.colors.secondaryText,
       selected: selected,
     );
+    final textScaler = MediaQuery.textScalerOf(context);
+    final normalScale =
+        textScaler.scale(ButlerlyTypography.navigationLabelFontSize) <=
+        ButlerlyTypography.navigationLabelFontSize + 0.01;
     final baseIcon = selected
         ? (destination.selectedIcon ?? destination.icon)
         : destination.icon;
@@ -123,12 +127,9 @@ class PrimaryBottomNavigation extends StatelessWidget {
                 child: Text(
                   destination.label,
                   textAlign: TextAlign.center,
-                  softWrap: !MediaQuery.textScalerOf(context)
-                      .isIdentity,
-                  maxLines: MediaQuery.textScalerOf(context).isIdentity
-                      ? 1
-                      : null,
-                  overflow: MediaQuery.textScalerOf(context).isIdentity
+                  softWrap: !normalScale,
+                  maxLines: normalScale ? 1 : null,
+                  overflow: normalScale
                       ? TextOverflow.ellipsis
                       : TextOverflow.clip,
                   style: labelStyle,
