@@ -228,6 +228,107 @@ void main() {
     },
   );
 
+  testWidgets(
+    'editor keeps selected archived master-data references visible and intact',
+    (tester) async {
+      final finance = services<FinanceServices>();
+      merchants.values['merchant-old'] = Merchant(
+        id: MerchantId('merchant-old'),
+        name: 'Old Merchant',
+        status: MerchantStatus.archived,
+      );
+      categories.values['category-old'] = Category(
+        id: CategoryId('category-old'),
+        name: 'Old Category',
+        origin: CategoryOrigin.user,
+        status: CategoryStatus.archived,
+      );
+      categories.values['subcategory-old'] = Category(
+        id: CategoryId('subcategory-old'),
+        name: 'Old Subcategory',
+        origin: CategoryOrigin.user,
+        parentId: CategoryId('category-old'),
+        status: CategoryStatus.archived,
+      );
+      paymentSources.values['source-old'] = PaymentSource(
+        id: PaymentSourceId('source-old'),
+        name: 'Old Card',
+        type: PaymentSourceType.card,
+        status: PaymentSourceStatus.archived,
+      );
+      final now = DateTime.utc(2026, 9, 20, 12);
+      final existing = Transaction(
+        id: TransactionId('archived-master-data'),
+        timing: KnownTransactionTime(now),
+        money: Money(
+          amount: DecimalValue.parse('42.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        sourceType: TransactionSourceType.manual,
+        transactionDate: '2026-09-20',
+        description: 'Archived references',
+        merchantId: MerchantId('merchant-old'),
+        categoryId: CategoryId('category-old'),
+        subcategoryId: CategoryId('subcategory-old'),
+        paymentSourceId: PaymentSourceId('source-old'),
+        provenance: [
+          Provenance(
+            id: ProvenanceId('archived-master-data-provenance'),
+            sourceType: ProvenanceSourceType.userEntry,
+            capturedAt: now,
+          ),
+        ],
+        createdAt: now,
+        updatedAt: now,
+      );
+      await repository.save(existing);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: _EditorHarness(
+            finance: finance,
+            existing: TransactionDto.fromDomain(existing),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open editor'));
+      await tester.pumpAndSettle();
+
+      final editorList = find.byKey(const ValueKey('transaction-editor-list'));
+      expect(editorList, findsOneWidget);
+      for (final selectedLabel in [
+        'Old Merchant',
+        'Old Category',
+        'Old Subcategory',
+        'Old Card',
+      ]) {
+        expect(
+          find.descendant(
+            of: editorList,
+            matching: find.byWidgetPredicate(
+              (widget) =>
+                  widget is EditableText &&
+                  widget.controller.text == selectedLabel,
+            ),
+          ),
+          findsOneWidget,
+        );
+      }
+
+      await tester.ensureVisible(find.text('Save locally'));
+      await tester.tap(find.text('Save locally'));
+      await tester.pumpAndSettle();
+
+      final refreshed = await finance.getTransaction('archived-master-data');
+      final saved = (refreshed as ApplicationSuccess<TransactionDto>).value;
+      expect(saved.merchantId, 'merchant-old');
+      expect(saved.categoryId, 'category-old');
+      expect(saved.subcategoryId, 'subcategory-old');
+      expect(saved.paymentSourceId, 'source-old');
+    },
+  );
+
   testWidgets('transaction detail refreshes evidence after a receipt scan', (
     tester,
   ) async {
