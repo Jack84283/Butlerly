@@ -129,9 +129,6 @@ class PrimaryBottomNavigation extends StatelessWidget {
                   textAlign: TextAlign.center,
                   softWrap: !normalScale,
                   maxLines: normalScale ? 1 : null,
-                  overflow: normalScale
-                      ? TextOverflow.ellipsis
-                      : TextOverflow.clip,
                   style: labelStyle,
                 ),
               ),
