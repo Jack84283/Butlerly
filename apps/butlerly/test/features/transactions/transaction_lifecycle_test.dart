@@ -2477,7 +2477,11 @@ Future<void> _scrollEditorToMasterData(WidgetTester tester) async {
 Future<void> _scrollEditorToSave(WidgetTester tester) async {
   final editorList = find.byKey(const ValueKey('transaction-editor-list'));
   expect(editorList, findsOneWidget);
-  for (var attempt = 0; attempt < 5 && find.text('Save locally').evaluate().isEmpty; attempt++) {
+  for (
+    var attempt = 0;
+    attempt < 5 && find.text('Save locally').evaluate().isEmpty;
+    attempt++
+  ) {
     await tester.drag(editorList, const Offset(0, -320));
     await tester.pumpAndSettle();
   }
