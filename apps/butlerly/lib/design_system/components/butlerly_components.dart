@@ -1101,7 +1101,7 @@ class _ButlerlySelectFieldState<T> extends State<ButlerlySelectField<T>> {
     for (final entry in entries) {
       if (entry.value == value) return entry.label;
     }
-    return '';
+    return value.toString();
   }
 
   @override
