@@ -1040,7 +1040,7 @@ class ButlerlyRecordRow extends ButlerlyTransactionListItem {
 
 /// Shared selection control for form fields backed by canonical values.
 /// Labels are presentation-only; callers keep the selected ID/value unchanged.
-class ButlerlySelectField<T> extends StatelessWidget {
+class ButlerlySelectField<T> extends StatefulWidget {
   const ButlerlySelectField({
     required this.label,
     required this.value,
@@ -1063,28 +1063,69 @@ class ButlerlySelectField<T> extends StatelessWidget {
   final String? clearTooltip;
 
   @override
+  State<ButlerlySelectField<T>> createState() => _ButlerlySelectFieldState<T>();
+}
+
+class _ButlerlySelectFieldState<T> extends State<ButlerlySelectField<T>> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: _labelFor(widget.value, widget.entries));
+  }
+
+  @override
+  void didUpdateWidget(covariant ButlerlySelectField<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final oldLabel = _labelFor(oldWidget.value, oldWidget.entries);
+    final newLabel = _labelFor(widget.value, widget.entries);
+    if (oldWidget.value != widget.value || oldLabel != newLabel) {
+      _controller.value = TextEditingValue(
+        text: newLabel,
+        selection: TextSelection.collapsed(offset: newLabel.length),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  String _labelFor(T? value, List<DropdownMenuEntry<T>> entries) {
+    if (value == null) return '';
+    for (final entry in entries) {
+      if (entry.value == value) return entry.label;
+    }
+    return '';
+  }
+
+  @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) => DropdownMenu<T>(
-      initialSelection: value,
+      controller: _controller,
+      initialSelection: widget.value,
       width: constraints.maxWidth,
       menuHeight: 192,
-      label: Text(label),
-      trailingIcon: onCreate == null && onClear == null
+      label: Text(widget.label),
+      trailingIcon: widget.onCreate == null && widget.onClear == null
           ? null
           : Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (onCreate != null)
+                if (widget.onCreate != null)
                   IconButton(
-                    onPressed: onCreate,
+                    onPressed: widget.onCreate,
                     icon: const Icon(Icons.add_circle_outline),
-                    tooltip: createTooltip,
+                    tooltip: widget.createTooltip,
                   ),
-                if (onClear != null)
+                if (widget.onClear != null)
                   IconButton(
-                    onPressed: onClear,
+                    onPressed: widget.onClear,
                     icon: const Icon(Icons.clear),
-                    tooltip: clearTooltip,
+                    tooltip: widget.clearTooltip,
                   ),
                 const Icon(Icons.arrow_drop_down),
               ],
@@ -1099,8 +1140,8 @@ class ButlerlySelectField<T> extends StatelessWidget {
           Theme.of(context).colorScheme.surface,
         ),
       ),
-      dropdownMenuEntries: entries,
-      onSelected: onChanged,
+      dropdownMenuEntries: widget.entries,
+      onSelected: widget.onChanged,
     ),
   );
 }
