@@ -95,11 +95,15 @@ void main() {
     expect(
       navigationRect.bottom - baseRect.top - bottomInset,
       closeTo(
-        ButlerlySize.navigationBarHeight +
-            ButlerlySize.primaryNavigationArchRise -
+        navigationContentRect.height -
             ButlerlySize.primaryNavigationArchHeight,
         0.01,
       ),
+    );
+    expect(
+      ButlerlySize.primaryNavigationArchHeight -
+          ButlerlySize.primaryNavigationArchRise,
+      closeTo(ButlerlySpacing.small, 0.01),
     );
     expect(arch.decoration, isNotNull);
     expect(arch.foregroundDecoration, isNull);
