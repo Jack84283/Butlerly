@@ -64,7 +64,7 @@ void main() {
     );
   });
 
-  test('phone navigation grows for a wrapped label at 1x', () {
+  test('phone navigation stays at 48px at normal text scale', () {
     final labelStyle = ButlerlyTypography.navigationLabel(
       AppTheme.light.textTheme.labelSmall!,
       color: Colors.black,
@@ -80,24 +80,9 @@ void main() {
       labelStyle: labelStyle,
       textDirection: TextDirection.ltr,
     );
-    final maximumLabelHeight = labels
-        .map(
-          (label) => _navigationLabelHeight(
-            label,
-            style: labelStyle,
-            textScaler: TextScaler.noScaling,
-            maxWidth: itemWidth,
-          ),
-        )
-        .reduce((left, right) => left > right ? left : right);
-
-    expect(ButlerlySize.navigationBarHeight, 60);
-    expect(ButlerlySize.primaryNavigationAddIconSize, 44);
-    expect(
-      height,
-      ButlerlySize.primaryNavigationAddIconSize + maximumLabelHeight,
-    );
-    expect(height, greaterThan(ButlerlySize.navigationBarHeight));
+    expect(ButlerlySize.navigationBarHeight, 48);
+    expect(ButlerlySize.primaryNavigationAddIconSize, 32);
+    expect(height, ButlerlySize.navigationBarHeight);
   });
 
   test('phone navigation uses one label slot across destinations', () {

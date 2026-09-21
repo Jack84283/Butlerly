@@ -122,6 +122,12 @@ class ButlerlyPage extends StatelessWidget {
               backgroundColor: context.colors.background.withValues(
                 alpha: 0.96,
               ),
+              shape: Border(
+                bottom: BorderSide(
+                  width: ButlerlySize.dividerWidth,
+                  color: context.colors.cardDivider,
+                ),
+              ),
             ),
           if (pinnedHeader != null)
             SliverPersistentHeader(

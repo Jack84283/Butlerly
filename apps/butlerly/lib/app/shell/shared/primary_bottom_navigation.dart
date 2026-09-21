@@ -24,6 +24,16 @@ double phoneNavigationHeightForLabels({
     return painter.height;
   }
 
+  final scaledLabelFontSize = textScaler.scale(
+    ButlerlyTypography.navigationLabelFontSize,
+  );
+  final normalScale =
+      scaledLabelFontSize <= ButlerlyTypography.navigationLabelFontSize + 0.01;
+
+  if (normalScale) {
+    return ButlerlySize.navigationBarHeight;
+  }
+
   var maximumLabelHeight = labelHeight(addLabel);
   for (final label in standardLabels) {
     final height = labelHeight(label);
@@ -163,11 +173,8 @@ class PrimaryBottomNavigation extends StatelessWidget {
             context,
             constraints.maxWidth,
           );
-          final retainedTopClearance = visualBranchIndexes.contains(1)
-              ? ButlerlySize.primaryNavigationArchRise
-              : ButlerlySpacing.none;
           return SizedBox(
-            height: navigationHeight + bottomInset + retainedTopClearance,
+            height: navigationHeight + bottomInset,
             child: Stack(
               children: [
                 Positioned.fill(
@@ -182,7 +189,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
                 Positioned(
                   left: 0,
                   right: 0,
-                  top: retainedTopClearance,
+                  top: 0,
                   height: navigationHeight,
                   child: SizedBox(
                     key: const ValueKey('primary-navigation-content'),
