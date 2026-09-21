@@ -37,7 +37,7 @@ void main() {
       await tester.pump();
 
       EditableText editable() =>
-          tester.widget<EditableText>(find.byType(EditableText).single);
+          tester.widget<EditableText>(find.byType(EditableText));
       expect(editable().controller.text, 'Food');
 
       await tester.tap(find.byTooltip('Clear'));
