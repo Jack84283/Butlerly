@@ -40,7 +40,10 @@ void main() {
           tester.widget<EditableText>(find.byType(EditableText));
       expect(editable().controller.text, 'Food');
 
-      await tester.tap(find.byTooltip('Clear'));
+      final clearButton = tester.widget<IconButton>(
+        find.widgetWithIcon(IconButton, Icons.clear),
+      );
+      clearButton.onPressed!();
       await tester.pump();
 
       expect(value, isNull);
