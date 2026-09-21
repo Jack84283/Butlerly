@@ -126,35 +126,38 @@ void main() {
     },
   );
 
-  test('restore rebuild reopens a resolved group when membership changes', () async {
-    final repository = _Groups([_match('a', '25'), _match('b', '25')]);
-    final clock = _Clock(DateTime.utc(2026, 1, 1));
-    final scan = ScanExistingTransactionsForDuplicates(repository, clock);
-    final original =
-        (await scan() as ApplicationSuccess<List<DuplicateCandidateGroup>>)
-            .value
-            .single;
-    await repository.save(
-      DuplicateCandidateGroup(
-        id: original.id,
-        transactionIds: original.transactionIds,
-        duplicateKey: original.duplicateKey,
-        status: DuplicateCandidateGroupStatus.keepBoth,
-        createdAt: original.createdAt,
-        updatedAt: clock.now(),
-      ),
-    );
-    repository.matches.add(_match('c', '25'));
+  test(
+    'restore rebuild reopens a resolved group when membership changes',
+    () async {
+      final repository = _Groups([_match('a', '25'), _match('b', '25')]);
+      final clock = _Clock(DateTime.utc(2026, 1, 1));
+      final scan = ScanExistingTransactionsForDuplicates(repository, clock);
+      final original =
+          (await scan() as ApplicationSuccess<List<DuplicateCandidateGroup>>)
+              .value
+              .single;
+      await repository.save(
+        DuplicateCandidateGroup(
+          id: original.id,
+          transactionIds: original.transactionIds,
+          duplicateKey: original.duplicateKey,
+          status: DuplicateCandidateGroupStatus.keepBoth,
+          createdAt: original.createdAt,
+          updatedAt: clock.now(),
+        ),
+      );
+      repository.matches.add(_match('c', '25'));
 
-    final rebuilt =
-        (await RebuildDuplicateGroupsAfterRestore(repository, clock)()
-                as ApplicationSuccess<List<DuplicateCandidateGroup>>)
-            .value
-            .single;
+      final rebuilt =
+          (await RebuildDuplicateGroupsAfterRestore(repository, clock)()
+                  as ApplicationSuccess<List<DuplicateCandidateGroup>>)
+              .value
+              .single;
 
-    expect(rebuilt.status, DuplicateCandidateGroupStatus.unresolved);
-    expect(rebuilt.transactionIds.map((id) => id.value), ['a', 'b', 'c']);
-  });
+      expect(rebuilt.status, DuplicateCandidateGroupStatus.unresolved);
+      expect(rebuilt.transactionIds.map((id) => id.value), ['a', 'b', 'c']);
+    },
+  );
 
   test('scan creates one group for three matching transactions', () async {
     final repository = _Groups([
