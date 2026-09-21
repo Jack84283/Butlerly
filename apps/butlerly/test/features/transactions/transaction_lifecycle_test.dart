@@ -381,6 +381,74 @@ void main() {
   );
 
   testWidgets(
+    'editor infers the parent for a known orphaned subcategory reference',
+    (tester) async {
+      final finance = services<FinanceServices>();
+      categories.values['category-travel-orphan'] = Category(
+        id: CategoryId('category-travel-orphan'),
+        name: 'Travel orphan',
+        origin: CategoryOrigin.user,
+      );
+      categories.values['subcategory-airfare-orphan'] = Category(
+        id: CategoryId('subcategory-airfare-orphan'),
+        name: 'Airfare orphan',
+        origin: CategoryOrigin.user,
+        parentId: CategoryId('category-travel-orphan'),
+      );
+      final now = DateTime.utc(2026, 9, 20, 12);
+      final existing = Transaction(
+        id: TransactionId('orphaned-subcategory-shape'),
+        timing: KnownTransactionTime(now),
+        money: Money(
+          amount: DecimalValue.parse('101.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        sourceType: TransactionSourceType.manual,
+        transactionDate: '2026-09-20',
+        description: 'Orphaned subcategory classification',
+        subcategoryId: CategoryId('subcategory-airfare-orphan'),
+        provenance: [
+          Provenance(
+            id: ProvenanceId('orphaned-subcategory-shape-provenance'),
+            sourceType: ProvenanceSourceType.userEntry,
+            capturedAt: now,
+          ),
+        ],
+        createdAt: now,
+        updatedAt: now,
+      );
+      await repository.save(existing);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: _EditorHarness(
+            finance: finance,
+            existing: TransactionDto.fromDomain(existing),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open editor'));
+      await tester.pumpAndSettle();
+
+      await _scrollEditorToMasterData(tester);
+      _expectEditorSelection(tester, 'Travel orphan');
+      _expectEditorSelection(tester, 'Airfare orphan');
+
+      await _scrollEditorToSave(tester);
+      await tester.tap(find.text('Save locally'));
+      await tester.pumpAndSettle();
+
+      final refreshed = await finance.getTransaction(
+        'orphaned-subcategory-shape',
+      );
+      final saved = (refreshed as ApplicationSuccess<TransactionDto>).value;
+      expect(saved.categoryId, 'category-travel-orphan');
+      expect(saved.subcategoryId, 'subcategory-airfare-orphan');
+    },
+  );
+
+  testWidgets(
     'organizer clears a stored subcategory whose parent mismatches category',
     (tester) async {
       final finance = services<FinanceServices>();
