@@ -357,6 +357,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   void initState() {
     super.initState();
     final existing = widget.existing;
+    _classificationOverridden = existing != null;
     _amount = TextEditingController(text: existing?.amount ?? '');
     _currency = TextEditingController(text: existing?.currency ?? 'USD');
     _description = TextEditingController(text: existing?.description ?? '');
@@ -1478,8 +1479,13 @@ class _TransactionMasterDataRowsState
                   data.merchantName(transaction.merchantId) ??
                   context.l10n.text('unavailableMerchant'),
             ),
-          if (transaction.categoryId != null)
-            ..._categoryRows(context, data, transaction.categoryId),
+          if (transaction.categoryId != null || transaction.subcategoryId != null)
+            ..._categoryRows(
+              context,
+              data,
+              transaction.categoryId,
+              transaction.subcategoryId,
+            ),
           if (transaction.tagIds.isNotEmpty)
             ButlerlyReadOnlyTagList(
               tagIds: transaction.tagIds.map((id) => id),
@@ -1498,28 +1504,29 @@ List<Widget> _categoryRows(
   BuildContext context,
   TransactionMasterData data,
   String? categoryId,
+  String? subcategoryId,
 ) {
-  final name = data.categoryName(categoryId);
-  final parentId = data.categoryParentId(categoryId);
-  if (parentId == null) {
-    return [
+  final legacyParentId = subcategoryId == null
+      ? data.categoryParentId(categoryId)
+      : null;
+  final effectiveCategoryId = legacyParentId ?? categoryId;
+  final effectiveSubcategoryId =
+      subcategoryId ?? (legacyParentId == null ? null : categoryId);
+  return [
+    if (effectiveCategoryId != null)
       _DetailRow(
         label: context.l10n.text('category'),
-        value: name ?? context.l10n.text('unavailableCategory'),
+        value:
+            data.categoryName(effectiveCategoryId) ??
+            context.l10n.text('unavailableCategory'),
       ),
-    ];
-  }
-  return [
-    _DetailRow(
-      label: context.l10n.text('category'),
-      value:
-          data.categoryName(parentId) ??
-          context.l10n.text('unavailableCategory'),
-    ),
-    _DetailRow(
-      label: context.l10n.text('subcategory'),
-      value: name ?? context.l10n.text('unavailableCategory'),
-    ),
+    if (effectiveSubcategoryId != null)
+      _DetailRow(
+        label: context.l10n.text('subcategory'),
+        value:
+            data.categoryName(effectiveSubcategoryId) ??
+            context.l10n.text('unavailableCategory'),
+      ),
   ];
 }
 
@@ -1646,11 +1653,16 @@ Future<bool?> _organizeTransaction(
       .toList(growable: false);
   String? merchantId = transaction.merchantId;
   String? categoryId = transaction.categoryId;
+  String? subcategoryId = transaction.subcategoryId;
   final selectedTagIds = transaction.tagIds.toSet();
   final initialCategory = activeCategories
       .where((value) => value.id.value == categoryId)
       .firstOrNull;
-  String? parentCategoryId = initialCategory?.parentId?.value;
+  if (subcategoryId == null && initialCategory?.parentId != null) {
+    subcategoryId = categoryId;
+    categoryId = initialCategory!.parentId!.value;
+  }
+  String? parentCategoryId = categoryId;
   return showButlerlyBottomSheet<bool>(
     context: context,
     builder: (dialogContext) => StatefulBuilder(
@@ -1677,6 +1689,7 @@ Future<bool?> _organizeTransaction(
                 onChanged: (value) => setDialogState(() {
                   parentCategoryId = value;
                   categoryId = value;
+                  subcategoryId = null;
                 }),
               ),
               const SizedBox(height: ButlerlySpacing.small),
@@ -1684,12 +1697,11 @@ Future<bool?> _organizeTransaction(
                 categories: activeCategories,
                 masterData: presentation,
                 parentId: parentCategoryId,
-                value: categoryId == parentCategoryId ? null : categoryId,
+                value: subcategoryId,
                 label: dialogContext.l10n.text('subcategory'),
                 clearLabel: dialogContext.l10n.text('clear'),
-                onChanged: (value) => setDialogState(
-                  () => categoryId = value ?? parentCategoryId,
-                ),
+                onChanged: (value) =>
+                    setDialogState(() => subcategoryId = value),
               ),
               const SizedBox(height: ButlerlySpacing.small),
               ButlerlyTagPicker(
@@ -1737,6 +1749,7 @@ Future<bool?> _organizeTransaction(
                   paymentSourceId: transaction.paymentSourceId,
                   merchantId: merchantId,
                   categoryId: categoryId,
+                  subcategoryId: subcategoryId,
                   tagIds: selectedTagIds.toList(growable: false),
                   replaceMerchant: true,
                   replaceCategory: true,
