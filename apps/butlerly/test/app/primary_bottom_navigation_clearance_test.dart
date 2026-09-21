@@ -95,8 +95,7 @@ void main() {
     expect(
       navigationRect.bottom - baseRect.top - bottomInset,
       closeTo(
-        navigationContentRect.height -
-            ButlerlySize.primaryNavigationArchHeight,
+        navigationContentRect.height - ButlerlySize.primaryNavigationArchHeight,
         0.01,
       ),
     );
