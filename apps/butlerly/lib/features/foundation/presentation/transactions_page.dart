@@ -1690,6 +1690,14 @@ Future<bool?> _organizeTransaction(
   if (subcategoryId == null && initialCategory?.parentId != null) {
     subcategoryId = categoryId;
     categoryId = initialCategory!.parentId!.value;
+  } else if (subcategoryId != null) {
+    final initialSubcategory = categories
+        .where((value) => value.id.value == subcategoryId)
+        .firstOrNull;
+    if (initialSubcategory != null &&
+        initialSubcategory.parentId?.value != categoryId) {
+      subcategoryId = null;
+    }
   }
   String? parentCategoryId = categoryId;
   return showButlerlyBottomSheet<bool>(
