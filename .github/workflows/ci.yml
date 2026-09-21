@@ -44,7 +44,7 @@ jobs:
       - uses: ./.github/actions/setup-toolchain
       - run: ./tool/setup.sh
       - name: Show canonical formatting for missing-master-data test
-        run: ./tool/diagnose_format.sh
+        run: bash ./tool/diagnose_format.sh
       - run: ./tool/validate.sh flutter_application
 
   # macOS checks remain post-merge main checks for now to conserve limited
