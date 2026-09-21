@@ -125,7 +125,7 @@ void main() {
         find.byKey(const ValueKey('transaction-description-field')),
         'Updated lunch',
       );
-      await tester.ensureVisible(find.text('Save locally'));
+      await _scrollEditorToSave(tester);
       await tester.tap(find.text('Save locally'));
       await tester.pumpAndSettle();
 
@@ -194,30 +194,11 @@ void main() {
       await tester.tap(find.text('Open editor'));
       await tester.pumpAndSettle();
 
-      final editorList = find.byKey(const ValueKey('transaction-editor-list'));
-      expect(editorList, findsOneWidget);
-      expect(
-        find.descendant(
-          of: editorList,
-          matching: find.byWidgetPredicate(
-            (widget) =>
-                widget is EditableText && widget.controller.text == 'Food',
-          ),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: editorList,
-          matching: find.byWidgetPredicate(
-            (widget) =>
-                widget is EditableText && widget.controller.text == 'Dining',
-          ),
-        ),
-        findsOneWidget,
-      );
+      await _scrollEditorToMasterData(tester);
+      _expectEditorSelection(tester, 'Food');
+      _expectEditorSelection(tester, 'Dining');
 
-      await tester.ensureVisible(find.text('Save locally'));
+      await _scrollEditorToSave(tester);
       await tester.tap(find.text('Save locally'));
       await tester.pumpAndSettle();
 
@@ -295,28 +276,17 @@ void main() {
       await tester.tap(find.text('Open editor'));
       await tester.pumpAndSettle();
 
-      final editorList = find.byKey(const ValueKey('transaction-editor-list'));
-      expect(editorList, findsOneWidget);
+      await _scrollEditorToMasterData(tester);
       for (final selectedLabel in [
         'Old Merchant',
         'Old Category',
         'Old Subcategory',
         'Old Card',
       ]) {
-        expect(
-          find.descendant(
-            of: editorList,
-            matching: find.byWidgetPredicate(
-              (widget) =>
-                  widget is EditableText &&
-                  widget.controller.text == selectedLabel,
-            ),
-          ),
-          findsOneWidget,
-        );
+        _expectEditorSelection(tester, selectedLabel);
       }
 
-      await tester.ensureVisible(find.text('Save locally'));
+      await _scrollEditorToSave(tester);
       await tester.tap(find.text('Save locally'));
       await tester.pumpAndSettle();
 
@@ -2495,6 +2465,33 @@ final class MemoryUserPreferences implements UserPreferenceRepository {
   Future<void> save(UserPreference preference) async {
     value = preference;
   }
+}
+
+Future<void> _scrollEditorToMasterData(WidgetTester tester) async {
+  final editorList = find.byKey(const ValueKey('transaction-editor-list'));
+  expect(editorList, findsOneWidget);
+  await tester.drag(editorList, const Offset(0, -520));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _scrollEditorToSave(WidgetTester tester) async {
+  final editorList = find.byKey(const ValueKey('transaction-editor-list'));
+  expect(editorList, findsOneWidget);
+  for (var attempt = 0; attempt < 5 && find.text('Save locally').evaluate().isEmpty; attempt++) {
+    await tester.drag(editorList, const Offset(0, -320));
+    await tester.pumpAndSettle();
+  }
+  expect(find.text('Save locally'), findsOneWidget);
+}
+
+void _expectEditorSelection(WidgetTester tester, String label) {
+  expect(
+    find.byWidgetPredicate(
+      (widget) =>
+          widget is EditableText && widget.controller.text == label,
+    ),
+    findsOneWidget,
+  );
 }
 
 final class MemoryTransactionRepository implements TransactionRepository {
