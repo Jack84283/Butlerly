@@ -611,15 +611,21 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
         contentKey: const ValueKey('transaction-editor-content'),
         child: FutureBuilder<_EditorMasterData>(
           future: _masterData,
-          initialData: const _EditorMasterData(
-            merchants: [],
-            categories: [],
-            tags: [],
-            paymentSources: [],
-            categoryLabels: {},
-            tagLabels: {},
-          ),
           builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const ButlerlyLoadingState();
+            }
+            if (snapshot.hasError) {
+              return ButlerlyErrorState(
+                title: context.l10n.text('loadTransactionsError'),
+                message: context.l10n.text('tryAgain'),
+                preserved: context.l10n.text('dataPreserved'),
+                actionLabel: context.l10n.text('tryAgain'),
+                onAction: () => setState(() {
+                  _masterData = _loadMasterData(_loadedLanguageCode);
+                }),
+              );
+            }
             final data = snapshot.requireData;
             final selectedCategory = data.categories
                 .where((value) => value.id.value == _categoryId)
@@ -632,6 +638,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
             return Form(
               key: _formKey,
               child: ListView(
+                key: const ValueKey('transaction-editor-list'),
                 // The editor's wider inset keeps the final action reachable in
                 // the established form layout at compact test and phone sizes.
                 padding: const EdgeInsets.all(24),
