@@ -300,6 +300,87 @@ void main() {
   );
 
   testWidgets(
+    'editor clears a stored subcategory whose parent mismatches category',
+    (tester) async {
+      final finance = services<FinanceServices>();
+      categories.values['category-food-mismatch'] = Category(
+        id: CategoryId('category-food-mismatch'),
+        name: 'Food mismatch',
+        origin: CategoryOrigin.user,
+      );
+      categories.values['category-travel-mismatch'] = Category(
+        id: CategoryId('category-travel-mismatch'),
+        name: 'Travel mismatch',
+        origin: CategoryOrigin.user,
+      );
+      categories.values['subcategory-airfare-mismatch'] = Category(
+        id: CategoryId('subcategory-airfare-mismatch'),
+        name: 'Airfare mismatch',
+        origin: CategoryOrigin.user,
+        parentId: CategoryId('category-travel-mismatch'),
+      );
+      final now = DateTime.utc(2026, 9, 20, 12);
+      final existing = Transaction(
+        id: TransactionId('mismatched-category-shape'),
+        timing: KnownTransactionTime(now),
+        money: Money(
+          amount: DecimalValue.parse('88.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        sourceType: TransactionSourceType.manual,
+        transactionDate: '2026-09-20',
+        description: 'Mismatched classification',
+        categoryId: CategoryId('category-food-mismatch'),
+        subcategoryId: CategoryId('subcategory-airfare-mismatch'),
+        provenance: [
+          Provenance(
+            id: ProvenanceId('mismatched-category-shape-provenance'),
+            sourceType: ProvenanceSourceType.userEntry,
+            capturedAt: now,
+          ),
+        ],
+        createdAt: now,
+        updatedAt: now,
+      );
+      await repository.save(existing);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: _EditorHarness(
+            finance: finance,
+            existing: TransactionDto.fromDomain(existing),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open editor'));
+      await tester.pumpAndSettle();
+
+      await _scrollEditorToMasterData(tester);
+      _expectEditorSelection(tester, 'Food mismatch');
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is EditableText &&
+              widget.controller.text == 'Airfare mismatch',
+        ),
+        findsNothing,
+      );
+
+      await _scrollEditorToSave(tester);
+      await tester.tap(find.text('Save locally'));
+      await tester.pumpAndSettle();
+
+      final refreshed = await finance.getTransaction(
+        'mismatched-category-shape',
+      );
+      final saved = (refreshed as ApplicationSuccess<TransactionDto>).value;
+      expect(saved.categoryId, 'category-food-mismatch');
+      expect(saved.subcategoryId, isNull);
+    },
+  );
+
+  testWidgets(
     'organizer keeps selected archived category hierarchy visible and intact',
     (tester) async {
       final finance = services<FinanceServices>();
