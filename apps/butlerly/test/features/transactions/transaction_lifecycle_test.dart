@@ -329,6 +329,89 @@ void main() {
     },
   );
 
+  testWidgets(
+    'organizer keeps selected archived category hierarchy visible and intact',
+    (tester) async {
+      final finance = services<FinanceServices>();
+      categories.values['category-old-organize'] = Category(
+        id: CategoryId('category-old-organize'),
+        name: 'Archived Parent',
+        origin: CategoryOrigin.user,
+        status: CategoryStatus.archived,
+      );
+      categories.values['subcategory-old-organize'] = Category(
+        id: CategoryId('subcategory-old-organize'),
+        name: 'Archived Child',
+        origin: CategoryOrigin.user,
+        parentId: CategoryId('category-old-organize'),
+        status: CategoryStatus.archived,
+      );
+      final now = DateTime.utc(2026, 9, 20, 12);
+      final existing = Transaction(
+        id: TransactionId('archived-organizer-category'),
+        timing: KnownTransactionTime(now),
+        money: Money(
+          amount: DecimalValue.parse('17.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        sourceType: TransactionSourceType.manual,
+        transactionDate: '2026-09-20',
+        description: 'Archived organizer',
+        categoryId: CategoryId('category-old-organize'),
+        subcategoryId: CategoryId('subcategory-old-organize'),
+        provenance: [
+          Provenance(
+            id: ProvenanceId('archived-organizer-category-provenance'),
+            sourceType: ProvenanceSourceType.userEntry,
+            capturedAt: now,
+          ),
+        ],
+        createdAt: now,
+        updatedAt: now,
+      );
+      await repository.save(existing);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TransactionDetailPage(
+            finance: finance,
+            transaction: TransactionDto.fromDomain(existing),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Organize transaction'),
+        200,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.tap(find.text('Organize transaction'));
+      await tester.pumpAndSettle();
+
+      for (final selectedLabel in ['Archived Parent', 'Archived Child']) {
+        expect(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget is EditableText &&
+                widget.controller.text == selectedLabel,
+          ),
+          findsOneWidget,
+        );
+      }
+
+      await tester.tap(find.text('Save organization'));
+      await tester.pumpAndSettle();
+
+      final refreshed = await finance.getTransaction(
+        'archived-organizer-category',
+      );
+      final saved = (refreshed as ApplicationSuccess<TransactionDto>).value;
+      expect(saved.categoryId, 'category-old-organize');
+      expect(saved.subcategoryId, 'subcategory-old-organize');
+    },
+  );
+
   testWidgets('transaction detail refreshes evidence after a receipt scan', (
     tester,
   ) async {
