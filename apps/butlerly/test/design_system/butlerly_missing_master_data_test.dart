@@ -55,6 +55,6 @@ void main() {
       ),
       findsWidgets,
     );
-    expect(find.byTooltip('Clear'), findsOneWidget);
+    expect(find.byIcon(Icons.clear), findsOneWidget);
   });
 }
