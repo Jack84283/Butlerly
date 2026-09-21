@@ -191,7 +191,7 @@ void main() {
 
     await SqliteTransactionRepository(
       database.persistenceDatabase,
-    ).delete(TransactionId('restored-expense-duplicate'));
+    ).removePermanently(TransactionId('restored-expense-duplicate'));
 
     await services<WorkspaceDataService>().restore(
       backup.path,
