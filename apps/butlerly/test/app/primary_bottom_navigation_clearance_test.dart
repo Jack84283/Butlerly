@@ -7,7 +7,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('raised Add arch does not cover primary page actions', (
+  testWidgets('flat footer keeps all primary destinations vertically aligned', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -67,11 +67,6 @@ void main() {
     final navigationRect = tester.getRect(
       find.byKey(const ValueKey('primary-phone-navigation')),
     );
-    final archFinder = find.byKey(
-      const ValueKey('primary-navigation-add-arch'),
-    );
-    final archRect = tester.getRect(archFinder);
-    final arch = tester.widget<Container>(archFinder);
     final baseRect = tester.getRect(
       find.byKey(const ValueKey('primary-navigation-base')),
     );
@@ -80,35 +75,19 @@ void main() {
     );
 
     expect(bodyRect.bottom, closeTo(navigationRect.top, 0.01));
-    expect(archRect.top, closeTo(navigationRect.top, 0.01));
+    expect(baseRect.top, closeTo(navigationRect.top, 0.01));
+    expect(baseRect.bottom, closeTo(navigationRect.bottom, 0.01));
     expect(
-      archRect.bottom,
-      closeTo(
-        navigationRect.top + ButlerlySize.primaryNavigationArchHeight,
-        0.01,
-      ),
+      navigationContentRect.top - navigationRect.top,
+      closeTo(ButlerlySize.primaryNavigationArchRise, 0.01),
     );
-    expect(baseRect.top, closeTo(archRect.bottom, 0.01));
-    final bottomInset = MediaQuery.paddingOf(
-      tester.element(find.byType(IPhonePrimaryShell)),
-    ).bottom;
-    expect(
-      navigationRect.bottom - baseRect.top - bottomInset,
-      closeTo(
-        navigationContentRect.height - ButlerlySize.primaryNavigationArchHeight,
-        0.01,
-      ),
-    );
-    expect(
-      ButlerlySize.primaryNavigationArchHeight -
-          ButlerlySize.primaryNavigationArchRise,
-      closeTo(ButlerlySpacing.small, 0.01),
-    );
-    expect(arch.decoration, isNotNull);
-    expect(arch.foregroundDecoration, isNull);
     expect(
       navigationContentRect.height,
       greaterThanOrEqualTo(ButlerlySize.navigationBarHeight),
+    );
+    expect(
+      find.byKey(const ValueKey('primary-navigation-add-arch')),
+      findsNothing,
     );
 
     final addLabelTop = tester.getTopLeft(find.text('Add')).dy;
@@ -120,12 +99,10 @@ void main() {
     final addRect = tester.getRect(
       find.byKey(const ValueKey('primary-navigation-add-button')),
     );
-    expect(
-      addLabelTop - addRect.bottom,
-      closeTo(ButlerlySize.primaryNavigationAddLift, 0.01),
-    );
+    final homeIconRect = tester.getRect(find.byIcon(Icons.home_outlined));
+    expect(addRect.center.dy, closeTo(homeIconRect.center.dy, 0.01));
 
-    await tester.tapAt(Offset(addRect.center.dx, addRect.top + 1));
+    await tester.tapAt(addRect.center);
     expect(selectedBranch, 1);
 
     await tester.tap(find.byKey(const ValueKey('bottom-page-action')));
