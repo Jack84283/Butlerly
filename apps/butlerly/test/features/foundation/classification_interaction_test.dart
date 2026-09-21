@@ -169,7 +169,10 @@ Future<void> _chooseDropdown(
   await tester.pumpAndSettle();
   await tester.enterText(find.byType(TextField).last, value);
   await tester.pumpAndSettle();
-  await tester.tap(find.byType(MenuItemButton).last);
+  final item = tester.widget<MenuItemButton>(
+    find.byType(MenuItemButton).last,
+  );
+  item.onPressed!();
   await tester.pumpAndSettle();
 }
 
