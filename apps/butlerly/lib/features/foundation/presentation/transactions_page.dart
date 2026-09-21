@@ -391,7 +391,29 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
     final snapshot = await TransactionMasterDataProvider(
       widget.finance,
     ).load(languageCode: languageCode);
-    return _EditorMasterData.fromSnapshot(snapshot);
+    final data = _EditorMasterData.fromSnapshot(snapshot);
+    _normalizeLegacyClassification(data);
+    return data;
+  }
+
+  void _normalizeLegacyClassification(_EditorMasterData data) {
+    if (widget.existing == null || _categoryId == null || _subcategoryId != null) {
+      return;
+    }
+    final category = data.categories
+        .where((value) => value.id.value == _categoryId)
+        .firstOrNull;
+    final parentId = category?.parentId?.value;
+    if (parentId == null) return;
+    if (mounted) {
+      setState(() {
+        _subcategoryId = _categoryId;
+        _categoryId = parentId;
+      });
+    } else {
+      _subcategoryId = _categoryId;
+      _categoryId = parentId;
+    }
   }
 
   @override
