@@ -553,7 +553,7 @@ class _ReviewPageState extends State<ReviewPage> {
                                     : context.l10n.text('unresolvedRows'),
                               ),
                               trailing: const Icon(Icons.chevron_right),
-                              onTap: () => context.go('/statements'),
+                              onTap: () => context.push('/statements'),
                             ),
                           ),
                         ),
