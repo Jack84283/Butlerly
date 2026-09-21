@@ -160,6 +160,60 @@ void main() {
       },
     );
   }
+  test('restore rebuilds unresolved duplicate review state', () async {
+    final timestamp = DateTime.utc(2026, 9, 1);
+    await SqliteTransactionRepository(database.persistenceDatabase).save(
+      Transaction(
+        id: TransactionId('restored-expense-duplicate'),
+        timing: const UnknownTransactionTime(
+          UnknownTransactionTimeReason.unknown,
+        ),
+        transactionDate: '2026-09-01',
+        money: Money(
+          amount: DecimalValue.parse('12.34'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        sourceType: TransactionSourceType.manual,
+        provenance: [
+          Provenance(
+            id: ProvenanceId('origin-duplicate'),
+            sourceType: ProvenanceSourceType.userEntry,
+            capturedAt: timestamp,
+          ),
+        ],
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      ),
+    );
+    final backup = File('${root.path}/duplicates.butlerlybackup');
+    await services<LocalBackupManager>().createBackup(backup);
+
+    await SqliteTransactionRepository(
+      database.persistenceDatabase,
+    ).delete(TransactionId('restored-expense-duplicate'));
+
+    await services<WorkspaceDataService>().restore(
+      backup.path,
+      mode: LocalRestoreMode.replace,
+    );
+
+    final groups = await services<FinanceServices>()
+        .listDuplicateCandidateGroups!();
+    expect(
+      groups,
+      isA<ApplicationSuccess<List<DuplicateCandidateGroup>>>(),
+    );
+    expect(
+      (groups as ApplicationSuccess<List<DuplicateCandidateGroup>>).value,
+      hasLength(1),
+    );
+    expect(
+      groups.value.single.transactionIds.map((id) => id.value).toSet(),
+      {'restored-expense', 'restored-expense-duplicate'},
+    );
+  });
+
   test(
     'legacy restore preserves disabled activation while upgrading definition',
     () async {
