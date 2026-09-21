@@ -529,13 +529,21 @@ class _SearchPageState extends State<SearchPage>
         ),
       ),
       const SizedBox(width: ButlerlySpacing.compact),
-      IconButton(
-        isSelected: _activeFilterCount > 0,
-        tooltip: _activeFilterCount > 0
-            ? '${context.l10n.text('filters')} ($_activeFilterCount)'
-            : context.l10n.text('filters'),
-        onPressed: _openFilters,
-        icon: const Icon(Icons.tune_rounded),
+      SizedBox.square(
+        dimension: ButlerlySize.minimumTarget,
+        child: IconButton(
+          constraints: const BoxConstraints.tightFor(
+            width: ButlerlySize.minimumTarget,
+            height: ButlerlySize.minimumTarget,
+          ),
+          padding: EdgeInsets.zero,
+          isSelected: _activeFilterCount > 0,
+          tooltip: _activeFilterCount > 0
+              ? '${context.l10n.text('filters')} ($_activeFilterCount)'
+              : context.l10n.text('filters'),
+          onPressed: _openFilters,
+          icon: const Icon(Icons.tune_rounded),
+        ),
       ),
     ],
   );
