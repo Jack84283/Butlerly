@@ -89,8 +89,11 @@ void main() {
       ),
     );
     expect(baseRect.top, closeTo(archRect.bottom, 0.01));
+    final bottomInset = MediaQuery.paddingOf(
+      tester.element(find.byType(IPhonePrimaryShell)),
+    ).bottom;
     expect(
-      navigationRect.bottom - baseRect.top,
+      navigationRect.bottom - baseRect.top - bottomInset,
       closeTo(
         ButlerlySize.navigationBarHeight +
             ButlerlySize.primaryNavigationArchRise -
