@@ -108,9 +108,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Corner Cafe'), findsOneWidget);
-      expect(find.text('Food'), findsOneWidget);
-      expect(find.text('Dining'), findsOneWidget);
-      expect(find.text('Visa'), findsOneWidget);
+      expect(find.text('Food · Dining · Visa'), findsOneWidget);
 
       await tester.tap(find.text('Corner Cafe'));
       await tester.pumpAndSettle();
@@ -147,6 +145,74 @@ void main() {
       expect(find.text('Food'), findsOneWidget);
       expect(find.text('Dining'), findsOneWidget);
       expect(find.text('Visa'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'legacy child category normalizes in editor without losing classification',
+    (tester) async {
+      final finance = services<FinanceServices>();
+      categories.values['category-food'] = Category(
+        id: CategoryId('category-food'),
+        name: 'Food',
+        origin: CategoryOrigin.user,
+      );
+      categories.values['subcategory-dining'] = Category(
+        id: CategoryId('subcategory-dining'),
+        name: 'Dining',
+        origin: CategoryOrigin.user,
+        parentId: CategoryId('category-food'),
+      );
+      final legacy = Transaction(
+        id: TransactionId('legacy-category-shape'),
+        timing: KnownTransactionTime(DateTime.utc(2026, 9, 20, 12)),
+        money: Money(
+          amount: DecimalValue.parse('18.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        sourceType: TransactionSourceType.manual,
+        transactionDate: '2026-09-20',
+        description: 'Legacy lunch',
+        categoryId: CategoryId('subcategory-dining'),
+        provenance: [
+          Provenance(
+            id: ProvenanceId('legacy-category-shape-provenance'),
+            sourceType: ProvenanceSourceType.userEntry,
+            capturedAt: DateTime.utc(2026, 9, 20, 12),
+          ),
+        ],
+        createdAt: DateTime.utc(2026, 9, 20, 12),
+        updatedAt: DateTime.utc(2026, 9, 20, 12),
+      );
+      await repository.save(legacy);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: _EditorHarness(
+            finance: finance,
+            existing: TransactionDto.fromDomain(legacy),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open editor'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Food'), findsOneWidget);
+      expect(find.text('Dining'), findsOneWidget);
+
+      await tester.scrollUntilVisible(
+        find.text('Save locally'),
+        160,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.tap(find.text('Save locally'));
+      await tester.pumpAndSettle();
+
+      final refreshed = await finance.getTransaction('legacy-category-shape');
+      final saved = (refreshed as ApplicationSuccess<TransactionDto>).value;
+      expect(saved.categoryId, 'category-food');
+      expect(saved.subcategoryId, 'subcategory-dining');
     },
   );
 
