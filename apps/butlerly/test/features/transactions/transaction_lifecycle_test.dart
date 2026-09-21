@@ -125,11 +125,7 @@ void main() {
         find.byKey(const ValueKey('transaction-description-field')),
         'Updated lunch',
       );
-      await tester.scrollUntilVisible(
-        find.text('Save locally'),
-        160,
-        scrollable: find.byType(Scrollable).last,
-      );
+      await tester.ensureVisible(find.text('Save locally'));
       await tester.tap(find.text('Save locally'));
       await tester.pumpAndSettle();
 
@@ -198,14 +194,30 @@ void main() {
       await tester.tap(find.text('Open editor'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Food'), findsOneWidget);
-      expect(find.text('Dining'), findsOneWidget);
-
-      await tester.scrollUntilVisible(
-        find.text('Save locally'),
-        160,
-        scrollable: find.byType(Scrollable).last,
+      final editorList = find.byKey(const ValueKey('transaction-editor-list'));
+      expect(editorList, findsOneWidget);
+      expect(
+        find.descendant(
+          of: editorList,
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is EditableText && widget.controller.text == 'Food',
+          ),
+        ),
+        findsOneWidget,
       );
+      expect(
+        find.descendant(
+          of: editorList,
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is EditableText && widget.controller.text == 'Dining',
+          ),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.ensureVisible(find.text('Save locally'));
       await tester.tap(find.text('Save locally'));
       await tester.pumpAndSettle();
 
