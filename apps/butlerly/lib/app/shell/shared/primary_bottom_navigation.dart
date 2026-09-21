@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
@@ -65,7 +63,6 @@ class PrimaryBottomNavigation extends StatelessWidget {
     double labelSlotHeight,
   ) {
     final selected = currentIndex == branchIndex;
-    final add = branchIndex == 1;
     final labelStyle = ButlerlyTypography.navigationLabel(
       Theme.of(context).textTheme.labelSmall!,
       color: selected
@@ -76,58 +73,20 @@ class PrimaryBottomNavigation extends StatelessWidget {
     final baseIcon = selected
         ? (destination.selectedIcon ?? destination.icon)
         : destination.icon;
-    final icon = add
-        ? Container(
-            key: const ValueKey('primary-navigation-add-button'),
-            width: ButlerlySize.primaryNavigationAddIconSize,
-            height: ButlerlySize.primaryNavigationAddIconSize,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: selected
-                  ? context.colors.brandStrong
-                  : context.colors.selection,
-              border: Border.all(
-                width: ButlerlySize.dividerWidth,
-                color: context.colors.interactive.withValues(
-                  alpha: ButlerlyOpacity.primaryNavigationBorder,
-                ),
-              ),
-            ),
-            child: IconTheme(
-              data: IconThemeData(
-                size: ButlerlySize.primaryNavigationAddGlyphSize,
-                color: selected
-                    ? Theme.of(context).colorScheme.onPrimary
-                    : context.colors.interactive,
-              ),
-              child: baseIcon,
-            ),
-          )
-        : IconTheme(
-            data: IconThemeData(
-              size: ButlerlySize.standardIcon,
-              color: selected
-                  ? context.colors.interactive
-                  : context.colors.secondaryText,
-            ),
-            child: baseIcon,
-          );
-    final iconSlot = add
-        ? SizedBox(
-            height: ButlerlySize.primaryNavigationAddIconSize,
-            child: icon,
-          )
-        : SizedBox(
-            height:
-                ButlerlySize.primaryNavigationAddIconSize -
-                ButlerlySize.navigationLabelGap,
-            child: Align(alignment: Alignment.bottomCenter, child: icon),
-          );
+    final icon = IconTheme(
+      data: IconThemeData(
+        size: ButlerlySize.standardIcon,
+        color: selected
+            ? context.colors.interactive
+            : context.colors.secondaryText,
+      ),
+      child: baseIcon,
+    );
 
     return Semantics(
       button: true,
       selected: selected,
-      label: add
+      label: branchIndex == 1
           ? context.l10n.text('addTransactionAction')
           : destination.label,
       excludeSemantics: true,
@@ -135,51 +94,31 @@ class PrimaryBottomNavigation extends StatelessWidget {
         onTap: () => onSelected(branchIndex),
         child: SizedBox(
           height: double.infinity,
-          child: add
-              ? Stack(
-                  children: [
-                    Positioned(
-                      top:
-                          ButlerlySize.primaryNavigationArchRise -
-                          ButlerlySize.primaryNavigationAddLift,
-                      left: 0,
-                      right: 0,
-                      height: ButlerlySize.primaryNavigationAddIconSize,
-                      child: iconSlot,
-                    ),
-                    Positioned(
-                      top:
-                          ButlerlySize.primaryNavigationArchRise +
-                          ButlerlySize.primaryNavigationAddIconSize,
-                      left: 0,
-                      right: 0,
-                      height: labelSlotHeight,
-                      child: Text(
-                        destination.label,
-                        textAlign: TextAlign.center,
-                        softWrap: true,
-                        style: labelStyle,
-                      ),
-                    ),
-                  ],
-                )
-              : Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    iconSlot,
-                    const SizedBox(height: ButlerlySize.navigationLabelGap),
-                    SizedBox(
-                      width: double.infinity,
-                      height: labelSlotHeight,
-                      child: Text(
-                        destination.label,
-                        textAlign: TextAlign.center,
-                        softWrap: true,
-                        style: labelStyle,
-                      ),
-                    ),
-                  ],
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                key: branchIndex == 1
+                    ? const ValueKey('primary-navigation-add-button')
+                    : null,
+                height:
+                    ButlerlySize.primaryNavigationAddIconSize -
+                    ButlerlySize.navigationLabelGap,
+                child: Align(alignment: Alignment.bottomCenter, child: icon),
+              ),
+              const SizedBox(height: ButlerlySize.navigationLabelGap),
+              SizedBox(
+                width: double.infinity,
+                height: labelSlotHeight,
+                child: Text(
+                  destination.label,
+                  textAlign: TextAlign.center,
+                  softWrap: true,
+                  style: labelStyle,
                 ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -224,82 +163,41 @@ class PrimaryBottomNavigation extends StatelessWidget {
             context,
             constraints.maxWidth,
           );
-          final hasAddArch = visualBranchIndexes.contains(1);
-          final archRise = hasAddArch
+          final retainedTopClearance = visualBranchIndexes.contains(1)
               ? ButlerlySize.primaryNavigationArchRise
               : ButlerlySpacing.none;
-          final archHeight = hasAddArch
-              ? ButlerlySize.primaryNavigationArchHeight
-              : ButlerlySpacing.none;
           return SizedBox(
-            height: navigationHeight + bottomInset + archRise,
+            height: navigationHeight + bottomInset + retainedTopClearance,
             child: Stack(
               children: [
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top: archHeight,
-                  bottom: 0,
+                Positioned.fill(
                   child: DecoratedBox(
                     key: const ValueKey('primary-navigation-base'),
-                    decoration: _PrimaryNavigationBase(
-                      fillColor: navigationColor,
-                      edgeColor: divider.color,
-                      edgeWidth: divider.width,
-                      hasAddArch: hasAddArch,
+                    decoration: BoxDecoration(
+                      color: navigationColor,
+                      border: Border(top: divider),
                     ),
                   ),
                 ),
-                if (hasAddArch)
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    top: 0,
-                    child: Center(
-                      child: Container(
-                        key: const ValueKey('primary-navigation-add-arch'),
-                        width: ButlerlySize.primaryNavigationArchWidth,
-                        height: ButlerlySize.primaryNavigationArchHeight,
-                        decoration: _PrimaryNavigationCircularArch(
-                          fillColor: navigationColor,
-                          edgeColor: divider.color,
-                          edgeWidth: divider.width,
-                        ),
-                      ),
-                    ),
-                  ),
                 Positioned(
                   left: 0,
                   right: 0,
-                  top: 0,
-                  height: navigationHeight + archRise,
+                  top: retainedTopClearance,
+                  height: navigationHeight,
                   child: SizedBox(
                     key: const ValueKey('primary-navigation-content'),
-                    height: navigationHeight + archRise,
+                    height: navigationHeight,
                     child: Row(
                       children: [
                         for (final branchIndex in visualBranchIndexes)
                           Expanded(
-                            child: branchIndex == 1
-                                ? _destination(
-                                    context,
-                                    destinations[branchIndex]!,
-                                    branchIndex,
-                                    navigationHeight -
-                                        ButlerlySize
-                                            .primaryNavigationAddIconSize,
-                                  )
-                                : Padding(
-                                    padding: EdgeInsets.only(top: archRise),
-                                    child: _destination(
-                                      context,
-                                      destinations[branchIndex]!,
-                                      branchIndex,
-                                      navigationHeight -
-                                          ButlerlySize
-                                              .primaryNavigationAddIconSize,
-                                    ),
-                                  ),
+                            child: _destination(
+                              context,
+                              destinations[branchIndex]!,
+                              branchIndex,
+                              navigationHeight -
+                                  ButlerlySize.primaryNavigationAddIconSize,
+                            ),
                           ),
                       ],
                     ),
@@ -311,156 +209,5 @@ class PrimaryBottomNavigation extends StatelessWidget {
         },
       ),
     );
-  }
-}
-
-class _PrimaryNavigationBase extends Decoration {
-  const _PrimaryNavigationBase({
-    required this.fillColor,
-    required this.edgeColor,
-    required this.edgeWidth,
-    required this.hasAddArch,
-  });
-
-  final Color fillColor;
-  final Color edgeColor;
-  final double edgeWidth;
-  final bool hasAddArch;
-
-  @override
-  BoxPainter createBoxPainter([VoidCallback? onChanged]) =>
-      _PrimaryNavigationBasePainter(
-        fillColor: fillColor,
-        edgeColor: edgeColor,
-        edgeWidth: edgeWidth,
-        hasAddArch: hasAddArch,
-      );
-}
-
-class _PrimaryNavigationBasePainter extends BoxPainter {
-  _PrimaryNavigationBasePainter({
-    required this.fillColor,
-    required this.edgeColor,
-    required this.edgeWidth,
-    required this.hasAddArch,
-  });
-
-  final Color fillColor;
-  final Color edgeColor;
-  final double edgeWidth;
-  final bool hasAddArch;
-
-  @override
-  void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
-    final size = configuration.size;
-    if (size == null) return;
-
-    final rect = offset & size;
-    canvas.drawRect(
-      rect,
-      Paint()
-        ..style = PaintingStyle.fill
-        ..color = fillColor,
-    );
-
-    final edgePaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = edgeWidth
-      ..strokeCap = StrokeCap.butt
-      ..color = edgeColor;
-    final boundaryY = rect.top;
-    if (!hasAddArch) {
-      canvas.drawLine(
-        Offset(rect.left, boundaryY),
-        Offset(rect.right, boundaryY),
-        edgePaint,
-      );
-      return;
-    }
-
-    final radius = ButlerlySize.primaryNavigationArchWidth / 2;
-    final centerY = radius - ButlerlySize.primaryNavigationArchHeight;
-    final halfChord = math.sqrt(radius * radius - centerY * centerY);
-    final centerX = rect.center.dx;
-    canvas.drawLine(
-      Offset(rect.left, boundaryY),
-      Offset(centerX - halfChord, boundaryY),
-      edgePaint,
-    );
-    canvas.drawLine(
-      Offset(centerX + halfChord, boundaryY),
-      Offset(rect.right, boundaryY),
-      edgePaint,
-    );
-  }
-}
-
-class _PrimaryNavigationCircularArch extends Decoration {
-  const _PrimaryNavigationCircularArch({
-    required this.fillColor,
-    required this.edgeColor,
-    required this.edgeWidth,
-  });
-
-  final Color fillColor;
-  final Color edgeColor;
-  final double edgeWidth;
-
-  @override
-  BoxPainter createBoxPainter([VoidCallback? onChanged]) =>
-      _PrimaryNavigationCircularArchPainter(
-        fillColor: fillColor,
-        edgeColor: edgeColor,
-        edgeWidth: edgeWidth,
-      );
-}
-
-class _PrimaryNavigationCircularArchPainter extends BoxPainter {
-  _PrimaryNavigationCircularArchPainter({
-    required this.fillColor,
-    required this.edgeColor,
-    required this.edgeWidth,
-  });
-
-  final Color fillColor;
-  final Color edgeColor;
-  final double edgeWidth;
-
-  @override
-  void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
-    final size = configuration.size;
-    if (size == null) return;
-
-    final radius = ButlerlySize.primaryNavigationArchWidth / 2;
-    final circle = Rect.fromCircle(
-      center: Offset(offset.dx + size.width / 2, offset.dy + radius),
-      radius: radius,
-    );
-    final clip = offset & size;
-
-    canvas.save();
-    canvas.clipRect(clip);
-
-    canvas.drawCircle(
-      circle.center,
-      radius,
-      Paint()
-        ..style = PaintingStyle.fill
-        ..color = fillColor,
-    );
-
-    canvas.drawArc(
-      circle,
-      math.pi,
-      math.pi,
-      false,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = edgeWidth
-        ..strokeCap = StrokeCap.round
-        ..color = edgeColor,
-    );
-
-    canvas.restore();
   }
 }
