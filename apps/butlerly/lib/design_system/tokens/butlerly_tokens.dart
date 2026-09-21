@@ -196,8 +196,8 @@ abstract final class ButlerlySize {
   static const navigationLabelGap = ButlerlySpacing.xxs;
   static const sourcePreviewWidth = 64.0;
   static const sourcePreviewHeight = 80.0;
-  static const navigationBarHeight = 60.0;
-  static const primaryNavigationAddIconSize = 44.0;
+  static const navigationBarHeight = 48.0;
+  static const primaryNavigationAddIconSize = 32.0;
   static const primaryNavigationAddGlyphSize = 28.0;
   static const primaryNavigationAddLift = ButlerlySpacing.compact;
   static const primaryNavigationArchRise =
