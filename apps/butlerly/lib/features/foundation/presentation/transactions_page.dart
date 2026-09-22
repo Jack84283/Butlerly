@@ -70,7 +70,6 @@ class _TransactionsPageState extends State<TransactionsPage> {
     if (_loadedLanguageCode == languageCode) return;
     _loadedLanguageCode = languageCode;
     _filterMasterData = _loadFilterMasterData(languageCode);
-    _currencies = _loadCurrencies();
     final generation = ++_loadGeneration;
     _transactions = _load(languageCode: languageCode).then((data) {
       if (generation == _loadGeneration) {
@@ -78,6 +77,13 @@ class _TransactionsPageState extends State<TransactionsPage> {
       }
       return data;
     });
+    _currencies = _transactions.then(
+      (data) => data.transactions
+          .map((transaction) => transaction.currency)
+          .toSet()
+          .toList()
+        ..sort(),
+    );
   }
 
   @override
@@ -132,20 +138,6 @@ class _TransactionsPageState extends State<TransactionsPage> {
     return TransactionMasterDataProvider(
       finance,
     ).load(languageCode: languageCode);
-  }
-
-  Future<List<String>> _loadCurrencies() async {
-    final finance = _finance;
-    if (finance == null) return const [];
-    final result = await finance.listTransactions(
-      const ListTransactionsQuery(),
-    );
-    return switch (result) {
-      ApplicationSuccess<List<TransactionDto>>(:final value) =>
-        value.map((transaction) => transaction.currency).toSet().toList()
-          ..sort(),
-      ApplicationFailure<List<TransactionDto>>() => const [],
-    };
   }
 
   Future<Map<String, String>> _paymentSourceNames(
