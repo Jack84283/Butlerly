@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
-import 'package:butlerly/design_system/components/butlerly_compact_section_selector.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
@@ -36,8 +35,16 @@ class TransactionsPage extends StatefulWidget {
 
 class _TransactionsPageState extends State<TransactionsPage> {
   late Future<_TransactionsData> _transactions;
-  _TransactionFilter _filter = _TransactionFilter.all;
   final TextEditingController _search = TextEditingController();
+  String? _currency;
+  TransactionDirection? _direction;
+  String? _categoryId;
+  String? _paymentSourceId;
+  bool? _needsReview;
+  late DateTime? _from;
+  late DateTime? _to;
+  late Future<TransactionMasterDataSnapshot> _filterMasterData;
+  late Future<List<String>> _currencies;
   String? _loadedLanguageCode;
   int _loadGeneration = 0;
   bool _hasLoadedTransactions = false;
@@ -49,6 +56,9 @@ class _TransactionsPageState extends State<TransactionsPage> {
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _from = DateTime(now.year, now.month - 3, 1);
+    _to = DateTime(now.year, now.month, now.day);
     _transactions = Future.value(const _TransactionsData([]));
     transactionChanges.addListener(_handleTransactionChange);
   }
@@ -59,6 +69,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
     final languageCode = Localizations.localeOf(context).languageCode;
     if (_loadedLanguageCode == languageCode) return;
     _loadedLanguageCode = languageCode;
+    _filterMasterData = _loadFilterMasterData(languageCode);
+    _currencies = _loadCurrencies();
     final generation = ++_loadGeneration;
     _transactions = _load(languageCode: languageCode).then((data) {
       if (generation == _loadGeneration) {
@@ -102,6 +114,38 @@ class _TransactionsPageState extends State<TransactionsPage> {
       paymentSourceNames: await _paymentSourceNames(finance),
       possibleDuplicateIds: await _possibleDuplicateIds(finance),
     );
+  }
+
+  Future<TransactionMasterDataSnapshot> _loadFilterMasterData(
+    String languageCode,
+  ) async {
+    final finance = _finance;
+    if (finance == null) {
+      return const TransactionMasterDataSnapshot(
+        presentation: TransactionMasterData(),
+        merchants: [],
+        categories: [],
+        tags: [],
+        paymentSources: [],
+      );
+    }
+    return TransactionMasterDataProvider(
+      finance,
+    ).load(languageCode: languageCode);
+  }
+
+  Future<List<String>> _loadCurrencies() async {
+    final finance = _finance;
+    if (finance == null) return const [];
+    final result = await finance.listTransactions(
+      const ListTransactionsQuery(),
+    );
+    return switch (result) {
+      ApplicationSuccess<List<TransactionDto>>(:final value) =>
+        value.map((transaction) => transaction.currency).toSet().toList()
+          ..sort(),
+      ApplicationFailure<List<TransactionDto>>() => const [],
+    };
   }
 
   Future<Map<String, String>> _paymentSourceNames(
@@ -164,8 +208,29 @@ class _TransactionsPageState extends State<TransactionsPage> {
     }
   }
 
-  bool _matchesSearch(TransactionDto transaction, _TransactionsData data) {
+  bool _matchesFilters(
+    TransactionDto transaction,
+    _TransactionsData data,
+  ) {
     final query = _search.text.trim().toLowerCase();
+    final date = transactionCalendarDate(transaction, fallback: DateTime(1970));
+    if (_from != null && date.isBefore(_from!)) return false;
+    if (_to != null && date.isAfter(_to!)) return false;
+    if (_currency != null && transaction.currency != _currency) return false;
+    if (_direction != null && transaction.direction != _direction!.name) {
+      return false;
+    }
+    if (_categoryId != null && transaction.categoryId != _categoryId) {
+      return false;
+    }
+    if (_paymentSourceId != null &&
+        transaction.paymentSourceId != _paymentSourceId) {
+      return false;
+    }
+    if (_needsReview == true &&
+        transaction.reviewState != TransactionReviewState.needsReview.name) {
+      return false;
+    }
     if (query.isEmpty) return true;
 
     final searchable = <String?>[
@@ -186,28 +251,77 @@ class _TransactionsPageState extends State<TransactionsPage> {
     );
   }
 
-  Widget _transactionSearch(BuildContext context) => SearchBar(
-    key: const ValueKey('transactions-search-field'),
-    controller: _search,
-    constraints: const BoxConstraints(
-      minHeight: ButlerlySize.minimumTarget,
-      maxHeight: ButlerlySize.minimumTarget,
-    ),
-    hintText: context.l10n.text('searchHint'),
-    leading: const Icon(Icons.search_rounded),
-    trailing: [
-      if (_search.text.isNotEmpty)
-        IconButton(
-          tooltip: context.l10n.text('clear'),
-          onPressed: () {
-            _search.clear();
-            setState(() {});
-          },
-          icon: const Icon(Icons.close_rounded),
+  int get _activeFilterCount => [
+    _currency,
+    _direction,
+    _categoryId,
+    _paymentSourceId,
+    _needsReview,
+    _from,
+    _to,
+  ].where((value) => value != null).length;
+
+  void _clearFilters() {
+    setState(() {
+      _currency = null;
+      _direction = null;
+      _categoryId = null;
+      _paymentSourceId = null;
+      _needsReview = null;
+      _from = null;
+      _to = null;
+    });
+  }
+
+  Future<void> _openFilters() async {
+    await showButlerlyBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => ButlerlyTransactionFilterSheet(
+        value: ButlerlyTransactionFilterValue(
+          currency: _currency,
+          direction: _direction,
+          categoryId: _categoryId,
+          paymentSourceId: _paymentSourceId,
+          needsReview: _needsReview,
+          from: _from,
+          to: _to,
         ),
-    ],
-    onChanged: (_) => setState(() {}),
-  );
+        currencies: _currencies,
+        masterData: _filterMasterData,
+        formatDate: _transactionFilterDate,
+        onApply: (value) {
+          setState(() {
+            _currency = value.currency;
+            _direction = value.direction;
+            _categoryId = value.categoryId;
+            _paymentSourceId = value.paymentSourceId;
+            _needsReview = value.needsReview;
+            _from = value.from;
+            _to = value.to;
+          });
+          Navigator.pop(sheetContext);
+        },
+        onClear: () {
+          Navigator.pop(sheetContext);
+          _clearFilters();
+        },
+      ),
+    );
+  }
+
+  Widget _transactionSearchControls(BuildContext context) =>
+      ButlerlyTransactionSearchControls(
+        controlsKey: const ValueKey('transactions-pinned-controls'),
+        controller: _search,
+        activeFilterCount: _activeFilterCount,
+        onSearch: () => setState(() {}),
+        onChanged: (_) => setState(() {}),
+        onClear: () {
+          _search.clear();
+          setState(() {});
+        },
+        onFilter: _openFilters,
+      );
 
   Future<void> _openDetail(TransactionDto transaction) async {
     final finance = _finance;
@@ -247,40 +361,16 @@ class _TransactionsPageState extends State<TransactionsPage> {
         }
         final data = snapshot.requireData;
         final values = data.transactions;
-        final filtered = values
-            .where(
-              (value) => switch (_filter) {
-                _TransactionFilter.all => true,
-                _TransactionFilter.income =>
-                  value.direction == TransactionDirection.income.name,
-                _TransactionFilter.expense =>
-                  value.direction == TransactionDirection.expense.name,
-                _TransactionFilter.archived =>
-                  value.status == TransactionStatus.archived.name,
-              },
-            )
-            .toList(growable: false);
-        final visible = filtered
-            .where((value) => _matchesSearch(value, data))
+        final visible = values
+            .where((value) => _matchesFilters(value, data))
             .toList(growable: false);
         return ButlerlyPage(
           title: context.l10n.text('transactions'),
           onRefresh: _refresh,
           refreshKey: const ValueKey('transactions-pull-to-refresh'),
           pinnedSpacing: ButlerlyPinnedPageSpacing.tightHeader,
-          pinnedHeader: ButlerlyCompactSectionSelector(
-            labels: [
-              context.l10n.text('all'),
-              context.l10n.text('income'),
-              context.l10n.text('expense'),
-              context.l10n.text('archived'),
-            ],
-            selectedIndex: _TransactionFilter.values.indexOf(_filter),
-            onSelected: (index) {
-              final filter = _TransactionFilter.values[index];
-              if (filter != _filter) setState(() => _filter = filter);
-            },
-          ),
+          pinnedHeaderExtent: ButlerlySize.searchPinnedHeaderHeight,
+          pinnedHeader: _transactionSearchControls(context),
           children: [
             if (values.isEmpty)
               ButlerlyEmptyState(
@@ -291,8 +381,6 @@ class _TransactionsPageState extends State<TransactionsPage> {
                 onAction: () => GoRouter.of(context).push('/add'),
               )
             else ...[
-              _transactionSearch(context),
-              const SizedBox(height: ButlerlySpacing.standard),
               if (visible.isEmpty)
                 ButlerlyEmptyState(
                   icon: Icons.search_off_rounded,
@@ -301,13 +389,14 @@ class _TransactionsPageState extends State<TransactionsPage> {
                   actionLabel: _search.text.trim().isNotEmpty
                       ? context.l10n.text('clearSearch')
                       : context.l10n.text('clearFilters'),
-                  onAction: () => setState(() {
+                  onAction: () {
                     if (_search.text.trim().isNotEmpty) {
                       _search.clear();
+                      setState(() {});
                     } else {
-                      _filter = _TransactionFilter.all;
+                      _clearFilters();
                     }
-                  }),
+                  },
                 )
               else
                 Column(
@@ -341,7 +430,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
   }
 }
 
-enum _TransactionFilter { all, income, expense, archived }
+String _transactionFilterDate(DateTime value) =>
+    '${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 
 final class _TransactionsData {
   const _TransactionsData(
