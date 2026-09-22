@@ -53,7 +53,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('No transactions yet'), findsOneWidget);
-      expect(find.text('All'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('transactions-pinned-controls')),
+        findsOneWidget,
+      );
 
       final refreshIndicator = tester.widget<RefreshIndicator>(
         find.byKey(const ValueKey('transactions-pull-to-refresh')),
@@ -63,7 +66,10 @@ void main() {
 
       expect(transactions.queryCount, 2);
       expect(find.text('No transactions yet'), findsOneWidget);
-      expect(find.text('All'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('transactions-pinned-controls')),
+        findsOneWidget,
+      );
 
       transactions.completeRefresh();
       await refresh;
