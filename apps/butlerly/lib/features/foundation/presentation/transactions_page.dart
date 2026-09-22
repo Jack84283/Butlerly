@@ -164,10 +164,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
     }
   }
 
-  bool _matchesSearch(
-    TransactionDto transaction,
-    _TransactionsData data,
-  ) {
+  bool _matchesSearch(TransactionDto transaction, _TransactionsData data) {
     final query = _search.text.trim().toLowerCase();
     if (query.isEmpty) return true;
 
