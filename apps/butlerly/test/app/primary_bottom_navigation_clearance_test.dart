@@ -93,10 +93,7 @@ void main() {
     final addRect = tester.getRect(
       find.byKey(const ValueKey('primary-navigation-add-button')),
     );
-    expect(
-      addRect.center.dy,
-      closeTo(navigationContentRect.center.dy, 0.01),
-    );
+    expect(addRect.center.dy, closeTo(navigationContentRect.center.dy, 0.01));
 
     await tester.tapAt(addRect.center);
     expect(selectedBranch, 1);
