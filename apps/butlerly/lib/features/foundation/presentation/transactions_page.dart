@@ -208,10 +208,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
     }
   }
 
-  bool _matchesFilters(
-    TransactionDto transaction,
-    _TransactionsData data,
-  ) {
+  bool _matchesFilters(TransactionDto transaction, _TransactionsData data) {
     final query = _search.text.trim().toLowerCase();
     final date = transactionCalendarDate(transaction, fallback: DateTime(1970));
     if (_from != null && date.isBefore(_from!)) return false;
