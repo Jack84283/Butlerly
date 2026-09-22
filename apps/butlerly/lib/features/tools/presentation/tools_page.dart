@@ -9,13 +9,16 @@ import 'package:go_router/go_router.dart';
 class ToolsPage extends StatelessWidget {
   const ToolsPage({super.key});
 
+  static const _showSearchTool = false;
+
   List<_ToolDefinition> _tools(BuildContext context) => [
-    _ToolDefinition(
-      Icons.search_rounded,
-      context.l10n.text('search'),
-      context.l10n.text('toolsSearchDescription'),
-      '/search',
-    ),
+    if (_showSearchTool)
+      _ToolDefinition(
+        Icons.search_rounded,
+        context.l10n.text('search'),
+        context.l10n.text('toolsSearchDescription'),
+        '/search',
+      ),
     _ToolDefinition(
       Icons.fact_check_rounded,
       context.l10n.text('review'),
