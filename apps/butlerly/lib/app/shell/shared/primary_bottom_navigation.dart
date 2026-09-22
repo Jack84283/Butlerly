@@ -94,8 +94,8 @@ class PrimaryBottomNavigation extends StatelessWidget {
     );
     final displayedIcon = branchIndex == 1
         ? Container(
-            width: ButlerlySize.primaryNavigationAddIconSize,
-            height: ButlerlySize.primaryNavigationAddIconSize,
+            width: ButlerlySize.primaryNavigationAddGlyphSize,
+            height: ButlerlySize.primaryNavigationAddGlyphSize,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
