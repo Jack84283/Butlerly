@@ -38,6 +38,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
   final TextEditingController _search = TextEditingController();
   String? _currency;
   TransactionDirection? _direction;
+  TransactionStatus? _status;
   String? _categoryId;
   String? _paymentSourceId;
   bool? _needsReview;
@@ -210,6 +211,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
     if (_direction != null && transaction.direction != _direction!.name) {
       return false;
     }
+    if (_status != null && transaction.status != _status!.name) return false;
     if (_categoryId != null && transaction.categoryId != _categoryId) {
       return false;
     }
@@ -244,6 +246,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
   int get _activeFilterCount => [
     _currency,
     _direction,
+    _status,
     _categoryId,
     _paymentSourceId,
     _needsReview,
@@ -255,6 +258,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
     setState(() {
       _currency = null;
       _direction = null;
+      _status = null;
       _categoryId = null;
       _paymentSourceId = null;
       _needsReview = null;
@@ -270,6 +274,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
         value: ButlerlyTransactionFilterValue(
           currency: _currency,
           direction: _direction,
+          status: _status,
           categoryId: _categoryId,
           paymentSourceId: _paymentSourceId,
           needsReview: _needsReview,
@@ -283,6 +288,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
           setState(() {
             _currency = value.currency;
             _direction = value.direction;
+            _status = value.status;
             _categoryId = value.categoryId;
             _paymentSourceId = value.paymentSourceId;
             _needsReview = value.needsReview;
