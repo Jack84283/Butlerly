@@ -9,6 +9,239 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 
+class ButlerlyTransactionSearchControls extends StatelessWidget {
+  const ButlerlyTransactionSearchControls({
+    required this.controller,
+    required this.activeFilterCount,
+    required this.onSearch,
+    required this.onChanged,
+    required this.onClear,
+    required this.onFilter,
+    this.controlsKey = const ValueKey('search-pinned-controls'),
+    super.key,
+  });
+
+  final TextEditingController controller;
+  final int activeFilterCount;
+  final VoidCallback onSearch;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+  final VoidCallback onFilter;
+  final Key controlsKey;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    key: controlsKey,
+    children: [
+      Expanded(
+        child: SearchBar(
+          controller: controller,
+          constraints: const BoxConstraints(
+            minHeight: ButlerlySize.minimumTarget,
+            maxHeight: ButlerlySize.minimumTarget,
+          ),
+          hintText: context.l10n.text('searchHint'),
+          leading: const Icon(Icons.search_rounded),
+          trailing: [
+            IconButton(
+              key: const ValueKey('search-submit'),
+              tooltip: context.l10n.text('search'),
+              onPressed: onSearch,
+              icon: const Icon(Icons.search_rounded),
+            ),
+            if (controller.text.isNotEmpty)
+              IconButton(
+                tooltip: context.l10n.text('clear'),
+                onPressed: onClear,
+                icon: const Icon(Icons.close_rounded),
+              ),
+          ],
+          onChanged: onChanged,
+          onSubmitted: (_) => onSearch(),
+        ),
+      ),
+      const SizedBox(width: ButlerlySpacing.compact),
+      SizedBox.square(
+        dimension: ButlerlySize.minimumTarget,
+        child: IconButton(
+          constraints: const BoxConstraints.tightFor(
+            width: ButlerlySize.minimumTarget,
+            height: ButlerlySize.minimumTarget,
+          ),
+          padding: EdgeInsets.zero,
+          isSelected: activeFilterCount > 0,
+          tooltip: activeFilterCount > 0
+              ? '${context.l10n.text('filters')} ($activeFilterCount)'
+              : context.l10n.text('filters'),
+          onPressed: onFilter,
+          icon: const Icon(Icons.tune_rounded),
+        ),
+      ),
+    ],
+  );
+}
+
+class ButlerlyTransactionFilterValue {
+  const ButlerlyTransactionFilterValue({
+    this.currency,
+    this.direction,
+    this.categoryId,
+    this.paymentSourceId,
+    this.needsReview,
+    this.from,
+    this.to,
+  });
+
+  final String? currency;
+  final TransactionDirection? direction;
+  final String? categoryId;
+  final String? paymentSourceId;
+  final bool? needsReview;
+  final DateTime? from;
+  final DateTime? to;
+}
+
+class ButlerlyTransactionFilterSheet extends StatefulWidget {
+  const ButlerlyTransactionFilterSheet({
+    required this.value,
+    required this.currencies,
+    required this.masterData,
+    required this.formatDate,
+    required this.onApply,
+    required this.onClear,
+    super.key,
+  });
+
+  final ButlerlyTransactionFilterValue value;
+  final Future<List<String>> currencies;
+  final Future<TransactionMasterDataSnapshot> masterData;
+  final String Function(DateTime) formatDate;
+  final ValueChanged<ButlerlyTransactionFilterValue> onApply;
+  final VoidCallback onClear;
+
+  @override
+  State<ButlerlyTransactionFilterSheet> createState() =>
+      _ButlerlyTransactionFilterSheetState();
+}
+
+class _ButlerlyTransactionFilterSheetState
+    extends State<ButlerlyTransactionFilterSheet> {
+  late String? _currency;
+  late TransactionDirection? _direction;
+  late String? _categoryId;
+  late String? _paymentSourceId;
+  late bool? _needsReview;
+  late DateTime? _from;
+  late DateTime? _to;
+
+  @override
+  void initState() {
+    super.initState();
+    final value = widget.value;
+    _currency = value.currency;
+    _direction = value.direction;
+    _categoryId = value.categoryId;
+    _paymentSourceId = value.paymentSourceId;
+    _needsReview = value.needsReview;
+    _from = value.from;
+    _to = value.to;
+  }
+
+  @override
+  Widget build(BuildContext context) => ButlerlySheet(
+    title: Text(context.l10n.text('filters')),
+    content: SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: ButlerlySpacing.compact),
+          FutureBuilder<List<String>>(
+            future: widget.currencies,
+            builder: (context, snapshot) => ButlerlyCurrencyFilter(
+              currencies: snapshot.data ?? const [],
+              value: _currency,
+              label: context.l10n.text('currency'),
+              anyLabel: context.l10n.text('anyCurrency'),
+              onChanged: (value) => setState(() => _currency = value),
+            ),
+          ),
+          const SizedBox(height: ButlerlySpacing.standard),
+          ButlerlyDirectionFilter(
+            value: _direction,
+            label: context.l10n.text('direction'),
+            anyLabel: context.l10n.text('anyDirection'),
+            onChanged: (value) => setState(() => _direction = value),
+          ),
+          const SizedBox(height: ButlerlySpacing.standard),
+          ButlerlyDateRangeFilter(
+            from: _from,
+            to: _to,
+            fromLabel: context.l10n.text('fromDate'),
+            toLabel: context.l10n.text('toDate'),
+            formatDate: widget.formatDate,
+            onFromChanged: (value) => setState(() => _from = value),
+            onToChanged: (value) => setState(() => _to = value),
+          ),
+          const SizedBox(height: ButlerlySpacing.standard),
+          FutureBuilder<TransactionMasterDataSnapshot>(
+            future: widget.masterData,
+            builder: (context, snapshot) => ButlerlyCategoryFilter(
+              key: const ValueKey('search-category-filter'),
+              categories: snapshot.data?.categories ?? const [],
+              masterData:
+                  snapshot.data?.presentation ?? const TransactionMasterData(),
+              value: _categoryId,
+              label: context.l10n.text('anyCategory'),
+              anyLabel: context.l10n.text('anyCategory'),
+              onChanged: (value) => setState(() => _categoryId = value),
+            ),
+          ),
+          const SizedBox(height: ButlerlySpacing.standard),
+          FutureBuilder<TransactionMasterDataSnapshot>(
+            future: widget.masterData,
+            builder: (context, snapshot) => ButlerlyPaymentSourceFilter(
+              sources: snapshot.data?.paymentSources ?? const [],
+              value: _paymentSourceId,
+              label: context.l10n.text('anyPaymentSource'),
+              anyLabel: context.l10n.text('anyPaymentSource'),
+              onChanged: (value) => setState(() => _paymentSourceId = value),
+            ),
+          ),
+          const SizedBox(height: ButlerlySpacing.standard),
+          ButlerlyReviewFilter(
+            value: _needsReview,
+            label: context.l10n.text('needsReview'),
+            onChanged: (value) => setState(() => _needsReview = value),
+          ),
+          const SizedBox(height: ButlerlySpacing.section),
+          FilledButton(
+            key: const ValueKey('apply-search-filters'),
+            onPressed: () {
+              widget.onApply(
+                ButlerlyTransactionFilterValue(
+                  currency: _currency,
+                  direction: _direction,
+                  categoryId: _categoryId,
+                  paymentSourceId: _paymentSourceId,
+                  needsReview: _needsReview,
+                  from: _from,
+                  to: _to,
+                ),
+              );
+            },
+            child: Text(context.l10n.text('applyFilters')),
+          ),
+          TextButton(
+            onPressed: widget.onClear,
+            child: Text(context.l10n.text('clearFilters')),
+          ),
+        ],
+      ),
+    ),
+    actions: const [],
+  );
+}
+
 enum ButlerlyDuplicateDecision { useExisting, continueAnyway, cancel }
 
 final class ButlerlyDuplicateConfirmationResult {
