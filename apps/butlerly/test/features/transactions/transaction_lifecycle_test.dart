@@ -4,6 +4,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_compact_section_selector.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/add_page.dart';
@@ -1208,12 +1209,12 @@ void main() {
     expect(find.text('Aug 10, 2026'), findsOneWidget);
     expect(find.byType(Card), findsNothing);
     expect(find.byType(ButlerlyRecordRow), findsNWidgets(2));
-    final filterBottom = tester.getBottomLeft(
-      find.byType(ButlerlyCompactSectionSelector),
+    final controlsBottom = tester.getBottomLeft(
+      find.byKey(const ValueKey('transactions-pinned-controls')),
     );
     final firstRowTop = tester.getTopLeft(find.byType(ButlerlyRecordRow).first);
     expect(
-      firstRowTop.dy - filterBottom.dy,
+      firstRowTop.dy - controlsBottom.dy,
       greaterThanOrEqualTo(ButlerlySpacing.section),
     );
   });
@@ -1263,98 +1264,88 @@ void main() {
     expect(find.text('You’re all caught up'), findsOneWidget);
   });
 
-  testWidgets('Transactions compact filters preserve selection and content', (
-    tester,
-  ) async {
-    await services<FinanceServices>().createTransaction(
-      CreateTransactionCommand(
-        id: 'tab-income',
-        provenanceId: 'manual-tab-income',
-        timing: KnownTransactionTime(DateTime.utc(2026, 8, 9)),
-        money: Money(
-          amount: DecimalValue.parse('100.00'),
-          currency: CurrencyCode('USD'),
-        ),
-        direction: TransactionDirection.income,
-        description: 'Tab income',
-      ),
-    );
-    await services<FinanceServices>().createTransaction(
-      CreateTransactionCommand(
-        id: 'tab-expense',
-        provenanceId: 'manual-tab-expense',
-        timing: KnownTransactionTime(DateTime.utc(2026, 8, 8)),
-        money: Money(
-          amount: DecimalValue.parse('25.00'),
-          currency: CurrencyCode('USD'),
-        ),
-        direction: TransactionDirection.expense,
-        description: 'Tab expense',
-      ),
-    );
-
-    await tester.pumpWidget(const MaterialApp(home: TransactionsPage()));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(ButlerlyCompactSectionSelector), findsOneWidget);
-    expect(find.byType(TabBar), findsNothing);
-    expect(find.byType(SegmentedButton), findsNothing);
-    expect(
-      find
-          .byType(SliverPersistentHeader)
-          .evaluate()
-          .where(
-            (element) => (element.widget as SliverPersistentHeader).pinned,
+  testWidgets(
+    'Transactions reuses Search controls and filters while preserving content',
+    (tester) async {
+      await services<FinanceServices>().createTransaction(
+        CreateTransactionCommand(
+          id: 'tab-income',
+          provenanceId: 'manual-tab-income',
+          timing: KnownTransactionTime(DateTime.utc(2026, 8, 9)),
+          money: Money(
+            amount: DecimalValue.parse('100.00'),
+            currency: CurrencyCode('USD'),
           ),
-      isNotEmpty,
-    );
-    expect(
-      tester
-          .widget<ButlerlyCompactSectionSelector>(
-            find.byType(ButlerlyCompactSectionSelector),
-          )
-          .selectedIndex,
-      0,
-    );
+          direction: TransactionDirection.income,
+          description: 'Tab income',
+        ),
+      );
+      await services<FinanceServices>().createTransaction(
+        CreateTransactionCommand(
+          id: 'tab-expense',
+          provenanceId: 'manual-tab-expense',
+          timing: KnownTransactionTime(DateTime.utc(2026, 8, 8)),
+          money: Money(
+            amount: DecimalValue.parse('25.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+          description: 'Tab expense',
+        ),
+      );
+      await services<FinanceServices>().createTransaction(
+        CreateTransactionCommand(
+          id: 'old-expense',
+          provenanceId: 'manual-old-expense',
+          timing: KnownTransactionTime(DateTime.utc(2026, 4, 8)),
+          money: Money(
+            amount: DecimalValue.parse('15.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+          description: 'Older expense',
+        ),
+      );
 
-    await tester.tap(find.byKey(const ValueKey('compact-section-1')));
-    await tester.pumpAndSettle();
-    expect(
-      tester
-          .widget<ButlerlyCompactSectionSelector>(
-            find.byType(ButlerlyCompactSectionSelector),
-          )
-          .selectedIndex,
-      1,
-    );
-    expect(find.text('Tab income'), findsOneWidget);
-    expect(find.text('Tab expense'), findsNothing);
+      await tester.pumpWidget(const MaterialApp(home: TransactionsPage()));
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const ValueKey('compact-section-2')));
-    await tester.pumpAndSettle();
-    expect(
-      tester
-          .widget<ButlerlyCompactSectionSelector>(
-            find.byType(ButlerlyCompactSectionSelector),
-          )
-          .selectedIndex,
-      2,
-    );
-    expect(find.text('Tab income'), findsNothing);
-    expect(find.text('Tab expense'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('transactions-pinned-controls')),
+        findsOneWidget,
+      );
+      expect(find.byType(ButlerlyTransactionSearchControls), findsOneWidget);
+      expect(find.byType(ButlerlyCompactSectionSelector), findsNothing);
+      expect(find.text('Tab income'), findsOneWidget);
+      expect(find.text('Tab expense'), findsOneWidget);
+      expect(find.text('Older expense'), findsNothing);
 
-    await tester.tap(find.byKey(const ValueKey('compact-section-3')));
-    await tester.pumpAndSettle();
-    expect(
-      tester
-          .widget<ButlerlyCompactSectionSelector>(
-            find.byType(ButlerlyCompactSectionSelector),
-          )
-          .selectedIndex,
-      3,
-    );
-    expect(find.text('No records found'), findsOneWidget);
-  });
+      await tester.enterText(
+        find.byKey(const ValueKey('transactions-search-field')),
+        'income',
+      );
+      await tester.pump();
+      expect(find.text('Tab income'), findsOneWidget);
+      expect(find.text('Tab expense'), findsNothing);
+
+      await tester.tap(find.byIcon(Icons.close_rounded));
+      await tester.pumpAndSettle();
+      expect(find.text('Tab income'), findsOneWidget);
+      expect(find.text('Tab expense'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Filters (2)'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ButlerlyTransactionFilterSheet), findsOneWidget);
+      await tester.ensureVisible(find.text('Clear filters'));
+      await tester.tap(find.text('Clear filters'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('April 2026'), findsOneWidget);
+      await tester.tap(find.text('April 2026'));
+      await tester.pumpAndSettle();
+      expect(find.text('Older expense'), findsOneWidget);
+    },
+  );
 
   testWidgets('Review transaction views use the canonical record list', (
     tester,

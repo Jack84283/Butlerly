@@ -113,21 +113,12 @@ class TransactionRecordList extends StatelessWidget {
         for (var index = 0; index < entries.length; index++) ...[
           if (index > 0) const SizedBox(height: ButlerlySpacing.compact),
           Material(
-            color: context.colors.subtleSurface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-              side: BorderSide(color: context.colors.border),
-            ),
-            clipBehavior: Clip.antiAlias,
+            type: MaterialType.transparency,
             child: ExpansionTile(
               key: ValueKey('transaction-month-${entries[index].key}'),
               initiallyExpanded: index == 0,
-              tilePadding: const EdgeInsets.symmetric(
-                horizontal: ButlerlySpacing.standard,
-              ),
+              tilePadding: EdgeInsets.zero,
               childrenPadding: const EdgeInsets.only(
-                left: ButlerlySpacing.standard,
-                right: ButlerlySpacing.standard,
                 bottom: ButlerlySpacing.standard,
               ),
               title: Text(

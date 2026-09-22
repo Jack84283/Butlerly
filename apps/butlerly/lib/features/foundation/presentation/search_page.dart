@@ -356,123 +356,36 @@ class _SearchPageState extends State<SearchPage>
 
   Future<void> _openFilters() async {
     if (widget.readOnly) return;
-    var stagedCurrency = _currency;
-    var stagedDirection = _direction;
-    var stagedCategoryId = _categoryId;
-    var stagedPaymentSourceId = _paymentSourceId;
-    var stagedNeedsReview = _needsReview;
-    var stagedFrom = _from;
-    var stagedTo = _to;
     await showButlerlyBottomSheet<void>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) => ButlerlySheet(
-          title: Text(context.l10n.text('filters')),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: ButlerlySpacing.compact),
-                FutureBuilder<List<String>>(
-                  future: _currencies,
-                  builder: (context, snapshot) => ButlerlyCurrencyFilter(
-                    currencies: snapshot.data ?? const [],
-                    value: stagedCurrency,
-                    label: context.l10n.text('currency'),
-                    anyLabel: context.l10n.text('anyCurrency'),
-                    onChanged: (value) =>
-                        setSheetState(() => stagedCurrency = value),
-                  ),
-                ),
-                const SizedBox(height: ButlerlySpacing.standard),
-                ButlerlyDirectionFilter(
-                  value: stagedDirection,
-                  label: context.l10n.text('direction'),
-                  anyLabel: context.l10n.text('anyDirection'),
-                  onChanged: (value) =>
-                      setSheetState(() => stagedDirection = value),
-                ),
-                const SizedBox(height: ButlerlySpacing.standard),
-                ButlerlyDateRangeFilter(
-                  from: stagedFrom,
-                  to: stagedTo,
-                  fromLabel: context.l10n.text('fromDate'),
-                  toLabel: context.l10n.text('toDate'),
-                  formatDate: _searchDate,
-                  onFromChanged: (value) =>
-                      setSheetState(() => stagedFrom = value),
-                  onToChanged: (value) => setSheetState(() => stagedTo = value),
-                ),
-                const SizedBox(height: ButlerlySpacing.standard),
-                FutureBuilder<TransactionMasterDataSnapshot>(
-                  future: _masterData,
-                  builder: (context, snapshot) => ButlerlyCategoryFilter(
-                    key: const ValueKey('search-category-filter'),
-                    categories: snapshot.data?.categories ?? const [],
-                    masterData:
-                        snapshot.data?.presentation ??
-                        const TransactionMasterData(),
-                    value: stagedCategoryId,
-                    label: context.l10n.text('anyCategory'),
-                    anyLabel: context.l10n.text('anyCategory'),
-                    onChanged: (value) =>
-                        setSheetState(() => stagedCategoryId = value),
-                  ),
-                ),
-                const SizedBox(height: ButlerlySpacing.standard),
-                FutureBuilder<TransactionMasterDataSnapshot>(
-                  future: _masterData,
-                  builder: (context, snapshot) => ButlerlyPaymentSourceFilter(
-                    sources: snapshot.data?.paymentSources ?? const [],
-                    value: stagedPaymentSourceId,
-                    label: context.l10n.text('anyPaymentSource'),
-                    anyLabel: context.l10n.text('anyPaymentSource'),
-                    onChanged: (value) =>
-                        setSheetState(() => stagedPaymentSourceId = value),
-                  ),
-                ),
-                const SizedBox(height: ButlerlySpacing.standard),
-                ButlerlyReviewFilter(
-                  value: stagedNeedsReview,
-                  label: context.l10n.text('needsReview'),
-                  onChanged: (value) =>
-                      setSheetState(() => stagedNeedsReview = value),
-                ),
-                const SizedBox(height: ButlerlySpacing.section),
-                FilledButton(
-                  key: const ValueKey('apply-search-filters'),
-                  onPressed: () {
-                    _currency = stagedCurrency;
-                    _direction = stagedDirection;
-                    _categoryId = stagedCategoryId;
-                    _paymentSourceId = stagedPaymentSourceId;
-                    _needsReview = stagedNeedsReview;
-                    _from = stagedFrom;
-                    _to = stagedTo;
-                    Navigator.pop(context);
-                    _submit();
-                  },
-                  child: Text(context.l10n.text('applyFilters')),
-                ),
-                TextButton(
-                  onPressed: () {
-                    stagedCurrency = null;
-                    stagedDirection = null;
-                    stagedCategoryId = null;
-                    stagedPaymentSourceId = null;
-                    stagedNeedsReview = null;
-                    stagedFrom = null;
-                    stagedTo = null;
-                    Navigator.pop(context);
-                    _clearFilters();
-                  },
-                  child: Text(context.l10n.text('clearFilters')),
-                ),
-              ],
-            ),
-          ),
-          actions: const [],
+      builder: (sheetContext) => ButlerlyTransactionFilterSheet(
+        value: ButlerlyTransactionFilterValue(
+          currency: _currency,
+          direction: _direction,
+          categoryId: _categoryId,
+          paymentSourceId: _paymentSourceId,
+          needsReview: _needsReview,
+          from: _from,
+          to: _to,
         ),
+        currencies: _currencies,
+        masterData: _masterData,
+        formatDate: _searchDate,
+        onApply: (value) {
+          _currency = value.currency;
+          _direction = value.direction;
+          _categoryId = value.categoryId;
+          _paymentSourceId = value.paymentSourceId;
+          _needsReview = value.needsReview;
+          _from = value.from;
+          _to = value.to;
+          Navigator.pop(sheetContext);
+          _submit();
+        },
+        onClear: () {
+          Navigator.pop(sheetContext);
+          _clearFilters();
+        },
       ),
     );
   }
@@ -492,61 +405,21 @@ class _SearchPageState extends State<SearchPage>
     }
   }
 
-  Widget _searchControls(BuildContext context) => Row(
-    key: const ValueKey('search-pinned-controls'),
-    children: [
-      Expanded(
-        child: SearchBar(
-          controller: _text,
-          constraints: const BoxConstraints(
-            minHeight: ButlerlySize.minimumTarget,
-            maxHeight: ButlerlySize.minimumTarget,
-          ),
-          hintText: context.l10n.text('searchHint'),
-          leading: const Icon(Icons.search_rounded),
-          trailing: [
-            IconButton(
-              key: const ValueKey('search-submit'),
-              tooltip: context.l10n.text('search'),
-              onPressed: _submit,
-              icon: const Icon(Icons.search_rounded),
-            ),
-            if (_text.text.isNotEmpty)
-              IconButton(
-                tooltip: context.l10n.text('clear'),
-                onPressed: () {
-                  _text.clear();
-                  _submit();
-                },
-                icon: const Icon(Icons.close_rounded),
-              ),
-          ],
-          onChanged: (_) {
-            setState(() {});
-            _scheduleSearch();
-          },
-          onSubmitted: (_) => _submit(),
-        ),
-      ),
-      const SizedBox(width: ButlerlySpacing.compact),
-      SizedBox.square(
-        dimension: ButlerlySize.minimumTarget,
-        child: IconButton(
-          constraints: const BoxConstraints.tightFor(
-            width: ButlerlySize.minimumTarget,
-            height: ButlerlySize.minimumTarget,
-          ),
-          padding: EdgeInsets.zero,
-          isSelected: _activeFilterCount > 0,
-          tooltip: _activeFilterCount > 0
-              ? '${context.l10n.text('filters')} ($_activeFilterCount)'
-              : context.l10n.text('filters'),
-          onPressed: _openFilters,
-          icon: const Icon(Icons.tune_rounded),
-        ),
-      ),
-    ],
-  );
+  Widget _searchControls(BuildContext context) =>
+      ButlerlyTransactionSearchControls(
+        controller: _text,
+        activeFilterCount: _activeFilterCount,
+        onSearch: _submit,
+        onChanged: (_) {
+          setState(() {});
+          _scheduleSearch();
+        },
+        onClear: () {
+          _text.clear();
+          _submit();
+        },
+        onFilter: _openFilters,
+      );
 
   @override
   Widget build(BuildContext context) {
