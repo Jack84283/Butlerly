@@ -5,8 +5,12 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() {
+  setUpAll(() async {
+    await initializeDateFormatting('en');
+  });
   testWidgets(
     'shared transaction rows use merchant title and matching amount size',
     (tester) async {
@@ -88,6 +92,66 @@ void main() {
       expect(find.text('CAFE RAW'), findsNothing);
     },
   );
+  testWidgets(
+    'collapsible month sections open newest month and defer older rows',
+    (tester) async {
+      final now = DateTime.utc(2026, 9, 15, 12);
+      final september = TransactionDto(
+        id: 'transaction-september',
+        amount: '12.00',
+        currency: 'USD',
+        direction: 'expense',
+        status: 'active',
+        reviewState: 'clear',
+        transactionDate: '2026-09-15',
+        createdAt: now,
+        updatedAt: now,
+        description: 'September purchase',
+      );
+      final august = TransactionDto(
+        id: 'transaction-august',
+        amount: '8.00',
+        currency: 'USD',
+        direction: 'expense',
+        status: 'active',
+        reviewState: 'clear',
+        transactionDate: '2026-08-20',
+        createdAt: now,
+        updatedAt: now,
+        description: 'August purchase',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          localizationsDelegates: const [AppLocalizations.delegate],
+          supportedLocales: const [Locale('en')],
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: TransactionRecordList(
+                transactions: [september, august],
+                groupByFinancialDate: true,
+                collapsibleMonthSections: true,
+                onTap: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('September 2026'), findsOneWidget);
+      expect(find.text('August 2026'), findsOneWidget);
+      expect(find.text('September purchase'), findsOneWidget);
+      expect(find.text('August purchase'), findsNothing);
+
+      await tester.tap(find.text('August 2026'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('August purchase'), findsOneWidget);
+    },
+  );
+
   testWidgets('canonical payment source label wins over a raw page override', (
     tester,
   ) async {

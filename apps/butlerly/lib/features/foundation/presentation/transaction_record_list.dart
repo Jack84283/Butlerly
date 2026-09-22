@@ -24,6 +24,7 @@ class TransactionRecordList extends StatelessWidget {
     this.onPossibleDuplicateTap,
     this.navigates = false,
     this.groupByFinancialDate = false,
+    this.collapsibleMonthSections = false,
     this.wrapInCard = false,
     this.showDateInRows = false,
     this.supportingContentBuilder,
@@ -40,6 +41,7 @@ class TransactionRecordList extends StatelessWidget {
   final ValueChanged<TransactionDto> onTap;
   final bool navigates;
   final bool groupByFinancialDate;
+  final bool collapsibleMonthSections;
   final bool wrapInCard;
   final bool showDateInRows;
   final Widget Function(BuildContext, TransactionDto)? supportingContentBuilder;
@@ -84,9 +86,71 @@ class TransactionRecordList extends StatelessWidget {
     }
 
     if (useMonthSections) {
-      return _monthGroupedList(context, rows);
+      return collapsibleMonthSections
+          ? _collapsibleMonthGroupedList(context, rows)
+          : _monthGroupedList(context, rows);
     }
     return _dayGroupedList(context, rows);
+  }
+
+  Widget _collapsibleMonthGroupedList(
+    BuildContext context,
+    Map<TransactionDto, Widget> rows,
+  ) {
+    final groups = <String, List<TransactionDto>>{};
+    for (final transaction in transactions) {
+      final month = _transactionMonth(transaction);
+      final key = month == null
+          ? 'pending'
+          : '${month.year}-${month.month.toString().padLeft(2, '0')}';
+      groups.putIfAbsent(key, () => []).add(transaction);
+    }
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final entries = groups.entries.toList(growable: false);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var index = 0; index < entries.length; index++) ...[
+          if (index > 0) const SizedBox(height: ButlerlySpacing.compact),
+          Material(
+            color: context.colors.subtleSurface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+              side: BorderSide(color: context.colors.border),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: ExpansionTile(
+              key: ValueKey('transaction-month-${entries[index].key}'),
+              initiallyExpanded: index == 0,
+              tilePadding: const EdgeInsets.symmetric(
+                horizontal: ButlerlySpacing.standard,
+              ),
+              childrenPadding: const EdgeInsets.only(
+                left: ButlerlySpacing.standard,
+                right: ButlerlySpacing.standard,
+                bottom: ButlerlySpacing.standard,
+              ),
+              title: Text(
+                _monthSectionLabel(
+                  context,
+                  entries[index].value.first,
+                  locale: locale,
+                ),
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              children: [
+                ButlerlyTransactionList(
+                  children: [
+                    for (final transaction in entries[index].value)
+                      rows[transaction]!,
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
   }
 
   Widget _monthGroupedList(

@@ -37,6 +37,7 @@ class TransactionsPage extends StatefulWidget {
 class _TransactionsPageState extends State<TransactionsPage> {
   late Future<_TransactionsData> _transactions;
   _TransactionFilter _filter = _TransactionFilter.all;
+  final TextEditingController _search = TextEditingController();
   String? _loadedLanguageCode;
   int _loadGeneration = 0;
   bool _hasLoadedTransactions = false;
@@ -70,6 +71,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
   @override
   void dispose() {
     transactionChanges.removeListener(_handleTransactionChange);
+    _search.dispose();
     super.dispose();
   }
 
@@ -162,6 +164,51 @@ class _TransactionsPageState extends State<TransactionsPage> {
     }
   }
 
+  bool _matchesSearch(TransactionDto transaction, _TransactionsData data) {
+    final query = _search.text.trim().toLowerCase();
+    if (query.isEmpty) return true;
+
+    final searchable = <String?>[
+      transaction.description,
+      transaction.rawCounterparty,
+      transaction.amount,
+      transaction.currency,
+      transaction.transactionDate,
+      data.masterData.merchantName(transaction.merchantId),
+      data.masterData.categoryName(transaction.categoryId),
+      data.masterData.subcategoryName(transaction.subcategoryId),
+      data.masterData.paymentSourceName(transaction.paymentSourceId),
+      data.paymentSourceNames[transaction.paymentSourceId],
+      ...transaction.tagIds.map(data.masterData.tagName),
+    ];
+    return searchable.whereType<String>().any(
+      (value) => value.toLowerCase().contains(query),
+    );
+  }
+
+  Widget _transactionSearch(BuildContext context) => SearchBar(
+    key: const ValueKey('transactions-search-field'),
+    controller: _search,
+    constraints: const BoxConstraints(
+      minHeight: ButlerlySize.minimumTarget,
+      maxHeight: ButlerlySize.minimumTarget,
+    ),
+    hintText: context.l10n.text('searchHint'),
+    leading: const Icon(Icons.search_rounded),
+    trailing: [
+      if (_search.text.isNotEmpty)
+        IconButton(
+          tooltip: context.l10n.text('clear'),
+          onPressed: () {
+            _search.clear();
+            setState(() {});
+          },
+          icon: const Icon(Icons.close_rounded),
+        ),
+    ],
+    onChanged: (_) => setState(() {}),
+  );
+
   Future<void> _openDetail(TransactionDto transaction) async {
     final finance = _finance;
     if (finance == null) return;
@@ -200,7 +247,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
         }
         final data = snapshot.requireData;
         final values = data.transactions;
-        final visible = values
+        final filtered = values
             .where(
               (value) => switch (_filter) {
                 _TransactionFilter.all => true,
@@ -212,6 +259,9 @@ class _TransactionsPageState extends State<TransactionsPage> {
                   value.status == TransactionStatus.archived.name,
               },
             )
+            .toList(growable: false);
+        final visible = filtered
+            .where((value) => _matchesSearch(value, data))
             .toList(growable: false);
         return ButlerlyPage(
           title: context.l10n.text('transactions'),
@@ -240,37 +290,49 @@ class _TransactionsPageState extends State<TransactionsPage> {
                 actionLabel: context.l10n.text('addData'),
                 onAction: () => GoRouter.of(context).push('/add'),
               )
-            else if (visible.isEmpty)
-              ButlerlyEmptyState(
-                icon: Icons.filter_alt_off_outlined,
-                title: context.l10n.text('noResults'),
-                message: context.l10n.text('noResultsBody'),
-                actionLabel: context.l10n.text('clearFilters'),
-                onAction: () =>
-                    setState(() => _filter = _TransactionFilter.all),
-              )
-            else
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  TransactionCountText(count: visible.length),
-                  const SizedBox(height: ButlerlySpacing.compact),
-                  TransactionRecordList(
-                    transactions: visible,
-                    masterData: data.masterData,
-                    paymentSourceNames: data.paymentSourceNames,
-                    groupByFinancialDate: true,
-                    possibleDuplicateIds: data.possibleDuplicateIds,
-                    possibleDuplicateLabel: context.l10n.text(
-                      'possibleDuplicate',
+            else ...[
+              _transactionSearch(context),
+              const SizedBox(height: ButlerlySpacing.standard),
+              if (visible.isEmpty)
+                ButlerlyEmptyState(
+                  icon: Icons.search_off_rounded,
+                  title: context.l10n.text('noResults'),
+                  message: context.l10n.text('noResultsBody'),
+                  actionLabel: _search.text.trim().isNotEmpty
+                      ? context.l10n.text('clearSearch')
+                      : context.l10n.text('clearFilters'),
+                  onAction: () => setState(() {
+                    if (_search.text.trim().isNotEmpty) {
+                      _search.clear();
+                    } else {
+                      _filter = _TransactionFilter.all;
+                    }
+                  }),
+                )
+              else
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TransactionCountText(count: visible.length),
+                    const SizedBox(height: ButlerlySpacing.compact),
+                    TransactionRecordList(
+                      transactions: visible,
+                      masterData: data.masterData,
+                      paymentSourceNames: data.paymentSourceNames,
+                      groupByFinancialDate: true,
+                      collapsibleMonthSections: true,
+                      possibleDuplicateIds: data.possibleDuplicateIds,
+                      possibleDuplicateLabel: context.l10n.text(
+                        'possibleDuplicate',
+                      ),
+                      onPossibleDuplicateTap: () =>
+                          GoRouter.of(context).push('/review?view=duplicates'),
+                      onTap: _openDetail,
+                      navigates: true,
                     ),
-                    onPossibleDuplicateTap: () =>
-                        GoRouter.of(context).push('/review?view=duplicates'),
-                    onTap: _openDetail,
-                    navigates: true,
-                  ),
-                ],
-              ),
+                  ],
+                ),
+            ],
             const SizedBox(height: ButlerlySpacing.structural),
           ],
         );
