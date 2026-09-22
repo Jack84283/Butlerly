@@ -312,6 +312,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
   Widget _transactionSearchControls(BuildContext context) =>
       ButlerlyTransactionSearchControls(
         controlsKey: const ValueKey('transactions-pinned-controls'),
+        searchFieldKey: const ValueKey('transactions-search-field'),
         controller: _search,
         activeFilterCount: _activeFilterCount,
         onSearch: () => setState(() {}),
