@@ -77,13 +77,14 @@ class _TransactionsPageState extends State<TransactionsPage> {
       }
       return data;
     });
-    _currencies = _transactions.then(
-      (data) => data.transactions
+    _currencies = _transactions.then((data) {
+      final currencies = data.transactions
           .map((transaction) => transaction.currency)
           .toSet()
-          .toList()
-        ..sort(),
-    );
+          .toList();
+      currencies.sort();
+      return currencies;
+    });
   }
 
   @override
