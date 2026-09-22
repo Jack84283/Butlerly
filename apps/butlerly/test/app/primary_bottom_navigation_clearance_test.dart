@@ -88,15 +88,20 @@ void main() {
       findsNothing,
     );
 
-    final addLabelTop = tester.getTopLeft(find.text('Add')).dy;
-    for (final label in ['Home', 'Transactions', 'More']) {
-      final labelTop = tester.getTopLeft(find.text(label)).dy;
-      expect(labelTop, closeTo(addLabelTop, 0.01));
-    }
+    expect(find.text('Add'), findsNothing);
 
     final addRect = tester.getRect(
       find.byKey(const ValueKey('primary-navigation-add-button')),
     );
+    final addCenterY = addRect.center.dy;
+    for (final icon in [
+      Icons.home,
+      Icons.receipt_long_outlined,
+      Icons.more_horiz,
+    ]) {
+      final iconCenterY = tester.getRect(find.byIcon(icon).last).center.dy;
+      expect(iconCenterY, closeTo(addCenterY, 0.01));
+    }
 
     await tester.tapAt(addRect.center);
     expect(selectedBranch, 1);

@@ -92,6 +92,21 @@ class PrimaryBottomNavigation extends StatelessWidget {
       ),
       child: baseIcon,
     );
+    final displayedIcon = branchIndex == 1
+        ? Container(
+            width: ButlerlySize.primaryNavigationAddGlyphSize,
+            height: ButlerlySize.primaryNavigationAddGlyphSize,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: selected
+                    ? context.colors.interactive
+                    : context.colors.secondaryText,
+              ),
+            ),
+            child: Center(child: icon),
+          )
+        : icon;
 
     return Semantics(
       button: true,
@@ -114,18 +129,20 @@ class PrimaryBottomNavigation extends StatelessWidget {
                 height:
                     ButlerlySize.primaryNavigationAddIconSize -
                     ButlerlySize.navigationLabelGap,
-                child: Align(alignment: Alignment.bottomCenter, child: icon),
+                child: Align(alignment: Alignment.center, child: displayedIcon),
               ),
               const SizedBox(height: ButlerlySize.navigationLabelGap),
               SizedBox(
                 width: double.infinity,
                 height: labelSlotHeight,
-                child: Text(
-                  destination.label,
-                  textAlign: TextAlign.center,
-                  softWrap: true,
-                  style: labelStyle,
-                ),
+                child: branchIndex == 1
+                    ? const SizedBox.shrink()
+                    : Text(
+                        destination.label,
+                        textAlign: TextAlign.center,
+                        softWrap: true,
+                        style: labelStyle,
+                      ),
               ),
             ],
           ),

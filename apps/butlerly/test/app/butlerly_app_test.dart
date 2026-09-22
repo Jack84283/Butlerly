@@ -237,7 +237,8 @@ void main() {
 
     appRouter.go('/tools');
     await tester.pumpAndSettle();
-    final labels = ['Search', 'Review', 'Analysis', 'Insights'];
+    expect(find.text('Search'), findsNothing);
+    final labels = ['Review', 'Analysis', 'Insights'];
     final positions = labels
         .map((label) => tester.getTopLeft(find.text(label).last).dy)
         .toList();
@@ -246,8 +247,6 @@ void main() {
       await tester.tap(find.text(label).last);
       await tester.pumpAndSettle();
       switch (label) {
-        case 'Search':
-          expect(find.byType(SearchBar), findsOneWidget);
         case 'Review':
           expect(find.text('You’re all caught up'), findsOneWidget);
         case 'Analysis':
@@ -362,7 +361,7 @@ void main() {
     });
   }
 
-  testWidgets('opens Tools and its Review and Search destinations', (
+  testWidgets('opens Tools while Search stays hidden but routable', (
     tester,
   ) async {
     setPhoneViewport(tester);
@@ -375,7 +374,7 @@ void main() {
       find.text('Useful ways to explore and understand your records.'),
       findsOneWidget,
     );
-    expect(find.text('Search'), findsOneWidget);
+    expect(find.text('Search'), findsNothing);
     expect(find.text('Review'), findsOneWidget);
     expect(find.text('Analysis'), findsOneWidget);
     expect(find.text('Insights'), findsOneWidget);
@@ -388,9 +387,7 @@ void main() {
       findsNothing,
     );
 
-    appRouter.go('/tools');
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Search'));
+    appRouter.go('/search');
     await tester.pumpAndSettle();
     expect(find.byType(SearchBar), findsOneWidget);
     expect(find.byIcon(Icons.tune_rounded), findsOneWidget);

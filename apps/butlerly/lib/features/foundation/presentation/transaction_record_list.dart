@@ -121,13 +121,26 @@ class TransactionRecordList extends StatelessWidget {
               childrenPadding: const EdgeInsets.only(
                 bottom: ButlerlySpacing.standard,
               ),
-              title: Text(
-                _monthSectionLabel(
-                  context,
-                  entries[index].value.first,
-                  locale: locale,
-                ),
-                style: Theme.of(context).textTheme.titleMedium,
+              shape: const Border(),
+              collapsedShape: const Border(),
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _monthSectionLabel(
+                        context,
+                        entries[index].value.first,
+                        locale: locale,
+                      ),
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                  Text(
+                    '${entries[index].value.length}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(width: ButlerlySpacing.compact),
+                ],
               ),
               children: [
                 ButlerlyTransactionList(

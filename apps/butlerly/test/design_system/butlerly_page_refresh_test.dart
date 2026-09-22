@@ -46,10 +46,9 @@ void main() {
 
     expect(appBarIndex, isNonNegative);
     final appBar = scrollView.slivers[appBarIndex] as SliverAppBar;
-    expect(appBar.shape, isA<Border>());
+    expect(appBar.shape, isNull);
     expect(appBar.toolbarHeight, ButlerlySize.pageToolbarHeight);
     expect(ButlerlySize.pageToolbarHeight, 48);
-    expect((appBar.shape! as Border).bottom.width, ButlerlySize.dividerWidth);
     expect(pinnedHeaderIndex, greaterThan(appBarIndex));
     expect(refreshIndex, greaterThan(pinnedHeaderIndex));
     expect(

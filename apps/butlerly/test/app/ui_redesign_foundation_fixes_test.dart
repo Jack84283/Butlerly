@@ -194,7 +194,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(ButlerlyActionGroup), findsOneWidget);
-    expect(find.byType(ButlerlyActionRow), findsNWidgets(4));
+    expect(find.byType(ButlerlyActionRow), findsNWidgets(3));
+    expect(find.text('Search'), findsNothing);
   });
 
   for (final textScale in const [1.0, 1.3, 1.5, 2.0, 3.0]) {
