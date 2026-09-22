@@ -130,7 +130,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
                     ButlerlySize.primaryNavigationAddIconSize -
                     ButlerlySize.navigationLabelGap,
                 child: Align(
-                  alignment: Alignment.bottomCenter,
+                  alignment: Alignment.center,
                   child: displayedIcon,
                 ),
               ),
