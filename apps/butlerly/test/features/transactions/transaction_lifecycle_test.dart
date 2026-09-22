@@ -1336,9 +1336,13 @@ void main() {
       await tester.tap(find.byTooltip('Filters (2)'));
       await tester.pumpAndSettle();
       expect(find.byType(ButlerlyTransactionFilterSheet), findsOneWidget);
+      await tester.ensureVisible(find.text('Clear filters'));
       await tester.tap(find.text('Clear filters'));
       await tester.pumpAndSettle();
 
+      expect(find.text('April 2026'), findsOneWidget);
+      await tester.tap(find.text('April 2026'));
+      await tester.pumpAndSettle();
       expect(find.text('Older expense'), findsOneWidget);
     },
   );
