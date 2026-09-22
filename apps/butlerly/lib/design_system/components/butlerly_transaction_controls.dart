@@ -88,6 +88,7 @@ class ButlerlyTransactionFilterValue {
   const ButlerlyTransactionFilterValue({
     this.currency,
     this.direction,
+    this.status,
     this.categoryId,
     this.paymentSourceId,
     this.needsReview,
@@ -97,6 +98,7 @@ class ButlerlyTransactionFilterValue {
 
   final String? currency;
   final TransactionDirection? direction;
+  final TransactionStatus? status;
   final String? categoryId;
   final String? paymentSourceId;
   final bool? needsReview;
@@ -131,6 +133,7 @@ class _ButlerlyTransactionFilterSheetState
     extends State<ButlerlyTransactionFilterSheet> {
   late String? _currency;
   late TransactionDirection? _direction;
+  late TransactionStatus? _status;
   late String? _categoryId;
   late String? _paymentSourceId;
   late bool? _needsReview;
@@ -143,6 +146,7 @@ class _ButlerlyTransactionFilterSheetState
     final value = widget.value;
     _currency = value.currency;
     _direction = value.direction;
+    _status = value.status;
     _categoryId = value.categoryId;
     _paymentSourceId = value.paymentSourceId;
     _needsReview = value.needsReview;
@@ -174,6 +178,13 @@ class _ButlerlyTransactionFilterSheetState
             label: context.l10n.text('direction'),
             anyLabel: context.l10n.text('anyDirection'),
             onChanged: (value) => setState(() => _direction = value),
+          ),
+          const SizedBox(height: ButlerlySpacing.standard),
+          ButlerlyStatusFilter(
+            value: _status,
+            label: context.l10n.text('status'),
+            anyLabel: context.l10n.text('all'),
+            onChanged: (value) => setState(() => _status = value),
           ),
           const SizedBox(height: ButlerlySpacing.standard),
           ButlerlyDateRangeFilter(
@@ -224,6 +235,7 @@ class _ButlerlyTransactionFilterSheetState
                 ButlerlyTransactionFilterValue(
                   currency: _currency,
                   direction: _direction,
+                  status: _status,
                   categoryId: _categoryId,
                   paymentSourceId: _paymentSourceId,
                   needsReview: _needsReview,
@@ -684,6 +696,40 @@ class ButlerlyDirectionSelector extends StatelessWidget {
   );
 }
 
+class ButlerlyStatusFilter extends StatelessWidget {
+  const ButlerlyStatusFilter({
+    required this.value,
+    required this.label,
+    required this.anyLabel,
+    required this.onChanged,
+    super.key,
+  });
+
+  final TransactionStatus? value;
+  final String label;
+  final String anyLabel;
+  final ValueChanged<TransactionStatus?> onChanged;
+
+  @override
+  Widget build(BuildContext context) => ButlerlySelectField<TransactionStatus>(
+    label: label,
+    value: value,
+    entries: [
+      DropdownMenuEntry(
+        value: TransactionStatus.active,
+        label: context.l10n.text('active'),
+      ),
+      DropdownMenuEntry(
+        value: TransactionStatus.archived,
+        label: context.l10n.text('archived'),
+      ),
+    ],
+    onChanged: onChanged,
+    onClear: value == null ? null : () => onChanged(null),
+    clearTooltip: anyLabel,
+  );
+}
+
 class ButlerlyDateRangeFilter extends StatelessWidget {
   const ButlerlyDateRangeFilter({
     required this.from,
@@ -704,11 +750,35 @@ class ButlerlyDateRangeFilter extends StatelessWidget {
   final ValueChanged<DateTime?> onToChanged;
 
   Future<void> _pick(BuildContext context, {required bool isFrom}) async {
-    final value = await showDatePicker(
+    final firstDate = isFrom ? DateTime(2000) : (from ?? DateTime(2000));
+    final lastDate = DateTime.now();
+    var selected = (isFrom ? from : to) ?? lastDate;
+    if (selected.isBefore(firstDate)) selected = firstDate;
+    if (selected.isAfter(lastDate)) selected = lastDate;
+
+    final value = await showButlerlyBottomSheet<DateTime>(
       context: context,
-      firstDate: isFrom ? DateTime(2000) : (from ?? DateTime(2000)),
-      lastDate: DateTime.now(),
-      initialDate: (isFrom ? from : to) ?? DateTime.now(),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) => ButlerlySheet(
+          title: Text(isFrom ? fromLabel : toLabel),
+          content: CalendarDatePicker(
+            initialDate: selected,
+            firstDate: firstDate,
+            lastDate: lastDate,
+            onDateChanged: (value) => setSheetState(() => selected = value),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(sheetContext),
+              child: Text(sheetContext.l10n.text('cancel')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(sheetContext, selected),
+              child: Text(sheetContext.l10n.text('done')),
+            ),
+          ],
+        ),
+      ),
     );
     if (value != null) (isFrom ? onFromChanged : onToChanged)(value);
   }
