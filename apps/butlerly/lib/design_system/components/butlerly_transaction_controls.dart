@@ -18,6 +18,7 @@ class ButlerlyTransactionSearchControls extends StatelessWidget {
     required this.onClear,
     required this.onFilter,
     this.controlsKey = const ValueKey('search-pinned-controls'),
+    this.searchFieldKey,
     super.key,
   });
 
@@ -28,6 +29,7 @@ class ButlerlyTransactionSearchControls extends StatelessWidget {
   final VoidCallback onClear;
   final VoidCallback onFilter;
   final Key controlsKey;
+  final Key? searchFieldKey;
 
   @override
   Widget build(BuildContext context) => Row(
@@ -35,6 +37,7 @@ class ButlerlyTransactionSearchControls extends StatelessWidget {
     children: [
       Expanded(
         child: SearchBar(
+          key: searchFieldKey,
           controller: controller,
           constraints: const BoxConstraints(
             minHeight: ButlerlySize.minimumTarget,
