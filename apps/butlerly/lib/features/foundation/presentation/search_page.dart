@@ -362,6 +362,7 @@ class _SearchPageState extends State<SearchPage>
         value: ButlerlyTransactionFilterValue(
           currency: _currency,
           direction: _direction,
+          status: _status,
           categoryId: _categoryId,
           paymentSourceId: _paymentSourceId,
           needsReview: _needsReview,
@@ -374,6 +375,7 @@ class _SearchPageState extends State<SearchPage>
         onApply: (value) {
           _currency = value.currency;
           _direction = value.direction;
+          _status = value.status;
           _categoryId = value.categoryId;
           _paymentSourceId = value.paymentSourceId;
           _needsReview = value.needsReview;
