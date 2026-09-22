@@ -119,33 +119,38 @@ class PrimaryBottomNavigation extends StatelessWidget {
         onTap: () => onSelected(branchIndex),
         child: SizedBox(
           height: double.infinity,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
-                key: branchIndex == 1
-                    ? const ValueKey('primary-navigation-add-button')
-                    : null,
-                height:
-                    ButlerlySize.primaryNavigationAddIconSize -
-                    ButlerlySize.navigationLabelGap,
-                child: Align(alignment: Alignment.center, child: displayedIcon),
-              ),
-              const SizedBox(height: ButlerlySize.navigationLabelGap),
-              SizedBox(
-                width: double.infinity,
-                height: labelSlotHeight,
-                child: branchIndex == 1
-                    ? const SizedBox.shrink()
-                    : Text(
+          child: branchIndex == 1
+              ? Center(
+                  child: SizedBox(
+                    key: const ValueKey('primary-navigation-add-button'),
+                    child: displayedIcon,
+                  ),
+                )
+              : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      height:
+                          ButlerlySize.primaryNavigationAddIconSize -
+                          ButlerlySize.navigationLabelGap,
+                      child: Align(
+                        alignment: Alignment.center,
+                        child: displayedIcon,
+                      ),
+                    ),
+                    const SizedBox(height: ButlerlySize.navigationLabelGap),
+                    SizedBox(
+                      width: double.infinity,
+                      height: labelSlotHeight,
+                      child: Text(
                         destination.label,
                         textAlign: TextAlign.center,
                         softWrap: true,
                         style: labelStyle,
                       ),
-              ),
-            ],
-          ),
+                    ),
+                  ],
+                ),
         ),
       ),
     );
