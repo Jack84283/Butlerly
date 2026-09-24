@@ -92,8 +92,8 @@ final class SqlitePaymentSettlementRepository
     'payment_date': value.paymentDate,
     'period_start': value.periodStart,
     'period_end': value.periodEnd,
-    'statement_balance_coefficient':
-        value.statementBalance?.amount.coefficient.toString(),
+    'statement_balance_coefficient': value.statementBalance?.amount.coefficient
+        .toString(),
     'statement_balance_scale': value.statementBalance?.amount.scale,
     'status': value.status.name,
     'description': value.description,
