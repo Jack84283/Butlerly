@@ -9,22 +9,22 @@ final class SavePaymentSettlement {
   const SavePaymentSettlement(
     this.settlements,
     this.paymentSources,
+    this.transactions,
     this.clock,
   );
 
   final PaymentSettlementRepository settlements;
   final PaymentSourceRepository paymentSources;
+  final TransactionRepository transactions;
   final ApplicationClock clock;
 
   Future<ApplicationResult<PaymentSettlementDto>> call({
     required String id,
+    required String settlementTransactionId,
     required String paymentSourceId,
-    required Money payment,
-    required String paymentDate,
     required String periodStart,
     required String periodEnd,
     PaymentSettlementStatus status = PaymentSettlementStatus.open,
-    String? fundingPaymentSourceId,
     Money? statementBalance,
     String? description,
     String? externalReference,
@@ -36,14 +36,27 @@ final class SavePaymentSettlement {
         'save payment settlement payment source',
       );
     }
-    final fundingSource = fundingPaymentSourceId == null
-        ? null
-        : PaymentSourceId(fundingPaymentSourceId);
-    if (fundingSource != null &&
-        await paymentSources.findById(fundingSource) == null) {
+
+    final paymentTransactionId = TransactionId(settlementTransactionId);
+    final paymentTransaction = await transactions.findById(paymentTransactionId);
+    if (paymentTransaction == null) {
       throw const RepositoryException(
         RepositoryFailureCode.notFound,
-        'save payment settlement funding source',
+        'save payment settlement transaction',
+      );
+    }
+    if (paymentTransaction.direction != TransactionDirection.transfer ||
+        paymentTransaction.paymentSourceId != source) {
+      throw const RepositoryException(
+        RepositoryFailureCode.constraint,
+        'save payment settlement transaction relationship',
+      );
+    }
+    if (statementBalance != null &&
+        statementBalance.currency != paymentTransaction.money.currency) {
+      throw const RepositoryException(
+        RepositoryFailureCode.constraint,
+        'save payment settlement statement balance currency',
       );
     }
 
@@ -52,10 +65,8 @@ final class SavePaymentSettlement {
     final now = clock.now();
     final value = PaymentSettlement(
       id: settlementId,
+      settlementTransactionId: paymentTransactionId,
       paymentSourceId: source,
-      fundingPaymentSourceId: fundingSource,
-      payment: payment,
-      paymentDate: paymentDate,
       periodStart: periodStart,
       periodEnd: periodEnd,
       statementBalance: statementBalance,
@@ -83,9 +94,10 @@ final class ListPaymentSettlements {
 }
 
 final class GetPaymentSettlementDetail {
-  const GetPaymentSettlementDetail(this.repository);
+  const GetPaymentSettlementDetail(this.repository, this.transactions);
 
   final PaymentSettlementRepository repository;
+  final TransactionRepository transactions;
 
   Future<ApplicationResult<PaymentSettlementDetailDto>> call(String id) =>
       runApplication('get payment settlement detail', () async {
@@ -96,12 +108,20 @@ final class GetPaymentSettlementDetail {
             'get payment settlement detail',
           );
         }
-        final transactions = await repository.listTransactions(settlement);
+        final paymentTransaction = await transactions.findById(
+          settlement.settlementTransactionId,
+        );
+        if (paymentTransaction == null) {
+          throw const RepositoryException(
+            RepositoryFailureCode.notFound,
+            'get payment settlement transaction',
+          );
+        }
+        final matched = await repository.listTransactions(settlement);
         return PaymentSettlementDetailDto(
           settlement: PaymentSettlementDto.fromDomain(settlement),
-          transactions: List.unmodifiable(
-            transactions.map(TransactionDto.fromDomain),
-          ),
+          paymentTransaction: TransactionDto.fromDomain(paymentTransaction),
+          transactions: List.unmodifiable(matched.map(TransactionDto.fromDomain)),
         );
       });
 }
@@ -126,10 +146,8 @@ final class SetPaymentSettlementStatus {
     }
     final updated = PaymentSettlement(
       id: current.id,
+      settlementTransactionId: current.settlementTransactionId,
       paymentSourceId: current.paymentSourceId,
-      fundingPaymentSourceId: current.fundingPaymentSourceId,
-      payment: current.payment,
-      paymentDate: current.paymentDate,
       periodStart: current.periodStart,
       periodEnd: current.periodEnd,
       statementBalance: current.statementBalance,
