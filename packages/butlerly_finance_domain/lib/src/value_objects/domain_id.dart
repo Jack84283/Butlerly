@@ -34,6 +34,10 @@ final class PaymentSourceId extends DomainId {
   PaymentSourceId(super.value);
 }
 
+final class PaymentSettlementId extends DomainId {
+  PaymentSettlementId(super.value);
+}
+
 typedef AccountId = PaymentSourceId;
 
 final class AttachmentLinkId extends DomainId {
