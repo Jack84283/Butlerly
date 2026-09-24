@@ -92,6 +92,23 @@ void main() {
     expect(result, isA<ApplicationFailure<PaymentSettlementDto>>());
   });
 
+  test('rejects an archived settlement transaction', () async {
+    await transactions.save(
+      paymentTransfer(now, status: TransactionStatus.archived),
+    );
+
+    final result =
+        await SavePaymentSettlement(settlements, sources, transactions, clock)(
+          id: 'settlement-1',
+          settlementTransactionId: 'payment-transfer',
+          paymentSourceId: 'visa',
+          periodStart: '2026-08-15',
+          periodEnd: '2026-09-14',
+        );
+
+    expect(result, isA<ApplicationFailure<PaymentSettlementDto>>());
+  });
+
   test('rejects a settlement transaction without a financial date', () async {
     await transactions.save(paymentTransfer(now, transactionDate: null));
 
@@ -209,12 +226,14 @@ Money money(String amount) =>
 Transaction paymentTransfer(
   DateTime at, {
   String? transactionDate = '2026-09-20',
+  TransactionStatus status = TransactionStatus.active,
 }) => Transaction(
   id: TransactionId('payment-transfer'),
   timing: KnownTransactionTime(at),
   money: money('2846.72'),
   direction: TransactionDirection.transfer,
   sourceType: TransactionSourceType.manual,
+  status: status,
   paymentSourceId: PaymentSourceId('visa'),
   provenance: [
     Provenance(
