@@ -74,11 +74,7 @@ final class PaymentSettlement {
     final normalized = value.trim();
     final match = RegExp(r'^\d{4}-\d{2}-\d{2}$').firstMatch(normalized);
     final parsed = match == null ? null : DateTime.tryParse(normalized);
-    final canonical = parsed == null
-        ? null
-        : '${parsed.year.toString().padLeft(4, '0')}-'
-              '${parsed.month.toString().padLeft(2, '0')}-'
-              '${parsed.day.toString().padLeft(2, '0')}';
+    final canonical = parsed == null ? null : _formatDate(parsed);
     if (canonical != normalized) {
       invalid(
         code: DomainErrorCode.invalidState,
@@ -88,4 +84,9 @@ final class PaymentSettlement {
     }
     return normalized;
   }
+
+  static String _formatDate(DateTime value) =>
+      '${value.year.toString().padLeft(4, '0')}-'
+      '${value.month.toString().padLeft(2, '0')}-'
+      '${value.day.toString().padLeft(2, '0')}';
 }
