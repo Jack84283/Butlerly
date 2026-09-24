@@ -21,6 +21,8 @@ validate_finance_domain() (
 
 validate_finance_application() (
   cd packages/butlerly_finance_application
+  dart format --output=show lib/src/use_cases/payment_settlement_use_cases.dart
+  dart format --output=show test/payment_settlement_use_cases_test.dart
   format_check
   dart analyze --fatal-infos
   dart test
