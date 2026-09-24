@@ -120,6 +120,71 @@ void main() {
     });
   });
 
+  test('rejects invalid settlement relationships at the database boundary', () async {
+    await transactions.save(
+      _transaction(
+        id: 'expense-payment',
+        sourceId: 'visa',
+        transactionDate: '2026-09-20',
+        direction: TransactionDirection.expense,
+        amount: '2846.72',
+      ),
+    );
+
+    final invalid = PaymentSettlement(
+      id: PaymentSettlementId('invalid-settlement'),
+      settlementTransactionId: TransactionId('expense-payment'),
+      paymentSourceId: PaymentSourceId('visa'),
+      periodStart: '2026-08-15',
+      periodEnd: '2026-09-14',
+      status: PaymentSettlementStatus.open,
+      createdAt: DateTime.utc(2026, 9, 20, 12),
+      updatedAt: DateTime.utc(2026, 9, 20, 12),
+    );
+
+    expect(
+      () => settlements.save(invalid),
+      throwsA(isA<RepositoryException>()),
+    );
+  });
+
+  test('rejects archiving a settlement payment transaction', () async {
+    await settlements.save(_settlement());
+
+    final archived = _transaction(
+      id: 'payment-transfer',
+      sourceId: 'visa',
+      transactionDate: '2026-09-20',
+      direction: TransactionDirection.transfer,
+      amount: '2846.72',
+      status: TransactionStatus.archived,
+    );
+
+    expect(
+      () => transactions.save(archived),
+      throwsA(isA<RepositoryException>()),
+    );
+  });
+
+  test('payment amount changes move the settlement to needs review', () async {
+    await settlements.save(_settlement());
+
+    await transactions.save(
+      _transaction(
+        id: 'payment-transfer',
+        sourceId: 'visa',
+        transactionDate: '2026-09-20',
+        direction: TransactionDirection.transfer,
+        amount: '2900.00',
+      ),
+    );
+
+    final refreshed = await settlements.findById(
+      PaymentSettlementId('settlement-1'),
+    );
+    expect(refreshed!.status, PaymentSettlementStatus.needsReview);
+  });
+
   test('rejects invalid edits to a settlement payment transaction', () async {
     await settlements.save(_settlement());
 
@@ -181,6 +246,7 @@ Transaction _transaction({
   required String sourceId,
   required String transactionDate,
   TransactionDirection direction = TransactionDirection.expense,
+  TransactionStatus status = TransactionStatus.active,
   String amount = '10.00',
 }) {
   final at = DateTime.parse('${transactionDate}T12:00:00Z');
@@ -193,6 +259,7 @@ Transaction _transaction({
     ),
     direction: direction,
     sourceType: TransactionSourceType.import,
+    status: status,
     paymentSourceId: PaymentSourceId(sourceId),
     provenance: [
       Provenance(
