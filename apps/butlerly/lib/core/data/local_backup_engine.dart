@@ -93,6 +93,12 @@ final class LocalBackupManager {
       createdAt: 'created_at',
     ),
     _TableSpec(
+      'payment_settlements',
+      ['id'],
+      updatedAt: 'updated_at',
+      createdAt: 'created_at',
+    ),
+    _TableSpec(
       'categories',
       ['id'],
       updatedAt: 'updated_at',
@@ -974,6 +980,7 @@ final class LocalBackupManager {
       'transaction_provenances',
       'normalized_money',
       'transactions',
+      'payment_settlements',
       'exchange_rates',
       'provenances',
       'analysis_rule_configurations',
