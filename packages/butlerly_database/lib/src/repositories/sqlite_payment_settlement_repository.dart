@@ -2,7 +2,6 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:sqflite_common/sqlite_api.dart' hide Transaction;
 
 import '../database/butlerly_database.dart';
-import '../mappers/sqlite_helpers.dart';
 import 'sqlite_transaction_repository.dart';
 
 final class SqlitePaymentSettlementRepository
