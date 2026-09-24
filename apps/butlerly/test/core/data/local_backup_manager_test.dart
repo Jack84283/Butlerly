@@ -163,10 +163,7 @@ void main() {
     final newer = DateTime.now().toUtc().add(const Duration(minutes: 5));
     await fixture.database.database.update(
       'payment_settlements',
-      {
-        'status': 'reconciled',
-        'updated_at': newer.toIso8601String(),
-      },
+      {'status': 'reconciled', 'updated_at': newer.toIso8601String()},
       where: 'id = ?',
       whereArgs: ['settlement-1'],
     );
