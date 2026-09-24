@@ -254,6 +254,16 @@ CREATE TABLE reference_data_translations (
       PRIMARY KEY(reference_data_id, locale)
     );
 
+CREATE TABLE restore_commits (
+      operation_id TEXT PRIMARY KEY NOT NULL,
+      committed_at TEXT NOT NULL
+    );
+
+CREATE TABLE restore_context (
+      id INTEGER PRIMARY KEY NOT NULL CHECK(id = 1),
+      backup_time TEXT NOT NULL
+    );
+
 CREATE TABLE review_issues (
       id TEXT PRIMARY KEY NOT NULL,
       transaction_id TEXT NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
