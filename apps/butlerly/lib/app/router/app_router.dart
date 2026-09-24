@@ -214,7 +214,7 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/payment-settlements',
-      builder: (_, _) => const PaymentSettlementsPage(),
+      builder: (_, _) => const Scaffold(body: PaymentSettlementsPage()),
     ),
     GoRoute(
       path: '/payment-sources',
