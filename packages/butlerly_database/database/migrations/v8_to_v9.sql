@@ -95,26 +95,29 @@ WHEN EXISTS (
   FROM payment_settlements ps
   WHERE ps.settlement_transaction_id = OLD.id
 )
-BEGIN
-  SELECT CASE
-    WHEN NEW.direction != 'transfer'
-      OR NEW.status != 'active'
-      OR NEW.transaction_date IS NULL
-      OR EXISTS (
-        SELECT 1
-        FROM payment_settlements ps
-        WHERE ps.settlement_transaction_id = OLD.id
-          AND (
-            NEW.payment_source_id IS NULL
-            OR NEW.payment_source_id != ps.payment_source_id
-            OR (
-              ps.statement_balance_currency IS NOT NULL
-              AND NEW.currency != ps.statement_balance_currency
-            )
-          )
+AND (
+  NEW.direction != 'transfer'
+  OR NEW.status != 'active'
+  OR NEW.transaction_date IS NULL
+  OR EXISTS (
+    SELECT 1
+    FROM payment_settlements ps
+    WHERE ps.settlement_transaction_id = OLD.id
+      AND (
+        NEW.payment_source_id IS NULL
+        OR NEW.payment_source_id != ps.payment_source_id
+        OR (
+          ps.statement_balance_currency IS NOT NULL
+          AND NEW.currency != ps.statement_balance_currency
+        )
       )
-    THEN RAISE(ABORT, 'invalid settlement payment transaction update')
-  END;
+  )
+)
+BEGIN
+  SELECT RAISE(
+    ABORT,
+    'invalid settlement payment transaction update'
+  );
 END;
 
 CREATE TRIGGER settlement_payment_transaction_review_update
