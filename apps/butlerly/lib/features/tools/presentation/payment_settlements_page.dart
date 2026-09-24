@@ -268,7 +268,10 @@ class _PaymentSettlementDetailPageState
     await _detail;
   }
 
-  Future<void> _openTransaction(TransactionDto transaction) async {
+  Future<void> _openTransaction(
+    TransactionDto transaction, {
+    bool canonicalPayment = false,
+  }) async {
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => TransactionDetailPage(
@@ -279,10 +282,11 @@ class _PaymentSettlementDetailPageState
     );
     if (changed != true || !mounted) return;
 
-    if (transaction.id == detailPaymentTransactionId) {
-      final result = await widget.finance.getPaymentSettlementDetail?.call(
-        widget.settlementId,
-      );
+    if (canonicalPayment) {
+      final getDetail = widget.finance.getPaymentSettlementDetail;
+      final result = getDetail == null
+          ? null
+          : await getDetail(widget.settlementId);
       if (!mounted) return;
       if (result is ApplicationFailure<PaymentSettlementDetailDto>) {
         Navigator.of(context).pop(true);
@@ -292,16 +296,6 @@ class _PaymentSettlementDetailPageState
 
     await _refresh();
   }
-
-  String get detailPaymentTransactionId {
-    final current = _detail;
-    // The current detail future always resolves before a transaction row can
-    // be opened. This getter is only used to distinguish the canonical payment
-    // row from statement activity after returning from TransactionDetailPage.
-    return _lastPaymentTransactionId;
-  }
-
-  String _lastPaymentTransactionId = '';
 
   Future<void> _edit(PaymentSettlementDetailDto detail) async {
     final save = widget.finance.savePaymentSettlement;
@@ -408,7 +402,6 @@ class _PaymentSettlementDetailPageState
           );
         }
         final detail = snapshot.requireData;
-        _lastPaymentTransactionId = detail.paymentTransaction.id;
         final settlement = detail.settlement;
         final sourceName =
             widget.sourceNames[settlement.paymentSourceId] ??
@@ -472,7 +465,10 @@ class _PaymentSettlementDetailPageState
               paymentSourceNames: widget.sourceNames,
               showDate: true,
               showNavigationIndicator: true,
-              onTap: () => _openTransaction(detail.paymentTransaction),
+              onTap: () => _openTransaction(
+                detail.paymentTransaction,
+                canonicalPayment: true,
+              ),
             ),
             const SizedBox(height: ButlerlySpacing.section),
             ButlerlySectionHeader(
