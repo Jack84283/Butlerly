@@ -1,5 +1,6 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/design_system/components/butlerly_action_group.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
@@ -410,8 +411,8 @@ class _PaymentSettlementDetailPageState
           body: ButlerlyPage(
             title: sourceName,
             subtitle: '${settlement.periodStart} – ${settlement.periodEnd}',
-          onRefresh: _refresh,
-          actions: [
+            onRefresh: _refresh,
+            actions: [
             IconButton(
               tooltip: context.l10n.text('editPaymentSettlement'),
               onPressed: () => _edit(detail),
@@ -433,7 +434,7 @@ class _PaymentSettlementDetailPageState
                 };
                 await _setStatus(status);
               },
-              itemBuilder: (context) => [
+                itemBuilder: (context) => [
                 PopupMenuItem(
                   value: _SettlementAction.open,
                   child: Text(context.l10n.text('markAsOpen')),
@@ -451,10 +452,10 @@ class _PaymentSettlementDetailPageState
                   value: _SettlementAction.remove,
                   child: Text(context.l10n.text('remove')),
                 ),
-              ],
-            ),
-          ],
-          children: [
+                ],
+              ),
+            ],
+            children: [
             _SettlementSummaryCard(detail: detail),
             const SizedBox(height: ButlerlySpacing.section),
             ButlerlySectionHeader(
