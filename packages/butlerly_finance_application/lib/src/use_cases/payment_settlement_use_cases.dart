@@ -53,7 +53,7 @@ final class SavePaymentSettlement {
         paymentTransaction.transactionDate == null) {
       throw const RepositoryException(
         RepositoryFailureCode.constraint,
-        'save payment settlement transaction relationship/date',
+        'save payment settlement transaction relationship',
       );
     }
     if (statementBalance != null &&
