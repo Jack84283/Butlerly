@@ -1,6 +1,6 @@
 CREATE TABLE payment_settlements (
   id TEXT PRIMARY KEY NOT NULL,
-  settlement_transaction_id TEXT NOT NULL UNIQUE REFERENCES transactions(id),
+  settlement_transaction_id TEXT NOT NULL UNIQUE REFERENCES transactions(id) ON DELETE CASCADE,
   payment_source_id TEXT NOT NULL REFERENCES payment_sources(id),
   period_start TEXT NOT NULL,
   period_end TEXT NOT NULL,
