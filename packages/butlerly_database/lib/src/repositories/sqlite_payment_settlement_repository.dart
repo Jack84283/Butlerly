@@ -54,12 +54,10 @@ final class SqlitePaymentSettlementRepository
   @override
   Future<List<PaymentSettlement>> listAll() async {
     try {
-      final rows = await database.connection.rawQuery(
-        '''SELECT ps.*
+      final rows = await database.connection.rawQuery('''SELECT ps.*
            FROM payment_settlements ps
            JOIN transactions t ON t.id = ps.settlement_transaction_id
-           ORDER BY t.transaction_date DESC, ps.id''',
-      );
+           ORDER BY t.transaction_date DESC, ps.id''');
       return rows.map(_fromRow).toList(growable: false);
     } on DatabaseException catch (error) {
       throw mapDatabaseException(error, 'list payment settlements');
