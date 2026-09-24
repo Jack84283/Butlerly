@@ -92,6 +92,21 @@ void main() {
     expect(result, isA<ApplicationFailure<PaymentSettlementDto>>());
   });
 
+  test('rejects a settlement transaction without a financial date', () async {
+    await transactions.save(paymentTransfer(now, transactionDate: null));
+
+    final result =
+        await SavePaymentSettlement(settlements, sources, transactions, clock)(
+          id: 'settlement-1',
+          settlementTransactionId: 'payment-transfer',
+          paymentSourceId: 'visa',
+          periodStart: '2026-08-15',
+          periodEnd: '2026-09-14',
+        );
+
+    expect(result, isA<ApplicationFailure<PaymentSettlementDto>>());
+  });
+
   test('status change is explicit workflow state', () async {
     await SavePaymentSettlement(settlements, sources, transactions, clock)(
       id: 'settlement-1',
@@ -191,7 +206,10 @@ final class MemoryTransactions implements TransactionRepository {
 Money money(String amount) =>
     Money(amount: DecimalValue.parse(amount), currency: CurrencyCode('USD'));
 
-Transaction paymentTransfer(DateTime at) => Transaction(
+Transaction paymentTransfer(
+  DateTime at, {
+  String? transactionDate = '2026-09-20',
+}) => Transaction(
   id: TransactionId('payment-transfer'),
   timing: KnownTransactionTime(at),
   money: money('2846.72'),
@@ -205,7 +223,7 @@ Transaction paymentTransfer(DateTime at) => Transaction(
       capturedAt: at,
     ),
   ],
-  transactionDate: '2026-09-20',
+  transactionDate: transactionDate,
   createdAt: at,
   updatedAt: at,
 );
