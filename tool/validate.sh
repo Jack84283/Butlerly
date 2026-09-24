@@ -21,7 +21,6 @@ validate_finance_domain() (
 
 validate_finance_application() (
   cd packages/butlerly_finance_application
-  dart format --output=show test/payment_settlement_use_cases_test.dart
   format_check
   dart analyze --fatal-infos
   dart test
@@ -36,7 +35,6 @@ validate_database() (
 
 validate_flutter_application() (
   cd apps/butlerly
-  dart format --output=show test/core/data/local_backup_manager_test.dart
   format_check
   flutter analyze
   flutter test
