@@ -14,11 +14,23 @@ final class SqlitePaymentSettlementRepository
   @override
   Future<void> save(PaymentSettlement value) async {
     try {
-      await database.connection.insert(
+      final existing = await database.connection.query(
         'payment_settlements',
-        _row(value),
-        conflictAlgorithm: ConflictAlgorithm.replace,
+        columns: ['id'],
+        where: 'id = ?',
+        whereArgs: [value.id.value],
+        limit: 1,
       );
+      if (existing.isEmpty) {
+        await database.connection.insert('payment_settlements', _row(value));
+      } else {
+        await database.connection.update(
+          'payment_settlements',
+          _row(value),
+          where: 'id = ?',
+          whereArgs: [value.id.value],
+        );
+      }
     } on DatabaseException catch (error) {
       throw mapDatabaseException(error, 'save payment settlement');
     }
@@ -42,9 +54,11 @@ final class SqlitePaymentSettlementRepository
   @override
   Future<List<PaymentSettlement>> listAll() async {
     try {
-      final rows = await database.connection.query(
-        'payment_settlements',
-        orderBy: 'payment_date DESC, id',
+      final rows = await database.connection.rawQuery(
+        '''SELECT ps.*
+           FROM payment_settlements ps
+           JOIN transactions t ON t.id = ps.settlement_transaction_id
+           ORDER BY t.transaction_date DESC, ps.id''',
       );
       return rows.map(_fromRow).toList(growable: false);
     } on DatabaseException catch (error) {
@@ -56,7 +70,7 @@ final class SqlitePaymentSettlementRepository
   Future<List<Transaction>> listTransactions(
     PaymentSettlement settlement,
   ) async {
-    return SqliteTransactionRepository(database).query(
+    final values = await SqliteTransactionRepository(database).query(
       TransactionRepositoryQuery(
         from: DateTime.parse(settlement.periodStart),
         to: DateTime.parse(settlement.periodEnd),
@@ -64,6 +78,9 @@ final class SqlitePaymentSettlementRepository
         status: TransactionStatus.active,
       ),
     );
+    return values
+        .where((value) => value.direction != TransactionDirection.transfer)
+        .toList(growable: false);
   }
 
   @override
@@ -81,20 +98,14 @@ final class SqlitePaymentSettlementRepository
 
   static Map<String, Object?> _row(PaymentSettlement value) => {
     'id': value.id.value,
+    'settlement_transaction_id': value.settlementTransactionId.value,
     'payment_source_id': value.paymentSourceId.value,
-    'funding_payment_source_id': value.fundingPaymentSourceId?.value,
-    ...decimalToColumns(
-      value.payment.amount,
-      'payment_amount_coefficient',
-      'payment_amount_scale',
-    ),
-    'currency': value.payment.currency.value,
-    'payment_date': value.paymentDate,
     'period_start': value.periodStart,
     'period_end': value.periodEnd,
     'statement_balance_coefficient': value.statementBalance?.amount.coefficient
         .toString(),
     'statement_balance_scale': value.statementBalance?.amount.scale,
+    'statement_balance_currency': value.statementBalance?.currency.value,
     'status': value.status.name,
     'description': value.description,
     'external_reference': value.externalReference,
@@ -103,52 +114,35 @@ final class SqlitePaymentSettlementRepository
   };
 
   static PaymentSettlement _fromRow(Map<String, Object?> row) {
-    final currency = CurrencyCode(row['currency']! as String);
     final statementCoefficient =
         row['statement_balance_coefficient'] as String?;
     final statementScale = row['statement_balance_scale'] as int?;
+    final statementCurrency = row['statement_balance_currency'] as String?;
     return PaymentSettlement(
       id: PaymentSettlementId(row['id']! as String),
-      paymentSourceId: PaymentSourceId(row['payment_source_id']! as String),
-      fundingPaymentSourceId: row['funding_payment_source_id'] == null
-          ? null
-          : PaymentSourceId(row['funding_payment_source_id']! as String),
-      payment: Money(
-        amount: decimalFromRow(
-          row,
-          'payment_amount_coefficient',
-          'payment_amount_scale',
-        ),
-        currency: currency,
+      settlementTransactionId: TransactionId(
+        row['settlement_transaction_id']! as String,
       ),
-      paymentDate: row['payment_date']! as String,
+      paymentSourceId: PaymentSourceId(row['payment_source_id']! as String),
       periodStart: row['period_start']! as String,
       periodEnd: row['period_end']! as String,
-      statementBalance: _statementBalance(
-        statementCoefficient,
-        statementScale,
-        currency,
-      ),
+      statementBalance:
+          statementCoefficient == null ||
+              statementScale == null ||
+              statementCurrency == null
+          ? null
+          : Money(
+              amount: DecimalValue.fromParts(
+                coefficient: BigInt.parse(statementCoefficient),
+                scale: statementScale,
+              ),
+              currency: CurrencyCode(statementCurrency),
+            ),
       status: PaymentSettlementStatus.values.byName(row['status']! as String),
       description: row['description'] as String?,
       externalReference: row['external_reference'] as String?,
       createdAt: DateTime.parse(row['created_at']! as String),
       updatedAt: DateTime.parse(row['updated_at']! as String),
-    );
-  }
-
-  static Money? _statementBalance(
-    String? coefficient,
-    int? scale,
-    CurrencyCode currency,
-  ) {
-    if (coefficient == null || scale == null) return null;
-    return Money(
-      amount: DecimalValue.fromParts(
-        coefficient: BigInt.parse(coefficient),
-        scale: scale,
-      ),
-      currency: currency,
     );
   }
 }
