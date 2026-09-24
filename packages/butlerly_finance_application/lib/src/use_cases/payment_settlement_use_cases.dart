@@ -38,7 +38,9 @@ final class SavePaymentSettlement {
     }
 
     final paymentTransactionId = TransactionId(settlementTransactionId);
-    final paymentTransaction = await transactions.findById(paymentTransactionId);
+    final paymentTransaction = await transactions.findById(
+      paymentTransactionId,
+    );
     if (paymentTransaction == null) {
       throw const RepositoryException(
         RepositoryFailureCode.notFound,
@@ -121,7 +123,9 @@ final class GetPaymentSettlementDetail {
         return PaymentSettlementDetailDto(
           settlement: PaymentSettlementDto.fromDomain(settlement),
           paymentTransaction: TransactionDto.fromDomain(paymentTransaction),
-          transactions: List.unmodifiable(matched.map(TransactionDto.fromDomain)),
+          transactions: List.unmodifiable(
+            matched.map(TransactionDto.fromDomain),
+          ),
         );
       });
 }
