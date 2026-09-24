@@ -110,6 +110,8 @@ class AppLocalizations {
       'paymentSettlementSaved': 'Payment settlement saved locally.',
       'paymentSettlementSaveFailed':
           'Payment settlement could not be saved. Your existing data was preserved.',
+      'paymentSettlementRollbackFailed':
+          'The settlement could not be saved, and the new payment transaction could not be removed automatically. Review the payment transaction before continuing.',
       'paymentSettlementRemoved': 'Payment settlement removed.',
       'paymentSettlementRemoveTitle': 'Remove payment settlement?',
       'paymentSettlementRemoveBody':
@@ -789,6 +791,8 @@ class AppLocalizations {
       'externalReferenceOptional': '外部参考号（可选）',
       'paymentSettlementSaved': '付款结算已保存在本地。',
       'paymentSettlementSaveFailed': '无法保存付款结算。现有数据未被更改。',
+      'paymentSettlementRollbackFailed':
+          '付款结算无法保存，而且新建的付款交易也无法自动移除。请先检查该付款交易再继续。',
       'paymentSettlementRemoved': '付款结算已移除。',
       'paymentSettlementRemoveTitle': '移除付款结算？',
       'paymentSettlementRemoveBody': '仅移除结算记录。付款交易仍会保留在 Butlerly 中。',
@@ -1398,6 +1402,8 @@ class AppLocalizations {
       'paymentSettlementSaved': 'Liquidación de pago guardada localmente.',
       'paymentSettlementSaveFailed':
           'No se pudo guardar la liquidación. Tus datos existentes se conservaron.',
+      'paymentSettlementRollbackFailed':
+          'No se pudo guardar la liquidación y la nueva transacción de pago no pudo eliminarse automáticamente. Revisa la transacción antes de continuar.',
       'paymentSettlementRemoved': 'Liquidación de pago eliminada.',
       'paymentSettlementRemoveTitle': '¿Eliminar la liquidación de pago?',
       'paymentSettlementRemoveBody':
