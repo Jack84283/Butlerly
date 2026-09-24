@@ -11,10 +11,7 @@ void main() {
     final router = GoRouter(
       initialLocation: '/tools',
       routes: [
-        GoRoute(
-          path: '/tools',
-          builder: (_, _) => const ToolsPage(),
-        ),
+        GoRoute(path: '/tools', builder: (_, _) => const ToolsPage()),
         GoRoute(
           path: '/payment-settlements',
           builder: (_, _) => const Scaffold(
