@@ -6,11 +6,13 @@ void main() {
   final now = DateTime.utc(2026, 9, 23, 12);
   late MemoryPaymentSettlements settlements;
   late MemoryPaymentSources sources;
+  late MemoryTransactions transactions;
   late FixedClock clock;
 
   setUp(() async {
     settlements = MemoryPaymentSettlements();
     sources = MemoryPaymentSources();
+    transactions = MemoryTransactions();
     clock = FixedClock(now);
     await sources.save(
       PaymentSource(
@@ -19,22 +21,19 @@ void main() {
         type: PaymentSourceType.card,
       ),
     );
-    await sources.save(
-      PaymentSource(
-        id: PaymentSourceId('checking'),
-        name: 'Checking',
-        type: PaymentSourceType.account,
-      ),
-    );
+    await transactions.save(paymentTransfer(now));
   });
 
   test('saves and lists a payment settlement', () async {
-    final result = await SavePaymentSettlement(settlements, sources, clock)(
+    final result = await SavePaymentSettlement(
+      settlements,
+      sources,
+      transactions,
+      clock,
+    )(
       id: 'settlement-1',
+      settlementTransactionId: 'payment-transfer',
       paymentSourceId: 'visa',
-      fundingPaymentSourceId: 'checking',
-      payment: money('2846.72'),
-      paymentDate: '2026-09-20',
       periodStart: '2026-08-15',
       periodEnd: '2026-09-14',
       statementBalance: money('2846.72'),
@@ -45,36 +44,42 @@ void main() {
     expect(
       listed,
       isA<ApplicationSuccess<List<PaymentSettlementDto>>>().having(
-        (value) => value.value.single.id,
-        'id',
-        'settlement-1',
+        (value) => value.value.single.settlementTransactionId,
+        'settlement transaction',
+        'payment-transfer',
       ),
     );
   });
 
-  test('detail resolves current transactions on every read', () async {
-    await SavePaymentSettlement(settlements, sources, clock)(
+  test('detail returns canonical payment and re-resolves activity', () async {
+    await SavePaymentSettlement(
+      settlements,
+      sources,
+      transactions,
+      clock,
+    )(
       id: 'settlement-1',
+      settlementTransactionId: 'payment-transfer',
       paymentSourceId: 'visa',
-      payment: money('20.00'),
-      paymentDate: '2026-09-20',
       periodStart: '2026-08-15',
       periodEnd: '2026-09-14',
     );
-    settlements.transactions.add(transaction('tx-1', now));
+    settlements.transactions.add(activity('tx-1', now));
 
-    final first = await GetPaymentSettlementDetail(settlements)('settlement-1');
-    expect(
-      (first as ApplicationSuccess<PaymentSettlementDetailDto>)
-          .value
-          .transactionCount,
-      1,
-    );
+    final first = await GetPaymentSettlementDetail(
+      settlements,
+      transactions,
+    )('settlement-1');
+    final firstValue =
+        (first as ApplicationSuccess<PaymentSettlementDetailDto>).value;
+    expect(firstValue.paymentTransaction.id, 'payment-transfer');
+    expect(firstValue.transactionCount, 1);
 
-    settlements.transactions.add(transaction('tx-2', now));
-    final second = await GetPaymentSettlementDetail(settlements)(
-      'settlement-1',
-    );
+    settlements.transactions.add(activity('tx-2', now));
+    final second = await GetPaymentSettlementDetail(
+      settlements,
+      transactions,
+    )('settlement-1');
     expect(
       (second as ApplicationSuccess<PaymentSettlementDetailDto>)
           .value
@@ -83,44 +88,47 @@ void main() {
     );
   });
 
-  test('status change is explicit workflow state', () async {
-    await SavePaymentSettlement(settlements, sources, clock)(
+  test('rejects a non-transfer settlement transaction', () async {
+    await transactions.save(activity('expense-1', now));
+
+    final result = await SavePaymentSettlement(
+      settlements,
+      sources,
+      transactions,
+      clock,
+    )(
       id: 'settlement-1',
+      settlementTransactionId: 'expense-1',
       paymentSourceId: 'visa',
-      payment: money('20.00'),
-      paymentDate: '2026-09-20',
       periodStart: '2026-08-15',
       periodEnd: '2026-09-14',
     );
 
-    final result = await SetPaymentSettlementStatus(settlements, clock)(
-      'settlement-1',
-      PaymentSettlementStatus.reconciled,
+    expect(result, isA<ApplicationFailure<PaymentSettlementDto>>());
+  });
+
+  test('status change is explicit workflow state', () async {
+    await SavePaymentSettlement(
+      settlements,
+      sources,
+      transactions,
+      clock,
+    )(
+      id: 'settlement-1',
+      settlementTransactionId: 'payment-transfer',
+      paymentSourceId: 'visa',
+      periodStart: '2026-08-15',
+      periodEnd: '2026-09-14',
     );
+
+    final result = await SetPaymentSettlementStatus(
+      settlements,
+      clock,
+    )('settlement-1', PaymentSettlementStatus.reconciled);
 
     expect(
       (result as ApplicationSuccess<PaymentSettlementDto>).value.status,
       PaymentSettlementStatus.reconciled,
-    );
-  });
-
-  test('rejects a missing payment source', () async {
-    final result = await SavePaymentSettlement(settlements, sources, clock)(
-      id: 'settlement-1',
-      paymentSourceId: 'missing',
-      payment: money('20.00'),
-      paymentDate: '2026-09-20',
-      periodStart: '2026-08-15',
-      periodEnd: '2026-09-14',
-    );
-
-    expect(
-      result,
-      isA<ApplicationFailure<PaymentSettlementDto>>().having(
-        (value) => value.failure.code,
-        'code',
-        ApplicationFailureCode.notFound,
-      ),
     );
   });
 }
@@ -176,10 +184,53 @@ final class MemoryPaymentSources implements PaymentSourceRepository {
   }
 }
 
+final class MemoryTransactions implements TransactionRepository {
+  final values = <String, Transaction>{};
+
+  @override
+  Future<Transaction?> findById(TransactionId id) async => values[id.value];
+
+  @override
+  Future<List<Transaction>> listAll() async => values.values.toList();
+
+  @override
+  Future<List<Transaction>> query(TransactionRepositoryQuery query) async =>
+      values.values.toList();
+
+  @override
+  Future<void> removePermanently(TransactionId id) async {
+    values.remove(id.value);
+  }
+
+  @override
+  Future<void> save(Transaction transaction) async {
+    values[transaction.id.value] = transaction;
+  }
+}
+
 Money money(String amount) =>
     Money(amount: DecimalValue.parse(amount), currency: CurrencyCode('USD'));
 
-Transaction transaction(String id, DateTime at) => Transaction(
+Transaction paymentTransfer(DateTime at) => Transaction(
+  id: TransactionId('payment-transfer'),
+  timing: KnownTransactionTime(at),
+  money: money('2846.72'),
+  direction: TransactionDirection.transfer,
+  sourceType: TransactionSourceType.manual,
+  paymentSourceId: PaymentSourceId('visa'),
+  provenance: [
+    Provenance(
+      id: ProvenanceId('provenance-payment'),
+      sourceType: ProvenanceSourceType.userEntry,
+      capturedAt: at,
+    ),
+  ],
+  transactionDate: '2026-09-20',
+  createdAt: at,
+  updatedAt: at,
+);
+
+Transaction activity(String id, DateTime at) => Transaction(
   id: TransactionId(id),
   timing: KnownTransactionTime(at),
   money: money('10.00'),
