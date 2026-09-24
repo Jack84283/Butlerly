@@ -29,11 +29,7 @@ void main() {
   });
 
   test('saves and lists a payment settlement', () async {
-    final result = await SavePaymentSettlement(
-      settlements,
-      sources,
-      clock,
-    )(
+    final result = await SavePaymentSettlement(settlements, sources, clock)(
       id: 'settlement-1',
       paymentSourceId: 'visa',
       fundingPaymentSourceId: 'checking',
@@ -57,11 +53,7 @@ void main() {
   });
 
   test('detail resolves current transactions on every read', () async {
-    await SavePaymentSettlement(
-      settlements,
-      sources,
-      clock,
-    )(
+    await SavePaymentSettlement(settlements, sources, clock)(
       id: 'settlement-1',
       paymentSourceId: 'visa',
       payment: money('20.00'),
@@ -71,9 +63,7 @@ void main() {
     );
     settlements.transactions.add(transaction('tx-1', now));
 
-    final first = await GetPaymentSettlementDetail(settlements)(
-      'settlement-1',
-    );
+    final first = await GetPaymentSettlementDetail(settlements)('settlement-1');
     expect(
       (first as ApplicationSuccess<PaymentSettlementDetailDto>)
           .value
@@ -94,11 +84,7 @@ void main() {
   });
 
   test('status change is explicit workflow state', () async {
-    await SavePaymentSettlement(
-      settlements,
-      sources,
-      clock,
-    )(
+    await SavePaymentSettlement(settlements, sources, clock)(
       id: 'settlement-1',
       paymentSourceId: 'visa',
       payment: money('20.00'),
@@ -107,10 +93,10 @@ void main() {
       periodEnd: '2026-09-14',
     );
 
-    final result = await SetPaymentSettlementStatus(
-      settlements,
-      clock,
-    )('settlement-1', PaymentSettlementStatus.reconciled);
+    final result = await SetPaymentSettlementStatus(settlements, clock)(
+      'settlement-1',
+      PaymentSettlementStatus.reconciled,
+    );
 
     expect(
       (result as ApplicationSuccess<PaymentSettlementDto>).value.status,
@@ -119,11 +105,7 @@ void main() {
   });
 
   test('rejects a missing payment source', () async {
-    final result = await SavePaymentSettlement(
-      settlements,
-      sources,
-      clock,
-    )(
+    final result = await SavePaymentSettlement(settlements, sources, clock)(
       id: 'settlement-1',
       paymentSourceId: 'missing',
       payment: money('20.00'),
@@ -194,10 +176,8 @@ final class MemoryPaymentSources implements PaymentSourceRepository {
   }
 }
 
-Money money(String amount) => Money(
-  amount: DecimalValue.parse(amount),
-  currency: CurrencyCode('USD'),
-);
+Money money(String amount) =>
+    Money(amount: DecimalValue.parse(amount), currency: CurrencyCode('USD'));
 
 Transaction transaction(String id, DateTime at) => Transaction(
   id: TransactionId(id),
