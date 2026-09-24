@@ -47,42 +47,42 @@ void main() {
   test(
     'resolves settlement transactions dynamically by source and period',
     () async {
-    final settlement = _settlement();
-    await settlements.save(settlement);
-    await transactions.save(
-      _transaction(
-        id: 'inside',
-        sourceId: 'visa',
-        transactionDate: '2026-09-01',
-      ),
-    );
-    await transactions.save(
-      _transaction(
-        id: 'outside',
-        sourceId: 'visa',
-        transactionDate: '2026-09-15',
-      ),
-    );
-    await transactions.save(
-      _transaction(
-        id: 'other-source',
-        sourceId: 'amex',
-        transactionDate: '2026-09-01',
-      ),
-    );
+      final settlement = _settlement();
+      await settlements.save(settlement);
+      await transactions.save(
+        _transaction(
+          id: 'inside',
+          sourceId: 'visa',
+          transactionDate: '2026-09-01',
+        ),
+      );
+      await transactions.save(
+        _transaction(
+          id: 'outside',
+          sourceId: 'visa',
+          transactionDate: '2026-09-15',
+        ),
+      );
+      await transactions.save(
+        _transaction(
+          id: 'other-source',
+          sourceId: 'amex',
+          transactionDate: '2026-09-01',
+        ),
+      );
 
-    final first = await settlements.listTransactions(settlement);
-    expect(first.map((value) => value.id.value), ['inside']);
+      final first = await settlements.listTransactions(settlement);
+      expect(first.map((value) => value.id.value), ['inside']);
 
-    await transactions.save(
-      _transaction(
-        id: 'late-import',
-        sourceId: 'visa',
-        transactionDate: '2026-08-20',
-      ),
-    );
+      await transactions.save(
+        _transaction(
+          id: 'late-import',
+          sourceId: 'visa',
+          transactionDate: '2026-08-20',
+        ),
+      );
 
-    final refreshed = await settlements.listTransactions(settlement);
+      final refreshed = await settlements.listTransactions(settlement);
       expect(
         refreshed.map((value) => value.id.value).toSet(),
         {'inside', 'late-import'},
