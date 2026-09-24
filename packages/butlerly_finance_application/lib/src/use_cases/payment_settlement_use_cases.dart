@@ -48,10 +48,11 @@ final class SavePaymentSettlement {
       );
     }
     if (paymentTransaction.direction != TransactionDirection.transfer ||
-        paymentTransaction.paymentSourceId != source) {
+        paymentTransaction.paymentSourceId != source ||
+        paymentTransaction.transactionDate == null) {
       throw const RepositoryException(
         RepositoryFailureCode.constraint,
-        'save payment settlement transaction relationship',
+        'save payment settlement transaction relationship/date',
       );
     }
     if (statementBalance != null &&
