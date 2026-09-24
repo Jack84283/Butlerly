@@ -21,6 +21,7 @@ final class FinanceServices {
     AnalysisRuleResultRepository? analysisResults,
     StatementRepository? statements,
     DuplicateCandidateGroupRepository? duplicateGroups,
+    PaymentSettlementRepository? paymentSettlements,
   }) : listTransactions = ListTransactions(transactions),
        seedInitialMasterData = SeedInitialMasterData(
          merchants,
@@ -269,6 +270,28 @@ final class FinanceServices {
                      : null,
                ),
              ),
+       savePaymentSettlement = paymentSettlements == null
+           ? null
+           : SavePaymentSettlement(
+               paymentSettlements,
+               paymentSources,
+               const SystemApplicationClock(),
+             ),
+       listPaymentSettlements = paymentSettlements == null
+           ? null
+           : ListPaymentSettlements(paymentSettlements),
+       getPaymentSettlementDetail = paymentSettlements == null
+           ? null
+           : GetPaymentSettlementDetail(paymentSettlements),
+       setPaymentSettlementStatus = paymentSettlements == null
+           ? null
+           : SetPaymentSettlementStatus(
+               paymentSettlements,
+               const SystemApplicationClock(),
+             ),
+       deletePaymentSettlement = paymentSettlements == null
+           ? null
+           : DeletePaymentSettlement(paymentSettlements),
        updateAnalysisFindingLifecycle = analysisFindings == null
            ? null
            : UpdateFindingLifecycle(analysisFindings),
@@ -343,6 +366,11 @@ final class FinanceServices {
   final UpdateFindingLifecycle? updateAnalysisFindingLifecycle;
   final InvalidateAnalysis? invalidateAnalysis;
   final StatementServices? statementServices;
+  final SavePaymentSettlement? savePaymentSettlement;
+  final ListPaymentSettlements? listPaymentSettlements;
+  final GetPaymentSettlementDetail? getPaymentSettlementDetail;
+  final SetPaymentSettlementStatus? setPaymentSettlementStatus;
+  final DeletePaymentSettlement? deletePaymentSettlement;
 }
 
 final class _NoMasterTranslationRepository
