@@ -5,9 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 void main() {
-  testWidgets('Tools exposes payment settlements as a secondary workflow', (
-    tester,
-  ) async {
+  testWidgets(
+    'Tools exposes payment settlements as a secondary workflow',
+    (tester) async {
     final router = GoRouter(
       initialLocation: '/tools',
       routes: [
@@ -36,6 +36,7 @@ void main() {
     await tester.tap(find.text('Payment settlements'));
     await tester.pumpAndSettle();
 
-    expect(find.text('payment-settlement-route'), findsOneWidget);
-  });
+      expect(find.text('payment-settlement-route'), findsOneWidget);
+    },
+  );
 }
