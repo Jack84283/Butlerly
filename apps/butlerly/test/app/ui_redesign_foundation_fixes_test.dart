@@ -194,7 +194,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(ButlerlyActionGroup), findsOneWidget);
-    expect(find.byType(ButlerlyActionRow), findsNWidgets(3));
+    expect(find.byType(ButlerlyActionRow), findsNWidgets(4));
+    expect(find.text('Payment settlements'), findsOneWidget);
     expect(find.text('Search'), findsNothing);
   });
 
