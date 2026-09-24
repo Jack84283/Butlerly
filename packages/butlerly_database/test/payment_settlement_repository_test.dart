@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:butlerly_database/butlerly_database.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart' hide Transaction;
 import 'package:test/test.dart';
 
 void main() {
