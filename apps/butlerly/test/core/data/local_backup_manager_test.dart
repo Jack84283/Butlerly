@@ -227,9 +227,7 @@ void main() {
 
     expect(await fixture.settlementStatus('settlement-1'), isNull);
   });
-
 }
-
 
 Future<void> _downgradeBackupToV8(File backup) async {
   final bytes = await backup.readAsBytes();
