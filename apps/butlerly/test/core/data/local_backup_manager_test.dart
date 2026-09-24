@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
+import 'package:butlerly_database/butlerly_database.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -174,6 +176,29 @@ void main() {
     expect(await fixture.settlementStatus('settlement-1'), 'reconciled');
   });
 
+  test('replace accepts a v8 backup without payment settlements', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final oldTime = DateTime.utc(2026, 1, 1);
+
+    await fixture.insertPaymentSource(id: 'visa', name: 'Visa');
+    final backup = File(
+      path.join(fixture.root.path, 'legacy-v8.butlerlybackup'),
+    );
+    await fixture.backups.createBackup(backup);
+    await _downgradeBackupToV8(backup);
+
+    await fixture.insertPaymentSettlement(
+      id: 'local-v9-settlement',
+      paymentSourceId: 'visa',
+      updatedAt: oldTime,
+    );
+
+    await fixture.backups.restore(backup, mode: LocalRestoreMode.replace);
+
+    expect(await fixture.settlementStatus('local-v9-settlement'), isNull);
+  });
+
   test('merge applies a payment settlement deletion tombstone', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
@@ -206,6 +231,34 @@ void main() {
     expect(await fixture.settlementStatus('settlement-1'), isNull);
   });
 
+}
+
+
+Future<void> _downgradeBackupToV8(File backup) async {
+  final bytes = await backup.readAsBytes();
+  final magic = utf8.encode('BUTLERLYBACKUP2');
+  final metadataLength = int64FromBytes(
+    bytes.sublist(magic.length, magic.length + 8),
+  );
+  final metadataStart = magic.length + 8 + 64;
+  final metadataEnd = metadataStart + metadataLength;
+  final metadata =
+      jsonDecode(utf8.decode(bytes.sublist(metadataStart, metadataEnd)))
+          as Map<String, Object?>;
+  final manifest = (metadata['manifest']! as Map).cast<String, Object?>();
+  final tables = (metadata['tables']! as Map).cast<String, Object?>();
+  manifest['schemaVersion'] = 8;
+  tables.remove('payment_settlements');
+
+  final encoded = utf8.encode(jsonEncode(metadata));
+  final output = <int>[
+    ...magic,
+    ...int64Bytes(encoded.length),
+    ...ascii.encode(sha256Bytes(encoded)),
+    ...encoded,
+    ...bytes.sublist(metadataEnd),
+  ];
+  await backup.writeAsBytes(output, flush: true);
 }
 
 final class _Fixture {
