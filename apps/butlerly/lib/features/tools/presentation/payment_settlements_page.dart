@@ -86,9 +86,10 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
         externalReference: draft.externalReference,
       ),
     );
-    if (!mounted) return;
     if (paymentResult is ApplicationFailure<TransactionDto>) {
-      _showMessage(context.l10n.text('paymentSettlementSaveFailed'));
+      if (mounted) {
+        _showMessage(context.l10n.text('paymentSettlementSaveFailed'));
+      }
       return;
     }
 
@@ -107,20 +108,21 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
       description: draft.description,
       externalReference: draft.externalReference,
     );
-    if (!mounted) return;
     if (settlementResult is ApplicationFailure<PaymentSettlementDto>) {
       final rollback = await finance.deleteTransactionPermanently(
         transactionId,
       );
-      if (!mounted) return;
-      _showMessage(
-        rollback is ApplicationFailure<void>
-            ? context.l10n.text('paymentSettlementRollbackFailed')
-            : context.l10n.text('paymentSettlementSaveFailed'),
-      );
+      if (mounted) {
+        _showMessage(
+          rollback is ApplicationFailure<void>
+              ? context.l10n.text('paymentSettlementRollbackFailed')
+              : context.l10n.text('paymentSettlementSaveFailed'),
+        );
+      }
       return;
     }
 
+    if (!mounted) return;
     _showMessage(context.l10n.text('paymentSettlementSaved'));
     await _refresh();
   }
