@@ -120,6 +120,34 @@ void main() {
     });
   });
 
+  test('rejects invalid edits to a settlement payment transaction', () async {
+    await settlements.save(_settlement());
+
+    final invalid = _transaction(
+      id: 'payment-transfer',
+      sourceId: 'visa',
+      transactionDate: '2026-09-20',
+      direction: TransactionDirection.expense,
+      amount: '2846.72',
+    );
+
+    expect(
+      () => transactions.save(invalid),
+      throwsA(isA<RepositoryException>()),
+    );
+  });
+
+  test('deleting the canonical payment transaction deletes the settlement', () async {
+    await settlements.save(_settlement());
+
+    await transactions.removePermanently(TransactionId('payment-transfer'));
+
+    expect(
+      await settlements.findById(PaymentSettlementId('settlement-1')),
+      isNull,
+    );
+  });
+
   test('does not create a persisted settlement membership table', () async {
     final rows = await database.connection.rawQuery(
       "SELECT name FROM sqlite_master WHERE type = 'table' "
