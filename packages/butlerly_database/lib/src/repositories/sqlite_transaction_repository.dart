@@ -93,10 +93,7 @@ final class SqliteTransactionRepository
   ) async {
     final rows = await executor.query(
       'payment_settlements',
-      columns: [
-        'payment_source_id',
-        'statement_balance_currency',
-      ],
+      columns: ['payment_source_id', 'statement_balance_currency'],
       where: 'settlement_transaction_id = ?',
       whereArgs: [value.id.value],
       limit: 1,
@@ -104,7 +101,8 @@ final class SqliteTransactionRepository
     if (rows.isEmpty) return;
     final settlement = rows.single;
     final expectedSource = settlement['payment_source_id'] as String;
-    final statementCurrency = settlement['statement_balance_currency'] as String?;
+    final statementCurrency =
+        settlement['statement_balance_currency'] as String?;
     final valid =
         value.direction == TransactionDirection.transfer &&
         value.status == TransactionStatus.active &&
