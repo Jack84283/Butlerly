@@ -8,33 +8,33 @@ void main() {
   testWidgets(
     'Tools exposes payment settlements as a secondary workflow',
     (tester) async {
-    final router = GoRouter(
-      initialLocation: '/tools',
-      routes: [
-        GoRoute(path: '/tools', builder: (_, _) => const ToolsPage()),
-        GoRoute(
-          path: '/payment-settlements',
-          builder: (_, _) => const Scaffold(
-            body: Text('payment-settlement-route'),
+      final router = GoRouter(
+        initialLocation: '/tools',
+        routes: [
+          GoRoute(path: '/tools', builder: (_, _) => const ToolsPage()),
+          GoRoute(
+            path: '/payment-settlements',
+            builder: (_, _) => const Scaffold(
+              body: Text('payment-settlement-route'),
+            ),
           ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp.router(
+          routerConfig: router,
+          localizationsDelegates: const [AppLocalizations.delegate],
+          supportedLocales: AppLocalizations.supportedLocales,
         ),
-      ],
-    );
-    addTearDown(router.dispose);
+      );
+      await tester.pumpAndSettle();
 
-    await tester.pumpWidget(
-      MaterialApp.router(
-        routerConfig: router,
-        localizationsDelegates: const [AppLocalizations.delegate],
-        supportedLocales: AppLocalizations.supportedLocales,
-      ),
-    );
-    await tester.pumpAndSettle();
+      expect(find.text('Payment settlements'), findsOneWidget);
 
-    expect(find.text('Payment settlements'), findsOneWidget);
-
-    await tester.tap(find.text('Payment settlements'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Payment settlements'));
+      await tester.pumpAndSettle();
 
       expect(find.text('payment-settlement-route'), findsOneWidget);
     },
