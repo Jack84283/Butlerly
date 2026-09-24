@@ -120,33 +120,36 @@ void main() {
     });
   });
 
-  test('rejects invalid settlement relationships at the database boundary', () async {
-    await transactions.save(
-      _transaction(
-        id: 'expense-payment',
-        sourceId: 'visa',
-        transactionDate: '2026-09-20',
-        direction: TransactionDirection.expense,
-        amount: '2846.72',
-      ),
-    );
+  test(
+    'rejects invalid settlement relationships at the database boundary',
+    () async {
+      await transactions.save(
+        _transaction(
+          id: 'expense-payment',
+          sourceId: 'visa',
+          transactionDate: '2026-09-20',
+          direction: TransactionDirection.expense,
+          amount: '2846.72',
+        ),
+      );
 
-    final invalid = PaymentSettlement(
-      id: PaymentSettlementId('invalid-settlement'),
-      settlementTransactionId: TransactionId('expense-payment'),
-      paymentSourceId: PaymentSourceId('visa'),
-      periodStart: '2026-08-15',
-      periodEnd: '2026-09-14',
-      status: PaymentSettlementStatus.open,
-      createdAt: DateTime.utc(2026, 9, 20, 12),
-      updatedAt: DateTime.utc(2026, 9, 20, 12),
-    );
+      final invalid = PaymentSettlement(
+        id: PaymentSettlementId('invalid-settlement'),
+        settlementTransactionId: TransactionId('expense-payment'),
+        paymentSourceId: PaymentSourceId('visa'),
+        periodStart: '2026-08-15',
+        periodEnd: '2026-09-14',
+        status: PaymentSettlementStatus.open,
+        createdAt: DateTime.utc(2026, 9, 20, 12),
+        updatedAt: DateTime.utc(2026, 9, 20, 12),
+      );
 
-    expect(
-      () => settlements.save(invalid),
-      throwsA(isA<RepositoryException>()),
-    );
-  });
+      expect(
+        () => settlements.save(invalid),
+        throwsA(isA<RepositoryException>()),
+      );
+    },
+  );
 
   test('rejects archiving a settlement payment transaction', () async {
     await settlements.save(_settlement());
@@ -202,16 +205,19 @@ void main() {
     );
   });
 
-  test('deleting the canonical payment transaction deletes the settlement', () async {
-    await settlements.save(_settlement());
+  test(
+    'deleting the canonical payment transaction deletes the settlement',
+    () async {
+      await settlements.save(_settlement());
 
-    await transactions.removePermanently(TransactionId('payment-transfer'));
+      await transactions.removePermanently(TransactionId('payment-transfer'));
 
-    expect(
-      await settlements.findById(PaymentSettlementId('settlement-1')),
-      isNull,
-    );
-  });
+      expect(
+        await settlements.findById(PaymentSettlementId('settlement-1')),
+        isNull,
+      );
+    },
+  );
 
   test('does not create a persisted settlement membership table', () async {
     final rows = await database.connection.rawQuery(
