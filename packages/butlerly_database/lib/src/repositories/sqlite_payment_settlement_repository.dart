@@ -55,14 +55,16 @@ final class SqlitePaymentSettlementRepository
   @override
   Future<List<Transaction>> listTransactions(
     PaymentSettlement settlement,
-  ) => SqliteTransactionRepository(database).query(
-    TransactionRepositoryQuery(
-      from: DateTime.parse(settlement.periodStart),
-      to: DateTime.parse(settlement.periodEnd),
-      paymentSourceId: settlement.paymentSourceId,
-      status: TransactionStatus.active,
-    ),
-  );
+  ) async {
+    return SqliteTransactionRepository(database).query(
+      TransactionRepositoryQuery(
+        from: DateTime.parse(settlement.periodStart),
+        to: DateTime.parse(settlement.periodEnd),
+        paymentSourceId: settlement.paymentSourceId,
+        status: TransactionStatus.active,
+      ),
+    );
+  }
 
   @override
   Future<void> remove(PaymentSettlementId id) async {
