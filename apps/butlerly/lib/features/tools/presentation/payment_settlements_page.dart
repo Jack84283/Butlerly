@@ -466,8 +466,9 @@ class _PaymentSettlementDetailPageState
                 ),
                 const Divider(height: ButlerlySpacing.section),
               ],
-            const SizedBox(height: ButlerlySpacing.structural),
-          ],
+              const SizedBox(height: ButlerlySpacing.structural),
+            ],
+          ),
         );
       },
     );
