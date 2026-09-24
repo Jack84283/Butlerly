@@ -25,19 +25,15 @@ void main() {
   });
 
   test('saves and lists a payment settlement', () async {
-    final result = await SavePaymentSettlement(
-      settlements,
-      sources,
-      transactions,
-      clock,
-    )(
-      id: 'settlement-1',
-      settlementTransactionId: 'payment-transfer',
-      paymentSourceId: 'visa',
-      periodStart: '2026-08-15',
-      periodEnd: '2026-09-14',
-      statementBalance: money('2846.72'),
-    );
+    final result =
+        await SavePaymentSettlement(settlements, sources, transactions, clock)(
+          id: 'settlement-1',
+          settlementTransactionId: 'payment-transfer',
+          paymentSourceId: 'visa',
+          periodStart: '2026-08-15',
+          periodEnd: '2026-09-14',
+          statementBalance: money('2846.72'),
+        );
 
     expect(result, isA<ApplicationSuccess<PaymentSettlementDto>>());
     final listed = await ListPaymentSettlements(settlements)();
@@ -52,12 +48,7 @@ void main() {
   });
 
   test('detail returns canonical payment and re-resolves activity', () async {
-    await SavePaymentSettlement(
-      settlements,
-      sources,
-      transactions,
-      clock,
-    )(
+    await SavePaymentSettlement(settlements, sources, transactions, clock)(
       id: 'settlement-1',
       settlementTransactionId: 'payment-transfer',
       paymentSourceId: 'visa',
@@ -66,20 +57,18 @@ void main() {
     );
     settlements.transactions.add(activity('tx-1', now));
 
-    final first = await GetPaymentSettlementDetail(
-      settlements,
-      transactions,
-    )('settlement-1');
+    final first = await GetPaymentSettlementDetail(settlements, transactions)(
+      'settlement-1',
+    );
     final firstValue =
         (first as ApplicationSuccess<PaymentSettlementDetailDto>).value;
     expect(firstValue.paymentTransaction.id, 'payment-transfer');
     expect(firstValue.transactionCount, 1);
 
     settlements.transactions.add(activity('tx-2', now));
-    final second = await GetPaymentSettlementDetail(
-      settlements,
-      transactions,
-    )('settlement-1');
+    final second = await GetPaymentSettlementDetail(settlements, transactions)(
+      'settlement-1',
+    );
     expect(
       (second as ApplicationSuccess<PaymentSettlementDetailDto>)
           .value
@@ -91,29 +80,20 @@ void main() {
   test('rejects a non-transfer settlement transaction', () async {
     await transactions.save(activity('expense-1', now));
 
-    final result = await SavePaymentSettlement(
-      settlements,
-      sources,
-      transactions,
-      clock,
-    )(
-      id: 'settlement-1',
-      settlementTransactionId: 'expense-1',
-      paymentSourceId: 'visa',
-      periodStart: '2026-08-15',
-      periodEnd: '2026-09-14',
-    );
+    final result =
+        await SavePaymentSettlement(settlements, sources, transactions, clock)(
+          id: 'settlement-1',
+          settlementTransactionId: 'expense-1',
+          paymentSourceId: 'visa',
+          periodStart: '2026-08-15',
+          periodEnd: '2026-09-14',
+        );
 
     expect(result, isA<ApplicationFailure<PaymentSettlementDto>>());
   });
 
   test('status change is explicit workflow state', () async {
-    await SavePaymentSettlement(
-      settlements,
-      sources,
-      transactions,
-      clock,
-    )(
+    await SavePaymentSettlement(settlements, sources, transactions, clock)(
       id: 'settlement-1',
       settlementTransactionId: 'payment-transfer',
       paymentSourceId: 'visa',
@@ -121,10 +101,10 @@ void main() {
       periodEnd: '2026-09-14',
     );
 
-    final result = await SetPaymentSettlementStatus(
-      settlements,
-      clock,
-    )('settlement-1', PaymentSettlementStatus.reconciled);
+    final result = await SetPaymentSettlementStatus(settlements, clock)(
+      'settlement-1',
+      PaymentSettlementStatus.reconciled,
+    );
 
     expect(
       (result as ApplicationSuccess<PaymentSettlementDto>).value.status,
