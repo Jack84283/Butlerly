@@ -37,22 +37,25 @@ void main() {
 
   tearDown(() => database.close());
 
-  test('persists a settlement linked to its canonical payment transaction', () async {
-    final settlement = _settlement();
+  test(
+    'persists a settlement linked to its canonical payment transaction',
+    () async {
+      final settlement = _settlement();
 
-    await settlements.save(settlement);
-    final loaded = await settlements.findById(settlement.id);
+      await settlements.save(settlement);
+      final loaded = await settlements.findById(settlement.id);
 
-    expect(loaded, isNotNull);
-    expect(
-      loaded!.settlementTransactionId,
-      TransactionId('payment-transfer'),
-    );
-    expect(loaded.paymentSourceId, PaymentSourceId('visa'));
-    expect(loaded.periodStart, '2026-08-15');
-    expect(loaded.periodEnd, '2026-09-14');
-    expect(loaded.statementBalance, settlement.statementBalance);
-  });
+      expect(loaded, isNotNull);
+      expect(
+        loaded!.settlementTransactionId,
+        TransactionId('payment-transfer'),
+      );
+      expect(loaded.paymentSourceId, PaymentSourceId('visa'));
+      expect(loaded.periodStart, '2026-08-15');
+      expect(loaded.periodEnd, '2026-09-14');
+      expect(loaded.statementBalance, settlement.statementBalance);
+    },
+  );
 
   test('resolves activity dynamically and excludes transfers', () async {
     final settlement = _settlement();
