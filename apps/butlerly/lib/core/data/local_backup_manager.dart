@@ -661,9 +661,9 @@ final class LocalBackupManager {
       final metadata = decoded.cast<String, Object?>();
       final manifest = (metadata['manifest'] as Map?)?.cast<String, Object?>();
       final sourceSchema = manifest?['schemaVersion'] as int?;
-      if (sourceSchema != null && sourceSchema != _supportedSchemaVersion) {
+      if (sourceSchema != null && sourceSchema > _supportedSchemaVersion) {
         throw FormatException(
-          'Backup schema $sourceSchema is not supported by this Butlerly build.',
+          'Backup schema $sourceSchema is newer than this Butlerly build.',
         );
       }
     } finally {
@@ -718,6 +718,7 @@ final class LocalBackupManager {
     for (final query in <String>[
       'SELECT COUNT(*) FROM evidence_items WHERE created_at > ?',
       'SELECT COUNT(*) FROM financial_statements WHERE updated_at > ?',
+      'SELECT COUNT(*) FROM payment_settlements WHERE updated_at > ?',
       'SELECT COUNT(*) FROM statement_rows WHERE updated_at > ?',
       'SELECT COUNT(*) FROM review_issues '
           'WHERE closed_at IS NOT NULL AND closed_at > ?',
