@@ -23,72 +23,99 @@ void main() {
     transactions = SqliteTransactionRepository(database);
 
     await _insertPaymentSource(database, 'visa', 'Visa');
-    await _insertPaymentSource(database, 'checking', 'Checking');
     await _insertPaymentSource(database, 'amex', 'Amex');
+    await transactions.save(
+      _transaction(
+        id: 'payment-transfer',
+        sourceId: 'visa',
+        transactionDate: '2026-09-20',
+        direction: TransactionDirection.transfer,
+        amount: '2846.72',
+      ),
+    );
   });
 
   tearDown(() => database.close());
 
-  test('persists and hydrates a payment settlement', () async {
+  test('persists a settlement linked to its canonical payment transaction', () async {
     final settlement = _settlement();
 
     await settlements.save(settlement);
     final loaded = await settlements.findById(settlement.id);
 
     expect(loaded, isNotNull);
-    expect(loaded!.paymentSourceId, PaymentSourceId('visa'));
-    expect(loaded.fundingPaymentSourceId, PaymentSourceId('checking'));
-    expect(loaded.payment, settlement.payment);
+    expect(
+      loaded!.settlementTransactionId,
+      TransactionId('payment-transfer'),
+    );
+    expect(loaded.paymentSourceId, PaymentSourceId('visa'));
     expect(loaded.periodStart, '2026-08-15');
     expect(loaded.periodEnd, '2026-09-14');
     expect(loaded.statementBalance, settlement.statementBalance);
   });
 
-  test(
-    'resolves settlement transactions dynamically by source and period',
-    () async {
-      final settlement = _settlement();
-      await settlements.save(settlement);
-      await transactions.save(
-        _transaction(
-          id: 'inside',
-          sourceId: 'visa',
-          transactionDate: '2026-09-01',
-        ),
-      );
-      await transactions.save(
-        _transaction(
-          id: 'outside',
-          sourceId: 'visa',
-          transactionDate: '2026-09-15',
-        ),
-      );
-      await transactions.save(
-        _transaction(
-          id: 'other-source',
-          sourceId: 'amex',
-          transactionDate: '2026-09-01',
-        ),
-      );
+  test('resolves activity dynamically and excludes transfers', () async {
+    final settlement = _settlement();
+    await settlements.save(settlement);
+    await transactions.save(
+      _transaction(
+        id: 'inside-expense',
+        sourceId: 'visa',
+        transactionDate: '2026-09-01',
+      ),
+    );
+    await transactions.save(
+      _transaction(
+        id: 'inside-refund',
+        sourceId: 'visa',
+        transactionDate: '2026-09-02',
+        direction: TransactionDirection.refund,
+      ),
+    );
+    await transactions.save(
+      _transaction(
+        id: 'inside-transfer',
+        sourceId: 'visa',
+        transactionDate: '2026-09-03',
+        direction: TransactionDirection.transfer,
+      ),
+    );
+    await transactions.save(
+      _transaction(
+        id: 'outside',
+        sourceId: 'visa',
+        transactionDate: '2026-09-15',
+      ),
+    );
+    await transactions.save(
+      _transaction(
+        id: 'other-source',
+        sourceId: 'amex',
+        transactionDate: '2026-09-01',
+      ),
+    );
 
-      final first = await settlements.listTransactions(settlement);
-      expect(first.map((value) => value.id.value), ['inside']);
+    final first = await settlements.listTransactions(settlement);
+    expect(first.map((value) => value.id.value).toSet(), {
+      'inside-expense',
+      'inside-refund',
+    });
 
-      await transactions.save(
-        _transaction(
-          id: 'late-import',
-          sourceId: 'visa',
-          transactionDate: '2026-08-20',
-        ),
-      );
+    await transactions.save(
+      _transaction(
+        id: 'late-import',
+        sourceId: 'visa',
+        transactionDate: '2026-08-20',
+      ),
+    );
 
-      final refreshed = await settlements.listTransactions(settlement);
-      expect(refreshed.map((value) => value.id.value).toSet(), {
-        'inside',
-        'late-import',
-      });
-    },
-  );
+    final refreshed = await settlements.listTransactions(settlement);
+    expect(refreshed.map((value) => value.id.value).toSet(), {
+      'inside-expense',
+      'inside-refund',
+      'late-import',
+    });
+  });
 
   test('does not create a persisted settlement membership table', () async {
     final rows = await database.connection.rawQuery(
@@ -104,13 +131,8 @@ PaymentSettlement _settlement() {
   final at = DateTime.utc(2026, 9, 20, 12);
   return PaymentSettlement(
     id: PaymentSettlementId('settlement-1'),
+    settlementTransactionId: TransactionId('payment-transfer'),
     paymentSourceId: PaymentSourceId('visa'),
-    fundingPaymentSourceId: PaymentSourceId('checking'),
-    payment: Money(
-      amount: DecimalValue.parse('2846.72'),
-      currency: CurrencyCode('USD'),
-    ),
-    paymentDate: '2026-09-20',
     periodStart: '2026-08-15',
     periodEnd: '2026-09-14',
     statementBalance: Money(
@@ -127,16 +149,18 @@ Transaction _transaction({
   required String id,
   required String sourceId,
   required String transactionDate,
+  TransactionDirection direction = TransactionDirection.expense,
+  String amount = '10.00',
 }) {
   final at = DateTime.parse('${transactionDate}T12:00:00Z');
   return Transaction(
     id: TransactionId(id),
     timing: KnownTransactionTime(at),
     money: Money(
-      amount: DecimalValue.parse('10.00'),
+      amount: DecimalValue.parse(amount),
       currency: CurrencyCode('USD'),
     ),
-    direction: TransactionDirection.expense,
+    direction: direction,
     sourceType: TransactionSourceType.import,
     paymentSourceId: PaymentSourceId(sourceId),
     provenance: [
