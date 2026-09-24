@@ -19,6 +19,7 @@ import 'package:butlerly/features/foundation/presentation/statement_capture_page
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/features/insights/presentation/insights_page.dart';
+import 'package:butlerly/features/tools/presentation/payment_settlements_page.dart';
 import 'package:butlerly/features/tools/presentation/tools_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -210,6 +211,10 @@ final appRouter = GoRouter(
                 message: context.l10n.text('dataPreserved'),
               ),
             ),
+    ),
+    GoRoute(
+      path: '/payment-settlements',
+      builder: (_, _) => const Scaffold(body: PaymentSettlementsPage()),
     ),
     GoRoute(
       path: '/payment-sources',

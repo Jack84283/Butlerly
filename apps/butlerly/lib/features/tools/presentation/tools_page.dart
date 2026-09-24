@@ -37,6 +37,12 @@ class ToolsPage extends StatelessWidget {
       context.l10n.text('toolsInsightsDescription'),
       '/insights',
     ),
+    _ToolDefinition(
+      Icons.credit_score_outlined,
+      context.l10n.text('paymentSettlements'),
+      context.l10n.text('toolsPaymentSettlementsDescription'),
+      '/payment-settlements',
+    ),
   ];
 
   @override
