@@ -83,10 +83,10 @@ void main() {
       );
 
       final refreshed = await settlements.listTransactions(settlement);
-      expect(
-        refreshed.map((value) => value.id.value).toSet(),
-        {'inside', 'late-import'},
-      );
+      expect(refreshed.map((value) => value.id.value).toSet(), {
+        'inside',
+        'late-import',
+      });
     },
   );
 
