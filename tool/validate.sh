@@ -35,7 +35,6 @@ validate_database() (
 
 validate_flutter_application() (
   cd apps/butlerly
-  dart format --output=show test/core/data/local_backup_manager_test.dart
   format_check
   flutter analyze
   flutter test
