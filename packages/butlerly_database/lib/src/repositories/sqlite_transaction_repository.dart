@@ -107,6 +107,7 @@ final class SqliteTransactionRepository
     final statementCurrency = settlement['statement_balance_currency'] as String?;
     final valid =
         value.direction == TransactionDirection.transfer &&
+        value.status == TransactionStatus.active &&
         value.paymentSourceId?.value == expectedSource &&
         value.transactionDate != null &&
         (statementCurrency == null ||
