@@ -112,9 +112,15 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     );
     if (!mounted) return;
     if (settlementResult is ApplicationFailure<PaymentSettlementDto>) {
-      await finance.deleteTransactionPermanently(transactionId);
+      final rollback = await finance.deleteTransactionPermanently(
+        transactionId,
+      );
       if (!mounted) return;
-      _showMessage(context.l10n.text('paymentSettlementSaveFailed'));
+      _showMessage(
+        rollback is ApplicationFailure<void>
+            ? context.l10n.text('paymentSettlementRollbackFailed')
+            : context.l10n.text('paymentSettlementSaveFailed'),
+      );
       return;
     }
 
@@ -211,9 +217,8 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                 const SizedBox(height: ButlerlySpacing.small),
               ],
             ],
-              const SizedBox(height: ButlerlySpacing.structural),
-            ],
-          ),
+            const SizedBox(height: ButlerlySpacing.structural),
+          ],
         );
       },
     );
@@ -272,8 +277,31 @@ class _PaymentSettlementDetailPageState
         ),
       ),
     );
-    if (changed == true && mounted) await _refresh();
+    if (changed != true || !mounted) return;
+
+    if (transaction.id == detailPaymentTransactionId) {
+      final result = await widget.finance.getPaymentSettlementDetail?.call(
+        widget.settlementId,
+      );
+      if (!mounted) return;
+      if (result is ApplicationFailure<PaymentSettlementDetailDto>) {
+        Navigator.of(context).pop(true);
+        return;
+      }
+    }
+
+    await _refresh();
   }
+
+  String get detailPaymentTransactionId {
+    final current = _detail;
+    // The current detail future always resolves before a transaction row can
+    // be opened. This getter is only used to distinguish the canonical payment
+    // row from statement activity after returning from TransactionDetailPage.
+    return _lastPaymentTransactionId;
+  }
+
+  String _lastPaymentTransactionId = '';
 
   Future<void> _edit(PaymentSettlementDetailDto detail) async {
     final save = widget.finance.savePaymentSettlement;
@@ -380,6 +408,7 @@ class _PaymentSettlementDetailPageState
           );
         }
         final detail = snapshot.requireData;
+        _lastPaymentTransactionId = detail.paymentTransaction.id;
         final settlement = detail.settlement;
         final sourceName =
             widget.sourceNames[settlement.paymentSourceId] ??
