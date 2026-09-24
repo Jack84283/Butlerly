@@ -1,15 +1,12 @@
 CREATE TABLE payment_settlements (
   id TEXT PRIMARY KEY NOT NULL,
+  settlement_transaction_id TEXT NOT NULL UNIQUE REFERENCES transactions(id),
   payment_source_id TEXT NOT NULL REFERENCES payment_sources(id),
-  funding_payment_source_id TEXT REFERENCES payment_sources(id),
-  payment_amount_coefficient TEXT NOT NULL,
-  payment_amount_scale INTEGER NOT NULL CHECK(payment_amount_scale >= 0),
-  currency TEXT NOT NULL,
-  payment_date TEXT NOT NULL,
   period_start TEXT NOT NULL,
   period_end TEXT NOT NULL,
   statement_balance_coefficient TEXT,
   statement_balance_scale INTEGER CHECK(statement_balance_scale IS NULL OR statement_balance_scale >= 0),
+  statement_balance_currency TEXT,
   status TEXT NOT NULL,
   description TEXT,
   external_reference TEXT,
@@ -19,13 +16,13 @@ CREATE TABLE payment_settlements (
   CHECK(
     (statement_balance_coefficient IS NULL) =
     (statement_balance_scale IS NULL)
+    AND
+    (statement_balance_scale IS NULL) =
+    (statement_balance_currency IS NULL)
   )
 );
 
-CREATE INDEX payment_settlements_payment_source_date_idx
-  ON payment_settlements(payment_source_id, payment_date DESC);
-
-CREATE INDEX payment_settlements_period_idx
+CREATE INDEX payment_settlements_payment_source_period_idx
   ON payment_settlements(payment_source_id, period_start, period_end);
 
 CREATE INDEX transactions_payment_source_date_idx
@@ -44,4 +41,3 @@ BEGIN
   DELETE FROM entity_tombstones
   WHERE entity_type = 'payment_settlements' AND entity_id = NEW.id;
 END;
-
