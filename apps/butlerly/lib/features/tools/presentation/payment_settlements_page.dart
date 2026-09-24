@@ -211,8 +211,9 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                 const SizedBox(height: ButlerlySpacing.small),
               ],
             ],
-            const SizedBox(height: ButlerlySpacing.structural),
-          ],
+              const SizedBox(height: ButlerlySpacing.structural),
+            ],
+          ),
         );
       },
     );
@@ -383,9 +384,10 @@ class _PaymentSettlementDetailPageState
         final sourceName =
             widget.sourceNames[settlement.paymentSourceId] ??
             settlement.paymentSourceId;
-        return ButlerlyPage(
-          title: sourceName,
-          subtitle: '${settlement.periodStart} – ${settlement.periodEnd}',
+        return Scaffold(
+          body: ButlerlyPage(
+            title: sourceName,
+            subtitle: '${settlement.periodStart} – ${settlement.periodEnd}',
           onRefresh: _refresh,
           actions: [
             IconButton(
