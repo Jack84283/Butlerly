@@ -157,9 +157,11 @@ Future<void> _insertPaymentSource(
   ButlerlyDatabase database,
   String id,
   String name,
-) => database.connection.insert('payment_sources', {
-  'id': id,
-  'name': name,
-  'type': PaymentSourceType.card.name,
-  'status': PaymentSourceStatus.active.name,
-});
+) async {
+  await database.connection.insert('payment_sources', {
+    'id': id,
+    'name': name,
+    'type': PaymentSourceType.card.name,
+    'status': PaymentSourceStatus.active.name,
+  });
+}
