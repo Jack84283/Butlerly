@@ -27,6 +27,7 @@ final class LocalDataManager {
 
   static const _exportTables = <String>[
     'payment_sources',
+    'payment_settlements',
     'merchants',
     'categories',
     'tags',
@@ -73,6 +74,7 @@ final class LocalDataManager {
     'transaction_tags',
     'transaction_provenances',
     'transactions',
+    'payment_settlements',
     'payment_sources',
     'merchants',
     'categories',
