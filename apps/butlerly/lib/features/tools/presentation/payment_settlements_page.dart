@@ -413,85 +413,85 @@ class _PaymentSettlementDetailPageState
             subtitle: '${settlement.periodStart} – ${settlement.periodEnd}',
             onRefresh: _refresh,
             actions: [
-            IconButton(
-              tooltip: context.l10n.text('editPaymentSettlement'),
-              onPressed: () => _edit(detail),
-              icon: const Icon(Icons.edit_outlined),
-            ),
-            PopupMenuButton<_SettlementAction>(
-              onSelected: (action) async {
-                if (action == _SettlementAction.remove) {
-                  await _remove();
-                  return;
-                }
-                final status = switch (action) {
-                  _SettlementAction.open => PaymentSettlementStatus.open,
-                  _SettlementAction.reconciled =>
-                    PaymentSettlementStatus.reconciled,
-                  _SettlementAction.needsReview =>
-                    PaymentSettlementStatus.needsReview,
-                  _SettlementAction.remove => PaymentSettlementStatus.open,
-                };
-                await _setStatus(status);
-              },
+              IconButton(
+                tooltip: context.l10n.text('editPaymentSettlement'),
+                onPressed: () => _edit(detail),
+                icon: const Icon(Icons.edit_outlined),
+              ),
+              PopupMenuButton<_SettlementAction>(
+                onSelected: (action) async {
+                  if (action == _SettlementAction.remove) {
+                    await _remove();
+                    return;
+                  }
+                  final status = switch (action) {
+                    _SettlementAction.open => PaymentSettlementStatus.open,
+                    _SettlementAction.reconciled =>
+                      PaymentSettlementStatus.reconciled,
+                    _SettlementAction.needsReview =>
+                      PaymentSettlementStatus.needsReview,
+                    _SettlementAction.remove => PaymentSettlementStatus.open,
+                  };
+                  await _setStatus(status);
+                },
                 itemBuilder: (context) => [
-                PopupMenuItem(
-                  value: _SettlementAction.open,
-                  child: Text(context.l10n.text('markAsOpen')),
-                ),
-                PopupMenuItem(
-                  value: _SettlementAction.reconciled,
-                  child: Text(context.l10n.text('markAsReconciled')),
-                ),
-                PopupMenuItem(
-                  value: _SettlementAction.needsReview,
-                  child: Text(context.l10n.text('markNeedsReview')),
-                ),
-                const PopupMenuDivider(),
-                PopupMenuItem(
-                  value: _SettlementAction.remove,
-                  child: Text(context.l10n.text('remove')),
-                ),
+                  PopupMenuItem(
+                    value: _SettlementAction.open,
+                    child: Text(context.l10n.text('markAsOpen')),
+                  ),
+                  PopupMenuItem(
+                    value: _SettlementAction.reconciled,
+                    child: Text(context.l10n.text('markAsReconciled')),
+                  ),
+                  PopupMenuItem(
+                    value: _SettlementAction.needsReview,
+                    child: Text(context.l10n.text('markNeedsReview')),
+                  ),
+                  const PopupMenuDivider(),
+                  PopupMenuItem(
+                    value: _SettlementAction.remove,
+                    child: Text(context.l10n.text('remove')),
+                  ),
                 ],
               ),
             ],
             children: [
-            _SettlementSummaryCard(detail: detail),
-            const SizedBox(height: ButlerlySpacing.section),
-            ButlerlySectionHeader(
-              title: context.l10n.text('paymentSettlementPayment'),
-            ),
-            TransactionRow(
-              transaction: detail.paymentTransaction,
-              paymentSourceNames: widget.sourceNames,
-              showDate: true,
-              showNavigationIndicator: true,
-              onTap: () => _openTransaction(
-                detail.paymentTransaction,
-                canonicalPayment: true,
+              _SettlementSummaryCard(detail: detail),
+              const SizedBox(height: ButlerlySpacing.section),
+              ButlerlySectionHeader(
+                title: context.l10n.text('paymentSettlementPayment'),
               ),
-            ),
-            const SizedBox(height: ButlerlySpacing.section),
-            ButlerlySectionHeader(
-              title: context.l10n.text('paymentSettlementActivity'),
-            ),
-            if (detail.transactions.isEmpty)
-              ButlerlyEmptyState(
-                icon: Icons.receipt_long_outlined,
-                title: context.l10n.text('noTransactions'),
-                message: context.l10n.text('noActivityInPeriod'),
-              )
-            else
-              for (final transaction in detail.transactions) ...[
-                TransactionRow(
-                  transaction: transaction,
-                  paymentSourceNames: widget.sourceNames,
-                  showDate: true,
-                  showNavigationIndicator: true,
-                  onTap: () => _openTransaction(transaction),
+              TransactionRow(
+                transaction: detail.paymentTransaction,
+                paymentSourceNames: widget.sourceNames,
+                showDate: true,
+                showNavigationIndicator: true,
+                onTap: () => _openTransaction(
+                  detail.paymentTransaction,
+                  canonicalPayment: true,
                 ),
-                const Divider(height: ButlerlySpacing.section),
-              ],
+              ),
+              const SizedBox(height: ButlerlySpacing.section),
+              ButlerlySectionHeader(
+                title: context.l10n.text('paymentSettlementActivity'),
+              ),
+              if (detail.transactions.isEmpty)
+                ButlerlyEmptyState(
+                  icon: Icons.receipt_long_outlined,
+                  title: context.l10n.text('noTransactions'),
+                  message: context.l10n.text('noActivityInPeriod'),
+                )
+              else
+                for (final transaction in detail.transactions) ...[
+                  TransactionRow(
+                    transaction: transaction,
+                    paymentSourceNames: widget.sourceNames,
+                    showDate: true,
+                    showNavigationIndicator: true,
+                    onTap: () => _openTransaction(transaction),
+                  ),
+                  const Divider(height: ButlerlySpacing.section),
+                ],
               const SizedBox(height: ButlerlySpacing.structural),
             ],
           ),
