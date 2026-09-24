@@ -113,6 +113,99 @@ void main() {
 
     expect(await evidence.readAsBytes(), [1, 2, 3, 4]);
   });
+
+  test('backup and replace restore payment settlements', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final oldTime = DateTime.utc(2026, 1, 1);
+
+    await fixture.insertPaymentSource(id: 'visa', name: 'Visa');
+    await fixture.insertPaymentSettlement(
+      id: 'settlement-1',
+      paymentSourceId: 'visa',
+      updatedAt: oldTime,
+    );
+    final backup = File(
+      path.join(fixture.root.path, 'settlement.butlerlybackup'),
+    );
+    await fixture.backups.createBackup(backup);
+
+    await fixture.database.database.delete(
+      'payment_settlements',
+      where: 'id = ?',
+      whereArgs: ['settlement-1'],
+    );
+
+    await fixture.backups.restore(backup, mode: LocalRestoreMode.replace);
+
+    expect(await fixture.settlementStatus('settlement-1'), 'open');
+  });
+
+  test('merge keeps a newer local payment settlement', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final oldTime = DateTime.utc(2026, 1, 1);
+
+    await fixture.insertPaymentSource(id: 'visa', name: 'Visa');
+    await fixture.insertPaymentSettlement(
+      id: 'settlement-1',
+      paymentSourceId: 'visa',
+      updatedAt: oldTime,
+      status: 'open',
+    );
+    final backup = File(
+      path.join(fixture.root.path, 'settlement-merge.butlerlybackup'),
+    );
+    await fixture.backups.createBackup(backup);
+
+    final newer = DateTime.now().toUtc().add(const Duration(minutes: 5));
+    await fixture.database.database.update(
+      'payment_settlements',
+      {
+        'status': 'reconciled',
+        'updated_at': newer.toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: ['settlement-1'],
+    );
+
+    await fixture.backups.restore(backup, mode: LocalRestoreMode.merge);
+
+    expect(await fixture.settlementStatus('settlement-1'), 'reconciled');
+  });
+
+  test('merge applies a payment settlement deletion tombstone', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final oldTime = DateTime.utc(2026, 1, 1);
+
+    await fixture.insertPaymentSource(id: 'visa', name: 'Visa');
+    await fixture.insertPaymentSettlement(
+      id: 'settlement-1',
+      paymentSourceId: 'visa',
+      updatedAt: oldTime,
+    );
+    await fixture.database.database.delete(
+      'payment_settlements',
+      where: 'id = ?',
+      whereArgs: ['settlement-1'],
+    );
+    final backup = File(
+      path.join(fixture.root.path, 'settlement-delete.butlerlybackup'),
+    );
+    await fixture.backups.createBackup(backup);
+
+    await fixture.insertPaymentSettlement(
+      id: 'settlement-1',
+      paymentSourceId: 'visa',
+      updatedAt: oldTime,
+    );
+
+    await fixture.backups.restore(backup, mode: LocalRestoreMode.merge);
+
+    expect(await fixture.settlementStatus('settlement-1'), isNull);
+  });
+
 }
 
 final class _Fixture {
@@ -175,6 +268,50 @@ final class _Fixture {
       'created_at': updatedAt.toUtc().toIso8601String(),
       'updated_at': updatedAt.toUtc().toIso8601String(),
     });
+  }
+
+  Future<void> insertPaymentSource({
+    required String id,
+    required String name,
+  }) async {
+    await database.database.insert('payment_sources', {
+      'id': id,
+      'name': name,
+      'type': 'card',
+      'status': 'active',
+    });
+  }
+
+  Future<void> insertPaymentSettlement({
+    required String id,
+    required String paymentSourceId,
+    required DateTime updatedAt,
+    String status = 'open',
+  }) async {
+    await database.database.insert('payment_settlements', {
+      'id': id,
+      'payment_source_id': paymentSourceId,
+      'payment_amount_coefficient': '284672',
+      'payment_amount_scale': 2,
+      'currency': 'USD',
+      'payment_date': '2026-09-20',
+      'period_start': '2026-08-15',
+      'period_end': '2026-09-14',
+      'status': status,
+      'created_at': updatedAt.toUtc().toIso8601String(),
+      'updated_at': updatedAt.toUtc().toIso8601String(),
+    });
+  }
+
+  Future<String?> settlementStatus(String id) async {
+    final rows = await database.database.query(
+      'payment_settlements',
+      columns: ['status'],
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    return rows.isEmpty ? null : rows.single['status'] as String?;
   }
 
   Future<String?> description(String id) async {
