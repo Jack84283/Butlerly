@@ -28,8 +28,6 @@ validate_finance_application() (
 
 validate_database() (
   cd packages/butlerly_database
-  dart format --output=show lib/src/repositories/sqlite_payment_settlement_repository.dart
-  dart format --output=show test/payment_settlement_repository_test.dart
   format_check
   dart analyze --fatal-infos
   dart test
