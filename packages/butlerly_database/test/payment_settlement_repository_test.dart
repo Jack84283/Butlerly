@@ -44,7 +44,9 @@ void main() {
     expect(loaded.statementBalance, settlement.statementBalance);
   });
 
-  test('resolves settlement transactions dynamically by source and period', () async {
+  test(
+    'resolves settlement transactions dynamically by source and period',
+    () async {
     final settlement = _settlement();
     await settlements.save(settlement);
     await transactions.save(
@@ -81,11 +83,12 @@ void main() {
     );
 
     final refreshed = await settlements.listTransactions(settlement);
-    expect(
-      refreshed.map((value) => value.id.value).toSet(),
-      {'inside', 'late-import'},
-    );
-  });
+      expect(
+        refreshed.map((value) => value.id.value).toSet(),
+        {'inside', 'late-import'},
+      );
+    },
+  );
 
   test('does not create a persisted settlement membership table', () async {
     final rows = await database.connection.rawQuery(
