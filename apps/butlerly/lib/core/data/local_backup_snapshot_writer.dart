@@ -24,6 +24,7 @@ final class LocalBackupSnapshotWriter {
 
   static const _plainTables = <String>[
     'payment_sources',
+    'payment_settlements',
     'provenances',
     'exchange_rates',
     'transactions',

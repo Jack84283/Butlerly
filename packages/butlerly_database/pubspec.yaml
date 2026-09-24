@@ -14,6 +14,7 @@ flutter:
     - database/migrations/v6_to_v7.sql
     - database/migrations/v7_to_v8.sql
     - database/migrations/v8_backup_restore_hardening.sql
+    - database/migrations/v8_to_v9.sql
     - database/seed/catalog.sql
 
 environment:

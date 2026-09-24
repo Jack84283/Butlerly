@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
+import 'package:butlerly_database/butlerly_database.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -113,6 +115,145 @@ void main() {
 
     expect(await evidence.readAsBytes(), [1, 2, 3, 4]);
   });
+
+  test('backup and replace restore payment settlements', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final oldTime = DateTime.utc(2026, 1, 1);
+
+    await fixture.insertPaymentSource(id: 'visa', name: 'Visa');
+    await fixture.insertPaymentSettlement(
+      id: 'settlement-1',
+      paymentSourceId: 'visa',
+      updatedAt: oldTime,
+    );
+    final backup = File(
+      path.join(fixture.root.path, 'settlement.butlerlybackup'),
+    );
+    await fixture.backups.createBackup(backup);
+
+    await fixture.database.database.delete(
+      'payment_settlements',
+      where: 'id = ?',
+      whereArgs: ['settlement-1'],
+    );
+
+    await fixture.backups.restore(backup, mode: LocalRestoreMode.replace);
+
+    expect(await fixture.settlementStatus('settlement-1'), 'open');
+  });
+
+  test('merge keeps a newer local payment settlement', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final oldTime = DateTime.utc(2026, 1, 1);
+
+    await fixture.insertPaymentSource(id: 'visa', name: 'Visa');
+    await fixture.insertPaymentSettlement(
+      id: 'settlement-1',
+      paymentSourceId: 'visa',
+      updatedAt: oldTime,
+      status: 'open',
+    );
+    final backup = File(
+      path.join(fixture.root.path, 'settlement-merge.butlerlybackup'),
+    );
+    await fixture.backups.createBackup(backup);
+
+    final newer = DateTime.now().toUtc().add(const Duration(minutes: 5));
+    await fixture.database.database.update(
+      'payment_settlements',
+      {'status': 'reconciled', 'updated_at': newer.toIso8601String()},
+      where: 'id = ?',
+      whereArgs: ['settlement-1'],
+    );
+
+    await fixture.backups.restore(backup, mode: LocalRestoreMode.merge);
+
+    expect(await fixture.settlementStatus('settlement-1'), 'reconciled');
+  });
+
+  test('replace accepts a v8 backup without payment settlements', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final oldTime = DateTime.utc(2026, 1, 1);
+
+    await fixture.insertPaymentSource(id: 'visa', name: 'Visa');
+    final backup = File(
+      path.join(fixture.root.path, 'legacy-v8.butlerlybackup'),
+    );
+    await fixture.backups.createBackup(backup);
+    await _downgradeBackupToV8(backup);
+
+    await fixture.insertPaymentSettlement(
+      id: 'local-v9-settlement',
+      paymentSourceId: 'visa',
+      updatedAt: oldTime,
+    );
+
+    await fixture.backups.restore(backup, mode: LocalRestoreMode.replace);
+
+    expect(await fixture.settlementStatus('local-v9-settlement'), isNull);
+  });
+
+  test('merge applies a payment settlement deletion tombstone', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final oldTime = DateTime.utc(2026, 1, 1);
+
+    await fixture.insertPaymentSource(id: 'visa', name: 'Visa');
+    await fixture.insertPaymentSettlement(
+      id: 'settlement-1',
+      paymentSourceId: 'visa',
+      updatedAt: oldTime,
+    );
+    await fixture.database.database.delete(
+      'payment_settlements',
+      where: 'id = ?',
+      whereArgs: ['settlement-1'],
+    );
+    final backup = File(
+      path.join(fixture.root.path, 'settlement-delete.butlerlybackup'),
+    );
+    await fixture.backups.createBackup(backup);
+
+    await fixture.insertPaymentSettlement(
+      id: 'settlement-1',
+      paymentSourceId: 'visa',
+      updatedAt: oldTime,
+    );
+
+    await fixture.backups.restore(backup, mode: LocalRestoreMode.merge);
+
+    expect(await fixture.settlementStatus('settlement-1'), isNull);
+  });
+}
+
+Future<void> _downgradeBackupToV8(File backup) async {
+  final bytes = await backup.readAsBytes();
+  final magic = utf8.encode('BUTLERLYBACKUP2');
+  final metadataLength = int64FromBytes(
+    bytes.sublist(magic.length, magic.length + 8),
+  );
+  final metadataStart = magic.length + 8 + 64;
+  final metadataEnd = metadataStart + metadataLength;
+  final metadata =
+      jsonDecode(utf8.decode(bytes.sublist(metadataStart, metadataEnd)))
+          as Map<String, Object?>;
+  final manifest = (metadata['manifest']! as Map).cast<String, Object?>();
+  final tables = (metadata['tables']! as Map).cast<String, Object?>();
+  manifest['schemaVersion'] = 8;
+  tables.remove('payment_settlements');
+
+  final encoded = utf8.encode(jsonEncode(metadata));
+  final output = <int>[
+    ...magic,
+    ...int64Bytes(encoded.length),
+    ...ascii.encode(sha256Bytes(encoded)),
+    ...encoded,
+    ...bytes.sublist(metadataEnd),
+  ];
+  await backup.writeAsBytes(output, flush: true);
 }
 
 final class _Fixture {
@@ -175,6 +316,71 @@ final class _Fixture {
       'created_at': updatedAt.toUtc().toIso8601String(),
       'updated_at': updatedAt.toUtc().toIso8601String(),
     });
+  }
+
+  Future<void> insertPaymentSource({
+    required String id,
+    required String name,
+  }) async {
+    await database.database.insert('payment_sources', {
+      'id': id,
+      'name': name,
+      'type': 'card',
+      'status': 'active',
+    });
+  }
+
+  Future<void> insertPaymentSettlement({
+    required String id,
+    required String paymentSourceId,
+    required DateTime updatedAt,
+    String status = 'open',
+  }) async {
+    final transactionId = 'payment-$id';
+    final existing = await database.database.query(
+      'transactions',
+      columns: ['id'],
+      where: 'id = ?',
+      whereArgs: [transactionId],
+      limit: 1,
+    );
+    if (existing.isEmpty) {
+      await database.database.insert('transactions', {
+        'id': transactionId,
+        'unknown_time_reason': 'unknown',
+        'amount_coefficient': '284672',
+        'amount_scale': 2,
+        'currency': 'USD',
+        'direction': 'transfer',
+        'source_type': 'manual',
+        'status': 'active',
+        'payment_source_id': paymentSourceId,
+        'transaction_date': '2026-09-20',
+        'created_at': updatedAt.toUtc().toIso8601String(),
+        'updated_at': updatedAt.toUtc().toIso8601String(),
+      });
+    }
+    await database.database.insert('payment_settlements', {
+      'id': id,
+      'settlement_transaction_id': transactionId,
+      'payment_source_id': paymentSourceId,
+      'period_start': '2026-08-15',
+      'period_end': '2026-09-14',
+      'status': status,
+      'created_at': updatedAt.toUtc().toIso8601String(),
+      'updated_at': updatedAt.toUtc().toIso8601String(),
+    });
+  }
+
+  Future<String?> settlementStatus(String id) async {
+    final rows = await database.database.query(
+      'payment_settlements',
+      columns: ['status'],
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    return rows.isEmpty ? null : rows.single['status'] as String?;
   }
 
   Future<String?> description(String id) async {

@@ -8,6 +8,7 @@ import '../entities/exchange_rate.dart';
 import '../entities/extraction.dart';
 import '../entities/master_translation.dart';
 import '../entities/merchant.dart';
+import '../entities/payment_settlement.dart';
 import '../entities/reconciliation_candidate.dart';
 import '../entities/reconciliation_link.dart';
 import '../entities/reference_data.dart';
@@ -147,6 +148,14 @@ final class TransactionRepositoryQuery {
   final TransactionStatus? status;
   final bool? needsReview;
   final bool uncategorized;
+}
+
+abstract interface class PaymentSettlementRepository {
+  Future<void> save(PaymentSettlement settlement);
+  Future<PaymentSettlement?> findById(PaymentSettlementId id);
+  Future<List<PaymentSettlement>> listAll();
+  Future<List<Transaction>> listTransactions(PaymentSettlement settlement);
+  Future<void> remove(PaymentSettlementId id);
 }
 
 abstract interface class PaymentSourceRepository {

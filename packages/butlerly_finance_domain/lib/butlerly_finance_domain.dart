@@ -11,6 +11,7 @@ export 'src/entities/exchange_rate.dart';
 export 'src/entities/extraction.dart';
 export 'src/entities/master_translation.dart';
 export 'src/entities/merchant.dart';
+export 'src/entities/payment_settlement.dart';
 export 'src/entities/provenance.dart';
 export 'src/entities/reconciliation_candidate.dart';
 export 'src/entities/reconciliation_link.dart';

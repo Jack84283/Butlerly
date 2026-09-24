@@ -121,6 +121,12 @@ final class LocalBackupManager {
       updatedAt: 'updated_at',
       createdAt: 'created_at',
     ),
+    _TableSpec(
+      'payment_settlements',
+      ['id'],
+      updatedAt: 'updated_at',
+      createdAt: 'created_at',
+    ),
     _TableSpec('normalized_money', [
       'transaction_id',
       'exchange_rate_id',
@@ -481,9 +487,11 @@ final class LocalBackupManager {
         throw const FormatException('Unsupported Butlerly backup format.');
       }
       final sourceSchema = manifest['schemaVersion'] as int?;
-      if (sourceSchema == null || sourceSchema > schemaVersion) {
+      if (sourceSchema == null ||
+          sourceSchema < 8 ||
+          sourceSchema > schemaVersion) {
         throw const FormatException(
-          'Backup was created by a newer Butlerly schema.',
+          'Backup schema is not supported by this Butlerly build.',
         );
       }
       var offset = _magic.length + 8 + 64 + metadataLength;
@@ -673,6 +681,7 @@ final class LocalBackupManager {
       'transaction_id',
       'receipt_transaction_id',
       'payment_transaction_id',
+      'settlement_transaction_id',
     ]) {
       final value = row[field];
       if (value is String && protected.contains(value)) return true;
@@ -973,6 +982,7 @@ final class LocalBackupManager {
       'transaction_tags',
       'transaction_provenances',
       'normalized_money',
+      'payment_settlements',
       'transactions',
       'exchange_rates',
       'provenances',
