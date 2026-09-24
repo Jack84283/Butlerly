@@ -44,45 +44,47 @@ END;
 
 CREATE TRIGGER payment_settlements_validate_insert
 BEFORE INSERT ON payment_settlements
-BEGIN
-  SELECT CASE
-    WHEN NOT EXISTS (
-      SELECT 1
-      FROM transactions t
-      WHERE t.id = NEW.settlement_transaction_id
-        AND t.direction = 'transfer'
-        AND t.status = 'active'
-        AND t.payment_source_id = NEW.payment_source_id
-        AND t.transaction_date IS NOT NULL
-        AND (
-          NEW.statement_balance_currency IS NULL
-          OR t.currency = NEW.statement_balance_currency
-        )
+WHEN NOT EXISTS (
+  SELECT 1
+  FROM transactions t
+  WHERE t.id = NEW.settlement_transaction_id
+    AND t.direction = 'transfer'
+    AND t.status = 'active'
+    AND t.payment_source_id = NEW.payment_source_id
+    AND t.transaction_date IS NOT NULL
+    AND (
+      NEW.statement_balance_currency IS NULL
+      OR t.currency = NEW.statement_balance_currency
     )
-    THEN RAISE(ABORT, 'invalid payment settlement transaction relationship')
-  END;
+)
+BEGIN
+  SELECT RAISE(
+    ABORT,
+    'invalid payment settlement transaction relationship'
+  );
 END;
 
 CREATE TRIGGER payment_settlements_validate_update
 BEFORE UPDATE OF settlement_transaction_id, payment_source_id,
   statement_balance_currency ON payment_settlements
-BEGIN
-  SELECT CASE
-    WHEN NOT EXISTS (
-      SELECT 1
-      FROM transactions t
-      WHERE t.id = NEW.settlement_transaction_id
-        AND t.direction = 'transfer'
-        AND t.status = 'active'
-        AND t.payment_source_id = NEW.payment_source_id
-        AND t.transaction_date IS NOT NULL
-        AND (
-          NEW.statement_balance_currency IS NULL
-          OR t.currency = NEW.statement_balance_currency
-        )
+WHEN NOT EXISTS (
+  SELECT 1
+  FROM transactions t
+  WHERE t.id = NEW.settlement_transaction_id
+    AND t.direction = 'transfer'
+    AND t.status = 'active'
+    AND t.payment_source_id = NEW.payment_source_id
+    AND t.transaction_date IS NOT NULL
+    AND (
+      NEW.statement_balance_currency IS NULL
+      OR t.currency = NEW.statement_balance_currency
     )
-    THEN RAISE(ABORT, 'invalid payment settlement transaction relationship')
-  END;
+)
+BEGIN
+  SELECT RAISE(
+    ABORT,
+    'invalid payment settlement transaction relationship'
+  );
 END;
 
 CREATE TRIGGER settlement_payment_transaction_validate_update
