@@ -141,6 +141,7 @@ Transaction _transaction({
         id: ProvenanceId('provenance-$id'),
         sourceType: ProvenanceSourceType.import,
         capturedAt: at,
+        originalRepresentation: id,
       ),
     ],
     transactionDate: transactionDate,
