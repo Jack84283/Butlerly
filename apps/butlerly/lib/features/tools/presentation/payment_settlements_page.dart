@@ -36,16 +36,13 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     }
     final settlementResult = await listSettlements();
     final sourceResult = await finance.listPaymentSources();
-    if (settlementResult
-        case ApplicationSuccess<List<PaymentSettlementDto>>(
-          value: final settlements,
-        )) {
-      if (sourceResult
-          case ApplicationSuccess<List<PaymentSource>>(value: final sources)) {
-        return _SettlementListData(
-          settlements: settlements,
-          sources: sources,
-        );
+    if (settlementResult case ApplicationSuccess<List<PaymentSettlementDto>>(
+      value: final settlements,
+    )) {
+      if (sourceResult case ApplicationSuccess<List<PaymentSource>>(
+        value: final sources,
+      )) {
+        return _SettlementListData(settlements: settlements, sources: sources);
       }
     }
     throw StateError('Payment settlements could not be loaded.');
@@ -61,9 +58,8 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     if (finance == null || finance.savePaymentSettlement == null) return;
     final draft = await showButlerlyBottomSheet<_SettlementDraft>(
       context: context,
-      builder: (context) => _SettlementEditorSheet(
-        sources: data.activeCardSources,
-      ),
+      builder: (context) =>
+          _SettlementEditorSheet(sources: data.activeCardSources),
     );
     if (!mounted || draft == null) return;
 
@@ -149,7 +145,9 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -255,10 +253,9 @@ class _PaymentSettlementDetailPageState
       throw StateError('Payment settlement detail is unavailable.');
     }
     final result = await getDetail(widget.settlementId);
-    if (result
-        case ApplicationSuccess<PaymentSettlementDetailDto>(
-          value: final detail,
-        )) {
+    if (result case ApplicationSuccess<PaymentSettlementDetailDto>(
+      value: final detail,
+    )) {
       return detail;
     }
     throw StateError('Payment settlement detail could not be loaded.');
@@ -303,10 +300,8 @@ class _PaymentSettlementDetailPageState
     if (save == null) return;
     final draft = await showButlerlyBottomSheet<_SettlementDraft>(
       context: context,
-      builder: (context) => _SettlementEditorSheet(
-        sources: widget.sources,
-        existing: detail,
-      ),
+      builder: (context) =>
+          _SettlementEditorSheet(sources: widget.sources, existing: detail),
     );
     if (!mounted || draft == null) return;
 
@@ -379,7 +374,9 @@ class _PaymentSettlementDetailPageState
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -392,7 +389,9 @@ class _PaymentSettlementDetailPageState
         }
         if (snapshot.hasError) {
           return Scaffold(
-            appBar: AppBar(title: Text(context.l10n.text('paymentSettlements'))),
+            appBar: AppBar(
+              title: Text(context.l10n.text('paymentSettlements')),
+            ),
             body: ButlerlyErrorState(
               title: context.l10n.text('paymentSettlements'),
               message: context.l10n.text('tryAgain'),
@@ -524,7 +523,10 @@ class _SettlementCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(sourceName, style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  sourceName,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: ButlerlySpacing.micro),
                 Text(
                   '${settlement.periodStart} – ${settlement.periodEnd}',
@@ -534,10 +536,7 @@ class _SettlementCard extends StatelessWidget {
                   const SizedBox(height: ButlerlySpacing.micro),
                   Text(
                     '${settlement.statementBalance!.currency.value} '
-                    '${localizedTransactionAmount(
-                      context,
-                      settlement.statementBalance!.amount.toString(),
-                    )}',
+                    '${localizedTransactionAmount(context, settlement.statementBalance!.amount.toString())}',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -584,10 +583,7 @@ class _SettlementSummaryCard extends StatelessWidget {
               label: context.l10n.text('statementBalanceOptional'),
               value:
                   '${settlement.statementBalance!.currency.value} '
-                  '${localizedTransactionAmount(
-                    context,
-                    settlement.statementBalance!.amount.toString(),
-                  )}',
+                  '${localizedTransactionAmount(context, settlement.statementBalance!.amount.toString())}',
             ),
           ],
           if (settlement.description?.trim().isNotEmpty == true) ...[
@@ -640,10 +636,12 @@ class _SettlementStatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = switch (status) {
-      PaymentSettlementStatus.open =>
-        context.l10n.text('paymentSettlementOpen'),
-      PaymentSettlementStatus.reconciled =>
-        context.l10n.text('paymentSettlementReconciled'),
+      PaymentSettlementStatus.open => context.l10n.text(
+        'paymentSettlementOpen',
+      ),
+      PaymentSettlementStatus.reconciled => context.l10n.text(
+        'paymentSettlementReconciled',
+      ),
       PaymentSettlementStatus.needsReview => context.l10n.text('needsReview'),
     };
     final icon = switch (status) {
@@ -660,10 +658,7 @@ class _SettlementStatusChip extends StatelessWidget {
 }
 
 class _SettlementEditorSheet extends StatefulWidget {
-  const _SettlementEditorSheet({
-    required this.sources,
-    this.existing,
-  });
+  const _SettlementEditorSheet({required this.sources, this.existing});
 
   final List<PaymentSource> sources;
   final PaymentSettlementDetailDto? existing;
@@ -701,9 +696,7 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
     _periodStart = TextEditingController(
       text: settlement?.periodStart ?? _firstOfMonth(),
     );
-    _periodEnd = TextEditingController(
-      text: settlement?.periodEnd ?? _today(),
-    );
+    _periodEnd = TextEditingController(text: settlement?.periodEnd ?? _today());
     _statementBalance = TextEditingController(
       text: settlement?.statementBalance?.amount.toString() ?? '',
     );
@@ -869,10 +862,7 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
                           ),
                           child: Text(
                             '${_currency.text} '
-                            '${localizedTransactionAmount(
-                              context,
-                              _amount.text,
-                            )}',
+                            '${localizedTransactionAmount(context, _amount.text)}',
                           ),
                         ),
                       ),
@@ -1023,10 +1013,7 @@ final class _SettlementDraft {
 }
 
 final class _SettlementListData {
-  const _SettlementListData({
-    required this.settlements,
-    required this.sources,
-  });
+  const _SettlementListData({required this.settlements, required this.sources});
 
   final List<PaymentSettlementDto> settlements;
   final List<PaymentSource> sources;
