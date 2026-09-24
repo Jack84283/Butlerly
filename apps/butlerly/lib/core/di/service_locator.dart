@@ -115,6 +115,9 @@ void configureDependencies({
       ),
       statements: statements,
       duplicateGroups: duplicateGroups,
+      paymentSettlements: SqlitePaymentSettlementRepository(
+        database.persistenceDatabase,
+      ),
     );
     services
       ..registerSingleton<FinanceServices>(finance)
