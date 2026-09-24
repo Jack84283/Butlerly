@@ -5,38 +5,36 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 void main() {
-  testWidgets(
-    'Tools exposes payment settlements as a secondary workflow',
-    (tester) async {
-      final router = GoRouter(
-        initialLocation: '/tools',
-        routes: [
-          GoRoute(path: '/tools', builder: (_, _) => const ToolsPage()),
-          GoRoute(
-            path: '/payment-settlements',
-            builder: (_, _) => const Scaffold(
-              body: Text('payment-settlement-route'),
-            ),
-          ),
-        ],
-      );
-      addTearDown(router.dispose);
-
-      await tester.pumpWidget(
-        MaterialApp.router(
-          routerConfig: router,
-          localizationsDelegates: const [AppLocalizations.delegate],
-          supportedLocales: AppLocalizations.supportedLocales,
+  testWidgets('Tools exposes payment settlements as a secondary workflow', (
+    tester,
+  ) async {
+    final router = GoRouter(
+      initialLocation: '/tools',
+      routes: [
+        GoRoute(path: '/tools', builder: (_, _) => const ToolsPage()),
+        GoRoute(
+          path: '/payment-settlements',
+          builder: (_, _) =>
+              const Scaffold(body: Text('payment-settlement-route')),
         ),
-      );
-      await tester.pumpAndSettle();
+      ],
+    );
+    addTearDown(router.dispose);
 
-      expect(find.text('Payment settlements'), findsOneWidget);
+    await tester.pumpWidget(
+      MaterialApp.router(
+        routerConfig: router,
+        localizationsDelegates: const [AppLocalizations.delegate],
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Payment settlements'));
-      await tester.pumpAndSettle();
+    expect(find.text('Payment settlements'), findsOneWidget);
 
-      expect(find.text('payment-settlement-route'), findsOneWidget);
-    },
-  );
+    await tester.tap(find.text('Payment settlements'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('payment-settlement-route'), findsOneWidget);
+  });
 }
