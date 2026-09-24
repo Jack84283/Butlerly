@@ -48,6 +48,7 @@ final class SavePaymentSettlement {
       );
     }
     if (paymentTransaction.direction != TransactionDirection.transfer ||
+        paymentTransaction.status != TransactionStatus.active ||
         paymentTransaction.paymentSourceId != source ||
         paymentTransaction.transactionDate == null) {
       throw const RepositoryException(
