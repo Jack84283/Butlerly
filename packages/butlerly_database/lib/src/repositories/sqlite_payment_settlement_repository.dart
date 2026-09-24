@@ -102,7 +102,8 @@ final class SqlitePaymentSettlementRepository
 
   static PaymentSettlement _fromRow(Map<String, Object?> row) {
     final currency = CurrencyCode(row['currency']! as String);
-    final statementCoefficient = row['statement_balance_coefficient'] as String?;
+    final statementCoefficient =
+        row['statement_balance_coefficient'] as String?;
     final statementScale = row['statement_balance_scale'] as int?;
     return PaymentSettlement(
       id: PaymentSettlementId(row['id']! as String),
@@ -121,21 +122,31 @@ final class SqlitePaymentSettlementRepository
       paymentDate: row['payment_date']! as String,
       periodStart: row['period_start']! as String,
       periodEnd: row['period_end']! as String,
-      statementBalance:
-          statementCoefficient == null || statementScale == null
-          ? null
-          : Money(
-              amount: DecimalValue.fromParts(
-                coefficient: BigInt.parse(statementCoefficient),
-                scale: statementScale,
-              ),
-              currency: currency,
-            ),
+      statementBalance: _statementBalance(
+        statementCoefficient,
+        statementScale,
+        currency,
+      ),
       status: PaymentSettlementStatus.values.byName(row['status']! as String),
       description: row['description'] as String?,
       externalReference: row['external_reference'] as String?,
       createdAt: DateTime.parse(row['created_at']! as String),
       updatedAt: DateTime.parse(row['updated_at']! as String),
+    );
+  }
+
+  static Money? _statementBalance(
+    String? coefficient,
+    int? scale,
+    CurrencyCode currency,
+  ) {
+    if (coefficient == null || scale == null) return null;
+    return Money(
+      amount: DecimalValue.fromParts(
+        coefficient: BigInt.parse(coefficient),
+        scale: scale,
+      ),
+      currency: currency,
     );
   }
 }
