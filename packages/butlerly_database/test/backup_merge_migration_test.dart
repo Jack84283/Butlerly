@@ -97,13 +97,15 @@ CREATE TABLE reconciliation_links(id TEXT PRIMARY KEY);
     );
   });
 
-  test('v10 migration moves payment facts into settlements and removes legacy transfers', () async {
-    final database = await databaseFactoryFfi.openDatabase(
-      inMemoryDatabasePath,
-    );
-    addTearDown(database.close);
+  test(
+    'v10 migration moves payment facts into settlements and removes legacy transfers',
+    () async {
+      final database = await databaseFactoryFfi.openDatabase(
+        inMemoryDatabasePath,
+      );
+      addTearDown(database.close);
 
-    const v9Fixture = '''
+      const v9Fixture = '''
 CREATE TABLE entity_tombstones(
   entity_type TEXT NOT NULL,
   entity_id TEXT NOT NULL,
@@ -144,64 +146,65 @@ CREATE TABLE payment_settlements(
   updated_at TEXT NOT NULL
 );
 ''';
-    for (final statement in splitSqlStatements(v9Fixture)) {
-      await database.execute(statement);
-    }
-    await database.execute('PRAGMA foreign_keys = ON');
-    await database.insert('payment_sources', {
-      'id': 'visa',
-      'name': 'Visa',
-      'type': 'card',
-      'status': 'active',
-    });
-    await database.insert('transactions', {
-      'id': 'legacy-payment',
-      'amount_coefficient': '284672',
-      'amount_scale': 2,
-      'currency': 'USD',
-      'direction': 'transfer',
-      'status': 'active',
-      'payment_source_id': 'visa',
-      'transaction_date': '2026-09-20',
-      'created_at': '2026-09-20T12:00:00.000Z',
-      'updated_at': '2026-09-20T12:00:00.000Z',
-    });
-    await database.insert('payment_settlements', {
-      'id': 'settlement-1',
-      'settlement_transaction_id': 'legacy-payment',
-      'payment_source_id': 'visa',
-      'period_start': '2026-08-15',
-      'period_end': '2026-09-14',
-      'statement_balance_coefficient': '284672',
-      'statement_balance_scale': 2,
-      'statement_balance_currency': 'USD',
-      'status': 'open',
-      'created_at': '2026-09-20T12:00:00.000Z',
-      'updated_at': '2026-09-20T12:00:00.000Z',
-    });
+      for (final statement in splitSqlStatements(v9Fixture)) {
+        await database.execute(statement);
+      }
+      await database.execute('PRAGMA foreign_keys = ON');
+      await database.insert('payment_sources', {
+        'id': 'visa',
+        'name': 'Visa',
+        'type': 'card',
+        'status': 'active',
+      });
+      await database.insert('transactions', {
+        'id': 'legacy-payment',
+        'amount_coefficient': '284672',
+        'amount_scale': 2,
+        'currency': 'USD',
+        'direction': 'transfer',
+        'status': 'active',
+        'payment_source_id': 'visa',
+        'transaction_date': '2026-09-20',
+        'created_at': '2026-09-20T12:00:00.000Z',
+        'updated_at': '2026-09-20T12:00:00.000Z',
+      });
+      await database.insert('payment_settlements', {
+        'id': 'settlement-1',
+        'settlement_transaction_id': 'legacy-payment',
+        'payment_source_id': 'visa',
+        'period_start': '2026-08-15',
+        'period_end': '2026-09-14',
+        'statement_balance_coefficient': '284672',
+        'statement_balance_scale': 2,
+        'statement_balance_currency': 'USD',
+        'status': 'open',
+        'created_at': '2026-09-20T12:00:00.000Z',
+        'updated_at': '2026-09-20T12:00:00.000Z',
+      });
 
-    final migration = await File(
-      'database/migrations/v9_to_v10.sql',
-    ).readAsString();
-    for (final statement in splitSqlStatements(migration)) {
-      await database.execute(statement);
-    }
+      final migration = await File(
+        'database/migrations/v9_to_v10.sql',
+      ).readAsString();
+      for (final statement in splitSqlStatements(migration)) {
+        await database.execute(statement);
+      }
 
-    final settlement = (await database.query('payment_settlements')).single;
-    expect(settlement['payment_amount_coefficient'], '284672');
-    expect(settlement['payment_amount_scale'], 2);
-    expect(settlement['payment_currency'], 'USD');
-    expect(settlement['payment_date'], '2026-09-20');
-    expect(settlement.containsKey('settlement_transaction_id'), isFalse);
-    expect(
-      await database.query(
-        'transactions',
-        where: 'id = ?',
-        whereArgs: ['legacy-payment'],
-      ),
-      isEmpty,
-    );
-  });
+      final settlement = (await database.query('payment_settlements')).single;
+      expect(settlement['payment_amount_coefficient'], '284672');
+      expect(settlement['payment_amount_scale'], 2);
+      expect(settlement['payment_currency'], 'USD');
+      expect(settlement['payment_date'], '2026-09-20');
+      expect(settlement.containsKey('settlement_transaction_id'), isFalse);
+      expect(
+        await database.query(
+          'transactions',
+          where: 'id = ?',
+          whereArgs: ['legacy-payment'],
+        ),
+        isEmpty,
+      );
+    },
+  );
 
   test('current baseline creates v8 merge metadata directly', () async {
     final database = await databaseFactoryFfi.openDatabase(
