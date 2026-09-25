@@ -10,6 +10,7 @@ import 'package:butlerly/design_system/components/butlerly_transaction_controls.
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
+import 'package:butlerly/features/foundation/presentation/settlement_transaction_visibility.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_count_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
@@ -113,8 +114,9 @@ class _TransactionsPageState extends State<TransactionsPage> {
         'Transactions could not be loaded.',
       ),
     };
+    final settlementIds = await settlementPaymentTransactionIds(finance);
     return _TransactionsData(
-      values,
+      excludeSettlementPaymentTransactions(values, settlementIds),
       masterData: await TransactionMasterData.load(
         finance,
         languageCode: activeLanguageCode,

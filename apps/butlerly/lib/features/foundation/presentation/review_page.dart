@@ -5,6 +5,7 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
+import 'package:butlerly/features/foundation/presentation/settlement_transaction_visibility.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -119,8 +120,10 @@ class _ReviewPageState extends State<ReviewPage> {
     if (result is! ApplicationSuccess<List<ReviewItemDto>>) {
       throw StateError('Review items could not be loaded.');
     }
+    final settlementIds = await settlementPaymentTransactionIds(finance);
     final grouped = <String, List<ReviewItemDto>>{};
     for (final item in result.value) {
+      if (settlementIds.contains(item.transactionId)) continue;
       grouped.putIfAbsent(item.transactionId, () => []).add(item);
     }
     return Future.wait(
@@ -183,7 +186,11 @@ class _ReviewPageState extends State<ReviewPage> {
       ),
     );
     return switch (result) {
-      ApplicationSuccess<List<TransactionDto>>(:final value) => value,
+      ApplicationSuccess<List<TransactionDto>>(:final value) =>
+        excludeSettlementPaymentTransactions(
+          value,
+          await settlementPaymentTransactionIds(finance),
+        ),
       ApplicationFailure<List<TransactionDto>>() => throw StateError(
         'Uncategorized transactions could not be loaded.',
       ),
@@ -196,8 +203,16 @@ class _ReviewPageState extends State<ReviewPage> {
       return const [];
     }
     final result = await finance.listDuplicateCandidateGroups!();
+    final settlementIds = await settlementPaymentTransactionIds(finance);
     return switch (result) {
-      ApplicationSuccess<List<DuplicateCandidateGroup>>(:final value) => value,
+      ApplicationSuccess<List<DuplicateCandidateGroup>>(:final value) =>
+        value
+            .where(
+              (group) => group.transactionIds.every(
+                (id) => !settlementIds.contains(id.value),
+              ),
+            )
+            .toList(growable: false),
       ApplicationFailure<List<DuplicateCandidateGroup>>() => throw StateError(
         'Possible duplicates could not be loaded.',
       ),

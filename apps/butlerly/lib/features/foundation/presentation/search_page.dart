@@ -6,6 +6,7 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/settlement_transaction_visibility.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_count_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -199,7 +200,11 @@ class _SearchPageState extends State<SearchPage>
       ),
     );
     return switch (result) {
-      ApplicationSuccess<List<TransactionDto>>(:final value) => value,
+      ApplicationSuccess<List<TransactionDto>>(:final value) =>
+        excludeSettlementPaymentTransactions(
+          value,
+          await settlementPaymentTransactionIds(finance),
+        ),
       ApplicationFailure<List<TransactionDto>>() => throw StateError(
         'Search failed',
       ),
@@ -232,8 +237,10 @@ class _SearchPageState extends State<SearchPage>
     );
     return switch (result) {
       ApplicationSuccess<List<TransactionDto>>(:final value) =>
-        value.map((transaction) => transaction.currency).toSet().toList()
-          ..sort(),
+        excludeSettlementPaymentTransactions(
+          value,
+          await settlementPaymentTransactionIds(finance),
+        ).map((transaction) => transaction.currency).toSet().toList()..sort(),
       ApplicationFailure<List<TransactionDto>>() => const [],
     };
   }
