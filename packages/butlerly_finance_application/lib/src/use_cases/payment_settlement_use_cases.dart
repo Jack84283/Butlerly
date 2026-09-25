@@ -45,6 +45,16 @@ final class SavePaymentSettlement {
 
     final settlementId = PaymentSettlementId(id);
     final existing = await settlements.findById(settlementId);
+    final paymentFactsChanged =
+        existing != null &&
+        (existing.payment.amount != payment.amount ||
+            existing.payment.currency != payment.currency ||
+            existing.paymentDate != paymentDate);
+    final effectiveStatus =
+        existing?.status == PaymentSettlementStatus.reconciled &&
+            paymentFactsChanged
+        ? PaymentSettlementStatus.needsReview
+        : status;
     final now = clock.now();
     final value = PaymentSettlement(
       id: settlementId,
@@ -54,7 +64,7 @@ final class SavePaymentSettlement {
       periodStart: periodStart,
       periodEnd: periodEnd,
       statementBalance: statementBalance,
-      status: status,
+      status: effectiveStatus,
       description: description,
       externalReference: externalReference,
       createdAt: existing?.createdAt ?? now,
