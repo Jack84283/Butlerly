@@ -115,7 +115,7 @@ class AppLocalizations {
       'paymentSettlementRemoved': 'Payment settlement removed.',
       'paymentSettlementRemoveTitle': 'Remove payment settlement?',
       'paymentSettlementRemoveBody':
-          'This removes the settlement record only. The payment transaction remains in Butlerly.',
+          'This removes the payment settlement and leaves ordinary transaction records unchanged.',
       'paymentSettlementTransactionDescription': 'Card payment',
       'markAsOpen': 'Mark as open',
       'markAsReconciled': 'Mark as reconciled',
@@ -795,7 +795,7 @@ class AppLocalizations {
           '付款结算无法保存，而且新建的付款交易也无法自动移除。请先检查该付款交易再继续。',
       'paymentSettlementRemoved': '付款结算已移除。',
       'paymentSettlementRemoveTitle': '移除付款结算？',
-      'paymentSettlementRemoveBody': '仅移除结算记录。付款交易仍会保留在 Butlerly 中。',
+      'paymentSettlementRemoveBody': '这会移除付款结算，并保持普通交易记录不变。',
       'paymentSettlementTransactionDescription': '信用卡付款',
       'markAsOpen': '标记为未结',
       'markAsReconciled': '标记为已核对',
@@ -1407,7 +1407,7 @@ class AppLocalizations {
       'paymentSettlementRemoved': 'Liquidación de pago eliminada.',
       'paymentSettlementRemoveTitle': '¿Eliminar la liquidación de pago?',
       'paymentSettlementRemoveBody':
-          'Esto elimina solo la liquidación. La transacción de pago permanece en Butlerly.',
+          'Esto elimina la liquidación de pago y mantiene sin cambios las transacciones normales.',
       'paymentSettlementTransactionDescription': 'Pago de tarjeta',
       'markAsOpen': 'Marcar como abierta',
       'markAsReconciled': 'Marcar como conciliada',
