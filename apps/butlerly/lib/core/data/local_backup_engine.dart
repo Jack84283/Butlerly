@@ -225,6 +225,10 @@ final class LocalBackupManager {
       package.manifest['createdAtUtc']! as String,
     ).toUtc();
     final tablePayload = <String, Object?>{...package.tables};
+    _migratePaymentSettlementBackupPayload(
+      tablePayload,
+      package.manifest['schemaVersion']! as int,
+    );
     final prepared = await _prepareEvidence(package, mode: mode);
     _applyEvidenceRemaps(tablePayload, prepared.pathRemaps);
 
@@ -617,6 +621,89 @@ final class LocalBackupManager {
     }
   }
 
+  void _migratePaymentSettlementBackupPayload(
+    Map<String, Object?> tablePayload,
+    int sourceSchema,
+  ) {
+    if (sourceSchema >= 10) return;
+    if (sourceSchema < 9) return;
+
+    final settlements =
+        (tablePayload['payment_settlements'] as List? ?? const <Object?>[])
+            .cast<Map>()
+            .map((row) => row.cast<String, Object?>())
+            .toList(growable: false);
+    if (settlements.isEmpty) return;
+
+    final transactions =
+        (tablePayload['transactions'] as List? ?? const <Object?>[])
+            .cast<Map>()
+            .map((row) => row.cast<String, Object?>())
+            .toList(growable: false);
+    final transactionsById = {
+      for (final row in transactions)
+        if (row['id'] is String) row['id']! as String: row,
+    };
+
+    final obsoleteTransactionIds = <String>{};
+    final migratedSettlements = <Map<String, Object?>>[];
+    for (final settlement in settlements) {
+      final transactionId = settlement['settlement_transaction_id'] as String?;
+      final transaction =
+          transactionId == null ? null : transactionsById[transactionId];
+      if (transactionId == null || transaction == null) {
+        throw const FormatException(
+          'Payment settlement backup is missing its legacy payment record.',
+        );
+      }
+      final amountCoefficient = transaction['amount_coefficient'];
+      final amountScale = transaction['amount_scale'];
+      final currency = transaction['currency'];
+      final paymentDate = transaction['transaction_date'];
+      if (amountCoefficient is! String ||
+          amountScale is! int ||
+          currency is! String ||
+          paymentDate is! String) {
+        throw const FormatException(
+          'Legacy payment settlement has invalid payment facts.',
+        );
+      }
+
+      obsoleteTransactionIds.add(transactionId);
+      final migrated = <String, Object?>{...settlement}
+        ..remove('settlement_transaction_id')
+        ..['payment_amount_coefficient'] = amountCoefficient
+        ..['payment_amount_scale'] = amountScale
+        ..['payment_currency'] = currency
+        ..['payment_date'] = paymentDate;
+      migratedSettlements.add(migrated);
+    }
+
+    tablePayload['payment_settlements'] = migratedSettlements;
+    tablePayload['transactions'] = transactions
+        .where((row) => !obsoleteTransactionIds.contains(row['id']))
+        .toList(growable: false);
+
+    for (final table in const [
+      'normalized_money',
+      'transaction_provenances',
+      'transaction_tags',
+      'attachment_links',
+      'review_issues',
+      'suggestions',
+      'duplicate_candidate_group_transactions',
+    ]) {
+      final rows = (tablePayload[table] as List? ?? const <Object?>[])
+          .cast<Map>()
+          .map((row) => row.cast<String, Object?>())
+          .where(
+            (row) => !obsoleteTransactionIds.contains(row['transaction_id']),
+          )
+          .toList(growable: false);
+      tablePayload[table] = rows;
+    }
+  }
+
   void _applyEvidenceRemaps(
     Map<String, Object?> tablePayload,
     Map<String, String> remaps,
@@ -681,7 +768,6 @@ final class LocalBackupManager {
       'transaction_id',
       'receipt_transaction_id',
       'payment_transaction_id',
-      'settlement_transaction_id',
     ]) {
       final value = row[field];
       if (value is String && protected.contains(value)) return true;
