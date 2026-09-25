@@ -336,34 +336,13 @@ final class _Fixture {
     required DateTime updatedAt,
     String status = 'open',
   }) async {
-    final transactionId = 'payment-$id';
-    final existing = await database.database.query(
-      'transactions',
-      columns: ['id'],
-      where: 'id = ?',
-      whereArgs: [transactionId],
-      limit: 1,
-    );
-    if (existing.isEmpty) {
-      await database.database.insert('transactions', {
-        'id': transactionId,
-        'unknown_time_reason': 'unknown',
-        'amount_coefficient': '284672',
-        'amount_scale': 2,
-        'currency': 'USD',
-        'direction': 'transfer',
-        'source_type': 'manual',
-        'status': 'active',
-        'payment_source_id': paymentSourceId,
-        'transaction_date': '2026-09-20',
-        'created_at': updatedAt.toUtc().toIso8601String(),
-        'updated_at': updatedAt.toUtc().toIso8601String(),
-      });
-    }
     await database.database.insert('payment_settlements', {
       'id': id,
-      'settlement_transaction_id': transactionId,
       'payment_source_id': paymentSourceId,
+      'payment_amount_coefficient': '284672',
+      'payment_amount_scale': 2,
+      'payment_currency': 'USD',
+      'payment_date': '2026-09-20',
       'period_start': '2026-08-15',
       'period_end': '2026-09-14',
       'status': status,
