@@ -205,13 +205,14 @@ class _ReviewPageState extends State<ReviewPage> {
     final result = await finance.listDuplicateCandidateGroups!();
     final settlementIds = await settlementPaymentTransactionIds(finance);
     return switch (result) {
-      ApplicationSuccess<List<DuplicateCandidateGroup>>(:final value) => value
-          .where(
-            (group) => group.transactionIds.every(
-              (id) => !settlementIds.contains(id.value),
-            ),
-          )
-          .toList(growable: false),
+      ApplicationSuccess<List<DuplicateCandidateGroup>>(:final value) =>
+        value
+            .where(
+              (group) => group.transactionIds.every(
+                (id) => !settlementIds.contains(id.value),
+              ),
+            )
+            .toList(growable: false),
       ApplicationFailure<List<DuplicateCandidateGroup>>() => throw StateError(
         'Possible duplicates could not be loaded.',
       ),
