@@ -235,6 +235,20 @@ void main() {
       expect(row['payment_amount_coefficient'], '284672');
       expect(row['payment_currency'], 'USD');
       expect(row['payment_date'], '2026-09-20');
+      expect(
+        await fixture.database.database.query('reconciliation_candidates'),
+        isEmpty,
+      );
+      expect(
+        await fixture.database.database.query('reconciliation_links'),
+        isEmpty,
+      );
+      final statementRow = (await fixture.database.database.query(
+        'statement_rows',
+        where: 'id = ?',
+        whereArgs: ['legacy-statement-row'],
+      )).single;
+      expect(statementRow['transaction_id'], isNull);
     },
   );
 
@@ -311,7 +325,72 @@ Future<void> _downgradeBackupToV9(File backup) async {
     settlement['settlement_transaction_id'] = transactionId;
   }
   tables['payment_settlements'] = settlements;
+  transactions.add({
+    'id': 'legacy-receipt',
+    'amount_coefficient': '284672',
+    'amount_scale': 2,
+    'currency': 'USD',
+    'direction': 'expense',
+    'source_type': 'manual',
+    'status': 'active',
+    'payment_source_id': 'visa',
+    'transaction_date': '2026-09-10',
+    'unknown_time_reason': 'unknown',
+    'created_at': '2026-09-10T12:00:00.000Z',
+    'updated_at': '2026-09-10T12:00:00.000Z',
+  });
   tables['transactions'] = transactions;
+
+  final legacyPaymentId = 'legacy-payment-settlement-1';
+  (tables['provenances']! as List).add({
+    'id': 'legacy-statement-provenance',
+    'source_type': 'import',
+    'captured_at': '2026-09-10T12:00:00.000Z',
+  });
+  (tables['evidence_items']! as List).add({
+    'id': 'legacy-statement-evidence',
+    'type': 'statement',
+    'original_name': 'legacy.pdf',
+    'media_type': 'application/pdf',
+    'provenance_id': 'legacy-statement-provenance',
+    'created_at': '2026-09-10T12:00:00.000Z',
+  });
+  (tables['financial_statements']! as List).add({
+    'id': 'legacy-statement',
+    'evidence_id': 'legacy-statement-evidence',
+    'payment_source_id': 'visa',
+    'status': 'processed',
+    'created_at': '2026-09-10T12:00:00.000Z',
+    'updated_at': '2026-09-10T12:00:00.000Z',
+  });
+  (tables['statement_rows']! as List).add({
+    'id': 'legacy-statement-row',
+    'statement_id': 'legacy-statement',
+    'position': 0,
+    'original_text': 'Card payment',
+    'row_kind': 'transaction',
+    'status': 'linked',
+    'transaction_id': legacyPaymentId,
+    'created_at': '2026-09-10T12:00:00.000Z',
+    'updated_at': '2026-09-10T12:00:00.000Z',
+  });
+  (tables['reconciliation_candidates']! as List).add({
+    'id': 'legacy-candidate',
+    'receipt_transaction_id': 'legacy-receipt',
+    'payment_transaction_id': legacyPaymentId,
+    'score': 1.0,
+    'reasons_json': '[]',
+    'status': 'confirmed',
+    'created_at': '2026-09-20T12:00:00.000Z',
+    'updated_at': '2026-09-20T12:00:00.000Z',
+  });
+  (tables['reconciliation_links']! as List).add({
+    'id': 'legacy-link',
+    'candidate_id': 'legacy-candidate',
+    'receipt_transaction_id': 'legacy-receipt',
+    'payment_transaction_id': legacyPaymentId,
+    'created_at': '2026-09-20T12:00:00.000Z',
+  });
 
   final encoded = utf8.encode(jsonEncode(metadata));
   final output = <int>[
