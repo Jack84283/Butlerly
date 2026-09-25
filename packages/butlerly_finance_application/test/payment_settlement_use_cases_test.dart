@@ -149,33 +149,36 @@ void main() {
     expect(value.paymentDate, '2026-09-21');
   });
 
-  test('editing reconciled payment facts marks the settlement needs review', () async {
-    await SavePaymentSettlement(settlements, sources, clock)(
-      id: 'settlement-1',
-      paymentSourceId: 'visa',
-      payment: money('2846.72'),
-      paymentDate: '2026-09-20',
-      periodStart: '2026-08-15',
-      periodEnd: '2026-09-14',
-    );
-    await SetPaymentSettlementStatus(settlements, clock)(
-      'settlement-1',
-      PaymentSettlementStatus.reconciled,
-    );
+  test(
+    'editing reconciled payment facts marks the settlement needs review',
+    () async {
+      await SavePaymentSettlement(settlements, sources, clock)(
+        id: 'settlement-1',
+        paymentSourceId: 'visa',
+        payment: money('2846.72'),
+        paymentDate: '2026-09-20',
+        periodStart: '2026-08-15',
+        periodEnd: '2026-09-14',
+      );
+      await SetPaymentSettlementStatus(settlements, clock)(
+        'settlement-1',
+        PaymentSettlementStatus.reconciled,
+      );
 
-    final result = await SavePaymentSettlement(settlements, sources, clock)(
-      id: 'settlement-1',
-      paymentSourceId: 'visa',
-      payment: money('2900.00'),
-      paymentDate: '2026-09-21',
-      periodStart: '2026-08-15',
-      periodEnd: '2026-09-14',
-      status: PaymentSettlementStatus.reconciled,
-    );
+      final result = await SavePaymentSettlement(settlements, sources, clock)(
+        id: 'settlement-1',
+        paymentSourceId: 'visa',
+        payment: money('2900.00'),
+        paymentDate: '2026-09-21',
+        periodStart: '2026-08-15',
+        periodEnd: '2026-09-14',
+        status: PaymentSettlementStatus.reconciled,
+      );
 
-    final value = (result as ApplicationSuccess<PaymentSettlementDto>).value;
-    expect(value.status, PaymentSettlementStatus.needsReview);
-  });
+      final value = (result as ApplicationSuccess<PaymentSettlementDto>).value;
+      expect(value.status, PaymentSettlementStatus.needsReview);
+    },
+  );
 }
 
 final class FixedClock implements ApplicationClock {
