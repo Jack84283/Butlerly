@@ -66,7 +66,6 @@ final class SqliteTransactionRepository
       await saveProvenance(executor, provenance);
     }
     final row = _transactionToRow(value);
-    await _validatePaymentSettlementReference(executor, value);
     final existing = await executor.query(
       'transactions',
       columns: ['id'],
@@ -85,37 +84,6 @@ final class SqliteTransactionRepository
       );
     }
     await _replaceChildren(executor, value);
-  }
-
-  static Future<void> _validatePaymentSettlementReference(
-    DatabaseExecutor executor,
-    Transaction value,
-  ) async {
-    final rows = await executor.query(
-      'payment_settlements',
-      columns: ['payment_source_id', 'statement_balance_currency'],
-      where: 'settlement_transaction_id = ?',
-      whereArgs: [value.id.value],
-      limit: 1,
-    );
-    if (rows.isEmpty) return;
-    final settlement = rows.single;
-    final expectedSource = settlement['payment_source_id'] as String;
-    final statementCurrency =
-        settlement['statement_balance_currency'] as String?;
-    final valid =
-        value.direction == TransactionDirection.transfer &&
-        value.status == TransactionStatus.active &&
-        value.paymentSourceId?.value == expectedSource &&
-        value.transactionDate != null &&
-        (statementCurrency == null ||
-            value.money.currency.value == statementCurrency);
-    if (!valid) {
-      throw const RepositoryException(
-        RepositoryFailureCode.constraint,
-        'update settlement payment transaction',
-      );
-    }
   }
 
   @override
