@@ -82,6 +82,42 @@ JOIN transactions t ON t.id = ps.settlement_transaction_id;
 
 DROP TABLE payment_settlements_v9;
 
+UPDATE statement_rows
+SET transaction_id = NULL
+WHERE transaction_id IN (SELECT id FROM settlement_payment_transaction_ids);
+
+UPDATE duplicate_candidate_groups
+SET selected_transaction_id = NULL
+WHERE selected_transaction_id IN (
+  SELECT id FROM settlement_payment_transaction_ids
+);
+
+DELETE FROM reconciliation_links
+WHERE receipt_transaction_id IN (
+    SELECT id FROM settlement_payment_transaction_ids
+  )
+  OR payment_transaction_id IN (
+    SELECT id FROM settlement_payment_transaction_ids
+  )
+  OR candidate_id IN (
+    SELECT id
+    FROM reconciliation_candidates
+    WHERE receipt_transaction_id IN (
+        SELECT id FROM settlement_payment_transaction_ids
+      )
+      OR payment_transaction_id IN (
+        SELECT id FROM settlement_payment_transaction_ids
+      )
+  );
+
+DELETE FROM reconciliation_candidates
+WHERE receipt_transaction_id IN (
+    SELECT id FROM settlement_payment_transaction_ids
+  )
+  OR payment_transaction_id IN (
+    SELECT id FROM settlement_payment_transaction_ids
+  );
+
 DELETE FROM transactions
 WHERE id IN (SELECT id FROM settlement_payment_transaction_ids);
 
