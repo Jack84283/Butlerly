@@ -196,44 +196,47 @@ void main() {
     expect(await fixture.settlementStatus('local-v9-settlement'), isNull);
   });
 
-  test('replace migrates a v9 settlement backup without restoring its legacy transfer', () async {
-    final fixture = await _Fixture.create();
-    addTearDown(fixture.dispose);
-    final oldTime = DateTime.utc(2026, 1, 1);
+  test(
+    'replace migrates a v9 settlement backup without restoring its legacy transfer',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final oldTime = DateTime.utc(2026, 1, 1);
 
-    await fixture.insertPaymentSource(id: 'visa', name: 'Visa');
-    await fixture.insertPaymentSettlement(
-      id: 'settlement-1',
-      paymentSourceId: 'visa',
-      updatedAt: oldTime,
-    );
-    final backup = File(
-      path.join(fixture.root.path, 'legacy-v9.butlerlybackup'),
-    );
-    await fixture.backups.createBackup(backup);
-    await _downgradeBackupToV9(backup);
+      await fixture.insertPaymentSource(id: 'visa', name: 'Visa');
+      await fixture.insertPaymentSettlement(
+        id: 'settlement-1',
+        paymentSourceId: 'visa',
+        updatedAt: oldTime,
+      );
+      final backup = File(
+        path.join(fixture.root.path, 'legacy-v9.butlerlybackup'),
+      );
+      await fixture.backups.createBackup(backup);
+      await _downgradeBackupToV9(backup);
 
-    await fixture.database.database.delete('payment_settlements');
-    await fixture.backups.restore(backup, mode: LocalRestoreMode.replace);
+      await fixture.database.database.delete('payment_settlements');
+      await fixture.backups.restore(backup, mode: LocalRestoreMode.replace);
 
-    expect(await fixture.settlementStatus('settlement-1'), 'open');
-    expect(
-      await fixture.database.database.query(
-        'transactions',
+      expect(await fixture.settlementStatus('settlement-1'), 'open');
+      expect(
+        await fixture.database.database.query(
+          'transactions',
+          where: 'id = ?',
+          whereArgs: ['legacy-payment-settlement-1'],
+        ),
+        isEmpty,
+      );
+      final row = (await fixture.database.database.query(
+        'payment_settlements',
         where: 'id = ?',
-        whereArgs: ['legacy-payment-settlement-1'],
-      ),
-      isEmpty,
-    );
-    final row = (await fixture.database.database.query(
-      'payment_settlements',
-      where: 'id = ?',
-      whereArgs: ['settlement-1'],
-    )).single;
-    expect(row['payment_amount_coefficient'], '284672');
-    expect(row['payment_currency'], 'USD');
-    expect(row['payment_date'], '2026-09-20');
-  });
+        whereArgs: ['settlement-1'],
+      )).single;
+      expect(row['payment_amount_coefficient'], '284672');
+      expect(row['payment_currency'], 'USD');
+      expect(row['payment_date'], '2026-09-20');
+    },
+  );
 
   test('merge applies a payment settlement deletion tombstone', () async {
     final fixture = await _Fixture.create();
