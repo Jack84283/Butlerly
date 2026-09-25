@@ -147,6 +147,25 @@ CREATE TABLE payment_settlements(
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+CREATE TABLE statement_rows(
+  id TEXT PRIMARY KEY,
+  transaction_id TEXT REFERENCES transactions(id)
+);
+CREATE TABLE duplicate_candidate_groups(
+  id TEXT PRIMARY KEY,
+  selected_transaction_id TEXT REFERENCES transactions(id)
+);
+CREATE TABLE reconciliation_candidates(
+  id TEXT PRIMARY KEY,
+  receipt_transaction_id TEXT NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+  payment_transaction_id TEXT NOT NULL REFERENCES transactions(id) ON DELETE CASCADE
+);
+CREATE TABLE reconciliation_links(
+  id TEXT PRIMARY KEY,
+  candidate_id TEXT NOT NULL REFERENCES reconciliation_candidates(id),
+  receipt_transaction_id TEXT NOT NULL REFERENCES transactions(id),
+  payment_transaction_id TEXT NOT NULL REFERENCES transactions(id)
+);
 ''';
       for (final statement in splitSqlStatements(v9Fixture)) {
         await database.execute(statement);
