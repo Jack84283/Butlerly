@@ -649,8 +649,9 @@ final class LocalBackupManager {
     final migratedSettlements = <Map<String, Object?>>[];
     for (final settlement in settlements) {
       final transactionId = settlement['settlement_transaction_id'] as String?;
-      final transaction =
-          transactionId == null ? null : transactionsById[transactionId];
+      final transaction = transactionId == null
+          ? null
+          : transactionsById[transactionId];
       if (transactionId == null || transaction == null) {
         throw const FormatException(
           'Payment settlement backup is missing its legacy payment record.',
