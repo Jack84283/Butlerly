@@ -692,7 +692,6 @@ final class LocalBackupManager {
       'attachment_links',
       'review_issues',
       'suggestions',
-      'duplicate_candidate_group_transactions',
     ]) {
       final rows = (tablePayload[table] as List? ?? const <Object?>[])
           .cast<Map>()
@@ -703,6 +702,89 @@ final class LocalBackupManager {
           .toList(growable: false);
       tablePayload[table] = rows;
     }
+
+    final statementRows =
+        (tablePayload['statement_rows'] as List? ?? const <Object?>[])
+            .cast<Map>()
+            .map((row) => row.cast<String, Object?>())
+            .map(
+              (row) => obsoleteTransactionIds.contains(row['transaction_id'])
+                  ? (<String, Object?>{...row}..['transaction_id'] = null)
+                  : row,
+            )
+            .toList(growable: false);
+    tablePayload['statement_rows'] = statementRows;
+
+    final duplicateMemberships =
+        (tablePayload['duplicate_candidate_group_transactions'] as List? ??
+                const <Object?>[])
+            .cast<Map>()
+            .map((row) => row.cast<String, Object?>())
+            .toList(growable: false);
+    final obsoleteDuplicateGroupIds = {
+      for (final row in duplicateMemberships)
+        if (obsoleteTransactionIds.contains(row['transaction_id']) &&
+            row['group_id'] is String)
+          row['group_id']! as String,
+    };
+    tablePayload['duplicate_candidate_group_transactions'] =
+        duplicateMemberships
+            .where(
+              (row) => !obsoleteDuplicateGroupIds.contains(row['group_id']),
+            )
+            .toList(growable: false);
+    tablePayload['duplicate_candidate_groups'] =
+        (tablePayload['duplicate_candidate_groups'] as List? ??
+                const <Object?>[])
+            .cast<Map>()
+            .map((row) => row.cast<String, Object?>())
+            .where((row) => !obsoleteDuplicateGroupIds.contains(row['id']))
+            .toList(growable: false);
+
+    final reconciliationCandidates =
+        (tablePayload['reconciliation_candidates'] as List? ??
+                const <Object?>[])
+            .cast<Map>()
+            .map((row) => row.cast<String, Object?>())
+            .toList(growable: false);
+    final obsoleteCandidateIds = {
+      for (final row in reconciliationCandidates)
+        if ((obsoleteTransactionIds.contains(row['receipt_transaction_id']) ||
+                obsoleteTransactionIds.contains(
+                  row['payment_transaction_id'],
+                )) &&
+            row['id'] is String)
+          row['id']! as String,
+    };
+    tablePayload['reconciliation_candidates'] = reconciliationCandidates
+        .where((row) => !obsoleteCandidateIds.contains(row['id']))
+        .toList(growable: false);
+    tablePayload['reconciliation_links'] =
+        (tablePayload['reconciliation_links'] as List? ?? const <Object?>[])
+            .cast<Map>()
+            .map((row) => row.cast<String, Object?>())
+            .where(
+              (row) =>
+                  !obsoleteCandidateIds.contains(row['candidate_id']) &&
+                  !obsoleteTransactionIds.contains(
+                    row['receipt_transaction_id'],
+                  ) &&
+                  !obsoleteTransactionIds.contains(
+                    row['payment_transaction_id'],
+                  ),
+            )
+            .toList(growable: false);
+
+    tablePayload['entity_tombstones'] =
+        (tablePayload['entity_tombstones'] as List? ?? const <Object?>[])
+            .cast<Map>()
+            .map((row) => row.cast<String, Object?>())
+            .where(
+              (row) =>
+                  row['entity_type'] != 'transactions' ||
+                  !obsoleteTransactionIds.contains(row['entity_id']),
+            )
+            .toList(growable: false);
   }
 
   void _applyEvidenceRemaps(
