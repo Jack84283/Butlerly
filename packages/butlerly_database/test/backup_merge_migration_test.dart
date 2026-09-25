@@ -127,6 +127,8 @@ CREATE TABLE transactions(
   status TEXT NOT NULL,
   payment_source_id TEXT,
   transaction_date TEXT,
+  description TEXT,
+  external_reference TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -200,6 +202,14 @@ CREATE TABLE payment_settlements(
           'transactions',
           where: 'id = ?',
           whereArgs: ['legacy-payment'],
+        ),
+        isEmpty,
+      );
+      expect(
+        await database.query(
+          'entity_tombstones',
+          where: 'entity_type = ? AND entity_id = ?',
+          whereArgs: ['transactions', 'legacy-payment'],
         ),
         isEmpty,
       );
