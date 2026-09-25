@@ -41,32 +41,38 @@ void main() {
     expect(value.paymentDate, '2026-09-20');
   });
 
-  test('detail re-resolves statement activity without a payment transaction',
-      () async {
-    await SavePaymentSettlement(settlements, sources, clock)(
-      id: 'settlement-1',
-      paymentSourceId: 'visa',
-      payment: money('2846.72'),
-      paymentDate: '2026-09-20',
-      periodStart: '2026-08-15',
-      periodEnd: '2026-09-14',
-    );
-    settlements.transactions.add(activity('tx-1', now));
+  test(
+    'detail re-resolves statement activity without a payment transaction',
+    () async {
+      await SavePaymentSettlement(settlements, sources, clock)(
+        id: 'settlement-1',
+        paymentSourceId: 'visa',
+        payment: money('2846.72'),
+        paymentDate: '2026-09-20',
+        periodStart: '2026-08-15',
+        periodEnd: '2026-09-14',
+      );
+      settlements.transactions.add(activity('tx-1', now));
 
-    final first = await GetPaymentSettlementDetail(settlements)('settlement-1');
-    final firstValue =
-        (first as ApplicationSuccess<PaymentSettlementDetailDto>).value;
-    expect(firstValue.transactionCount, 1);
+      final first = await GetPaymentSettlementDetail(settlements)(
+        'settlement-1',
+      );
+      final firstValue =
+          (first as ApplicationSuccess<PaymentSettlementDetailDto>).value;
+      expect(firstValue.transactionCount, 1);
 
-    settlements.transactions.add(activity('tx-2', now));
-    final second = await GetPaymentSettlementDetail(settlements)('settlement-1');
-    expect(
-      (second as ApplicationSuccess<PaymentSettlementDetailDto>)
-          .value
-          .transactionCount,
-      2,
-    );
-  });
+      settlements.transactions.add(activity('tx-2', now));
+      final second = await GetPaymentSettlementDetail(settlements)(
+        'settlement-1',
+      );
+      expect(
+        (second as ApplicationSuccess<PaymentSettlementDetailDto>)
+            .value
+            .transactionCount,
+        2,
+      );
+    },
+  );
 
   test('rejects a missing payment source', () async {
     final result = await SavePaymentSettlement(settlements, sources, clock)(
@@ -113,8 +119,7 @@ void main() {
       PaymentSettlementStatus.reconciled,
     );
 
-    final value =
-        (result as ApplicationSuccess<PaymentSettlementDto>).value;
+    final value = (result as ApplicationSuccess<PaymentSettlementDto>).value;
     expect(value.status, PaymentSettlementStatus.reconciled);
     expect(value.payment.amount, DecimalValue.parse('2846.72'));
     expect(value.paymentDate, '2026-09-20');
@@ -139,8 +144,7 @@ void main() {
       periodEnd: '2026-09-14',
     );
 
-    final value =
-        (result as ApplicationSuccess<PaymentSettlementDto>).value;
+    final value = (result as ApplicationSuccess<PaymentSettlementDto>).value;
     expect(value.payment.amount, DecimalValue.parse('2900.00'));
     expect(value.paymentDate, '2026-09-21');
   });
