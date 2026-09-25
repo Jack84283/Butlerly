@@ -28,24 +28,27 @@ void main() {
 
   tearDown(() => database.close());
 
-  test('persists settlement-owned payment facts without a transaction', () async {
-    final settlement = _settlement();
+  test(
+    'persists settlement-owned payment facts without a transaction',
+    () async {
+      final settlement = _settlement();
 
-    await settlements.save(settlement);
-    final loaded = await settlements.findById(settlement.id);
+      await settlements.save(settlement);
+      final loaded = await settlements.findById(settlement.id);
 
-    expect(loaded, isNotNull);
-    expect(loaded!.paymentSourceId, PaymentSourceId('visa'));
-    expect(loaded.payment.amount, DecimalValue.parse('2846.72'));
-    expect(loaded.payment.currency, CurrencyCode('USD'));
-    expect(loaded.paymentDate, '2026-09-20');
-    expect(loaded.periodStart, '2026-08-15');
-    expect(loaded.periodEnd, '2026-09-14');
-    expect(loaded.statementBalance, settlement.statementBalance);
+      expect(loaded, isNotNull);
+      expect(loaded!.paymentSourceId, PaymentSourceId('visa'));
+      expect(loaded.payment.amount, DecimalValue.parse('2846.72'));
+      expect(loaded.payment.currency, CurrencyCode('USD'));
+      expect(loaded.paymentDate, '2026-09-20');
+      expect(loaded.periodStart, '2026-08-15');
+      expect(loaded.periodEnd, '2026-09-14');
+      expect(loaded.statementBalance, settlement.statementBalance);
 
-    final transactionRows = await database.connection.query('transactions');
-    expect(transactionRows, isEmpty);
-  });
+      final transactionRows = await database.connection.query('transactions');
+      expect(transactionRows, isEmpty);
+    },
+  );
 
   test('resolves activity dynamically and excludes transfers', () async {
     final settlement = _settlement();
@@ -180,10 +183,8 @@ PaymentSettlement _settlement() {
   );
 }
 
-Money _money(String amount) => Money(
-  amount: DecimalValue.parse(amount),
-  currency: CurrencyCode('USD'),
-);
+Money _money(String amount) =>
+    Money(amount: DecimalValue.parse(amount), currency: CurrencyCode('USD'));
 
 Transaction _transaction({
   required String id,
