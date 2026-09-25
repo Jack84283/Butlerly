@@ -196,6 +196,45 @@ void main() {
     expect(await fixture.settlementStatus('local-v9-settlement'), isNull);
   });
 
+  test('replace migrates a v9 settlement backup without restoring its legacy transfer', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final oldTime = DateTime.utc(2026, 1, 1);
+
+    await fixture.insertPaymentSource(id: 'visa', name: 'Visa');
+    await fixture.insertPaymentSettlement(
+      id: 'settlement-1',
+      paymentSourceId: 'visa',
+      updatedAt: oldTime,
+    );
+    final backup = File(
+      path.join(fixture.root.path, 'legacy-v9.butlerlybackup'),
+    );
+    await fixture.backups.createBackup(backup);
+    await _downgradeBackupToV9(backup);
+
+    await fixture.database.database.delete('payment_settlements');
+    await fixture.backups.restore(backup, mode: LocalRestoreMode.replace);
+
+    expect(await fixture.settlementStatus('settlement-1'), 'open');
+    expect(
+      await fixture.database.database.query(
+        'transactions',
+        where: 'id = ?',
+        whereArgs: ['legacy-payment-settlement-1'],
+      ),
+      isEmpty,
+    );
+    final row = (await fixture.database.database.query(
+      'payment_settlements',
+      where: 'id = ?',
+      whereArgs: ['settlement-1'],
+    )).single;
+    expect(row['payment_amount_coefficient'], '284672');
+    expect(row['payment_currency'], 'USD');
+    expect(row['payment_date'], '2026-09-20');
+  });
+
   test('merge applies a payment settlement deletion tombstone', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
@@ -227,6 +266,59 @@ void main() {
 
     expect(await fixture.settlementStatus('settlement-1'), isNull);
   });
+}
+
+Future<void> _downgradeBackupToV9(File backup) async {
+  final bytes = await backup.readAsBytes();
+  final magic = utf8.encode('BUTLERLYBACKUP2');
+  final metadataLength = int64FromBytes(
+    bytes.sublist(magic.length, magic.length + 8),
+  );
+  final metadataStart = magic.length + 8 + 64;
+  final metadataEnd = metadataStart + metadataLength;
+  final metadata =
+      jsonDecode(utf8.decode(bytes.sublist(metadataStart, metadataEnd)))
+          as Map<String, Object?>;
+  final manifest = (metadata['manifest']! as Map).cast<String, Object?>();
+  final tables = (metadata['tables']! as Map).cast<String, Object?>();
+  manifest['schemaVersion'] = 9;
+
+  final settlements = (tables['payment_settlements']! as List)
+      .cast<Map>()
+      .map((row) => row.cast<String, Object?>())
+      .toList();
+  final transactions = (tables['transactions']! as List)
+      .cast<Map>()
+      .map((row) => row.cast<String, Object?>())
+      .toList();
+  for (final settlement in settlements) {
+    final transactionId = 'legacy-payment-${settlement['id']}';
+    transactions.add({
+      'id': transactionId,
+      'amount_coefficient': settlement.remove('payment_amount_coefficient'),
+      'amount_scale': settlement.remove('payment_amount_scale'),
+      'currency': settlement.remove('payment_currency'),
+      'transaction_date': settlement.remove('payment_date'),
+      'direction': 'transfer',
+      'status': 'active',
+      'payment_source_id': settlement['payment_source_id'],
+      'created_at': settlement['created_at'],
+      'updated_at': settlement['updated_at'],
+    });
+    settlement['settlement_transaction_id'] = transactionId;
+  }
+  tables['payment_settlements'] = settlements;
+  tables['transactions'] = transactions;
+
+  final encoded = utf8.encode(jsonEncode(metadata));
+  final output = <int>[
+    ...magic,
+    ...int64Bytes(encoded.length),
+    ...ascii.encode(sha256Bytes(encoded)),
+    ...encoded,
+    ...bytes.sublist(metadataEnd),
+  ];
+  await backup.writeAsBytes(output, flush: true);
 }
 
 Future<void> _downgradeBackupToV8(File backup) async {
