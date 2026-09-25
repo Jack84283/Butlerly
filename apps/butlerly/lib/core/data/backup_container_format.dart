@@ -5,7 +5,7 @@ import 'dart:convert';
 abstract final class BackupContainerFormat {
   static const name = 'butlerly-backup';
   static const version = 2;
-  static const schemaVersion = 9;
+  static const schemaVersion = 10;
   static List<int> get magic => utf8.encode('BUTLERLYBACKUP2');
   static const appVersion = String.fromEnvironment(
     'BUTLERLY_APP_VERSION',
