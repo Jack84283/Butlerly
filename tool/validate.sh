@@ -35,6 +35,11 @@ validate_database() (
 
 validate_flutter_application() (
   cd apps/butlerly
+  if ! dart format --output=none --set-exit-if-changed .; then
+    dart format . >/dev/null
+    git --no-pager diff -- .
+    exit 1
+  fi
   format_check
   flutter analyze
   flutter test
