@@ -73,8 +73,8 @@ SELECT
   ps.statement_balance_scale,
   ps.statement_balance_currency,
   ps.status,
-  ps.description,
-  ps.external_reference,
+  COALESCE(ps.description, t.description),
+  COALESCE(ps.external_reference, t.external_reference),
   ps.created_at,
   ps.updated_at
 FROM payment_settlements_v9 ps
@@ -84,6 +84,10 @@ DROP TABLE payment_settlements_v9;
 
 DELETE FROM transactions
 WHERE id IN (SELECT id FROM settlement_payment_transaction_ids);
+
+DELETE FROM entity_tombstones
+WHERE entity_type = 'transactions'
+  AND entity_id IN (SELECT id FROM settlement_payment_transaction_ids);
 
 DROP TABLE settlement_payment_transaction_ids;
 
