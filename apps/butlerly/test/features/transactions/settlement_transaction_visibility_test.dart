@@ -19,17 +19,14 @@ void main() {
       const {'settlement-payment'},
     );
 
-    expect(
-      visible.map((transaction) => transaction.id),
-      ['ordinary-transfer', 'purchase'],
-    );
+    expect(visible.map((transaction) => transaction.id), [
+      'ordinary-transfer',
+      'purchase',
+    ]);
   });
 }
 
-TransactionDto _transaction({
-  required String id,
-  required String direction,
-}) {
+TransactionDto _transaction({required String id, required String direction}) {
   final now = DateTime.utc(2026, 9, 25);
   return TransactionDto(
     id: id,
