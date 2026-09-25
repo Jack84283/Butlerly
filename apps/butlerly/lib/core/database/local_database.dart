@@ -80,6 +80,9 @@ class LocalDatabase {
     final migrationV8ToV9 = await rootBundle.loadString(
       'packages/butlerly_database/database/migrations/v8_to_v9.sql',
     );
+    final migrationV9ToV10 = await rootBundle.loadString(
+      'packages/butlerly_database/database/migrations/v9_to_v10.sql',
+    );
     final catalogSql = await rootBundle.loadString(
       'packages/butlerly_database/database/seed/catalog.sql',
     );
@@ -98,6 +101,7 @@ class LocalDatabase {
         7: migrationV6ToV7,
         8: '$migrationV7ToV8\n$backupRestoreHardening',
         9: migrationV8ToV9,
+        10: migrationV9ToV10,
       },
     );
     await _database!.open();
