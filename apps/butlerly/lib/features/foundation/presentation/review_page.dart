@@ -676,85 +676,84 @@ class _ReviewTransactionCardState extends State<_ReviewTransactionCard> {
   }
 
   @override
-  Widget build(
-    BuildContext context,
-  ) => FutureBuilder<ApplicationResult<TransactionDto>>(
-    future: _transaction,
-    builder: (context, transactionSnapshot) {
-      if (transactionSnapshot.connectionState != ConnectionState.done) {
-        return const ButlerlyLoadingState();
-      }
-      final result = transactionSnapshot.data;
-      if (result is! ApplicationSuccess<TransactionDto>) {
-        return ButlerlyErrorState(
-          title: context.l10n.text('reviewLoadError'),
-          message: context.l10n.text('tryAgain'),
-          preserved: context.l10n.text('dataPreserved'),
-          actionLabel: context.l10n.text('tryAgain'),
-          onAction: () => setState(
-            () => _transaction = widget.finance.getTransaction(
-              widget.item.transactionId,
-            ),
-          ),
-        );
-      }
-      final transaction = result.value;
-      return FutureBuilder<TransactionMasterDataSnapshot>(
-        future: widget.masterData,
-        builder: (context, masterSnapshot) {
-          final data = masterSnapshot.data;
-          return ButlerlyCard(
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
-                TransactionRow(
-                  transaction: transaction,
-                  masterData:
-                      data?.presentation ?? const TransactionMasterData(),
-                  paymentSourceNames: {
-                    for (final source
-                        in data?.paymentSources ?? <PaymentSource>[])
-                      source.id.value: source.name,
-                  },
-                  showDate: true,
-                  onTap: widget.onEdit,
+  Widget build(BuildContext context) =>
+      FutureBuilder<ApplicationResult<TransactionDto>>(
+        future: _transaction,
+        builder: (context, transactionSnapshot) {
+          if (transactionSnapshot.connectionState != ConnectionState.done) {
+            return const ButlerlyLoadingState();
+          }
+          final result = transactionSnapshot.data;
+          if (result is! ApplicationSuccess<TransactionDto>) {
+            return ButlerlyErrorState(
+              title: context.l10n.text('reviewLoadError'),
+              message: context.l10n.text('tryAgain'),
+              preserved: context.l10n.text('dataPreserved'),
+              actionLabel: context.l10n.text('tryAgain'),
+              onAction: () => setState(
+                () => _transaction = widget.finance.getTransaction(
+                  widget.item.transactionId,
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(ButlerlySpacing.standard),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(widget.reason),
-                      const SizedBox(height: ButlerlySpacing.small),
-                      Text(widget.recommendation),
-                      const SizedBox(height: ButlerlySpacing.standard),
-                      ButlerlyButtonBar(
-                        spacing: ButlerlyButtonBarSpacing.none,
+              ),
+            );
+          }
+          final transaction = result.value;
+          return FutureBuilder<TransactionMasterDataSnapshot>(
+            future: widget.masterData,
+            builder: (context, masterSnapshot) {
+              final data = masterSnapshot.data;
+              return ButlerlyCard(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    TransactionRow(
+                      transaction: transaction,
+                      masterData:
+                          data?.presentation ?? const TransactionMasterData(),
+                      paymentSourceNames: {
+                        for (final source
+                            in data?.paymentSources ?? <PaymentSource>[])
+                          source.id.value: source.name,
+                      },
+                      showDate: true,
+                      onTap: widget.onEdit,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(ButlerlySpacing.standard),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          FilledButton(
-                            onPressed: widget.onPrimary,
-                            child: Text(widget.primaryLabel),
-                          ),
-                          OutlinedButton(
-                            onPressed: widget.onEdit,
-                            child: Text(widget.editLabel),
-                          ),
-                          TextButton(
-                            onPressed: widget.onDismiss,
-                            child: Text(widget.dismissLabel),
+                          Text(widget.reason),
+                          const SizedBox(height: ButlerlySpacing.small),
+                          Text(widget.recommendation),
+                          const SizedBox(height: ButlerlySpacing.standard),
+                          ButlerlyButtonBar(
+                            spacing: ButlerlyButtonBarSpacing.none,
+                            children: [
+                              FilledButton(
+                                onPressed: widget.onPrimary,
+                                child: Text(widget.primaryLabel),
+                              ),
+                              OutlinedButton(
+                                onPressed: widget.onEdit,
+                                child: Text(widget.editLabel),
+                              ),
+                              TextButton(
+                                onPressed: widget.onDismiss,
+                                child: Text(widget.dismissLabel),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              );
+            },
           );
         },
       );
-    },
-  );
 }
 
 enum _ReviewView { needsReview, uncategorized, duplicates }
