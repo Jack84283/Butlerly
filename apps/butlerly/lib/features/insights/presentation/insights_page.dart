@@ -390,8 +390,7 @@ class _InsightsContent extends StatelessWidget {
       children: [
         ButlerlySectionHeader(title: context.l10n.text('periodSummary')),
         _PeriodSummaryCard(summary: evaluation.summary),
-        if (summaryPieResults.isNotEmpty) ...[
-          const SizedBox(height: ButlerlySpacing.standard),
+        if (summaryPieResults.isNotEmpty)
           InsightGroupVisualizations(
             results: summaryPieResults,
             masterData: masterData,
