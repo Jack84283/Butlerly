@@ -190,6 +190,19 @@ abstract interface class MerchantNormalizationPatternRepository {
   Future<void> remove(MerchantNormalizationPatternId id);
 }
 
+/// Persists a merchant and its complete matching configuration as one unit.
+///
+/// Implementations should use one database transaction when the underlying
+/// storage supports it, so an edit cannot leave the merchant, aliases, and
+/// normalization patterns out of sync.
+abstract interface class MerchantMatchingConfigurationRepository {
+  Future<void> saveConfiguration({
+    required Merchant merchant,
+    required List<MerchantAlias> aliases,
+    required List<MerchantNormalizationPattern> patterns,
+  });
+}
+
 abstract interface class TransactionRuleRepository {
   Future<void> save(TransactionRule rule);
   Future<List<TransactionRule>> listAll();

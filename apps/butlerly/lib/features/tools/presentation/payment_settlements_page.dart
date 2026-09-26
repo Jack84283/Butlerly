@@ -524,6 +524,14 @@ class _SettlementCard extends StatelessWidget {
                   '${settlement.periodStart} – ${settlement.periodEnd}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
+                if (settlement.statementBalance != null) ...[
+                  const SizedBox(height: ButlerlySpacing.micro),
+                  Text(
+                    '${settlement.statementBalance!.currency.value} '
+                    '${localizedTransactionAmount(context, settlement.statementBalance!.amount.toString())}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
               ],
             ),
           ),
@@ -623,7 +631,7 @@ class _SettlementBasicInfoCard extends StatelessWidget {
             label: context.l10n.text('note'),
             value: settlement.description?.trim().isNotEmpty == true
                 ? settlement.description!.trim()
-                : context.l10n.text('notAvailable'),
+                : '—',
           ),
         ],
       ),

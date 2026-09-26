@@ -47,8 +47,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Rules'), findsOneWidget);
-    expect(find.text('Classify fuel'), findsNWidgets(2));
-    expect(find.text('fuel'), findsOneWidget);
+    expect(find.text('Classify fuel'), findsOneWidget);
+    expect(find.text('fuel\nCategory: Transport'), findsOneWidget);
 
     await tester.tap(find.text('Classify fuel').first);
     await tester.pumpAndSettle();
@@ -58,13 +58,28 @@ void main() {
     await tester.tap(find.text('Close'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(SwitchListTile));
+    await tester.tap(find.byType(Switch));
     await tester.pumpAndSettle();
     expect((await rules.listAll()).single.enabled, isFalse);
 
-    await tester.tap(find.byType(SwitchListTile));
+    await tester.tap(find.byType(Switch));
     await tester.pumpAndSettle();
     expect((await rules.listAll()).single.enabled, isTrue);
+  });
+
+  testWidgets('rule list remains usable on a narrow phone', (tester) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const _TestApp(child: RulesPage()));
+    await tester.pumpAndSettle();
+
+    final exception = tester.takeException();
+    if (exception is FlutterError) fail(exception.toStringDeep());
+    expect(exception, isNull);
+    expect(find.text('Classify fuel'), findsOneWidget);
   });
 
   testWidgets('rule editor is reachable for create and edit', (tester) async {
@@ -79,7 +94,7 @@ void main() {
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Edit'));
+    await tester.tap(find.byTooltip('Edit'));
     await tester.pumpAndSettle();
     expect(find.text('Edit rule'), findsOneWidget);
     expect(find.text('Classify fuel'), findsAtLeastNWidgets(1));
@@ -91,7 +106,7 @@ void main() {
     await tester.pumpWidget(const _TestApp(child: RulesPage()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Delete'));
+    await tester.tap(find.byTooltip('Delete'));
     await tester.pumpAndSettle();
     expect(find.text('Delete rule?'), findsOneWidget);
     await tester.tap(find.text('Delete').last);

@@ -111,4 +111,85 @@ void main() {
       await Directory(directory.path).delete(recursive: true);
     }
   });
+
+  test(
+    'merchant matching configuration rolls back on a constraint failure',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'butlerly-match-',
+      );
+      final databasePath = '${directory.path}/butlerly.db';
+      final schema = await File('database/schema/v1.sql').readAsString();
+      final now = DateTime.utc(2026, 9, 1, 12);
+      final merchant = Merchant(
+        id: MerchantId('merchant.costco'),
+        name: 'Costco',
+        rawName: 'COSTCO #1234',
+      );
+      final originalAlias = MerchantAlias(
+        id: MerchantAliasId('alias.original'),
+        merchantId: merchant.id,
+        alias: 'Costco original',
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      final database = ButlerlyDatabase(
+        factory: databaseFactoryFfi,
+        path: databasePath,
+        schemaSql: schema,
+      );
+      try {
+        await database.open();
+        await SqliteMerchantRepository(database).save(merchant);
+        final configuration = SqliteMerchantMatchingConfigurationRepository(
+          database,
+        );
+        await configuration.saveConfiguration(
+          merchant: merchant,
+          aliases: [originalAlias],
+          patterns: const [],
+        );
+
+        final duplicateAlias = MerchantAlias(
+          id: MerchantAliasId('alias.duplicate'),
+          merchantId: merchant.id,
+          alias: 'Costco original',
+          createdAt: now,
+          updatedAt: now,
+        );
+        final changedMerchant = Merchant(
+          id: merchant.id,
+          name: 'Changed Costco',
+          rawName: merchant.rawName,
+        );
+
+        await expectLater(
+          configuration.saveConfiguration(
+            merchant: changedMerchant,
+            aliases: [originalAlias, duplicateAlias],
+            patterns: const [],
+          ),
+          throwsA(isA<RepositoryException>()),
+        );
+
+        final restored = await SqliteMerchantRepository(
+          database,
+        ).findById(merchant.id);
+        expect(restored?.name, merchant.name);
+        expect(restored?.aliases.single.alias, originalAlias.alias);
+        expect(
+          (await SqliteMerchantAliasRepository(
+            database,
+          ).listForMerchant(merchant.id)).single,
+          isA<MerchantAlias>()
+              .having((value) => value.id, 'id', originalAlias.id)
+              .having((value) => value.alias, 'alias', originalAlias.alias),
+        );
+      } finally {
+        await database.close();
+        await Directory(directory.path).delete(recursive: true);
+      }
+    },
+  );
 }

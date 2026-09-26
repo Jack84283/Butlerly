@@ -147,8 +147,10 @@ class _MasterDataPageState extends State<MasterDataPage> {
       builder: (_) => _MerchantEditorSheet(merchant: merchant),
     );
     if (!mounted || draft == null) return;
-    final saved = await finance.saveMerchant(
-      Merchant(
+    final update = finance.updateMerchantMatchingConfiguration;
+    if (update == null) return;
+    final result = await update(
+      merchant: Merchant(
         id: merchant.id,
         name: merchant.isBuiltIn ? merchant.name : draft.name,
         status: merchant.status,
@@ -159,77 +161,11 @@ class _MasterDataPageState extends State<MasterDataPage> {
         aliases: merchant.aliases,
         normalizationPatterns: merchant.normalizationPatterns,
       ),
+      aliases: draft.aliases,
+      patterns: draft.patterns,
     );
-    if (!_accepted(saved)) return;
-
-    final aliasSave = finance.saveMerchantAlias;
-    final aliasDelete = finance.deleteMerchantAlias;
-    final patternSave = finance.saveMerchantNormalizationPattern;
-    final patternDelete = finance.deleteMerchantNormalizationPattern;
-    if (aliasSave == null ||
-        aliasDelete == null ||
-        patternSave == null ||
-        patternDelete == null) {
-      if (mounted) _refresh();
-      return;
-    }
-
-    final now = DateTime.now().microsecondsSinceEpoch;
-    final existingAliases = {
-      for (final value in merchant.aliases) value.alias: value,
-    };
-    final keptAliases = <String>{};
-    for (final alias in draft.aliases) {
-      final existing = existingAliases[alias];
-      final result = await aliasSave(
-        id:
-            existing?.id.value ??
-            'user.merchant-alias.$now.${keptAliases.length}',
-        merchantId: merchant.id.value,
-        alias: alias,
-      );
-      if (result is ApplicationFailure) {
-        _showPreservedMessage();
-        return;
-      }
-      keptAliases.add(alias);
-    }
-    for (final value in merchant.aliases) {
-      if (!keptAliases.contains(value.alias)) await aliasDelete(value.id.value);
-    }
-
-    final existingPatterns = {
-      for (final value in merchant.normalizationPatterns) value.pattern: value,
-    };
-    final keptPatterns = <String>{};
-    for (final pattern in draft.patterns) {
-      final existing = existingPatterns[pattern];
-      final result = await patternSave(
-        id:
-            existing?.id.value ??
-            'user.merchant-pattern.$now.${keptPatterns.length}',
-        merchantId: merchant.id.value,
-        pattern: pattern,
-      );
-      if (result is ApplicationFailure) {
-        _showPreservedMessage();
-        return;
-      }
-      keptPatterns.add(pattern);
-    }
-    for (final value in merchant.normalizationPatterns) {
-      if (!keptPatterns.contains(value.pattern)) {
-        await patternDelete(value.id.value);
-      }
-    }
+    if (!_accepted(result)) return;
     if (mounted) _refresh();
-  }
-
-  void _showPreservedMessage() {
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(context.l10n.text('dataPreserved'))));
   }
 
   Future<void> _add() async {

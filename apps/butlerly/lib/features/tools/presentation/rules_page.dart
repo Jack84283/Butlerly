@@ -3,7 +3,6 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_action_group.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
-import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -295,47 +294,20 @@ class _RulesPageState extends State<RulesPage> {
               onAction: () => _edit(data),
             )
           else
-            ButlerlyActionGroup(
-              actions: [
+            Column(
+              children: [
                 for (final rule in data.rules)
-                  ButlerlyActionItem(
-                    icon: rule.enabled
-                        ? Icons.rule_rounded
-                        : Icons.rule_folder_outlined,
-                    title: rule.name,
-                    subtitle: _conditions(context, data, rule),
-                    onTap: () => _showDetails(data, rule),
+                  _RuleCard(
+                    rule: rule,
+                    conditions: _conditions(context, data, rule),
+                    actions: _actions(context, data, rule),
+                    onDetails: () => _showDetails(data, rule),
+                    onToggle: (value) => _toggle(rule, value),
+                    onEdit: () => _edit(data, rule),
+                    onDelete: () => _delete(rule),
                   ),
               ],
             ),
-          for (final rule in data.rules) ...[
-            Material(
-              color: Colors.transparent,
-              child: SwitchListTile.adaptive(
-                title: Text(rule.name),
-                subtitle: Text(context.l10n.text('ruleEnabled')),
-                value: rule.enabled,
-                onChanged: (value) => _toggle(rule, value),
-                secondary: Icon(
-                  rule.enabled ? Icons.toggle_on : Icons.toggle_off,
-                  color: context.colors.interactive,
-                ),
-              ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => _edit(data, rule),
-                  child: Text(context.l10n.text('edit')),
-                ),
-                TextButton(
-                  onPressed: () => _delete(rule),
-                  child: Text(context.l10n.text('delete')),
-                ),
-              ],
-            ),
-          ],
           const SizedBox(height: ButlerlySpacing.structural),
         ],
       );
@@ -377,6 +349,61 @@ final class _RuleData {
       id.value;
   String tagName(TagId id) =>
       tags.where((value) => value.id == id).firstOrNull?.name ?? id.value;
+}
+
+class _RuleCard extends StatelessWidget {
+  const _RuleCard({
+    required this.rule,
+    required this.conditions,
+    required this.actions,
+    required this.onDetails,
+    required this.onToggle,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final TransactionRule rule;
+  final String conditions;
+  final String actions;
+  final VoidCallback onDetails;
+  final ValueChanged<bool> onToggle;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: ButlerlySpacing.standard),
+    child: ButlerlyCard(
+      padding: EdgeInsets.zero,
+      child: ListTile(
+        onTap: onDetails,
+        leading: ButlerlyActionIcon(
+          icon: rule.enabled ? Icons.rule_rounded : Icons.rule_folder_outlined,
+        ),
+        title: Text(rule.name),
+        subtitle: Text('$conditions\n$actions'),
+        isThreeLine: true,
+        trailing: Wrap(
+          alignment: WrapAlignment.end,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 0,
+          children: [
+            Switch.adaptive(value: rule.enabled, onChanged: onToggle),
+            IconButton(
+              tooltip: context.l10n.text('edit'),
+              onPressed: onEdit,
+              icon: const Icon(Icons.edit_outlined),
+            ),
+            IconButton(
+              tooltip: context.l10n.text('delete'),
+              onPressed: onDelete,
+              icon: const Icon(Icons.delete_outline),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 final class _RuleDraft {

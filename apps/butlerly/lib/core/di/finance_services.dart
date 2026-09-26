@@ -24,6 +24,7 @@ final class FinanceServices {
     PaymentSettlementRepository? paymentSettlements,
     MerchantAliasRepository? merchantAliases,
     MerchantNormalizationPatternRepository? merchantNormalizationPatterns,
+    MerchantMatchingConfigurationRepository? merchantMatchingConfiguration,
     TransactionRuleRepository? transactionRules,
   }) : listTransactions = ListTransactions(transactions),
        seedInitialMasterData = SeedInitialMasterData(
@@ -341,6 +342,13 @@ final class FinanceServices {
            merchantNormalizationPatterns == null
            ? null
            : DeleteMerchantNormalizationPattern(merchantNormalizationPatterns),
+       updateMerchantMatchingConfiguration =
+           merchantMatchingConfiguration == null
+           ? null
+           : UpdateMerchantMatchingConfiguration(
+               merchantMatchingConfiguration,
+               const SystemApplicationClock(),
+             ),
        listTransactionRules = transactionRules == null
            ? null
            : ListTransactionRules(transactionRules),
@@ -441,6 +449,8 @@ final class FinanceServices {
   final ListMerchantNormalizationPatterns? listMerchantNormalizationPatterns;
   final SaveMerchantNormalizationPattern? saveMerchantNormalizationPattern;
   final DeleteMerchantNormalizationPattern? deleteMerchantNormalizationPattern;
+  final UpdateMerchantMatchingConfiguration?
+  updateMerchantMatchingConfiguration;
   final ListTransactionRules? listTransactionRules;
   final SaveTransactionRule? saveTransactionRule;
   final SetTransactionRuleEnabled? setTransactionRuleEnabled;

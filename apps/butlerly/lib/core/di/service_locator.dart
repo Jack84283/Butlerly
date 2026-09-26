@@ -125,6 +125,10 @@ void configureDependencies({
           SqliteMerchantNormalizationPatternRepository(
             database.persistenceDatabase,
           ),
+      merchantMatchingConfiguration:
+          SqliteMerchantMatchingConfigurationRepository(
+            database.persistenceDatabase,
+          ),
       transactionRules: SqliteTransactionRuleRepository(
         database.persistenceDatabase,
       ),

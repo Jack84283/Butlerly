@@ -3,6 +3,97 @@ import 'package:sqflite_common/sqlite_api.dart';
 
 import '../database/butlerly_database.dart';
 
+final class SqliteMerchantMatchingConfigurationRepository
+    implements MerchantMatchingConfigurationRepository {
+  const SqliteMerchantMatchingConfigurationRepository(this.database);
+
+  final ButlerlyDatabase database;
+
+  @override
+  Future<void> saveConfiguration({
+    required Merchant merchant,
+    required List<MerchantAlias> aliases,
+    required List<MerchantNormalizationPattern> patterns,
+  }) async {
+    try {
+      await database.transaction((transaction) async {
+        await _saveMerchant(transaction, merchant);
+        await transaction.delete(
+          'merchant_aliases',
+          where: 'merchant_id = ?',
+          whereArgs: [merchant.id.value],
+        );
+        for (final alias in aliases) {
+          await transaction.insert('merchant_aliases', {
+            'id': alias.id.value,
+            'merchant_id': alias.merchantId.value,
+            'alias': alias.alias,
+            'normalized_alias': alias.normalizedAlias,
+            'status': alias.status.name,
+            'created_at': alias.createdAt.toIso8601String(),
+            'updated_at': alias.updatedAt.toIso8601String(),
+          });
+        }
+        await transaction.delete(
+          'merchant_normalization_patterns',
+          where: 'merchant_id = ?',
+          whereArgs: [merchant.id.value],
+        );
+        for (final pattern in patterns) {
+          await transaction.insert('merchant_normalization_patterns', {
+            'id': pattern.id.value,
+            'merchant_id': pattern.merchantId.value,
+            'pattern': pattern.pattern,
+            'normalized_pattern': pattern.normalizedPattern,
+            'status': pattern.status.name,
+            'created_at': pattern.createdAt.toIso8601String(),
+            'updated_at': pattern.updatedAt.toIso8601String(),
+          });
+        }
+      });
+    } on DatabaseException catch (error) {
+      throw mapDatabaseException(error, 'save merchant matching configuration');
+    }
+  }
+}
+
+Future<void> _saveMerchant(DatabaseExecutor executor, Merchant value) async {
+  try {
+    final existing = await executor.query(
+      'merchants',
+      columns: ['created_at'],
+      where: 'id = ?',
+      whereArgs: [value.id.value],
+      limit: 1,
+    );
+    final now = DateTime.now().toUtc().toIso8601String();
+    final row = {
+      'id': value.id.value,
+      'name': value.name,
+      'status': value.status.name,
+      'raw_name': value.rawName,
+      'normalized_name': value.normalizedName,
+      'default_category_id': value.defaultCategoryId?.value,
+      'default_subcategory_id': value.defaultSubcategoryId?.value,
+      'is_built_in': value.isBuiltIn ? 1 : 0,
+      'created_at': existing.isEmpty ? now : existing.single['created_at'],
+      'updated_at': now,
+    };
+    if (existing.isEmpty) {
+      await executor.insert('merchants', row);
+    } else {
+      await executor.update(
+        'merchants',
+        row,
+        where: 'id = ?',
+        whereArgs: [value.id.value],
+      );
+    }
+  } on DatabaseException catch (error) {
+    throw mapDatabaseException(error, 'save merchant matching configuration');
+  }
+}
+
 final class SqliteMerchantAliasRepository implements MerchantAliasRepository {
   const SqliteMerchantAliasRepository(this.database);
   final ButlerlyDatabase database;

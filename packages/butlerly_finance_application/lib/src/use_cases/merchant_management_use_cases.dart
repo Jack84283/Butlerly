@@ -3,6 +3,73 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import '../result/application_result.dart';
 import 'transaction_use_cases.dart';
 
+final class UpdateMerchantMatchingConfiguration {
+  const UpdateMerchantMatchingConfiguration(this.repository, this.clock);
+
+  final MerchantMatchingConfigurationRepository repository;
+  final ApplicationClock clock;
+
+  Future<ApplicationResult<Merchant>> call({
+    required Merchant merchant,
+    required List<String> aliases,
+    required List<String> patterns,
+  }) => runApplication('update merchant matching configuration', () async {
+    final now = clock.now();
+    final existingAliases = {
+      for (final value in merchant.aliases) value.alias: value,
+    };
+    final savedAliases = [
+      for (var index = 0; index < aliases.length; index++)
+        MerchantAlias(
+          id:
+              existingAliases[aliases[index]]?.id ??
+              MerchantAliasId(
+                'user.merchant-alias.${now.microsecondsSinceEpoch}.$index',
+              ),
+          merchantId: merchant.id,
+          alias: aliases[index],
+          createdAt: existingAliases[aliases[index]]?.createdAt ?? now,
+          updatedAt: now,
+        ),
+    ];
+    final existingPatterns = {
+      for (final value in merchant.normalizationPatterns) value.pattern: value,
+    };
+    final savedPatterns = [
+      for (var index = 0; index < patterns.length; index++)
+        MerchantNormalizationPattern(
+          id:
+              existingPatterns[patterns[index]]?.id ??
+              MerchantNormalizationPatternId(
+                'user.merchant-pattern.${now.microsecondsSinceEpoch}.$index',
+              ),
+          merchantId: merchant.id,
+          pattern: patterns[index],
+          createdAt: existingPatterns[patterns[index]]?.createdAt ?? now,
+          updatedAt: now,
+        ),
+    ];
+    final updated = Merchant(
+      id: merchant.id,
+      name: merchant.name,
+      status: merchant.status,
+      rawName: merchant.rawName,
+      normalizedName: merchant.normalizedName,
+      defaultCategoryId: merchant.defaultCategoryId,
+      defaultSubcategoryId: merchant.defaultSubcategoryId,
+      isBuiltIn: merchant.isBuiltIn,
+      aliases: savedAliases,
+      normalizationPatterns: savedPatterns,
+    );
+    await repository.saveConfiguration(
+      merchant: updated,
+      aliases: savedAliases,
+      patterns: savedPatterns,
+    );
+    return updated;
+  });
+}
+
 final class ListMerchantAliases {
   const ListMerchantAliases(this.repository);
   final MerchantAliasRepository repository;

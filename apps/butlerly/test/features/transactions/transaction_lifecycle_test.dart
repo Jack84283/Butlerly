@@ -39,6 +39,7 @@ void main() {
   late MemoryTags tags;
   late MemoryMerchantAliases merchantAliases;
   late MemoryMerchantPatterns merchantPatterns;
+  late MemoryMerchantMatchingConfiguration merchantMatchingConfiguration;
   late MemoryPaymentSettlements paymentSettlements;
 
   setUp(() async {
@@ -52,6 +53,11 @@ void main() {
     tags = MemoryTags();
     merchantAliases = MemoryMerchantAliases();
     merchantPatterns = MemoryMerchantPatterns();
+    merchantMatchingConfiguration = MemoryMerchantMatchingConfiguration(
+      merchants,
+      merchantAliases,
+      merchantPatterns,
+    );
     paymentSettlements = MemoryPaymentSettlements();
     services.registerSingleton<FinanceServices>(
       FinanceServices(
@@ -65,6 +71,7 @@ void main() {
         duplicateGroups: duplicateGroups,
         merchantAliases: merchantAliases,
         merchantNormalizationPatterns: merchantPatterns,
+        merchantMatchingConfiguration: merchantMatchingConfiguration,
         paymentSettlements: paymentSettlements,
       ),
     );
@@ -2980,6 +2987,42 @@ final class MemoryMerchantPatterns
   @override
   Future<void> save(MerchantNormalizationPattern pattern) async {
     values[pattern.id.value] = pattern;
+  }
+}
+
+final class MemoryMerchantMatchingConfiguration
+    implements MerchantMatchingConfigurationRepository {
+  const MemoryMerchantMatchingConfiguration(
+    this.merchants,
+    this.aliases,
+    this.patterns,
+  );
+
+  final MemoryMerchants merchants;
+  final MemoryMerchantAliases aliases;
+  final MemoryMerchantPatterns patterns;
+
+  @override
+  Future<void> saveConfiguration({
+    required Merchant merchant,
+    required List<MerchantAlias> aliases,
+    required List<MerchantNormalizationPattern> patterns,
+  }) async {
+    final merchantAliases = await this.aliases.listForMerchant(merchant.id);
+    for (final alias in merchantAliases) {
+      await this.aliases.remove(alias.id);
+    }
+    final merchantPatterns = await this.patterns.listForMerchant(merchant.id);
+    for (final pattern in merchantPatterns) {
+      await this.patterns.remove(pattern.id);
+    }
+    await merchants.save(merchant);
+    for (final alias in aliases) {
+      await this.aliases.save(alias);
+    }
+    for (final pattern in patterns) {
+      await this.patterns.save(pattern);
+    }
   }
 }
 
