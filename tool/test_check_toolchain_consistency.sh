@@ -12,6 +12,7 @@ mkdir -p \
   "$fixture/.github/actions/setup-toolchain" \
   "$fixture/.github/workflows" \
   "$fixture/apps/butlerly/android" \
+  "$fixture/apps/butlerly/ios/Flutter" \
   "$fixture/config" \
   "$fixture/tool"
 cp "$repo_root/tool/check_toolchain_consistency.sh" "$fixture/tool/"
@@ -33,6 +34,10 @@ runs:
 EOF
 printf 'flutter.sdk=/opt/flutter/%s\n' "$FLUTTER_VERSION" \
   >"$fixture/apps/butlerly/android/local.properties"
+printf '#include "Generated.xcconfig"\n' \
+  >"$fixture/apps/butlerly/ios/Flutter/Debug.xcconfig"
+printf '#include "Generated.xcconfig"\n' \
+  >"$fixture/apps/butlerly/ios/Flutter/Release.xcconfig"
 
 git -C "$fixture" init -q
 git -C "$fixture" add .
