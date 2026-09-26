@@ -10,6 +10,7 @@ import 'package:butlerly/design_system/components/butlerly_responsive_body.dart'
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
+import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
 import 'package:butlerly/features/foundation/presentation/reconciliation_labels.dart';
 import 'package:butlerly/features/foundation/presentation/statement_labels.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
