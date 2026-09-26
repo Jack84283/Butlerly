@@ -155,6 +155,11 @@ CREATE TABLE duplicate_candidate_groups(
   id TEXT PRIMARY KEY,
   selected_transaction_id TEXT REFERENCES transactions(id)
 );
+CREATE TABLE duplicate_candidate_group_transactions(
+  group_id TEXT NOT NULL REFERENCES duplicate_candidate_groups(id) ON DELETE CASCADE,
+  transaction_id TEXT NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+  PRIMARY KEY(group_id, transaction_id)
+);
 CREATE TABLE reconciliation_candidates(
   id TEXT PRIMARY KEY,
   receipt_transaction_id TEXT NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
@@ -319,6 +324,26 @@ CREATE TABLE payment_settlements(
         'created_at': '2026-09-20T12:00:00.000Z',
         'updated_at': '2026-09-20T12:00:00.000Z',
       });
+      await database.insert('duplicate_candidate_groups', {
+        'id': 'duplicate:legacy-payment',
+        'transaction_date': '2026-09-20',
+        'amount_coefficient': '284672',
+        'amount_scale': 2,
+        'currency': 'USD',
+        'direction': 'transfer',
+        'status': 'unresolved',
+        'selected_transaction_id': 'legacy-payment',
+        'created_at': '2026-09-20T12:00:00.000Z',
+        'updated_at': '2026-09-20T12:00:00.000Z',
+      });
+      await database.insert('duplicate_candidate_group_transactions', {
+        'group_id': 'duplicate:legacy-payment',
+        'transaction_id': 'legacy-payment',
+      });
+      await database.insert('duplicate_candidate_group_transactions', {
+        'group_id': 'duplicate:legacy-payment',
+        'transaction_id': 'receipt-1',
+      });
       await database.insert('reconciliation_candidates', {
         'id': 'candidate-1',
         'receipt_transaction_id': 'receipt-1',
@@ -362,6 +387,22 @@ CREATE TABLE payment_settlements(
       );
       expect(await database.query('reconciliation_links'), isEmpty);
       expect(await database.query('reconciliation_candidates'), isEmpty);
+      expect(
+        await database.query(
+          'duplicate_candidate_groups',
+          where: 'id = ?',
+          whereArgs: ['duplicate:legacy-payment'],
+        ),
+        isEmpty,
+      );
+      expect(
+        await database.query(
+          'duplicate_candidate_group_transactions',
+          where: 'group_id = ?',
+          whereArgs: ['duplicate:legacy-payment'],
+        ),
+        isEmpty,
+      );
     },
   );
 
