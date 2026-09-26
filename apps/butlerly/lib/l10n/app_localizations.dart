@@ -102,7 +102,8 @@ class AppLocalizations {
       'paymentSettlementPeriod': 'Statement period',
       'paymentSettlementPayment': 'Payment transaction',
       'paymentSettlementActivity': 'Statement activity',
-      'paymentSettlementPeriodTransactions': 'Period transactions ({count})',
+      'paymentSettlementPeriodTransactions':
+          'Period transactions ({count})',
       'paymentSettlementComparison': 'Settlement comparison',
       'recordedTransactionTotal': 'Net recorded activity',
       'paymentSettlementAmount': 'Payment settlement',
@@ -1404,7 +1405,8 @@ class AppLocalizations {
       'paymentSettlementPeriod': 'Período del extracto',
       'paymentSettlementPayment': 'Transacción de pago',
       'paymentSettlementActivity': 'Actividad del extracto',
-      'paymentSettlementPeriodTransactions': 'Transacciones del período ({count})',
+      'paymentSettlementPeriodTransactions':
+          'Transacciones del período ({count})',
       'paymentSettlementComparison': 'Comparación de liquidación',
       'recordedTransactionTotal': 'Actividad neta registrada',
       'paymentSettlementAmount': 'Importe de la liquidación',
