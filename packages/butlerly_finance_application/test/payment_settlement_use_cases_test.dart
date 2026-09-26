@@ -107,6 +107,35 @@ void main() {
     },
   );
 
+  test('detail normalizes signed amounts before applying direction', () async {
+    await SavePaymentSettlement(settlements, sources, clock)(
+      id: 'settlement-1',
+      paymentSourceId: 'visa',
+      payment: money('85.00'),
+      paymentDate: '2026-09-20',
+      periodStart: '2026-08-15',
+      periodEnd: '2026-09-14',
+    );
+    settlements.transactions.add(activity('expense', now, amount: '-100.00'));
+    settlements.transactions.add(
+      activity(
+        'refund',
+        now,
+        amount: '-15.00',
+        direction: TransactionDirection.refund,
+      ),
+    );
+
+    final result = await GetPaymentSettlementDetail(settlements)(
+      'settlement-1',
+    );
+    final detail =
+        (result as ApplicationSuccess<PaymentSettlementDetailDto>).value;
+
+    expect(detail.recordedTransactionTotal!.amount, DecimalValue.parse('85'));
+    expect(detail.paymentDifference!.amount, DecimalValue.parse('0'));
+  });
+
   test(
     'detail comparison is unavailable for mixed transaction currencies',
     () async {
