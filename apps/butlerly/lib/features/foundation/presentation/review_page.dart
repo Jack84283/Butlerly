@@ -680,9 +680,22 @@ class _ReviewTransactionCardState extends State<_ReviewTransactionCard> {
       FutureBuilder<ApplicationResult<TransactionDto>>(
         future: _transaction,
         builder: (context, transactionSnapshot) {
+          if (transactionSnapshot.connectionState != ConnectionState.done) {
+            return const ButlerlyLoadingState();
+          }
           final result = transactionSnapshot.data;
           if (result is! ApplicationSuccess<TransactionDto>) {
-            return const ButlerlyLoadingState();
+            return ButlerlyErrorState(
+              title: context.l10n.text('reviewLoadError'),
+              message: context.l10n.text('tryAgain'),
+              preserved: context.l10n.text('dataPreserved'),
+              actionLabel: context.l10n.text('tryAgain'),
+              onAction: () => setState(
+                () => _transaction = widget.finance.getTransaction(
+                  widget.item.transactionId,
+                ),
+              ),
+            );
           }
           final transaction = result.value;
           return FutureBuilder<TransactionMasterDataSnapshot>(
@@ -864,14 +877,16 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                                     source.id.value: source.name,
                                 },
                                 showDate: true,
-                                supportingContent: Text(
-                                  _transactionEvidenceLabel(
-                                    context,
-                                    transaction,
-                                    masterData,
-                                  ),
-                                  style: context.transactionItemMetadata,
-                                ),
+                                supportingContent:
+                                    _transactionEvidenceLabel(
+                                      context,
+                                      transaction,
+                                    ) case final evidence
+                                        when evidence.isNotEmpty =>
+                                      Text(
+                                        evidence,
+                                        style: context.transactionItemMetadata,
+                                      ),
                                 selectionControl:
                                     ButlerlyTransactionSelectionControl<
                                       TransactionId
@@ -926,22 +941,12 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
 String _transactionEvidenceLabel(
   BuildContext context,
   TransactionDto transaction,
-  TransactionMasterDataSnapshot? masterData,
 ) {
-  final paymentSource = masterData?.paymentSources
-      .where((value) => value.id.value == transaction.paymentSourceId)
-      .map((value) => value.name)
-      .firstOrNull;
-  final merchant = masterData?.presentation.merchantName(
-    transaction.merchantId,
+  if (transaction.provenance.isEmpty) return '';
+  return _reviewProvenanceLabel(
+    context,
+    transaction.provenance.first.sourceType,
   );
-  final supporting = [
-    ?merchant,
-    ?paymentSource,
-    if (transaction.provenance.isNotEmpty)
-      _reviewProvenanceLabel(context, transaction.provenance.first.sourceType),
-  ];
-  return supporting.where((value) => value.isNotEmpty).join(' · ');
 }
 
 String _directionLabel(BuildContext context, String direction) =>
