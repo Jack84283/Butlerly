@@ -17,7 +17,6 @@ import 'package:butlerly/features/foundation/presentation/transaction_change_not
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_row.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
-import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:file_selector/file_selector.dart' show XTypeGroup, openFile;
