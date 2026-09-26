@@ -51,11 +51,19 @@ void main() {
         'reference_data_translations',
         'duplicate_candidate_groups',
         'duplicate_candidate_group_transactions',
+        'merchant_aliases',
+        'merchant_normalization_patterns',
+        'transaction_rules',
       ]),
     );
     expect(
       indexes.map((row) => row['name']),
-      contains('idx_transactions_duplicate_group_lookup'),
+      containsAll([
+        'idx_transactions_duplicate_group_lookup',
+        'idx_merchant_aliases_merchant',
+        'idx_merchant_patterns_merchant',
+        'idx_transaction_rules_priority',
+      ]),
     );
     expect(await database.passesIntegrityCheck(), isTrue);
   });

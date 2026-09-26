@@ -135,6 +135,111 @@ void main() {
   );
 
   test(
+    'batch statement commit rolls back every row when one row cannot complete',
+    () async {
+      final now = DateTime.utc(2026, 8, 26);
+      await statements.saveStatement(
+        FinancialStatement(
+          id: 'batch-statement',
+          evidenceId: 'evidence',
+          paymentSourceId: 'source',
+          status: StatementStatus.ready,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      StatementRow pending(String id, int position) => StatementRow(
+        id: id,
+        statementId: 'batch-statement',
+        position: position,
+        originalText: '$id source text',
+        transactionDate: DateTime.utc(2026, 8, 20),
+        amount: '12.00',
+        currency: 'USD',
+        direction: TransactionDirection.expense.name,
+        status: StatementRowStatus.pending,
+        createdAt: now,
+        updatedAt: now,
+      );
+      Transaction transactionFor(String id, StatementRow row) => Transaction(
+        id: TransactionId(id),
+        timing: const UnknownTransactionTime(
+          UnknownTransactionTimeReason.unknown,
+        ),
+        money: Money(
+          amount: DecimalValue.parse('12.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        sourceType: TransactionSourceType.import,
+        transactionDate: '2026-08-20',
+        paymentSourceId: PaymentSourceId('source'),
+        provenance: [
+          Provenance(
+            id: ProvenanceId('provenance-$id'),
+            sourceType: ProvenanceSourceType.import,
+            capturedAt: now,
+            sourceId: row.statementId,
+            originalRepresentation: row.originalText,
+          ),
+        ],
+        createdAt: now,
+        updatedAt: now,
+      );
+      StatementRow completed(StatementRow row, Transaction transaction) =>
+          StatementRow(
+            id: row.id,
+            statementId: row.statementId,
+            position: row.position,
+            originalText: row.originalText,
+            transactionDate: row.transactionDate,
+            amount: row.amount,
+            currency: row.currency,
+            direction: row.direction,
+            status: StatementRowStatus.saved,
+            transactionId: transaction.id.value,
+            createdAt: row.createdAt,
+            updatedAt: now,
+          );
+
+      final first = pending('batch-row-a', 0);
+      final second = pending('batch-row-b', 1);
+      await statements.saveRows([first, second]);
+      final firstTransaction = transactionFor('batch-tx-a', first);
+      final secondTransaction = transactionFor('batch-tx-b', second);
+      final completedSecond = completed(second, secondTransaction);
+      await statements.saveRowTransaction(completedSecond, secondTransaction);
+
+      await expectLater(
+        statements.saveRowTransactions([
+          StatementRowTransaction(
+            row: completed(first, firstTransaction),
+            transaction: firstTransaction,
+          ),
+          StatementRowTransaction(
+            row: completedSecond,
+            transaction: secondTransaction,
+          ),
+        ]),
+        throwsA(isA<RepositoryException>()),
+      );
+      expect(await transactions.findById(firstTransaction.id), isNull);
+      expect(
+        (await statements.listRows(
+          'batch-statement',
+        )).firstWhere((row) => row.id == first.id).status,
+        StatementRowStatus.pending,
+      );
+      expect(
+        (await statements.listRows(
+          'batch-statement',
+        )).firstWhere((row) => row.id == second.id).status,
+        StatementRowStatus.saved,
+      );
+    },
+  );
+
+  test(
     'statement link targets a receipt-created transaction and preserves one canonical record',
     () async {
       final now = DateTime.utc(2026, 8, 26);

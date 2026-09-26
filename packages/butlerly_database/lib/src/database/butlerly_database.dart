@@ -13,7 +13,7 @@ final class ButlerlyDatabase {
     this.targetVersion = databaseVersion,
   }) : assert(targetVersion >= 1 && targetVersion <= databaseVersion);
 
-  static const databaseVersion = 10;
+  static const databaseVersion = 11;
 
   final DatabaseFactory factory;
   final String path;

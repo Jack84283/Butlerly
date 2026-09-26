@@ -20,6 +20,7 @@ import 'package:butlerly/features/foundation/presentation/transaction_change_not
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/features/insights/presentation/insights_page.dart';
 import 'package:butlerly/features/tools/presentation/payment_settlements_page.dart';
+import 'package:butlerly/features/tools/presentation/rules_page.dart';
 import 'package:butlerly/features/tools/presentation/tools_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -33,7 +34,7 @@ PrimaryShellNavigatorObserver _primaryObserver(int branchIndex) =>
     PrimaryShellNavigatorObserver(
       branchIndex: branchIndex,
       controller: _primaryShellVisibility,
-      onPop: branchIndex == 2 ? notifyTransactionChanged : null,
+      onPop: branchIndex == 1 ? notifyTransactionChanged : null,
     );
 
 NoTransitionPage<void> _primaryPage(
@@ -61,8 +62,8 @@ final appRouter = GoRouter(
     GoRoute(path: '/welcome', builder: (_, _) => const WelcomePage()),
 
     // Primary app shell. Only the five primary destinations keep the
-    // footer/navigation rail visible. Tools destinations and focused workflows
-    // are secondary routes outside this StatefulShellRoute.
+    // footer/navigation rail visible. Focused workflows are secondary routes
+    // outside this StatefulShellRoute.
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) => AdaptiveShell(
         navigationShell: navigationShell,
@@ -83,16 +84,6 @@ final appRouter = GoRouter(
           observers: [_primaryObserver(1)],
           routes: [
             GoRoute(
-              path: '/add',
-              pageBuilder: (context, state) =>
-                  _primaryPage('add', const AddPage()),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          observers: [_primaryObserver(2)],
-          routes: [
-            GoRoute(
               path: '/transactions',
               pageBuilder: (context, state) {
                 final parameters = state.uri.queryParameters;
@@ -111,6 +102,16 @@ final appRouter = GoRouter(
                   key: ValueKey('transactions:${state.uri.query}'),
                 );
               },
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          observers: [_primaryObserver(2)],
+          routes: [
+            GoRoute(
+              path: '/add',
+              pageBuilder: (context, state) =>
+                  _primaryPage('add', const AddPage()),
             ),
           ],
         ),
@@ -245,6 +246,10 @@ final appRouter = GoRouter(
     ),
     GoRoute(path: '/privacy-data', builder: (_, _) => const PrivacyDataPage()),
     GoRoute(path: '/master-data', builder: (_, _) => const MasterDataPage()),
+    GoRoute(
+      path: '/rules',
+      builder: (_, _) => const Scaffold(body: RulesPage()),
+    ),
     GoRoute(
       path: '/notifications',
       builder: (_, _) => const NotificationsPage(),

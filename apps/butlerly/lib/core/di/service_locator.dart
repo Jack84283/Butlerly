@@ -118,6 +118,16 @@ void configureDependencies({
       paymentSettlements: SqlitePaymentSettlementRepository(
         database.persistenceDatabase,
       ),
+      merchantAliases: SqliteMerchantAliasRepository(
+        database.persistenceDatabase,
+      ),
+      merchantNormalizationPatterns:
+          SqliteMerchantNormalizationPatternRepository(
+            database.persistenceDatabase,
+          ),
+      transactionRules: SqliteTransactionRuleRepository(
+        database.persistenceDatabase,
+      ),
     );
     services
       ..registerSingleton<FinanceServices>(finance)

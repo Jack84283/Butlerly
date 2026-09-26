@@ -194,7 +194,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(ButlerlyActionGroup), findsOneWidget);
-    expect(find.byType(ButlerlyActionRow), findsNWidgets(4));
+    expect(find.byType(ButlerlyActionRow), findsNWidgets(6));
     expect(find.text('Payment settlements'), findsOneWidget);
     expect(find.text('Search'), findsNothing);
   });
@@ -215,7 +215,6 @@ void main() {
         _expectNoFlutterException(tester);
         expect(find.text('Home'), findsAtLeastNWidgets(1));
         expect(find.text('Transactions'), findsOneWidget);
-        expect(find.bySemanticsLabel('Add transaction'), findsOneWidget);
         expect(find.text('Tools'), findsOneWidget);
         expect(find.text('More'), findsAtLeastNWidgets(1));
         _expectNavigationLabelIsNotEllipsized(tester, 'Transactions');

@@ -29,7 +29,7 @@ void main() {
     expect((manifest['backupId']! as String), isNotEmpty);
     expect(manifest['appVersion'], '1.0.0');
     expect(manifest['appBuild'], '1');
-    expect(manifest['schemaVersion'], 10);
+    expect(manifest['schemaVersion'], 11);
   });
 
   test(

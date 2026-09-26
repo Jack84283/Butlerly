@@ -95,16 +95,18 @@ class _MasterDataPageState extends State<MasterDataPage> {
   Future<void> _editExisting(Object value) async {
     final finance = _finance;
     if (finance == null) return;
+    if (value is Merchant) {
+      await _editMerchant(value);
+      return;
+    }
     final currentName = switch (value) {
       Category(:final name) => name,
       Tag(:final name) => name,
-      Merchant(:final name) => name,
       _ => throw ArgumentError.value(value, 'value'),
     };
     final labelKey = switch (value) {
       Category() => 'categoryName',
       Tag() => 'tagName',
-      Merchant() => 'merchantName',
       _ => throw ArgumentError.value(value, 'value'),
     };
     final name = await _editSheet(
@@ -133,21 +135,101 @@ class _MasterDataPageState extends State<MasterDataPage> {
         Tag(id: value.id, name: name, status: value.status),
       );
       if (!_accepted(saved)) return;
-    } else if (value is Merchant) {
-      final saved = await finance.saveMerchant(
-        Merchant(
-          id: value.id,
-          name: name,
-          status: value.status,
-          rawName: value.rawName,
-          defaultCategoryId: value.defaultCategoryId,
-          defaultSubcategoryId: value.defaultSubcategoryId,
-          isBuiltIn: value.isBuiltIn,
-        ),
-      );
-      if (!_accepted(saved)) return;
     }
     if (mounted) _refresh();
+  }
+
+  Future<void> _editMerchant(Merchant merchant) async {
+    final finance = _finance;
+    if (finance == null) return;
+    final draft = await showButlerlyBottomSheet<_MerchantDraft>(
+      context: context,
+      builder: (_) => _MerchantEditorSheet(merchant: merchant),
+    );
+    if (!mounted || draft == null) return;
+    final saved = await finance.saveMerchant(
+      Merchant(
+        id: merchant.id,
+        name: merchant.isBuiltIn ? merchant.name : draft.name,
+        status: merchant.status,
+        rawName: merchant.rawName,
+        defaultCategoryId: merchant.defaultCategoryId,
+        defaultSubcategoryId: merchant.defaultSubcategoryId,
+        isBuiltIn: merchant.isBuiltIn,
+        aliases: merchant.aliases,
+        normalizationPatterns: merchant.normalizationPatterns,
+      ),
+    );
+    if (!_accepted(saved)) return;
+
+    final aliasSave = finance.saveMerchantAlias;
+    final aliasDelete = finance.deleteMerchantAlias;
+    final patternSave = finance.saveMerchantNormalizationPattern;
+    final patternDelete = finance.deleteMerchantNormalizationPattern;
+    if (aliasSave == null ||
+        aliasDelete == null ||
+        patternSave == null ||
+        patternDelete == null) {
+      if (mounted) _refresh();
+      return;
+    }
+
+    final now = DateTime.now().microsecondsSinceEpoch;
+    final existingAliases = {
+      for (final value in merchant.aliases) value.alias: value,
+    };
+    final keptAliases = <String>{};
+    for (final alias in draft.aliases) {
+      final existing = existingAliases[alias];
+      final result = await aliasSave(
+        id:
+            existing?.id.value ??
+            'user.merchant-alias.$now.${keptAliases.length}',
+        merchantId: merchant.id.value,
+        alias: alias,
+      );
+      if (result is ApplicationFailure) {
+        _showPreservedMessage();
+        return;
+      }
+      keptAliases.add(alias);
+    }
+    for (final value in merchant.aliases) {
+      if (!keptAliases.contains(value.alias)) await aliasDelete(value.id.value);
+    }
+
+    final existingPatterns = {
+      for (final value in merchant.normalizationPatterns) value.pattern: value,
+    };
+    final keptPatterns = <String>{};
+    for (final pattern in draft.patterns) {
+      final existing = existingPatterns[pattern];
+      final result = await patternSave(
+        id:
+            existing?.id.value ??
+            'user.merchant-pattern.$now.${keptPatterns.length}',
+        merchantId: merchant.id.value,
+        pattern: pattern,
+      );
+      if (result is ApplicationFailure) {
+        _showPreservedMessage();
+        return;
+      }
+      keptPatterns.add(pattern);
+    }
+    for (final value in merchant.normalizationPatterns) {
+      if (!keptPatterns.contains(value.pattern)) {
+        await patternDelete(value.id.value);
+      }
+    }
+    if (mounted) _refresh();
+  }
+
+  void _showPreservedMessage() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(context.l10n.text('dataPreserved'))));
   }
 
   Future<void> _add() async {
@@ -427,7 +509,7 @@ class _MasterDataList extends StatelessWidget {
                   ? context.l10n.text('builtin')
                   : context.l10n.text('user'),
               active: merchant.status == MerchantStatus.active,
-              onEdit: merchant.isBuiltIn ? null : () => onEdit(merchant),
+              onEdit: () => onEdit(merchant),
               onToggle: finance == null
                   ? null
                   : () async {
@@ -572,5 +654,115 @@ class _Row extends StatelessWidget {
                 ),
             ],
           ),
+  );
+}
+
+final class _MerchantDraft {
+  const _MerchantDraft({
+    required this.name,
+    required this.aliases,
+    required this.patterns,
+  });
+
+  final String name;
+  final List<String> aliases;
+  final List<String> patterns;
+}
+
+class _MerchantEditorSheet extends StatefulWidget {
+  const _MerchantEditorSheet({required this.merchant});
+
+  final Merchant merchant;
+
+  @override
+  State<_MerchantEditorSheet> createState() => _MerchantEditorSheetState();
+}
+
+class _MerchantEditorSheetState extends State<_MerchantEditorSheet> {
+  late final TextEditingController _name;
+  late final TextEditingController _aliases;
+  late final TextEditingController _patterns;
+
+  @override
+  void initState() {
+    super.initState();
+    _name = TextEditingController(text: widget.merchant.name);
+    _aliases = TextEditingController(
+      text: widget.merchant.aliases.map((value) => value.alias).join('\n'),
+    );
+    _patterns = TextEditingController(
+      text: widget.merchant.normalizationPatterns
+          .map((value) => value.pattern)
+          .join('\n'),
+    );
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _aliases.dispose();
+    _patterns.dispose();
+    super.dispose();
+  }
+
+  List<String> _lines(String value) => value
+      .split('\n')
+      .map((line) => line.trim())
+      .where((line) => line.isNotEmpty)
+      .toSet()
+      .toList(growable: false);
+
+  @override
+  Widget build(BuildContext context) => ButlerlySheet(
+    key: const ValueKey('master-data-edit-sheet'),
+    title: Text(context.l10n.text('editMerchant')),
+    content: Column(
+      children: [
+        TextField(
+          controller: _name,
+          enabled: !widget.merchant.isBuiltIn,
+          decoration: InputDecoration(
+            labelText: context.l10n.text('merchantName'),
+          ),
+        ),
+        TextField(
+          controller: _aliases,
+          maxLines: 4,
+          decoration: InputDecoration(
+            labelText: context.l10n.text('merchantAliases'),
+            helperText: context.l10n.text('merchantAliasesBody'),
+          ),
+        ),
+        TextField(
+          controller: _patterns,
+          maxLines: 4,
+          decoration: InputDecoration(
+            labelText: context.l10n.text('merchantNormalizationPatterns'),
+            helperText: context.l10n.text('merchantNormalizationPatternsBody'),
+          ),
+        ),
+      ],
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: Text(context.l10n.text('cancel')),
+      ),
+      FilledButton(
+        onPressed: () {
+          final name = _name.text.trim();
+          if (name.isEmpty) return;
+          Navigator.pop(
+            context,
+            _MerchantDraft(
+              name: name,
+              aliases: _lines(_aliases.text),
+              patterns: _lines(_patterns.text),
+            ),
+          );
+        },
+        child: Text(context.l10n.text('save')),
+      ),
+    ],
   );
 }

@@ -14,6 +14,7 @@ import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class PaymentSettlementsPage extends StatefulWidget {
   const PaymentSettlementsPage({super.key});
@@ -488,8 +489,17 @@ class _SettlementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final paymentDate = DateTime.tryParse(settlement.paymentDate);
+    final formattedDate = paymentDate == null
+        ? settlement.paymentDate
+        : DateFormat.yMMMd(locale).format(paymentDate);
+    final amount =
+        '${settlement.payment.currency.value} '
+        '${localizedTransactionAmount(context, settlement.payment.amount.toString())}';
     return ButlerlyCard(
       onTap: onTap,
+      semanticLabel: '$sourceName, $amount, $formattedDate',
       child: Row(
         children: [
           ButlerlyActionIcon(icon: Icons.credit_score_outlined),
@@ -503,18 +513,17 @@ class _SettlementCard extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: ButlerlySpacing.micro),
+                Text(amount, style: Theme.of(context).textTheme.bodySmall),
+                const SizedBox(height: ButlerlySpacing.micro),
+                Text(
+                  formattedDate,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: ButlerlySpacing.micro),
                 Text(
                   '${settlement.periodStart} – ${settlement.periodEnd}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
-                if (settlement.statementBalance != null) ...[
-                  const SizedBox(height: ButlerlySpacing.micro),
-                  Text(
-                    '${settlement.statementBalance!.currency.value} '
-                    '${localizedTransactionAmount(context, settlement.statementBalance!.amount.toString())}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
               ],
             ),
           ),
@@ -614,7 +623,7 @@ class _SettlementBasicInfoCard extends StatelessWidget {
             label: context.l10n.text('note'),
             value: settlement.description?.trim().isNotEmpty == true
                 ? settlement.description!.trim()
-                : '—',
+                : context.l10n.text('notAvailable'),
           ),
         ],
       ),

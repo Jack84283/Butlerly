@@ -720,6 +720,10 @@ final class LocalBackupManager {
       'SELECT COUNT(*) FROM evidence_items WHERE created_at > ?',
       'SELECT COUNT(*) FROM financial_statements WHERE updated_at > ?',
       'SELECT COUNT(*) FROM payment_settlements WHERE updated_at > ?',
+      'SELECT COUNT(*) FROM merchant_aliases WHERE updated_at > ?',
+      'SELECT COUNT(*) FROM merchant_normalization_patterns '
+          'WHERE updated_at > ?',
+      'SELECT COUNT(*) FROM transaction_rules WHERE updated_at > ?',
       'SELECT COUNT(*) FROM statement_rows WHERE updated_at > ?',
       'SELECT COUNT(*) FROM review_issues '
           'WHERE closed_at IS NOT NULL AND closed_at > ?',

@@ -1,5 +1,6 @@
 import '../errors/domain_error.dart';
 import '../value_objects/domain_id.dart';
+import 'merchant_matching.dart';
 
 enum MerchantStatus { active, archived }
 
@@ -13,8 +14,12 @@ final class Merchant {
     this.defaultCategoryId,
     this.defaultSubcategoryId,
     this.isBuiltIn = false,
+    Iterable<MerchantAlias> aliases = const [],
+    Iterable<MerchantNormalizationPattern> normalizationPatterns = const [],
   }) : name = _validate(name),
-       normalizedName = normalizedName ?? normalizeMerchantName(name);
+       normalizedName = normalizedName ?? normalizeMerchantName(name),
+       aliases = immutableAliases(aliases),
+       normalizationPatterns = immutablePatterns(normalizationPatterns);
 
   final MerchantId id;
   final String name;
@@ -24,6 +29,8 @@ final class Merchant {
   final CategoryId? defaultCategoryId;
   final CategoryId? defaultSubcategoryId;
   final bool isBuiltIn;
+  final List<MerchantAlias> aliases;
+  final List<MerchantNormalizationPattern> normalizationPatterns;
 
   Merchant archive() => Merchant(
     id: id,
@@ -34,6 +41,8 @@ final class Merchant {
     defaultCategoryId: defaultCategoryId,
     defaultSubcategoryId: defaultSubcategoryId,
     isBuiltIn: isBuiltIn,
+    aliases: aliases,
+    normalizationPatterns: normalizationPatterns,
   );
 
   static String _validate(String value) {
@@ -47,16 +56,4 @@ final class Merchant {
     }
     return normalized;
   }
-}
-
-/// Conservative, deterministic merchant matching representation.
-String normalizeMerchantName(String value) {
-  var normalized = value.toLowerCase().trim();
-  normalized = normalized.replaceAll(RegExp(r"[^a-z0-9]+"), ' ');
-  normalized = normalized.replaceAll(
-    RegExp(r'\b(store|location|#)?\s*\d{2,}\b'),
-    ' ',
-  );
-  normalized = normalized.replaceAll(RegExp(r'\s+'), ' ').trim();
-  return normalized;
 }

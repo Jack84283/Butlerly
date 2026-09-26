@@ -195,6 +195,43 @@ void main() {
   );
 
   test(
+    'applies user rules to receipt transactions before persistence',
+    () async {
+      final rules = MemoryTransactionRules([
+        TransactionRule(
+          id: TransactionRuleId('rule.receipt'),
+          name: 'Classify cafe receipts',
+          descriptionContains: 'cafe',
+          assignCategoryId: CategoryId('food'),
+          createdAt: now,
+          updatedAt: now,
+        ),
+      ]);
+      final useCase = CreateReceiptTransaction(
+        transactions,
+        clock,
+        applyRules: ApplyTransactionRules(rules, clock),
+      );
+
+      await useCase.call(
+        ReceiptTransactionCommand(
+          id: 'receipt-rule',
+          provenanceId: 'receipt-rule-provenance',
+          money: money('8.50'),
+          transactionDate: '2026-08-09',
+          originalRepresentation: 'cafe.jpg',
+          description: 'Cafe latte',
+        ),
+      );
+
+      expect(
+        transactions.values['receipt-rule']!.categoryId,
+        CategoryId('food'),
+      );
+    },
+  );
+
+  test(
     'imports a date-only transaction without inventing an instant',
     () async {
       final result = await ImportTransaction(transactions, clock)(
@@ -656,6 +693,31 @@ final class MemoryPaymentSources implements PaymentSourceRepository {
   @override
   Future<void> save(PaymentSource paymentSource) async {
     values[paymentSource.id.value] = paymentSource;
+  }
+}
+
+final class MemoryTransactionRules implements TransactionRuleRepository {
+  MemoryTransactionRules(Iterable<TransactionRule> values)
+    : values = values.toList();
+
+  final List<TransactionRule> values;
+
+  @override
+  Future<TransactionRule?> findById(TransactionRuleId id) async =>
+      values.where((value) => value.id == id).firstOrNull;
+
+  @override
+  Future<List<TransactionRule>> listAll() async => List.of(values);
+
+  @override
+  Future<void> remove(TransactionRuleId id) async {
+    values.removeWhere((value) => value.id == id);
+  }
+
+  @override
+  Future<void> save(TransactionRule rule) async {
+    values.removeWhere((value) => value.id == rule.id);
+    values.add(rule);
   }
 }
 

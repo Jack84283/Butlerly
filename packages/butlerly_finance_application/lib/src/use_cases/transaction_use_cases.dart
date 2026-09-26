@@ -5,6 +5,7 @@ import '../dto/review_item_dto.dart';
 import '../dto/transaction_dto.dart';
 import '../result/application_result.dart';
 import 'classification_use_cases.dart';
+import 'transaction_rule_use_cases.dart';
 
 abstract interface class ApplicationClock {
   DateTime now();
@@ -18,11 +19,17 @@ final class SystemApplicationClock implements ApplicationClock {
 }
 
 final class CreateTransaction {
-  const CreateTransaction(this.repository, this.clock, {this.classifier});
+  const CreateTransaction(
+    this.repository,
+    this.clock, {
+    this.classifier,
+    this.applyRules,
+  });
 
   final TransactionRepository repository;
   final ApplicationClock clock;
   final ProposeTransactionClassification? classifier;
+  final ApplyTransactionRules? applyRules;
 
   Future<ApplicationResult<TransactionDto>> call(
     CreateTransactionCommand command,
@@ -77,8 +84,11 @@ final class CreateTransaction {
       transactionDate: command.transactionDate,
       timeZoneId: command.timeZoneId,
     );
-    await repository.save(transaction);
-    return TransactionDto.fromDomain(transaction);
+    final resolved = applyRules == null
+        ? transaction
+        : await applyRules!(transaction);
+    await repository.save(resolved);
+    return TransactionDto.fromDomain(resolved);
   });
 }
 
@@ -143,11 +153,17 @@ final class UpdateTransaction {
 }
 
 final class ImportTransaction {
-  const ImportTransaction(this.repository, this.clock, {this.classifier});
+  const ImportTransaction(
+    this.repository,
+    this.clock, {
+    this.classifier,
+    this.applyRules,
+  });
 
   final TransactionRepository repository;
   final ApplicationClock clock;
   final ProposeTransactionClassification? classifier;
+  final ApplyTransactionRules? applyRules;
 
   Future<ApplicationResult<TransactionDto>> call(
     ImportTransactionCommand command,
@@ -210,8 +226,11 @@ final class ImportTransaction {
       transactionDate: command.transactionDate,
       timeZoneId: command.timeZoneId,
     );
-    await repository.save(transaction);
-    return TransactionDto.fromDomain(transaction);
+    final resolved = applyRules == null
+        ? transaction
+        : await applyRules!(transaction);
+    await repository.save(resolved);
+    return TransactionDto.fromDomain(resolved);
   });
 }
 

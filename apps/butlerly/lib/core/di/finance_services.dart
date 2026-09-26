@@ -22,6 +22,9 @@ final class FinanceServices {
     StatementRepository? statements,
     DuplicateCandidateGroupRepository? duplicateGroups,
     PaymentSettlementRepository? paymentSettlements,
+    MerchantAliasRepository? merchantAliases,
+    MerchantNormalizationPatternRepository? merchantNormalizationPatterns,
+    TransactionRuleRepository? transactionRules,
   }) : listTransactions = ListTransactions(transactions),
        seedInitialMasterData = SeedInitialMasterData(
          merchants,
@@ -53,6 +56,12 @@ final class FinanceServices {
                ? transactions as HistoricalClassificationRepository
                : null,
          ),
+         applyRules: transactionRules == null
+             ? null
+             : ApplyTransactionRules(
+                 transactionRules,
+                 const SystemApplicationClock(),
+               ),
        ),
        createReceiptTransaction = CreateReceiptTransaction(
          transactions,
@@ -64,6 +73,12 @@ final class FinanceServices {
                ? transactions as HistoricalClassificationRepository
                : null,
          ),
+         applyRules: transactionRules == null
+             ? null
+             : ApplyTransactionRules(
+                 transactionRules,
+                 const SystemApplicationClock(),
+               ),
        ),
        createPaymentTransaction = CreatePaymentTransaction(
          transactions,
@@ -79,6 +94,12 @@ final class FinanceServices {
                ? transactions as HistoricalClassificationRepository
                : null,
          ),
+         applyRules: transactionRules == null
+             ? null
+             : ApplyTransactionRules(
+                 transactionRules,
+                 const SystemApplicationClock(),
+               ),
        ),
        getTransaction = GetTransaction(transactions),
        updateTransaction = UpdateTransaction(
@@ -260,6 +281,12 @@ final class FinanceServices {
                statements as StatementWorkflowRepository,
                const SystemApplicationClock(),
                evidence: evidence,
+               applyRules: transactionRules == null
+                   ? null
+                   : ApplyTransactionRules(
+                       transactionRules,
+                       const SystemApplicationClock(),
+                     ),
                duplicateGroups: duplicateGroups,
                duplicateChecker: DuplicateTransactionChecker(transactions),
                classifier: ProposeTransactionClassification(
@@ -292,6 +319,43 @@ final class FinanceServices {
        deletePaymentSettlement = paymentSettlements == null
            ? null
            : DeletePaymentSettlement(paymentSettlements),
+       listMerchantAliases = merchantAliases == null
+           ? null
+           : ListMerchantAliases(merchantAliases),
+       saveMerchantAlias = merchantAliases == null
+           ? null
+           : SaveMerchantAlias(merchantAliases, const SystemApplicationClock()),
+       deleteMerchantAlias = merchantAliases == null
+           ? null
+           : DeleteMerchantAlias(merchantAliases),
+       listMerchantNormalizationPatterns = merchantNormalizationPatterns == null
+           ? null
+           : ListMerchantNormalizationPatterns(merchantNormalizationPatterns),
+       saveMerchantNormalizationPattern = merchantNormalizationPatterns == null
+           ? null
+           : SaveMerchantNormalizationPattern(
+               merchantNormalizationPatterns,
+               const SystemApplicationClock(),
+             ),
+       deleteMerchantNormalizationPattern =
+           merchantNormalizationPatterns == null
+           ? null
+           : DeleteMerchantNormalizationPattern(merchantNormalizationPatterns),
+       listTransactionRules = transactionRules == null
+           ? null
+           : ListTransactionRules(transactionRules),
+       saveTransactionRule = transactionRules == null
+           ? null
+           : SaveTransactionRule(transactionRules),
+       setTransactionRuleEnabled = transactionRules == null
+           ? null
+           : SetTransactionRuleEnabled(
+               transactionRules,
+               const SystemApplicationClock(),
+             ),
+       deleteTransactionRule = transactionRules == null
+           ? null
+           : DeleteTransactionRule(transactionRules),
        updateAnalysisFindingLifecycle = analysisFindings == null
            ? null
            : UpdateFindingLifecycle(analysisFindings),
@@ -371,6 +435,16 @@ final class FinanceServices {
   final GetPaymentSettlementDetail? getPaymentSettlementDetail;
   final SetPaymentSettlementStatus? setPaymentSettlementStatus;
   final DeletePaymentSettlement? deletePaymentSettlement;
+  final ListMerchantAliases? listMerchantAliases;
+  final SaveMerchantAlias? saveMerchantAlias;
+  final DeleteMerchantAlias? deleteMerchantAlias;
+  final ListMerchantNormalizationPatterns? listMerchantNormalizationPatterns;
+  final SaveMerchantNormalizationPattern? saveMerchantNormalizationPattern;
+  final DeleteMerchantNormalizationPattern? deleteMerchantNormalizationPattern;
+  final ListTransactionRules? listTransactionRules;
+  final SaveTransactionRule? saveTransactionRule;
+  final SetTransactionRuleEnabled? setTransactionRuleEnabled;
+  final DeleteTransactionRule? deleteTransactionRule;
 }
 
 final class _NoMasterTranslationRepository

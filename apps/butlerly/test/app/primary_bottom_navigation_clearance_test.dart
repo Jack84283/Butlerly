@@ -42,18 +42,28 @@ void main() {
               selectedIcon: Icon(Icons.home),
               label: 'Home',
             ),
-            1: NavigationDestination(icon: Icon(Icons.add), label: 'Add'),
-            2: NavigationDestination(
+            1: NavigationDestination(
               icon: Icon(Icons.receipt_long_outlined),
               selectedIcon: Icon(Icons.receipt_long),
               label: 'Transactions',
             ),
+            2: NavigationDestination(
+              icon: Icon(Icons.add_rounded),
+              selectedIcon: Icon(Icons.add_rounded),
+              label: 'Add',
+            ),
             3: NavigationDestination(
-              icon: Icon(Icons.more_horiz),
+              icon: Icon(Icons.bar_chart_rounded),
+              selectedIcon: Icon(Icons.bar_chart_rounded),
+              label: 'Tools',
+            ),
+            4: NavigationDestination(
+              icon: Icon(Icons.more_horiz_rounded),
+              selectedIcon: Icon(Icons.more_horiz_rounded),
               label: 'More',
             ),
           },
-          visualBranchIndexes: const [0, 1, 2, 3],
+          visualBranchIndexes: const [0, 1, 2, 3, 4],
           currentIndex: 0,
           onSelected: (index) => selectedBranch = index,
         ),
@@ -87,15 +97,12 @@ void main() {
       find.byKey(const ValueKey('primary-navigation-add-arch')),
       findsNothing,
     );
-
-    expect(find.text('Add'), findsNothing);
-
-    final addRect = tester.getRect(
+    expect(
       find.byKey(const ValueKey('primary-navigation-add-button')),
+      findsOneWidget,
     );
-    expect(addRect.center.dy, closeTo(navigationContentRect.center.dy, 0.01));
 
-    await tester.tapAt(addRect.center);
+    await tester.tap(find.text('Transactions'));
     expect(selectedBranch, 1);
 
     await tester.tap(find.byKey(const ValueKey('bottom-page-action')));

@@ -39,13 +39,13 @@ Future<void> startLocalFileImport(
 
   try {
     final sourceLanguage = Localizations.localeOf(context).languageCode;
-    const group = XTypeGroup(
-      label: 'CSV',
+    final group = XTypeGroup(
+      label: context.l10n.text('csvFileType'),
       extensions: ['csv'],
       mimeTypes: ['text/csv'],
       uniformTypeIdentifiers: ['public.comma-separated-values-text'],
     );
-    final file = await openFile(acceptedTypeGroups: const [group]);
+    final file = await openFile(acceptedTypeGroups: [group]);
     if (file == null || !context.mounted) return;
     onImportingChanged?.call(true);
     final importer = LocalCsvImporter(services<FinanceServices>());
@@ -53,7 +53,10 @@ Future<void> startLocalFileImport(
     if (!context.mounted) return;
     onImportingChanged?.call(false);
     if (preview.rows.isEmpty || preview.validCount == 0) {
-      await showImportMessage('Import validation', preview.errors.join('\n'));
+      await showImportMessage(
+        context.l10n.text('importValidation'),
+        preview.errors.join('\n'),
+      );
       return;
     }
     final sources = await services<FinanceServices>().listPaymentSources();

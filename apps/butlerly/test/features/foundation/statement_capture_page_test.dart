@@ -261,8 +261,8 @@ void main() {
         theme: AppTheme.darkFor(ButlerlyColorTheme.skyBlue),
       );
       await tester.runAsync(() async {
-        await tester.tap(find.byType(Card).first);
-        await Future<void>.delayed(const Duration(milliseconds: 30));
+        await tester.tap(find.byType(ListTile).first);
+        await Future<void>.delayed(const Duration(milliseconds: 200));
       });
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
