@@ -705,44 +705,50 @@ class _ReviewTransactionCardState extends State<_ReviewTransactionCard> {
           final data = masterSnapshot.data;
           return ButlerlyCard(
             padding: EdgeInsets.zero,
-            child: TransactionRow(
-              transaction: transaction,
-              masterData: data?.presentation ?? const TransactionMasterData(),
-              paymentSourceNames: {
-                for (final source in data?.paymentSources ?? <PaymentSource>[])
-                  source.id.value: source.name,
-              },
-              showDate: true,
-              onTap: widget.onEdit,
-              supportingContent: Padding(
-                padding: const EdgeInsets.only(top: ButlerlySpacing.small),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(widget.reason),
-                    const SizedBox(height: ButlerlySpacing.small),
-                    Text(widget.recommendation),
-                    const SizedBox(height: ButlerlySpacing.standard),
-                    ButlerlyButtonBar(
-                      spacing: ButlerlyButtonBarSpacing.none,
-                      children: [
-                        FilledButton(
-                          onPressed: widget.onPrimary,
-                          child: Text(widget.primaryLabel),
-                        ),
-                        OutlinedButton(
-                          onPressed: widget.onEdit,
-                          child: Text(widget.editLabel),
-                        ),
-                        TextButton(
-                          onPressed: widget.onDismiss,
-                          child: Text(widget.dismissLabel),
-                        ),
-                      ],
-                    ),
-                  ],
+            child: Column(
+              children: [
+                TransactionRow(
+                  transaction: transaction,
+                  masterData:
+                      data?.presentation ?? const TransactionMasterData(),
+                  paymentSourceNames: {
+                    for (final source
+                        in data?.paymentSources ?? <PaymentSource>[])
+                      source.id.value: source.name,
+                  },
+                  showDate: true,
+                  onTap: widget.onEdit,
                 ),
-              ),
+                Padding(
+                  padding: const EdgeInsets.all(ButlerlySpacing.standard),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(widget.reason),
+                      const SizedBox(height: ButlerlySpacing.small),
+                      Text(widget.recommendation),
+                      const SizedBox(height: ButlerlySpacing.standard),
+                      ButlerlyButtonBar(
+                        spacing: ButlerlyButtonBarSpacing.none,
+                        children: [
+                          FilledButton(
+                            onPressed: widget.onPrimary,
+                            child: Text(widget.primaryLabel),
+                          ),
+                          OutlinedButton(
+                            onPressed: widget.onEdit,
+                            child: Text(widget.editLabel),
+                          ),
+                          TextButton(
+                            onPressed: widget.onDismiss,
+                            child: Text(widget.dismissLabel),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           );
         },
