@@ -35,8 +35,8 @@ validate_database() (
 
 validate_flutter_application() (
   cd apps/butlerly
-  dart format .
-  git diff -- lib/features/foundation/presentation/review_page.dart lib/features/foundation/presentation/statement_capture_page.dart lib/features/tools/presentation/payment_settlements_page.dart
+  dart format lib/features/foundation/presentation/review_page.dart
+  git diff -- lib/features/foundation/presentation/review_page.dart
   exit 1
 )
 
