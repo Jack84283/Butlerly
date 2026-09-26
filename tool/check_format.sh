@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Report formatting drift without changing the caller's files.
-dart format --output=none --set-exit-if-changed "$@"
+# Temporary formatter diagnostic: emit the exact formatter diff for changed files.
+dart format "$@"
+git diff -- .
+exit 1
