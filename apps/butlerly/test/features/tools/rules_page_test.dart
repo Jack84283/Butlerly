@@ -200,6 +200,71 @@ void main() {
     },
   );
 
+  testWidgets('add rule category choices preserve the two-level hierarchy', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const _TestApp(child: RulesPage()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Add rule'));
+    await tester.pumpAndSettle();
+
+    List<String> values(String key) => tester
+        .widget<ButlerlySelectField<String>>(find.byKey(ValueKey(key)))
+        .entries
+        .map((entry) => entry.value)
+        .toList();
+
+    expect(values('rule-condition-category'), [
+      '',
+      'category.transport',
+      'category.food',
+    ]);
+    expect(values('rule-action-category'), [
+      '',
+      'category.transport',
+      'category.food',
+    ]);
+    expect(values('rule-action-subcategory'), ['']);
+
+    final actionCategory = find.byKey(const ValueKey('rule-action-category'));
+    tester
+        .widget<ButlerlySelectField<String>>(actionCategory)
+        .onChanged('category.transport');
+    await tester.pump();
+    expect(values('rule-action-subcategory'), ['', 'subcategory.fuel']);
+    expect(values('rule-action-subcategory'), isNot(contains('category.food')));
+
+    tester
+        .widget<ButlerlySelectField<String>>(
+          find.byKey(const ValueKey('rule-action-subcategory')),
+        )
+        .onChanged('subcategory.fuel');
+    await tester.pump();
+    expect(
+      tester
+          .widget<ButlerlySelectField<String>>(
+            find.byKey(const ValueKey('rule-action-subcategory')),
+          )
+          .value,
+      'subcategory.fuel',
+    );
+
+    tester
+        .widget<ButlerlySelectField<String>>(actionCategory)
+        .onChanged('category.food');
+    await tester.pump();
+    expect(
+      tester
+          .widget<ButlerlySelectField<String>>(
+            find.byKey(const ValueKey('rule-action-subcategory')),
+          )
+          .value,
+      '',
+    );
+    expect(values('rule-action-subcategory'), ['', 'subcategory.groceries']);
+    _expectNoFlutterError(tester);
+  });
+
   testWidgets('delete requires confirmation and removes the persisted rule', (
     tester,
   ) async {
@@ -329,6 +394,23 @@ final class _Categories implements CategoryRepository {
       id: CategoryId('category.transport'),
       name: 'Transport',
       origin: CategoryOrigin.user,
+    ),
+    Category(
+      id: CategoryId('subcategory.fuel'),
+      name: 'Fuel',
+      origin: CategoryOrigin.user,
+      parentId: CategoryId('category.transport'),
+    ),
+    Category(
+      id: CategoryId('category.food'),
+      name: 'Food',
+      origin: CategoryOrigin.user,
+    ),
+    Category(
+      id: CategoryId('subcategory.groceries'),
+      name: 'Groceries',
+      origin: CategoryOrigin.user,
+      parentId: CategoryId('category.food'),
     ),
   ];
 

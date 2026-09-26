@@ -12,11 +12,48 @@ final class ListTransactionRules {
 }
 
 final class SaveTransactionRule {
-  const SaveTransactionRule(this.repository);
+  const SaveTransactionRule(this.repository, this.categories);
   final TransactionRuleRepository repository;
+  final CategoryRepository categories;
 
   Future<ApplicationResult<TransactionRule>> call(TransactionRule rule) =>
       runApplication('save transaction rule', () async {
+        final values = await categories.listAll();
+        final byId = {
+          for (final category in values) category.id.value: category,
+        };
+        final conditionCategory = rule.categoryId == null
+            ? null
+            : byId[rule.categoryId!.value];
+        if (conditionCategory?.parentId != null) {
+          invalid(
+            code: DomainErrorCode.relationshipMismatch,
+            field: 'categoryId',
+            message: 'A rule condition must reference a root category.',
+          );
+        }
+        final assignedCategory = rule.assignCategoryId == null
+            ? null
+            : byId[rule.assignCategoryId!.value];
+        if (assignedCategory?.parentId != null) {
+          invalid(
+            code: DomainErrorCode.relationshipMismatch,
+            field: 'assignCategoryId',
+            message: 'A rule action must assign a root category.',
+          );
+        }
+        final assignedSubcategory = rule.assignSubcategoryId == null
+            ? null
+            : byId[rule.assignSubcategoryId!.value];
+        if (assignedSubcategory != null &&
+            (assignedSubcategory.parentId == null ||
+                assignedSubcategory.parentId != rule.assignCategoryId)) {
+          invalid(
+            code: DomainErrorCode.relationshipMismatch,
+            field: 'assignSubcategoryId',
+            message: 'A rule subcategory must belong to its assigned category.',
+          );
+        }
         await repository.save(rule);
         return rule;
       });

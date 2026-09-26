@@ -100,6 +100,71 @@ void main() {
     expect(enabled, isA<ApplicationSuccess<TransactionRule>>());
     expect((await repository.listAll()).single.enabled, isTrue);
   });
+
+  test('rejects invalid category hierarchy when saving a rule', () async {
+    final categories = _RuleCategories([
+      Category(
+        id: CategoryId('category.root'),
+        name: 'Root',
+        origin: CategoryOrigin.user,
+      ),
+      Category(
+        id: CategoryId('category.child'),
+        name: 'Child',
+        origin: CategoryOrigin.user,
+        parentId: CategoryId('category.root'),
+      ),
+      Category(
+        id: CategoryId('category.other-root'),
+        name: 'Other root',
+        origin: CategoryOrigin.user,
+      ),
+    ]);
+    final repository = _RuleRepository(const []);
+    final save = SaveTransactionRule(repository, categories);
+
+    TransactionRule rule({
+      CategoryId? conditionCategoryId,
+      CategoryId? assignCategoryId,
+      CategoryId? assignSubcategoryId,
+    }) => TransactionRule(
+      id: TransactionRuleId('rule.invalid'),
+      name: 'Invalid hierarchy',
+      categoryId: conditionCategoryId,
+      descriptionContains: 'match',
+      assignCategoryId: assignCategoryId,
+      assignSubcategoryId: assignSubcategoryId,
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    for (final value in [
+      rule(
+        conditionCategoryId: CategoryId('category.child'),
+        assignCategoryId: CategoryId('category.root'),
+      ),
+      rule(assignCategoryId: CategoryId('category.child')),
+      rule(
+        assignCategoryId: CategoryId('category.root'),
+        assignSubcategoryId: CategoryId('category.other-root'),
+      ),
+      rule(
+        assignCategoryId: CategoryId('category.root'),
+        assignSubcategoryId: CategoryId('category.root'),
+      ),
+    ]) {
+      final result = await save(value);
+      expect(
+        result,
+        isA<ApplicationFailure<TransactionRule>>().having(
+          (failure) => failure.failure.code,
+          'code',
+          ApplicationFailureCode.validation,
+        ),
+      );
+    }
+    expect(await repository.listAll(), isEmpty);
+  });
 }
 
 Transaction _transaction() => Transaction(
@@ -158,4 +223,20 @@ final class _RuleRepository implements TransactionRuleRepository {
     _values.removeWhere((value) => value.id == rule.id);
     _values.add(rule);
   }
+}
+
+final class _RuleCategories implements CategoryRepository {
+  _RuleCategories(Iterable<Category> values) : _values = values.toList();
+
+  final List<Category> _values;
+
+  @override
+  Future<Category?> findById(CategoryId id) async =>
+      _values.where((value) => value.id == id).cast<Category?>().firstOrNull;
+
+  @override
+  Future<List<Category>> listAll() async => List.of(_values);
+
+  @override
+  Future<void> save(Category category) async => _values.add(category);
 }

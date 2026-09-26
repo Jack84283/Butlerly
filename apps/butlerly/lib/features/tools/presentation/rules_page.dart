@@ -554,6 +554,31 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
       DropdownMenuEntry<String>(value: id, label: label),
   ];
 
+  Iterable<(String, String)> _rootCategories(String? selectedId) => widget
+      .categories
+      .where(
+        (category) =>
+            category.parentId == null &&
+            (category.status == CategoryStatus.active ||
+                category.id.value == selectedId),
+      )
+      .map((category) => (category.id.value, category.name));
+
+  Iterable<(String, String)> _subcategories(
+    String? parentId,
+    String? selectedId,
+  ) {
+    if (parentId == null) return const <(String, String)>[];
+    return widget.categories
+        .where(
+          (category) =>
+              category.parentId?.value == parentId &&
+              (category.status == CategoryStatus.active ||
+                  category.id.value == selectedId),
+        )
+        .map((category) => (category.id.value, category.name));
+  }
+
   Widget _dropdown({
     required Key key,
     required String label,
@@ -593,9 +618,6 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
   Widget build(BuildContext context) {
     final empty = context.l10n.text('notSet');
     final merchants = widget.merchants.map(
-      (value) => (value.id.value, value.name),
-    );
-    final categories = widget.categories.map(
       (value) => (value.id.value, value.name),
     );
     final sources = widget.paymentSources.map(
@@ -643,7 +665,7 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
               label: context.l10n.text('category'),
               value: _conditionCategoryId,
               onChanged: (v) => setState(() => _conditionCategoryId = v),
-              entries: _entries(empty, categories),
+              entries: _entries(empty, _rootCategories(_conditionCategoryId)),
             ),
             _dropdown(
               key: const ValueKey('rule-condition-payment-source'),
@@ -685,15 +707,21 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
               key: const ValueKey('rule-action-category'),
               label: context.l10n.text('category'),
               value: _assignCategoryId,
-              onChanged: (v) => setState(() => _assignCategoryId = v),
-              entries: _entries(empty, categories),
+              onChanged: (v) => setState(() {
+                _assignCategoryId = v;
+                _assignSubcategoryId = null;
+              }),
+              entries: _entries(empty, _rootCategories(_assignCategoryId)),
             ),
             _dropdown(
               key: const ValueKey('rule-action-subcategory'),
               label: context.l10n.text('subcategory'),
               value: _assignSubcategoryId,
               onChanged: (v) => setState(() => _assignSubcategoryId = v),
-              entries: _entries(empty, categories),
+              entries: _entries(
+                empty,
+                _subcategories(_assignCategoryId, _assignSubcategoryId),
+              ),
             ),
             _dropdown(
               key: const ValueKey('rule-action-payment-source'),

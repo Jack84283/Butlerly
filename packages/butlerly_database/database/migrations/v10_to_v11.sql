@@ -59,3 +59,48 @@ CREATE INDEX idx_merchant_patterns_merchant
 
 CREATE INDEX idx_transaction_rules_priority
   ON transaction_rules(enabled, priority);
+
+CREATE TRIGGER merchant_aliases_tombstone AFTER DELETE ON merchant_aliases
+BEGIN
+  INSERT INTO entity_tombstones(entity_type, entity_id, deleted_at)
+  VALUES('merchant_aliases', OLD.id, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  ON CONFLICT(entity_type, entity_id) DO UPDATE SET deleted_at = excluded.deleted_at;
+END;
+
+CREATE TRIGGER merchant_aliases_tombstone_clear AFTER INSERT ON merchant_aliases
+BEGIN
+  DELETE FROM entity_tombstones
+  WHERE entity_type = 'merchant_aliases' AND entity_id = NEW.id;
+END;
+
+CREATE TRIGGER merchant_normalization_patterns_tombstone
+AFTER DELETE ON merchant_normalization_patterns
+BEGIN
+  INSERT INTO entity_tombstones(entity_type, entity_id, deleted_at)
+  VALUES(
+    'merchant_normalization_patterns',
+    OLD.id,
+    strftime('%Y-%m-%dT%H:%M:%fZ','now')
+  )
+  ON CONFLICT(entity_type, entity_id) DO UPDATE SET deleted_at = excluded.deleted_at;
+END;
+
+CREATE TRIGGER merchant_normalization_patterns_tombstone_clear
+AFTER INSERT ON merchant_normalization_patterns
+BEGIN
+  DELETE FROM entity_tombstones
+  WHERE entity_type = 'merchant_normalization_patterns' AND entity_id = NEW.id;
+END;
+
+CREATE TRIGGER transaction_rules_tombstone AFTER DELETE ON transaction_rules
+BEGIN
+  INSERT INTO entity_tombstones(entity_type, entity_id, deleted_at)
+  VALUES('transaction_rules', OLD.id, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  ON CONFLICT(entity_type, entity_id) DO UPDATE SET deleted_at = excluded.deleted_at;
+END;
+
+CREATE TRIGGER transaction_rules_tombstone_clear AFTER INSERT ON transaction_rules
+BEGIN
+  DELETE FROM entity_tombstones
+  WHERE entity_type = 'transaction_rules' AND entity_id = NEW.id;
+END;

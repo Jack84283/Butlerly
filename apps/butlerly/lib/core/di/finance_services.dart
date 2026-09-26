@@ -354,7 +354,7 @@ final class FinanceServices {
            : ListTransactionRules(transactionRules),
        saveTransactionRule = transactionRules == null
            ? null
-           : SaveTransactionRule(transactionRules),
+           : SaveTransactionRule(transactionRules, categories),
        setTransactionRuleEnabled = transactionRules == null
            ? null
            : SetTransactionRuleEnabled(
