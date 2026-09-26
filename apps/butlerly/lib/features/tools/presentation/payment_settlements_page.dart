@@ -414,6 +414,11 @@ class _PaymentSettlementDetailPageState
               _SettlementSummaryCard(detail: detail),
               const SizedBox(height: ButlerlySpacing.section),
               ButlerlySectionHeader(
+                title: context.l10n.text('paymentSettlementComparison'),
+              ),
+              _SettlementComparisonCard(detail: detail),
+              const SizedBox(height: ButlerlySpacing.section),
+              ButlerlySectionHeader(
                 title: context.l10n.text('paymentSettlementPayment'),
               ),
               _SettlementPaymentCard(settlement: settlement),
@@ -526,6 +531,48 @@ class _SettlementPaymentCard extends StatelessWidget {
   );
 }
 
+class _SettlementComparisonCard extends StatelessWidget {
+  const _SettlementComparisonCard({required this.detail});
+
+  final PaymentSettlementDetailDto detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final settlement = detail.settlement;
+    final recorded = detail.recordedTransactionTotal;
+    final difference = detail.paymentDifference;
+    final currency = settlement.payment.currency.value;
+
+    String amount(DecimalValue value) =>
+        '$currency ${localizedTransactionAmount(context, value.toString())}';
+
+    return ButlerlyCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SummaryLine(
+            label: context.l10n.text('recordedTransactionTotal'),
+            value: recorded == null
+                ? context.l10n.text('comparisonUnavailable')
+                : amount(recorded.amount),
+          ),
+          const SizedBox(height: ButlerlySpacing.compact),
+          _SummaryLine(
+            label: context.l10n.text('paymentSettlementAmount'),
+            value: amount(settlement.payment.amount),
+          ),
+          const SizedBox(height: ButlerlySpacing.compact),
+          _SummaryLine(
+            label: context.l10n.text('paymentSettlementDifference'),
+            value: difference == null
+                ? context.l10n.text('comparisonUnavailable')
+                : amount(difference.amount),
+          ),
+        ],
+      ),
+    );
+  }
+}
 class _SettlementSummaryCard extends StatelessWidget {
   const _SettlementSummaryCard({required this.detail});
 
