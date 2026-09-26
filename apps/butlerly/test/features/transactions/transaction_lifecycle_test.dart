@@ -16,6 +16,7 @@ import 'package:butlerly/features/foundation/presentation/search_page.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_count_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_row.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
