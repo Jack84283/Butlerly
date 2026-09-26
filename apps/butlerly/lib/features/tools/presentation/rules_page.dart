@@ -545,27 +545,28 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
 
   String? _optional(String value) => value.trim().isEmpty ? null : value.trim();
 
-  List<DropdownMenuItem<String?>> _items(
-    BuildContext context,
+  List<DropdownMenuEntry<String>> _entries(
     String empty,
     Iterable<(String, String)> values,
   ) => [
-    DropdownMenuItem<String?>(value: null, child: Text(empty)),
+    DropdownMenuEntry<String>(value: '', label: empty),
     for (final (id, label) in values)
-      DropdownMenuItem<String?>(value: id, child: Text(label)),
+      DropdownMenuEntry<String>(value: id, label: label),
   ];
 
-  Widget _dropdown(
-    String label,
-    String? value,
-    ValueChanged<String?> onChanged,
-    List<DropdownMenuItem<String?>> items,
-  ) => DropdownButtonFormField<String?>(
-    initialValue: value,
-    isExpanded: true,
-    decoration: InputDecoration(labelText: label),
-    items: items,
-    onChanged: onChanged,
+  Widget _dropdown({
+    required Key key,
+    required String label,
+    required String? value,
+    required ValueChanged<String?> onChanged,
+    required List<DropdownMenuEntry<String>> entries,
+  }) => ButlerlySelectField<String>(
+    key: key,
+    label: label,
+    value: value ?? '',
+    entries: entries,
+    onChanged: (selected) =>
+        onChanged(selected == null || selected.isEmpty ? null : selected),
   );
 
   Widget _fieldGroup(List<Widget> fields) => Column(
@@ -631,28 +632,32 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
           _sectionHeading(context.l10n.text('ruleConditions')),
           _fieldGroup([
             _dropdown(
-              context.l10n.text('merchant'),
-              _conditionMerchantId,
-              (v) => setState(() => _conditionMerchantId = v),
-              _items(context, empty, merchants),
+              key: const ValueKey('rule-condition-merchant'),
+              label: context.l10n.text('merchant'),
+              value: _conditionMerchantId,
+              onChanged: (v) => setState(() => _conditionMerchantId = v),
+              entries: _entries(empty, merchants),
             ),
             _dropdown(
-              context.l10n.text('category'),
-              _conditionCategoryId,
-              (v) => setState(() => _conditionCategoryId = v),
-              _items(context, empty, categories),
+              key: const ValueKey('rule-condition-category'),
+              label: context.l10n.text('category'),
+              value: _conditionCategoryId,
+              onChanged: (v) => setState(() => _conditionCategoryId = v),
+              entries: _entries(empty, categories),
             ),
             _dropdown(
-              context.l10n.text('paymentSource'),
-              _conditionPaymentSourceId,
-              (v) => setState(() => _conditionPaymentSourceId = v),
-              _items(context, empty, sources),
+              key: const ValueKey('rule-condition-payment-source'),
+              label: context.l10n.text('paymentSource'),
+              value: _conditionPaymentSourceId,
+              onChanged: (v) => setState(() => _conditionPaymentSourceId = v),
+              entries: _entries(empty, sources),
             ),
             _dropdown(
-              context.l10n.text('tag'),
-              _conditionTagId,
-              (v) => setState(() => _conditionTagId = v),
-              _items(context, empty, tags),
+              key: const ValueKey('rule-condition-tag'),
+              label: context.l10n.text('tag'),
+              value: _conditionTagId,
+              onChanged: (v) => setState(() => _conditionTagId = v),
+              entries: _entries(empty, tags),
             ),
             TextField(
               controller: _descriptionContains,
@@ -670,34 +675,39 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
           _sectionHeading(context.l10n.text('ruleActions')),
           _fieldGroup([
             _dropdown(
-              context.l10n.text('merchant'),
-              _assignMerchantId,
-              (v) => setState(() => _assignMerchantId = v),
-              _items(context, empty, merchants),
+              key: const ValueKey('rule-action-merchant'),
+              label: context.l10n.text('merchant'),
+              value: _assignMerchantId,
+              onChanged: (v) => setState(() => _assignMerchantId = v),
+              entries: _entries(empty, merchants),
             ),
             _dropdown(
-              context.l10n.text('category'),
-              _assignCategoryId,
-              (v) => setState(() => _assignCategoryId = v),
-              _items(context, empty, categories),
+              key: const ValueKey('rule-action-category'),
+              label: context.l10n.text('category'),
+              value: _assignCategoryId,
+              onChanged: (v) => setState(() => _assignCategoryId = v),
+              entries: _entries(empty, categories),
             ),
             _dropdown(
-              context.l10n.text('subcategory'),
-              _assignSubcategoryId,
-              (v) => setState(() => _assignSubcategoryId = v),
-              _items(context, empty, categories),
+              key: const ValueKey('rule-action-subcategory'),
+              label: context.l10n.text('subcategory'),
+              value: _assignSubcategoryId,
+              onChanged: (v) => setState(() => _assignSubcategoryId = v),
+              entries: _entries(empty, categories),
             ),
             _dropdown(
-              context.l10n.text('paymentSource'),
-              _assignPaymentSourceId,
-              (v) => setState(() => _assignPaymentSourceId = v),
-              _items(context, empty, sources),
+              key: const ValueKey('rule-action-payment-source'),
+              label: context.l10n.text('paymentSource'),
+              value: _assignPaymentSourceId,
+              onChanged: (v) => setState(() => _assignPaymentSourceId = v),
+              entries: _entries(empty, sources),
             ),
             _dropdown(
-              context.l10n.text('tag'),
-              _assignTagId,
-              (v) => setState(() => _assignTagId = v),
-              _items(context, empty, tags),
+              key: const ValueKey('rule-action-tag'),
+              label: context.l10n.text('tag'),
+              value: _assignTagId,
+              onChanged: (v) => setState(() => _assignTagId = v),
+              entries: _entries(empty, tags),
             ),
           ]),
         ],
