@@ -878,13 +878,13 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                                 },
                                 showDate: true,
                                 supportingContent:
-                                    _transactionEvidenceLabel(
-                                      context,
-                                      transaction,
-                                    ) case final evidence
-                                        when evidence.isNotEmpty =>
-                                      Text(
-                                        evidence,
+                                    transaction.provenance.isEmpty
+                                    ? null
+                                    : Text(
+                                        _transactionEvidenceLabel(
+                                          context,
+                                          transaction,
+                                        ),
                                         style: context.transactionItemMetadata,
                                       ),
                                 selectionControl:
