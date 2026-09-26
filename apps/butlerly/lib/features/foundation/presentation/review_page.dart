@@ -631,7 +631,7 @@ class _ReviewPageState extends State<ReviewPage> {
   }
 }
 
-class _ReviewTransactionCard extends StatelessWidget {
+class _ReviewTransactionCard extends StatefulWidget {
   const _ReviewTransactionCard({
     required this.item,
     required this.finance,
@@ -659,64 +659,84 @@ class _ReviewTransactionCard extends StatelessWidget {
   final VoidCallback onDismiss;
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<ApplicationResult<TransactionDto>>(
-    future: finance.getTransaction(item.transactionId),
-    builder: (context, transactionSnapshot) {
-      final result = transactionSnapshot.data;
-      if (result is! ApplicationSuccess<TransactionDto>) {
-        return const ButlerlyLoadingState();
-      }
-      final transaction = result.value;
-      return FutureBuilder<TransactionMasterDataSnapshot>(
-        future: masterData,
-        builder: (context, masterSnapshot) {
-          final data = masterSnapshot.data;
-          return ButlerlyCard(
-            padding: EdgeInsets.zero,
-            child: TransactionRow(
-              transaction: transaction,
-              masterData: data?.presentation ?? const TransactionMasterData(),
-              paymentSourceNames: {
-                for (final source in data?.paymentSources ?? <PaymentSource>[])
-                  source.id.value: source.name,
-              },
-              showDate: true,
-              onTap: onEdit,
-              supportingContent: Padding(
-                padding: const EdgeInsets.only(top: ButlerlySpacing.small),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(reason),
-                    const SizedBox(height: ButlerlySpacing.small),
-                    Text(recommendation),
-                    const SizedBox(height: ButlerlySpacing.standard),
-                    ButlerlyButtonBar(
-                      spacing: ButlerlyButtonBarSpacing.none,
+  State<_ReviewTransactionCard> createState() => _ReviewTransactionCardState();
+}
+
+class _ReviewTransactionCardState extends State<_ReviewTransactionCard> {
+  late Future<ApplicationResult<TransactionDto>> _transaction =
+      widget.finance.getTransaction(widget.item.transactionId);
+
+  @override
+  void didUpdateWidget(covariant _ReviewTransactionCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.item.transactionId != widget.item.transactionId ||
+        oldWidget.finance != widget.finance) {
+      _transaction = widget.finance.getTransaction(widget.item.transactionId);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      FutureBuilder<ApplicationResult<TransactionDto>>(
+        future: _transaction,
+        builder: (context, transactionSnapshot) {
+          final result = transactionSnapshot.data;
+          if (result is! ApplicationSuccess<TransactionDto>) {
+            return const ButlerlyLoadingState();
+          }
+          final transaction = result.value;
+          return FutureBuilder<TransactionMasterDataSnapshot>(
+            future: widget.masterData,
+            builder: (context, masterSnapshot) {
+              final data = masterSnapshot.data;
+              return ButlerlyCard(
+                padding: EdgeInsets.zero,
+                child: TransactionRow(
+                  transaction: transaction,
+                  masterData:
+                      data?.presentation ?? const TransactionMasterData(),
+                  paymentSourceNames: {
+                    for (final source
+                        in data?.paymentSources ?? <PaymentSource>[])
+                      source.id.value: source.name,
+                  },
+                  showDate: true,
+                  onTap: widget.onEdit,
+                  supportingContent: Padding(
+                    padding: const EdgeInsets.only(top: ButlerlySpacing.small),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        FilledButton(
-                          onPressed: onPrimary,
-                          child: Text(primaryLabel),
-                        ),
-                        OutlinedButton(
-                          onPressed: onEdit,
-                          child: Text(editLabel),
-                        ),
-                        TextButton(
-                          onPressed: onDismiss,
-                          child: Text(dismissLabel),
+                        Text(widget.reason),
+                        const SizedBox(height: ButlerlySpacing.small),
+                        Text(widget.recommendation),
+                        const SizedBox(height: ButlerlySpacing.standard),
+                        ButlerlyButtonBar(
+                          spacing: ButlerlyButtonBarSpacing.none,
+                          children: [
+                            FilledButton(
+                              onPressed: widget.onPrimary,
+                              child: Text(widget.primaryLabel),
+                            ),
+                            OutlinedButton(
+                              onPressed: widget.onEdit,
+                              child: Text(widget.editLabel),
+                            ),
+                            TextButton(
+                              onPressed: widget.onDismiss,
+                              child: Text(widget.dismissLabel),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           );
         },
       );
-    },
-  );
 }
 
 enum _ReviewView { needsReview, uncategorized, duplicates }
