@@ -324,6 +324,45 @@ class ButlerlySectionHeader extends StatelessWidget {
   );
 }
 
+class ButlerlyKeyValueRow extends StatelessWidget {
+  const ButlerlyKeyValueRow({
+    required this.label,
+    required this.value,
+    this.padding = const EdgeInsets.only(bottom: ButlerlySpacing.micro),
+    super.key,
+  }) : valueWidget = null;
+
+  const ButlerlyKeyValueRow.widget({
+    required this.label,
+    required this.valueWidget,
+    this.padding = const EdgeInsets.only(bottom: ButlerlySpacing.micro),
+    super.key,
+  }) : value = null;
+
+  final String label;
+  final String? value;
+  final Widget? valueWidget;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: padding,
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: Text(label)),
+        const SizedBox(width: ButlerlySpacing.standard),
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: valueWidget ?? Text(value!, textAlign: TextAlign.right),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 class ButlerlySeparatedList extends StatelessWidget {
   const ButlerlySeparatedList({required this.children, super.key});
 

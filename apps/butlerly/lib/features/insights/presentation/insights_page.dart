@@ -388,12 +388,13 @@ class _InsightsContent extends StatelessWidget {
         onChanged: onPeriodChanged,
       ),
       children: [
+        ButlerlySectionHeader(title: context.l10n.text('periodSummary')),
         _PeriodSummaryCard(summary: evaluation.summary),
-        if (summaryPieResults.isNotEmpty) ...[
-          const SizedBox(height: ButlerlySpacing.standard),
+        if (summaryPieResults.isNotEmpty)
           InsightGroupVisualizations(
             results: summaryPieResults,
             masterData: masterData,
+            externalTitle: true,
             pieDensity: ButlerlyVisualizationDensity.regular,
             pieLegendBelow: true,
             pieValueLabel: (result) {
@@ -408,7 +409,6 @@ class _InsightsContent extends StatelessWidget {
               return '${localizedDecimal(context, amount.toString())}${currency.isEmpty ? '' : ' $currency'}';
             },
           ),
-        ],
         if (evaluation.limitations.isNotEmpty) ...[
           ButlerlySectionHeader(
             title: context.l10n.text('dataQualityLimitations'),
@@ -519,11 +519,6 @@ class _PeriodSummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            context.l10n.text('periodSummary'),
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: ButlerlySpacing.small),
           ...values.where((value) => value.value != null),
           if (!summary.comparisonAvailable)
             Text(
@@ -633,13 +628,8 @@ class _InsightValue extends StatelessWidget {
   final String? value;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: ButlerlySpacing.micro),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [Text(label), Text(value!)],
-    ),
-  );
+  Widget build(BuildContext context) =>
+      ButlerlyKeyValueRow(label: label, value: value!);
 }
 
 String _qualityIssueText(BuildContext context, String code) => switch (code) {

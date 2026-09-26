@@ -17,6 +17,7 @@ class InsightGroupVisualizations extends StatelessWidget {
     required this.results,
     required this.masterData,
     this.embedded = false,
+    this.externalTitle = false,
     this.pieDensity = ButlerlyVisualizationDensity.compact,
     this.pieLegendBelow = false,
     this.pieValueLabel,
@@ -25,6 +26,7 @@ class InsightGroupVisualizations extends StatelessWidget {
   final List<InsightResult> results;
   final TransactionMasterData masterData;
   final bool embedded;
+  final bool externalTitle;
   final ButlerlyVisualizationDensity pieDensity;
   final bool pieLegendBelow;
   final String Function(InsightResult result)? pieValueLabel;
@@ -94,22 +96,25 @@ class InsightGroupVisualizations extends StatelessWidget {
         ),
         _ => const SizedBox.shrink(),
       };
-      final child = embedded
+      final title = context.l10n.text(first.rule.nameKey);
+      final child = externalTitle
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ButlerlySectionHeader(title: title),
+                ButlerlyCard(child: visualization),
+              ],
+            )
+          : embedded
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  context.l10n.text(first.rule.nameKey),
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
+                Text(title, style: Theme.of(context).textTheme.titleSmall),
                 const SizedBox(height: ButlerlySpacing.small),
                 visualization,
               ],
             )
-          : ButlerlyVisualizationCard(
-              title: context.l10n.text(first.rule.nameKey),
-              child: visualization,
-            );
+          : ButlerlyVisualizationCard(title: title, child: visualization);
       widgets.add(
         Padding(
           padding: const EdgeInsets.only(bottom: ButlerlySpacing.standard),
