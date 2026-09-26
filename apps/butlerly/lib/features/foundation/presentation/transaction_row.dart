@@ -28,6 +28,7 @@ class TransactionRow extends StatelessWidget {
     this.possibleDuplicate = false,
     this.possibleDuplicateLabel,
     this.onPossibleDuplicateTap,
+    this.selectionControl,
     this.showNavigationIndicator = false,
     super.key,
   });
@@ -42,6 +43,7 @@ class TransactionRow extends StatelessWidget {
   final bool possibleDuplicate;
   final String? possibleDuplicateLabel;
   final VoidCallback? onPossibleDuplicateTap;
+  final Widget? selectionControl;
   final VoidCallback onTap;
   final bool showNavigationIndicator;
 
@@ -104,6 +106,7 @@ class TransactionRow extends StatelessWidget {
       possibleDuplicate: possibleDuplicate,
       possibleDuplicateLabel: possibleDuplicateLabel,
       onPossibleDuplicateTap: onPossibleDuplicateTap,
+      selectionControl: selectionControl,
       onTap: onTap,
       showNavigationIndicator: showNavigationIndicator,
     );
