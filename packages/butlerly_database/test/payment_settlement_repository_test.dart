@@ -24,21 +24,12 @@ void main() {
 
     await _insertPaymentSource(database, 'visa', 'Visa');
     await _insertPaymentSource(database, 'amex', 'Amex');
-    await transactions.save(
-      _transaction(
-        id: 'payment-transfer',
-        sourceId: 'visa',
-        transactionDate: '2026-09-20',
-        direction: TransactionDirection.transfer,
-        amount: '2846.72',
-      ),
-    );
   });
 
   tearDown(() => database.close());
 
   test(
-    'persists a settlement linked to its canonical payment transaction',
+    'persists settlement-owned payment facts without a transaction',
     () async {
       final settlement = _settlement();
 
@@ -46,14 +37,16 @@ void main() {
       final loaded = await settlements.findById(settlement.id);
 
       expect(loaded, isNotNull);
-      expect(
-        loaded!.settlementTransactionId,
-        TransactionId('payment-transfer'),
-      );
-      expect(loaded.paymentSourceId, PaymentSourceId('visa'));
+      expect(loaded!.paymentSourceId, PaymentSourceId('visa'));
+      expect(loaded.payment.amount, DecimalValue.parse('2846.72'));
+      expect(loaded.payment.currency, CurrencyCode('USD'));
+      expect(loaded.paymentDate, '2026-09-20');
       expect(loaded.periodStart, '2026-08-15');
       expect(loaded.periodEnd, '2026-09-14');
       expect(loaded.statementBalance, settlement.statementBalance);
+
+      final transactionRows = await database.connection.query('transactions');
+      expect(transactionRows, isEmpty);
     },
   );
 
@@ -120,104 +113,49 @@ void main() {
     });
   });
 
-  test(
-    'rejects invalid settlement relationships at the database boundary',
-    () async {
-      await transactions.save(
-        _transaction(
-          id: 'expense-payment',
-          sourceId: 'visa',
-          transactionDate: '2026-09-20',
-          direction: TransactionDirection.expense,
-          amount: '2846.72',
-        ),
-      );
+  test('updates payment amount and date directly on the settlement', () async {
+    await settlements.save(_settlement());
 
-      final invalid = PaymentSettlement(
-        id: PaymentSettlementId('invalid-settlement'),
-        settlementTransactionId: TransactionId('expense-payment'),
+    final at = DateTime.utc(2026, 9, 21, 12);
+    await settlements.save(
+      PaymentSettlement(
+        id: PaymentSettlementId('settlement-1'),
         paymentSourceId: PaymentSourceId('visa'),
+        payment: _money('2900.00'),
+        paymentDate: '2026-09-21',
         periodStart: '2026-08-15',
         periodEnd: '2026-09-14',
         status: PaymentSettlementStatus.open,
         createdAt: DateTime.utc(2026, 9, 20, 12),
-        updatedAt: DateTime.utc(2026, 9, 20, 12),
-      );
-
-      expect(
-        () => settlements.save(invalid),
-        throwsA(isA<RepositoryException>()),
-      );
-    },
-  );
-
-  test('rejects archiving a settlement payment transaction', () async {
-    await settlements.save(_settlement());
-
-    final archived = _transaction(
-      id: 'payment-transfer',
-      sourceId: 'visa',
-      transactionDate: '2026-09-20',
-      direction: TransactionDirection.transfer,
-      amount: '2846.72',
-      status: TransactionStatus.archived,
-    );
-
-    expect(
-      () => transactions.save(archived),
-      throwsA(isA<RepositoryException>()),
-    );
-  });
-
-  test('payment amount changes move the settlement to needs review', () async {
-    await settlements.save(_settlement());
-
-    await transactions.save(
-      _transaction(
-        id: 'payment-transfer',
-        sourceId: 'visa',
-        transactionDate: '2026-09-20',
-        direction: TransactionDirection.transfer,
-        amount: '2900.00',
+        updatedAt: at,
       ),
     );
 
-    final refreshed = await settlements.findById(
+    final loaded = await settlements.findById(
       PaymentSettlementId('settlement-1'),
     );
-    expect(refreshed!.status, PaymentSettlementStatus.needsReview);
+    expect(loaded!.payment.amount, DecimalValue.parse('2900.00'));
+    expect(loaded.paymentDate, '2026-09-21');
   });
 
-  test('rejects invalid edits to a settlement payment transaction', () async {
+  test('deleting a settlement does not delete ordinary transactions', () async {
     await settlements.save(_settlement());
-
-    final invalid = _transaction(
-      id: 'payment-transfer',
-      sourceId: 'visa',
-      transactionDate: '2026-09-20',
-      direction: TransactionDirection.expense,
-      amount: '2846.72',
+    await transactions.save(
+      _transaction(
+        id: 'purchase',
+        sourceId: 'visa',
+        transactionDate: '2026-09-01',
+      ),
     );
+
+    await settlements.remove(PaymentSettlementId('settlement-1'));
 
     expect(
-      () => transactions.save(invalid),
-      throwsA(isA<RepositoryException>()),
+      await settlements.findById(PaymentSettlementId('settlement-1')),
+      isNull,
     );
+    expect(await transactions.findById(TransactionId('purchase')), isNotNull);
   });
-
-  test(
-    'deleting the canonical payment transaction deletes the settlement',
-    () async {
-      await settlements.save(_settlement());
-
-      await transactions.removePermanently(TransactionId('payment-transfer'));
-
-      expect(
-        await settlements.findById(PaymentSettlementId('settlement-1')),
-        isNull,
-      );
-    },
-  );
 
   test('does not create a persisted settlement membership table', () async {
     final rows = await database.connection.rawQuery(
@@ -233,19 +171,20 @@ PaymentSettlement _settlement() {
   final at = DateTime.utc(2026, 9, 20, 12);
   return PaymentSettlement(
     id: PaymentSettlementId('settlement-1'),
-    settlementTransactionId: TransactionId('payment-transfer'),
     paymentSourceId: PaymentSourceId('visa'),
+    payment: _money('2846.72'),
+    paymentDate: '2026-09-20',
     periodStart: '2026-08-15',
     periodEnd: '2026-09-14',
-    statementBalance: Money(
-      amount: DecimalValue.parse('2846.72'),
-      currency: CurrencyCode('USD'),
-    ),
+    statementBalance: _money('2846.72'),
     status: PaymentSettlementStatus.open,
     createdAt: at,
     updatedAt: at,
   );
 }
+
+Money _money(String amount) =>
+    Money(amount: DecimalValue.parse(amount), currency: CurrencyCode('USD'));
 
 Transaction _transaction({
   required String id,
@@ -259,10 +198,7 @@ Transaction _transaction({
   return Transaction(
     id: TransactionId(id),
     timing: KnownTransactionTime(at),
-    money: Money(
-      amount: DecimalValue.parse(amount),
-      currency: CurrencyCode('USD'),
-    ),
+    money: _money(amount),
     direction: direction,
     sourceType: TransactionSourceType.import,
     status: status,

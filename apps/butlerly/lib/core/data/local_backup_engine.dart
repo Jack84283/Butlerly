@@ -225,6 +225,10 @@ final class LocalBackupManager {
       package.manifest['createdAtUtc']! as String,
     ).toUtc();
     final tablePayload = <String, Object?>{...package.tables};
+    _migratePaymentSettlementBackupPayload(
+      tablePayload,
+      package.manifest['schemaVersion']! as int,
+    );
     final prepared = await _prepareEvidence(package, mode: mode);
     _applyEvidenceRemaps(tablePayload, prepared.pathRemaps);
 
@@ -617,6 +621,172 @@ final class LocalBackupManager {
     }
   }
 
+  void _migratePaymentSettlementBackupPayload(
+    Map<String, Object?> tablePayload,
+    int sourceSchema,
+  ) {
+    if (sourceSchema >= 10) return;
+    if (sourceSchema < 9) return;
+
+    final settlements =
+        (tablePayload['payment_settlements'] as List? ?? const <Object?>[])
+            .cast<Map>()
+            .map((row) => row.cast<String, Object?>())
+            .toList(growable: false);
+    if (settlements.isEmpty) return;
+
+    final transactions =
+        (tablePayload['transactions'] as List? ?? const <Object?>[])
+            .cast<Map>()
+            .map((row) => row.cast<String, Object?>())
+            .toList(growable: false);
+    final transactionsById = {
+      for (final row in transactions)
+        if (row['id'] is String) row['id']! as String: row,
+    };
+
+    final obsoleteTransactionIds = <String>{};
+    final migratedSettlements = <Map<String, Object?>>[];
+    for (final settlement in settlements) {
+      final transactionId = settlement['settlement_transaction_id'] as String?;
+      final transaction = transactionId == null
+          ? null
+          : transactionsById[transactionId];
+      if (transactionId == null || transaction == null) {
+        throw const FormatException(
+          'Payment settlement backup is missing its legacy payment record.',
+        );
+      }
+      final amountCoefficient = transaction['amount_coefficient'];
+      final amountScale = transaction['amount_scale'];
+      final currency = transaction['currency'];
+      final paymentDate = transaction['transaction_date'];
+      if (amountCoefficient is! String ||
+          amountScale is! int ||
+          currency is! String ||
+          paymentDate is! String) {
+        throw const FormatException(
+          'Legacy payment settlement has invalid payment facts.',
+        );
+      }
+
+      obsoleteTransactionIds.add(transactionId);
+      final migrated = <String, Object?>{...settlement}
+        ..remove('settlement_transaction_id')
+        ..['payment_amount_coefficient'] = amountCoefficient
+        ..['payment_amount_scale'] = amountScale
+        ..['payment_currency'] = currency
+        ..['payment_date'] = paymentDate;
+      migratedSettlements.add(migrated);
+    }
+
+    tablePayload['payment_settlements'] = migratedSettlements;
+    tablePayload['transactions'] = transactions
+        .where((row) => !obsoleteTransactionIds.contains(row['id']))
+        .toList(growable: false);
+
+    for (final table in const [
+      'normalized_money',
+      'transaction_provenances',
+      'transaction_tags',
+      'attachment_links',
+      'review_issues',
+      'suggestions',
+    ]) {
+      final rows = (tablePayload[table] as List? ?? const <Object?>[])
+          .cast<Map>()
+          .map((row) => row.cast<String, Object?>())
+          .where(
+            (row) => !obsoleteTransactionIds.contains(row['transaction_id']),
+          )
+          .toList(growable: false);
+      tablePayload[table] = rows;
+    }
+
+    final statementRows =
+        (tablePayload['statement_rows'] as List? ?? const <Object?>[])
+            .cast<Map>()
+            .map((row) => row.cast<String, Object?>())
+            .map(
+              (row) => obsoleteTransactionIds.contains(row['transaction_id'])
+                  ? (<String, Object?>{...row}..['transaction_id'] = null)
+                  : row,
+            )
+            .toList(growable: false);
+    tablePayload['statement_rows'] = statementRows;
+
+    final duplicateMemberships =
+        (tablePayload['duplicate_candidate_group_transactions'] as List? ??
+                const <Object?>[])
+            .cast<Map>()
+            .map((row) => row.cast<String, Object?>())
+            .toList(growable: false);
+    final obsoleteDuplicateGroupIds = {
+      for (final row in duplicateMemberships)
+        if (obsoleteTransactionIds.contains(row['transaction_id']) &&
+            row['group_id'] is String)
+          row['group_id']! as String,
+    };
+    tablePayload['duplicate_candidate_group_transactions'] =
+        duplicateMemberships
+            .where(
+              (row) => !obsoleteDuplicateGroupIds.contains(row['group_id']),
+            )
+            .toList(growable: false);
+    tablePayload['duplicate_candidate_groups'] =
+        (tablePayload['duplicate_candidate_groups'] as List? ??
+                const <Object?>[])
+            .cast<Map>()
+            .map((row) => row.cast<String, Object?>())
+            .where((row) => !obsoleteDuplicateGroupIds.contains(row['id']))
+            .toList(growable: false);
+
+    final reconciliationCandidates =
+        (tablePayload['reconciliation_candidates'] as List? ??
+                const <Object?>[])
+            .cast<Map>()
+            .map((row) => row.cast<String, Object?>())
+            .toList(growable: false);
+    final obsoleteCandidateIds = {
+      for (final row in reconciliationCandidates)
+        if ((obsoleteTransactionIds.contains(row['receipt_transaction_id']) ||
+                obsoleteTransactionIds.contains(
+                  row['payment_transaction_id'],
+                )) &&
+            row['id'] is String)
+          row['id']! as String,
+    };
+    tablePayload['reconciliation_candidates'] = reconciliationCandidates
+        .where((row) => !obsoleteCandidateIds.contains(row['id']))
+        .toList(growable: false);
+    tablePayload['reconciliation_links'] =
+        (tablePayload['reconciliation_links'] as List? ?? const <Object?>[])
+            .cast<Map>()
+            .map((row) => row.cast<String, Object?>())
+            .where(
+              (row) =>
+                  !obsoleteCandidateIds.contains(row['candidate_id']) &&
+                  !obsoleteTransactionIds.contains(
+                    row['receipt_transaction_id'],
+                  ) &&
+                  !obsoleteTransactionIds.contains(
+                    row['payment_transaction_id'],
+                  ),
+            )
+            .toList(growable: false);
+
+    tablePayload['entity_tombstones'] =
+        (tablePayload['entity_tombstones'] as List? ?? const <Object?>[])
+            .cast<Map>()
+            .map((row) => row.cast<String, Object?>())
+            .where(
+              (row) =>
+                  row['entity_type'] != 'transactions' ||
+                  !obsoleteTransactionIds.contains(row['entity_id']),
+            )
+            .toList(growable: false);
+  }
+
   void _applyEvidenceRemaps(
     Map<String, Object?> tablePayload,
     Map<String, String> remaps,
@@ -681,7 +851,6 @@ final class LocalBackupManager {
       'transaction_id',
       'receipt_transaction_id',
       'payment_transaction_id',
-      'settlement_transaction_id',
     ]) {
       final value = row[field];
       if (value is String && protected.contains(value)) return true;

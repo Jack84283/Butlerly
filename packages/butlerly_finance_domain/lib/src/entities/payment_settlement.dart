@@ -7,8 +7,9 @@ enum PaymentSettlementStatus { open, reconciled, needsReview }
 final class PaymentSettlement {
   PaymentSettlement({
     required this.id,
-    required this.settlementTransactionId,
     required this.paymentSourceId,
+    required this.payment,
+    required String paymentDate,
     required String periodStart,
     required String periodEnd,
     required this.status,
@@ -17,7 +18,8 @@ final class PaymentSettlement {
     this.statementBalance,
     this.description,
     this.externalReference,
-  }) : periodStart = _financialDate(periodStart, 'periodStart'),
+  }) : paymentDate = _financialDate(paymentDate, 'paymentDate'),
+       periodStart = _financialDate(periodStart, 'periodStart'),
        periodEnd = _financialDate(periodEnd, 'periodEnd'),
        createdAt = createdAt.toUtc(),
        updatedAt = updatedAt.toUtc() {
@@ -26,6 +28,15 @@ final class PaymentSettlement {
         code: DomainErrorCode.invalidState,
         field: 'periodEnd',
         message: 'A payment settlement period cannot end before it starts.',
+      );
+    }
+    if (statementBalance != null &&
+        statementBalance!.currency != payment.currency) {
+      invalid(
+        code: DomainErrorCode.invalidState,
+        field: 'statementBalance',
+        message:
+            'Payment settlement balance currency must match payment currency.',
       );
     }
     if (this.updatedAt.isBefore(this.createdAt)) {
@@ -39,11 +50,14 @@ final class PaymentSettlement {
 
   final PaymentSettlementId id;
 
-  /// Canonical financial event representing the payment itself.
-  final TransactionId settlementTransactionId;
-
   /// Payment source whose activity is reconciled by this settlement.
   final PaymentSourceId paymentSourceId;
+
+  /// Payment amount and currency. A settlement is not a Transaction.
+  final Money payment;
+
+  /// ISO-8601 financial date on which the settlement payment was made.
+  final String paymentDate;
 
   /// Inclusive ISO-8601 financial period start.
   final String periodStart;

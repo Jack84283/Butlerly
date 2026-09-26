@@ -275,7 +275,6 @@ final class FinanceServices {
            : SavePaymentSettlement(
                paymentSettlements,
                paymentSources,
-               transactions,
                const SystemApplicationClock(),
              ),
        listPaymentSettlements = paymentSettlements == null
@@ -283,7 +282,7 @@ final class FinanceServices {
            : ListPaymentSettlements(paymentSettlements),
        getPaymentSettlementDetail = paymentSettlements == null
            ? null
-           : GetPaymentSettlementDetail(paymentSettlements, transactions),
+           : GetPaymentSettlementDetail(paymentSettlements),
        setPaymentSettlementStatus = paymentSettlements == null
            ? null
            : SetPaymentSettlementStatus(

@@ -5,8 +5,9 @@ import 'transaction_dto.dart';
 final class PaymentSettlementDto {
   const PaymentSettlementDto({
     required this.id,
-    required this.settlementTransactionId,
     required this.paymentSourceId,
+    required this.payment,
+    required this.paymentDate,
     required this.periodStart,
     required this.periodEnd,
     required this.status,
@@ -20,8 +21,9 @@ final class PaymentSettlementDto {
   factory PaymentSettlementDto.fromDomain(PaymentSettlement value) =>
       PaymentSettlementDto(
         id: value.id.value,
-        settlementTransactionId: value.settlementTransactionId.value,
         paymentSourceId: value.paymentSourceId.value,
+        payment: value.payment,
+        paymentDate: value.paymentDate,
         periodStart: value.periodStart,
         periodEnd: value.periodEnd,
         statementBalance: value.statementBalance,
@@ -33,8 +35,9 @@ final class PaymentSettlementDto {
       );
 
   final String id;
-  final String settlementTransactionId;
   final String paymentSourceId;
+  final Money payment;
+  final String paymentDate;
   final String periodStart;
   final String periodEnd;
   final Money? statementBalance;
@@ -48,12 +51,10 @@ final class PaymentSettlementDto {
 final class PaymentSettlementDetailDto {
   const PaymentSettlementDetailDto({
     required this.settlement,
-    required this.paymentTransaction,
     required this.transactions,
   });
 
   final PaymentSettlementDto settlement;
-  final TransactionDto paymentTransaction;
   final List<TransactionDto> transactions;
 
   int get transactionCount => transactions.length;

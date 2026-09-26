@@ -55,7 +55,8 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
 
   Future<void> _createSettlement(_SettlementListData data) async {
     final finance = _finance;
-    if (finance == null || finance.savePaymentSettlement == null) return;
+    final save = finance?.savePaymentSettlement;
+    if (finance == null || save == null) return;
     final draft = await showButlerlyBottomSheet<_SettlementDraft>(
       context: context,
       builder: (context) =>
@@ -64,39 +65,14 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     if (!mounted || draft == null) return;
 
     final token = DateTime.now().microsecondsSinceEpoch;
-    final transactionId = 'settlement-payment-$token';
-    final settlementId = 'settlement-$token';
-    final transactionDescription = draft.description?.trim().isNotEmpty == true
-        ? draft.description!.trim()
-        : context.l10n.text('paymentSettlementTransactionDescription');
-    final paymentResult = await finance.createPaymentTransaction(
-      PaymentTransactionCommand(
-        id: transactionId,
-        provenanceId: 'settlement-payment-provenance-$token',
-        money: Money(
-          amount: DecimalValue.parse(draft.amount),
-          currency: CurrencyCode(draft.currency),
-        ),
-        direction: TransactionDirection.transfer,
-        transactionDate: draft.paymentDate,
-        originalRepresentation: transactionDescription,
-        sourceId: 'payment-settlement-ui',
-        description: transactionDescription,
-        paymentSourceId: draft.paymentSourceId,
-        externalReference: draft.externalReference,
-      ),
-    );
-    if (paymentResult is ApplicationFailure<TransactionDto>) {
-      if (mounted) {
-        _showMessage(context.l10n.text('paymentSettlementSaveFailed'));
-      }
-      return;
-    }
-
-    final settlementResult = await finance.savePaymentSettlement!(
-      id: settlementId,
-      settlementTransactionId: transactionId,
+    final result = await save(
+      id: 'settlement-$token',
       paymentSourceId: draft.paymentSourceId,
+      payment: Money(
+        amount: DecimalValue.parse(draft.amount),
+        currency: CurrencyCode(draft.currency),
+      ),
+      paymentDate: draft.paymentDate,
       periodStart: draft.periodStart,
       periodEnd: draft.periodEnd,
       statementBalance: draft.statementBalance == null
@@ -108,21 +84,12 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
       description: draft.description,
       externalReference: draft.externalReference,
     );
-    if (settlementResult is ApplicationFailure<PaymentSettlementDto>) {
-      final rollback = await finance.deleteTransactionPermanently(
-        transactionId,
-      );
-      if (mounted) {
-        _showMessage(
-          rollback is ApplicationFailure<void>
-              ? context.l10n.text('paymentSettlementRollbackFailed')
-              : context.l10n.text('paymentSettlementSaveFailed'),
-        );
-      }
+    if (!mounted) return;
+    if (result is ApplicationFailure<PaymentSettlementDto>) {
+      _showMessage(context.l10n.text('paymentSettlementSaveFailed'));
       return;
     }
 
-    if (!mounted) return;
     _showMessage(context.l10n.text('paymentSettlementSaved'));
     await _refresh();
   }
@@ -268,10 +235,7 @@ class _PaymentSettlementDetailPageState
     await _detail;
   }
 
-  Future<void> _openTransaction(
-    TransactionDto transaction, {
-    bool canonicalPayment = false,
-  }) async {
+  Future<void> _openTransaction(TransactionDto transaction) async {
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => TransactionDetailPage(
@@ -280,21 +244,7 @@ class _PaymentSettlementDetailPageState
         ),
       ),
     );
-    if (changed != true || !mounted) return;
-
-    if (canonicalPayment) {
-      final getDetail = widget.finance.getPaymentSettlementDetail;
-      final result = getDetail == null
-          ? null
-          : await getDetail(widget.settlementId);
-      if (!mounted) return;
-      if (result is ApplicationFailure<PaymentSettlementDetailDto>) {
-        Navigator.of(context).pop(true);
-        return;
-      }
-    }
-
-    await _refresh();
+    if (changed == true && mounted) await _refresh();
   }
 
   Future<void> _edit(PaymentSettlementDetailDto detail) async {
@@ -309,8 +259,12 @@ class _PaymentSettlementDetailPageState
 
     final result = await save(
       id: detail.settlement.id,
-      settlementTransactionId: detail.settlement.settlementTransactionId,
       paymentSourceId: detail.settlement.paymentSourceId,
+      payment: Money(
+        amount: DecimalValue.parse(draft.amount),
+        currency: CurrencyCode(draft.currency),
+      ),
+      paymentDate: draft.paymentDate,
       periodStart: draft.periodStart,
       periodEnd: draft.periodEnd,
       status: detail.settlement.status,
@@ -318,7 +272,7 @@ class _PaymentSettlementDetailPageState
           ? null
           : Money(
               amount: DecimalValue.parse(draft.statementBalance!),
-              currency: CurrencyCode(detail.paymentTransaction.currency),
+              currency: CurrencyCode(draft.currency),
             ),
       description: draft.description,
       externalReference: draft.externalReference,
@@ -462,16 +416,7 @@ class _PaymentSettlementDetailPageState
               ButlerlySectionHeader(
                 title: context.l10n.text('paymentSettlementPayment'),
               ),
-              TransactionRow(
-                transaction: detail.paymentTransaction,
-                paymentSourceNames: widget.sourceNames,
-                showDate: true,
-                showNavigationIndicator: true,
-                onTap: () => _openTransaction(
-                  detail.paymentTransaction,
-                  canonicalPayment: true,
-                ),
-              ),
+              _SettlementPaymentCard(settlement: settlement),
               const SizedBox(height: ButlerlySpacing.section),
               ButlerlySectionHeader(
                 title: context.l10n.text('paymentSettlementActivity'),
@@ -553,6 +498,32 @@ class _SettlementCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SettlementPaymentCard extends StatelessWidget {
+  const _SettlementPaymentCard({required this.settlement});
+
+  final PaymentSettlementDto settlement;
+
+  @override
+  Widget build(BuildContext context) => ButlerlyCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SummaryLine(
+          label: context.l10n.text('amount'),
+          value:
+              '${settlement.payment.currency.value} '
+              '${localizedTransactionAmount(context, settlement.payment.amount.toString())}',
+        ),
+        const SizedBox(height: ButlerlySpacing.compact),
+        _SummaryLine(
+          label: context.l10n.text('paymentDate'),
+          value: settlement.paymentDate,
+        ),
+      ],
+    ),
+  );
 }
 
 class _SettlementSummaryCard extends StatelessWidget {
@@ -687,13 +658,16 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
   void initState() {
     super.initState();
     final existing = widget.existing;
-    final payment = existing?.paymentTransaction;
     final settlement = existing?.settlement;
     _paymentSourceId = settlement?.paymentSourceId;
-    _amount = TextEditingController(text: payment?.amount ?? '');
-    _currency = TextEditingController(text: payment?.currency ?? 'USD');
+    _amount = TextEditingController(
+      text: settlement?.payment.amount.toString() ?? '',
+    );
+    _currency = TextEditingController(
+      text: settlement?.payment.currency.value ?? 'USD',
+    );
     _paymentDate = TextEditingController(
-      text: payment?.transactionDate ?? _today(),
+      text: settlement?.paymentDate ?? _today(),
     );
     _periodStart = TextEditingController(
       text: settlement?.periodStart ?? _firstOfMonth(),
@@ -854,63 +828,36 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
                     },
                   ),
                 const SizedBox(height: ButlerlySpacing.standard),
-                if (_isEditing)
-                  Row(
-                    children: [
-                      Expanded(
-                        child: InputDecorator(
-                          decoration: InputDecoration(
-                            labelText: context.l10n.text('amount'),
-                          ),
-                          child: Text(
-                            '${_currency.text} '
-                            '${localizedTransactionAmount(context, _amount.text)}',
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: ButlerlySpacing.standard),
-                      Expanded(
-                        child: InputDecorator(
-                          decoration: InputDecoration(
-                            labelText: context.l10n.text('paymentDate'),
-                          ),
-                          child: Text(_paymentDate.text),
-                        ),
-                      ),
-                    ],
-                  )
-                else ...[
-                  TextFormField(
-                    controller: _amount,
-                    decoration: InputDecoration(
-                      labelText: context.l10n.text('amount'),
-                    ),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    validator: _requiredAmount,
+                TextFormField(
+                  controller: _amount,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.text('amount'),
                   ),
-                  const SizedBox(height: ButlerlySpacing.standard),
-                  TextFormField(
-                    controller: _currency,
-                    decoration: InputDecoration(
-                      labelText: context.l10n.text('currency'),
-                    ),
-                    textCapitalization: TextCapitalization.characters,
-                    validator: _currencyValidator,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
                   ),
-                  const SizedBox(height: ButlerlySpacing.standard),
-                  TextFormField(
-                    controller: _paymentDate,
-                    readOnly: true,
-                    onTap: () => _pickDate(_paymentDate),
-                    decoration: InputDecoration(
-                      labelText: context.l10n.text('paymentDate'),
-                      suffixIcon: const Icon(Icons.calendar_today_outlined),
-                    ),
-                    validator: _requiredDate,
+                  validator: _requiredAmount,
+                ),
+                const SizedBox(height: ButlerlySpacing.standard),
+                TextFormField(
+                  controller: _currency,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.text('currency'),
                   ),
-                ],
+                  textCapitalization: TextCapitalization.characters,
+                  validator: _currencyValidator,
+                ),
+                const SizedBox(height: ButlerlySpacing.standard),
+                TextFormField(
+                  controller: _paymentDate,
+                  readOnly: true,
+                  onTap: () => _pickDate(_paymentDate),
+                  decoration: InputDecoration(
+                    labelText: context.l10n.text('paymentDate'),
+                    suffixIcon: const Icon(Icons.calendar_today_outlined),
+                  ),
+                  validator: _requiredDate,
+                ),
                 const SizedBox(height: ButlerlySpacing.section),
                 Text(
                   context.l10n.text('paymentSettlementPeriod'),

@@ -53,10 +53,10 @@ final class SqlitePaymentSettlementRepository
   @override
   Future<List<PaymentSettlement>> listAll() async {
     try {
-      final rows = await database.connection.rawQuery('''SELECT ps.*
-           FROM payment_settlements ps
-           JOIN transactions t ON t.id = ps.settlement_transaction_id
-           ORDER BY t.transaction_date DESC, ps.id''');
+      final rows = await database.connection.query(
+        'payment_settlements',
+        orderBy: 'payment_date DESC, id',
+      );
       return rows.map(_fromRow).toList(growable: false);
     } on DatabaseException catch (error) {
       throw mapDatabaseException(error, 'list payment settlements');
@@ -95,8 +95,11 @@ final class SqlitePaymentSettlementRepository
 
   static Map<String, Object?> _row(PaymentSettlement value) => {
     'id': value.id.value,
-    'settlement_transaction_id': value.settlementTransactionId.value,
     'payment_source_id': value.paymentSourceId.value,
+    'payment_amount_coefficient': value.payment.amount.coefficient.toString(),
+    'payment_amount_scale': value.payment.amount.scale,
+    'payment_currency': value.payment.currency.value,
+    'payment_date': value.paymentDate,
     'period_start': value.periodStart,
     'period_end': value.periodEnd,
     'statement_balance_coefficient': value.statementBalance?.amount.coefficient
@@ -117,10 +120,17 @@ final class SqlitePaymentSettlementRepository
     final statementCurrency = row['statement_balance_currency'] as String?;
     return PaymentSettlement(
       id: PaymentSettlementId(row['id']! as String),
-      settlementTransactionId: TransactionId(
-        row['settlement_transaction_id']! as String,
-      ),
       paymentSourceId: PaymentSourceId(row['payment_source_id']! as String),
+      payment: Money(
+        amount: DecimalValue.fromParts(
+          coefficient: BigInt.parse(
+            row['payment_amount_coefficient']! as String,
+          ),
+          scale: row['payment_amount_scale']! as int,
+        ),
+        currency: CurrencyCode(row['payment_currency']! as String),
+      ),
+      paymentDate: row['payment_date']! as String,
       periodStart: row['period_start']! as String,
       periodEnd: row['period_end']! as String,
       statementBalance:

@@ -196,6 +196,62 @@ void main() {
     expect(await fixture.settlementStatus('local-v9-settlement'), isNull);
   });
 
+  test(
+    'replace migrates a v9 settlement backup without restoring its legacy transfer',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final oldTime = DateTime.utc(2026, 1, 1);
+
+      await fixture.insertPaymentSource(id: 'visa', name: 'Visa');
+      await fixture.insertPaymentSettlement(
+        id: 'settlement-1',
+        paymentSourceId: 'visa',
+        updatedAt: oldTime,
+      );
+      final backup = File(
+        path.join(fixture.root.path, 'legacy-v9.butlerlybackup'),
+      );
+      await fixture.backups.createBackup(backup);
+      await _downgradeBackupToV9(backup);
+
+      await fixture.database.database.delete('payment_settlements');
+      await fixture.backups.restore(backup, mode: LocalRestoreMode.replace);
+
+      expect(await fixture.settlementStatus('settlement-1'), 'open');
+      expect(
+        await fixture.database.database.query(
+          'transactions',
+          where: 'id = ?',
+          whereArgs: ['legacy-payment-settlement-1'],
+        ),
+        isEmpty,
+      );
+      final row = (await fixture.database.database.query(
+        'payment_settlements',
+        where: 'id = ?',
+        whereArgs: ['settlement-1'],
+      )).single;
+      expect(row['payment_amount_coefficient'], '284672');
+      expect(row['payment_currency'], 'USD');
+      expect(row['payment_date'], '2026-09-20');
+      expect(
+        await fixture.database.database.query('reconciliation_candidates'),
+        isEmpty,
+      );
+      expect(
+        await fixture.database.database.query('reconciliation_links'),
+        isEmpty,
+      );
+      final statementRow = (await fixture.database.database.query(
+        'statement_rows',
+        where: 'id = ?',
+        whereArgs: ['legacy-statement-row'],
+      )).single;
+      expect(statementRow['transaction_id'], isNull);
+    },
+  );
+
   test('merge applies a payment settlement deletion tombstone', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
@@ -227,6 +283,124 @@ void main() {
 
     expect(await fixture.settlementStatus('settlement-1'), isNull);
   });
+}
+
+Future<void> _downgradeBackupToV9(File backup) async {
+  final bytes = await backup.readAsBytes();
+  final magic = utf8.encode('BUTLERLYBACKUP2');
+  final metadataLength = int64FromBytes(
+    bytes.sublist(magic.length, magic.length + 8),
+  );
+  final metadataStart = magic.length + 8 + 64;
+  final metadataEnd = metadataStart + metadataLength;
+  final metadata =
+      jsonDecode(utf8.decode(bytes.sublist(metadataStart, metadataEnd)))
+          as Map<String, Object?>;
+  final manifest = (metadata['manifest']! as Map).cast<String, Object?>();
+  final tables = (metadata['tables']! as Map).cast<String, Object?>();
+  manifest['schemaVersion'] = 9;
+
+  final settlements = (tables['payment_settlements']! as List)
+      .cast<Map>()
+      .map((row) => row.cast<String, Object?>())
+      .toList();
+  final transactions = (tables['transactions']! as List)
+      .cast<Map>()
+      .map((row) => row.cast<String, Object?>())
+      .toList();
+  for (final settlement in settlements) {
+    final transactionId = 'legacy-payment-${settlement['id']}';
+    transactions.add({
+      'id': transactionId,
+      'amount_coefficient': settlement.remove('payment_amount_coefficient'),
+      'amount_scale': settlement.remove('payment_amount_scale'),
+      'currency': settlement.remove('payment_currency'),
+      'transaction_date': settlement.remove('payment_date'),
+      'direction': 'transfer',
+      'status': 'active',
+      'payment_source_id': settlement['payment_source_id'],
+      'created_at': settlement['created_at'],
+      'updated_at': settlement['updated_at'],
+    });
+    settlement['settlement_transaction_id'] = transactionId;
+  }
+  tables['payment_settlements'] = settlements;
+  transactions.add({
+    'id': 'legacy-receipt',
+    'amount_coefficient': '284672',
+    'amount_scale': 2,
+    'currency': 'USD',
+    'direction': 'expense',
+    'source_type': 'manual',
+    'status': 'active',
+    'payment_source_id': 'visa',
+    'transaction_date': '2026-09-10',
+    'unknown_time_reason': 'unknown',
+    'created_at': '2026-09-10T12:00:00.000Z',
+    'updated_at': '2026-09-10T12:00:00.000Z',
+  });
+  tables['transactions'] = transactions;
+
+  final legacyPaymentId = 'legacy-payment-settlement-1';
+  (tables['provenances']! as List).add({
+    'id': 'legacy-statement-provenance',
+    'source_type': 'import',
+    'captured_at': '2026-09-10T12:00:00.000Z',
+  });
+  (tables['evidence_items']! as List).add({
+    'id': 'legacy-statement-evidence',
+    'type': 'statement',
+    'original_name': 'legacy.pdf',
+    'media_type': 'application/pdf',
+    'provenance_id': 'legacy-statement-provenance',
+    'created_at': '2026-09-10T12:00:00.000Z',
+  });
+  (tables['financial_statements']! as List).add({
+    'id': 'legacy-statement',
+    'evidence_id': 'legacy-statement-evidence',
+    'payment_source_id': 'visa',
+    'status': 'processed',
+    'created_at': '2026-09-10T12:00:00.000Z',
+    'updated_at': '2026-09-10T12:00:00.000Z',
+  });
+  (tables['statement_rows']! as List).add({
+    'id': 'legacy-statement-row',
+    'statement_id': 'legacy-statement',
+    'position': 0,
+    'original_text': 'Card payment',
+    'row_kind': 'transaction',
+    'status': 'linked',
+    'transaction_id': legacyPaymentId,
+    'created_at': '2026-09-10T12:00:00.000Z',
+    'updated_at': '2026-09-10T12:00:00.000Z',
+  });
+  (tables['reconciliation_candidates']! as List).add({
+    'id': 'legacy-candidate',
+    'receipt_transaction_id': 'legacy-receipt',
+    'payment_transaction_id': legacyPaymentId,
+    'score': 1.0,
+    'reasons_json': '[]',
+    'status': 'confirmed',
+    'created_at': '2026-09-20T12:00:00.000Z',
+    'updated_at': '2026-09-20T12:00:00.000Z',
+  });
+  (tables['reconciliation_links']! as List).add({
+    'id': 'legacy-link',
+    'candidate_id': 'legacy-candidate',
+    'receipt_transaction_id': 'legacy-receipt',
+    'payment_transaction_id': legacyPaymentId,
+    'created_at': '2026-09-20T12:00:00.000Z',
+  });
+
+  final encoded = utf8.encode(jsonEncode(metadata));
+  final output = <int>[
+    ...magic,
+    ...int64Bytes(encoded.length),
+    ...ascii.encode(sha256Bytes(encoded)),
+    ...encoded,
+    ...bytes.sublist(metadataEnd),
+  ];
+  await backup.writeAsBytes(output, flush: true);
 }
 
 Future<void> _downgradeBackupToV8(File backup) async {
@@ -336,34 +510,13 @@ final class _Fixture {
     required DateTime updatedAt,
     String status = 'open',
   }) async {
-    final transactionId = 'payment-$id';
-    final existing = await database.database.query(
-      'transactions',
-      columns: ['id'],
-      where: 'id = ?',
-      whereArgs: [transactionId],
-      limit: 1,
-    );
-    if (existing.isEmpty) {
-      await database.database.insert('transactions', {
-        'id': transactionId,
-        'unknown_time_reason': 'unknown',
-        'amount_coefficient': '284672',
-        'amount_scale': 2,
-        'currency': 'USD',
-        'direction': 'transfer',
-        'source_type': 'manual',
-        'status': 'active',
-        'payment_source_id': paymentSourceId,
-        'transaction_date': '2026-09-20',
-        'created_at': updatedAt.toUtc().toIso8601String(),
-        'updated_at': updatedAt.toUtc().toIso8601String(),
-      });
-    }
     await database.database.insert('payment_settlements', {
       'id': id,
-      'settlement_transaction_id': transactionId,
       'payment_source_id': paymentSourceId,
+      'payment_amount_coefficient': '284672',
+      'payment_amount_scale': 2,
+      'payment_currency': 'USD',
+      'payment_date': '2026-09-20',
       'period_start': '2026-08-15',
       'period_end': '2026-09-14',
       'status': status,

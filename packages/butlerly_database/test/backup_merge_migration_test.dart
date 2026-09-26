@@ -97,6 +97,315 @@ CREATE TABLE reconciliation_links(id TEXT PRIMARY KEY);
     );
   });
 
+  test(
+    'v10 migration moves payment facts into settlements and removes legacy transfers',
+    () async {
+      final database = await databaseFactoryFfi.openDatabase(
+        inMemoryDatabasePath,
+      );
+      addTearDown(database.close);
+
+      const v9Fixture = '''
+CREATE TABLE entity_tombstones(
+  entity_type TEXT NOT NULL,
+  entity_id TEXT NOT NULL,
+  deleted_at TEXT NOT NULL,
+  PRIMARY KEY(entity_type, entity_id)
+);
+CREATE TABLE payment_sources(
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL,
+  status TEXT NOT NULL
+);
+CREATE TABLE transactions(
+  id TEXT PRIMARY KEY,
+  amount_coefficient TEXT NOT NULL,
+  amount_scale INTEGER NOT NULL,
+  currency TEXT NOT NULL,
+  direction TEXT NOT NULL,
+  status TEXT NOT NULL,
+  payment_source_id TEXT,
+  transaction_date TEXT,
+  description TEXT,
+  external_reference TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE payment_settlements(
+  id TEXT PRIMARY KEY,
+  settlement_transaction_id TEXT NOT NULL UNIQUE REFERENCES transactions(id) ON DELETE CASCADE,
+  payment_source_id TEXT NOT NULL REFERENCES payment_sources(id),
+  period_start TEXT NOT NULL,
+  period_end TEXT NOT NULL,
+  statement_balance_coefficient TEXT,
+  statement_balance_scale INTEGER,
+  statement_balance_currency TEXT,
+  status TEXT NOT NULL,
+  description TEXT,
+  external_reference TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE statement_rows(
+  id TEXT PRIMARY KEY,
+  transaction_id TEXT REFERENCES transactions(id)
+);
+CREATE TABLE duplicate_candidate_groups(
+  id TEXT PRIMARY KEY,
+  selected_transaction_id TEXT REFERENCES transactions(id)
+);
+CREATE TABLE duplicate_candidate_group_transactions(
+  group_id TEXT NOT NULL REFERENCES duplicate_candidate_groups(id) ON DELETE CASCADE,
+  transaction_id TEXT NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+  PRIMARY KEY(group_id, transaction_id)
+);
+CREATE TABLE reconciliation_candidates(
+  id TEXT PRIMARY KEY,
+  receipt_transaction_id TEXT NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+  payment_transaction_id TEXT NOT NULL REFERENCES transactions(id) ON DELETE CASCADE
+);
+CREATE TABLE reconciliation_links(
+  id TEXT PRIMARY KEY,
+  candidate_id TEXT NOT NULL REFERENCES reconciliation_candidates(id),
+  receipt_transaction_id TEXT NOT NULL REFERENCES transactions(id),
+  payment_transaction_id TEXT NOT NULL REFERENCES transactions(id)
+);
+''';
+      for (final statement in splitSqlStatements(v9Fixture)) {
+        await database.execute(statement);
+      }
+      await database.execute('PRAGMA foreign_keys = ON');
+      await database.insert('payment_sources', {
+        'id': 'visa',
+        'name': 'Visa',
+        'type': 'card',
+        'status': 'active',
+      });
+      await database.insert('transactions', {
+        'id': 'legacy-payment',
+        'amount_coefficient': '284672',
+        'amount_scale': 2,
+        'currency': 'USD',
+        'direction': 'transfer',
+        'status': 'active',
+        'payment_source_id': 'visa',
+        'transaction_date': '2026-09-20',
+        'created_at': '2026-09-20T12:00:00.000Z',
+        'updated_at': '2026-09-20T12:00:00.000Z',
+      });
+      await database.insert('payment_settlements', {
+        'id': 'settlement-1',
+        'settlement_transaction_id': 'legacy-payment',
+        'payment_source_id': 'visa',
+        'period_start': '2026-08-15',
+        'period_end': '2026-09-14',
+        'statement_balance_coefficient': '284672',
+        'statement_balance_scale': 2,
+        'statement_balance_currency': 'USD',
+        'status': 'open',
+        'created_at': '2026-09-20T12:00:00.000Z',
+        'updated_at': '2026-09-20T12:00:00.000Z',
+      });
+
+      final migration = await File(
+        'database/migrations/v9_to_v10.sql',
+      ).readAsString();
+      for (final statement in splitSqlStatements(migration)) {
+        await database.execute(statement);
+      }
+
+      final settlement = (await database.query('payment_settlements')).single;
+      expect(settlement['payment_amount_coefficient'], '284672');
+      expect(settlement['payment_amount_scale'], 2);
+      expect(settlement['payment_currency'], 'USD');
+      expect(settlement['payment_date'], '2026-09-20');
+      expect(settlement.containsKey('settlement_transaction_id'), isFalse);
+      expect(
+        await database.query(
+          'transactions',
+          where: 'id = ?',
+          whereArgs: ['legacy-payment'],
+        ),
+        isEmpty,
+      );
+      expect(
+        await database.query(
+          'entity_tombstones',
+          where: 'entity_type = ? AND entity_id = ?',
+          whereArgs: ['transactions', 'legacy-payment'],
+        ),
+        isEmpty,
+      );
+    },
+  );
+
+  test(
+    'v10 migration removes production reconciliation links before legacy transfers',
+    () async {
+      final database = await databaseFactoryFfi.openDatabase(
+        inMemoryDatabasePath,
+      );
+      addTearDown(database.close);
+
+      final baseline = await File('database/schema/v1.sql').readAsString();
+      for (final statement in splitSqlStatements(baseline)) {
+        await database.execute(statement);
+      }
+      await database.execute('PRAGMA foreign_keys = ON');
+
+      await database.execute('DROP TABLE payment_settlements');
+      await database.execute('''
+CREATE TABLE payment_settlements(
+  id TEXT PRIMARY KEY NOT NULL,
+  settlement_transaction_id TEXT NOT NULL UNIQUE REFERENCES transactions(id) ON DELETE CASCADE,
+  payment_source_id TEXT NOT NULL REFERENCES payment_sources(id),
+  period_start TEXT NOT NULL,
+  period_end TEXT NOT NULL,
+  statement_balance_coefficient TEXT,
+  statement_balance_scale INTEGER,
+  statement_balance_currency TEXT,
+  status TEXT NOT NULL,
+  description TEXT,
+  external_reference TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+)
+''');
+
+      await database.insert('payment_sources', {
+        'id': 'visa',
+        'name': 'Visa',
+        'type': 'card',
+        'status': 'active',
+      });
+      for (final row in [
+        {
+          'id': 'legacy-payment',
+          'amount_coefficient': '284672',
+          'amount_scale': 2,
+          'currency': 'USD',
+          'direction': 'transfer',
+          'source_type': 'manual',
+          'status': 'active',
+          'payment_source_id': 'visa',
+          'transaction_date': '2026-09-20',
+          'unknown_time_reason': 'unknown',
+          'created_at': '2026-09-20T12:00:00.000Z',
+          'updated_at': '2026-09-20T12:00:00.000Z',
+        },
+        {
+          'id': 'receipt-1',
+          'amount_coefficient': '284672',
+          'amount_scale': 2,
+          'currency': 'USD',
+          'direction': 'expense',
+          'source_type': 'manual',
+          'status': 'active',
+          'payment_source_id': 'visa',
+          'transaction_date': '2026-09-10',
+          'unknown_time_reason': 'unknown',
+          'created_at': '2026-09-10T12:00:00.000Z',
+          'updated_at': '2026-09-10T12:00:00.000Z',
+        },
+      ]) {
+        await database.insert('transactions', row);
+      }
+      await database.insert('payment_settlements', {
+        'id': 'settlement-1',
+        'settlement_transaction_id': 'legacy-payment',
+        'payment_source_id': 'visa',
+        'period_start': '2026-08-15',
+        'period_end': '2026-09-14',
+        'statement_balance_coefficient': '284672',
+        'statement_balance_scale': 2,
+        'statement_balance_currency': 'USD',
+        'status': 'reconciled',
+        'created_at': '2026-09-20T12:00:00.000Z',
+        'updated_at': '2026-09-20T12:00:00.000Z',
+      });
+      await database.insert('duplicate_candidate_groups', {
+        'id': 'duplicate:legacy-payment',
+        'transaction_date': '2026-09-20',
+        'amount_coefficient': '284672',
+        'amount_scale': 2,
+        'currency': 'USD',
+        'direction': 'transfer',
+        'status': 'unresolved',
+        'selected_transaction_id': 'legacy-payment',
+        'created_at': '2026-09-20T12:00:00.000Z',
+        'updated_at': '2026-09-20T12:00:00.000Z',
+      });
+      await database.insert('duplicate_candidate_group_transactions', {
+        'group_id': 'duplicate:legacy-payment',
+        'transaction_id': 'legacy-payment',
+      });
+      await database.insert('duplicate_candidate_group_transactions', {
+        'group_id': 'duplicate:legacy-payment',
+        'transaction_id': 'receipt-1',
+      });
+      await database.insert('reconciliation_candidates', {
+        'id': 'candidate-1',
+        'receipt_transaction_id': 'receipt-1',
+        'payment_transaction_id': 'legacy-payment',
+        'score': 1.0,
+        'reasons_json': '[]',
+        'status': 'confirmed',
+        'created_at': '2026-09-20T12:00:00.000Z',
+        'updated_at': '2026-09-20T12:00:00.000Z',
+      });
+      await database.insert('reconciliation_links', {
+        'id': 'link-1',
+        'candidate_id': 'candidate-1',
+        'receipt_transaction_id': 'receipt-1',
+        'payment_transaction_id': 'legacy-payment',
+        'created_at': '2026-09-20T12:00:00.000Z',
+      });
+
+      final migration = await File(
+        'database/migrations/v9_to_v10.sql',
+      ).readAsString();
+      for (final statement in splitSqlStatements(migration)) {
+        await database.execute(statement);
+      }
+
+      expect(
+        await database.query(
+          'transactions',
+          where: 'id = ?',
+          whereArgs: ['legacy-payment'],
+        ),
+        isEmpty,
+      );
+      expect(
+        await database.query(
+          'transactions',
+          where: 'id = ?',
+          whereArgs: ['receipt-1'],
+        ),
+        hasLength(1),
+      );
+      expect(await database.query('reconciliation_links'), isEmpty);
+      expect(await database.query('reconciliation_candidates'), isEmpty);
+      expect(
+        await database.query(
+          'duplicate_candidate_groups',
+          where: 'id = ?',
+          whereArgs: ['duplicate:legacy-payment'],
+        ),
+        isEmpty,
+      );
+      expect(
+        await database.query(
+          'duplicate_candidate_group_transactions',
+          where: 'group_id = ?',
+          whereArgs: ['duplicate:legacy-payment'],
+        ),
+        isEmpty,
+      );
+    },
+  );
+
   test('current baseline creates v8 merge metadata directly', () async {
     final database = await databaseFactoryFfi.openDatabase(
       inMemoryDatabasePath,
