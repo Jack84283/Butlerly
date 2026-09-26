@@ -70,7 +70,7 @@ final class PaymentSettlementDetailDto {
         transaction.direction,
       );
       if (direction == TransactionDirection.adjustment) return null;
-      final amount = DecimalValue.parse(transaction.amount);
+      final amount = DecimalValue.parse(transaction.amount).abs();
       total = switch (direction) {
         TransactionDirection.expense => total.add(amount),
         TransactionDirection.refund ||
