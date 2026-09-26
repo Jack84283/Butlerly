@@ -74,6 +74,153 @@ void main() {
     },
   );
 
+  test(
+    'detail compares net recorded activity with settlement payment',
+    () async {
+      await SavePaymentSettlement(settlements, sources, clock)(
+        id: 'settlement-1',
+        paymentSourceId: 'visa',
+        payment: money('85.00'),
+        paymentDate: '2026-09-20',
+        periodStart: '2026-08-15',
+        periodEnd: '2026-09-14',
+      );
+      settlements.transactions.add(activity('expense', now, amount: '100.00'));
+      settlements.transactions.add(
+        activity(
+          'refund',
+          now,
+          amount: '15.00',
+          direction: TransactionDirection.refund,
+        ),
+      );
+
+      final result = await GetPaymentSettlementDetail(settlements)(
+        'settlement-1',
+      );
+      final detail =
+          (result as ApplicationSuccess<PaymentSettlementDetailDto>).value;
+
+      expect(detail.recordedTransactionTotal!.amount, DecimalValue.parse('85'));
+      expect(detail.recordedTransactionTotal!.currency, CurrencyCode('USD'));
+      expect(detail.paymentDifference!.amount, DecimalValue.parse('0'));
+    },
+  );
+
+  test('detail normalizes signed amounts before applying direction', () async {
+    await SavePaymentSettlement(settlements, sources, clock)(
+      id: 'settlement-1',
+      paymentSourceId: 'visa',
+      payment: money('85.00'),
+      paymentDate: '2026-09-20',
+      periodStart: '2026-08-15',
+      periodEnd: '2026-09-14',
+    );
+    settlements.transactions.add(activity('expense', now, amount: '-100.00'));
+    settlements.transactions.add(
+      activity(
+        'refund',
+        now,
+        amount: '-15.00',
+        direction: TransactionDirection.refund,
+      ),
+    );
+
+    final result = await GetPaymentSettlementDetail(settlements)(
+      'settlement-1',
+    );
+    final detail =
+        (result as ApplicationSuccess<PaymentSettlementDetailDto>).value;
+
+    expect(detail.recordedTransactionTotal!.amount, DecimalValue.parse('85'));
+    expect(detail.paymentDifference!.amount, DecimalValue.parse('0'));
+  });
+
+  test('detail normalizes a signed settlement payment amount', () async {
+    await SavePaymentSettlement(settlements, sources, clock)(
+      id: 'settlement-1',
+      paymentSourceId: 'visa',
+      payment: money('-85.00'),
+      paymentDate: '2026-09-20',
+      periodStart: '2026-08-15',
+      periodEnd: '2026-09-14',
+    );
+    settlements.transactions.add(activity('expense', now, amount: '-100.00'));
+    settlements.transactions.add(
+      activity(
+        'refund',
+        now,
+        amount: '-15.00',
+        direction: TransactionDirection.refund,
+      ),
+    );
+
+    final result = await GetPaymentSettlementDetail(settlements)(
+      'settlement-1',
+    );
+    final detail =
+        (result as ApplicationSuccess<PaymentSettlementDetailDto>).value;
+
+    expect(detail.paymentAmount.amount, DecimalValue.parse('85'));
+    expect(detail.recordedTransactionTotal!.amount, DecimalValue.parse('85'));
+    expect(detail.paymentDifference!.amount, DecimalValue.parse('0'));
+  });
+
+  test(
+    'detail comparison is unavailable for mixed transaction currencies',
+    () async {
+      await SavePaymentSettlement(settlements, sources, clock)(
+        id: 'settlement-1',
+        paymentSourceId: 'visa',
+        payment: money('85.00'),
+        paymentDate: '2026-09-20',
+        periodStart: '2026-08-15',
+        periodEnd: '2026-09-14',
+      );
+      settlements.transactions.add(activity('usd', now, amount: '50.00'));
+      settlements.transactions.add(
+        activity('eur', now, amount: '35.00', currency: 'EUR'),
+      );
+
+      final result = await GetPaymentSettlementDetail(settlements)(
+        'settlement-1',
+      );
+      final detail =
+          (result as ApplicationSuccess<PaymentSettlementDetailDto>).value;
+
+      expect(detail.recordedTransactionTotal, isNull);
+      expect(detail.paymentDifference, isNull);
+    },
+  );
+
+  test('detail comparison is unavailable for adjustments', () async {
+    await SavePaymentSettlement(settlements, sources, clock)(
+      id: 'settlement-1',
+      paymentSourceId: 'visa',
+      payment: money('85.00'),
+      paymentDate: '2026-09-20',
+      periodStart: '2026-08-15',
+      periodEnd: '2026-09-14',
+    );
+    settlements.transactions.add(
+      activity(
+        'adjustment',
+        now,
+        amount: '5.00',
+        direction: TransactionDirection.adjustment,
+      ),
+    );
+
+    final result = await GetPaymentSettlementDetail(settlements)(
+      'settlement-1',
+    );
+    final detail =
+        (result as ApplicationSuccess<PaymentSettlementDetailDto>).value;
+
+    expect(detail.recordedTransactionTotal, isNull);
+    expect(detail.paymentDifference, isNull);
+  });
+
   test('rejects a missing payment source', () async {
     final result = await SavePaymentSettlement(settlements, sources, clock)(
       id: 'settlement-1',
@@ -235,11 +382,20 @@ final class MemoryPaymentSources implements PaymentSourceRepository {
 Money money(String amount) =>
     Money(amount: DecimalValue.parse(amount), currency: CurrencyCode('USD'));
 
-Transaction activity(String id, DateTime at) => Transaction(
+Transaction activity(
+  String id,
+  DateTime at, {
+  String amount = '10.00',
+  String currency = 'USD',
+  TransactionDirection direction = TransactionDirection.expense,
+}) => Transaction(
   id: TransactionId(id),
   timing: KnownTransactionTime(at),
-  money: money('10.00'),
-  direction: TransactionDirection.expense,
+  money: Money(
+    amount: DecimalValue.parse(amount),
+    currency: CurrencyCode(currency),
+  ),
+  direction: direction,
   sourceType: TransactionSourceType.manual,
   paymentSourceId: PaymentSourceId('visa'),
   provenance: [

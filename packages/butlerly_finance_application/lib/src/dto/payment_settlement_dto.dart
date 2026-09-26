@@ -58,4 +58,41 @@ final class PaymentSettlementDetailDto {
   final List<TransactionDto> transactions;
 
   int get transactionCount => transactions.length;
+
+  Money? get recordedTransactionTotal {
+    final currency = settlement.payment.currency;
+    var total = DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0);
+    for (final transaction in transactions) {
+      if (transaction.currency.trim().toUpperCase() != currency.value) {
+        return null;
+      }
+      final direction = TransactionDirection.values.byName(
+        transaction.direction,
+      );
+      if (direction == TransactionDirection.adjustment) return null;
+      final amount = DecimalValue.parse(transaction.amount).abs();
+      total = switch (direction) {
+        TransactionDirection.expense => total.add(amount),
+        TransactionDirection.refund ||
+        TransactionDirection.income => total.subtract(amount),
+        TransactionDirection.transfer => total,
+        TransactionDirection.adjustment => total,
+      };
+    }
+    return Money(amount: total, currency: currency);
+  }
+
+  Money get paymentAmount => Money(
+    amount: settlement.payment.amount.abs(),
+    currency: settlement.payment.currency,
+  );
+
+  Money? get paymentDifference {
+    final recorded = recordedTransactionTotal;
+    if (recorded == null) return null;
+    return Money(
+      amount: paymentAmount.amount.subtract(recorded.amount),
+      currency: settlement.payment.currency,
+    );
+  }
 }
