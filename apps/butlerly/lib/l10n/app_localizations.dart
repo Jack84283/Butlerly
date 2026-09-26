@@ -90,6 +90,7 @@ class AppLocalizations {
       'toolsInsightsDescription':
           'See useful observations from your confirmed records.',
       'paymentSettlements': 'Payment settlements',
+      'paymentSettlement': 'Payment Settlement',
       'toolsPaymentSettlementsDescription':
           'Reconcile card payments with the transactions in each statement period.',
       'paymentSettlementsSubtitle':
@@ -229,6 +230,7 @@ class AppLocalizations {
       'descriptionOptional': 'Description (optional)',
       'notesOptional': 'Notes (optional)',
       'notes': 'Notes',
+      'note': 'Note',
       'invalidAmount': 'Enter a valid amount.',
       'invalidCurrency': 'Use a three-letter currency code.',
       'transactionDetail': 'Transaction detail',
@@ -780,6 +782,7 @@ class AppLocalizations {
       'toolsAnalysisDescription': '查看本地计算结果和财务模式。',
       'toolsInsightsDescription': '查看已确认记录中的实用洞察。',
       'paymentSettlements': '付款结算',
+      'paymentSettlement': '付款结算',
       'toolsPaymentSettlementsDescription': '将信用卡付款与每个账单周期内的交易进行核对。',
       'paymentSettlementsSubtitle': '跟踪每笔信用卡付款以及其账单周期所涵盖的交易。',
       'addPaymentSettlement': '添加付款结算',
@@ -901,6 +904,7 @@ class AppLocalizations {
       'descriptionOptional': '描述（可选）',
       'notesOptional': '备注（可选）',
       'notes': '备注',
+      'note': '备注',
       'invalidAmount': '请输入有效金额。',
       'invalidCurrency': '请使用三个字母的币种代码。',
       'transactionDetail': '交易详情',
@@ -1392,6 +1396,7 @@ class AppLocalizations {
       'toolsInsightsDescription':
           'Consulta observaciones útiles de tus registros confirmados.',
       'paymentSettlements': 'Liquidaciones de pago',
+      'paymentSettlement': 'Liquidación de pago',
       'toolsPaymentSettlementsDescription':
           'Concilia pagos de tarjeta con las transacciones de cada período del extracto.',
       'paymentSettlementsSubtitle':
@@ -1536,6 +1541,7 @@ class AppLocalizations {
       'descriptionOptional': 'Descripción (opcional)',
       'notesOptional': 'Notas (opcional)',
       'notes': 'Notas',
+      'note': 'Nota',
       'invalidAmount': 'Introduce un importe válido.',
       'invalidCurrency': 'Usa un código de moneda de tres letras.',
       'transactionDetail': 'Detalle de transacción',
