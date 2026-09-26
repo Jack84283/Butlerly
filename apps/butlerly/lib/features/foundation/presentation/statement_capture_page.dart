@@ -1180,54 +1180,57 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
           for (final source in _sources)
             source.id.value: paymentSourceDisplayLabel(source),
         };
-        final decision = await showButlerlyBottomSheet<StatementReconciliationDecision>(
-          context: context,
-          builder: (_) => ButlerlySheet(
-            title: Text(context.l10n.text('statementReconciliationTitle')),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(context.l10n.text('statementReconciliationPrompt')),
-                const SizedBox(height: ButlerlySpacing.compact),
-                ButlerlyTransactionList(
+        final decision =
+            await showButlerlyBottomSheet<StatementReconciliationDecision>(
+              context: context,
+              builder: (_) => ButlerlySheet(
+                title: Text(context.l10n.text('statementReconciliationTitle')),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    for (final candidate in values)
-                      TransactionRow(
-                        transaction: candidate.transaction,
-                        masterData: masterData,
-                        paymentSourceNames: paymentSourceNames,
-                        showDate: true,
-                        supportingContent: Text(
-                          '${context.l10n.text('reconciliationScore', {'score': candidate.assessment.score.toStringAsFixed(2)})}\n${localizedReconciliationReasons(context, candidate.assessment.reasons)}${candidate.assessment.conflicts.isEmpty ? '' : '\n${localizedReconciliationConflicts(context, candidate.assessment.conflicts)}'}',
-                          style: context.transactionItemMetadata,
-                        ),
-                        onTap: () => Navigator.pop(
-                          context,
-                          LinkStatementReconciliation(
-                            candidate.transaction.id,
+                    Text(context.l10n.text('statementReconciliationPrompt')),
+                    const SizedBox(height: ButlerlySpacing.compact),
+                    ButlerlyTransactionList(
+                      children: [
+                        for (final candidate in values)
+                          TransactionRow(
+                            transaction: candidate.transaction,
+                            masterData: masterData,
+                            paymentSourceNames: paymentSourceNames,
+                            showDate: true,
+                            supportingContent: Text(
+                              '${context.l10n.text('reconciliationScore', {'score': candidate.assessment.score.toStringAsFixed(2)})}\n${localizedReconciliationReasons(context, candidate.assessment.reasons)}${candidate.assessment.conflicts.isEmpty ? '' : '\n${localizedReconciliationConflicts(context, candidate.assessment.conflicts)}'}',
+                              style: context.transactionItemMetadata,
+                            ),
+                            onTap: () => Navigator.pop(
+                              context,
+                              LinkStatementReconciliation(
+                                candidate.transaction.id,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
+                      ],
+                    ),
                   ],
                 ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () =>
-                    Navigator.pop(context, const CreateStatementSeparately()),
-                child: Text(context.l10n.text('createSeparately')),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(
+                      context,
+                      const CreateStatementSeparately(),
+                    ),
+                    child: Text(context.l10n.text('createSeparately')),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(
+                      context,
+                      const CancelStatementReconciliation(),
+                    ),
+                    child: Text(context.l10n.text('cancel')),
+                  ),
+                ],
               ),
-              TextButton(
-                onPressed: () => Navigator.pop(
-                  context,
-                  const CancelStatementReconciliation(),
-                ),
-                child: Text(context.l10n.text('cancel')),
-              ),
-            ],
-          ),
-        );
+            );
         if (decision is LinkStatementReconciliation) {
           await widget.service.link(row, decision.transactionId);
         } else if (decision is CreateStatementSeparately) {
