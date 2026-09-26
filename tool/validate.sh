@@ -10,7 +10,7 @@ format_check() {
 
 ./tool/check_toolchain_consistency.sh
 ./tool/verify_toolchain.sh
-# Temporary formatter diagnostic: skip checker self-test.
+"$repo_root/tool/test_check_format.sh"
 
 validate_finance_domain() (
   cd packages/butlerly_finance_domain
