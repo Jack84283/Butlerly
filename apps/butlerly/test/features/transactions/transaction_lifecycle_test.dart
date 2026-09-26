@@ -1825,7 +1825,7 @@ void main() {
         find.widgetWithText(FilledButton, 'Consolidate / use one'),
         findsOneWidget,
       );
-      final candidate = find.byType(ButlerlyTransactionListItem).last;
+      final candidate = find.byType(TransactionRow).last;
       await tester.ensureVisible(candidate);
       await tester.tap(candidate);
       await tester.pump();
