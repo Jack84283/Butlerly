@@ -410,10 +410,7 @@ class _PaymentSettlementDetailPageState
               ),
             ],
             children: [
-              _SettlementBasicInfoCard(
-                detail: detail,
-                sourceName: sourceName,
-              ),
+              _SettlementBasicInfoCard(detail: detail, sourceName: sourceName),
               const SizedBox(height: ButlerlySpacing.section),
               ButlerlySectionHeader(
                 title: context.l10n.text('paymentSettlementComparison'),
@@ -563,10 +560,7 @@ class _SettlementBasicInfoCard extends StatelessWidget {
     final settlement = detail.settlement;
     final currency = settlement.payment.currency.value;
     final paymentAmount =
-        '$currency ${localizedTransactionAmount(
-          context,
-          detail.paymentAmount.amount.toString(),
-        )}';
+        '$currency ${localizedTransactionAmount(context, detail.paymentAmount.amount.toString())}';
 
     return ButlerlyCard(
       child: Column(
