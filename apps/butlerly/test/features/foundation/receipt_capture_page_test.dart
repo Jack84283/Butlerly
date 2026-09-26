@@ -88,7 +88,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Date needs review'), findsWidgets);
-    expect(find.byType(DatePickerDialog), findsOneWidget);
+    expect(find.byType(CalendarDatePicker), findsOneWidget);
+    expect(find.byType(DatePickerDialog), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

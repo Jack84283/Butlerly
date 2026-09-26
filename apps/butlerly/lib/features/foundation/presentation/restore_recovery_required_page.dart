@@ -1,5 +1,6 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
@@ -46,22 +47,13 @@ class _RestoreRecoveryRequiredPageState
   }
 
   Future<void> _resetLocalData() async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showButlerlyConfirmationSheet(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(context.l10n.backupText('recoveryResetTitle')),
-        content: Text(context.l10n.backupText('recoveryResetBody')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text(context.l10n.text('cancel')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(context.l10n.backupText('recoveryResetConfirm')),
-          ),
-        ],
-      ),
+      title: context.l10n.backupText('recoveryResetTitle'),
+      message: context.l10n.backupText('recoveryResetBody'),
+      cancelLabel: context.l10n.text('cancel'),
+      confirmLabel: context.l10n.backupText('recoveryResetConfirm'),
+      destructive: true,
     );
     if (confirmed != true || !mounted) return;
 

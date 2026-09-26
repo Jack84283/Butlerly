@@ -853,8 +853,11 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                     subtitle: Text(_shortDate(_date)),
                     trailing: const Icon(Icons.calendar_today_outlined),
                     onTap: () async {
-                      final selected = await showDatePicker(
+                      final selected = await showButlerlyDatePicker(
                         context: context,
+                        title: context.l10n.text('date'),
+                        cancelLabel: context.l10n.text('cancel'),
+                        doneLabel: context.l10n.text('done'),
                         firstDate: DateTime(2000),
                         lastDate: DateTime(2100),
                         initialDate: _date,

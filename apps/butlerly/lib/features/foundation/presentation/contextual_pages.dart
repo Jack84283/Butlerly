@@ -70,7 +70,7 @@ Future<void> startLocalFileImport(
     if (!context.mounted) return;
     final decision = await showButlerlyBottomSheet<_CsvImportDecision>(
       context: context,
-      builder: (context) => _StatementPreviewDialog(
+      builder: (context) => _StatementPreviewSheet(
         preview: preview,
         sources: activeSources,
         duplicateCandidates: duplicateCandidates,
@@ -281,7 +281,7 @@ class _ImportExportPageState extends State<ImportExportPage> {
         : const <PaymentSource>[];
     final command = await showButlerlyBottomSheet<PaymentTransactionCommand>(
       context: context,
-      builder: (context) => _SinglePaymentDialog(sources: activeSources),
+      builder: (context) => _SinglePaymentSheet(sources: activeSources),
     );
     if (command == null || !mounted) return;
     setState(() => _importing = true);
@@ -357,16 +357,16 @@ class _ImportExportPageState extends State<ImportExportPage> {
   );
 }
 
-class _SinglePaymentDialog extends StatefulWidget {
-  const _SinglePaymentDialog({required this.sources});
+class _SinglePaymentSheet extends StatefulWidget {
+  const _SinglePaymentSheet({required this.sources});
 
   final List<PaymentSource> sources;
 
   @override
-  State<_SinglePaymentDialog> createState() => _SinglePaymentDialogState();
+  State<_SinglePaymentSheet> createState() => _SinglePaymentSheetState();
 }
 
-class _SinglePaymentDialogState extends State<_SinglePaymentDialog> {
+class _SinglePaymentSheetState extends State<_SinglePaymentSheet> {
   final _formKey = GlobalKey<FormState>();
   final _amount = TextEditingController();
   final _description = TextEditingController();
@@ -510,8 +510,8 @@ final class _CsvImportDecision {
   final Map<int, String> confirmedDuplicateTokens;
 }
 
-class _StatementPreviewDialog extends StatefulWidget {
-  const _StatementPreviewDialog({
+class _StatementPreviewSheet extends StatefulWidget {
+  const _StatementPreviewSheet({
     required this.preview,
     required this.sources,
     required this.duplicateCandidates,
@@ -522,11 +522,10 @@ class _StatementPreviewDialog extends StatefulWidget {
   final Map<int, List<DuplicateTransactionCandidate>> duplicateCandidates;
 
   @override
-  State<_StatementPreviewDialog> createState() =>
-      _StatementPreviewDialogState();
+  State<_StatementPreviewSheet> createState() => _StatementPreviewSheetState();
 }
 
-class _StatementPreviewDialogState extends State<_StatementPreviewDialog> {
+class _StatementPreviewSheetState extends State<_StatementPreviewSheet> {
   String? _sourceId;
   final Map<int, String> _confirmedDuplicateTokens = {};
 

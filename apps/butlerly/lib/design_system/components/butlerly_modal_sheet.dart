@@ -45,6 +45,13 @@ class ButlerlySheet extends StatelessWidget {
   );
 }
 
+class ButlerlySelectionOption<T> {
+  const ButlerlySelectionOption({required this.value, required this.child});
+
+  final T value;
+  final Widget child;
+}
+
 Future<T?> showButlerlyBottomSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
@@ -76,5 +83,101 @@ Future<T?> showButlerlyBottomSheet<T>({
         child: builder(sheetContext),
       ),
     ),
+  ),
+);
+
+Future<DateTime?> showButlerlyDatePicker({
+  required BuildContext context,
+  required String title,
+  required String cancelLabel,
+  required String doneLabel,
+  required DateTime initialDate,
+  required DateTime firstDate,
+  required DateTime lastDate,
+}) {
+  var selected = initialDate;
+  return showButlerlyBottomSheet<DateTime>(
+    context: context,
+    builder: (sheetContext) => StatefulBuilder(
+      builder: (sheetContext, setSheetState) => ButlerlySheet(
+        title: Text(title),
+        content: CalendarDatePicker(
+          initialDate: selected,
+          firstDate: firstDate,
+          lastDate: lastDate,
+          onDateChanged: (value) => setSheetState(() => selected = value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(sheetContext),
+            child: Text(cancelLabel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(sheetContext, selected),
+            child: Text(doneLabel),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Future<T?> showButlerlySelectionSheet<T>({
+  required BuildContext context,
+  required String title,
+  T? selectedValue,
+  required List<ButlerlySelectionOption<T>> options,
+}) => showButlerlyBottomSheet<T>(
+  context: context,
+  builder: (sheetContext) => ButlerlySheet(
+    title: Text(title),
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final option in options)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: option.child,
+            trailing: option.value == selectedValue
+                ? Icon(
+                    Icons.check_rounded,
+                    color: Theme.of(sheetContext).colorScheme.primary,
+                  )
+                : null,
+            onTap: () => Navigator.pop(sheetContext, option.value),
+          ),
+      ],
+    ),
+  ),
+);
+
+Future<bool?> showButlerlyConfirmationSheet({
+  required BuildContext context,
+  required String title,
+  required String message,
+  required String cancelLabel,
+  required String confirmLabel,
+  bool destructive = false,
+}) => showButlerlyBottomSheet<bool>(
+  context: context,
+  builder: (sheetContext) => ButlerlySheet(
+    title: Text(title),
+    content: Text(message),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(sheetContext, false),
+        child: Text(cancelLabel),
+      ),
+      FilledButton(
+        style: destructive
+            ? FilledButton.styleFrom(
+                backgroundColor: Theme.of(sheetContext).colorScheme.error,
+                foregroundColor: Theme.of(sheetContext).colorScheme.onError,
+              )
+            : null,
+        onPressed: () => Navigator.pop(sheetContext, true),
+        child: Text(confirmLabel),
+      ),
+    ],
   ),
 );

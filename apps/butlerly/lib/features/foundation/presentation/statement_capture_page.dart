@@ -427,11 +427,11 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     if (!kDebugMode) return;
     final summary = _debugDiagnostics[id];
     if (summary == null) return;
-    await showDialog<void>(
+    await showButlerlyBottomSheet<void>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => ButlerlySheet(
         title: Text(context.l10n.text('statementExtractionDiagnostics')),
-        content: SingleChildScrollView(child: SelectableText(summary)),
+        content: SelectableText(summary),
         actions: [
           TextButton(
             onPressed: () => Clipboard.setData(ClipboardData(text: summary)),
