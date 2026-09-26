@@ -102,8 +102,7 @@ class AppLocalizations {
       'paymentSettlementPeriod': 'Statement period',
       'paymentSettlementPayment': 'Payment transaction',
       'paymentSettlementActivity': 'Statement activity',
-      'paymentSettlementPeriodTransactions':
-          'Period transactions ({count})',
+      'paymentSettlementPeriodTransactions': 'Period transactions ({count})',
       'paymentSettlementComparison': 'Settlement comparison',
       'recordedTransactionTotal': 'Net recorded activity',
       'paymentSettlementAmount': 'Payment settlement',
