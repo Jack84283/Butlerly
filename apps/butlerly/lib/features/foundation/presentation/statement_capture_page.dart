@@ -14,6 +14,7 @@ import 'package:butlerly/features/foundation/presentation/reconciliation_labels.
 import 'package:butlerly/features/foundation/presentation/statement_labels.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_row.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -1163,6 +1164,21 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
       if (matches case ApplicationSuccess<List<ReconciliationMatchCandidate>>(
         value: final values,
       ) when values.isNotEmpty) {
+        final finance = services.isRegistered<FinanceServices>()
+            ? services<FinanceServices>()
+            : null;
+        final languageCode = Localizations.localeOf(context).languageCode;
+        final masterData = finance == null
+            ? const TransactionMasterData()
+            : await TransactionMasterData.load(
+                finance,
+                languageCode: languageCode,
+              );
+        if (!mounted) return;
+        final paymentSourceNames = {
+          for (final source in _sources)
+            source.id.value: paymentSourceDisplayLabel(source),
+        };
         final decision = await showButlerlyBottomSheet<StatementReconciliationDecision>(
           context: context,
           builder: (_) => ButlerlySheet(
@@ -1171,19 +1187,28 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(context.l10n.text('statementReconciliationPrompt')),
-                for (final candidate in values)
-                  ListTile(
-                    title: Text(
-                      '${candidate.transaction.currency} ${localizedTransactionAmount(context, candidate.transaction.amount)} · ${candidate.transaction.transactionDate}',
-                    ),
-                    subtitle: Text(
-                      '${context.l10n.text('reconciliationScore', {'score': candidate.assessment.score.toStringAsFixed(2)})}\n${localizedReconciliationReasons(context, candidate.assessment.reasons)}${candidate.assessment.conflicts.isEmpty ? '' : '\n${localizedReconciliationConflicts(context, candidate.assessment.conflicts)}'}',
-                    ),
-                    onTap: () => Navigator.pop(
-                      context,
-                      LinkStatementReconciliation(candidate.transaction.id),
-                    ),
-                  ),
+                const SizedBox(height: ButlerlySpacing.compact),
+                ButlerlyTransactionList(
+                  children: [
+                    for (final candidate in values)
+                      TransactionRow(
+                        transaction: candidate.transaction,
+                        masterData: masterData,
+                        paymentSourceNames: paymentSourceNames,
+                        showDate: true,
+                        supportingContent: Text(
+                          '${context.l10n.text('reconciliationScore', {'score': candidate.assessment.score.toStringAsFixed(2)})}\n${localizedReconciliationReasons(context, candidate.assessment.reasons)}${candidate.assessment.conflicts.isEmpty ? '' : '\n${localizedReconciliationConflicts(context, candidate.assessment.conflicts)}'}',
+                          style: context.transactionItemMetadata,
+                        ),
+                        onTap: () => Navigator.pop(
+                          context,
+                          LinkStatementReconciliation(
+                            candidate.transaction.id,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ],
             ),
             actions: [
