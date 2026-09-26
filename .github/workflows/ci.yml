@@ -60,7 +60,7 @@ jobs:
 
   ios_integration:
     name: iOS Integration Journeys
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.head_ref == 'codex/fix-ios-integration-ci'
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
