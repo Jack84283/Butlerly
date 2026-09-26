@@ -8,7 +8,7 @@ double phoneNavigationHeightForLabels({
   required TextScaler textScaler,
   required double itemWidth,
   required Iterable<String> standardLabels,
-  required String addLabel,
+  String? addLabel,
   required TextStyle labelStyle,
   required TextDirection textDirection,
 }) {
@@ -34,7 +34,7 @@ double phoneNavigationHeightForLabels({
     return ButlerlySize.navigationBarHeight;
   }
 
-  var maximumLabelHeight = labelHeight(addLabel);
+  var maximumLabelHeight = addLabel == null ? 0.0 : labelHeight(addLabel);
   for (final label in standardLabels) {
     final height = labelHeight(label);
     if (height > maximumLabelHeight) {
@@ -92,7 +92,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
       ),
       child: baseIcon,
     );
-    final displayedIcon = branchIndex == 1
+    final displayedIcon = branchIndex == 2
         ? Container(
             width: ButlerlySize.primaryNavigationAddGlyphSize,
             height: ButlerlySize.primaryNavigationAddGlyphSize,
@@ -107,11 +107,10 @@ class PrimaryBottomNavigation extends StatelessWidget {
             child: Center(child: icon),
           )
         : icon;
-
     return Semantics(
       button: true,
       selected: selected,
-      label: branchIndex == 1
+      label: branchIndex == 2
           ? context.l10n.text('addTransactionAction')
           : destination.label,
       excludeSemantics: true,
@@ -119,7 +118,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
         onTap: () => onSelected(branchIndex),
         child: SizedBox(
           height: double.infinity,
-          child: branchIndex == 1
+          child: branchIndex == 2
               ? Center(
                   child: SizedBox(
                     key: const ValueKey('primary-navigation-add-button'),
@@ -167,9 +166,9 @@ class PrimaryBottomNavigation extends StatelessWidget {
       itemWidth: availableWidth / visualBranchIndexes.length,
       standardLabels: [
         for (final branchIndex in visualBranchIndexes)
-          if (branchIndex != 1) destinations[branchIndex]!.label,
+          if (branchIndex != 2) destinations[branchIndex]!.label,
       ],
-      addLabel: destinations[1]!.label,
+      addLabel: destinations[2]!.label,
       labelStyle: labelStyle,
       textDirection: Directionality.of(context),
     );

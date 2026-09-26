@@ -261,16 +261,27 @@ void main() {
         theme: AppTheme.darkFor(ButlerlyColorTheme.skyBlue),
       );
       await tester.runAsync(() async {
-        await tester.tap(find.byType(Card).first);
-        await Future<void>.delayed(const Duration(milliseconds: 30));
+        await tester.tap(find.byType(ListTile).first);
       });
-      await tester.pumpAndSettle();
+      final editButton = find.byIcon(Icons.edit_outlined);
+      var reviewLoaded = false;
+      for (var attempt = 0; attempt < 50; attempt++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 20)),
+        );
+        await tester.pump(const Duration(milliseconds: 20));
+        if (editButton.evaluate().isNotEmpty) {
+          reviewLoaded = true;
+          break;
+        }
+      }
+      expect(reviewLoaded, isTrue, reason: 'Statement review did not load.');
       await tester.scrollUntilVisible(
-        find.byIcon(Icons.edit_outlined),
+        editButton,
         240,
         scrollable: find.byType(Scrollable).first,
       );
-      await tester.tap(find.byIcon(Icons.edit_outlined));
+      await tester.tap(editButton);
       await tester.pumpAndSettle();
       expect(find.text('更正提取的行'), findsOneWidget);
       expect(find.text('保存更正'), findsOneWidget);

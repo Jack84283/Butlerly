@@ -64,6 +64,14 @@ final class MerchantId extends DomainId {
   MerchantId(super.value);
 }
 
+final class MerchantAliasId extends DomainId {
+  MerchantAliasId(super.value);
+}
+
+final class MerchantNormalizationPatternId extends DomainId {
+  MerchantNormalizationPatternId(super.value);
+}
+
 final class ProvenanceId extends DomainId {
   ProvenanceId(super.value);
 }
@@ -86,4 +94,8 @@ final class ReferenceDataId extends DomainId {
 
 final class TransactionId extends DomainId {
   TransactionId(super.value);
+}
+
+final class TransactionRuleId extends DomainId {
+  TransactionRuleId(super.value);
 }

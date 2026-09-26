@@ -70,30 +70,68 @@ final class SqliteMerchantRepository implements MerchantRepository {
   }
 
   @override
-  Future<List<Merchant>> listAll() async => (await _list(
-    database.connection,
-    'merchants',
-  )).map(_fromRow).toList(growable: false);
+  Future<List<Merchant>> listAll() async {
+    final rows = await _list(database.connection, 'merchants');
+    return Future.wait(rows.map(_fromRow));
+  }
 
-  static Merchant _fromRow(Map<String, Object?> row) => Merchant(
-    id: MerchantId(row['id']! as String),
-    name: row['name']! as String,
-    status: MerchantStatus.values.byName(row['status'] as String? ?? 'active'),
-    rawName: row['raw_name'] as String?,
-    normalizedName: normalizeMerchantName(
-      (row['normalized_name'] as String?)?.trim().isNotEmpty == true
-          ? row['normalized_name']! as String
-          : row['name']! as String,
-    ),
-    defaultCategoryId: row['default_category_id'] == null
-        ? null
-        : CategoryId(row['default_category_id']! as String),
-    defaultSubcategoryId: row['default_subcategory_id'] == null
-        ? null
-        : CategoryId(row['default_subcategory_id']! as String),
-    isBuiltIn: (row['is_built_in'] as int? ?? 0) != 0,
-  );
+  Future<Merchant> _fromRow(Map<String, Object?> row) async {
+    final merchantId = MerchantId(row['id']! as String);
+    final aliases = await database.connection.query(
+      'merchant_aliases',
+      where: 'merchant_id = ?',
+      whereArgs: [merchantId.value],
+    );
+    final patterns = await database.connection.query(
+      'merchant_normalization_patterns',
+      where: 'merchant_id = ?',
+      whereArgs: [merchantId.value],
+    );
+    return Merchant(
+      id: merchantId,
+      name: row['name']! as String,
+      status: MerchantStatus.values.byName(
+        row['status'] as String? ?? 'active',
+      ),
+      rawName: row['raw_name'] as String?,
+      normalizedName: normalizeMerchantName(
+        (row['normalized_name'] as String?)?.trim().isNotEmpty == true
+            ? row['normalized_name']! as String
+            : row['name']! as String,
+      ),
+      defaultCategoryId: row['default_category_id'] == null
+          ? null
+          : CategoryId(row['default_category_id']! as String),
+      defaultSubcategoryId: row['default_subcategory_id'] == null
+          ? null
+          : CategoryId(row['default_subcategory_id']! as String),
+      isBuiltIn: (row['is_built_in'] as int? ?? 0) != 0,
+      aliases: aliases.map(_aliasFromRow),
+      normalizationPatterns: patterns.map(_patternFromRow),
+    );
+  }
 }
+
+MerchantAlias _aliasFromRow(Map<String, Object?> row) => MerchantAlias(
+  id: MerchantAliasId(row['id']! as String),
+  merchantId: MerchantId(row['merchant_id']! as String),
+  alias: row['alias']! as String,
+  normalizedAlias: row['normalized_alias']! as String,
+  status: MerchantMatchingStatus.values.byName(row['status']! as String),
+  createdAt: DateTime.parse(row['created_at']! as String),
+  updatedAt: DateTime.parse(row['updated_at']! as String),
+);
+
+MerchantNormalizationPattern _patternFromRow(Map<String, Object?> row) =>
+    MerchantNormalizationPattern(
+      id: MerchantNormalizationPatternId(row['id']! as String),
+      merchantId: MerchantId(row['merchant_id']! as String),
+      pattern: row['pattern']! as String,
+      normalizedPattern: row['normalized_pattern']! as String,
+      status: MerchantMatchingStatus.values.byName(row['status']! as String),
+      createdAt: DateTime.parse(row['created_at']! as String),
+      updatedAt: DateTime.parse(row['updated_at']! as String),
+    );
 
 final class SqliteCategoryRepository implements CategoryRepository {
   const SqliteCategoryRepository(this.database);

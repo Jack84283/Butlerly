@@ -261,6 +261,50 @@ final class SqliteStatementRepository
   }
 
   @override
+  Future<void> saveRowTransactions(List<StatementRowTransaction> values) =>
+      _mapped(
+        'save statement row transactions',
+        () => database.transaction((tx) async {
+          final statementIds = <String>{};
+          for (final value in values) {
+            await SqliteTransactionRepository.saveWithExecutor(
+              tx,
+              value.transaction,
+            );
+            final count = await tx.update(
+              'statement_rows',
+              _row(value.row),
+              where: 'id = ? AND status NOT IN (?, ?)',
+              whereArgs: [
+                value.row.id,
+                StatementRowStatus.saved.name,
+                StatementRowStatus.linked.name,
+              ],
+            );
+            if (count != 1) {
+              throw const RepositoryException(
+                RepositoryFailureCode.constraint,
+                'complete statement row once',
+              );
+            }
+            statementIds.add(value.row.statementId);
+          }
+          for (final statementId in statementIds) {
+            final latest = values
+                .where((value) => value.row.statementId == statementId)
+                .map((value) => value.row.updatedAt)
+                .fold<DateTime?>(null, (current, value) {
+                  if (current == null || value.isAfter(current)) return value;
+                  return current;
+                });
+            if (latest != null) {
+              await _refreshStatementStatus(tx, statementId, latest);
+            }
+          }
+        }),
+      );
+
+  @override
   Future<void> saveRowTransaction(StatementRow row, Transaction transaction) =>
       _mapped(
         'save statement row transaction',

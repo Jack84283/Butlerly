@@ -7,6 +7,7 @@ import 'duplicate_transaction_use_cases.dart';
 import 'reconciliation_use_cases.dart';
 import 'statement_intake_policy.dart';
 import 'transaction_use_cases.dart';
+import 'transaction_rule_use_cases.dart';
 
 final class StatementImportSummary {
   const StatementImportSummary({
@@ -54,6 +55,13 @@ final class StatementImportAssessment {
   final int invalidCount;
 }
 
+final class _PreparedStatementTransaction {
+  const _PreparedStatementTransaction({required this.value, this.proposal});
+
+  final Transaction value;
+  final ClassificationProposal? proposal;
+}
+
 final class StatementServices {
   const StatementServices(
     this.statements,
@@ -61,6 +69,7 @@ final class StatementServices {
     this.workflow,
     this.clock, {
     this.evidence,
+    this.applyRules,
     required this.duplicateGroups,
     required this.duplicateChecker,
     this.classifier,
@@ -72,6 +81,7 @@ final class StatementServices {
   final StatementWorkflowRepository workflow;
   final ApplicationClock clock;
   final EvidenceRepository? evidence;
+  final ApplyTransactionRules? applyRules;
   final DuplicateCandidateGroupRepository duplicateGroups;
   final DuplicateTransactionChecker duplicateChecker;
   final ProposeTransactionClassification? classifier;
@@ -149,6 +159,7 @@ final class StatementServices {
     var needsReview = 0;
     var possibleDuplicates = 0;
     var failed = 0;
+    final prepared = <StatementRowTransaction>[];
     for (final row in rows) {
       if (row.amount == null ||
           row.currency == null ||
@@ -162,16 +173,38 @@ final class StatementServices {
         TransactionId(transactionId),
       );
       if (existing == null) {
-        final result = await save(row, paymentSourceId, allowCreateNew: true);
-        if (result is! ApplicationSuccess<TransactionDto>) {
-          failed++;
-          continue;
-        }
+        final transaction = await _prepareTransaction(
+          row,
+          paymentSourceId,
+          allowCreateNew: true,
+        );
+        final now = clock.now();
+        prepared.add(
+          StatementRowTransaction(
+            row: _copy(
+              row,
+              status: StatementRowStatus.saved,
+              transactionId: transaction.value.id.value,
+              dispositionReason: 'createNew',
+              updatedAt: now,
+            ),
+            transaction: transaction.value,
+          ),
+        );
         imported++;
         if (intakePolicy.needsConfidenceReview(row.confidence) ||
             row.status == StatementRowStatus.unresolved) {
           needsReview++;
         }
+      }
+    }
+    await workflow.saveRowTransactions(prepared);
+    for (final row in rows) {
+      if (row.amount == null ||
+          row.currency == null ||
+          row.transactionDate == null ||
+          row.direction == null) {
+        continue;
       }
       if (await _repairDuplicateReview(row)) {
         possibleDuplicates++;
@@ -421,108 +454,14 @@ final class StatementServices {
       );
       if (existing != null) return TransactionDto.fromDomain(existing);
     }
-    if (row.amount == null ||
-        row.currency == null ||
-        row.transactionDate == null ||
-        row.direction == null) {
-      throw const DomainValidationException(
-        code: DomainErrorCode.invalidState,
-        field: 'statementRow',
-        message: 'A date, amount, currency, and direction are required.',
-      );
-    }
-    if (!allowCreateNew) {
-      final matches = await likelyMatches(row, paymentSourceId);
-      if (matches case ApplicationSuccess<List<ReconciliationMatchCandidate>>(
-        value: final values,
-      ) when values.isNotEmpty) {
-        throw const DomainValidationException(
-          code: DomainErrorCode.invalidState,
-          field: 'statementRow',
-          message:
-              'A likely existing transaction requires an explicit decision.',
-        );
-      }
-    }
-    final now = clock.now();
-    final transactionId = _transactionIdForRow(row);
-    final proposal = classifier == null
-        ? null
-        : await classifier!.call(
-            merchantId: row.merchantId == null
-                ? null
-                : MerchantId(row.merchantId!),
-            description: row.description ?? row.originalText,
-            excludeTransactionId: TransactionId(transactionId),
-          );
-    final resolvedMerchantId =
-        row.merchantId == null &&
-            proposal is ApplicationSuccess<ClassificationProposal>
-        ? proposal.value.merchantId?.value
-        : row.merchantId;
-    final transaction = Transaction(
-      id: TransactionId(transactionId),
-      timing: const UnknownTransactionTime(
-        UnknownTransactionTimeReason.unknown,
-      ),
-      money: Money(
-        amount: DecimalValue.parse(row.amount!),
-        currency: CurrencyCode(row.currency!),
-      ),
-      direction: _directionForRow(row),
-      sourceType: TransactionSourceType.import,
-      transactionDate: row.transactionDate!.toIso8601String().substring(0, 10),
-      description: row.description,
-      rawCounterparty: row.originalText,
-      paymentSourceId: PaymentSourceId(row.paymentSourceId ?? paymentSourceId),
-      merchantId: resolvedMerchantId == null
-          ? null
-          : MerchantId(resolvedMerchantId),
-      categoryId: row.categoryId == null
-          ? proposal is ApplicationSuccess<ClassificationProposal>
-                ? proposal.value.categoryId
-                : null
-          : CategoryId(row.categoryId!),
-      subcategoryId: row.subcategoryId == null
-          ? row.categoryId == null &&
-                    proposal is ApplicationSuccess<ClassificationProposal>
-                ? proposal.value.subcategoryId
-                : null
-          : CategoryId(row.subcategoryId!),
-      tagIds: row.tagIds.map(TagId.new).toList(growable: false),
-      externalReference: 'statement-row:${row.id}',
-      provenance: [
-        Provenance(
-          id: ProvenanceId('statement-provenance-${row.id}'),
-          sourceType: ProvenanceSourceType.import,
-          capturedAt: now,
-          sourceId: row.statementId,
-          originalRepresentation: row.originalText,
-        ),
-      ],
-      reviewIssues: [
-        if (intakePolicy.needsConfidenceReview(row.confidence))
-          ReviewIssue(
-            id: ReviewIssueId('statement-confidence-${row.id}'),
-            transactionId: TransactionId(transactionId),
-            reason: ReviewIssueReason.uncertain,
-            detail: 'We were not confident reading this statement row.',
-            createdAt: now,
-          )
-        else if (row.status == StatementRowStatus.unresolved)
-          ReviewIssue(
-            id: ReviewIssueId('statement-unresolved-${row.id}'),
-            transactionId: TransactionId(transactionId),
-            reason: ReviewIssueReason.uncertain,
-            detail: row.reviewReason?.trim().isNotEmpty == true
-                ? row.reviewReason!
-                : 'This statement row still needs review.',
-            createdAt: now,
-          ),
-      ],
-      createdAt: now,
-      updatedAt: now,
+    final prepared = await _prepareTransaction(
+      row,
+      paymentSourceId,
+      allowCreateNew: allowCreateNew,
     );
+    final transaction = prepared.value;
+    final now = transaction.updatedAt;
+    final transactionId = transaction.id.value;
     await workflow.saveRowTransaction(
       _copy(
         row,
@@ -558,12 +497,119 @@ final class StatementServices {
       tagIds: dto.tagIds,
       provenance: dto.provenance,
       normalizedMoney: dto.normalizedMoney,
-      classificationProposal:
-          proposal is ApplicationSuccess<ClassificationProposal>
-          ? proposal.value
-          : null,
+      classificationProposal: prepared.proposal,
     );
   });
+
+  Future<_PreparedStatementTransaction> _prepareTransaction(
+    StatementRow row,
+    String paymentSourceId, {
+    required bool allowCreateNew,
+  }) async {
+    if (row.amount == null ||
+        row.currency == null ||
+        row.transactionDate == null ||
+        row.direction == null) {
+      throw const DomainValidationException(
+        code: DomainErrorCode.invalidState,
+        field: 'statementRow',
+        message: 'A date, amount, currency, and direction are required.',
+      );
+    }
+    if (!allowCreateNew) {
+      final matches = await likelyMatches(row, paymentSourceId);
+      if (matches case ApplicationSuccess<List<ReconciliationMatchCandidate>>(
+        value: final values,
+      ) when values.isNotEmpty) {
+        throw const DomainValidationException(
+          code: DomainErrorCode.invalidState,
+          field: 'statementRow',
+          message:
+              'A likely existing transaction requires an explicit decision.',
+        );
+      }
+    }
+    final now = clock.now();
+    final transactionId = _transactionIdForRow(row);
+    final proposalResult = classifier == null
+        ? null
+        : await classifier!.call(
+            merchantId: row.merchantId == null
+                ? null
+                : MerchantId(row.merchantId!),
+            description: row.description ?? row.originalText,
+            excludeTransactionId: TransactionId(transactionId),
+          );
+    final proposal =
+        proposalResult is ApplicationSuccess<ClassificationProposal>
+        ? proposalResult.value
+        : null;
+    final resolvedMerchantId = row.merchantId ?? proposal?.merchantId?.value;
+    final transaction = Transaction(
+      id: TransactionId(transactionId),
+      timing: const UnknownTransactionTime(
+        UnknownTransactionTimeReason.unknown,
+      ),
+      money: Money(
+        amount: DecimalValue.parse(row.amount!),
+        currency: CurrencyCode(row.currency!),
+      ),
+      direction: _directionForRow(row),
+      sourceType: TransactionSourceType.import,
+      transactionDate: row.transactionDate!.toIso8601String().substring(0, 10),
+      description: row.description,
+      rawCounterparty: row.originalText,
+      paymentSourceId: PaymentSourceId(row.paymentSourceId ?? paymentSourceId),
+      merchantId: resolvedMerchantId == null
+          ? null
+          : MerchantId(resolvedMerchantId),
+      categoryId: row.categoryId == null
+          ? proposal?.categoryId
+          : CategoryId(row.categoryId!),
+      subcategoryId: row.subcategoryId == null && row.categoryId == null
+          ? proposal?.subcategoryId
+          : row.subcategoryId == null
+          ? null
+          : CategoryId(row.subcategoryId!),
+      tagIds: row.tagIds.map(TagId.new).toList(growable: false),
+      externalReference: 'statement-row:${row.id}',
+      provenance: [
+        Provenance(
+          id: ProvenanceId('statement-provenance-${row.id}'),
+          sourceType: ProvenanceSourceType.import,
+          capturedAt: now,
+          sourceId: row.statementId,
+          originalRepresentation: row.originalText,
+        ),
+      ],
+      reviewIssues: [
+        if (intakePolicy.needsConfidenceReview(row.confidence))
+          ReviewIssue(
+            id: ReviewIssueId('statement-confidence-${row.id}'),
+            transactionId: TransactionId(transactionId),
+            reason: ReviewIssueReason.uncertain,
+            detail: 'We were not confident reading this statement row.',
+            createdAt: now,
+          )
+        else if (row.status == StatementRowStatus.unresolved)
+          ReviewIssue(
+            id: ReviewIssueId('statement-unresolved-${row.id}'),
+            transactionId: TransactionId(transactionId),
+            reason: ReviewIssueReason.uncertain,
+            detail: row.reviewReason?.trim().isNotEmpty == true
+                ? row.reviewReason!
+                : 'This statement row still needs review.',
+            createdAt: now,
+          ),
+      ],
+      createdAt: now,
+      updatedAt: now,
+    );
+    final resolved = applyRules == null
+        ? transaction
+        : await applyRules!(transaction);
+    return _PreparedStatementTransaction(value: resolved, proposal: proposal);
+  }
 
   Future<bool> _repairDuplicateReview(StatementRow row) async {
     final key = DuplicateTransactionKey(

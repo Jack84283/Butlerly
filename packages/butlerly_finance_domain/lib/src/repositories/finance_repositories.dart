@@ -8,6 +8,7 @@ import '../entities/exchange_rate.dart';
 import '../entities/extraction.dart';
 import '../entities/master_translation.dart';
 import '../entities/merchant.dart';
+import '../entities/merchant_matching.dart';
 import '../entities/payment_settlement.dart';
 import '../entities/reconciliation_candidate.dart';
 import '../entities/reconciliation_link.dart';
@@ -16,6 +17,7 @@ import '../entities/statement.dart';
 import '../entities/suggestion.dart';
 import '../entities/tag.dart';
 import '../entities/transaction.dart';
+import '../entities/transaction_rule.dart';
 import '../entities/user_preference.dart';
 import '../value_objects/currency_code.dart';
 import '../value_objects/domain_id.dart';
@@ -170,6 +172,44 @@ abstract interface class MerchantRepository {
   Future<List<Merchant>> listAll();
 }
 
+abstract interface class MerchantAliasRepository {
+  Future<void> save(MerchantAlias alias);
+  Future<MerchantAlias?> findById(MerchantAliasId id);
+  Future<List<MerchantAlias>> listForMerchant(MerchantId merchantId);
+  Future<void> remove(MerchantAliasId id);
+}
+
+abstract interface class MerchantNormalizationPatternRepository {
+  Future<void> save(MerchantNormalizationPattern pattern);
+  Future<MerchantNormalizationPattern?> findById(
+    MerchantNormalizationPatternId id,
+  );
+  Future<List<MerchantNormalizationPattern>> listForMerchant(
+    MerchantId merchantId,
+  );
+  Future<void> remove(MerchantNormalizationPatternId id);
+}
+
+/// Persists a merchant and its complete matching configuration as one unit.
+///
+/// Implementations should use one database transaction when the underlying
+/// storage supports it, so an edit cannot leave the merchant, aliases, and
+/// normalization patterns out of sync.
+abstract interface class MerchantMatchingConfigurationRepository {
+  Future<void> saveConfiguration({
+    required Merchant merchant,
+    required List<MerchantAlias> aliases,
+    required List<MerchantNormalizationPattern> patterns,
+  });
+}
+
+abstract interface class TransactionRuleRepository {
+  Future<void> save(TransactionRule rule);
+  Future<List<TransactionRule>> listAll();
+  Future<TransactionRule?> findById(TransactionRuleId id);
+  Future<void> remove(TransactionRuleId id);
+}
+
 /// Repository-owned, already-filtered candidates for local classification.
 abstract interface class HistoricalClassificationRepository {
   Future<List<Transaction>> findClassificationCandidates({
@@ -250,8 +290,16 @@ abstract interface class StatementRepository {
 }
 
 abstract interface class StatementWorkflowRepository {
+  Future<void> saveRowTransactions(List<StatementRowTransaction> values);
   Future<void> saveRowTransaction(StatementRow row, Transaction transaction);
   Future<void> linkRow(StatementRow row);
+}
+
+final class StatementRowTransaction {
+  const StatementRowTransaction({required this.row, required this.transaction});
+
+  final StatementRow row;
+  final Transaction transaction;
 }
 
 abstract interface class ExtractionLookupRepository {

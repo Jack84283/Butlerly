@@ -107,6 +107,18 @@ final class LocalBackupManager {
       systemOwned: true,
     ),
     _TableSpec(
+      'merchant_aliases',
+      ['id'],
+      updatedAt: 'updated_at',
+      createdAt: 'created_at',
+    ),
+    _TableSpec(
+      'merchant_normalization_patterns',
+      ['id'],
+      updatedAt: 'updated_at',
+      createdAt: 'created_at',
+    ),
+    _TableSpec(
       'tags',
       ['id'],
       updatedAt: 'updated_at',
@@ -139,6 +151,12 @@ final class LocalBackupManager {
       'transaction_id',
       'tag_id',
     ], createdAt: 'created_at'),
+    _TableSpec(
+      'transaction_rules',
+      ['id'],
+      updatedAt: 'updated_at',
+      createdAt: 'created_at',
+    ),
     _TableSpec('evidence_items', ['id'], createdAt: 'created_at'),
     _TableSpec(
       'financial_statements',
@@ -1137,6 +1155,9 @@ final class LocalBackupManager {
 
   Future<void> _clearPortableState(Transaction tx) async {
     const childFirst = <String>[
+      'transaction_rules',
+      'merchant_normalization_patterns',
+      'merchant_aliases',
       'duplicate_candidate_group_transactions',
       'duplicate_candidate_groups',
       'reconciliation_links',

@@ -43,6 +43,18 @@ class ToolsPage extends StatelessWidget {
       context.l10n.text('toolsPaymentSettlementsDescription'),
       '/payment-settlements',
     ),
+    _ToolDefinition(
+      Icons.account_tree_outlined,
+      context.l10n.text('masterData'),
+      context.l10n.text('masterDataSubtitle'),
+      '/master-data',
+    ),
+    _ToolDefinition(
+      Icons.rule_outlined,
+      context.l10n.text('ruleManagement'),
+      context.l10n.text('ruleManagementSubtitle'),
+      '/rules',
+    ),
   ];
 
   @override

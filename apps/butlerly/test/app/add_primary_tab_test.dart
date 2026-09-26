@@ -10,14 +10,60 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   setUp(() => appRouter.go('/'));
 
-  testWidgets('Add is a selected primary tab and keeps the footer visible', (
+  testWidgets(
+    'primary navigation is exactly Home, Transactions, Add, Tools, More',
+    (tester) async {
+      _setPhoneViewport(tester);
+      await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+      await tester.pumpAndSettle();
+
+      final navigation = find.byKey(const ValueKey('primary-phone-navigation'));
+      final content = find.descendant(
+        of: navigation,
+        matching: find.byKey(const ValueKey('primary-navigation-content')),
+      );
+      expect(
+        find.descendant(of: content, matching: find.byType(InkWell)),
+        findsNWidgets(5),
+      );
+
+      final destinations = <String, Finder>{
+        'Home': find.bySemanticsLabel('Home'),
+        'Transactions': find.bySemanticsLabel('Transactions'),
+        'Add': find.bySemanticsLabel('Add transaction'),
+        'Tools': find.bySemanticsLabel('Tools'),
+        'More': find.bySemanticsLabel('More'),
+      };
+      for (final entry in destinations.entries) {
+        expect(entry.value, findsOneWidget, reason: entry.key);
+      }
+
+      final centers = [
+        for (final finder in destinations.values) tester.getCenter(finder),
+      ];
+      expect(
+        centers,
+        orderedEquals([...centers]..sort((a, b) => a.dx.compareTo(b.dx))),
+      );
+      expect(
+        find.descendant(of: navigation, matching: find.text('Review')),
+        findsNothing,
+      );
+      expect(
+        find.descendant(of: navigation, matching: find.text('Search')),
+        findsNothing,
+      );
+      expect(
+        find.descendant(of: navigation, matching: find.text('Settings')),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets('Add is a selected primary destination and keeps the footer', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
+    _setPhoneViewport(tester);
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     await tester.pumpAndSettle();
 
@@ -27,11 +73,8 @@ void main() {
     expect(find.text('Add transaction manually'), findsOneWidget);
     expect(find.text('Home'), findsOneWidget);
     expect(find.text('Transactions'), findsOneWidget);
-    expect(find.text('Add'), findsAtLeastNWidgets(1));
     expect(find.text('Tools'), findsOneWidget);
     expect(find.text('More'), findsOneWidget);
-    expect(find.byIcon(Icons.arrow_back), findsNothing);
-    expect(find.byIcon(Icons.arrow_back_ios_new), findsNothing);
     expect(
       tester
               .getSemantics(find.bySemanticsLabel('Add transaction'))
@@ -40,69 +83,109 @@ void main() {
           Tristate.isTrue,
       isTrue,
     );
-
-    await tester.tap(find.text('Tools').last);
-    await tester.pumpAndSettle();
-    expect(find.text('Add transaction manually'), findsNothing);
-    expect(
-      tester.getSemantics(find.text('Tools').last).flagsCollection.isSelected ==
-          Tristate.isTrue,
-      isTrue,
-    );
   });
 
-  testWidgets('direct /add route opens inside the primary shell', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
+  testWidgets('Tools and More remain primary destinations', (tester) async {
+    _setPhoneViewport(tester);
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
-    appRouter.go('/add');
     await tester.pumpAndSettle();
 
-    expect(find.text('Add transaction manually'), findsOneWidget);
-    expect(find.bySemanticsLabel('Add transaction'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('Tools'));
+    await tester.pumpAndSettle();
+    final navigation = find.byKey(const ValueKey('primary-phone-navigation'));
+    expect(
+      find.text('Useful ways to explore and understand your records.'),
+      findsOneWidget,
+    );
     expect(
       tester
-              .getSemantics(find.bySemanticsLabel('Add transaction'))
-              .flagsCollection
-              .isSelected ==
-          Tristate.isTrue,
-      isTrue,
+          .getSemantics(
+            find.descendant(
+              of: navigation,
+              matching: find.bySemanticsLabel('Tools'),
+            ),
+          )
+          .flagsCollection
+          .isSelected,
+      Tristate.isTrue,
     );
-    expect(find.text('Home'), findsOneWidget);
-    expect(find.text('Transactions'), findsOneWidget);
-    expect(find.text('Tools'), findsOneWidget);
-    expect(find.text('More'), findsOneWidget);
+
+    await tester.tap(find.bySemanticsLabel('More'));
+    await tester.pumpAndSettle();
+    final moreNavigation = find.byKey(
+      const ValueKey('primary-phone-navigation'),
+    );
+    expect(find.text('More'), findsAtLeastNWidgets(1));
+    expect(find.text('Master data'), findsNothing);
+    expect(
+      tester
+          .getSemantics(
+            find.descendant(
+              of: moreNavigation,
+              matching: find.bySemanticsLabel('More'),
+            ),
+          )
+          .flagsCollection
+          .isSelected,
+      Tristate.isTrue,
+    );
   });
 
-  testWidgets('Tools destinations are secondary and hide the primary footer', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
+  testWidgets('Tools owns Review, Master Data, and Rules', (tester) async {
+    _setPhoneViewport(tester);
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     await tester.pumpAndSettle();
 
-    for (final route in const [
-      '/review',
-      '/search',
-      '/analysis',
-      '/insights',
-    ]) {
+    await tester.tap(find.bySemanticsLabel('Tools'));
+    await tester.pumpAndSettle();
+    expect(find.text('Review'), findsOneWidget);
+    expect(find.text('Master data'), findsOneWidget);
+    expect(find.text('Rules'), findsOneWidget);
+
+    await tester.tap(find.text('Master data'));
+    await tester.pumpAndSettle();
+    expect(find.text('Master data'), findsOneWidget);
+    expect(find.bySemanticsLabel('Tools'), findsNothing);
+    appRouter.go('/tools');
+    await tester.pumpAndSettle();
+
+    final toolsScrollable = find.byType(Scrollable).first;
+    await tester.drag(toolsScrollable, const Offset(0, -500));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Rules'));
+    await tester.pumpAndSettle();
+    expect(find.text('Rules'), findsOneWidget);
+    expect(find.bySemanticsLabel('Tools'), findsNothing);
+  });
+
+  testWidgets('Payment Sources remain owned by Add', (tester) async {
+    _setPhoneViewport(tester);
+    await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.bySemanticsLabel('Add transaction'));
+    await tester.pumpAndSettle();
+    expect(find.text('Payment sources'), findsNWidgets(2));
+    await tester.tap(find.text('Payment sources').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Payment sources'), findsOneWidget);
+    expect(find.bySemanticsLabel('Add transaction'), findsNothing);
+  });
+
+  testWidgets('secondary Review and Search routes hide primary navigation', (
+    tester,
+  ) async {
+    _setPhoneViewport(tester);
+    await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+    await tester.pumpAndSettle();
+
+    for (final route in const ['/review', '/search']) {
       appRouter.go(route);
       await tester.pumpAndSettle();
-
       expect(
-        find.bySemanticsLabel('Add transaction'),
+        find.byKey(const ValueKey('primary-phone-navigation')),
         findsNothing,
-        reason: '$route is a secondary Tools destination.',
+        reason: '$route is a secondary workflow.',
       );
     }
   });
@@ -159,4 +242,11 @@ void main() {
     observer.didPop(secondaryRoute, primaryRoute);
     expect(controller.secondaryRouteVisibleFor(0), isFalse);
   });
+}
+
+void _setPhoneViewport(WidgetTester tester) {
+  tester.view.physicalSize = const Size(390, 844);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
 }

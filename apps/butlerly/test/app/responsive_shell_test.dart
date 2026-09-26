@@ -260,6 +260,29 @@ void main() {
         expect(navigation, findsOneWidget);
         expect(tester.getSize(navigation).width, size.width);
         expect(tester.getRect(navigation).bottom, size.height);
+        expect(
+          find.descendant(of: navigation, matching: find.byType(InkWell)),
+          findsNWidgets(5),
+        );
+        expect(
+          find.descendant(
+            of: navigation,
+            matching: find.bySemanticsLabel('Add transaction'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: navigation, matching: find.text('Review')),
+          findsNothing,
+        );
+        expect(
+          find.descendant(of: navigation, matching: find.text('Search')),
+          findsNothing,
+        );
+        expect(
+          find.descendant(of: navigation, matching: find.text('Settings')),
+          findsNothing,
+        );
       },
     );
   }
@@ -409,6 +432,36 @@ void main() {
       findsNothing,
     );
     expect(find.byKey(const ValueKey('primary-ipad-navigation')), findsNothing);
+    final navigation = find.byKey(const ValueKey('primary-desktop-navigation'));
+    final visiblePrimaryLabelCount =
+        const ['Home', 'Transactions', 'Add', 'Tools', 'More'].fold<int>(
+          0,
+          (count, label) =>
+              count +
+              find
+                  .descendant(of: navigation, matching: find.text(label))
+                  .evaluate()
+                  .length,
+        );
+    expect(visiblePrimaryLabelCount, 5);
+    for (final label in const [
+      'Home',
+      'Transactions',
+      'Add',
+      'Tools',
+      'More',
+    ]) {
+      expect(
+        find.descendant(of: navigation, matching: find.text(label)),
+        findsOneWidget,
+      );
+    }
+    for (final label in const ['Review', 'Search', 'Settings']) {
+      expect(
+        find.descendant(of: navigation, matching: find.text(label)),
+        findsNothing,
+      );
+    }
     expect(
       tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
       ButlerlySize.pageContentMaxWidth,

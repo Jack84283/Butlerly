@@ -123,8 +123,8 @@ void main() {
     expect(find.text('No transactions yet'), findsOneWidget);
     expect(find.text('Home'), findsAtLeastNWidgets(1));
     expect(find.text('Transactions'), findsOneWidget);
-    expect(find.text('Tools'), findsOneWidget);
     expect(find.bySemanticsLabel('Add transaction'), findsOneWidget);
+    expect(find.text('Tools'), findsOneWidget);
     expect(find.text('More'), findsAtLeastNWidgets(1));
     expect(find.text('More...'), findsNothing);
     expect(find.text('Local records'), findsNothing);
@@ -158,45 +158,15 @@ void main() {
     expect(future.onPressed, isNull);
   });
 
-  testWidgets(
-    'Add primary tab opens the existing Add hub and system back returns Home',
-    (tester) async {
-      setPhoneViewport(tester);
-      await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.bySemanticsLabel('Add transaction'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Add'), findsAtLeastNWidgets(1));
-      expect(
-        tester
-                .getSemantics(find.bySemanticsLabel('Add transaction'))
-                .flagsCollection
-                .isSelected ==
-            Tristate.isTrue,
-        isTrue,
-      );
-      await tester.binding.handlePopRoute();
-      await tester.pumpAndSettle();
-      expect(find.text('No transactions yet'), findsOneWidget);
-    },
-  );
-
-  testWidgets('primary navigation restores every selected tab after Add', (
+  testWidgets('primary navigation selects each documented destination', (
     tester,
   ) async {
     setPhoneViewport(tester);
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     await tester.pumpAndSettle();
 
-    for (final destination in const ['Transactions', 'Tools', 'More']) {
+    for (final destination in const ['Home', 'Transactions', 'Tools', 'More']) {
       await tester.tap(find.text(destination).last);
-      await tester.pumpAndSettle();
-      await tester.tap(find.bySemanticsLabel('Add transaction'));
-      await tester.pumpAndSettle();
-      expect(find.text('Add'), findsAtLeastNWidgets(1));
-      await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
       expect(
         tester
@@ -206,26 +176,17 @@ void main() {
             Tristate.isTrue,
         isTrue,
       );
-      expect(
-        tester
-                .getSemantics(find.bySemanticsLabel('Add transaction'))
-                .flagsCollection
-                .isSelected ==
-            Tristate.isTrue,
-        isFalse,
-      );
-      final selectedCount = const ['Home', 'Transactions', 'Tools', 'More']
-          .where(
-            (label) =>
-                tester
-                    .getSemantics(find.text(label).last)
-                    .flagsCollection
-                    .isSelected ==
-                Tristate.isTrue,
-          )
-          .length;
-      expect(selectedCount, 1);
     }
+    await tester.tap(find.bySemanticsLabel('Add transaction'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+              .getSemantics(find.bySemanticsLabel('Add transaction'))
+              .flagsCollection
+              .isSelected ==
+          Tristate.isTrue,
+      isTrue,
+    );
   });
 
   testWidgets('Tools cards preserve order and all direct routes', (
@@ -285,7 +246,7 @@ void main() {
   });
 
   testWidgets(
-    'More opens More without duplicate Transactions or optional features',
+    'More opens configuration without duplicate operational destinations',
     (tester) async {
       setPhoneViewport(tester);
       await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
@@ -361,14 +322,14 @@ void main() {
     });
   }
 
-  testWidgets('opens Tools while Search stays hidden but routable', (
+  testWidgets('opens primary Tools while secondary Search remains routable', (
     tester,
   ) async {
     setPhoneViewport(tester);
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Tools'));
+    await tester.tap(find.text('Tools').last);
     await tester.pumpAndSettle();
     expect(
       find.text('Useful ways to explore and understand your records.'),

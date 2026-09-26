@@ -76,6 +76,36 @@ void main() {
     },
   );
 
+  test('statement import applies persisted transaction rules', () async {
+    final rule = TransactionRule(
+      id: TransactionRuleId('rule.statement-fuel'),
+      name: 'Classify fuel',
+      descriptionContains: 'fuel',
+      assignCategoryId: CategoryId('category.transport'),
+      createdAt: now,
+      updatedAt: now,
+    );
+    final ruledService = StatementServices(
+      statements,
+      transactions,
+      statements,
+      _Clock(now),
+      applyRules: ApplyTransactionRules(_RuleRepository([rule]), _Clock(now)),
+      duplicateGroups: groups,
+      duplicateChecker: DuplicateTransactionChecker(transactions),
+    );
+
+    final result = await ruledService.importBatch(_statement(), [
+      _row('fuel'),
+    ], 'source');
+
+    expect(result, isA<ApplicationSuccess<StatementImportSummary>>());
+    expect(
+      transactions.values['statement-statement-row-fuel']?.categoryId,
+      CategoryId('category.transport'),
+    );
+  });
+
   test(
     'batch import persists duplicate candidates for later Review resolution',
     () async {
@@ -369,6 +399,29 @@ final class _Clock implements ApplicationClock {
   DateTime now() => value;
 }
 
+final class _RuleRepository implements TransactionRuleRepository {
+  _RuleRepository(Iterable<TransactionRule> values) : _values = values.toList();
+
+  final List<TransactionRule> _values;
+
+  @override
+  Future<TransactionRule?> findById(TransactionRuleId id) async =>
+      _values.where((value) => value.id == id).firstOrNull;
+
+  @override
+  Future<List<TransactionRule>> listAll() async => List.of(_values);
+
+  @override
+  Future<void> remove(TransactionRuleId id) async =>
+      _values.removeWhere((value) => value.id == id);
+
+  @override
+  Future<void> save(TransactionRule rule) async {
+    _values.removeWhere((value) => value.id == rule.id);
+    _values.add(rule);
+  }
+}
+
 final class _Transactions implements TransactionRepository {
   final values = <String, Transaction>{}
     ..addAll({'seed': _transaction('seed', amount: '99')});
@@ -434,6 +487,13 @@ final class _Statements
 
   @override
   Future<void> removeStatement(String id) async {}
+  @override
+  Future<void> saveRowTransactions(List<StatementRowTransaction> values) async {
+    for (final value in values) {
+      await saveRowTransaction(value.row, value.transaction);
+    }
+  }
+
   @override
   Future<void> saveRowTransaction(
     StatementRow row,

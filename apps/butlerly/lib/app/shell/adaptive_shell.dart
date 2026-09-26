@@ -85,7 +85,7 @@ class AdaptiveShell extends StatefulWidget {
 }
 
 class _AdaptiveShellState extends State<AdaptiveShell> {
-  static const _visualBranchIndexes = <int>[0, 2, 1, 3, 4];
+  static const _visualBranchIndexes = <int>[0, 1, 2, 3, 4];
 
   int _previousPrimaryIndex = 0;
   int _lastPrimaryIndex = 0;
@@ -107,7 +107,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     }
     final current = navigationShell.currentIndex;
     if (current == _lastPrimaryIndex) return;
-    if (current == 1 && _lastPrimaryIndex != 1) {
+    if (current == 2 && _lastPrimaryIndex != 2) {
       _previousPrimaryIndex = _lastPrimaryIndex;
     }
     _lastPrimaryIndex = current;
@@ -136,7 +136,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
   }
 
   void _handleSystemBack(bool didPop, Object? result) {
-    if (!didPop && navigationShell.currentIndex == 1) {
+    if (!didPop && navigationShell.currentIndex == 2) {
       navigationShell.goBranch(_previousPrimaryIndex);
     }
   }
@@ -148,14 +148,14 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
       label: context.l10n.text('home'),
     ),
     1: NavigationDestination(
-      icon: const Icon(Icons.add_rounded),
-      selectedIcon: const Icon(Icons.add_rounded),
-      label: context.l10n.text('add'),
-    ),
-    2: NavigationDestination(
       icon: const Icon(Icons.format_list_bulleted_rounded),
       selectedIcon: const Icon(Icons.format_list_bulleted_rounded),
       label: context.l10n.text('transactions'),
+    ),
+    2: NavigationDestination(
+      icon: const Icon(Icons.add_rounded),
+      selectedIcon: const Icon(Icons.add_rounded),
+      label: context.l10n.text('add'),
     ),
     3: NavigationDestination(
       icon: const Icon(Icons.bar_chart_rounded),
@@ -212,7 +212,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     }
 
     return PopScope(
-      canPop: secondaryRouteVisible || navigationShell.currentIndex != 1,
+      canPop: secondaryRouteVisible || navigationShell.currentIndex != 2,
       onPopInvokedWithResult: _handleSystemBack,
       child: shell,
     );

@@ -18,6 +18,7 @@ import 'package:butlerly/features/foundation/presentation/transaction_count_labe
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_row.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
+import 'package:butlerly/features/tools/presentation/payment_settlements_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -36,6 +37,10 @@ void main() {
   late MemoryMerchants merchants;
   late MemoryCategories categories;
   late MemoryTags tags;
+  late MemoryMerchantAliases merchantAliases;
+  late MemoryMerchantPatterns merchantPatterns;
+  late MemoryMerchantMatchingConfiguration merchantMatchingConfiguration;
+  late MemoryPaymentSettlements paymentSettlements;
 
   setUp(() async {
     await services.reset();
@@ -46,6 +51,14 @@ void main() {
     merchants = MemoryMerchants();
     categories = MemoryCategories();
     tags = MemoryTags();
+    merchantAliases = MemoryMerchantAliases();
+    merchantPatterns = MemoryMerchantPatterns();
+    merchantMatchingConfiguration = MemoryMerchantMatchingConfiguration(
+      merchants,
+      merchantAliases,
+      merchantPatterns,
+    );
+    paymentSettlements = MemoryPaymentSettlements();
     services.registerSingleton<FinanceServices>(
       FinanceServices(
         repository,
@@ -56,6 +69,10 @@ void main() {
         evidenceRepository,
         MemoryUserPreferences(),
         duplicateGroups: duplicateGroups,
+        merchantAliases: merchantAliases,
+        merchantNormalizationPatterns: merchantPatterns,
+        merchantMatchingConfiguration: merchantMatchingConfiguration,
+        paymentSettlements: paymentSettlements,
       ),
     );
   });
@@ -1937,6 +1954,44 @@ void main() {
     expect(values.single.lastFour, '8421');
   });
 
+  testWidgets('payment settlement rows show source, amount, and payment date', (
+    tester,
+  ) async {
+    final finance = services<FinanceServices>();
+    final source = PaymentSource(
+      id: PaymentSourceId('source-card'),
+      name: 'Travel card',
+      type: PaymentSourceType.card,
+    );
+    await finance.savePaymentSource(source);
+    await paymentSettlements.save(
+      PaymentSettlement(
+        id: PaymentSettlementId('settlement-card'),
+        paymentSourceId: source.id,
+        payment: Money(
+          amount: DecimalValue.parse('75.25'),
+          currency: CurrencyCode('USD'),
+        ),
+        paymentDate: '2026-09-15',
+        periodStart: '2026-08-16',
+        periodEnd: '2026-09-15',
+        status: PaymentSettlementStatus.open,
+        createdAt: DateTime.utc(2026, 9, 15),
+        updatedAt: DateTime.utc(2026, 9, 15),
+      ),
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: PaymentSettlementsPage())),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Travel card'), findsOneWidget);
+    expect(find.text('USD 75.25'), findsOneWidget);
+    expect(find.text('Sep 15, 2026'), findsOneWidget);
+    expect(find.text('2026-08-16 – 2026-09-15'), findsOneWidget);
+  });
+
   testWidgets(
     'Master Data uses tight header spacing and exposes add in header',
     (tester) async {
@@ -1984,13 +2039,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Corner Store'), findsOneWidget);
-    await tester.tap(find.byIcon(Icons.edit_outlined).first);
+    await tester.tap(find.byTooltip('Edit').last);
     await tester.pumpAndSettle();
     expect(
       find.byKey(const ValueKey('master-data-edit-sheet')),
       findsOneWidget,
     );
-    await tester.enterText(find.byType(TextField).last, 'Corner Market');
+    await tester.enterText(find.byType(TextField).first, 'Corner Market');
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     expect(find.text('Corner Market'), findsOneWidget);
@@ -2014,6 +2069,46 @@ void main() {
     await tester.tap(find.byTooltip('Reactivate').first);
     await tester.pumpAndSettle();
     expect(find.textContaining('Archived'), findsNothing);
+  });
+
+  testWidgets('merchant editor manages aliases and normalization patterns', (
+    tester,
+  ) async {
+    final finance = services<FinanceServices>();
+    final merchant = Merchant(
+      id: MerchantId('merchant-aliases'),
+      name: 'Corner Store',
+      rawName: 'CORNER STORE #12',
+    );
+    await finance.saveMerchant(merchant);
+
+    await tester.pumpWidget(const MaterialApp(home: MasterDataPage()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('compact-section-3')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.edit_outlined).first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Merchant aliases'), findsOneWidget);
+    expect(find.text('Normalization patterns'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).at(1), 'Corner Store #12');
+    await tester.enterText(find.byType(TextField).at(2), 'CORNER STORE');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(
+      (await merchantAliases.listForMerchant(merchant.id)).single.alias,
+      'Corner Store #12',
+    );
+    expect(
+      (await merchantPatterns.listForMerchant(merchant.id)).single.pattern,
+      'CORNER STORE',
+    );
+    final stored = await finance.listMerchants();
+    expect(
+      (stored as ApplicationSuccess<List<Merchant>>).value.single.rawName,
+      'CORNER STORE #12',
+    );
   });
 
   testWidgets('Master Data chooses subcategory parent in a bottom sheet', (
@@ -2851,6 +2946,86 @@ final class MemoryMerchants implements MerchantRepository {
   }
 }
 
+final class MemoryMerchantAliases implements MerchantAliasRepository {
+  final values = <String, MerchantAlias>{};
+
+  @override
+  Future<MerchantAlias?> findById(MerchantAliasId id) async => values[id.value];
+
+  @override
+  Future<List<MerchantAlias>> listForMerchant(MerchantId merchantId) async =>
+      values.values.where((value) => value.merchantId == merchantId).toList();
+
+  @override
+  Future<void> remove(MerchantAliasId id) async => values.remove(id.value);
+
+  @override
+  Future<void> save(MerchantAlias alias) async {
+    values[alias.id.value] = alias;
+  }
+}
+
+final class MemoryMerchantPatterns
+    implements MerchantNormalizationPatternRepository {
+  final values = <String, MerchantNormalizationPattern>{};
+
+  @override
+  Future<MerchantNormalizationPattern?> findById(
+    MerchantNormalizationPatternId id,
+  ) async => values[id.value];
+
+  @override
+  Future<List<MerchantNormalizationPattern>> listForMerchant(
+    MerchantId merchantId,
+  ) async =>
+      values.values.where((value) => value.merchantId == merchantId).toList();
+
+  @override
+  Future<void> remove(MerchantNormalizationPatternId id) async =>
+      values.remove(id.value);
+
+  @override
+  Future<void> save(MerchantNormalizationPattern pattern) async {
+    values[pattern.id.value] = pattern;
+  }
+}
+
+final class MemoryMerchantMatchingConfiguration
+    implements MerchantMatchingConfigurationRepository {
+  const MemoryMerchantMatchingConfiguration(
+    this.merchants,
+    this.aliases,
+    this.patterns,
+  );
+
+  final MemoryMerchants merchants;
+  final MemoryMerchantAliases aliases;
+  final MemoryMerchantPatterns patterns;
+
+  @override
+  Future<void> saveConfiguration({
+    required Merchant merchant,
+    required List<MerchantAlias> aliases,
+    required List<MerchantNormalizationPattern> patterns,
+  }) async {
+    final merchantAliases = await this.aliases.listForMerchant(merchant.id);
+    for (final alias in merchantAliases) {
+      await this.aliases.remove(alias.id);
+    }
+    final merchantPatterns = await this.patterns.listForMerchant(merchant.id);
+    for (final pattern in merchantPatterns) {
+      await this.patterns.remove(pattern.id);
+    }
+    await merchants.save(merchant);
+    for (final alias in aliases) {
+      await this.aliases.save(alias);
+    }
+    for (final pattern in patterns) {
+      await this.patterns.save(pattern);
+    }
+  }
+}
+
 final class MemoryPaymentSources implements PaymentSourceRepository {
   final values = <String, PaymentSource>{};
 
@@ -2863,6 +3038,30 @@ final class MemoryPaymentSources implements PaymentSourceRepository {
   @override
   Future<void> save(PaymentSource paymentSource) async {
     values[paymentSource.id.value] = paymentSource;
+  }
+}
+
+final class MemoryPaymentSettlements implements PaymentSettlementRepository {
+  final values = <String, PaymentSettlement>{};
+
+  @override
+  Future<PaymentSettlement?> findById(PaymentSettlementId id) async =>
+      values[id.value];
+
+  @override
+  Future<List<PaymentSettlement>> listAll() async => values.values.toList();
+
+  @override
+  Future<List<Transaction>> listTransactions(
+    PaymentSettlement settlement,
+  ) async => [];
+
+  @override
+  Future<void> remove(PaymentSettlementId id) async => values.remove(id.value);
+
+  @override
+  Future<void> save(PaymentSettlement settlement) async {
+    values[settlement.id.value] = settlement;
   }
 }
 

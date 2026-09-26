@@ -9,6 +9,7 @@ export 'src/repositories/sqlite_evidence_repository.dart';
 export 'src/repositories/sqlite_exchange_rate_repository.dart';
 export 'src/repositories/sqlite_lookup_repositories.dart';
 export 'src/repositories/sqlite_master_translation_repository.dart';
+export 'src/repositories/sqlite_merchant_matching_repository.dart';
 export 'src/repositories/sqlite_payment_settlement_repository.dart';
 export 'src/repositories/sqlite_reconciliation_link_repository.dart';
 export 'src/repositories/sqlite_reconciliation_repository.dart';

@@ -107,7 +107,18 @@ final class ProposeTransactionClassification {
         .where(
           (value) =>
               normalized == value.normalizedName ||
-              normalized.startsWith('${value.normalizedName} '),
+              normalized.startsWith('${value.normalizedName} ') ||
+              value.aliases.any(
+                (alias) =>
+                    alias.status == MerchantMatchingStatus.active &&
+                    (normalized == alias.normalizedAlias ||
+                        normalized.startsWith('${alias.normalizedAlias} ')),
+              ) ||
+              value.normalizationPatterns.any(
+                (pattern) =>
+                    pattern.status == MerchantMatchingStatus.active &&
+                    normalized.contains(pattern.normalizedPattern),
+              ),
         )
         .fold<Merchant?>(
           null,
