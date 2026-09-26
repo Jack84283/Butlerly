@@ -90,7 +90,7 @@ class AppLocalizations {
       'toolsInsightsDescription':
           'See useful observations from your confirmed records.',
       'paymentSettlements': 'Payment settlements',
-      'paymentSettlement': 'Payment Settlement',
+      'paymentSettlement': 'Payment settlement',
       'toolsPaymentSettlementsDescription':
           'Reconcile card payments with the transactions in each statement period.',
       'paymentSettlementsSubtitle':
