@@ -225,13 +225,12 @@ class _PaymentSettlementDetailPageState
     final languageCode = Localizations.localeOf(context).languageCode;
     if (_loadedLanguageCode == languageCode) return;
     _loadedLanguageCode = languageCode;
-    TransactionMasterData.load(
-      widget.finance,
-      languageCode: languageCode,
-    ).then((value) {
-      if (!mounted || _loadedLanguageCode != languageCode) return;
-      setState(() => _masterData = value);
-    });
+    TransactionMasterData.load(widget.finance, languageCode: languageCode).then(
+      (value) {
+        if (!mounted || _loadedLanguageCode != languageCode) return;
+        setState(() => _masterData = value);
+      },
+    );
   }
 
   Future<PaymentSettlementDetailDto> _load() async {
