@@ -77,34 +77,37 @@ void main() {
   test(
     'detail compares net recorded activity with settlement payment',
     () async {
-    await SavePaymentSettlement(settlements, sources, clock)(
-      id: 'settlement-1',
-      paymentSourceId: 'visa',
-      payment: money('85.00'),
-      paymentDate: '2026-09-20',
-      periodStart: '2026-08-15',
-      periodEnd: '2026-09-14',
-    );
-    settlements.transactions.add(
-      activity('expense', now, amount: '100.00'),
-    );
-    settlements.transactions.add(
-      activity(
-        'refund',
-        now,
-        amount: '15.00',
-        direction: TransactionDirection.refund,
-      ),
-    );
+      await SavePaymentSettlement(settlements, sources, clock)(
+        id: 'settlement-1',
+        paymentSourceId: 'visa',
+        payment: money('85.00'),
+        paymentDate: '2026-09-20',
+        periodStart: '2026-08-15',
+        periodEnd: '2026-09-14',
+      );
+      settlements.transactions.add(
+        activity('expense', now, amount: '100.00'),
+      );
+      settlements.transactions.add(
+        activity(
+          'refund',
+          now,
+          amount: '15.00',
+          direction: TransactionDirection.refund,
+        ),
+      );
 
-    final result = await GetPaymentSettlementDetail(settlements)(
-      'settlement-1',
-    );
-    final detail =
-        (result as ApplicationSuccess<PaymentSettlementDetailDto>).value;
+      final result = await GetPaymentSettlementDetail(settlements)(
+        'settlement-1',
+      );
+      final detail =
+          (result as ApplicationSuccess<PaymentSettlementDetailDto>).value;
 
-    expect(detail.recordedTransactionTotal!.amount, DecimalValue.parse('85'));
-    expect(detail.recordedTransactionTotal!.currency, CurrencyCode('USD'));
+      expect(
+        detail.recordedTransactionTotal!.amount,
+        DecimalValue.parse('85'),
+      );
+      expect(detail.recordedTransactionTotal!.currency, CurrencyCode('USD'));
       expect(detail.paymentDifference!.amount, DecimalValue.parse('0'));
     },
   );
@@ -112,24 +115,24 @@ void main() {
   test(
     'detail comparison is unavailable for mixed transaction currencies',
     () async {
-    await SavePaymentSettlement(settlements, sources, clock)(
-      id: 'settlement-1',
-      paymentSourceId: 'visa',
-      payment: money('85.00'),
-      paymentDate: '2026-09-20',
-      periodStart: '2026-08-15',
-      periodEnd: '2026-09-14',
-    );
-    settlements.transactions.add(activity('usd', now, amount: '50.00'));
-    settlements.transactions.add(
-      activity('eur', now, amount: '35.00', currency: 'EUR'),
-    );
+      await SavePaymentSettlement(settlements, sources, clock)(
+        id: 'settlement-1',
+        paymentSourceId: 'visa',
+        payment: money('85.00'),
+        paymentDate: '2026-09-20',
+        periodStart: '2026-08-15',
+        periodEnd: '2026-09-14',
+      );
+      settlements.transactions.add(activity('usd', now, amount: '50.00'));
+      settlements.transactions.add(
+        activity('eur', now, amount: '35.00', currency: 'EUR'),
+      );
 
-    final result = await GetPaymentSettlementDetail(settlements)(
-      'settlement-1',
-    );
-    final detail =
-        (result as ApplicationSuccess<PaymentSettlementDetailDto>).value;
+      final result = await GetPaymentSettlementDetail(settlements)(
+        'settlement-1',
+      );
+      final detail =
+          (result as ApplicationSuccess<PaymentSettlementDetailDto>).value;
 
       expect(detail.recordedTransactionTotal, isNull);
       expect(detail.paymentDifference, isNull);
