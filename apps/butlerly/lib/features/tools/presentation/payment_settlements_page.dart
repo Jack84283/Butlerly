@@ -364,8 +364,7 @@ class _PaymentSettlementDetailPageState
             settlement.paymentSourceId;
         return Scaffold(
           body: ButlerlyPage(
-            title: sourceName,
-            subtitle: '${settlement.periodStart} – ${settlement.periodEnd}',
+            title: context.l10n.text('paymentSettlement'),
             onRefresh: _refresh,
             actions: [
               IconButton(
@@ -411,17 +410,15 @@ class _PaymentSettlementDetailPageState
               ),
             ],
             children: [
-              _SettlementSummaryCard(detail: detail),
+              _SettlementBasicInfoCard(
+                detail: detail,
+                sourceName: sourceName,
+              ),
               const SizedBox(height: ButlerlySpacing.section),
               ButlerlySectionHeader(
                 title: context.l10n.text('paymentSettlementComparison'),
               ),
               _SettlementComparisonCard(detail: detail),
-              const SizedBox(height: ButlerlySpacing.section),
-              ButlerlySectionHeader(
-                title: context.l10n.text('paymentSettlementPayment'),
-              ),
-              _SettlementPaymentCard(settlement: settlement),
               const SizedBox(height: ButlerlySpacing.section),
               ButlerlySectionHeader(
                 title: context.l10n.text(
@@ -508,32 +505,6 @@ class _SettlementCard extends StatelessWidget {
   }
 }
 
-class _SettlementPaymentCard extends StatelessWidget {
-  const _SettlementPaymentCard({required this.settlement});
-
-  final PaymentSettlementDto settlement;
-
-  @override
-  Widget build(BuildContext context) => ButlerlyCard(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _SummaryLine(
-          label: context.l10n.text('amount'),
-          value:
-              '${settlement.payment.currency.value} '
-              '${localizedTransactionAmount(context, settlement.payment.amount.toString())}',
-        ),
-        const SizedBox(height: ButlerlySpacing.compact),
-        _SummaryLine(
-          label: context.l10n.text('paymentDate'),
-          value: settlement.paymentDate,
-        ),
-      ],
-    ),
-  );
-}
-
 class _SettlementComparisonCard extends StatelessWidget {
   const _SettlementComparisonCard({required this.detail});
 
@@ -550,6 +521,7 @@ class _SettlementComparisonCard extends StatelessWidget {
         '$currency ${localizedTransactionAmount(context, value.toString())}';
 
     return ButlerlyCard(
+      color: context.colors.selection,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -577,53 +549,67 @@ class _SettlementComparisonCard extends StatelessWidget {
   }
 }
 
-class _SettlementSummaryCard extends StatelessWidget {
-  const _SettlementSummaryCard({required this.detail});
+class _SettlementBasicInfoCard extends StatelessWidget {
+  const _SettlementBasicInfoCard({
+    required this.detail,
+    required this.sourceName,
+  });
 
   final PaymentSettlementDetailDto detail;
+  final String sourceName;
 
   @override
   Widget build(BuildContext context) {
     final settlement = detail.settlement;
+    final currency = settlement.payment.currency.value;
+    final paymentAmount =
+        '$currency ${localizedTransactionAmount(context, detail.paymentAmount.amount.toString())}';
+
     return ButlerlyCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _SummaryLine(
+            label: context.l10n.text('date'),
+            value: settlement.paymentDate,
+          ),
+          const SizedBox(height: ButlerlySpacing.compact),
+          _SummaryLine(
+            label: context.l10n.text('paymentSource'),
+            value: sourceName,
+          ),
+          const SizedBox(height: ButlerlySpacing.compact),
+          _SummaryLine(
+            label: context.l10n.text('paymentSettlementPeriod'),
+            value: '${settlement.periodStart} – ${settlement.periodEnd}',
+          ),
+          const SizedBox(height: ButlerlySpacing.compact),
+          _SummaryLine(
+            label: context.l10n.text('paymentSettlementAmount'),
+            value: paymentAmount,
+          ),
+          const SizedBox(height: ButlerlySpacing.compact),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _SettlementStatusChip(status: settlement.status),
-              const Spacer(),
-              Text(
-                context.l10n.text('manyTransactions', {
-                  'count': '${detail.transactionCount}',
-                }),
-                style: Theme.of(context).textTheme.bodySmall,
+              SizedBox(
+                width: 140,
+                child: Text(
+                  context.l10n.text('status'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               ),
+              const SizedBox(width: ButlerlySpacing.compact),
+              _SettlementStatusChip(status: settlement.status),
             ],
           ),
-          if (settlement.statementBalance != null) ...[
-            const SizedBox(height: ButlerlySpacing.standard),
-            _SummaryLine(
-              label: context.l10n.text('statementBalanceOptional'),
-              value:
-                  '${settlement.statementBalance!.currency.value} '
-                  '${localizedTransactionAmount(context, settlement.statementBalance!.amount.toString())}',
-            ),
-          ],
-          if (settlement.description?.trim().isNotEmpty == true) ...[
-            const SizedBox(height: ButlerlySpacing.compact),
-            _SummaryLine(
-              label: context.l10n.text('description'),
-              value: settlement.description!.trim(),
-            ),
-          ],
-          if (settlement.externalReference?.trim().isNotEmpty == true) ...[
-            const SizedBox(height: ButlerlySpacing.compact),
-            _SummaryLine(
-              label: context.l10n.text('externalReferenceOptional'),
-              value: settlement.externalReference!.trim(),
-            ),
-          ],
+          const SizedBox(height: ButlerlySpacing.compact),
+          _SummaryLine(
+            label: context.l10n.text('note'),
+            value: settlement.description?.trim().isNotEmpty == true
+                ? settlement.description!.trim()
+                : '—',
+          ),
         ],
       ),
     );
