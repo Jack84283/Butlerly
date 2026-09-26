@@ -411,12 +411,10 @@ class _PaymentSettlementDetailPageState
             ],
             children: [
               _SettlementBasicInfoCard(detail: detail, sourceName: sourceName),
-              const SizedBox(height: ButlerlySpacing.section),
               ButlerlySectionHeader(
                 title: context.l10n.text('paymentSettlementComparison'),
               ),
               _SettlementComparisonCard(detail: detail),
-              const SizedBox(height: ButlerlySpacing.section),
               ButlerlySectionHeader(
                 title: context.l10n.text(
                   'paymentSettlementPeriodTransactions',
