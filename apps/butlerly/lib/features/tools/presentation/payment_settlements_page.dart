@@ -1,6 +1,5 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
-import 'package:butlerly/design_system/components/butlerly_action_group.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
@@ -494,48 +493,56 @@ class _SettlementCard extends StatelessWidget {
     final amount =
         '${settlement.payment.currency.value} '
         '${localizedTransactionAmount(context, settlement.payment.amount.toString())}';
+    final rowPadding = const EdgeInsets.only(bottom: ButlerlySpacing.small);
     return ButlerlyCard(
       onTap: onTap,
       semanticLabel: '$sourceName, $amount, $formattedDate',
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ButlerlyActionIcon(icon: Icons.credit_score_outlined),
-          const SizedBox(width: ButlerlySpacing.standard),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
                   sourceName,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
-                const SizedBox(height: ButlerlySpacing.micro),
-                Text(amount, style: Theme.of(context).textTheme.bodySmall),
-                const SizedBox(height: ButlerlySpacing.micro),
-                Text(
-                  formattedDate,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: ButlerlySpacing.micro),
-                Text(
-                  '${settlement.periodStart} – ${settlement.periodEnd}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                if (settlement.statementBalance != null) ...[
-                  const SizedBox(height: ButlerlySpacing.micro),
-                  Text(
-                    '${settlement.statementBalance!.currency.value} '
-                    '${localizedTransactionAmount(context, settlement.statementBalance!.amount.toString())}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ],
-            ),
+              ),
+              const SizedBox(width: ButlerlySpacing.compact),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: context.colors.tertiaryText,
+              ),
+            ],
           ),
-          const SizedBox(width: ButlerlySpacing.compact),
-          _SettlementStatusChip(status: settlement.status),
-          const SizedBox(width: ButlerlySpacing.micro),
-          Icon(Icons.chevron_right_rounded, color: context.colors.tertiaryText),
+          const SizedBox(height: ButlerlySpacing.standard),
+          ButlerlyKeyValueRow.widget(
+            label: context.l10n.text('amount'),
+            valueWidget: Text(
+              amount,
+              textAlign: TextAlign.right,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            padding: rowPadding,
+          ),
+          ButlerlyKeyValueRow(
+            label: context.l10n.text('date'),
+            value: formattedDate,
+            padding: rowPadding,
+          ),
+          ButlerlyKeyValueRow(
+            label: context.l10n.text('paymentSettlementPeriod'),
+            value: '${settlement.periodStart} – ${settlement.periodEnd}',
+            padding: rowPadding,
+          ),
+          ButlerlyKeyValueRow.widget(
+            label: context.l10n.text('status'),
+            valueWidget: _SettlementStatusChip(status: settlement.status),
+            padding: EdgeInsets.zero,
+          ),
         ],
       ),
     );

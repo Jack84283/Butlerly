@@ -1954,9 +1954,12 @@ void main() {
     expect(values.single.lastFour, '8421');
   });
 
-  testWidgets('payment settlement rows show source, amount, and payment date', (
+  testWidgets('payment settlement cards keep the structured list layout', (
     tester,
   ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 640));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
     final finance = services<FinanceServices>();
     final source = PaymentSource(
       id: PaymentSourceId('source-card'),
@@ -1986,10 +1989,54 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Travel card'), findsOneWidget);
+    final title = find.text('Travel card');
+    final chevron = find.byIcon(Icons.chevron_right_rounded);
+    final amountLabel = find.text('Amount');
+    final dateLabel = find.text('Date');
+    final rangeLabel = find.text('Statement period');
+    final statusLabel = find.text('Status');
+
+    expect(title, findsOneWidget);
+    expect(chevron, findsOneWidget);
+    expect(
+      tester.widget<Text>(title).style?.fontSize,
+      Theme.of(tester.element(title)).textTheme.titleMedium?.fontSize,
+    );
     expect(find.text('USD 75.25'), findsOneWidget);
     expect(find.text('Sep 15, 2026'), findsOneWidget);
     expect(find.text('2026-08-16 – 2026-09-15'), findsOneWidget);
+    expect(find.text('Open'), findsOneWidget);
+    expect(amountLabel, findsOneWidget);
+    expect(dateLabel, findsOneWidget);
+    expect(rangeLabel, findsOneWidget);
+    expect(statusLabel, findsOneWidget);
+    expect(
+      tester.getTopLeft(amountLabel).dy,
+      greaterThan(tester.getTopLeft(title).dy),
+    );
+    expect(
+      tester.getTopLeft(dateLabel).dy,
+      greaterThan(tester.getTopLeft(amountLabel).dy),
+    );
+    expect(
+      tester.getTopLeft(rangeLabel).dy,
+      greaterThan(tester.getTopLeft(dateLabel).dy),
+    );
+    expect(
+      tester.getTopLeft(statusLabel).dy,
+      greaterThan(tester.getTopLeft(rangeLabel).dy),
+    );
+    expect(
+      tester.getCenter(chevron).dx,
+      greaterThan(tester.getCenter(title).dx),
+    );
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byType(ButlerlyCard));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PaymentSettlementDetailPage), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets(
