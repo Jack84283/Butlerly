@@ -326,25 +326,53 @@ class _PaymentSettlementDetailPageState
     await _refresh();
   }
 
+  Future<void> _showActions(BuildContext context) async {
+    final action = await showButlerlySelectionSheet<_SettlementAction>(
+      context: context,
+      title: context.l10n.text('paymentSettlement'),
+      options: [
+        ButlerlySelectionOption(
+          value: _SettlementAction.open,
+          child: Text(context.l10n.text('markAsOpen')),
+        ),
+        ButlerlySelectionOption(
+          value: _SettlementAction.reconciled,
+          child: Text(context.l10n.text('markAsReconciled')),
+        ),
+        ButlerlySelectionOption(
+          value: _SettlementAction.needsReview,
+          child: Text(context.l10n.text('markNeedsReview')),
+        ),
+        ButlerlySelectionOption(
+          value: _SettlementAction.remove,
+          child: Text(context.l10n.text('remove')),
+        ),
+      ],
+    );
+    if (!mounted || action == null) return;
+    if (action == _SettlementAction.remove) {
+      await _remove();
+      return;
+    }
+    final status = switch (action) {
+      _SettlementAction.open => PaymentSettlementStatus.open,
+      _SettlementAction.reconciled => PaymentSettlementStatus.reconciled,
+      _SettlementAction.needsReview => PaymentSettlementStatus.needsReview,
+      _SettlementAction.remove => PaymentSettlementStatus.open,
+    };
+    await _setStatus(status);
+  }
+
   Future<void> _remove() async {
     final remove = widget.finance.deletePaymentSettlement;
     if (remove == null) return;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showButlerlyConfirmationSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(context.l10n.text('paymentSettlementRemoveTitle')),
-        content: Text(context.l10n.text('paymentSettlementRemoveBody')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(context.l10n.text('cancel')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(context.l10n.text('remove')),
-          ),
-        ],
-      ),
+      title: context.l10n.text('paymentSettlementRemoveTitle'),
+      message: context.l10n.text('paymentSettlementRemoveBody'),
+      cancelLabel: context.l10n.text('cancel'),
+      confirmLabel: context.l10n.text('remove'),
+      destructive: true,
     );
     if (!mounted || confirmed != true) return;
     final result = await remove(widget.settlementId);
@@ -400,41 +428,10 @@ class _PaymentSettlementDetailPageState
                 onPressed: () => _edit(detail),
                 icon: const Icon(Icons.edit_outlined),
               ),
-              PopupMenuButton<_SettlementAction>(
-                onSelected: (action) async {
-                  if (action == _SettlementAction.remove) {
-                    await _remove();
-                    return;
-                  }
-                  final status = switch (action) {
-                    _SettlementAction.open => PaymentSettlementStatus.open,
-                    _SettlementAction.reconciled =>
-                      PaymentSettlementStatus.reconciled,
-                    _SettlementAction.needsReview =>
-                      PaymentSettlementStatus.needsReview,
-                    _SettlementAction.remove => PaymentSettlementStatus.open,
-                  };
-                  await _setStatus(status);
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: _SettlementAction.open,
-                    child: Text(context.l10n.text('markAsOpen')),
-                  ),
-                  PopupMenuItem(
-                    value: _SettlementAction.reconciled,
-                    child: Text(context.l10n.text('markAsReconciled')),
-                  ),
-                  PopupMenuItem(
-                    value: _SettlementAction.needsReview,
-                    child: Text(context.l10n.text('markNeedsReview')),
-                  ),
-                  const PopupMenuDivider(),
-                  PopupMenuItem(
-                    value: _SettlementAction.remove,
-                    child: Text(context.l10n.text('remove')),
-                  ),
-                ],
+              IconButton(
+                tooltip: context.l10n.text('more'),
+                onPressed: () => _showActions(context),
+                icon: const Icon(Icons.more_vert),
               ),
             ],
             children: [
@@ -773,8 +770,11 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
 
   Future<void> _pickDate(TextEditingController controller) async {
     final initial = DateTime.tryParse(controller.text) ?? DateTime.now();
-    final selected = await showDatePicker(
+    final selected = await showButlerlyDatePicker(
       context: context,
+      title: context.l10n.text('date'),
+      cancelLabel: context.l10n.text('cancel'),
+      doneLabel: context.l10n.text('done'),
       initialDate: initial,
       firstDate: DateTime(2000),
       lastDate: DateTime.now().add(const Duration(days: 366)),

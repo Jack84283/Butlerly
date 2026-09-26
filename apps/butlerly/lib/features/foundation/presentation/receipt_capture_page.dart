@@ -569,8 +569,11 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       '${value.day.toString().padLeft(2, '0')}';
 
   Future<void> _pickDate() async {
-    final value = await showDatePicker(
+    final value = await showButlerlyDatePicker(
       context: context,
+      title: context.l10n.text('date'),
+      cancelLabel: context.l10n.text('cancel'),
+      doneLabel: context.l10n.text('done'),
       initialDate: _date ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),

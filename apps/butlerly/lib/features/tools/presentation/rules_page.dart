@@ -129,22 +129,13 @@ class _RulesPageState extends State<RulesPage> {
   }
 
   Future<void> _delete(TransactionRule rule) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showButlerlyConfirmationSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(context.l10n.text('deleteRuleTitle')),
-        content: Text(context.l10n.text('deleteRuleBody')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(context.l10n.text('cancel')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(context.l10n.text('delete')),
-          ),
-        ],
-      ),
+      title: context.l10n.text('deleteRuleTitle'),
+      message: context.l10n.text('deleteRuleBody'),
+      cancelLabel: context.l10n.text('cancel'),
+      confirmLabel: context.l10n.text('delete'),
+      destructive: true,
     );
     if (confirmed != true || !mounted) return;
     final result = await _finance?.deleteTransactionRule?.call(rule.id.value);
@@ -577,6 +568,26 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
     onChanged: onChanged,
   );
 
+  Widget _fieldGroup(List<Widget> fields) => Column(
+    children: [
+      for (var index = 0; index < fields.length; index++) ...[
+        if (index > 0) const SizedBox(height: ButlerlySpacing.small),
+        fields[index],
+      ],
+    ],
+  );
+
+  Widget _sectionHeading(String label) => Padding(
+    padding: const EdgeInsets.only(
+      top: ButlerlySpacing.standard,
+      bottom: ButlerlySpacing.small,
+    ),
+    child: Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: Text(label),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final empty = context.l10n.text('notSet');
@@ -596,101 +607,99 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
       ),
       content: Column(
         children: [
-          TextField(
-            controller: _name,
-            decoration: InputDecoration(
-              labelText: context.l10n.text('ruleName'),
+          _fieldGroup([
+            TextField(
+              controller: _name,
+              decoration: InputDecoration(
+                labelText: context.l10n.text('ruleName'),
+              ),
             ),
-          ),
-          TextField(
-            controller: _description,
-            decoration: InputDecoration(
-              labelText: context.l10n.text('ruleDescription'),
+            TextField(
+              controller: _description,
+              decoration: InputDecoration(
+                labelText: context.l10n.text('ruleDescription'),
+              ),
             ),
-          ),
-          TextField(
-            controller: _priority,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: context.l10n.text('rulePriority'),
+            TextField(
+              controller: _priority,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: context.l10n.text('rulePriority'),
+              ),
             ),
-          ),
-          const SizedBox(height: ButlerlySpacing.standard),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Text(context.l10n.text('ruleConditions')),
-          ),
-          _dropdown(
-            context.l10n.text('merchant'),
-            _conditionMerchantId,
-            (v) => setState(() => _conditionMerchantId = v),
-            _items(context, empty, merchants),
-          ),
-          _dropdown(
-            context.l10n.text('category'),
-            _conditionCategoryId,
-            (v) => setState(() => _conditionCategoryId = v),
-            _items(context, empty, categories),
-          ),
-          _dropdown(
-            context.l10n.text('paymentSource'),
-            _conditionPaymentSourceId,
-            (v) => setState(() => _conditionPaymentSourceId = v),
-            _items(context, empty, sources),
-          ),
-          _dropdown(
-            context.l10n.text('tag'),
-            _conditionTagId,
-            (v) => setState(() => _conditionTagId = v),
-            _items(context, empty, tags),
-          ),
-          TextField(
-            controller: _descriptionContains,
-            decoration: InputDecoration(
-              labelText: context.l10n.text('ruleDescriptionContains'),
+          ]),
+          _sectionHeading(context.l10n.text('ruleConditions')),
+          _fieldGroup([
+            _dropdown(
+              context.l10n.text('merchant'),
+              _conditionMerchantId,
+              (v) => setState(() => _conditionMerchantId = v),
+              _items(context, empty, merchants),
             ),
-          ),
-          TextField(
-            controller: _rawCounterpartyContains,
-            decoration: InputDecoration(
-              labelText: context.l10n.text('ruleCounterpartyContains'),
+            _dropdown(
+              context.l10n.text('category'),
+              _conditionCategoryId,
+              (v) => setState(() => _conditionCategoryId = v),
+              _items(context, empty, categories),
             ),
-          ),
-          const SizedBox(height: ButlerlySpacing.standard),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Text(context.l10n.text('ruleActions')),
-          ),
-          _dropdown(
-            context.l10n.text('merchant'),
-            _assignMerchantId,
-            (v) => setState(() => _assignMerchantId = v),
-            _items(context, empty, merchants),
-          ),
-          _dropdown(
-            context.l10n.text('category'),
-            _assignCategoryId,
-            (v) => setState(() => _assignCategoryId = v),
-            _items(context, empty, categories),
-          ),
-          _dropdown(
-            context.l10n.text('subcategory'),
-            _assignSubcategoryId,
-            (v) => setState(() => _assignSubcategoryId = v),
-            _items(context, empty, categories),
-          ),
-          _dropdown(
-            context.l10n.text('paymentSource'),
-            _assignPaymentSourceId,
-            (v) => setState(() => _assignPaymentSourceId = v),
-            _items(context, empty, sources),
-          ),
-          _dropdown(
-            context.l10n.text('tag'),
-            _assignTagId,
-            (v) => setState(() => _assignTagId = v),
-            _items(context, empty, tags),
-          ),
+            _dropdown(
+              context.l10n.text('paymentSource'),
+              _conditionPaymentSourceId,
+              (v) => setState(() => _conditionPaymentSourceId = v),
+              _items(context, empty, sources),
+            ),
+            _dropdown(
+              context.l10n.text('tag'),
+              _conditionTagId,
+              (v) => setState(() => _conditionTagId = v),
+              _items(context, empty, tags),
+            ),
+            TextField(
+              controller: _descriptionContains,
+              decoration: InputDecoration(
+                labelText: context.l10n.text('ruleDescriptionContains'),
+              ),
+            ),
+            TextField(
+              controller: _rawCounterpartyContains,
+              decoration: InputDecoration(
+                labelText: context.l10n.text('ruleCounterpartyContains'),
+              ),
+            ),
+          ]),
+          _sectionHeading(context.l10n.text('ruleActions')),
+          _fieldGroup([
+            _dropdown(
+              context.l10n.text('merchant'),
+              _assignMerchantId,
+              (v) => setState(() => _assignMerchantId = v),
+              _items(context, empty, merchants),
+            ),
+            _dropdown(
+              context.l10n.text('category'),
+              _assignCategoryId,
+              (v) => setState(() => _assignCategoryId = v),
+              _items(context, empty, categories),
+            ),
+            _dropdown(
+              context.l10n.text('subcategory'),
+              _assignSubcategoryId,
+              (v) => setState(() => _assignSubcategoryId = v),
+              _items(context, empty, categories),
+            ),
+            _dropdown(
+              context.l10n.text('paymentSource'),
+              _assignPaymentSourceId,
+              (v) => setState(() => _assignPaymentSourceId = v),
+              _items(context, empty, sources),
+            ),
+            _dropdown(
+              context.l10n.text('tag'),
+              _assignTagId,
+              (v) => setState(() => _assignTagId = v),
+              _items(context, empty, tags),
+            ),
+          ]),
         ],
       ),
       actions: [

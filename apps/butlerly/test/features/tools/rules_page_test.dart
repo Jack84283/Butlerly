@@ -1,5 +1,6 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/tools/presentation/rules_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -100,6 +101,59 @@ void main() {
     expect(find.text('Classify fuel'), findsAtLeastNWidgets(1));
   });
 
+  testWidgets('add rule form remains usable on a narrow phone', (tester) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const _TestApp(child: RulesPage()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Add rule'));
+    await tester.pumpAndSettle();
+
+    _expectNoFlutterError(tester);
+    expect(find.text('Rule name'), findsOneWidget);
+
+    final fields = find.byWidgetPredicate(
+      (widget) =>
+          widget is TextField || widget is DropdownButtonFormField<String?>,
+    );
+    expect(fields, findsNWidgets(14));
+    final fieldRects =
+        fields
+            .evaluate()
+            .map((element) => tester.getRect(find.byWidget(element.widget)))
+            .toList()
+          ..sort((left, right) => left.top.compareTo(right.top));
+    for (var index = 1; index < fieldRects.length; index++) {
+      expect(
+        fieldRects[index].top - fieldRects[index - 1].bottom,
+        greaterThanOrEqualTo(ButlerlySpacing.small),
+      );
+    }
+
+    final formScrollable = find
+        .ancestor(of: find.text('Rule name'), matching: find.byType(Scrollable))
+        .first;
+    final scrollableState = tester.state<ScrollableState>(formScrollable);
+    expect(scrollableState.position.maxScrollExtent, greaterThan(0));
+
+    await tester.drag(formScrollable, const Offset(0, -1000));
+    await tester.pumpAndSettle();
+    final lastActionField = fields.last;
+    await tester.ensureVisible(lastActionField);
+    await tester.pumpAndSettle();
+
+    expect(tester.getRect(lastActionField).bottom, lessThanOrEqualTo(568));
+    expect(tester.getRect(find.text('Cancel')).bottom, lessThanOrEqualTo(568));
+    expect(tester.getRect(find.text('Save')).bottom, lessThanOrEqualTo(568));
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    _expectNoFlutterError(tester);
+    expect(find.text('Rule name'), findsNothing);
+  });
+
   testWidgets('delete requires confirmation and removes the persisted rule', (
     tester,
   ) async {
@@ -115,6 +169,12 @@ void main() {
     expect(await rules.listAll(), isEmpty);
     expect(find.text('No rules yet'), findsOneWidget);
   });
+}
+
+void _expectNoFlutterError(WidgetTester tester) {
+  final exception = tester.takeException();
+  if (exception is FlutterError) fail(exception.toStringDeep());
+  expect(exception, isNull);
 }
 
 class _TestApp extends StatelessWidget {

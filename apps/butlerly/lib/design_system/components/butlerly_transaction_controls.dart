@@ -756,29 +756,14 @@ class ButlerlyDateRangeFilter extends StatelessWidget {
     if (selected.isBefore(firstDate)) selected = firstDate;
     if (selected.isAfter(lastDate)) selected = lastDate;
 
-    final value = await showButlerlyBottomSheet<DateTime>(
+    final value = await showButlerlyDatePicker(
       context: context,
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (sheetContext, setSheetState) => ButlerlySheet(
-          title: Text(isFrom ? fromLabel : toLabel),
-          content: CalendarDatePicker(
-            initialDate: selected,
-            firstDate: firstDate,
-            lastDate: lastDate,
-            onDateChanged: (value) => setSheetState(() => selected = value),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(sheetContext),
-              child: Text(sheetContext.l10n.text('cancel')),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(sheetContext, selected),
-              child: Text(sheetContext.l10n.text('done')),
-            ),
-          ],
-        ),
-      ),
+      title: isFrom ? fromLabel : toLabel,
+      cancelLabel: context.l10n.text('cancel'),
+      doneLabel: context.l10n.text('done'),
+      initialDate: selected,
+      firstDate: firstDate,
+      lastDate: lastDate,
     );
     if (value != null) (isFrom ? onFromChanged : onToChanged)(value);
   }

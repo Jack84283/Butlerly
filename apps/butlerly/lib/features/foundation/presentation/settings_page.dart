@@ -1,6 +1,7 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/app/theme/theme_mode_provider.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/legal_licenses_page.dart';
@@ -147,7 +148,6 @@ class SettingsPage extends ConsumerWidget {
                       : 'UTC',
                   label: context.l10n.text('timeZone'),
                   icon: Icons.schedule_rounded,
-                  menuMaxHeight: 4 * kMinInteractiveDimension,
                   items: [
                     for (final zone in zones)
                       DropdownMenuItem(
@@ -354,7 +354,6 @@ class _SettingsDropdownRow<T> extends StatelessWidget {
     required this.icon,
     required this.items,
     required this.onChanged,
-    this.menuMaxHeight,
   });
 
   final T value;
@@ -362,38 +361,36 @@ class _SettingsDropdownRow<T> extends StatelessWidget {
   final IconData icon;
   final List<DropdownMenuItem<T>> items;
   final ValueChanged<T?> onChanged;
-  final double? menuMaxHeight;
+
+  Future<void> _select(BuildContext context) async {
+    final selected = await showButlerlySelectionSheet<T>(
+      context: context,
+      title: label,
+      selectedValue: value,
+      options: [
+        for (final item in items)
+          ButlerlySelectionOption(value: item.value as T, child: item.child),
+      ],
+    );
+    if (selected != null) onChanged(selected);
+  }
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) => PopupMenuButton<T>(
-      initialValue: value,
-      constraints: BoxConstraints(
-        minWidth: constraints.maxWidth,
-        maxWidth: constraints.maxWidth,
-        maxHeight: menuMaxHeight ?? double.infinity,
-      ),
-      onSelected: onChanged,
-      itemBuilder: (context) => [
-        for (final item in items)
-          PopupMenuItem<T>(value: item.value, child: item.child),
-      ],
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: ButlerlySpacing.standard,
-          vertical: ButlerlySpacing.xxs,
-        ),
-        leading: _SettingsIcon(icon: icon),
-        title: Text(label, style: Theme.of(context).textTheme.bodySmall),
-        subtitle: _selectedItem(context),
-        trailing: Icon(
-          Icons.keyboard_arrow_down_rounded,
-          color: context.colors.tertiaryText,
-        ),
-        dense: true,
-        minVerticalPadding: ButlerlySpacing.compact,
-      ),
+  Widget build(BuildContext context) => ListTile(
+    contentPadding: const EdgeInsets.symmetric(
+      horizontal: ButlerlySpacing.standard,
+      vertical: ButlerlySpacing.xxs,
     ),
+    leading: _SettingsIcon(icon: icon),
+    title: Text(label, style: Theme.of(context).textTheme.bodySmall),
+    subtitle: _selectedItem(context),
+    trailing: Icon(
+      Icons.keyboard_arrow_down_rounded,
+      color: context.colors.tertiaryText,
+    ),
+    dense: true,
+    minVerticalPadding: ButlerlySpacing.compact,
+    onTap: () => _select(context),
   );
 
   Widget _selectedItem(BuildContext context) {
