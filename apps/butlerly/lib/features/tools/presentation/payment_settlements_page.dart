@@ -424,9 +424,10 @@ class _PaymentSettlementDetailPageState
               _SettlementPaymentCard(settlement: settlement),
               const SizedBox(height: ButlerlySpacing.section),
               ButlerlySectionHeader(
-                title: context.l10n.text('paymentSettlementPeriodTransactions', {
-                  'count': '${detail.transactionCount}',
-                }),
+                title: context.l10n.text(
+                  'paymentSettlementPeriodTransactions',
+                  {'count': '${detail.transactionCount}'},
+                ),
               ),
               if (detail.transactions.isEmpty)
                 ButlerlyEmptyState(
