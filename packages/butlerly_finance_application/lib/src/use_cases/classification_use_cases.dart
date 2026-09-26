@@ -102,32 +102,70 @@ final class ProposeTransactionClassification {
   static Merchant? _resolveMerchant(List<Merchant> values, String? text) {
     final normalized = normalizeMerchantName(text ?? '');
     if (normalized.isEmpty) return null;
-    return values
-        .where((value) => value.status == MerchantStatus.active)
-        .where(
-          (value) =>
-              normalized == value.normalizedName ||
-              normalized.startsWith('${value.normalizedName} ') ||
-              value.aliases.any(
-                (alias) =>
-                    alias.status == MerchantMatchingStatus.active &&
-                    (normalized == alias.normalizedAlias ||
-                        normalized.startsWith('${alias.normalizedAlias} ')),
-              ) ||
-              value.normalizationPatterns.any(
-                (pattern) =>
-                    pattern.status == MerchantMatchingStatus.active &&
-                    normalized.contains(pattern.normalizedPattern),
-              ),
-        )
-        .fold<Merchant?>(
-          null,
-          (best, value) =>
-              best == null ||
-                  value.normalizedName.length > best.normalizedName.length
-              ? value
-              : best,
+    final matches = <_MerchantMatch>[];
+    for (final merchant in values.where(
+      (value) => value.status == MerchantStatus.active,
+    )) {
+      final evidence = <_MerchantMatch>[];
+      if (normalized == merchant.normalizedName) {
+        evidence.add(
+          _MerchantMatch(
+            merchant: merchant,
+            evidenceLength: merchant.normalizedName.length,
+            kind: _MerchantMatchKind.exactCanonical,
+          ),
         );
+      } else if (normalized.startsWith('${merchant.normalizedName} ')) {
+        evidence.add(
+          _MerchantMatch(
+            merchant: merchant,
+            evidenceLength: merchant.normalizedName.length,
+            kind: _MerchantMatchKind.canonicalPrefix,
+          ),
+        );
+      }
+      for (final alias in merchant.aliases.where(
+        (value) => value.status == MerchantMatchingStatus.active,
+      )) {
+        if (normalized == alias.normalizedAlias) {
+          evidence.add(
+            _MerchantMatch(
+              merchant: merchant,
+              evidenceLength: alias.normalizedAlias.length,
+              kind: _MerchantMatchKind.exactAlias,
+            ),
+          );
+        } else if (normalized.startsWith('${alias.normalizedAlias} ')) {
+          evidence.add(
+            _MerchantMatch(
+              merchant: merchant,
+              evidenceLength: alias.normalizedAlias.length,
+              kind: _MerchantMatchKind.aliasPrefix,
+            ),
+          );
+        }
+      }
+      for (final pattern in merchant.normalizationPatterns.where(
+        (value) => value.status == MerchantMatchingStatus.active,
+      )) {
+        if (normalized.contains(pattern.normalizedPattern)) {
+          evidence.add(
+            _MerchantMatch(
+              merchant: merchant,
+              evidenceLength: pattern.normalizedPattern.length,
+              kind: _MerchantMatchKind.normalizationPattern,
+            ),
+          );
+        }
+      }
+      if (evidence.isNotEmpty) {
+        evidence.sort(_MerchantMatch.compare);
+        matches.add(evidence.first);
+      }
+    }
+    if (matches.isEmpty) return null;
+    matches.sort(_MerchantMatch.compare);
+    return matches.first.merchant;
   }
 
   static (CategoryId, CategoryId?)? _consistentClassification(
@@ -153,5 +191,39 @@ final class ProposeTransactionClassification {
       CategoryId(parts.first),
       parts.length == 1 || parts[1].isEmpty ? null : CategoryId(parts[1]),
     );
+  }
+}
+
+/// A match is ranked by the evidence that matched the source text, not by the
+/// merchant's canonical name. Longer evidence is more specific; the kind rank
+/// only resolves equal-length matches, and the merchant ID makes ties stable.
+enum _MerchantMatchKind {
+  exactCanonical(5),
+  exactAlias(4),
+  canonicalPrefix(3),
+  aliasPrefix(2),
+  normalizationPattern(1);
+
+  const _MerchantMatchKind(this.rank);
+  final int rank;
+}
+
+final class _MerchantMatch {
+  const _MerchantMatch({
+    required this.merchant,
+    required this.evidenceLength,
+    required this.kind,
+  });
+
+  final Merchant merchant;
+  final int evidenceLength;
+  final _MerchantMatchKind kind;
+
+  static int compare(_MerchantMatch left, _MerchantMatch right) {
+    final evidence = right.evidenceLength.compareTo(left.evidenceLength);
+    if (evidence != 0) return evidence;
+    final kind = right.kind.rank.compareTo(left.kind.rank);
+    if (kind != 0) return kind;
+    return left.merchant.id.value.compareTo(right.merchant.id.value);
   }
 }

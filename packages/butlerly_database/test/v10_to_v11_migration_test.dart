@@ -29,7 +29,12 @@ void main() {
                 ) &&
                 !statement.startsWith(
                   'CREATE INDEX idx_transaction_rules_priority',
-                ),
+                ) &&
+                !statement.startsWith('CREATE TRIGGER merchant_aliases_') &&
+                !statement.startsWith(
+                  'CREATE TRIGGER merchant_normalization_patterns_',
+                ) &&
+                !statement.startsWith('CREATE TRIGGER transaction_rules_'),
           )
           .join(';${String.fromCharCode(10)}');
       final migration = await File(
@@ -83,6 +88,53 @@ void main() {
             await upgraded.connection.rawQuery(
               "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
               [table],
+            ),
+            hasLength(1),
+          );
+        }
+        await upgraded.connection.insert('merchant_aliases', {
+          'id': 'alias.legacy',
+          'merchant_id': 'merchant.legacy',
+          'alias': 'Legacy alias',
+          'normalized_alias': 'legacy alias',
+          'status': 'active',
+          'created_at': '2026-09-01T12:00:00.000Z',
+          'updated_at': '2026-09-01T12:00:00.000Z',
+        });
+        await upgraded.connection.insert('merchant_normalization_patterns', {
+          'id': 'pattern.legacy',
+          'merchant_id': 'merchant.legacy',
+          'pattern': 'Legacy pattern',
+          'normalized_pattern': 'legacy pattern',
+          'status': 'active',
+          'created_at': '2026-09-01T12:00:00.000Z',
+          'updated_at': '2026-09-01T12:00:00.000Z',
+        });
+        await upgraded.connection.insert('transaction_rules', {
+          'id': 'rule.legacy',
+          'name': 'Legacy rule',
+          'enabled': 1,
+          'priority': 0,
+          'description_contains': 'legacy',
+          'assign_category_id': 'category.legacy',
+          'created_at': '2026-09-01T12:00:00.000Z',
+          'updated_at': '2026-09-01T12:00:00.000Z',
+        });
+        for (final (table, id) in [
+          ('merchant_aliases', 'alias.legacy'),
+          ('merchant_normalization_patterns', 'pattern.legacy'),
+          ('transaction_rules', 'rule.legacy'),
+        ]) {
+          await upgraded.connection.delete(
+            table,
+            where: 'id = ?',
+            whereArgs: [id],
+          );
+          expect(
+            await upgraded.connection.query(
+              'entity_tombstones',
+              where: 'entity_type = ? AND entity_id = ?',
+              whereArgs: [table, id],
             ),
             hasLength(1),
           );

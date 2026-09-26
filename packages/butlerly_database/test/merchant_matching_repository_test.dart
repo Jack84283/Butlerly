@@ -65,6 +65,21 @@ void main() {
 
       database = await openDatabase();
       addTearDown(database.close);
+      await SqliteMerchantRepository(database).save(
+        Merchant(id: MerchantId('merchant.empty'), name: 'Empty merchant'),
+      );
+      final listedMerchants = await SqliteMerchantRepository(
+        database,
+      ).listAll();
+      expect(listedMerchants, hasLength(2));
+      expect(
+        listedMerchants
+            .singleWhere((value) => value.id == merchant.id)
+            .aliases
+            .single
+            .alias,
+        alias.alias,
+      );
       final loadedMerchant = await SqliteMerchantRepository(
         database,
       ).findById(merchant.id);

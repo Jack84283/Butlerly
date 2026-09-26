@@ -59,6 +59,117 @@ void main() {
   );
 
   test(
+    'merge does not resurrect deleted matching configuration or rules',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final createdAt = DateTime.utc(2026, 1, 1);
+      await fixture.database.database.insert('merchants', {
+        'id': 'merchant.restore',
+        'name': 'Restore merchant',
+        'status': 'active',
+        'normalized_name': 'restore merchant',
+        'is_built_in': 0,
+        'created_at': createdAt.toIso8601String(),
+        'updated_at': createdAt.toIso8601String(),
+      });
+      await fixture.database.database.insert('merchant_aliases', {
+        'id': 'alias.restore',
+        'merchant_id': 'merchant.restore',
+        'alias': 'Restore alias',
+        'normalized_alias': 'restore alias',
+        'status': 'active',
+        'created_at': createdAt.toIso8601String(),
+        'updated_at': createdAt.toIso8601String(),
+      });
+      await fixture.database.database
+          .insert('merchant_normalization_patterns', {
+            'id': 'pattern.restore',
+            'merchant_id': 'merchant.restore',
+            'pattern': 'Restore pattern',
+            'normalized_pattern': 'restore pattern',
+            'status': 'active',
+            'created_at': createdAt.toIso8601String(),
+            'updated_at': createdAt.toIso8601String(),
+          });
+      await fixture.database.database.insert('transaction_rules', {
+        'id': 'rule.restore',
+        'name': 'Restore rule',
+        'enabled': 1,
+        'priority': 1,
+        'description_contains': 'restore',
+        'assign_merchant_id': 'merchant.restore',
+        'created_at': createdAt.toIso8601String(),
+        'updated_at': createdAt.toIso8601String(),
+      });
+
+      final backup = File(
+        path.join(fixture.root.path, 'matching-configuration.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(backup);
+
+      for (final (table, id) in [
+        ('merchant_aliases', 'alias.restore'),
+        ('merchant_normalization_patterns', 'pattern.restore'),
+        ('transaction_rules', 'rule.restore'),
+      ]) {
+        await fixture.database.database.delete(
+          table,
+          where: 'id = ?',
+          whereArgs: [id],
+        );
+      }
+      final localDeletedAt = DateTime.now().toUtc().add(
+        const Duration(minutes: 5),
+      );
+      for (final table in [
+        'merchant_aliases',
+        'merchant_normalization_patterns',
+        'transaction_rules',
+      ]) {
+        final id = switch (table) {
+          'merchant_aliases' => 'alias.restore',
+          'merchant_normalization_patterns' => 'pattern.restore',
+          _ => 'rule.restore',
+        };
+        await fixture.database.database.update(
+          'entity_tombstones',
+          {'deleted_at': localDeletedAt.toIso8601String()},
+          where: 'entity_type = ? AND entity_id = ?',
+          whereArgs: [table, id],
+        );
+      }
+
+      await fixture.manager.restore(backup, mode: LocalRestoreMode.merge);
+
+      for (final (table, id) in [
+        ('merchant_aliases', 'alias.restore'),
+        ('merchant_normalization_patterns', 'pattern.restore'),
+        ('transaction_rules', 'rule.restore'),
+      ]) {
+        expect(
+          await fixture.database.database.query(
+            table,
+            where: 'id = ?',
+            whereArgs: [id],
+          ),
+          isEmpty,
+        );
+        final tombstones = await fixture.database.database.query(
+          'entity_tombstones',
+          where: 'entity_type = ? AND entity_id = ?',
+          whereArgs: [table, id],
+        );
+        expect(tombstones, hasLength(1));
+        expect(
+          tombstones.single['deleted_at'],
+          localDeletedAt.toIso8601String(),
+        );
+      }
+    },
+  );
+
+  test(
     'merge keeps a durable duplicate membership re-added after backup',
     () async {
       final fixture = await _Fixture.create();

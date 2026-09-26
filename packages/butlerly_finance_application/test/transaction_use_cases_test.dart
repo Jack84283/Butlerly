@@ -152,6 +152,141 @@ void main() {
     },
   );
 
+  test('ranks merchant matches by the actual matching evidence', () async {
+    final merchants = MemoryMerchants();
+    final matchTime = DateTime.utc(2026, 8, 9);
+    Future<void> save(Merchant merchant) => merchants.save(merchant);
+    await save(
+      Merchant(
+        id: MerchantId('merchant.canonical'),
+        name: 'Canonical',
+        defaultCategoryId: CategoryId('category.test'),
+      ),
+    );
+    await save(
+      Merchant(
+        id: MerchantId('merchant.prefix'),
+        name: 'Prefix',
+        defaultCategoryId: CategoryId('category.test'),
+      ),
+    );
+    await save(
+      Merchant(
+        id: MerchantId('merchant.alias'),
+        name: 'Alias merchant',
+        defaultCategoryId: CategoryId('category.test'),
+        aliases: [
+          MerchantAlias(
+            id: MerchantAliasId('alias.market'),
+            merchantId: MerchantId('merchant.alias'),
+            alias: 'Market alias',
+            createdAt: matchTime,
+            updatedAt: matchTime,
+          ),
+        ],
+      ),
+    );
+    await save(
+      Merchant(
+        id: MerchantId('merchant.pattern'),
+        name: 'Pattern merchant',
+        defaultCategoryId: CategoryId('category.test'),
+        normalizationPatterns: [
+          MerchantNormalizationPattern(
+            id: MerchantNormalizationPatternId('pattern.premium'),
+            merchantId: MerchantId('merchant.pattern'),
+            pattern: 'Premium service',
+            createdAt: matchTime,
+            updatedAt: matchTime,
+          ),
+        ],
+      ),
+    );
+    await save(
+      Merchant(
+        id: MerchantId('merchant.broad'),
+        name: 'Broad merchant with a long canonical name',
+        defaultCategoryId: CategoryId('category.test'),
+        aliases: [
+          MerchantAlias(
+            id: MerchantAliasId('alias.foo'),
+            merchantId: MerchantId('merchant.broad'),
+            alias: 'foo',
+            createdAt: matchTime,
+            updatedAt: matchTime,
+          ),
+        ],
+      ),
+    );
+    await save(
+      Merchant(
+        id: MerchantId('merchant.specific'),
+        name: 'Specific',
+        defaultCategoryId: CategoryId('category.test'),
+        normalizationPatterns: [
+          MerchantNormalizationPattern(
+            id: MerchantNormalizationPatternId('pattern.foo-premium'),
+            merchantId: MerchantId('merchant.specific'),
+            pattern: 'foo premium',
+            createdAt: matchTime,
+            updatedAt: matchTime,
+          ),
+        ],
+      ),
+    );
+    await save(
+      Merchant(
+        id: MerchantId('merchant.tie-b'),
+        name: 'Tie B',
+        defaultCategoryId: CategoryId('category.test'),
+        aliases: [
+          MerchantAlias(
+            id: MerchantAliasId('alias.tie-b'),
+            merchantId: MerchantId('merchant.tie-b'),
+            alias: 'same evidence',
+            createdAt: matchTime,
+            updatedAt: matchTime,
+          ),
+        ],
+      ),
+    );
+    await save(
+      Merchant(
+        id: MerchantId('merchant.tie-a'),
+        name: 'Tie A',
+        defaultCategoryId: CategoryId('category.test'),
+        aliases: [
+          MerchantAlias(
+            id: MerchantAliasId('alias.tie-a'),
+            merchantId: MerchantId('merchant.tie-a'),
+            alias: 'same evidence',
+            createdAt: matchTime,
+            updatedAt: matchTime,
+          ),
+        ],
+      ),
+    );
+
+    Future<String?> resolve(String text) async {
+      final result = await ProposeTransactionClassification(
+        transactions,
+        merchants,
+      )(description: text);
+      expect(result, isA<ApplicationSuccess<ClassificationProposal>>());
+      return (result as ApplicationSuccess<ClassificationProposal>)
+          .value
+          .merchantId
+          ?.value;
+    }
+
+    expect(await resolve('Canonical'), 'merchant.canonical');
+    expect(await resolve('Prefix store 4'), 'merchant.prefix');
+    expect(await resolve('Market alias terminal'), 'merchant.alias');
+    expect(await resolve('Premium service charge'), 'merchant.pattern');
+    expect(await resolve('foo premium'), 'merchant.specific');
+    expect(await resolve('same evidence'), 'merchant.tie-a');
+  });
+
   test(
     'receipt creation is idempotent and preserves reviewed fields',
     () async {
