@@ -25,6 +25,14 @@ grep -q './tool/validate.sh' "$workflow" || fail 'CI must invoke tool/validate.s
 grep -q 'tool/toolchain.env' "$action" || fail 'the shared action must consume tool/toolchain.env'
 grep -q './tool/verify_toolchain.sh' "$action" || fail 'the shared action must verify installed SDK versions'
 
+for config in \
+  "$repo_root/apps/butlerly/ios/Flutter/Debug.xcconfig" \
+  "$repo_root/apps/butlerly/ios/Flutter/Release.xcconfig"; do
+  [[ -f "$config" ]] || fail "${config#$repo_root/} is missing"
+  grep -Fqx '#include "Generated.xcconfig"' "$config" ||
+    fail "${config#$repo_root/} must include Flutter/Generated.xcconfig"
+done
+
 "$repo_root/tool/test_verify_toolchain.sh"
 if [[ "${BUTLERLY_SKIP_CONSISTENCY_REGRESSION:-}" != 1 ]]; then
   "$repo_root/tool/test_check_toolchain_consistency.sh"
