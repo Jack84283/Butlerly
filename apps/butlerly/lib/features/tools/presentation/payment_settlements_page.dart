@@ -573,6 +573,7 @@ class _SettlementComparisonCard extends StatelessWidget {
     );
   }
 }
+
 class _SettlementSummaryCard extends StatelessWidget {
   const _SettlementSummaryCard({required this.detail});
 
