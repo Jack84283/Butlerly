@@ -493,10 +493,24 @@ class _SettlementCard extends StatelessWidget {
     final amount =
         '${settlement.payment.currency.value} '
         '${localizedTransactionAmount(context, settlement.payment.amount.toString())}';
+    final period = '${settlement.periodStart} – ${settlement.periodEnd}';
+    final statementBalance = settlement.statementBalance == null
+        ? null
+        : '${settlement.statementBalance!.currency.value} '
+              '${localizedTransactionAmount(context, settlement.statementBalance!.amount.toString())}';
+    final semanticLabel = [
+      sourceName,
+      '${context.l10n.text('amount')}: $amount',
+      '${context.l10n.text('date')}: $formattedDate',
+      '${context.l10n.text('paymentSettlementPeriod')}: $period',
+      if (statementBalance != null)
+        '${context.l10n.text('statementBalanceOptional')}: $statementBalance',
+      '${context.l10n.text('status')}: ${_settlementStatusLabel(context, settlement.status)}',
+    ].join(', ');
     final rowPadding = const EdgeInsets.only(bottom: ButlerlySpacing.small);
     return ButlerlyCard(
       onTap: onTap,
-      semanticLabel: '$sourceName, $amount, $formattedDate',
+      semanticLabel: semanticLabel,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -535,9 +549,15 @@ class _SettlementCard extends StatelessWidget {
           ),
           ButlerlyKeyValueRow(
             label: context.l10n.text('paymentSettlementPeriod'),
-            value: '${settlement.periodStart} – ${settlement.periodEnd}',
+            value: period,
             padding: rowPadding,
           ),
+          if (statementBalance != null)
+            ButlerlyKeyValueRow(
+              label: context.l10n.text('statementBalanceOptional'),
+              value: statementBalance,
+              padding: rowPadding,
+            ),
           ButlerlyKeyValueRow.widget(
             label: context.l10n.text('status'),
             valueWidget: _SettlementStatusChip(status: settlement.status),
@@ -661,15 +681,7 @@ class _SettlementStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = switch (status) {
-      PaymentSettlementStatus.open => context.l10n.text(
-        'paymentSettlementOpen',
-      ),
-      PaymentSettlementStatus.reconciled => context.l10n.text(
-        'paymentSettlementReconciled',
-      ),
-      PaymentSettlementStatus.needsReview => context.l10n.text('needsReview'),
-    };
+    final label = _settlementStatusLabel(context, status);
     final icon = switch (status) {
       PaymentSettlementStatus.open => Icons.schedule_outlined,
       PaymentSettlementStatus.reconciled => Icons.check_circle_outline,
@@ -682,6 +694,17 @@ class _SettlementStatusChip extends StatelessWidget {
     );
   }
 }
+
+String _settlementStatusLabel(
+  BuildContext context,
+  PaymentSettlementStatus status,
+) => switch (status) {
+  PaymentSettlementStatus.open => context.l10n.text('paymentSettlementOpen'),
+  PaymentSettlementStatus.reconciled => context.l10n.text(
+    'paymentSettlementReconciled',
+  ),
+  PaymentSettlementStatus.needsReview => context.l10n.text('needsReview'),
+};
 
 class _SettlementEditorSheet extends StatefulWidget {
   const _SettlementEditorSheet({required this.sources, this.existing});

@@ -1954,90 +1954,154 @@ void main() {
     expect(values.single.lastFour, '8421');
   });
 
-  testWidgets('payment settlement cards keep the structured list layout', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(320, 640));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+  testWidgets(
+    'payment settlement cards keep the structured list layout and balance',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(320, 640));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final finance = services<FinanceServices>();
-    final source = PaymentSource(
-      id: PaymentSourceId('source-card'),
-      name: 'Travel card',
-      type: PaymentSourceType.card,
-    );
-    await finance.savePaymentSource(source);
-    await paymentSettlements.save(
-      PaymentSettlement(
-        id: PaymentSettlementId('settlement-card'),
-        paymentSourceId: source.id,
-        payment: Money(
-          amount: DecimalValue.parse('75.25'),
-          currency: CurrencyCode('USD'),
+      final finance = services<FinanceServices>();
+      final source = PaymentSource(
+        id: PaymentSourceId('source-card'),
+        name: 'Travel card',
+        type: PaymentSourceType.card,
+      );
+      await finance.savePaymentSource(source);
+      await paymentSettlements.save(
+        PaymentSettlement(
+          id: PaymentSettlementId('settlement-card'),
+          paymentSourceId: source.id,
+          payment: Money(
+            amount: DecimalValue.parse('75.25'),
+            currency: CurrencyCode('USD'),
+          ),
+          paymentDate: '2026-09-15',
+          periodStart: '2026-08-16',
+          periodEnd: '2026-09-15',
+          statementBalance: Money(
+            amount: DecimalValue.parse('74.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          status: PaymentSettlementStatus.open,
+          createdAt: DateTime.utc(2026, 9, 15),
+          updatedAt: DateTime.utc(2026, 9, 15),
         ),
-        paymentDate: '2026-09-15',
-        periodStart: '2026-08-16',
-        periodEnd: '2026-09-15',
-        status: PaymentSettlementStatus.open,
-        createdAt: DateTime.utc(2026, 9, 15),
-        updatedAt: DateTime.utc(2026, 9, 15),
-      ),
-    );
+      );
 
-    await tester.pumpWidget(
-      const MaterialApp(home: Scaffold(body: PaymentSettlementsPage())),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: PaymentSettlementsPage())),
+      );
+      await tester.pumpAndSettle();
 
-    final title = find.text('Travel card');
-    final chevron = find.byIcon(Icons.chevron_right_rounded);
-    final amountLabel = find.text('Amount');
-    final dateLabel = find.text('Date');
-    final rangeLabel = find.text('Statement period');
-    final statusLabel = find.text('Status');
+      final title = find.text('Travel card');
+      final chevron = find.byIcon(Icons.chevron_right_rounded);
+      final amountLabel = find.text('Amount');
+      final dateLabel = find.text('Date');
+      final rangeLabel = find.text('Statement period');
+      final balanceLabel = find.text('Statement balance (optional)');
+      final statusLabel = find.text('Status');
 
-    expect(title, findsOneWidget);
-    expect(chevron, findsOneWidget);
-    expect(
-      tester.widget<Text>(title).style?.fontSize,
-      Theme.of(tester.element(title)).textTheme.titleMedium?.fontSize,
-    );
-    expect(find.text('USD 75.25'), findsOneWidget);
-    expect(find.text('Sep 15, 2026'), findsOneWidget);
-    expect(find.text('2026-08-16 – 2026-09-15'), findsOneWidget);
-    expect(find.text('Open'), findsOneWidget);
-    expect(amountLabel, findsOneWidget);
-    expect(dateLabel, findsOneWidget);
-    expect(rangeLabel, findsOneWidget);
-    expect(statusLabel, findsOneWidget);
-    expect(
-      tester.getTopLeft(amountLabel).dy,
-      greaterThan(tester.getTopLeft(title).dy),
-    );
-    expect(
-      tester.getTopLeft(dateLabel).dy,
-      greaterThan(tester.getTopLeft(amountLabel).dy),
-    );
-    expect(
-      tester.getTopLeft(rangeLabel).dy,
-      greaterThan(tester.getTopLeft(dateLabel).dy),
-    );
-    expect(
-      tester.getTopLeft(statusLabel).dy,
-      greaterThan(tester.getTopLeft(rangeLabel).dy),
-    );
-    expect(
-      tester.getCenter(chevron).dx,
-      greaterThan(tester.getCenter(title).dx),
-    );
-    expect(tester.takeException(), isNull);
+      expect(title, findsOneWidget);
+      expect(chevron, findsOneWidget);
+      expect(
+        tester.widget<Text>(title).style?.fontSize,
+        Theme.of(tester.element(title)).textTheme.titleMedium?.fontSize,
+      );
+      expect(find.text('USD 75.25'), findsOneWidget);
+      expect(find.text('USD 74.00'), findsOneWidget);
+      expect(find.text('Sep 15, 2026'), findsOneWidget);
+      expect(find.text('2026-08-16 – 2026-09-15'), findsOneWidget);
+      expect(find.text('Open'), findsOneWidget);
+      expect(amountLabel, findsOneWidget);
+      expect(dateLabel, findsOneWidget);
+      expect(rangeLabel, findsOneWidget);
+      expect(balanceLabel, findsOneWidget);
+      expect(statusLabel, findsOneWidget);
+      expect(
+        tester.getTopLeft(amountLabel).dy,
+        greaterThan(tester.getTopLeft(title).dy),
+      );
+      expect(
+        tester.getTopLeft(dateLabel).dy,
+        greaterThan(tester.getTopLeft(amountLabel).dy),
+      );
+      expect(
+        tester.getTopLeft(rangeLabel).dy,
+        greaterThan(tester.getTopLeft(dateLabel).dy),
+      );
+      expect(
+        tester.getTopLeft(statusLabel).dy,
+        greaterThan(tester.getTopLeft(balanceLabel).dy),
+      );
+      expect(
+        tester.getCenter(chevron).dx,
+        greaterThan(tester.getCenter(title).dx),
+      );
+      expect(
+        tester.getTopLeft(balanceLabel).dy,
+        greaterThan(tester.getTopLeft(rangeLabel).dy),
+      );
+      final semantics = tester.getSemantics(find.byType(ButlerlyCard));
+      expect(semantics.label, contains('2026-08-16 – 2026-09-15'));
+      expect(semantics.label, contains('USD 74.00'));
+      expect(semantics.label, contains('Open'));
+      expect(tester.takeException(), isNull);
 
-    await tester.tap(find.byType(ButlerlyCard));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byType(ButlerlyCard));
+      await tester.pumpAndSettle();
 
-    expect(find.byType(PaymentSettlementDetailPage), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
+      expect(find.byType(PaymentSettlementDetailPage), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'payment settlement cards omit statement balance when it is unavailable',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(320, 640));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final finance = services<FinanceServices>();
+      final source = PaymentSource(
+        id: PaymentSourceId('source-card'),
+        name: 'Travel card',
+        type: PaymentSourceType.card,
+      );
+      await finance.savePaymentSource(source);
+      await paymentSettlements.save(
+        PaymentSettlement(
+          id: PaymentSettlementId('settlement-card'),
+          paymentSourceId: source.id,
+          payment: Money(
+            amount: DecimalValue.parse('75.25'),
+            currency: CurrencyCode('USD'),
+          ),
+          paymentDate: '2026-09-15',
+          periodStart: '2026-08-16',
+          periodEnd: '2026-09-15',
+          status: PaymentSettlementStatus.open,
+          createdAt: DateTime.utc(2026, 9, 15),
+          updatedAt: DateTime.utc(2026, 9, 15),
+        ),
+      );
+
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: PaymentSettlementsPage())),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Statement balance (optional)'), findsNothing);
+      expect(find.text('USD 74.00'), findsNothing);
+      expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.byType(ButlerlyCard));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PaymentSettlementDetailPage), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
     'Master Data uses tight header spacing and exposes add in header',
