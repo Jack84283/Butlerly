@@ -248,8 +248,18 @@ class _PaymentSettlementDetailPageState
   }
 
   Future<void> _refresh() async {
-    setState(() => _detail = _load());
-    await _detail;
+    final detail = _load();
+    final languageCode =
+        _loadedLanguageCode ?? Localizations.localeOf(context).languageCode;
+    final masterData = TransactionMasterData.load(
+      widget.finance,
+      languageCode: languageCode,
+    );
+    setState(() => _detail = detail);
+    await detail;
+    final refreshedMasterData = await masterData;
+    if (!mounted || _loadedLanguageCode != languageCode) return;
+    setState(() => _masterData = refreshedMasterData);
   }
 
   Future<void> _openTransaction(TransactionDto transaction) async {
