@@ -86,11 +86,15 @@ UPDATE statement_rows
 SET transaction_id = NULL
 WHERE transaction_id IN (SELECT id FROM settlement_payment_transaction_ids);
 
-UPDATE duplicate_candidate_groups
-SET selected_transaction_id = NULL
-WHERE selected_transaction_id IN (
+CREATE TEMP TABLE settlement_duplicate_group_ids AS
+SELECT DISTINCT group_id AS id
+FROM duplicate_candidate_group_transactions
+WHERE transaction_id IN (
   SELECT id FROM settlement_payment_transaction_ids
 );
+
+DELETE FROM duplicate_candidate_groups
+WHERE id IN (SELECT id FROM settlement_duplicate_group_ids);
 
 DELETE FROM reconciliation_links
 WHERE receipt_transaction_id IN (
@@ -125,6 +129,7 @@ DELETE FROM entity_tombstones
 WHERE entity_type = 'transactions'
   AND entity_id IN (SELECT id FROM settlement_payment_transaction_ids);
 
+DROP TABLE settlement_duplicate_group_ids;
 DROP TABLE settlement_payment_transaction_ids;
 
 CREATE INDEX payment_settlements_payment_source_period_idx
