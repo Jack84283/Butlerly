@@ -409,7 +409,6 @@ class _InsightsContent extends StatelessWidget {
               return '${localizedDecimal(context, amount.toString())}${currency.isEmpty ? '' : ' $currency'}';
             },
           ),
-        ],
         if (evaluation.limitations.isNotEmpty) ...[
           ButlerlySectionHeader(
             title: context.l10n.text('dataQualityLimitations'),
