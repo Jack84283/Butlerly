@@ -559,7 +559,7 @@ class _SettlementComparisonCard extends StatelessWidget {
           const SizedBox(height: ButlerlySpacing.compact),
           _SummaryLine(
             label: context.l10n.text('paymentSettlementAmount'),
-            value: amount(settlement.payment.amount),
+            value: amount(detail.paymentAmount.amount),
           ),
           const SizedBox(height: ButlerlySpacing.compact),
           _SummaryLine(
