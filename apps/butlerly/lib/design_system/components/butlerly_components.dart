@@ -355,12 +355,7 @@ class ButlerlyKeyValueRow extends StatelessWidget {
         Expanded(
           child: Align(
             alignment: Alignment.centerRight,
-            child:
-                valueWidget ??
-                Text(
-                  value!,
-                  textAlign: TextAlign.right,
-                ),
+            child: valueWidget ?? Text(value!, textAlign: TextAlign.right),
           ),
         ),
       ],
