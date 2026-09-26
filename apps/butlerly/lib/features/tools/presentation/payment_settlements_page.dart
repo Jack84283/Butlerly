@@ -6,8 +6,8 @@ import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
-import 'package:butlerly/features/foundation/presentation/transaction_row.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_row.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
@@ -225,13 +225,12 @@ class _PaymentSettlementDetailPageState
     final languageCode = Localizations.localeOf(context).languageCode;
     if (_loadedLanguageCode == languageCode) return;
     _loadedLanguageCode = languageCode;
-    TransactionMasterData.load(
-      widget.finance,
-      languageCode: languageCode,
-    ).then((value) {
-      if (!mounted || _loadedLanguageCode != languageCode) return;
-      setState(() => _masterData = value);
-    });
+    TransactionMasterData.load(widget.finance, languageCode: languageCode).then(
+      (value) {
+        if (!mounted || _loadedLanguageCode != languageCode) return;
+        setState(() => _masterData = value);
+      },
+    );
   }
 
   Future<PaymentSettlementDetailDto> _load() async {
@@ -249,8 +248,18 @@ class _PaymentSettlementDetailPageState
   }
 
   Future<void> _refresh() async {
-    setState(() => _detail = _load());
-    await _detail;
+    final detail = _load();
+    final languageCode =
+        _loadedLanguageCode ?? Localizations.localeOf(context).languageCode;
+    final masterData = TransactionMasterData.load(
+      widget.finance,
+      languageCode: languageCode,
+    );
+    setState(() => _detail = detail);
+    await detail;
+    final refreshedMasterData = await masterData;
+    if (!mounted || _loadedLanguageCode != languageCode) return;
+    setState(() => _masterData = refreshedMasterData);
   }
 
   Future<void> _openTransaction(TransactionDto transaction) async {
