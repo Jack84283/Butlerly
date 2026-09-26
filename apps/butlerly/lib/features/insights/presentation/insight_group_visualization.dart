@@ -109,10 +109,7 @@ class InsightGroupVisualizations extends StatelessWidget {
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
+                Text(title, style: Theme.of(context).textTheme.titleSmall),
                 const SizedBox(height: ButlerlySpacing.small),
                 visualization,
               ],
