@@ -528,12 +528,10 @@ class _SettlementComparisonCard extends StatelessWidget {
                 ? context.l10n.text('comparisonUnavailable')
                 : amount(recorded.amount),
           ),
-          const SizedBox(height: ButlerlySpacing.compact),
           _SummaryLine(
             label: context.l10n.text('paymentSettlementAmount'),
             value: amount(detail.paymentAmount.amount),
           ),
-          const SizedBox(height: ButlerlySpacing.compact),
           _SummaryLine(
             label: context.l10n.text('paymentSettlementDifference'),
             value: difference == null
@@ -570,37 +568,22 @@ class _SettlementBasicInfoCard extends StatelessWidget {
             label: context.l10n.text('date'),
             value: settlement.paymentDate,
           ),
-          const SizedBox(height: ButlerlySpacing.compact),
           _SummaryLine(
             label: context.l10n.text('paymentSource'),
             value: sourceName,
           ),
-          const SizedBox(height: ButlerlySpacing.compact),
           _SummaryLine(
             label: context.l10n.text('paymentSettlementPeriod'),
             value: '${settlement.periodStart} – ${settlement.periodEnd}',
           ),
-          const SizedBox(height: ButlerlySpacing.compact),
           _SummaryLine(
             label: context.l10n.text('paymentSettlementAmount'),
             value: paymentAmount,
           ),
-          const SizedBox(height: ButlerlySpacing.compact),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 140,
-                child: Text(
-                  context.l10n.text('status'),
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-              const SizedBox(width: ButlerlySpacing.compact),
-              _SettlementStatusChip(status: settlement.status),
-            ],
+          ButlerlyKeyValueRow.widget(
+            label: context.l10n.text('status'),
+            valueWidget: _SettlementStatusChip(status: settlement.status),
           ),
-          const SizedBox(height: ButlerlySpacing.compact),
           _SummaryLine(
             label: context.l10n.text('note'),
             value: settlement.description?.trim().isNotEmpty == true
@@ -620,19 +603,8 @@ class _SummaryLine extends StatelessWidget {
   final String value;
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 140,
-          child: Text(label, style: Theme.of(context).textTheme.bodySmall),
-        ),
-        const SizedBox(width: ButlerlySpacing.compact),
-        Expanded(child: Text(value)),
-      ],
-    );
-  }
+  Widget build(BuildContext context) =>
+      ButlerlyKeyValueRow(label: label, value: value);
 }
 
 class _SettlementStatusChip extends StatelessWidget {
