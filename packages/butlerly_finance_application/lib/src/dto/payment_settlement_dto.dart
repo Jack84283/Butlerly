@@ -66,13 +66,17 @@ final class PaymentSettlementDetailDto {
       if (transaction.currency.trim().toUpperCase() != currency.value) {
         return null;
       }
+      final direction = TransactionDirection.values.byName(
+        transaction.direction,
+      );
+      if (direction == TransactionDirection.adjustment) return null;
       final amount = DecimalValue.parse(transaction.amount);
-      total = switch (TransactionDirection.values.byName(transaction.direction)) {
+      total = switch (direction) {
         TransactionDirection.expense => total.add(amount),
         TransactionDirection.refund || TransactionDirection.income =>
           total.subtract(amount),
-        TransactionDirection.adjustment => total.add(amount),
         TransactionDirection.transfer => total,
+        TransactionDirection.adjustment => total,
       };
     }
     return Money(amount: total, currency: currency);
