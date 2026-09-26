@@ -35,10 +35,9 @@ validate_database() (
 
 validate_flutter_application() (
   cd apps/butlerly
-  format_check
-  flutter analyze
-  flutter test
-  flutter build web
+  dart format .
+  git diff -- lib/design_system/components/butlerly_components.dart lib/features/insights/presentation/insight_group_visualization.dart lib/features/insights/presentation/insights_page.dart lib/features/tools/presentation/payment_settlements_page.dart
+  exit 1
 )
 
 validate_integration_test() (
