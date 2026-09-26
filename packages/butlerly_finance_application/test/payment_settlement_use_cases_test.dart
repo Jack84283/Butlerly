@@ -85,9 +85,7 @@ void main() {
         periodStart: '2026-08-15',
         periodEnd: '2026-09-14',
       );
-      settlements.transactions.add(
-        activity('expense', now, amount: '100.00'),
-      );
+      settlements.transactions.add(activity('expense', now, amount: '100.00'));
       settlements.transactions.add(
         activity(
           'refund',
@@ -103,10 +101,7 @@ void main() {
       final detail =
           (result as ApplicationSuccess<PaymentSettlementDetailDto>).value;
 
-      expect(
-        detail.recordedTransactionTotal!.amount,
-        DecimalValue.parse('85'),
-      );
+      expect(detail.recordedTransactionTotal!.amount, DecimalValue.parse('85'));
       expect(detail.recordedTransactionTotal!.currency, CurrencyCode('USD'));
       expect(detail.paymentDifference!.amount, DecimalValue.parse('0'));
     },
