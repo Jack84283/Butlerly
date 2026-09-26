@@ -2462,6 +2462,65 @@ void main() {
   });
 
   testWidgets(
+    'add editor keeps its save action fixed while the form scrolls on a narrow phone',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(320, 640));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      TransactionEditorResult? result;
+      await _openEditorForTest(tester, onResult: (value) => result = value);
+
+      final editorList = find.byKey(const ValueKey('transaction-editor-list'));
+      final saveButton = find.byKey(const ValueKey('transaction-save-locally'));
+      expect(editorList, findsOneWidget);
+      expect(saveButton, findsOneWidget);
+      expect(
+        find.descendant(of: editorList, matching: saveButton),
+        findsNothing,
+      );
+      expect(
+        find.ancestor(of: saveButton, matching: find.byType(SafeArea)),
+        findsOneWidget,
+      );
+
+      final initialSaveButtonRect = tester.getRect(saveButton);
+      final amountField = find.byKey(
+        const ValueKey('transaction-amount-field'),
+      );
+      await tester.enterText(amountField, '12.50');
+      await tester.showKeyboard(amountField);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(saveButton, findsOneWidget);
+      tester.testTextInput.hide();
+      await tester.pumpAndSettle();
+      await tester.drag(editorList, const Offset(0, -1000));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(saveButton, findsOneWidget);
+      expect(tester.getRect(saveButton), initialSaveButtonRect);
+
+      final tagPicker = find.byType(ButlerlyTagPicker);
+      for (
+        var attempt = 0;
+        attempt < 8 && tagPicker.evaluate().isEmpty;
+        attempt++
+      ) {
+        await tester.drag(editorList, const Offset(0, -240));
+        await tester.pumpAndSettle();
+      }
+      expect(tagPicker, findsOneWidget);
+      expect(saveButton, findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(saveButton);
+      await tester.pumpAndSettle();
+      expect(result, isA<TransactionEditorSaved>());
+    },
+  );
+
+  testWidgets(
     'add editor Use Existing returns the selected candidate without saving',
     (tester) async {
       TransactionEditorResult? result;
@@ -2705,10 +2764,9 @@ Future<void> _openEditorForTest(
 }
 
 Future<void> _tapEditorSave(WidgetTester tester) async {
-  await tester.scrollUntilVisible(
-    find.text('Save locally'),
-    160,
-    scrollable: find.byType(Scrollable).last,
+  expect(
+    find.byKey(const ValueKey('transaction-save-locally')),
+    findsOneWidget,
   );
   await tester.tap(find.text('Save locally'));
   await tester.pumpAndSettle();
@@ -2796,17 +2854,10 @@ Future<void> _scrollEditorToMasterData(WidgetTester tester) async {
 }
 
 Future<void> _scrollEditorToSave(WidgetTester tester) async {
-  final editorList = find.byKey(const ValueKey('transaction-editor-list'));
-  expect(editorList, findsOneWidget);
-  for (
-    var attempt = 0;
-    attempt < 5 && find.text('Save locally').evaluate().isEmpty;
-    attempt++
-  ) {
-    await tester.drag(editorList, const Offset(0, -320));
-    await tester.pumpAndSettle();
-  }
-  expect(find.text('Save locally'), findsOneWidget);
+  expect(
+    find.byKey(const ValueKey('transaction-save-locally')),
+    findsOneWidget,
+  );
 }
 
 void _expectEditorSelection(WidgetTester tester, String label) {
