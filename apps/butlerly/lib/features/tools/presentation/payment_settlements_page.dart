@@ -7,6 +7,7 @@ import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_row.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
@@ -215,6 +216,23 @@ class PaymentSettlementDetailPage extends StatefulWidget {
 class _PaymentSettlementDetailPageState
     extends State<PaymentSettlementDetailPage> {
   late Future<PaymentSettlementDetailDto> _detail = _load();
+  TransactionMasterData _masterData = const TransactionMasterData();
+  String? _loadedLanguageCode;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final languageCode = Localizations.localeOf(context).languageCode;
+    if (_loadedLanguageCode == languageCode) return;
+    _loadedLanguageCode = languageCode;
+    TransactionMasterData.load(
+      widget.finance,
+      languageCode: languageCode,
+    ).then((value) {
+      if (!mounted || _loadedLanguageCode != languageCode) return;
+      setState(() => _masterData = value);
+    });
+  }
 
   Future<PaymentSettlementDetailDto> _load() async {
     final getDetail = widget.finance.getPaymentSettlementDetail;
@@ -431,6 +449,7 @@ class _PaymentSettlementDetailPageState
                 for (final transaction in detail.transactions) ...[
                   TransactionRow(
                     transaction: transaction,
+                    masterData: _masterData,
                     paymentSourceNames: widget.sourceNames,
                     showDate: true,
                     showNavigationIndicator: true,
