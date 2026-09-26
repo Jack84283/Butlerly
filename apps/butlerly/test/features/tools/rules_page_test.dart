@@ -1,5 +1,6 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/tools/presentation/rules_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -153,6 +154,59 @@ void main() {
     _expectNoFlutterError(tester);
     expect(find.text('Rule name'), findsNothing);
   });
+
+  testWidgets(
+    'add rule reuses transaction selection fields and preserves values',
+    (tester) async {
+      await tester.pumpWidget(const _TestApp(child: RulesPage()));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Add rule'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ButlerlySelectField<String>), findsNWidgets(9));
+      expect(
+        find.byWidgetPredicate((widget) => widget is DropdownMenu<String>),
+        findsNWidgets(9),
+      );
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is EditableText && widget.controller.text == 'Not set',
+        ),
+        findsNWidgets(9),
+      );
+
+      final merchantSelector = find.byKey(
+        const ValueKey('rule-condition-merchant'),
+      );
+      DropdownMenu<String> merchantMenu() => tester.widget(
+        find.descendant(
+          of: merchantSelector,
+          matching: find.byType(DropdownMenu<String>),
+        ),
+      );
+
+      merchantMenu().onSelected?.call('merchant.costco');
+      await tester.pump();
+
+      final merchantField = find.descendant(
+        of: find.byKey(const ValueKey('rule-condition-merchant')),
+        matching: find.byType(EditableText),
+      );
+      expect(
+        tester.widget<EditableText>(merchantField).controller.text,
+        'Costco',
+      );
+
+      merchantMenu().onSelected?.call('');
+      await tester.pump();
+      expect(
+        tester.widget<EditableText>(merchantField).controller.text,
+        'Not set',
+      );
+      _expectNoFlutterError(tester);
+    },
+  );
 
   testWidgets('delete requires confirmation and removes the persisted rule', (
     tester,
