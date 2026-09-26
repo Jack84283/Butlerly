@@ -9,6 +9,7 @@ import 'package:butlerly/features/foundation/presentation/transaction_change_not
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_record_list.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_row.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
@@ -294,11 +295,9 @@ class _ReviewPageState extends State<ReviewPage> {
                   )
                 else
                   _ReviewTransactionCard(
-                    title:
-                        item.description ??
-                        context.l10n.text('untitledTransaction'),
-                    amount: item.amount,
-                    currency: item.currency,
+                    item: item,
+                    finance: _finance!,
+                    masterData: _masterData,
                     reason: item.detail ?? _reason(item.reason, context),
                     recommendation: context.l10n.text('reviewRecommendation'),
                     primaryLabel: context.l10n.text('resolve'),
@@ -634,9 +633,9 @@ class _ReviewPageState extends State<ReviewPage> {
 
 class _ReviewTransactionCard extends StatelessWidget {
   const _ReviewTransactionCard({
-    required this.title,
-    required this.amount,
-    required this.currency,
+    required this.item,
+    required this.finance,
+    required this.masterData,
     required this.reason,
     required this.recommendation,
     required this.primaryLabel,
@@ -647,9 +646,9 @@ class _ReviewTransactionCard extends StatelessWidget {
     required this.onDismiss,
   });
 
-  final String title;
-  final String amount;
-  final String currency;
+  final ReviewItemDto item;
+  final FinanceServices finance;
+  final Future<TransactionMasterDataSnapshot> masterData;
   final String reason;
   final String recommendation;
   final String primaryLabel;
@@ -660,38 +659,63 @@ class _ReviewTransactionCard extends StatelessWidget {
   final VoidCallback onDismiss;
 
   @override
-  Widget build(BuildContext context) => ButlerlyCard(
-    padding: const EdgeInsets.symmetric(vertical: ButlerlySpacing.compact),
-    child: Column(
-      children: [
-        ButlerlyRecordRow(
-          title: title,
-          amount: localizedTransactionAmount(context, amount),
-          currency: currency,
-          needsReview: true,
-        ),
-        Padding(
-          padding: const EdgeInsets.all(ButlerlySpacing.standard),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(reason),
-              const SizedBox(height: ButlerlySpacing.small),
-              Text(recommendation),
-              const SizedBox(height: ButlerlySpacing.standard),
-              ButlerlyButtonBar(
-                spacing: ButlerlyButtonBarSpacing.none,
-                children: [
-                  FilledButton(onPressed: onPrimary, child: Text(primaryLabel)),
-                  OutlinedButton(onPressed: onEdit, child: Text(editLabel)),
-                  TextButton(onPressed: onDismiss, child: Text(dismissLabel)),
-                ],
+  Widget build(BuildContext context) => FutureBuilder<ApplicationResult<TransactionDto>>(
+    future: finance.getTransaction(item.transactionId),
+    builder: (context, transactionSnapshot) {
+      final result = transactionSnapshot.data;
+      if (result is! ApplicationSuccess<TransactionDto>) {
+        return const ButlerlyLoadingState();
+      }
+      final transaction = result.value;
+      return FutureBuilder<TransactionMasterDataSnapshot>(
+        future: masterData,
+        builder: (context, masterSnapshot) {
+          final data = masterSnapshot.data;
+          return ButlerlyCard(
+            padding: EdgeInsets.zero,
+            child: TransactionRow(
+              transaction: transaction,
+              masterData: data?.presentation ?? const TransactionMasterData(),
+              paymentSourceNames: {
+                for (final source in data?.paymentSources ?? <PaymentSource>[])
+                  source.id.value: source.name,
+              },
+              showDate: true,
+              onTap: onEdit,
+              supportingContent: Padding(
+                padding: const EdgeInsets.only(top: ButlerlySpacing.small),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(reason),
+                    const SizedBox(height: ButlerlySpacing.small),
+                    Text(recommendation),
+                    const SizedBox(height: ButlerlySpacing.standard),
+                    ButlerlyButtonBar(
+                      spacing: ButlerlyButtonBarSpacing.none,
+                      children: [
+                        FilledButton(
+                          onPressed: onPrimary,
+                          child: Text(primaryLabel),
+                        ),
+                        OutlinedButton(
+                          onPressed: onEdit,
+                          child: Text(editLabel),
+                        ),
+                        TextButton(
+                          onPressed: onDismiss,
+                          child: Text(dismissLabel),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
-        ),
-      ],
-    ),
+            ),
+          );
+        },
+      );
+    },
   );
 }
 
@@ -808,36 +832,26 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                         ButlerlyTransactionList(
                           children: [
                             for (final transaction in transactions)
-                              ButlerlyTransactionListItem(
-                                title:
-                                    transaction.description
-                                            ?.trim()
-                                            .isNotEmpty ==
-                                        true
-                                    ? transaction.description!
-                                    : context.l10n.text('untitledTransaction'),
-                                amount: localizedTransactionAmount(
-                                  context,
-                                  transaction.amount,
-                                ),
-                                currency: transaction.currency,
-                                meta: transactionDateLabel(
-                                  transaction,
-                                  pendingLabel: context.l10n.text(
-                                    'datePending',
-                                  ),
-                                  locale: Localizations.localeOf(
+                              TransactionRow(
+                                transaction: transaction,
+                                masterData:
+                                    masterData?.presentation ??
+                                    const TransactionMasterData(),
+                                paymentSourceNames: {
+                                  for (final source
+                                      in masterData?.paymentSources ??
+                                          <PaymentSource>[])
+                                    source.id.value: source.name,
+                                },
+                                showDate: true,
+                                supportingContent: Text(
+                                  _transactionEvidenceLabel(
                                     context,
-                                  ).toLanguageTag(),
+                                    transaction,
+                                    masterData,
+                                  ),
+                                  style: context.transactionItemMetadata,
                                 ),
-                                subtitle: _transactionEvidenceLabel(
-                                  context,
-                                  transaction,
-                                  masterData,
-                                ),
-                                isIncome:
-                                    transaction.direction ==
-                                    TransactionDirection.income.name,
                                 selectionControl:
                                     ButlerlyTransactionSelectionControl<
                                       TransactionId
