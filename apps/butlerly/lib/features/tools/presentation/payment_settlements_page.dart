@@ -563,7 +563,10 @@ class _SettlementBasicInfoCard extends StatelessWidget {
     final settlement = detail.settlement;
     final currency = settlement.payment.currency.value;
     final paymentAmount =
-        '$currency ${localizedTransactionAmount(context, detail.paymentAmount.amount.toString())}';
+        '$currency ${localizedTransactionAmount(
+          context,
+          detail.paymentAmount.amount.toString(),
+        )}';
 
     return ButlerlyCard(
       child: Column(
