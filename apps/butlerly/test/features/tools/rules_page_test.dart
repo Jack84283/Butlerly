@@ -156,7 +156,7 @@ void main() {
   });
 
   testWidgets(
-    'add rule reuses transaction selection fields and preserves values',
+    'add rule uses the shared selection-field base and preserves nullable values',
     (tester) async {
       await tester.pumpWidget(const _TestApp(child: RulesPage()));
       await tester.pumpAndSettle();
@@ -164,10 +164,6 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(ButlerlySelectField<String>), findsNWidgets(9));
-      expect(
-        find.byWidgetPredicate((widget) => widget is DropdownMenu<String>),
-        findsNWidgets(9),
-      );
       expect(
         find.byWidgetPredicate(
           (widget) =>
@@ -179,14 +175,10 @@ void main() {
       final merchantSelector = find.byKey(
         const ValueKey('rule-condition-merchant'),
       );
-      DropdownMenu<String> merchantMenu() => tester.widget(
-        find.descendant(
-          of: merchantSelector,
-          matching: find.byType(DropdownMenu<String>),
-        ),
-      );
+      ButlerlySelectField<String> merchantFieldControl() =>
+          tester.widget(merchantSelector);
 
-      merchantMenu().onSelected?.call('merchant.costco');
+      merchantFieldControl().onChanged('merchant.costco');
       await tester.pump();
 
       final merchantField = find.descendant(
@@ -198,7 +190,7 @@ void main() {
         'Costco',
       );
 
-      merchantMenu().onSelected?.call('');
+      merchantFieldControl().onChanged('');
       await tester.pump();
       expect(
         tester.widget<EditableText>(merchantField).controller.text,
