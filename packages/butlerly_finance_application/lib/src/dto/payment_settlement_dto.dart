@@ -82,11 +82,16 @@ final class PaymentSettlementDetailDto {
     return Money(amount: total, currency: currency);
   }
 
+  Money get paymentAmount => Money(
+    amount: settlement.payment.amount.abs(),
+    currency: settlement.payment.currency,
+  );
+
   Money? get paymentDifference {
     final recorded = recordedTransactionTotal;
     if (recorded == null) return null;
     return Money(
-      amount: settlement.payment.amount.subtract(recorded.amount),
+      amount: paymentAmount.amount.subtract(recorded.amount),
       currency: settlement.payment.currency,
     );
   }
