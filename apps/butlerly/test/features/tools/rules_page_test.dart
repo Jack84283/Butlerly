@@ -100,6 +100,24 @@ void main() {
     expect(find.text('Classify fuel'), findsAtLeastNWidgets(1));
   });
 
+  testWidgets('add rule form remains usable on a narrow phone', (tester) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const _TestApp(child: RulesPage()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Add rule'));
+    await tester.pumpAndSettle();
+
+    final exception = tester.takeException();
+    if (exception is FlutterError) fail(exception.toStringDeep());
+    expect(exception, isNull);
+    expect(find.text('Rule name'), findsOneWidget);
+    expect(find.byType(SingleChildScrollView), findsAtLeastNWidgets(1));
+  });
+
   testWidgets('delete requires confirmation and removes the persisted rule', (
     tester,
   ) async {

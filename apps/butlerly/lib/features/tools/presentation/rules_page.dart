@@ -577,6 +577,11 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
     onChanged: onChanged,
   );
 
+  Widget _spacedField(Widget field) => Padding(
+    padding: const EdgeInsets.only(bottom: ButlerlySpacing.small),
+    child: field,
+  );
+
   @override
   Widget build(BuildContext context) {
     final empty = context.l10n.text('notSet');
@@ -596,23 +601,29 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
       ),
       content: Column(
         children: [
-          TextField(
-            controller: _name,
-            decoration: InputDecoration(
-              labelText: context.l10n.text('ruleName'),
+          _spacedField(
+            TextField(
+              controller: _name,
+              decoration: InputDecoration(
+                labelText: context.l10n.text('ruleName'),
+              ),
             ),
           ),
-          TextField(
-            controller: _description,
-            decoration: InputDecoration(
-              labelText: context.l10n.text('ruleDescription'),
+          _spacedField(
+            TextField(
+              controller: _description,
+              decoration: InputDecoration(
+                labelText: context.l10n.text('ruleDescription'),
+              ),
             ),
           ),
-          TextField(
-            controller: _priority,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: context.l10n.text('rulePriority'),
+          _spacedField(
+            TextField(
+              controller: _priority,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: context.l10n.text('rulePriority'),
+              ),
             ),
           ),
           const SizedBox(height: ButlerlySpacing.standard),
@@ -620,40 +631,52 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
             alignment: AlignmentDirectional.centerStart,
             child: Text(context.l10n.text('ruleConditions')),
           ),
-          _dropdown(
-            context.l10n.text('merchant'),
-            _conditionMerchantId,
-            (v) => setState(() => _conditionMerchantId = v),
-            _items(context, empty, merchants),
-          ),
-          _dropdown(
-            context.l10n.text('category'),
-            _conditionCategoryId,
-            (v) => setState(() => _conditionCategoryId = v),
-            _items(context, empty, categories),
-          ),
-          _dropdown(
-            context.l10n.text('paymentSource'),
-            _conditionPaymentSourceId,
-            (v) => setState(() => _conditionPaymentSourceId = v),
-            _items(context, empty, sources),
-          ),
-          _dropdown(
-            context.l10n.text('tag'),
-            _conditionTagId,
-            (v) => setState(() => _conditionTagId = v),
-            _items(context, empty, tags),
-          ),
-          TextField(
-            controller: _descriptionContains,
-            decoration: InputDecoration(
-              labelText: context.l10n.text('ruleDescriptionContains'),
+          _spacedField(
+            _dropdown(
+              context.l10n.text('merchant'),
+              _conditionMerchantId,
+              (v) => setState(() => _conditionMerchantId = v),
+              _items(context, empty, merchants),
             ),
           ),
-          TextField(
-            controller: _rawCounterpartyContains,
-            decoration: InputDecoration(
-              labelText: context.l10n.text('ruleCounterpartyContains'),
+          _spacedField(
+            _dropdown(
+              context.l10n.text('category'),
+              _conditionCategoryId,
+              (v) => setState(() => _conditionCategoryId = v),
+              _items(context, empty, categories),
+            ),
+          ),
+          _spacedField(
+            _dropdown(
+              context.l10n.text('paymentSource'),
+              _conditionPaymentSourceId,
+              (v) => setState(() => _conditionPaymentSourceId = v),
+              _items(context, empty, sources),
+            ),
+          ),
+          _spacedField(
+            _dropdown(
+              context.l10n.text('tag'),
+              _conditionTagId,
+              (v) => setState(() => _conditionTagId = v),
+              _items(context, empty, tags),
+            ),
+          ),
+          _spacedField(
+            TextField(
+              controller: _descriptionContains,
+              decoration: InputDecoration(
+                labelText: context.l10n.text('ruleDescriptionContains'),
+              ),
+            ),
+          ),
+          _spacedField(
+            TextField(
+              controller: _rawCounterpartyContains,
+              decoration: InputDecoration(
+                labelText: context.l10n.text('ruleCounterpartyContains'),
+              ),
             ),
           ),
           const SizedBox(height: ButlerlySpacing.standard),
@@ -661,35 +684,45 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
             alignment: AlignmentDirectional.centerStart,
             child: Text(context.l10n.text('ruleActions')),
           ),
-          _dropdown(
-            context.l10n.text('merchant'),
-            _assignMerchantId,
-            (v) => setState(() => _assignMerchantId = v),
-            _items(context, empty, merchants),
+          _spacedField(
+            _dropdown(
+              context.l10n.text('merchant'),
+              _assignMerchantId,
+              (v) => setState(() => _assignMerchantId = v),
+              _items(context, empty, merchants),
+            ),
           ),
-          _dropdown(
-            context.l10n.text('category'),
-            _assignCategoryId,
-            (v) => setState(() => _assignCategoryId = v),
-            _items(context, empty, categories),
+          _spacedField(
+            _dropdown(
+              context.l10n.text('category'),
+              _assignCategoryId,
+              (v) => setState(() => _assignCategoryId = v),
+              _items(context, empty, categories),
+            ),
           ),
-          _dropdown(
-            context.l10n.text('subcategory'),
-            _assignSubcategoryId,
-            (v) => setState(() => _assignSubcategoryId = v),
-            _items(context, empty, categories),
+          _spacedField(
+            _dropdown(
+              context.l10n.text('subcategory'),
+              _assignSubcategoryId,
+              (v) => setState(() => _assignSubcategoryId = v),
+              _items(context, empty, categories),
+            ),
           ),
-          _dropdown(
-            context.l10n.text('paymentSource'),
-            _assignPaymentSourceId,
-            (v) => setState(() => _assignPaymentSourceId = v),
-            _items(context, empty, sources),
+          _spacedField(
+            _dropdown(
+              context.l10n.text('paymentSource'),
+              _assignPaymentSourceId,
+              (v) => setState(() => _assignPaymentSourceId = v),
+              _items(context, empty, sources),
+            ),
           ),
-          _dropdown(
-            context.l10n.text('tag'),
-            _assignTagId,
-            (v) => setState(() => _assignTagId = v),
-            _items(context, empty, tags),
+          _spacedField(
+            _dropdown(
+              context.l10n.text('tag'),
+              _assignTagId,
+              (v) => setState(() => _assignTagId = v),
+              _items(context, empty, tags),
+            ),
           ),
         ],
       ),
