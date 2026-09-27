@@ -43,12 +43,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-toolchain
       - run: ./tool/setup.sh
-      - name: Show formatter diff
-        run: |
-          cd apps/butlerly
-          dart format integration_test/v1_journeys_test.dart lib/app/shell/shared/primary_bottom_navigation.dart test/app/primary_bottom_navigation_clearance_test.dart
-          git diff -- integration_test/v1_journeys_test.dart lib/app/shell/shared/primary_bottom_navigation.dart test/app/primary_bottom_navigation_clearance_test.dart
-          exit 1
+      - run: ./tool/validate.sh flutter_application
 
   # macOS checks remain post-merge main checks for now to conserve limited
   # GitHub-hosted macOS capacity and avoid PRs waiting on scarce runners.
