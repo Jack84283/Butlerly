@@ -1,53 +1,129 @@
-# Butlerly P0 Product Audit
+# Butlerly Current Implementation Alignment
 
-Status: Active implementation audit
+Status: Active current-state audit
 
-## Sources reviewed
+## Purpose
 
-- BL-0001 — Butlerly Company Constitution
-- BL-0007 — User Bill of Rights
-- MVP-0001 — Butlerly MVP Compass
-- PRD-0001 through PRD-0008
-- ARC-0202 — Presentation Architecture
-- ARC-0203 — Application Layer
-- ENG-0101, ENG-0104 through ENG-0107
-- DEV-0001 — Butlerly Codex Implementation Specification
-- UX-0003, UX-0005, and UX-0010
-- Repository README and AGENTS.md
+This document records the current Finance V1 implementation shape that active documentation must match. It intentionally avoids stale commit IDs, schema-version snapshots, historical test counts, and superseded navigation models.
 
-## Current implementation assessment
+## Current product model
 
-| P0 capability | Status | Evidence / gap |
-| --- | --- | --- |
-| Local workspace without account, network, or AI | Implemented | Local SQLite startup, account-free first use, device-safe preference defaults, and persisted preferences work without network or AI. |
-| Finance domain and local persistence | Implemented | Domain invariants, SQLite schema v6, repositories, migrations, date-only transactions, and persisted locale/base-currency/IANA-timezone/AI-consent preferences exist. |
-| Application service boundary | Implemented | Commands, queries, DTOs, result mapping, and repository-only application services exist. |
-| Primary navigation and Home | Implemented in this slice | Product-authoritative Home, Transactions, Review, Search, and Settings destinations now have responsive shell support and truthful empty states. |
-| Transaction CRUD and detail UI | Implemented active slice | Local list, create, detail, edit, archive, and permanent-delete UI is wired through application services. |
-| Local list, detail, search, and filters UI | Implemented active slice | Local text, currency, direction, business-date range, category, payment-source, and review-state filters are available. |
-| Review queue and resolution UI | Implemented active slice | Local active-issue queue, transaction drill-in, and explicit resolve/dismiss actions are wired through application services. |
-| Evidence capture, attachment storage, retrieval UI | Implemented local slice | Receipt/photo/PDF selection, private local file storage, metadata linking, retrieval, deletion, transaction-delete cleanup, export, and erase-all cleanup are implemented. |
-| Original currency, language, provenance, and normalization UI | Partially implemented | Transaction detail shows local provenance history and read-only reference conversions; original money remains canonical. Source-language values are preserved but not yet presented. |
-| Business date, exact instant, and timezone model | Partially implemented | Schema v2 stores `transaction_date`, `occurred_at_utc`, and nullable `time_zone_id`; v1 legacy instants migrate to normalized UTC plus their approved UTC calendar date. Date-only imports and timezone preferences remain. |
-| Privacy, consent, export, and deletion UI | Implemented local slice | Local JSON/evidence export and confirmed erase-all cover SQLite user data and evidence files. External-AI consent is explicit, off by default, and persisted locally. |
-| Localization settings and translated UI resources | Implemented P0 slice | English, Simplified Chinese, and Spanish keys have complete coverage; locale switching affects UI labels, dates, and decimal formatting without modifying source content. Locale, base currency, and IANA timezone persist locally. |
-| Privacy-safe logging | Implemented | Common financial values and user-entered fields are redacted before logging; redaction is tested. |
+Butlerly Finance V1 is local-first and account-free for core operation. The application remains usable without a network connection, cloud synchronization, or AI provider.
 
-## Confirmed scope alignment
+## Current primary navigation
 
-The documentation refresh resolves the previously recorded scope conflicts.
+The implemented primary navigation is:
 
-- PRD-0003, PRD-0004, PRD-0008, UX-0005, and UX-0010 now agree that core Finance V1 is account-free and local-first. Cross-device synchronization, device trust, pairing, and related conflict workflows are future/P2 work and must not be required for P0.
-- PRD-0005 and UX-0010 now agree on the primary Finance V1 navigation: Home, Transactions, Review, Search, and Settings. Assistant remains optional and non-primary.
+1. Home
+2. Transactions
+3. Add
+4. Tools
+5. More
 
-Implementation impact: the current navigation shell already conforms. No account, synchronization, pairing, or Assistant-primary-navigation implementation is authorized for the active P0 scope.
+Review and Search are secondary workflows and are not primary phone-navigation destinations.
 
-## P0 order from this point
+## Current destination ownership
 
-1. IMP-0005 — Main Navigation and Home — complete local slice.
-2. IMP-0006 — Transaction Management — completed local slice, including organization, retrieval, review, and migration hardening.
-3. IMP-0007 — Account Management — active local payment-source slice.
-4. Privacy, consent, export/delete, localization/preferences, date-only CSV import support, and P0 hardening — implemented local slice.
-5. IMP-0009 — binary evidence selection, local file lifecycle, and storage — implemented local slice.
+### Home
+Financial overview, recent activity, and entry context.
 
-No P1, P2, or Deferred capability is included unless it becomes technically necessary for one of these P0 slices.
+### Transactions
+Canonical transaction list and transaction-focused workflows.
+
+### Add
+Primary acquisition destination for:
+- manual transaction entry;
+- receipt capture;
+- statement capture;
+- local-file import;
+- Payment Sources.
+
+### Tools
+Primary utility, review, analysis, and management destination for:
+- Review;
+- Analysis;
+- Insights;
+- Payment Settlements;
+- Master Data;
+- Rules.
+
+### More
+Primary preferences/settings destination for:
+- Appearance;
+- Language;
+- Base Currency;
+- Timezone;
+- Privacy & Data;
+- optional AI controls;
+- Legal & Licenses.
+
+Master Data and Rules do not belong under More.
+
+## Current implementation capabilities
+
+The repository currently contains production paths for:
+
+- local-first startup and persisted preferences;
+- transaction create/list/detail/edit/archive/permanent-delete;
+- persistent merchant/category/tag master data;
+- payment sources and transaction assignment;
+- user rule management;
+- local search and filtering;
+- review and duplicate-review workflows;
+- analysis and insights;
+- payment settlements;
+- receipt/evidence capture and local storage;
+- statement capture and intake;
+- CSV/local import;
+- reconciliation;
+- local export;
+- backup and restore;
+- erase-all data controls;
+- localization for English, Simplified Chinese, and Spanish;
+- privacy-safe logging;
+- responsive smartphone/tablet/desktop presentation;
+- automated domain, application, database, widget, Android smoke, iOS build, and iOS integration validation.
+
+## Architecture alignment
+
+The intended dependency direction remains:
+
+```text
+Flutter presentation -> application services -> finance domain
+                                      ^
+                                      |
+                         SQLite/local adapters
+```
+
+The domain layer remains independent of Flutter and SQLite. Application services depend on domain abstractions. Persistence and local-file implementations are composed at the application boundary.
+
+## Documentation alignment rules
+
+Active documentation must describe the current implementation directly.
+
+Do not retain:
+- superseded primary-navigation alternatives;
+- stale schema versions;
+- old commit IDs as current baselines;
+- obsolete test-count snapshots;
+- old implementation priorities that have already been completed;
+- duplicate IMP identifiers;
+- “earlier text is overridden by this later section” patterns.
+
+When implementation changes are approved, update the relevant active document and remove the obsolete statement.
+
+## Current known engineering debt
+
+The following remain engineering-quality concerns rather than product-scope gaps:
+
+- keep large screens/controllers maintainable when they next change;
+- continue reducing broad service-locator/facade coupling where useful;
+- keep timestamp/clock injection deterministic in code paths that still use direct current-time access;
+- maintain production-path integration coverage for Master Data, Rules, Payment Settlements, statement confirmation, and other critical workflows;
+- continue native-platform verification for camera/OCR, file pickers, share sheets, backup/restore, and platform builds.
+
+These items do not authorize broad refactoring or UI redesign.
+
+## Acceptance
+
+Documentation is aligned when an engineer or Codex can read the active Product, UX, Engineering, and implementation guidance without encountering a second obsolete definition of current Butlerly behavior.
