@@ -28,7 +28,11 @@ Stop and request human review for a material conflict; do not silently choose a 
 
 ## Authoritative implementation sources
 
-For implementation work, read the approved documents linked by the GitHub issue. Repository copies under `docs/` are fixed implementation snapshots.
+Google Drive is the editable documentation workspace. For implementation work, the approved GitHub issue must reference immutable, versioned repository snapshots under `docs/` that were created from the current approved Drive sources for that task.
+
+Repository snapshots are the reproducible implementation and review authority for the task. They must match the approved Drive sources at snapshot time and must not silently preserve superseded behavior. When a source changes materially, create a reviewed new snapshot/version and update the issue reference rather than changing the meaning of an already-approved task input.
+
+Completed or superseded task snapshots may be removed when they are no longer needed for active implementation or audit traceability, but active `codex-ready` work must never depend only on mutable Drive content.
 
 Do not implement documents marked Draft, Proposed, Superseded, or Pending Decision. When repository documents conflict, follow the authority order above and report material conflicts.
 

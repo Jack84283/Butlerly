@@ -447,6 +447,216 @@ void main() {
     },
   );
 
+  test('master data writes survive a real application restart', () async {
+    final merchant = Merchant(
+      id: MerchantId('merchant.e2e'),
+      name: 'Integration Market',
+    );
+    final category = Category(
+      id: CategoryId('category.e2e'),
+      name: 'Integration category',
+      origin: CategoryOrigin.user,
+    );
+    final tag = Tag(id: TagId('tag.e2e'), name: 'Integration tag');
+
+    expect(
+      await harness.finance.saveMerchant(merchant),
+      isA<ApplicationSuccess<Merchant>>(),
+    );
+    expect(
+      await harness.finance.saveCategory(category),
+      isA<ApplicationSuccess<Category>>(),
+    );
+    expect(await harness.finance.saveTag(tag), isA<ApplicationSuccess<Tag>>());
+
+    await harness.restart();
+
+    final merchantsResult = await harness.finance.listMerchants();
+    final categoriesResult = await harness.finance.listCategories();
+    final tagsResult = await harness.finance.listTags();
+    final merchants =
+        (merchantsResult as ApplicationSuccess<List<Merchant>>).value;
+    final categories =
+        (categoriesResult as ApplicationSuccess<List<Category>>).value;
+    final tags = (tagsResult as ApplicationSuccess<List<Tag>>).value;
+
+    expect(merchants.any((value) => value.id == merchant.id), isTrue);
+    expect(categories.any((value) => value.id == category.id), isTrue);
+    expect(tags.any((value) => value.id == tag.id), isTrue);
+  });
+
+  test(
+    'transaction rule persists and applies through the production service graph',
+    () async {
+      final category = Category(
+        id: CategoryId('category.rule-e2e'),
+        name: 'Fuel',
+        origin: CategoryOrigin.user,
+      );
+      expect(
+        await harness.finance.saveCategory(category),
+        isA<ApplicationSuccess<Category>>(),
+      );
+
+      final now = DateTime.utc(2026, 9, 27, 12);
+      final rule = TransactionRule(
+        id: TransactionRuleId('rule.e2e'),
+        name: 'Classify integration fuel',
+        descriptionContains: 'fuel',
+        assignCategoryId: category.id,
+        createdAt: now,
+        updatedAt: now,
+      );
+      expect(
+        await harness.finance.saveTransactionRule!(rule),
+        isA<ApplicationSuccess<TransactionRule>>(),
+      );
+      expect(
+        await harness.finance.createTransaction(
+          manualCommand(
+            id: 'rule-transaction-e2e',
+            description: 'Fuel station',
+            date: '2026-09-27',
+          ),
+        ),
+        isA<ApplicationSuccess<TransactionDto>>(),
+      );
+
+      await harness.restart();
+
+      final rulesResult = await harness.finance.listTransactionRules!();
+      final rules =
+          (rulesResult as ApplicationSuccess<List<TransactionRule>>).value;
+      expect(rules.any((value) => value.id == rule.id), isTrue);
+
+      final transactionResult = await harness.finance.getTransaction(
+        'rule-transaction-e2e',
+      );
+      final transaction =
+          (transactionResult as ApplicationSuccess<TransactionDto>).value;
+      expect(transaction.categoryId, category.id.value);
+    },
+  );
+
+  test(
+    'payment settlement persists with amount date source and status',
+    () async {
+      final source = paymentSource('settlement-source-e2e', 'Settlement card');
+      expect(
+        await harness.finance.savePaymentSource(source),
+        isA<ApplicationSuccess<PaymentSource>>(),
+      );
+
+      final saved = await harness.finance.savePaymentSettlement!(
+        id: 'settlement-e2e',
+        paymentSourceId: source.id.value,
+        payment: money('125.50', 'USD'),
+        paymentDate: '2026-09-25',
+        periodStart: '2026-08-26',
+        periodEnd: '2026-09-25',
+        description: 'Monthly card payment',
+      );
+      expect(saved, isA<ApplicationSuccess<PaymentSettlementDto>>());
+
+      await harness.restart();
+
+      final settlementsResult = await harness.finance.listPaymentSettlements!();
+      final settlements =
+          (settlementsResult as ApplicationSuccess<List<PaymentSettlementDto>>)
+              .value;
+      final settlement = settlements.singleWhere(
+        (value) => value.id == 'settlement-e2e',
+      );
+      expect(settlement.payment.amount, DecimalValue.parse('125.50'));
+      expect(settlement.paymentDate, '2026-09-25');
+      expect(settlement.paymentSourceId, source.id.value);
+      expect(settlement.status, PaymentSettlementStatus.open);
+    },
+  );
+
+  test(
+    'statement batch confirmation persists statement row and canonical transaction',
+    () async {
+      final source = paymentSource('statement-source-e2e', 'Statement card');
+      expect(
+        await harness.finance.savePaymentSource(source),
+        isA<ApplicationSuccess<PaymentSource>>(),
+      );
+
+      final evidence = EvidenceItem(
+        id: EvidenceId('statement-evidence-e2e'),
+        type: EvidenceType.document,
+        originalName: 'statement.pdf',
+        mediaType: 'application/pdf',
+        provenance: Provenance(
+          id: ProvenanceId('statement-evidence-provenance-e2e'),
+          sourceType: ProvenanceSourceType.scan,
+          capturedAt: DateTime.utc(2026, 9, 27),
+          originalRepresentation: 'statement.pdf',
+        ),
+        createdAt: DateTime.utc(2026, 9, 27),
+      );
+      expect(
+        await harness.finance.storeEvidence(evidence),
+        isA<ApplicationSuccess<EvidenceItem>>(),
+      );
+
+      final statement = FinancialStatement(
+        id: 'statement-e2e',
+        evidenceId: evidence.id.value,
+        paymentSourceId: source.id.value,
+        status: StatementStatus.ready,
+        periodStart: DateTime.utc(2026, 9, 1),
+        periodEnd: DateTime.utc(2026, 9, 30),
+        createdAt: DateTime.utc(2026, 9, 27),
+        updatedAt: DateTime.utc(2026, 9, 27),
+      );
+      final row = StatementRow(
+        id: 'row-e2e',
+        statementId: statement.id,
+        position: 0,
+        originalText: '2026-09-20 INTEGRATION MARKET 42.10',
+        transactionDate: DateTime.utc(2026, 9, 20),
+        description: 'Integration Market',
+        amount: '42.10',
+        currency: 'USD',
+        direction: TransactionDirection.expense.name,
+        confidence: .99,
+        status: StatementRowStatus.pending,
+        createdAt: DateTime.utc(2026, 9, 27),
+        updatedAt: DateTime.utc(2026, 9, 27),
+      );
+
+      expect(
+        await harness.finance.statementServices!.create(statement, [row]),
+        isA<ApplicationSuccess<void>>(),
+      );
+      expect(
+        await harness.finance.statementServices!.importBatch(statement, [
+          row,
+        ], source.id.value),
+        isA<ApplicationSuccess<StatementImportSummary>>(),
+      );
+
+      await harness.restart();
+
+      final transactionsResult = await harness.finance.listTransactions(
+        const ListTransactionsQuery(text: 'Integration Market'),
+      );
+      final transactions =
+          (transactionsResult as ApplicationSuccess<List<TransactionDto>>)
+              .value;
+      expect(transactions, hasLength(1));
+
+      final rowsResult = await harness.finance.statementServices!.rows(
+        statement.id,
+      );
+      final rows = (rowsResult as ApplicationSuccess<List<StatementRow>>).value;
+      expect(rows.single.status, StatementRowStatus.saved);
+      expect(rows.single.transactionId, isNotNull);
+    },
+  );
+
   test(
     'unsupported native OCR is an explicit recoverable platform failure',
     () async {

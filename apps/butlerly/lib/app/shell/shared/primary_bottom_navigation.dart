@@ -92,21 +92,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
       ),
       child: baseIcon,
     );
-    final displayedIcon = branchIndex == 2
-        ? Container(
-            width: ButlerlySize.primaryNavigationAddGlyphSize,
-            height: ButlerlySize.primaryNavigationAddGlyphSize,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: selected
-                    ? context.colors.interactive
-                    : context.colors.secondaryText,
-              ),
-            ),
-            child: Center(child: icon),
-          )
-        : icon;
+    final displayedIcon = icon;
     return Semantics(
       button: true,
       selected: selected,
@@ -118,38 +104,31 @@ class PrimaryBottomNavigation extends StatelessWidget {
         onTap: () => onSelected(branchIndex),
         child: SizedBox(
           height: double.infinity,
-          child: branchIndex == 2
-              ? Center(
-                  child: SizedBox(
-                    key: const ValueKey('primary-navigation-add-button'),
-                    child: displayedIcon,
-                  ),
-                )
-              : Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      height:
-                          ButlerlySize.primaryNavigationAddIconSize -
-                          ButlerlySize.navigationLabelGap,
-                      child: Align(
-                        alignment: Alignment.center,
-                        child: displayedIcon,
-                      ),
-                    ),
-                    const SizedBox(height: ButlerlySize.navigationLabelGap),
-                    SizedBox(
-                      width: double.infinity,
-                      height: labelSlotHeight,
-                      child: Text(
-                        destination.label,
-                        textAlign: TextAlign.center,
-                        softWrap: true,
-                        style: labelStyle,
-                      ),
-                    ),
-                  ],
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                key: branchIndex == 2
+                    ? const ValueKey('primary-navigation-add-button')
+                    : null,
+                height:
+                    ButlerlySize.primaryNavigationAddIconSize -
+                    ButlerlySize.navigationLabelGap,
+                child: Align(alignment: Alignment.center, child: displayedIcon),
+              ),
+              const SizedBox(height: ButlerlySize.navigationLabelGap),
+              SizedBox(
+                width: double.infinity,
+                height: labelSlotHeight,
+                child: Text(
+                  destination.label,
+                  textAlign: TextAlign.center,
+                  softWrap: true,
+                  style: labelStyle,
                 ),
+              ),
+            ],
+          ),
         ),
       ),
     );

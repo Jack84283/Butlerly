@@ -1,15 +1,15 @@
 # Implementation documentation
 
-Google Drive is the editable source for current Butlerly Product, Architecture, UX, Engineering, and implementation guidance.
+Google Drive is Butlerly's editable documentation workspace. GitHub stores immutable, versioned implementation snapshots when a Codex task needs reproducible approved inputs.
 
-This repository directory is intentionally kept free of stale fixed implementation snapshots. Historical task-input copies that no longer describe the current implementation should be deleted rather than retained as competing instructions.
+## Authority model
 
-## Current rule
-
-- Inspect the current `main` branch before implementation.
-- Use the active Google Drive documents for current requirements.
-- Do not use historical repository snapshots to reconstruct superseded behavior.
+- Current approved Drive documents are the editable source used to prepare or update requirements.
+- A `codex-ready` implementation issue must reference the required versioned repository snapshot(s) under `docs/`.
+- Repository snapshots must match the approved Drive source at snapshot time and must not contain superseded behavior.
+- Do not silently edit an approved snapshot so that an in-flight task changes meaning. Create a reviewed new version and update the issue instead.
+- Completed or superseded snapshots may be deleted when they are no longer needed by an active task or audit trail.
+- Do not use an old repository snapshot to reconstruct behavior that the current approved product has superseded.
 - IMP identifiers must be unique across active documentation.
-- When an approved implementation changes, update the active source document and remove obsolete guidance.
 
-Repository-local implementation documents should exist here only when they are intentionally current, reviewed, and necessary as a fixed task input.
+Before implementation, always inspect the current `main` branch as well as the issue-linked snapshots. Existing correct behavior must not be reimplemented merely because an old document once described it as pending.
