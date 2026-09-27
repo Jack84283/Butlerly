@@ -7,7 +7,9 @@ import 'package:butlerly/app/shell/medium/medium_primary_shell.dart';
 import 'package:butlerly/app/shell/wide/wide_primary_shell.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
 import 'package:butlerly/features/foundation/presentation/legal_licenses_page.dart';
+import 'package:butlerly/features/tools/presentation/tools_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -209,7 +211,75 @@ void main() {
 
     await tester.tap(find.text('Analysis'));
     await tester.pumpAndSettle();
-    expect(appRouter.routeInformationProvider.value.uri.path, '/analysis');
+    expect(find.byType(AnalysisPage), findsOneWidget);
+    expect(find.byType(WidePrimaryShell), findsNothing);
+  });
+
+  testWidgets('Wide child navigation pushes and restores the previous shell', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(1200, 800));
+
+    final navigation = find.byKey(const ValueKey('primary-wide-navigation'));
+    await tester.tap(
+      find.descendant(of: navigation, matching: find.text('Tools')),
+    );
+    await tester.pumpAndSettle();
+    expect(appRouter.routeInformationProvider.value.uri.path, '/tools');
+
+    await tester.tap(
+      find.descendant(of: navigation, matching: find.text('Analysis')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AnalysisPage), findsOneWidget);
+    expect(find.byType(WidePrimaryShell), findsNothing);
+    expect(find.byKey(const ValueKey('primary-wide-navigation')), findsNothing);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    expect(appRouter.routeInformationProvider.value.uri.path, '/tools');
+    expect(find.byType(WidePrimaryShell), findsOneWidget);
+    expect(find.byType(ToolsPage), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('primary-wide-navigation')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('collapsed Wide group popups anchor to their own rail items', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(1200, 800));
+
+    await tester.tap(find.byIcon(Icons.keyboard_double_arrow_left_rounded));
+    await tester.pumpAndSettle();
+
+    Future<double> popupTopFor(Key itemKey, String parentLabel) async {
+      await tester.tap(find.byKey(itemKey));
+      await tester.pumpAndSettle();
+      final popupLabel = find.text(parentLabel).last;
+      final top = tester.getRect(popupLabel).top;
+      await tester.tap(popupLabel);
+      await tester.pumpAndSettle();
+      return top;
+    }
+
+    final addTop = await popupTopFor(
+      const ValueKey('wide-collapsed-add'),
+      'Add',
+    );
+    final toolsTop = await popupTopFor(
+      const ValueKey('wide-collapsed-tools'),
+      'Tools',
+    );
+    final moreTop = await popupTopFor(
+      const ValueKey('wide-collapsed-more'),
+      'More',
+    );
+
+    expect({addTop, toolsTop, moreTop}, hasLength(3));
   });
 
   testWidgets(

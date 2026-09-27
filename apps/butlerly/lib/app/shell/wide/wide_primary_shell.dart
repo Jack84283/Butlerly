@@ -33,7 +33,7 @@ class _WidePrimaryShellState extends State<WidePrimaryShell> {
 
   Future<void> _navigate(String route) async {
     if (!mounted) return;
-    context.go(route);
+    await context.push(route);
   }
 
   Future<void> _import() => startLocalFileImport(context);
@@ -232,14 +232,14 @@ class _WidePrimaryNavigation extends StatelessWidget {
         icon: Icons.format_list_bulleted_rounded,
         label: context.l10n.text('transactions'),
         selected: _selected(1),
-        onTap: () => onParentSelected(1),
+        onTap: (_) => onParentSelected(1),
       ),
       _WideCollapsedItem(
         key: const ValueKey('wide-collapsed-add'),
         icon: Icons.add_rounded,
         label: context.l10n.text('add'),
         selected: _selected(2),
-        onTap: () => _openMenu(context, context.l10n.text('add'), [
+        onTap: (itemContext) => _openMenu(itemContext, [
           _WidePopupAction.parent(context.l10n.text('add'), 2),
           _WidePopupAction.route(
             context.l10n.text('addTransactionManually'),
@@ -268,7 +268,7 @@ class _WidePrimaryNavigation extends StatelessWidget {
         icon: Icons.bar_chart_rounded,
         label: context.l10n.text('tools'),
         selected: _selected(3),
-        onTap: () => _openMenu(context, context.l10n.text('tools'), [
+        onTap: (itemContext) => _openMenu(itemContext, [
           _WidePopupAction.parent(context.l10n.text('tools'), 3),
           for (final tool in toolNavigationItems(context))
             _WidePopupAction.route(tool.title, tool.route),
@@ -279,7 +279,7 @@ class _WidePrimaryNavigation extends StatelessWidget {
         icon: Icons.more_horiz_rounded,
         label: context.l10n.text('more'),
         selected: _selected(4),
-        onTap: () => _openMenu(context, context.l10n.text('more'), [
+        onTap: (itemContext) => _openMenu(itemContext, [
           _WidePopupAction.parent(context.l10n.text('more'), 4),
           _WidePopupAction.route(
             context.l10n.text('privacyAndData'),
@@ -292,19 +292,28 @@ class _WidePrimaryNavigation extends StatelessWidget {
   );
 
   Future<void> _openMenu(
-    BuildContext context,
-    String label,
+    BuildContext itemContext,
     List<_WidePopupAction> actions,
   ) async {
-    final box = context.findRenderObject() as RenderBox;
-    final position = box.localToGlobal(Offset.zero);
+    final itemBox = itemContext.findRenderObject()! as RenderBox;
+    final overlay = Navigator.of(itemContext).overlay!;
+    final overlayBox = overlay.context.findRenderObject()! as RenderBox;
+    final itemTopLeft = itemBox.localToGlobal(
+      Offset.zero,
+      ancestor: overlayBox,
+    );
+    final itemBottomRight = itemBox.localToGlobal(
+      itemBox.size.bottomRight(Offset.zero),
+      ancestor: overlayBox,
+    );
+    final itemRect = Rect.fromPoints(itemTopLeft, itemBottomRight);
     final selected = await openButlerlyAnchoredMenu<_WidePopupAction>(
-      context: context,
+      context: itemContext,
       position: RelativeRect.fromLTRB(
-        position.dx + box.size.width,
-        position.dy + ButlerlySize.wideNavigationBrandSize,
-        position.dx,
-        position.dy,
+        itemRect.right,
+        itemRect.top,
+        overlayBox.size.width - itemRect.left,
+        overlayBox.size.height - itemRect.bottom,
       ),
       entries: [
         for (final action in actions)
@@ -313,7 +322,7 @@ class _WidePrimaryNavigation extends StatelessWidget {
               : ButlerlyMenuEntry(value: action, label: action.label),
       ],
     );
-    if (!context.mounted || selected == null) return;
+    if (!itemContext.mounted || selected == null) return;
     switch (selected.kind) {
       case _WidePopupActionKind.parent:
         onParentSelected(selected.branchIndex!);
@@ -535,16 +544,22 @@ class _WideCollapsedItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool selected;
-  final VoidCallback onTap;
+  final ValueChanged<BuildContext> onTap;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    button: true,
-    selected: selected,
-    label: label,
-    child: _WideNavigationSurface(
+  Widget build(BuildContext context) => Builder(
+    builder: (itemContext) => Semantics(
+      button: true,
       selected: selected,
-      child: IconButton(tooltip: label, onPressed: onTap, icon: Icon(icon)),
+      label: label,
+      child: _WideNavigationSurface(
+        selected: selected,
+        child: IconButton(
+          tooltip: label,
+          onPressed: () => onTap(itemContext),
+          icon: Icon(icon),
+        ),
+      ),
     ),
   );
 }
