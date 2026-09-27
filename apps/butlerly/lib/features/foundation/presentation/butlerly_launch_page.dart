@@ -180,7 +180,14 @@ class _ButlerlyLaunchPageState extends State<ButlerlyLaunchPage>
     _timer = null;
     _startedAt = null;
     _remaining = Duration.zero;
-    if (mounted) context.go('/');
+    if (mounted) {
+      final destination =
+          ButlerlyLayout.mode(MediaQuery.sizeOf(context)) ==
+              ButlerlyLayoutMode.wide
+          ? '/transactions'
+          : '/';
+      context.go(destination);
+    }
   }
 
   @override

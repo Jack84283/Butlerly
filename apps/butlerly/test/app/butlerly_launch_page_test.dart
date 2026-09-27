@@ -1,3 +1,4 @@
+import 'package:butlerly/app/session/butlerly_session_guard.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/features/foundation/presentation/butlerly_launch_page.dart';
 import 'package:flutter/material.dart';
@@ -5,6 +6,44 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 void main() {
+  testWidgets('wide launch opens Transactions instead of Home', (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    var elapsed = Duration.zero;
+    final router = GoRouter(
+      initialLocation: '/launch',
+      routes: [
+        GoRoute(
+          path: '/launch',
+          builder: (_, _) => ButlerlyLaunchPage(elapsedNow: () => elapsed),
+        ),
+        GoRoute(
+          path: '/transactions',
+          builder: (_, _) => const Scaffold(body: Text('Transactions')),
+        ),
+        GoRoute(
+          path: '/',
+          builder: (_, _) => const Scaffold(body: Text('Home')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+    );
+    await tester.pump();
+    elapsed = ButlerlySessionConfig.launchDuration;
+    await tester.pump(ButlerlySessionConfig.launchDuration);
+    await tester.pump();
+
+    expect(router.routeInformationProvider.value.uri.path, '/transactions');
+    expect(find.text('Transactions'), findsOneWidget);
+  });
+
   testWidgets('launch countdown pauses while Butlerly is backgrounded', (
     tester,
   ) async {

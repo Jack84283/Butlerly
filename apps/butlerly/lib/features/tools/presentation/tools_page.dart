@@ -2,6 +2,7 @@ import 'package:butlerly/design_system/components/butlerly_action_group.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/tools/presentation/tools_navigation.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -9,44 +10,8 @@ import 'package:go_router/go_router.dart';
 class ToolsPage extends StatelessWidget {
   const ToolsPage({super.key});
 
-  List<_ToolDefinition> _tools(BuildContext context) => [
-    _ToolDefinition(
-      Icons.fact_check_rounded,
-      context.l10n.text('review'),
-      context.l10n.text('toolsReviewDescription'),
-      '/review',
-    ),
-    _ToolDefinition(
-      Icons.analytics_outlined,
-      context.l10n.text('analysis'),
-      context.l10n.text('toolsAnalysisDescription'),
-      '/analysis',
-    ),
-    _ToolDefinition(
-      Icons.lightbulb_outline_rounded,
-      context.l10n.text('insights'),
-      context.l10n.text('toolsInsightsDescription'),
-      '/insights',
-    ),
-    _ToolDefinition(
-      Icons.credit_score_outlined,
-      context.l10n.text('paymentSettlements'),
-      context.l10n.text('toolsPaymentSettlementsDescription'),
-      '/payment-settlements',
-    ),
-    _ToolDefinition(
-      Icons.account_tree_outlined,
-      context.l10n.text('masterData'),
-      context.l10n.text('masterDataSubtitle'),
-      '/master-data',
-    ),
-    _ToolDefinition(
-      Icons.rule_outlined,
-      context.l10n.text('ruleManagement'),
-      context.l10n.text('ruleManagementSubtitle'),
-      '/rules',
-    ),
-  ];
+  List<ToolNavigationItem> _tools(BuildContext context) =>
+      toolNavigationItems(context);
 
   @override
   Widget build(BuildContext context) => ButlerlyPage(
@@ -89,17 +54,9 @@ class ToolsPage extends StatelessWidget {
   );
 }
 
-class _ToolDefinition {
-  const _ToolDefinition(this.icon, this.title, this.description, this.route);
-  final IconData icon;
-  final String title;
-  final String description;
-  final String route;
-}
-
 class _ToolPanel extends StatelessWidget {
   const _ToolPanel({required this.tool});
-  final _ToolDefinition tool;
+  final ToolNavigationItem tool;
 
   @override
   Widget build(BuildContext context) => ButlerlyCard(

@@ -196,6 +196,10 @@ abstract final class ButlerlySize {
   static const navigationBarHeight = 48.0;
   static const primaryNavigationAddIconSize = 32.0;
   static const primaryNavigationAddGlyphSize = 28.0;
+  static const wideNavigationExpandedWidth = 248.0;
+  static const wideNavigationCollapsedWidth = 72.0;
+  static const wideNavigationItemHeight = minimumTarget;
+  static const wideNavigationBrandSize = 32.0;
   static const searchPinnedHeaderHeight = minimumTarget;
   static const analysisPeriodSelectorHeight =
       preferredTarget + ButlerlySpacing.section;

@@ -86,6 +86,39 @@ Future<T?> showButlerlyBottomSheet<T>({
   ),
 );
 
+class ButlerlyMenuEntry<T> {
+  const ButlerlyMenuEntry({
+    required this.label,
+    this.value,
+    this.isDivider = false,
+  });
+
+  const ButlerlyMenuEntry.divider()
+    : label = '',
+      value = null,
+      isDivider = true;
+
+  final String label;
+  final T? value;
+  final bool isDivider;
+}
+
+Future<T?> openButlerlyAnchoredMenu<T>({
+  required BuildContext context,
+  required RelativeRect position,
+  required List<ButlerlyMenuEntry<T>> entries,
+}) => showMenu<T>(
+  context: context,
+  position: position,
+  items: [
+    for (final entry in entries)
+      if (entry.isDivider)
+        const PopupMenuDivider()
+      else
+        PopupMenuItem<T>(value: entry.value, child: Text(entry.label)),
+  ],
+);
+
 Future<DateTime?> showButlerlyDatePicker({
   required BuildContext context,
   required String title,
