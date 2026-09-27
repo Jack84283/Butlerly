@@ -86,7 +86,7 @@ class _RestoreRecoveryRequiredPageState
               constraints: const BoxConstraints(maxWidth: 520),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: ButlerlySize.phoneGutter,
+                  horizontal: ButlerlySize.contentGutter,
                   vertical: ButlerlySpacing.section,
                 ),
                 child: Column(

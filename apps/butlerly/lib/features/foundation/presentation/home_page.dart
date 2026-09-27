@@ -361,13 +361,6 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final future = _data;
-    final view = View.of(context);
-    final display = view.display;
-    final deviceDisplaySize = display.size / display.devicePixelRatio;
-    final deviceClass = ButlerlyLayout.deviceClass(
-      MediaQuery.sizeOf(context),
-      deviceDisplaySize: deviceDisplaySize,
-    );
     final useCupertinoRefresh =
         !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
@@ -397,7 +390,6 @@ class _HomePageState extends State<HomePage> {
                     final loading =
                         snapshot.connectionState != ConnectionState.done;
                     return _HomeHeader(
-                      deviceClass: deviceClass,
                       month: data.displayMonth,
                       greetingKey: homeGreetingKey(_now),
                       onMonthTap: loading ? null : () => _selectMonth(data),
@@ -413,7 +405,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ButlerlySliverContentSurface(
               surfaceKey: const ValueKey('home-page-content-surface'),
-              surfaceHorizontalPadding: ButlerlySize.phoneGutter * 2,
+              surfaceHorizontalPadding: ButlerlySize.contentGutter * 2,
               sliver: SliverLayoutBuilder(
                 builder: (context, constraints) => SliverToBoxAdapter(
                   child: ConstrainedBox(
@@ -423,9 +415,9 @@ class _HomePageState extends State<HomePage> {
                     child: Padding(
                       key: const ValueKey('home-page-content-padding'),
                       padding: const EdgeInsets.fromLTRB(
-                        ButlerlySize.phoneGutter,
+                        ButlerlySize.contentGutter,
                         ButlerlySpacing.small,
-                        ButlerlySize.phoneGutter,
+                        ButlerlySize.contentGutter,
                         ButlerlySpacing.large,
                       ),
                       child: SizedBox(
@@ -483,7 +475,7 @@ double _homeHeaderExtent(
   final scaler = MediaQuery.textScalerOf(context);
   final locale = Localizations.localeOf(context);
   final localeTag = locale.toLanguageTag();
-  final availableWidth = (crossAxisExtent - ButlerlySize.phoneGutter * 2)
+  final availableWidth = (crossAxisExtent - ButlerlySize.contentGutter * 2)
       .clamp(1.0, double.infinity)
       .toDouble();
   final scaledBody = scaler.scale(14);
@@ -612,9 +604,9 @@ class _HomePinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
     child: Center(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
-          ButlerlySize.phoneGutter,
+          ButlerlySize.contentGutter,
           ButlerlySpacing.small,
-          ButlerlySize.phoneGutter,
+          ButlerlySize.contentGutter,
           0,
         ),
         child: SizedBox(
@@ -633,13 +625,11 @@ class _HomePinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
 
 class _HomeHeader extends StatelessWidget {
   const _HomeHeader({
-    required this.deviceClass,
     required this.month,
     required this.greetingKey,
     required this.onMonthTap,
   });
 
-  final ButlerlyDeviceClass deviceClass;
   final DateTime month;
   final String greetingKey;
   final VoidCallback? onMonthTap;
@@ -653,8 +643,8 @@ class _HomeHeader extends StatelessWidget {
         final scaledBody = MediaQuery.textScalerOf(context).scale(14);
         final stacked = scaledBody > 18 || constraints.maxWidth < 300;
         final alignContextToEdge =
-            deviceClass == ButlerlyDeviceClass.tablet ||
-            constraints.maxWidth >= ButlerlySize.tabletBreakpoint;
+            ButlerlyLayout.modeForWidth(constraints.maxWidth) !=
+            ButlerlyLayoutMode.compact;
         final brand = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,

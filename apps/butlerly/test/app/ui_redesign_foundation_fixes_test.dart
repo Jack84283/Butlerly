@@ -64,7 +64,7 @@ void main() {
     );
   });
 
-  test('phone navigation stays at 48px at normal text scale', () {
+  test('compact navigation stays at 48px at normal text scale', () {
     final labelStyle = ButlerlyTypography.navigationLabel(
       AppTheme.light.textTheme.labelSmall!,
       color: Colors.black,
@@ -72,7 +72,7 @@ void main() {
     );
     const itemWidth = 78.0;
     const labels = ['Home', 'Transactions', 'Tools', 'More', 'Add'];
-    final height = phoneNavigationHeightForLabels(
+    final height = compactNavigationHeightForLabels(
       textScaler: TextScaler.noScaling,
       itemWidth: itemWidth,
       standardLabels: labels.take(4),
@@ -85,7 +85,7 @@ void main() {
     expect(height, ButlerlySize.navigationBarHeight);
   });
 
-  test('phone navigation uses one label slot across destinations', () {
+  test('compact navigation uses one label slot across destinations', () {
     const scaler = TextScaler.linear(3);
     const itemWidth = 78.0;
     const standardLabels = ['Home', 'Transacciones', 'Herramientas', 'Más'];
@@ -96,7 +96,7 @@ void main() {
       selected: true,
     );
 
-    final height = phoneNavigationHeightForLabels(
+    final height = compactNavigationHeightForLabels(
       textScaler: scaler,
       itemWidth: itemWidth,
       standardLabels: standardLabels,
@@ -123,14 +123,14 @@ void main() {
     expect(height, expectedHeight);
   });
 
-  test('phone navigation uses actual localized nonlinear label geometry', () {
+  test('compact navigation uses actual localized nonlinear label geometry', () {
     const scaler = _NavigationNonlinearTextScaler();
     final labelStyle = ButlerlyTypography.navigationLabel(
       AppTheme.light.textTheme.labelSmall!,
       color: Colors.black,
       selected: true,
     );
-    final height = phoneNavigationHeightForLabels(
+    final height = compactNavigationHeightForLabels(
       textScaler: scaler,
       itemWidth: 78,
       standardLabels: const ['Home', 'Transacciones', 'Herramientas', 'Más'],
@@ -201,7 +201,7 @@ void main() {
 
   for (final textScale in const [1.0, 1.3, 1.5, 2.0, 3.0]) {
     testWidgets(
-      'phone navigation has no overflow at ${textScale}x text scale',
+      'compact navigation has no overflow at ${textScale}x text scale',
       (tester) async {
         _setPhoneViewport(tester);
         tester.view.platformDispatcher.textScaleFactorTestValue = textScale;
@@ -222,7 +222,7 @@ void main() {
     );
   }
 
-  testWidgets('Spanish phone navigation remains readable at 3x text scale', (
+  testWidgets('Spanish compact navigation remains readable at 3x text scale', (
     tester,
   ) async {
     _setPhoneViewport(tester);
@@ -246,7 +246,7 @@ void main() {
     );
   });
 
-  testWidgets('Chinese phone navigation remains readable at 3x text scale', (
+  testWidgets('Chinese compact navigation remains readable at 3x text scale', (
     tester,
   ) async {
     _setPhoneViewport(tester);

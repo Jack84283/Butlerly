@@ -1,4 +1,4 @@
-import 'package:butlerly/app/shell/iphone/iphone_primary_shell.dart';
+import 'package:butlerly/app/shell/compact/compact_primary_shell.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -27,7 +27,7 @@ void main() {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        home: IPhonePrimaryShell(
+        home: CompactPrimaryShell(
           body: Align(
             alignment: Alignment.bottomCenter,
             child: TextButton(
@@ -72,10 +72,10 @@ void main() {
     await tester.pumpAndSettle();
 
     final bodyRect = tester.getRect(
-      find.byKey(const ValueKey('primary-phone-body-surface')),
+      find.byKey(const ValueKey('primary-compact-body-surface')),
     );
     final navigationRect = tester.getRect(
-      find.byKey(const ValueKey('primary-phone-navigation')),
+      find.byKey(const ValueKey('primary-compact-navigation')),
     );
     final baseRect = tester.getRect(
       find.byKey(const ValueKey('primary-navigation-base')),

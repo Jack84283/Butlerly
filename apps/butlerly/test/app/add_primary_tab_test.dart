@@ -17,7 +17,9 @@ void main() {
       await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
       await tester.pumpAndSettle();
 
-      final navigation = find.byKey(const ValueKey('primary-phone-navigation'));
+      final navigation = find.byKey(
+        const ValueKey('primary-compact-navigation'),
+      );
       final content = find.descendant(
         of: navigation,
         matching: find.byKey(const ValueKey('primary-navigation-content')),
@@ -92,7 +94,7 @@ void main() {
 
     await tester.tap(find.bySemanticsLabel('Tools'));
     await tester.pumpAndSettle();
-    final navigation = find.byKey(const ValueKey('primary-phone-navigation'));
+    final navigation = find.byKey(const ValueKey('primary-compact-navigation'));
     expect(
       find.text('Useful ways to explore and understand your records.'),
       findsOneWidget,
@@ -113,7 +115,7 @@ void main() {
     await tester.tap(find.bySemanticsLabel('More'));
     await tester.pumpAndSettle();
     final moreNavigation = find.byKey(
-      const ValueKey('primary-phone-navigation'),
+      const ValueKey('primary-compact-navigation'),
     );
     expect(find.text('More'), findsAtLeastNWidgets(1));
     expect(find.text('Master data'), findsNothing);
@@ -183,7 +185,7 @@ void main() {
       appRouter.go(route);
       await tester.pumpAndSettle();
       expect(
-        find.byKey(const ValueKey('primary-phone-navigation')),
+        find.byKey(const ValueKey('primary-compact-navigation')),
         findsNothing,
         reason: '$route is a secondary workflow.',
       );

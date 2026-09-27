@@ -369,7 +369,7 @@ void main() {
 
     expect(find.byType(NavigationRail), findsNothing);
     expect(
-      find.byKey(const ValueKey('primary-ipad-navigation')),
+      find.byKey(const ValueKey('primary-medium-navigation')),
       findsOneWidget,
     );
   });

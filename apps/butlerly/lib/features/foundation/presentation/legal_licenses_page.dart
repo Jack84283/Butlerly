@@ -80,7 +80,7 @@ class LegalDocumentPage extends StatelessWidget {
             }
             return SingleChildScrollView(
               padding: const EdgeInsets.symmetric(
-                horizontal: ButlerlySize.phoneGutter,
+                horizontal: ButlerlySize.contentGutter,
                 vertical: ButlerlySpacing.section,
               ),
               child: SelectableText(snapshot.requireData),

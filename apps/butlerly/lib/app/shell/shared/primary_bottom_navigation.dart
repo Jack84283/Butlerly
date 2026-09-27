@@ -4,7 +4,7 @@ import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
-double phoneNavigationHeightForLabels({
+double compactNavigationHeightForLabels({
   required TextScaler textScaler,
   required double itemWidth,
   required Iterable<String> standardLabels,
@@ -140,7 +140,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
       color: context.colors.secondaryText,
       selected: true,
     );
-    return phoneNavigationHeightForLabels(
+    return compactNavigationHeightForLabels(
       textScaler: MediaQuery.textScalerOf(context),
       itemWidth: availableWidth / visualBranchIndexes.length,
       standardLabels: [

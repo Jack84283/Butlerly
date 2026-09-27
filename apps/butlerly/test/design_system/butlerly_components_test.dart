@@ -101,7 +101,7 @@ void main() {
 
       expect(
         await contentWidth(const Size(390, 844)),
-        390 - (2 * ButlerlySize.phoneGutter),
+        390 - (2 * ButlerlySize.contentGutter),
       );
       expect(
         await contentWidth(const Size(1200, 900)),

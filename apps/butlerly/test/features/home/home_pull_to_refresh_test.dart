@@ -113,9 +113,9 @@ void main() {
       expect(
         bodyPadding.padding,
         const EdgeInsets.fromLTRB(
-          ButlerlySize.phoneGutter,
+          ButlerlySize.contentGutter,
           ButlerlySpacing.small,
-          ButlerlySize.phoneGutter,
+          ButlerlySize.contentGutter,
           ButlerlySpacing.large,
         ),
       );

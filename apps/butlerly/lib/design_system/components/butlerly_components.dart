@@ -75,9 +75,9 @@ class ButlerlyPage extends StatelessWidget {
     final contentPadding =
         padding ??
         EdgeInsets.fromLTRB(
-          ButlerlySize.phoneGutter,
+          ButlerlySize.contentGutter,
           pinnedSpacing.bodyTopGap ?? ButlerlySpacing.standard,
-          ButlerlySize.phoneGutter,
+          ButlerlySize.contentGutter,
           ButlerlySpacing.large,
         );
     final useCupertinoRefresh =
@@ -217,7 +217,7 @@ class _ButlerlyPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
       child: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(
-            horizontal: ButlerlySize.phoneGutter,
+            horizontal: ButlerlySize.contentGutter,
           ),
           child: ConstrainedBox(
             constraints: BoxConstraints(
