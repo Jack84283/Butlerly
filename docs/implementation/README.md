@@ -1,15 +1,15 @@
-# Implementation specification snapshots
+# Implementation documentation
 
-Place approved, versioned implementation specification snapshots in this directory.
+Google Drive is the editable source for current Butlerly Product, Architecture, UX, Engineering, and implementation guidance.
 
-Google Drive remains the editable documentation workspace. These repository copies are fixed task inputs and must be updated through a reviewed version change.
+This repository directory is intentionally kept free of stale fixed implementation snapshots. Historical task-input copies that no longer describe the current implementation should be deleted rather than retained as competing instructions.
 
-## Analysis
+## Current rule
 
-- [IMP-0007 — Rule-Based Analysis Engine & Insights v1.0](IMP-0007-Rule-Based-Analysis-Engine-and-Insights-v1.0.md)
-- [Analysis implementation source manifest v1.0](ANALYSIS-IMPLEMENTATION-SOURCE-MANIFEST-v1.0.md)
+- Inspect the current `main` branch before implementation.
+- Use the active Google Drive documents for current requirements.
+- Do not use historical repository snapshots to reconstruct superseded behavior.
+- IMP identifiers must be unique across active documentation.
+- When an approved implementation changes, update the active source document and remove obsolete guidance.
 
-The Analysis manifest records the current approval gate. Do not mark an Analysis implementation issue `codex-ready` while required governing Analysis documents remain Draft.
-
-See the [workflow smoke test](../automation/WORKFLOW-SMOKE-TEST.md) for the
-documentation-only automation verification.
+Repository-local implementation documents should exist here only when they are intentionally current, reviewed, and necessary as a fixed task input.
