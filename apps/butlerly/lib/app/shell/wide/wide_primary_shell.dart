@@ -312,7 +312,7 @@ class _WidePrimaryNavigation extends StatelessWidget {
       position: RelativeRect.fromLTRB(
         itemRect.right,
         itemRect.top,
-        overlayBox.size.width - itemRect.left,
+        overlayBox.size.width - itemRect.right,
         overlayBox.size.height - itemRect.bottom,
       ),
       entries: [

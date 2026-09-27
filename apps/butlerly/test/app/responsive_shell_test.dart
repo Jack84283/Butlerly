@@ -256,30 +256,42 @@ void main() {
     await tester.tap(find.byIcon(Icons.keyboard_double_arrow_left_rounded));
     await tester.pumpAndSettle();
 
-    Future<double> popupTopFor(Key itemKey, String parentLabel) async {
+    Future<({double itemRight, double popupLeft, double popupTop})>
+    popupPositionFor(Key itemKey, String parentLabel) async {
+      final itemRect = tester.getRect(find.byKey(itemKey));
       await tester.tap(find.byKey(itemKey));
       await tester.pumpAndSettle();
       final popupLabel = find.text(parentLabel).last;
-      final top = tester.getRect(popupLabel).top;
+      final popupRect = tester.getRect(
+        find.ancestor(of: popupLabel, matching: find.byType(Material)).last,
+      );
       await tester.tap(popupLabel);
       await tester.pumpAndSettle();
-      return top;
+      return (
+        itemRight: itemRect.right,
+        popupLeft: popupRect.left,
+        popupTop: popupRect.top,
+      );
     }
 
-    final addTop = await popupTopFor(
+    final add = await popupPositionFor(
       const ValueKey('wide-collapsed-add'),
       'Add',
     );
-    final toolsTop = await popupTopFor(
+    final tools = await popupPositionFor(
       const ValueKey('wide-collapsed-tools'),
       'Tools',
     );
-    final moreTop = await popupTopFor(
+    final more = await popupPositionFor(
       const ValueKey('wide-collapsed-more'),
       'More',
     );
 
-    expect({addTop, toolsTop, moreTop}, hasLength(3));
+    const tolerance = 8.0;
+    expect(add.popupLeft, closeTo(add.itemRight, tolerance));
+    expect(tools.popupLeft, closeTo(tools.itemRight, tolerance));
+    expect(more.popupLeft, closeTo(more.itemRight, tolerance));
+    expect({add.popupTop, tools.popupTop, more.popupTop}, hasLength(3));
   });
 
   testWidgets(
