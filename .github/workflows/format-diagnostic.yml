@@ -11,10 +11,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-toolchain
-      - name: Show formatter diff
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.1'
+          channel: stable
+          cache: true
+      - name: Show formatter output
         run: |
           cd apps/butlerly
           dart format integration_test/v1_journeys_test.dart lib/app/shell/shared/primary_bottom_navigation.dart
-          git diff -- integration_test/v1_journeys_test.dart lib/app/shell/shared/primary_bottom_navigation.dart
+          echo '--- primary_bottom_navigation.dart ---'
+          cat lib/app/shell/shared/primary_bottom_navigation.dart
+          echo '--- integration additions ---'
+          sed -n '445,690p' integration_test/v1_journeys_test.dart
           exit 1
