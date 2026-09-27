@@ -43,7 +43,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-toolchain
       - run: ./tool/setup.sh
-      - run: ./tool/validate.sh flutter_application
+      - name: Validate Flutter application
+        run: |
+          if ! ./tool/validate.sh flutter_application; then
+            git diff -- apps/butlerly/integration_test/v1_journeys_test.dart apps/butlerly/lib/app/shell/shared/primary_bottom_navigation.dart apps/butlerly/test/app/primary_bottom_navigation_clearance_test.dart
+            exit 1
+          fi
 
   # macOS checks remain post-merge main checks for now to conserve limited
   # GitHub-hosted macOS capacity and avoid PRs waiting on scarce runners.
