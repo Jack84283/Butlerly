@@ -82,7 +82,7 @@ The repository currently contains production paths for:
 - localization for English, Simplified Chinese, and Spanish;
 - privacy-safe logging;
 - responsive smartphone/tablet/desktop presentation;
-- automated domain, application, database, widget, Android smoke, iOS build, and iOS integration validation.
+- automated domain, application, database, widget, Android smoke, iOS build, and iOS integration validation, including production-path persistence coverage for Master Data, Rules, Payment Settlements, and statement confirmation.
 
 ## Architecture alignment
 
@@ -119,7 +119,7 @@ The following remain engineering-quality concerns rather than product-scope gaps
 - keep large screens/controllers maintainable when they next change;
 - continue reducing broad service-locator/facade coupling where useful;
 - keep timestamp/clock injection deterministic in code paths that still use direct current-time access;
-- maintain production-path integration coverage for Master Data, Rules, Payment Settlements, statement confirmation, and other critical workflows;
+- maintain and extend production-path integration coverage as critical workflows evolve;
 - continue native-platform verification for camera/OCR, file pickers, share sheets, backup/restore, and platform builds.
 
 These items do not authorize broad refactoring or UI redesign.
