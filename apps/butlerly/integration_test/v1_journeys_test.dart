@@ -447,57 +447,46 @@ void main() {
     },
   );
 
-  test(
-    'master data writes survive a real application restart',
-    () async {
-      final merchant = Merchant(
-        id: MerchantId('merchant.e2e'),
-        name: 'Integration Market',
-      );
-      final category = Category(
-        id: CategoryId('category.e2e'),
-        name: 'Integration category',
-        origin: CategoryOrigin.user,
-      );
-      final tag = Tag(id: TagId('tag.e2e'), name: 'Integration tag');
+  test('master data writes survive a real application restart', () async {
+    final merchant = Merchant(
+      id: MerchantId('merchant.e2e'),
+      name: 'Integration Market',
+    );
+    final category = Category(
+      id: CategoryId('category.e2e'),
+      name: 'Integration category',
+      origin: CategoryOrigin.user,
+    );
+    final tag = Tag(id: TagId('tag.e2e'), name: 'Integration tag');
 
-      expect(
-        await harness.finance.saveMerchant(merchant),
-        isA<ApplicationSuccess<Merchant>>(),
-      );
-      expect(
-        await harness.finance.saveCategory(category),
-        isA<ApplicationSuccess<Category>>(),
-      );
-      expect(
-        await harness.finance.saveTag(tag),
-        isA<ApplicationSuccess<Tag>>(),
-      );
+    expect(
+      await harness.finance.saveMerchant(merchant),
+      isA<ApplicationSuccess<Merchant>>(),
+    );
+    expect(
+      await harness.finance.saveCategory(category),
+      isA<ApplicationSuccess<Category>>(),
+    );
+    expect(
+      await harness.finance.saveTag(tag),
+      isA<ApplicationSuccess<Tag>>(),
+    );
 
-      await harness.restart();
+    await harness.restart();
 
-      expect(
-        (await harness.finance.listMerchants()
-                as ApplicationSuccess<List<Merchant>>)
-            .value
-            .any((value) => value.id == merchant.id),
-        isTrue,
-      );
-      expect(
-        (await harness.finance.listCategories()
-                as ApplicationSuccess<List<Category>>)
-            .value
-            .any((value) => value.id == category.id),
-        isTrue,
-      );
-      expect(
-        (await harness.finance.listTags() as ApplicationSuccess<List<Tag>>)
-            .value
-            .any((value) => value.id == tag.id),
-        isTrue,
-      );
-    },
-  );
+    final merchantsResult = await harness.finance.listMerchants();
+    final categoriesResult = await harness.finance.listCategories();
+    final tagsResult = await harness.finance.listTags();
+    final merchants =
+        (merchantsResult as ApplicationSuccess<List<Merchant>>).value;
+    final categories =
+        (categoriesResult as ApplicationSuccess<List<Category>>).value;
+    final tags = (tagsResult as ApplicationSuccess<List<Tag>>).value;
+
+    expect(merchants.any((value) => value.id == merchant.id), isTrue);
+    expect(categories.any((value) => value.id == category.id), isTrue);
+    expect(tags.any((value) => value.id == tag.id), isTrue);
+  });
 
   test(
     'transaction rule persists and applies through the production service graph',
@@ -538,16 +527,16 @@ void main() {
 
       await harness.restart();
 
+      final rulesResult = await harness.finance.listTransactionRules!();
       final rules =
-          (await harness.finance.listTransactionRules!()
-                  as ApplicationSuccess<List<TransactionRule>>)
-              .value;
+          (rulesResult as ApplicationSuccess<List<TransactionRule>>).value;
       expect(rules.any((value) => value.id == rule.id), isTrue);
 
+      final transactionResult = await harness.finance.getTransaction(
+        'rule-transaction-e2e',
+      );
       final transaction =
-          (await harness.finance.getTransaction('rule-transaction-e2e')
-                  as ApplicationSuccess<TransactionDto>)
-              .value;
+          (transactionResult as ApplicationSuccess<TransactionDto>).value;
       expect(transaction.categoryId, category.id.value);
     },
   );
@@ -574,8 +563,9 @@ void main() {
 
       await harness.restart();
 
+      final settlementsResult = await harness.finance.listPaymentSettlements!();
       final settlements =
-          (await harness.finance.listPaymentSettlements!()
+          (settlementsResult
                   as ApplicationSuccess<List<PaymentSettlementDto>>)
               .value;
       final settlement = settlements.singleWhere(
@@ -656,17 +646,19 @@ void main() {
 
       await harness.restart();
 
-      final transactions = await harness.finance.listTransactions(
+      final transactionsResult = await harness.finance.listTransactions(
         const ListTransactionsQuery(text: 'Integration Market'),
       );
-      expect(
-        (transactions as ApplicationSuccess<List<TransactionDto>>).value,
-        hasLength(1),
+      final transactions =
+          (transactionsResult as ApplicationSuccess<List<TransactionDto>>)
+              .value;
+      expect(transactions, hasLength(1));
+
+      final rowsResult = await harness.finance.statementServices!.rows(
+        statement.id,
       );
       final rows =
-          (await harness.finance.statementServices!.rows(statement.id)
-                  as ApplicationSuccess<List<StatementRow>>)
-              .value;
+          (rowsResult as ApplicationSuccess<List<StatementRow>>).value;
       expect(rows.single.status, StatementRowStatus.saved);
       expect(rows.single.transactionId, isNotNull);
     },
