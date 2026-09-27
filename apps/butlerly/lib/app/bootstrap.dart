@@ -14,6 +14,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/butlerly_launch_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -303,7 +304,12 @@ class _ButlerlyStartupGateState extends State<ButlerlyStartupGate>
 
   void _completeColdLaunch() {
     if (appRouter.routeInformationProvider.value.uri.path == '/launch') {
-      appRouter.go('/');
+      final destination =
+          ButlerlyLayout.mode(MediaQuery.sizeOf(context)) ==
+              ButlerlyLayoutMode.wide
+          ? '/transactions'
+          : '/';
+      appRouter.go(destination);
     }
   }
 

@@ -1,5 +1,6 @@
 import 'package:butlerly/app/shell/compact/compact_primary_shell.dart';
 import 'package:butlerly/app/shell/medium/medium_primary_shell.dart';
+import 'package:butlerly/app/shell/wide/wide_primary_shell.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -187,11 +188,15 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
           currentIndex: navigationShell.currentIndex,
           onSelected: _selectDestination,
         ),
-        ButlerlyLayoutMode.medium ||
-        ButlerlyLayoutMode.wide => MediumPrimaryShell(
+        ButlerlyLayoutMode.medium => MediumPrimaryShell(
           body: navigationShell,
           destinations: destinations,
           visualBranchIndexes: _visualBranchIndexes,
+          currentIndex: navigationShell.currentIndex,
+          onSelected: _selectDestination,
+        ),
+        ButlerlyLayoutMode.wide => WidePrimaryShell(
+          body: navigationShell,
           currentIndex: navigationShell.currentIndex,
           onSelected: _selectDestination,
         ),

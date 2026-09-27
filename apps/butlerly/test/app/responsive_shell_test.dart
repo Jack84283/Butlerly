@@ -4,6 +4,7 @@ import 'package:butlerly/app/butlerly_app.dart';
 import 'package:butlerly/app/router/app_router.dart';
 import 'package:butlerly/app/shell/compact/compact_primary_shell.dart';
 import 'package:butlerly/app/shell/medium/medium_primary_shell.dart';
+import 'package:butlerly/app/shell/wide/wide_primary_shell.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/legal_licenses_page.dart';
@@ -142,26 +143,73 @@ void main() {
     );
   });
 
-  testWidgets('Wide is classified separately but renders the Medium shell', (
-    tester,
-  ) async {
+  testWidgets('Wide uses the left navigation shell', (tester) async {
     const size = Size(1200, 800);
     await _pumpAt(tester, size);
 
     expect(ButlerlyLayout.mode(size), ButlerlyLayoutMode.wide);
-    expect(find.byType(MediumPrimaryShell), findsOneWidget);
+    expect(find.byType(WidePrimaryShell), findsOneWidget);
+    expect(find.byType(MediumPrimaryShell), findsNothing);
     expect(find.byType(CompactPrimaryShell), findsNothing);
     expect(find.byType(NavigationRail), findsNothing);
     expect(
-      tester
-          .getSize(find.byKey(const ValueKey('primary-medium-navigation')))
-          .width,
-      size.width,
+      tester.getSize(find.byKey(const ValueKey('primary-wide-navigation'))),
+      const Size(ButlerlySize.wideNavigationExpandedWidth, 800),
     );
+    final navigation = find.byKey(const ValueKey('primary-wide-navigation'));
+    expect(
+      find.descendant(of: navigation, matching: find.text('Transactions')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: navigation, matching: find.text('Home')),
+      findsNothing,
+    );
+    for (final label in const [
+      'Add transaction manually',
+      'Scan receipt',
+      'Import statement',
+      'Import file',
+      'Payment sources',
+      'Review',
+      'Analysis',
+      'Insights',
+      'Payment settlements',
+      'Master data',
+      'Rules',
+    ]) {
+      expect(
+        find.descendant(of: navigation, matching: find.text(label)),
+        findsOneWidget,
+      );
+    }
     expect(
       tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
       ButlerlySize.pageContentMaxWidth,
     );
+  });
+
+  testWidgets('collapsed Wide navigation exposes grouped actions in a popup', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(1200, 800));
+
+    await tester.tap(find.byIcon(Icons.keyboard_double_arrow_left_rounded));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getSize(find.byKey(const ValueKey('primary-wide-navigation'))),
+      const Size(ButlerlySize.wideNavigationCollapsedWidth, 800),
+    );
+    expect(find.text('Analysis'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('wide-collapsed-tools')));
+    await tester.pumpAndSettle();
+    expect(find.text('Analysis'), findsOneWidget);
+
+    await tester.tap(find.text('Analysis'));
+    await tester.pumpAndSettle();
+    expect(appRouter.routeInformationProvider.value.uri.path, '/analysis');
   });
 
   testWidgets(
@@ -178,11 +226,17 @@ void main() {
       ]) {
         tester.view.physicalSize = size;
         await tester.pumpAndSettle();
-        final tools = find.bySemanticsLabel('Tools').last;
-        expect(
-          tester.getSemantics(tools).flagsCollection.isSelected,
-          Tristate.isTrue,
-        );
+        final tools = ButlerlyLayout.mode(size) == ButlerlyLayoutMode.wide
+            ? find.byKey(const ValueKey('wide-tools-navigation'))
+            : find.bySemanticsLabel('Tools').last;
+        if (ButlerlyLayout.mode(size) == ButlerlyLayoutMode.wide) {
+          expect(tester.widget<Semantics>(tools).properties.selected, isTrue);
+        } else {
+          expect(
+            tester.getSemantics(tools).flagsCollection.isSelected,
+            Tristate.isTrue,
+          );
+        }
       }
       expect(find.byType(CompactPrimaryShell), findsOneWidget);
     },

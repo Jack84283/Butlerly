@@ -37,6 +37,8 @@ class AppLocalizations {
   static const _strings = <String, Map<String, String>>{
     'en': {
       'appName': 'Butlerly',
+      'collapse': 'Collapse',
+      'expand': 'Expand',
       'home': 'Home',
       'transactions': 'Transactions',
       'oneTransaction': '1 transaction',
@@ -769,6 +771,8 @@ class AppLocalizations {
     },
     'zh': {
       'appName': 'Butlerly',
+      'collapse': '收起',
+      'expand': '展开',
       'home': '首页',
       'transactions': '交易',
       'oneTransaction': '1 笔交易',
@@ -1404,6 +1408,8 @@ class AppLocalizations {
     },
     'es': {
       'appName': 'Butlerly',
+      'collapse': 'Contraer',
+      'expand': 'Expandir',
       'home': 'Inicio',
       'transactions': 'Transacciones',
       'oneTransaction': '1 transacción',
