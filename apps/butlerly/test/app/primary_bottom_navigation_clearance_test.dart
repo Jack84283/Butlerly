@@ -101,7 +101,10 @@ void main() {
       const ValueKey('primary-navigation-add-button'),
     );
     expect(addButton, findsOneWidget);
-    expect(find.descendant(of: addButton, matching: find.byType(Container)), findsNothing);
+    expect(
+      find.descendant(of: addButton, matching: find.byType(Container)),
+      findsNothing,
+    );
     expect(find.text('Add'), findsOneWidget);
 
     await tester.tap(find.text('Transactions'));
