@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 abstract final class ButlerlySpacing {
@@ -179,13 +178,10 @@ abstract final class ButlerlySize {
   static const pageToolbarHeight = 48.0;
   static const compactPageToolbarHeight = 40.0;
   static const refreshIndicatorDisplacement = compactPageToolbarHeight;
-  static const phoneBreakpoint = 600.0;
-  static const tabletBreakpoint = phoneBreakpoint;
-  static const desktopBreakpoint = 1024.0;
-  static const phoneContentMaxWidth = 600.0;
-  static const phoneGutter = 12.0;
-  static const tabletGutter = 24.0;
-  static const desktopGutter = 32.0;
+  static const compactBreakpoint = 600.0;
+  static const wideBreakpoint = 1024.0;
+  static const compactContentMaxWidth = compactBreakpoint;
+  static const contentGutter = 12.0;
   static const readableWidth = 760.0;
   static const pageContentMaxWidth = readableWidth;
   static const stateContentWidth = 520.0;
@@ -200,15 +196,9 @@ abstract final class ButlerlySize {
   static const navigationBarHeight = 48.0;
   static const primaryNavigationAddIconSize = 32.0;
   static const primaryNavigationAddGlyphSize = 28.0;
-  static const primaryNavigationAddLift = ButlerlySpacing.compact;
-  static const primaryNavigationArchRise =
-      ButlerlySpacing.small + primaryNavigationAddLift;
-  static const primaryNavigationArchWidth = 76.0;
-  static const primaryNavigationArchHeight = 32.0;
   static const searchPinnedHeaderHeight = minimumTarget;
   static const analysisPeriodSelectorHeight =
       preferredTarget + ButlerlySpacing.section;
-  static const desktopNavigationLeadingIconSize = 14.0;
   static const dividerWidth = 1.0;
 }
 
@@ -216,62 +206,32 @@ abstract final class ButlerlyOpacity {
   static const primaryNavigationBorder = 0.55;
 }
 
-enum ButlerlyDeviceClass { phone, tablet, desktop }
+enum ButlerlyLayoutMode { compact, medium, wide }
 
-enum ButlerlyDesktopNavigationMode { bottom, rail, extendedRail }
-
-/// Semantic responsive-layout policy. Device shell identity is intentionally
-/// separate from the current window size so an iPad remains an iPad while its
-/// app window is resized. Content sizing still follows the current viewport.
+/// Width-driven responsive presentation policy.
+///
+/// Platform and device identity intentionally do not participate in this
+/// classification. The same available width must produce the same mode on
+/// every platform and device.
 abstract final class ButlerlyLayout {
-  static ButlerlyDeviceClass deviceClass(
-    Size viewport, {
-    TargetPlatform? platform,
-    Size? deviceDisplaySize,
-  }) {
-    final resolvedPlatform = platform ?? defaultTargetPlatform;
-    switch (resolvedPlatform) {
-      case TargetPlatform.macOS:
-      case TargetPlatform.windows:
-      case TargetPlatform.linux:
-        return ButlerlyDeviceClass.desktop;
-      case TargetPlatform.iOS:
-        final identitySize = deviceDisplaySize ?? viewport;
-        return identitySize.shortestSide >= ButlerlySize.tabletBreakpoint
-            ? ButlerlyDeviceClass.tablet
-            : ButlerlyDeviceClass.phone;
-      case TargetPlatform.android:
-      case TargetPlatform.fuchsia:
-        return viewport.shortestSide >= ButlerlySize.tabletBreakpoint
-            ? ButlerlyDeviceClass.tablet
-            : ButlerlyDeviceClass.phone;
+  static ButlerlyLayoutMode modeForWidth(double width) {
+    if (width < ButlerlySize.compactBreakpoint) {
+      return ButlerlyLayoutMode.compact;
     }
+    if (width < ButlerlySize.wideBreakpoint) {
+      return ButlerlyLayoutMode.medium;
+    }
+    return ButlerlyLayoutMode.wide;
   }
 
-  /// Preserves the pre-device-split desktop behavior until the dedicated
-  /// desktop menu/submenu redesign replaces it.
-  static ButlerlyDesktopNavigationMode desktopNavigationMode(Size viewport) {
-    if (viewport.width >= ButlerlySize.desktopBreakpoint) {
-      return ButlerlyDesktopNavigationMode.extendedRail;
-    }
-    if (viewport.shortestSide >= ButlerlySize.tabletBreakpoint) {
-      return ButlerlyDesktopNavigationMode.rail;
-    }
-    return ButlerlyDesktopNavigationMode.bottom;
-  }
+  static ButlerlyLayoutMode mode(Size viewport) => modeForWidth(viewport.width);
 
-  static bool desktopNavigationExtended(Size viewport) =>
-      desktopNavigationMode(viewport) ==
-      ButlerlyDesktopNavigationMode.extendedRail;
-
-  static double contentMaxWidth(Size viewport, {TargetPlatform? platform}) {
-    final device = deviceClass(viewport, platform: platform);
-    final compactDesktop =
-        device == ButlerlyDeviceClass.desktop &&
-        desktopNavigationMode(viewport) == ButlerlyDesktopNavigationMode.bottom;
-    return device == ButlerlyDeviceClass.phone || compactDesktop
-        ? ButlerlySize.phoneContentMaxWidth
-        : ButlerlySize.pageContentMaxWidth;
+  static double contentMaxWidth(Size viewport) {
+    return switch (mode(viewport)) {
+      ButlerlyLayoutMode.compact => ButlerlySize.compactContentMaxWidth,
+      ButlerlyLayoutMode.medium ||
+      ButlerlyLayoutMode.wide => ButlerlySize.pageContentMaxWidth,
+    };
   }
 }
 

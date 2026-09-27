@@ -83,7 +83,7 @@ abstract final class AppTheme {
         centerTitle: false,
         backgroundColor: colors.background,
         foregroundColor: colors.primaryText,
-        titleSpacing: ButlerlySize.phoneGutter,
+        titleSpacing: ButlerlySize.contentGutter,
         titleTextStyle: textTheme.titleLarge,
       ),
       cardTheme: CardThemeData(

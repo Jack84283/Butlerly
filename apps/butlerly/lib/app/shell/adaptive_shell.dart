@@ -1,13 +1,12 @@
-import 'package:butlerly/app/shell/desktop/desktop_primary_shell.dart';
-import 'package:butlerly/app/shell/ipad/ipad_primary_shell.dart';
-import 'package:butlerly/app/shell/iphone/iphone_primary_shell.dart';
+import 'package:butlerly/app/shell/compact/compact_primary_shell.dart';
+import 'package:butlerly/app/shell/medium/medium_primary_shell.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 export 'package:butlerly/app/shell/shared/primary_bottom_navigation.dart'
-    show phoneNavigationHeightForLabels;
+    show compactNavigationHeightForLabels;
 
 const primaryShellRouteNamePrefix = 'primary-shell:';
 
@@ -179,29 +178,17 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
       shell = Scaffold(body: navigationShell);
     } else {
       final destinations = _destinations(context);
-      final view = View.of(context);
-      final display = view.display;
-      final deviceDisplaySize = display.size / display.devicePixelRatio;
-      final deviceClass = ButlerlyLayout.deviceClass(
-        MediaQuery.sizeOf(context),
-        deviceDisplaySize: deviceDisplaySize,
-      );
-      shell = switch (deviceClass) {
-        ButlerlyDeviceClass.phone => IPhonePrimaryShell(
+      final layoutMode = ButlerlyLayout.mode(MediaQuery.sizeOf(context));
+      shell = switch (layoutMode) {
+        ButlerlyLayoutMode.compact => CompactPrimaryShell(
           body: navigationShell,
           destinations: destinations,
           visualBranchIndexes: _visualBranchIndexes,
           currentIndex: navigationShell.currentIndex,
           onSelected: _selectDestination,
         ),
-        ButlerlyDeviceClass.tablet => IPadPrimaryShell(
-          body: navigationShell,
-          destinations: destinations,
-          visualBranchIndexes: _visualBranchIndexes,
-          currentIndex: navigationShell.currentIndex,
-          onSelected: _selectDestination,
-        ),
-        ButlerlyDeviceClass.desktop => DesktopPrimaryShell(
+        ButlerlyLayoutMode.medium ||
+        ButlerlyLayoutMode.wide => MediumPrimaryShell(
           body: navigationShell,
           destinations: destinations,
           visualBranchIndexes: _visualBranchIndexes,

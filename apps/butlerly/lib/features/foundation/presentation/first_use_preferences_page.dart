@@ -20,7 +20,7 @@ class FirstUsePreferencesPage extends ConsumerWidget {
           contentKey: const ValueKey('first-use-preferences-content'),
           child: ListView(
             padding: const EdgeInsets.symmetric(
-              horizontal: ButlerlySize.phoneGutter,
+              horizontal: ButlerlySize.contentGutter,
               vertical: ButlerlySpacing.section,
             ),
             children: [
