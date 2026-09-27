@@ -581,7 +581,7 @@ void main() {
       final settlement = settlements.singleWhere(
         (value) => value.id == 'settlement-e2e',
       );
-      expect(settlement.paymentAmount, '125.50');
+      expect(settlement.payment.amount, DecimalValue.parse('125.50'));
       expect(settlement.paymentDate, '2026-09-25');
       expect(settlement.paymentSourceId, source.id.value);
       expect(settlement.status, PaymentSettlementStatus.open);
