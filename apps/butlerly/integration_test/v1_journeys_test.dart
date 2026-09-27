@@ -467,10 +467,7 @@ void main() {
       await harness.finance.saveCategory(category),
       isA<ApplicationSuccess<Category>>(),
     );
-    expect(
-      await harness.finance.saveTag(tag),
-      isA<ApplicationSuccess<Tag>>(),
-    );
+    expect(await harness.finance.saveTag(tag), isA<ApplicationSuccess<Tag>>());
 
     await harness.restart();
 
@@ -565,8 +562,7 @@ void main() {
 
       final settlementsResult = await harness.finance.listPaymentSettlements!();
       final settlements =
-          (settlementsResult
-                  as ApplicationSuccess<List<PaymentSettlementDto>>)
+          (settlementsResult as ApplicationSuccess<List<PaymentSettlementDto>>)
               .value;
       final settlement = settlements.singleWhere(
         (value) => value.id == 'settlement-e2e',
@@ -636,11 +632,9 @@ void main() {
         isA<ApplicationSuccess<void>>(),
       );
       expect(
-        await harness.finance.statementServices!.importBatch(
-          statement,
-          [row],
-          source.id.value,
-        ),
+        await harness.finance.statementServices!.importBatch(statement, [
+          row,
+        ], source.id.value),
         isA<ApplicationSuccess<StatementImportSummary>>(),
       );
 
@@ -657,8 +651,7 @@ void main() {
       final rowsResult = await harness.finance.statementServices!.rows(
         statement.id,
       );
-      final rows =
-          (rowsResult as ApplicationSuccess<List<StatementRow>>).value;
+      final rows = (rowsResult as ApplicationSuccess<List<StatementRow>>).value;
       expect(rows.single.status, StatementRowStatus.saved);
       expect(rows.single.transactionId, isNotNull);
     },
