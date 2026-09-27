@@ -103,36 +103,36 @@ class PrimaryBottomNavigation extends StatelessWidget {
       child: InkWell(
         onTap: () => onSelected(branchIndex),
         child: SizedBox(
-        height: double.infinity,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              key: branchIndex == 2
-                  ? const ValueKey('primary-navigation-add-button')
-                  : null,
-              height:
-                  ButlerlySize.primaryNavigationAddIconSize -
-                  ButlerlySize.navigationLabelGap,
-              child: Align(
-                alignment: Alignment.center,
-                child: displayedIcon,
+          height: double.infinity,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                key: branchIndex == 2
+                    ? const ValueKey('primary-navigation-add-button')
+                    : null,
+                height:
+                    ButlerlySize.primaryNavigationAddIconSize -
+                    ButlerlySize.navigationLabelGap,
+                child: Align(
+                  alignment: Alignment.center,
+                  child: displayedIcon,
+                ),
               ),
-            ),
-            const SizedBox(height: ButlerlySize.navigationLabelGap),
-            SizedBox(
-              width: double.infinity,
-              height: labelSlotHeight,
-              child: Text(
-                destination.label,
-                textAlign: TextAlign.center,
-                softWrap: true,
-                style: labelStyle,
+              const SizedBox(height: ButlerlySize.navigationLabelGap),
+              SizedBox(
+                width: double.infinity,
+                height: labelSlotHeight,
+                child: Text(
+                  destination.label,
+                  textAlign: TextAlign.center,
+                  softWrap: true,
+                  style: labelStyle,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
