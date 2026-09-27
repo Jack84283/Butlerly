@@ -1,0 +1,21 @@
+name: Formatter Diagnostic
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-toolchain
+      - name: Show formatter diff
+        run: |
+          cd apps/butlerly
+          flutter pub get
+          dart format integration_test/v1_journeys_test.dart
+          git diff -- integration_test/v1_journeys_test.dart
+          exit 1
