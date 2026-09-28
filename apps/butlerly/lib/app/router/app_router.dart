@@ -130,8 +130,12 @@ final appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/settings',
-              pageBuilder: (context, state) =>
-                  _primaryPage('more', const SettingsPage()),
+              pageBuilder: (context, state) => _primaryPage(
+                'more',
+                SettingsPage(
+                  initialSection: state.uri.queryParameters['section'],
+                ),
+              ),
             ),
           ],
         ),

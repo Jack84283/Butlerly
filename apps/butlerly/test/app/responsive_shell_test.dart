@@ -9,6 +9,7 @@ import 'package:butlerly/design_system/components/butlerly_responsive_body.dart'
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
 import 'package:butlerly/features/foundation/presentation/legal_licenses_page.dart';
+import 'package:butlerly/features/foundation/presentation/settings_page.dart';
 import 'package:butlerly/features/tools/presentation/tools_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -227,6 +228,57 @@ void main() {
 
     expect(find.text('Appearance'), findsOneWidget);
     expect(find.text('About Butlerly'), findsOneWidget);
+
+    await tester.tap(find.text('Appearance'));
+    await tester.pumpAndSettle();
+    expect(
+      appRouter.routeInformationProvider.value.uri.toString(),
+      '/settings?section=appearance',
+    );
+    expect(find.byType(SettingsPage), findsOneWidget);
+  });
+
+  testWidgets('expanded Wide More settings entries are actionable', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(1200, 800));
+
+    final navigation = find.byKey(const ValueKey('primary-wide-navigation'));
+    await tester.ensureVisible(
+      find.descendant(of: navigation, matching: find.text('Appearance')),
+    );
+    await tester.tap(
+      find.descendant(of: navigation, matching: find.text('Appearance')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      appRouter.routeInformationProvider.value.uri.toString(),
+      '/settings?section=appearance',
+    );
+
+    appRouter.go('/');
+    await tester.pumpAndSettle();
+    final restoredNavigation = find.byKey(
+      const ValueKey('primary-wide-navigation'),
+    );
+    await tester.ensureVisible(
+      find.descendant(
+        of: restoredNavigation,
+        matching: find.text('About Butlerly'),
+      ),
+    );
+    await tester.tap(
+      find.descendant(
+        of: restoredNavigation,
+        matching: find.text('About Butlerly'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      appRouter.routeInformationProvider.value.uri.toString(),
+      '/settings?section=about',
+    );
+    expect(find.byType(SettingsPage), findsOneWidget);
   });
 
   testWidgets('collapsed Wide navigation exposes grouped actions in a popup', (

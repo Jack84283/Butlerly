@@ -14,12 +14,14 @@ class WidePrimaryShell extends StatefulWidget {
     required this.body,
     required this.currentIndex,
     required this.onSelected,
+    required this.onMoreSectionSelected,
     super.key,
   });
 
   final Widget body;
   final int currentIndex;
   final ValueChanged<int> onSelected;
+  final ValueChanged<String> onMoreSectionSelected;
 
   @override
   State<WidePrimaryShell> createState() => _WidePrimaryShellState();
@@ -56,6 +58,7 @@ class _WidePrimaryShellState extends State<WidePrimaryShell> {
           onToggleTools: () => setState(() => _toolsExpanded = !_toolsExpanded),
           onToggleMore: () => setState(() => _moreExpanded = !_moreExpanded),
           onParentSelected: _selectParent,
+          onMoreSectionSelected: widget.onMoreSectionSelected,
           onNavigate: _navigate,
           onImport: _import,
         ),
@@ -120,6 +123,7 @@ class _WidePrimaryNavigation extends StatelessWidget {
     required this.onToggleTools,
     required this.onToggleMore,
     required this.onParentSelected,
+    required this.onMoreSectionSelected,
     required this.onNavigate,
     required this.onImport,
   });
@@ -134,6 +138,7 @@ class _WidePrimaryNavigation extends StatelessWidget {
   final VoidCallback onToggleTools;
   final VoidCallback onToggleMore;
   final ValueChanged<int> onParentSelected;
+  final ValueChanged<String> onMoreSectionSelected;
   final ValueChanged<String> onNavigate;
   final Future<void> Function() onImport;
 
@@ -157,8 +162,11 @@ class _WidePrimaryNavigation extends StatelessWidget {
           _WideBrand(expanded: expanded),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: ButlerlySpacing.compact,
+              padding: const EdgeInsets.fromLTRB(
+                ButlerlySpacing.compact,
+                ButlerlySpacing.none,
+                ButlerlySpacing.compact,
+                ButlerlySize.wideNavigationItemHeight + ButlerlySpacing.large,
               ),
               child: expanded
                   ? _expandedMenu(context)
@@ -248,7 +256,7 @@ class _WidePrimaryNavigation extends StatelessWidget {
           _WideChildItem(
             icon: Icons.palette_outlined,
             label: context.l10n.text('appearance'),
-            onTap: () => onParentSelected(4),
+            onTap: () => onMoreSectionSelected('appearance'),
           ),
           _WideChildItem(
             icon: Icons.privacy_tip_outlined,
@@ -263,7 +271,7 @@ class _WidePrimaryNavigation extends StatelessWidget {
           _WideChildItem(
             icon: Icons.info_outline_rounded,
             label: context.l10n.text('about'),
-            onTap: () => onParentSelected(4),
+            onTap: () => onMoreSectionSelected('about'),
           ),
         ],
       ),
@@ -326,13 +334,16 @@ class _WidePrimaryNavigation extends StatelessWidget {
         selected: _selected(4),
         onTap: (itemContext) => _openMenu(itemContext, [
           _WidePopupAction.parent(context.l10n.text('more'), 4),
-          _WidePopupAction.parent(context.l10n.text('appearance'), 4),
+          _WidePopupAction.moreSection(
+            context.l10n.text('appearance'),
+            'appearance',
+          ),
           _WidePopupAction.route(
             context.l10n.text('privacyAndData'),
             '/privacy-data',
           ),
           _WidePopupAction.route(context.l10n.text('assistant'), '/assistant'),
-          _WidePopupAction.parent(context.l10n.text('about'), 4),
+          _WidePopupAction.moreSection(context.l10n.text('about'), 'about'),
         ]),
       ),
     ],
@@ -375,6 +386,8 @@ class _WidePrimaryNavigation extends StatelessWidget {
         onParentSelected(selected.branchIndex!);
       case _WidePopupActionKind.route:
         onNavigate(selected.route!);
+      case _WidePopupActionKind.moreSection:
+        onMoreSectionSelected(selected.section!);
       case _WidePopupActionKind.importFile:
         await onImport();
       case _WidePopupActionKind.divider:
@@ -676,7 +689,7 @@ class _WideNavigationSurface extends StatelessWidget {
   );
 }
 
-enum _WidePopupActionKind { parent, route, importFile, divider }
+enum _WidePopupActionKind { parent, route, moreSection, importFile, divider }
 
 class _WidePopupAction {
   const _WidePopupAction._({
@@ -684,6 +697,7 @@ class _WidePopupAction {
     required this.label,
     this.branchIndex,
     this.route,
+    this.section,
   });
 
   const _WidePopupAction.parent(String label, int branchIndex)
@@ -696,6 +710,13 @@ class _WidePopupAction {
   const _WidePopupAction.route(String label, String route)
     : this._(kind: _WidePopupActionKind.route, label: label, route: route);
 
+  const _WidePopupAction.moreSection(String label, String section)
+    : this._(
+        kind: _WidePopupActionKind.moreSection,
+        label: label,
+        section: section,
+      );
+
   const _WidePopupAction.importFile(String label)
     : this._(kind: _WidePopupActionKind.importFile, label: label);
 
@@ -706,6 +727,7 @@ class _WidePopupAction {
   final String label;
   final int? branchIndex;
   final String? route;
+  final String? section;
 
   bool get isDivider => kind == _WidePopupActionKind.divider;
 }
