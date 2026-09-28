@@ -281,6 +281,30 @@ void main() {
     expect(find.text('ready'), findsOneWidget);
   });
 
+  testWidgets('wide cold startup opens Home', (tester) async {
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    appRouter.go('/launch');
+    addTearDown(() => appRouter.go('/'));
+
+    await tester.pumpWidget(
+      ButlerlyStartupGate(
+        logger: logger,
+        initialize: () async {},
+        minimumLaunchDuration: Duration.zero,
+        readyBuilder: (_) =>
+            const MaterialApp(home: Scaffold(body: Text('ready'))),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(appRouter.routeInformationProvider.value.uri.path, '/');
+    expect(find.text('ready'), findsOneWidget);
+  });
+
   testWidgets('cold startup countdown pauses while backgrounded', (
     tester,
   ) async {

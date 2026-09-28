@@ -12,6 +12,7 @@ import 'package:butlerly/features/foundation/presentation/contextual_pages.dart'
 import 'package:butlerly/features/foundation/presentation/legal_licenses_page.dart';
 import 'package:butlerly/features/foundation/presentation/search_page.dart';
 import 'package:butlerly/features/foundation/presentation/settings_page.dart';
+import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/features/tools/presentation/tools_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -162,13 +163,16 @@ void main() {
       const Size(ButlerlySize.wideNavigationExpandedWidth, 800),
     );
     final navigation = find.byKey(const ValueKey('primary-wide-navigation'));
-    expect(
-      find.descendant(of: navigation, matching: find.text('Transactions')),
-      findsOneWidget,
+    final home = find.descendant(of: navigation, matching: find.text('Home'));
+    final transactions = find.descendant(
+      of: navigation,
+      matching: find.text('Transactions'),
     );
+    expect(home, findsOneWidget);
+    expect(transactions, findsOneWidget);
     expect(
-      find.descendant(of: navigation, matching: find.text('Home')),
-      findsNothing,
+      tester.getRect(home).top,
+      lessThan(tester.getRect(transactions).top),
     );
     for (final label in const [
       'Add transaction manually',
@@ -247,6 +251,41 @@ void main() {
     );
   });
 
+  testWidgets('Wide Add keeps the shell for manual and receipt workflows', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(1200, 800));
+
+    final navigation = find.byKey(const ValueKey('primary-wide-navigation'));
+    await tester.tap(
+      find.descendant(of: navigation, matching: find.text('Add')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: navigation,
+        matching: find.text('Add transaction manually'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('transaction-storage-unavailable-content')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('primary-wide-navigation')),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<Semantics>(find.byKey(const ValueKey('wide-add-navigation')))
+          .properties
+          .selected,
+      isTrue,
+    );
+  });
+
   testWidgets('expanded Wide About Butlerly opens Legal & licenses', (
     tester,
   ) async {
@@ -279,6 +318,9 @@ void main() {
     await _pumpAt(tester, const Size(1200, 800));
 
     final navigation = find.byKey(const ValueKey('primary-wide-navigation'));
+    await tester.ensureVisible(
+      find.descendant(of: navigation, matching: find.text('More')),
+    );
     await tester.tap(
       find.descendant(of: navigation, matching: find.text('More')),
     );
@@ -301,6 +343,9 @@ void main() {
     await _pumpAt(tester, const Size(1200, 800));
 
     final navigation = find.byKey(const ValueKey('primary-wide-navigation'));
+    await tester.ensureVisible(
+      find.descendant(of: navigation, matching: find.text('More')),
+    );
     await tester.tap(
       find.descendant(of: navigation, matching: find.text('More')),
     );
@@ -316,7 +361,17 @@ void main() {
 
     expect(find.byType(SearchPage), findsOneWidget);
     expect(appRouter.canPop(), isTrue);
-    expect(find.byKey(const ValueKey('primary-wide-navigation')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('primary-wide-navigation')),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<Semantics>(find.byKey(const ValueKey('wide-more-navigation')))
+          .properties
+          .selected,
+      isTrue,
+    );
 
     appRouter.pop();
     await tester.pumpAndSettle();
@@ -340,6 +395,14 @@ void main() {
       tester.getSize(find.byKey(const ValueKey('primary-wide-navigation'))),
       const Size(ButlerlySize.wideNavigationCollapsedWidth, 800),
     );
+    expect(
+      tester.getRect(find.byKey(const ValueKey('wide-collapsed-home'))).top,
+      lessThan(
+        tester
+            .getRect(find.byKey(const ValueKey('wide-collapsed-transactions')))
+            .top,
+      ),
+    );
     expect(find.text('Analysis'), findsNothing);
 
     await tester.tap(find.byKey(const ValueKey('wide-collapsed-tools')));
@@ -349,7 +412,7 @@ void main() {
     await tester.tap(find.text('Analysis'));
     await tester.pumpAndSettle();
     expect(find.byType(AnalysisPage), findsOneWidget);
-    expect(find.byType(WidePrimaryShell), findsNothing);
+    expect(find.byType(WidePrimaryShell), findsOneWidget);
   });
 
   testWidgets('Wide child navigation pushes and restores the previous shell', (
@@ -370,8 +433,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(AnalysisPage), findsOneWidget);
-    expect(find.byType(WidePrimaryShell), findsNothing);
-    expect(find.byKey(const ValueKey('primary-wide-navigation')), findsNothing);
+    expect(find.byType(WidePrimaryShell), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('primary-wide-navigation')),
+      findsOneWidget,
+    );
 
     await tester.pageBack();
     await tester.pumpAndSettle();
@@ -382,6 +448,103 @@ void main() {
     expect(
       find.byKey(const ValueKey('primary-wide-navigation')),
       findsOneWidget,
+    );
+  });
+
+  testWidgets('Wide menu remains interactive while a secondary page is open', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(1200, 800));
+
+    final navigation = find.byKey(const ValueKey('primary-wide-navigation'));
+    await tester.tap(
+      find.descendant(of: navigation, matching: find.text('Tools')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(of: navigation, matching: find.text('Analysis')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(AnalysisPage), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('primary-wide-navigation')),
+        matching: find.text('Transactions'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TransactionsPage), findsOneWidget);
+    expect(find.byType(WidePrimaryShell), findsOneWidget);
+  });
+
+  testWidgets('collapsed Wide state survives secondary navigation', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(1200, 800));
+
+    await tester.tap(find.byIcon(Icons.keyboard_double_arrow_left_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('wide-collapsed-tools')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Analysis'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AnalysisPage), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const ValueKey('primary-wide-navigation'))),
+      const Size(ButlerlySize.wideNavigationCollapsedWidth, 800),
+    );
+  });
+
+  testWidgets('Compact and Medium keep focused secondary behavior', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(390, 844));
+    await tester.tap(find.bySemanticsLabel('Add transaction'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add transaction manually'));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('transaction-storage-unavailable-content')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('primary-compact-navigation')),
+      findsNothing,
+    );
+
+    appRouter.go('/');
+    await _pumpAt(tester, const Size(800, 800));
+    await tester.tap(find.bySemanticsLabel('Tools'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Analysis'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AnalysisPage), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('primary-medium-navigation')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('direct Wide secondary routes use their documented parent', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(1200, 800));
+    appRouter.go('/analysis');
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AnalysisPage), findsOneWidget);
+    expect(find.byType(WidePrimaryShell), findsOneWidget);
+    expect(
+      tester
+          .widget<Semantics>(
+            find.byKey(const ValueKey('wide-tools-navigation')),
+          )
+          .properties
+          .selected,
+      isTrue,
     );
   });
 
