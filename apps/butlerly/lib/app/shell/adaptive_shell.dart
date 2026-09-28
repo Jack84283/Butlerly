@@ -2,6 +2,7 @@ import 'package:butlerly/app/shell/compact/compact_primary_shell.dart';
 import 'package:butlerly/app/shell/medium/medium_primary_shell.dart';
 import 'package:butlerly/app/shell/wide/wide_primary_shell.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -71,7 +72,89 @@ class PrimaryShellNavigatorObserver extends NavigatorObserver {
 }
 
 class AdaptiveShell extends StatefulWidget {
-  const AdaptiveShell({
+  const AdaptiveShell({required this.child, required this.location, super.key});
+
+  final Widget child;
+  final String location;
+
+  @override
+  State<AdaptiveShell> createState() => _AdaptiveShellState();
+}
+
+class _AdaptiveShellState extends State<AdaptiveShell> {
+  late int _wideParentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _wideParentIndex = _parentIndexForLocation(widget.location);
+  }
+
+  @override
+  void didUpdateWidget(covariant AdaptiveShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.location != widget.location) {
+      _wideParentIndex = _parentIndexForLocation(
+        widget.location,
+        fallback: _wideParentIndex,
+      );
+    }
+  }
+
+  void _selectWideDestination(int branchIndex) {
+    const paths = ['/', '/transactions', '/add', '/tools', '/settings'];
+    context.go(paths[branchIndex]);
+  }
+
+  void _selectMoreSection(String section) {
+    if (section == 'about') {
+      context.go('/legal-licenses');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final layoutMode = ButlerlyLayout.mode(MediaQuery.sizeOf(context));
+    if (layoutMode != ButlerlyLayoutMode.wide) return widget.child;
+
+    return WidePrimaryShell(
+      body: widget.child,
+      currentIndex: _wideParentIndex,
+      onSelected: _selectWideDestination,
+      onMoreSectionSelected: _selectMoreSection,
+      onImport: () => startLocalFileImport(context),
+    );
+  }
+}
+
+int _parentIndexForLocation(String location, {int fallback = 4}) {
+  final path = Uri.parse(location).path;
+  return switch (path) {
+    '/' => 0,
+    '/transactions' => 1,
+    '/add' => 2,
+    '/tools' => 3,
+    '/settings' => 4,
+    '/transactions/add' ||
+    '/receipts/capture' ||
+    '/statements' ||
+    '/payment-sources' ||
+    '/import-export' => 2,
+    '/review' ||
+    '/analysis' ||
+    '/insights' ||
+    '/payment-settlements' ||
+    '/master-data' ||
+    '/rules' => 3,
+    '/privacy-data' || '/assistant' || '/legal-licenses' => 4,
+    '/notifications' => 0,
+    '/search' => fallback,
+    _ => fallback,
+  };
+}
+
+class PrimaryNavigationShell extends StatefulWidget {
+  const PrimaryNavigationShell({
     required this.navigationShell,
     required this.visibilityController,
     super.key,
@@ -81,10 +164,10 @@ class AdaptiveShell extends StatefulWidget {
   final PrimaryShellVisibilityController visibilityController;
 
   @override
-  State<AdaptiveShell> createState() => _AdaptiveShellState();
+  State<PrimaryNavigationShell> createState() => _PrimaryNavigationShellState();
 }
 
-class _AdaptiveShellState extends State<AdaptiveShell> {
+class _PrimaryNavigationShellState extends State<PrimaryNavigationShell> {
   static const _visualBranchIndexes = <int>[0, 1, 2, 3, 4];
 
   int _previousPrimaryIndex = 0;
@@ -99,7 +182,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
   }
 
   @override
-  void didUpdateWidget(covariant AdaptiveShell oldWidget) {
+  void didUpdateWidget(covariant PrimaryNavigationShell oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.visibilityController != widget.visibilityController) {
       oldWidget.visibilityController.removeListener(_handleVisibilityChanged);
@@ -133,12 +216,6 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
       branchIndex,
       initialLocation: branchIndex == current,
     );
-  }
-
-  void _selectMoreSection(String section) {
-    if (section == 'about') {
-      context.go('/legal-licenses');
-    }
   }
 
   void _handleSystemBack(bool didPop, Object? result) {
@@ -177,41 +254,37 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
 
   @override
   Widget build(BuildContext context) {
+    final layoutMode = ButlerlyLayout.mode(MediaQuery.sizeOf(context));
     final secondaryRouteVisible = widget.visibilityController
         .secondaryRouteVisibleFor(navigationShell.currentIndex);
-
-    late final Widget shell;
     if (secondaryRouteVisible) {
-      shell = Scaffold(body: navigationShell);
-    } else {
-      final destinations = _destinations(context);
-      final layoutMode = ButlerlyLayout.mode(MediaQuery.sizeOf(context));
-      shell = switch (layoutMode) {
-        ButlerlyLayoutMode.compact => CompactPrimaryShell(
-          body: navigationShell,
-          destinations: destinations,
-          visualBranchIndexes: _visualBranchIndexes,
-          currentIndex: navigationShell.currentIndex,
-          onSelected: _selectDestination,
-        ),
-        ButlerlyLayoutMode.medium => MediumPrimaryShell(
-          body: navigationShell,
-          destinations: destinations,
-          visualBranchIndexes: _visualBranchIndexes,
-          currentIndex: navigationShell.currentIndex,
-          onSelected: _selectDestination,
-        ),
-        ButlerlyLayoutMode.wide => WidePrimaryShell(
-          body: navigationShell,
-          currentIndex: navigationShell.currentIndex,
-          onSelected: _selectDestination,
-          onMoreSectionSelected: _selectMoreSection,
-        ),
-      };
+      final shell = layoutMode == ButlerlyLayoutMode.wide
+          ? navigationShell
+          : Scaffold(body: navigationShell);
+      return PopScope(canPop: true, child: shell);
     }
 
+    final destinations = _destinations(context);
+    final shell = switch (layoutMode) {
+      ButlerlyLayoutMode.compact => CompactPrimaryShell(
+        body: navigationShell,
+        destinations: destinations,
+        visualBranchIndexes: _visualBranchIndexes,
+        currentIndex: navigationShell.currentIndex,
+        onSelected: _selectDestination,
+      ),
+      ButlerlyLayoutMode.medium => MediumPrimaryShell(
+        body: navigationShell,
+        destinations: destinations,
+        visualBranchIndexes: _visualBranchIndexes,
+        currentIndex: navigationShell.currentIndex,
+        onSelected: _selectDestination,
+      ),
+      ButlerlyLayoutMode.wide => navigationShell,
+    };
+
     return PopScope(
-      canPop: secondaryRouteVisible || navigationShell.currentIndex != 2,
+      canPop: navigationShell.currentIndex != 2,
       onPopInvokedWithResult: _handleSystemBack,
       child: shell,
     );

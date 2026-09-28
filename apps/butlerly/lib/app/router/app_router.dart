@@ -62,210 +62,217 @@ final appRouter = GoRouter(
     GoRoute(path: '/launch', builder: (_, _) => const ButlerlyLaunchPage()),
     GoRoute(path: '/welcome', builder: (_, _) => const WelcomePage()),
 
-    // Primary app shell. Only the five primary destinations keep the
-    // footer/navigation rail visible. Focused workflows are secondary routes
-    // outside this StatefulShellRoute.
-    StatefulShellRoute.indexedStack(
-      builder: (context, state, navigationShell) => AdaptiveShell(
-        navigationShell: navigationShell,
-        visibilityController: _primaryShellVisibility,
-      ),
-      branches: [
-        StatefulShellBranch(
-          observers: [_primaryObserver(0)],
-          routes: [
-            GoRoute(
-              path: '/',
-              pageBuilder: (context, state) =>
-                  _primaryPage('home', const HomePage()),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          observers: [_primaryObserver(1)],
-          routes: [
-            GoRoute(
-              path: '/transactions',
-              pageBuilder: (context, state) {
-                final parameters = state.uri.queryParameters;
-                final query = ListTransactionsQuery(
-                  transactionIds: _queryIds(parameters['ids']),
-                  from: _queryDate(parameters['from']),
-                  to: _queryDate(parameters['to']),
-                  categoryId: parameters['category'],
-                );
-                return _primaryPage(
-                  'transactions',
-                  TransactionsPage(query: query),
-                  // StatefulShellRoute keeps branch widgets alive. A query
-                  // change represents a different transaction result set, so
-                  // give the page a semantic key and never retain stale state.
-                  key: ValueKey('transactions:${state.uri.query}'),
-                );
-              },
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          observers: [_primaryObserver(2)],
-          routes: [
-            GoRoute(
-              path: '/add',
-              pageBuilder: (context, state) =>
-                  _primaryPage('add', const AddPage()),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          observers: [_primaryObserver(3)],
-          routes: [
-            GoRoute(
-              path: '/tools',
-              pageBuilder: (context, state) =>
-                  _primaryPage('tools', const ToolsPage()),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          observers: [_primaryObserver(4)],
-          routes: [
-            GoRoute(
-              path: '/settings',
-              pageBuilder: (context, state) => _primaryPage(
-                'more',
-                SettingsPage(
-                  initialSection: state.uri.queryParameters['section'],
+    // The application shell remains mounted while the content route changes.
+    // Wide mode uses it for both primary destinations and normal secondary
+    // workflows; Compact and Medium keep their focused-page behavior.
+    ShellRoute(
+      builder: (context, state, child) =>
+          AdaptiveShell(location: state.uri.toString(), child: child),
+      routes: [
+        StatefulShellRoute.indexedStack(
+          builder: (context, state, navigationShell) => PrimaryNavigationShell(
+            navigationShell: navigationShell,
+            visibilityController: _primaryShellVisibility,
+          ),
+          branches: [
+            StatefulShellBranch(
+              observers: [_primaryObserver(0)],
+              routes: [
+                GoRoute(
+                  path: '/',
+                  pageBuilder: (context, state) =>
+                      _primaryPage('home', const HomePage()),
                 ),
-              ),
+              ],
+            ),
+            StatefulShellBranch(
+              observers: [_primaryObserver(1)],
+              routes: [
+                GoRoute(
+                  path: '/transactions',
+                  pageBuilder: (context, state) {
+                    final parameters = state.uri.queryParameters;
+                    final query = ListTransactionsQuery(
+                      transactionIds: _queryIds(parameters['ids']),
+                      from: _queryDate(parameters['from']),
+                      to: _queryDate(parameters['to']),
+                      categoryId: parameters['category'],
+                    );
+                    return _primaryPage(
+                      'transactions',
+                      TransactionsPage(query: query),
+                      key: ValueKey('transactions:${state.uri.query}'),
+                    );
+                  },
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              observers: [_primaryObserver(2)],
+              routes: [
+                GoRoute(
+                  path: '/add',
+                  pageBuilder: (context, state) =>
+                      _primaryPage('add', const AddPage()),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              observers: [_primaryObserver(3)],
+              routes: [
+                GoRoute(
+                  path: '/tools',
+                  pageBuilder: (context, state) =>
+                      _primaryPage('tools', const ToolsPage()),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              observers: [_primaryObserver(4)],
+              routes: [
+                GoRoute(
+                  path: '/settings',
+                  pageBuilder: (context, state) => _primaryPage(
+                    'more',
+                    SettingsPage(
+                      initialSection: state.uri.queryParameters['section'],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
+        ),
+
+        GoRoute(
+          path: '/legal-licenses',
+          builder: (_, _) => const LegalLicensesPage(),
+        ),
+        GoRoute(
+          path: '/review',
+          builder: (context, state) => ReviewPage(
+            showPossibleDuplicates:
+                state.uri.queryParameters['view'] == 'duplicates',
+            showNeedsReview: state.uri.queryParameters['view'] == 'needsReview',
+          ),
+        ),
+        GoRoute(
+          path: '/search',
+          builder: (_, state) {
+            final parameters = state.uri.queryParameters;
+            final locked = parameters['locked'] == 'true';
+            final hasInitialQuery =
+                locked ||
+                const {
+                  'ids',
+                  'from',
+                  'to',
+                  'category',
+                  'paymentSource',
+                  'currency',
+                  'direction',
+                  'uncategorized',
+                }.any(parameters.containsKey);
+            return SearchPage(
+              initialQuery: hasInitialQuery
+                  ? ListTransactionsQuery(
+                      transactionIds: _queryIds(parameters['ids']),
+                      from: _queryDate(parameters['from']),
+                      to: _queryDate(parameters['to']),
+                      categoryId: parameters['category'],
+                      paymentSourceId: parameters['paymentSource'],
+                      currency: parameters['currency'],
+                      direction: _queryDirection(parameters['direction']),
+                      uncategorized: parameters['uncategorized'] == 'true',
+                    )
+                  : null,
+              readOnly: locked,
+              insightRuleId: parameters['insightRule'],
+              insightDimension: parameters['insightDimension'],
+            );
+          },
+        ),
+        GoRoute(
+          path: '/analysis',
+          builder: (_, state) => AnalysisPage(
+            initialMonth: _queryInitialMonth(state.uri.queryParameters),
+            initialRange: _queryRange(state.uri.queryParameters),
+          ),
+        ),
+        GoRoute(
+          path: '/insights',
+          builder: (_, state) => InsightsPage(
+            initialMonth: _queryInitialMonth(state.uri.queryParameters),
+            initialRange: _queryRange(state.uri.queryParameters),
+          ),
+        ),
+        GoRoute(
+          path: '/transactions/add',
+          builder: (context, state) => services.isRegistered<FinanceServices>()
+              ? TransactionEditorPage(finance: services<FinanceServices>())
+              : _responsiveStateScaffold(
+                  contentKey: const ValueKey(
+                    'transaction-storage-unavailable-content',
+                  ),
+                  child: ButlerlyEmptyState(
+                    icon: Icons.storage_outlined,
+                    title: context.l10n.text('localStorageUnavailable'),
+                    message: context.l10n.text('dataPreserved'),
+                  ),
+                ),
+        ),
+        GoRoute(
+          path: '/payment-settlements',
+          builder: (_, _) => const Scaffold(body: PaymentSettlementsPage()),
+        ),
+        GoRoute(
+          path: '/payment-sources',
+          builder: (_, _) => const PaymentSourcesPage(),
+        ),
+        GoRoute(
+          path: '/import-export',
+          builder: (_, _) => const ImportExportPage(),
+        ),
+        GoRoute(
+          path: '/receipts/capture',
+          builder: (_, _) => const ReceiptCapturePage(),
+        ),
+        GoRoute(
+          path: '/statements',
+          builder: (context, _) => services.isRegistered<FinanceServices>()
+              ? const StatementCapturePage()
+              : _responsiveStateScaffold(
+                  contentKey: const ValueKey(
+                    'statement-storage-unavailable-content',
+                  ),
+                  child: ButlerlyEmptyState(
+                    icon: Icons.storage_outlined,
+                    title: context.l10n.text('localStorageUnavailable'),
+                    message: context.l10n.text('dataPreserved'),
+                  ),
+                ),
+        ),
+        GoRoute(
+          path: '/privacy-data',
+          builder: (_, _) => const PrivacyDataPage(),
+        ),
+        GoRoute(
+          path: '/master-data',
+          builder: (_, _) => const MasterDataPage(),
+        ),
+        GoRoute(
+          path: '/rules',
+          builder: (_, _) => const Scaffold(body: RulesPage()),
+        ),
+        GoRoute(
+          path: '/notifications',
+          builder: (_, _) => const NotificationsPage(),
+        ),
+        GoRoute(
+          path: '/assistant',
+          builder: (_, _) => const AssistantUnavailablePage(),
         ),
       ],
-    ),
-
-    // Secondary navigation. These pages intentionally render outside the
-    // primary shell and therefore never show the footer/navigation rail.
-    GoRoute(
-      path: '/legal-licenses',
-      builder: (_, _) => const LegalLicensesPage(),
-    ),
-    GoRoute(
-      path: '/review',
-      builder: (context, state) => ReviewPage(
-        showPossibleDuplicates:
-            state.uri.queryParameters['view'] == 'duplicates',
-        showNeedsReview: state.uri.queryParameters['view'] == 'needsReview',
-      ),
-    ),
-    GoRoute(
-      path: '/search',
-      builder: (_, state) {
-        final parameters = state.uri.queryParameters;
-        final locked = parameters['locked'] == 'true';
-        final hasInitialQuery =
-            locked ||
-            const {
-              'ids',
-              'from',
-              'to',
-              'category',
-              'paymentSource',
-              'currency',
-              'direction',
-              'uncategorized',
-            }.any(parameters.containsKey);
-        return SearchPage(
-          initialQuery: hasInitialQuery
-              ? ListTransactionsQuery(
-                  transactionIds: _queryIds(parameters['ids']),
-                  from: _queryDate(parameters['from']),
-                  to: _queryDate(parameters['to']),
-                  categoryId: parameters['category'],
-                  paymentSourceId: parameters['paymentSource'],
-                  currency: parameters['currency'],
-                  direction: _queryDirection(parameters['direction']),
-                  uncategorized: parameters['uncategorized'] == 'true',
-                )
-              : null,
-          readOnly: locked,
-          insightRuleId: parameters['insightRule'],
-          insightDimension: parameters['insightDimension'],
-        );
-      },
-    ),
-    GoRoute(
-      path: '/analysis',
-      builder: (_, state) => AnalysisPage(
-        initialMonth: _queryInitialMonth(state.uri.queryParameters),
-        initialRange: _queryRange(state.uri.queryParameters),
-      ),
-    ),
-    GoRoute(
-      path: '/insights',
-      builder: (_, state) => InsightsPage(
-        initialMonth: _queryInitialMonth(state.uri.queryParameters),
-        initialRange: _queryRange(state.uri.queryParameters),
-      ),
-    ),
-    GoRoute(
-      path: '/transactions/add',
-      builder: (context, state) => services.isRegistered<FinanceServices>()
-          ? TransactionEditorPage(finance: services<FinanceServices>())
-          : _responsiveStateScaffold(
-              contentKey: const ValueKey(
-                'transaction-storage-unavailable-content',
-              ),
-              child: ButlerlyEmptyState(
-                icon: Icons.storage_outlined,
-                title: context.l10n.text('localStorageUnavailable'),
-                message: context.l10n.text('dataPreserved'),
-              ),
-            ),
-    ),
-    GoRoute(
-      path: '/payment-settlements',
-      builder: (_, _) => const Scaffold(body: PaymentSettlementsPage()),
-    ),
-    GoRoute(
-      path: '/payment-sources',
-      builder: (_, _) => const PaymentSourcesPage(),
-    ),
-    GoRoute(
-      path: '/import-export',
-      builder: (_, _) => const ImportExportPage(),
-    ),
-    GoRoute(
-      path: '/receipts/capture',
-      builder: (_, _) => const ReceiptCapturePage(),
-    ),
-    GoRoute(
-      path: '/statements',
-      builder: (context, _) => services.isRegistered<FinanceServices>()
-          ? const StatementCapturePage()
-          : _responsiveStateScaffold(
-              contentKey: const ValueKey(
-                'statement-storage-unavailable-content',
-              ),
-              child: ButlerlyEmptyState(
-                icon: Icons.storage_outlined,
-                title: context.l10n.text('localStorageUnavailable'),
-                message: context.l10n.text('dataPreserved'),
-              ),
-            ),
-    ),
-    GoRoute(path: '/privacy-data', builder: (_, _) => const PrivacyDataPage()),
-    GoRoute(path: '/master-data', builder: (_, _) => const MasterDataPage()),
-    GoRoute(
-      path: '/rules',
-      builder: (_, _) => const Scaffold(body: RulesPage()),
-    ),
-    GoRoute(
-      path: '/notifications',
-      builder: (_, _) => const NotificationsPage(),
-    ),
-    GoRoute(
-      path: '/assistant',
-      builder: (_, _) => const AssistantUnavailablePage(),
     ),
   ],
   errorBuilder: (context, state) => _responsiveStateScaffold(

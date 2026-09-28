@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
-import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
 import 'package:butlerly/features/tools/presentation/tools_navigation.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -15,6 +14,7 @@ class WidePrimaryShell extends StatefulWidget {
     required this.currentIndex,
     required this.onSelected,
     required this.onMoreSectionSelected,
+    required this.onImport,
     super.key,
   });
 
@@ -22,6 +22,7 @@ class WidePrimaryShell extends StatefulWidget {
   final int currentIndex;
   final ValueChanged<int> onSelected;
   final ValueChanged<String> onMoreSectionSelected;
+  final Future<void> Function() onImport;
 
   @override
   State<WidePrimaryShell> createState() => _WidePrimaryShellState();
@@ -64,8 +65,6 @@ class _WidePrimaryShellState extends State<WidePrimaryShell> {
     await context.push(route);
   }
 
-  Future<void> _import() => startLocalFileImport(context);
-
   @override
   Widget build(BuildContext context) {
     _ensureMoreVisible();
@@ -88,7 +87,7 @@ class _WidePrimaryShellState extends State<WidePrimaryShell> {
             onParentSelected: _selectParent,
             onMoreSectionSelected: widget.onMoreSectionSelected,
             onNavigate: _navigate,
-            onImport: _import,
+            onImport: widget.onImport,
           ),
           Expanded(
             child: SafeArea(
@@ -214,6 +213,13 @@ class _WidePrimaryNavigation extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       _WideTopLevelItem(
+        semanticKey: const ValueKey('wide-home-navigation'),
+        icon: Icons.home_rounded,
+        label: context.l10n.text('home'),
+        selected: _selected(0),
+        onTap: () => onParentSelected(0),
+      ),
+      _WideTopLevelItem(
         icon: Icons.format_list_bulleted_rounded,
         label: context.l10n.text('transactions'),
         selected: _selected(1),
@@ -307,6 +313,13 @@ class _WidePrimaryNavigation extends StatelessWidget {
 
   Widget _collapsedMenu(BuildContext context) => Column(
     children: [
+      _WideCollapsedItem(
+        key: const ValueKey('wide-collapsed-home'),
+        icon: Icons.home_rounded,
+        label: context.l10n.text('home'),
+        selected: _selected(0),
+        onTap: (_) => onParentSelected(0),
+      ),
       _WideCollapsedItem(
         key: const ValueKey('wide-collapsed-transactions'),
         icon: Icons.format_list_bulleted_rounded,
@@ -461,12 +474,14 @@ class _WideBrand extends StatelessWidget {
 
 class _WideTopLevelItem extends StatelessWidget {
   const _WideTopLevelItem({
+    this.semanticKey,
     required this.icon,
     required this.label,
     required this.selected,
     required this.onTap,
   });
 
+  final Key? semanticKey;
   final IconData icon;
   final String label;
   final bool selected;
@@ -476,6 +491,7 @@ class _WideTopLevelItem extends StatelessWidget {
   Widget build(BuildContext context) => _WideNavigationSurface(
     selected: selected,
     child: Semantics(
+      key: semanticKey,
       button: true,
       container: true,
       selected: selected,

@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 void main() {
-  testWidgets('wide launch opens Transactions instead of Home', (tester) async {
+  testWidgets('wide launch opens Home', (tester) async {
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -19,10 +19,6 @@ void main() {
         GoRoute(
           path: '/launch',
           builder: (_, _) => ButlerlyLaunchPage(elapsedNow: () => elapsed),
-        ),
-        GoRoute(
-          path: '/transactions',
-          builder: (_, _) => const Scaffold(body: Text('Transactions')),
         ),
         GoRoute(
           path: '/',
@@ -40,8 +36,8 @@ void main() {
     await tester.pump(ButlerlySessionConfig.launchDuration);
     await tester.pump();
 
-    expect(router.routeInformationProvider.value.uri.path, '/transactions');
-    expect(find.text('Transactions'), findsOneWidget);
+    expect(router.routeInformationProvider.value.uri.path, '/');
+    expect(find.text('Home'), findsOneWidget);
   });
 
   testWidgets('launch countdown pauses while Butlerly is backgrounded', (
