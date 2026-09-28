@@ -829,147 +829,142 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
           _isEditing ? 'editPaymentSettlement' : 'addPaymentSettlement',
         ),
       ),
-      content: SizedBox(
-        width: 560,
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+      content: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (_isEditing)
+              InputDecorator(
+                decoration: InputDecoration(
+                  labelText: context.l10n.text('paymentSource'),
+                ),
+                child: Text(
+                  source == null
+                      ? widget.existing!.settlement.paymentSourceId
+                      : paymentSourceDisplayLabel(source),
+                ),
+              )
+            else
+              DropdownButtonFormField<String>(
+                initialValue: _paymentSourceId,
+                decoration: InputDecoration(
+                  labelText: context.l10n.text('paymentSource'),
+                ),
+                items: [
+                  for (final item in widget.sources)
+                    DropdownMenuItem(
+                      value: item.id.value,
+                      child: Text(paymentSourceDisplayLabel(item)),
+                    ),
+                ],
+                validator: (value) => value == null
+                    ? context.l10n.text('choosePaymentSourceToContinue')
+                    : null,
+                onChanged: (value) {
+                  setState(() {
+                    _paymentSourceId = value;
+                    final selected = widget.sources
+                        .where((item) => item.id.value == value)
+                        .firstOrNull;
+                    if (selected?.currency?.trim().isNotEmpty == true) {
+                      _currency.text = selected!.currency!.toUpperCase();
+                    }
+                  });
+                },
+              ),
+            const SizedBox(height: ButlerlySpacing.standard),
+            TextFormField(
+              controller: _amount,
+              decoration: InputDecoration(
+                labelText: context.l10n.text('amount'),
+              ),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              validator: _requiredAmount,
+            ),
+            const SizedBox(height: ButlerlySpacing.standard),
+            TextFormField(
+              controller: _currency,
+              decoration: InputDecoration(
+                labelText: context.l10n.text('currency'),
+              ),
+              textCapitalization: TextCapitalization.characters,
+              validator: _currencyValidator,
+            ),
+            const SizedBox(height: ButlerlySpacing.standard),
+            TextFormField(
+              controller: _paymentDate,
+              readOnly: true,
+              onTap: () => _pickDate(_paymentDate),
+              decoration: InputDecoration(
+                labelText: context.l10n.text('paymentDate'),
+                suffixIcon: const Icon(Icons.calendar_today_outlined),
+              ),
+              validator: _requiredDate,
+            ),
+            const SizedBox(height: ButlerlySpacing.section),
+            Text(
+              context.l10n.text('paymentSettlementPeriod'),
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: ButlerlySpacing.compact),
+            Row(
               children: [
-                if (_isEditing)
-                  InputDecorator(
+                Expanded(
+                  child: TextFormField(
+                    controller: _periodStart,
+                    readOnly: true,
+                    onTap: () => _pickDate(_periodStart),
                     decoration: InputDecoration(
-                      labelText: context.l10n.text('paymentSource'),
+                      labelText: context.l10n.text('fromDate'),
+                      suffixIcon: const Icon(Icons.calendar_today_outlined),
                     ),
-                    child: Text(
-                      source == null
-                          ? widget.existing!.settlement.paymentSourceId
-                          : paymentSourceDisplayLabel(source),
-                    ),
-                  )
-                else
-                  DropdownButtonFormField<String>(
-                    initialValue: _paymentSourceId,
+                    validator: _requiredDate,
+                  ),
+                ),
+                const SizedBox(width: ButlerlySpacing.standard),
+                Expanded(
+                  child: TextFormField(
+                    controller: _periodEnd,
+                    readOnly: true,
+                    onTap: () => _pickDate(_periodEnd),
                     decoration: InputDecoration(
-                      labelText: context.l10n.text('paymentSource'),
+                      labelText: context.l10n.text('toDate'),
+                      suffixIcon: const Icon(Icons.calendar_today_outlined),
                     ),
-                    items: [
-                      for (final item in widget.sources)
-                        DropdownMenuItem(
-                          value: item.id.value,
-                          child: Text(paymentSourceDisplayLabel(item)),
-                        ),
-                    ],
-                    validator: (value) => value == null
-                        ? context.l10n.text('choosePaymentSourceToContinue')
-                        : null,
-                    onChanged: (value) {
-                      setState(() {
-                        _paymentSourceId = value;
-                        final selected = widget.sources
-                            .where((item) => item.id.value == value)
-                            .firstOrNull;
-                        if (selected?.currency?.trim().isNotEmpty == true) {
-                          _currency.text = selected!.currency!.toUpperCase();
-                        }
-                      });
-                    },
-                  ),
-                const SizedBox(height: ButlerlySpacing.standard),
-                TextFormField(
-                  controller: _amount,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('amount'),
-                  ),
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  validator: _requiredAmount,
-                ),
-                const SizedBox(height: ButlerlySpacing.standard),
-                TextFormField(
-                  controller: _currency,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('currency'),
-                  ),
-                  textCapitalization: TextCapitalization.characters,
-                  validator: _currencyValidator,
-                ),
-                const SizedBox(height: ButlerlySpacing.standard),
-                TextFormField(
-                  controller: _paymentDate,
-                  readOnly: true,
-                  onTap: () => _pickDate(_paymentDate),
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('paymentDate'),
-                    suffixIcon: const Icon(Icons.calendar_today_outlined),
-                  ),
-                  validator: _requiredDate,
-                ),
-                const SizedBox(height: ButlerlySpacing.section),
-                Text(
-                  context.l10n.text('paymentSettlementPeriod'),
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const SizedBox(height: ButlerlySpacing.compact),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _periodStart,
-                        readOnly: true,
-                        onTap: () => _pickDate(_periodStart),
-                        decoration: InputDecoration(
-                          labelText: context.l10n.text('fromDate'),
-                          suffixIcon: const Icon(Icons.calendar_today_outlined),
-                        ),
-                        validator: _requiredDate,
-                      ),
-                    ),
-                    const SizedBox(width: ButlerlySpacing.standard),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _periodEnd,
-                        readOnly: true,
-                        onTap: () => _pickDate(_periodEnd),
-                        decoration: InputDecoration(
-                          labelText: context.l10n.text('toDate'),
-                          suffixIcon: const Icon(Icons.calendar_today_outlined),
-                        ),
-                        validator: _requiredDate,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: ButlerlySpacing.standard),
-                TextFormField(
-                  controller: _statementBalance,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('statementBalanceOptional'),
-                  ),
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  validator: _optionalAmount,
-                ),
-                const SizedBox(height: ButlerlySpacing.standard),
-                TextFormField(
-                  controller: _description,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('descriptionOptional'),
-                  ),
-                ),
-                const SizedBox(height: ButlerlySpacing.standard),
-                TextFormField(
-                  controller: _externalReference,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('externalReferenceOptional'),
+                    validator: _requiredDate,
                   ),
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: ButlerlySpacing.standard),
+            TextFormField(
+              controller: _statementBalance,
+              decoration: InputDecoration(
+                labelText: context.l10n.text('statementBalanceOptional'),
+              ),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              validator: _optionalAmount,
+            ),
+            const SizedBox(height: ButlerlySpacing.standard),
+            TextFormField(
+              controller: _description,
+              decoration: InputDecoration(
+                labelText: context.l10n.text('descriptionOptional'),
+              ),
+            ),
+            const SizedBox(height: ButlerlySpacing.standard),
+            TextFormField(
+              controller: _externalReference,
+              decoration: InputDecoration(
+                labelText: context.l10n.text('externalReferenceOptional'),
+              ),
+            ),
+          ],
         ),
       ),
       actions: [

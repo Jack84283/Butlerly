@@ -39,6 +39,19 @@ abstract final class ButlerlySpacing {
   static const headerActionTrailing = standard;
 }
 
+/// Shared geometry for standard Butlerly modal bottom sheets.
+abstract final class ButlerlySheetTokens {
+  static const maxHeightFactor = .9;
+  static const horizontalPadding = ButlerlySpacing.modalHorizontal;
+  static const bottomPadding = ButlerlySpacing.modalBottom;
+  static const titleContentGap = ButlerlySpacing.section;
+  static const contentActionsGap = ButlerlySpacing.section;
+  static const actionGap = ButlerlySpacing.compact;
+  static const dragHandleWidth = 32.0;
+  static const dragHandleHeight = 4.0;
+  static const dragHandleVerticalPadding = ButlerlySpacing.compact;
+}
+
 /// Stable categorical colors shared by charts and their legends.
 abstract final class ButlerlyChartColors {
   static const _stableCategoryPaletteLength = 32;

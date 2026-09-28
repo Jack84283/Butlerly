@@ -1903,56 +1903,53 @@ Future<bool?> _organizeTransaction(
     builder: (dialogContext) => StatefulBuilder(
       builder: (dialogContext, setDialogState) => ButlerlySheet(
         title: Text(dialogContext.l10n.text('organizeTransaction')),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ButlerlyMerchantSelector(
-                merchants: merchants,
-                value: merchantId,
-                label: dialogContext.l10n.text('merchant'),
-                clearLabel: dialogContext.l10n.text('clear'),
-                onChanged: (value) => setDialogState(() => merchantId = value),
-              ),
-              const SizedBox(height: ButlerlySpacing.small),
-              ButlerlyCategorySelector(
-                categories: categories,
-                masterData: presentation,
-                value: parentCategoryId,
-                label: dialogContext.l10n.text('category'),
-                clearLabel: dialogContext.l10n.text('clear'),
-                onChanged: (value) => setDialogState(() {
-                  parentCategoryId = value;
-                  categoryId = value;
-                  subcategoryId = null;
-                }),
-              ),
-              const SizedBox(height: ButlerlySpacing.small),
-              ButlerlySubcategorySelector(
-                categories: categories,
-                masterData: presentation,
-                parentId: parentCategoryId,
-                value: subcategoryId,
-                label: dialogContext.l10n.text('subcategory'),
-                clearLabel: dialogContext.l10n.text('clear'),
-                onChanged: (value) =>
-                    setDialogState(() => subcategoryId = value),
-              ),
-              const SizedBox(height: ButlerlySpacing.small),
-              ButlerlyTagPicker(
-                tags: tags,
-                masterData: presentation,
-                selected: selectedTagIds,
-                searchLabel: dialogContext.l10n.text('search'),
-                createLabel: dialogContext.l10n.text('addTag'),
-                onChanged: (value) => setDialogState(() {
-                  selectedTagIds
-                    ..clear()
-                    ..addAll(value);
-                }),
-              ),
-            ],
-          ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ButlerlyMerchantSelector(
+              merchants: merchants,
+              value: merchantId,
+              label: dialogContext.l10n.text('merchant'),
+              clearLabel: dialogContext.l10n.text('clear'),
+              onChanged: (value) => setDialogState(() => merchantId = value),
+            ),
+            const SizedBox(height: ButlerlySpacing.small),
+            ButlerlyCategorySelector(
+              categories: categories,
+              masterData: presentation,
+              value: parentCategoryId,
+              label: dialogContext.l10n.text('category'),
+              clearLabel: dialogContext.l10n.text('clear'),
+              onChanged: (value) => setDialogState(() {
+                parentCategoryId = value;
+                categoryId = value;
+                subcategoryId = null;
+              }),
+            ),
+            const SizedBox(height: ButlerlySpacing.small),
+            ButlerlySubcategorySelector(
+              categories: categories,
+              masterData: presentation,
+              parentId: parentCategoryId,
+              value: subcategoryId,
+              label: dialogContext.l10n.text('subcategory'),
+              clearLabel: dialogContext.l10n.text('clear'),
+              onChanged: (value) => setDialogState(() => subcategoryId = value),
+            ),
+            const SizedBox(height: ButlerlySpacing.small),
+            ButlerlyTagPicker(
+              tags: tags,
+              masterData: presentation,
+              selected: selectedTagIds,
+              searchLabel: dialogContext.l10n.text('search'),
+              createLabel: dialogContext.l10n.text('addTag'),
+              onChanged: (value) => setDialogState(() {
+                selectedTagIds
+                  ..clear()
+                  ..addAll(value);
+              }),
+            ),
+          ],
         ),
         actions: [
           TextButton(

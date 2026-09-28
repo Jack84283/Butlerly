@@ -387,77 +387,71 @@ class _SinglePaymentSheetState extends State<_SinglePaymentSheet> {
     title: Text(context.l10n.text('addPaymentNotification')),
     content: Form(
       key: _formKey,
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              controller: _amount,
-              decoration: InputDecoration(
-                labelText: context.l10n.text('amount'),
-              ),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              validator: (value) => double.tryParse(value ?? '') == null
-                  ? context.l10n.text('invalidAmount')
-                  : null,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextFormField(
+            controller: _amount,
+            decoration: InputDecoration(labelText: context.l10n.text('amount')),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            validator: (value) => double.tryParse(value ?? '') == null
+                ? context.l10n.text('invalidAmount')
+                : null,
+          ),
+          const SizedBox(height: ButlerlySpacing.standard),
+          TextFormField(
+            controller: _currency,
+            decoration: InputDecoration(
+              labelText: context.l10n.text('currency'),
             ),
-            const SizedBox(height: ButlerlySpacing.standard),
-            TextFormField(
-              controller: _currency,
-              decoration: InputDecoration(
-                labelText: context.l10n.text('currency'),
-              ),
-              validator: (value) => value == null || value.trim().length != 3
-                  ? context.l10n.text('currencyThreeLetters')
-                  : null,
+            validator: (value) => value == null || value.trim().length != 3
+                ? context.l10n.text('currencyThreeLetters')
+                : null,
+          ),
+          const SizedBox(height: ButlerlySpacing.standard),
+          TextFormField(
+            controller: _description,
+            decoration: InputDecoration(
+              labelText: context.l10n.text('merchantDescription'),
             ),
-            const SizedBox(height: ButlerlySpacing.standard),
-            TextFormField(
-              controller: _description,
-              decoration: InputDecoration(
-                labelText: context.l10n.text('merchantDescription'),
-              ),
-              validator: (value) => value == null || value.trim().isEmpty
-                  ? 'Enter a description.'
-                  : null,
-            ),
-            const SizedBox(height: ButlerlySpacing.standard),
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 360),
-                child: ButlerlyDirectionFilter(
-                  value: _direction == 'income'
-                      ? TransactionDirection.income
-                      : TransactionDirection.expense,
-                  label: context.l10n.text('direction'),
-                  anyLabel: context.l10n.text('clear'),
-                  onChanged: (value) => setState(
-                    () => _direction = value == TransactionDirection.income
-                        ? 'income'
-                        : 'expense',
-                  ),
+            validator: (value) => value == null || value.trim().isEmpty
+                ? 'Enter a description.'
+                : null,
+          ),
+          const SizedBox(height: ButlerlySpacing.standard),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 360),
+              child: ButlerlyDirectionFilter(
+                value: _direction == 'income'
+                    ? TransactionDirection.income
+                    : TransactionDirection.expense,
+                label: context.l10n.text('direction'),
+                anyLabel: context.l10n.text('clear'),
+                onChanged: (value) => setState(
+                  () => _direction = value == TransactionDirection.income
+                      ? 'income'
+                      : 'expense',
                 ),
               ),
             ),
-            const SizedBox(height: ButlerlySpacing.standard),
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 360),
-                child: ButlerlyPaymentSourceSelector(
-                  value: _sourceId,
-                  label: context.l10n.text('paymentSource'),
-                  clearLabel: context.l10n.text('unassigned'),
-                  sources: widget.sources,
-                  onChanged: (value) => setState(() => _sourceId = value),
-                ),
+          ),
+          const SizedBox(height: ButlerlySpacing.standard),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 360),
+              child: ButlerlyPaymentSourceSelector(
+                value: _sourceId,
+                label: context.l10n.text('paymentSource'),
+                clearLabel: context.l10n.text('unassigned'),
+                sources: widget.sources,
+                onChanged: (value) => setState(() => _sourceId = value),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     ),
     actions: [
@@ -532,102 +526,94 @@ class _StatementPreviewSheetState extends State<_StatementPreviewSheet> {
   @override
   Widget build(BuildContext context) => ButlerlySheet(
     title: Text(context.l10n.text('reviewStatementImport')),
-    content: SizedBox(
-      width: 520,
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.l10n.text('validRowsReady', {
-                'count': '${widget.preview.validCount}',
-              }),
-            ),
-            if (widget.preview.errors.isNotEmpty) ...[
-              const SizedBox(height: ButlerlySpacing.compact),
-              Text(
-                context.l10n.text('rowsNeedCorrection', {
-                  'count': '${widget.preview.errors.length}',
-                }),
-              ),
-            ],
-            const SizedBox(height: ButlerlySpacing.small),
-            ButlerlyPaymentSourceSelector(
-              value: _sourceId,
-              label: context.l10n.text('paymentSource'),
-              clearLabel: context.l10n.text('unassigned'),
-              sources: widget.sources,
-              onChanged: (value) => setState(() {
-                _sourceId = value;
-                _confirmedDuplicateTokens.clear();
-              }),
-            ),
-            const SizedBox(height: ButlerlySpacing.small),
-            for (final row in widget.preview.rows.take(8))
-              ListTile(
-                dense: true,
-                title: Text(row.description),
-                subtitle: Text('${row.date} · ${row.currency} ${row.amount}'),
-                trailing: row.isValid
-                    ? Icon(
-                        widget.duplicateCandidates.containsKey(row.rowNumber)
-                            ? Icons.warning_amber_outlined
-                            : Icons.check_circle_outline,
-                        color:
-                            widget.duplicateCandidates.containsKey(
-                              row.rowNumber,
-                            )
-                            ? context.colors.warning
-                            : context.colors.success,
-                      )
-                    : Icon(Icons.error_outline, color: context.colors.warning),
-              ),
-            if (widget.duplicateCandidates.isNotEmpty) ...[
-              const SizedBox(height: ButlerlySpacing.standard),
-              Text(
-                context.l10n.text('possibleDuplicates'),
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: ButlerlySpacing.compact),
-              for (final entry in widget.duplicateCandidates.entries)
-                Builder(
-                  builder: (context) {
-                    final row = widget.preview.rows.firstWhere(
-                      (value) => value.rowNumber == entry.key,
-                    );
-                    final existing = entry.value.first.transaction;
-                    return CheckboxListTile(
-                      contentPadding: EdgeInsets.zero,
-                      value: _confirmedDuplicateTokens.containsKey(entry.key),
-                      title: Text(row.description),
-                      subtitle: Text(
-                        '${row.date} · ${row.currency} ${row.amount}\n'
-                        '${context.l10n.text('possibleDuplicates')}: '
-                        '${existing.transactionDate} · '
-                        '${existing.currency} ${existing.amount} · '
-                        '${existing.rawCounterparty ?? existing.description ?? existing.id}',
-                      ),
-                      onChanged: (value) {
-                        setState(() {
-                          if (value == true) {
-                            _confirmedDuplicateTokens[entry.key] =
-                                LocalCsvImporter.duplicateConfirmationToken(
-                                  row,
-                                  entry.value,
-                                  paymentSourceId: _sourceId,
-                                );
-                          } else {
-                            _confirmedDuplicateTokens.remove(entry.key);
-                          }
-                        });
-                      },
-                    );
-                  },
-                ),
-            ],
-          ],
+    content: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.l10n.text('validRowsReady', {
+            'count': '${widget.preview.validCount}',
+          }),
         ),
-      ),
+        if (widget.preview.errors.isNotEmpty) ...[
+          const SizedBox(height: ButlerlySpacing.compact),
+          Text(
+            context.l10n.text('rowsNeedCorrection', {
+              'count': '${widget.preview.errors.length}',
+            }),
+          ),
+        ],
+        const SizedBox(height: ButlerlySpacing.small),
+        ButlerlyPaymentSourceSelector(
+          value: _sourceId,
+          label: context.l10n.text('paymentSource'),
+          clearLabel: context.l10n.text('unassigned'),
+          sources: widget.sources,
+          onChanged: (value) => setState(() {
+            _sourceId = value;
+            _confirmedDuplicateTokens.clear();
+          }),
+        ),
+        const SizedBox(height: ButlerlySpacing.small),
+        for (final row in widget.preview.rows.take(8))
+          ListTile(
+            dense: true,
+            title: Text(row.description),
+            subtitle: Text('${row.date} · ${row.currency} ${row.amount}'),
+            trailing: row.isValid
+                ? Icon(
+                    widget.duplicateCandidates.containsKey(row.rowNumber)
+                        ? Icons.warning_amber_outlined
+                        : Icons.check_circle_outline,
+                    color: widget.duplicateCandidates.containsKey(row.rowNumber)
+                        ? context.colors.warning
+                        : context.colors.success,
+                  )
+                : Icon(Icons.error_outline, color: context.colors.warning),
+          ),
+        if (widget.duplicateCandidates.isNotEmpty) ...[
+          const SizedBox(height: ButlerlySpacing.standard),
+          Text(
+            context.l10n.text('possibleDuplicates'),
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+          const SizedBox(height: ButlerlySpacing.compact),
+          for (final entry in widget.duplicateCandidates.entries)
+            Builder(
+              builder: (context) {
+                final row = widget.preview.rows.firstWhere(
+                  (value) => value.rowNumber == entry.key,
+                );
+                final existing = entry.value.first.transaction;
+                return CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: _confirmedDuplicateTokens.containsKey(entry.key),
+                  title: Text(row.description),
+                  subtitle: Text(
+                    '${row.date} · ${row.currency} ${row.amount}\n'
+                    '${context.l10n.text('possibleDuplicates')}: '
+                    '${existing.transactionDate} · '
+                    '${existing.currency} ${existing.amount} · '
+                    '${existing.rawCounterparty ?? existing.description ?? existing.id}',
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      if (value == true) {
+                        _confirmedDuplicateTokens[entry.key] =
+                            LocalCsvImporter.duplicateConfirmationToken(
+                              row,
+                              entry.value,
+                              paymentSourceId: _sourceId,
+                            );
+                      } else {
+                        _confirmedDuplicateTokens.remove(entry.key);
+                      }
+                    });
+                  },
+                );
+              },
+            ),
+        ],
+      ],
     ),
     actions: [
       TextButton(
@@ -718,7 +704,7 @@ class AssistantUnavailablePage extends StatelessWidget {
         title: context.l10n.text('assistantUnavailable'),
         message: context.l10n.text('assistantUnavailableBody'),
         actionLabel: context.l10n.text('searchRecords'),
-        onAction: () => context.go('/search'),
+        onAction: () => context.push('/search'),
       ),
     ),
   );

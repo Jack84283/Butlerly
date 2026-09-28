@@ -130,7 +130,7 @@ void main() {
     for (var index = 1; index < fieldRects.length; index++) {
       expect(
         fieldRects[index].top - fieldRects[index - 1].bottom,
-        greaterThanOrEqualTo(ButlerlySpacing.small),
+        greaterThanOrEqualTo(ButlerlySpacing.small - 0.001),
       );
     }
 

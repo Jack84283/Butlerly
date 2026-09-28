@@ -121,69 +121,67 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
               existing == null ? 'addPaymentSource' : 'editPaymentSource',
             ),
           ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: name,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('name'),
-                  ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: name,
+                decoration: InputDecoration(
+                  labelText: context.l10n.text('name'),
                 ),
-                const SizedBox(height: ButlerlySpacing.small),
-                TextField(
-                  controller: issuer,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('issuer'),
-                  ),
+              ),
+              const SizedBox(height: ButlerlySpacing.small),
+              TextField(
+                controller: issuer,
+                decoration: InputDecoration(
+                  labelText: context.l10n.text('issuer'),
                 ),
-                const SizedBox(height: ButlerlySpacing.small),
-                TextField(
-                  controller: lastFour,
-                  keyboardType: TextInputType.number,
-                  maxLength: 4,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('lastFour'),
-                  ),
+              ),
+              const SizedBox(height: ButlerlySpacing.small),
+              TextField(
+                controller: lastFour,
+                keyboardType: TextInputType.number,
+                maxLength: 4,
+                decoration: InputDecoration(
+                  labelText: context.l10n.text('lastFour'),
                 ),
-                const SizedBox(height: ButlerlySpacing.small),
-                TextField(
-                  controller: currency,
-                  textCapitalization: TextCapitalization.characters,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('currency'),
-                  ),
+              ),
+              const SizedBox(height: ButlerlySpacing.small),
+              TextField(
+                controller: currency,
+                textCapitalization: TextCapitalization.characters,
+                decoration: InputDecoration(
+                  labelText: context.l10n.text('currency'),
                 ),
-                const SizedBox(height: ButlerlySpacing.small),
-                TextField(
-                  controller: note,
-                  maxLines: 2,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('notesOptional'),
-                  ),
+              ),
+              const SizedBox(height: ButlerlySpacing.small),
+              TextField(
+                controller: note,
+                maxLines: 2,
+                decoration: InputDecoration(
+                  labelText: context.l10n.text('notesOptional'),
                 ),
-                const SizedBox(height: ButlerlySpacing.small),
-                DropdownButtonFormField<PaymentSourceType>(
-                  initialValue: type,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('type'),
-                  ),
-                  items: PaymentSourceType.values
-                      .map(
-                        (value) => DropdownMenuItem(
-                          value: value,
-                          child: Text(
-                            typeLabels['payment_source_type.${value.name}'] ??
-                                _typeLabel(context, value),
-                          ),
+              ),
+              const SizedBox(height: ButlerlySpacing.small),
+              DropdownButtonFormField<PaymentSourceType>(
+                initialValue: type,
+                decoration: InputDecoration(
+                  labelText: context.l10n.text('type'),
+                ),
+                items: PaymentSourceType.values
+                    .map(
+                      (value) => DropdownMenuItem(
+                        value: value,
+                        child: Text(
+                          typeLabels['payment_source_type.${value.name}'] ??
+                              _typeLabel(context, value),
                         ),
-                      )
-                      .toList(growable: false),
-                  onChanged: (value) => setDialogState(() => type = value!),
-                ),
-              ],
-            ),
+                      ),
+                    )
+                    .toList(growable: false),
+                onChanged: (value) => setDialogState(() => type = value!),
+              ),
+            ],
           ),
           actions: [
             TextButton(
