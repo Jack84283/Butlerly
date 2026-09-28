@@ -213,6 +213,7 @@ class _WidePrimaryNavigation extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       _WideTopLevelItem(
+        semanticKey: const ValueKey('wide-home-navigation'),
         icon: Icons.home_rounded,
         label: context.l10n.text('home'),
         selected: _selected(0),
@@ -473,12 +474,14 @@ class _WideBrand extends StatelessWidget {
 
 class _WideTopLevelItem extends StatelessWidget {
   const _WideTopLevelItem({
+    this.semanticKey,
     required this.icon,
     required this.label,
     required this.selected,
     required this.onTap,
   });
 
+  final Key? semanticKey;
   final IconData icon;
   final String label;
   final bool selected;
@@ -488,6 +491,7 @@ class _WideTopLevelItem extends StatelessWidget {
   Widget build(BuildContext context) => _WideNavigationSurface(
     selected: selected,
     child: Semantics(
+      key: semanticKey,
       button: true,
       container: true,
       selected: selected,

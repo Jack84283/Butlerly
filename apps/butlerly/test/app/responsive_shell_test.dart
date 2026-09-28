@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui' show Tristate;
 
 import 'package:butlerly/app/butlerly_app.dart';
@@ -5,20 +6,36 @@ import 'package:butlerly/app/router/app_router.dart';
 import 'package:butlerly/app/shell/compact/compact_primary_shell.dart';
 import 'package:butlerly/app/shell/medium/medium_primary_shell.dart';
 import 'package:butlerly/app/shell/wide/wide_primary_shell.dart';
+import 'package:butlerly/core/data/local_data_manager.dart';
+import 'package:butlerly/core/database/local_database.dart';
+import 'package:butlerly/core/di/finance_services.dart';
+import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/core/evidence/local_evidence_store.dart';
+import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
 import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
 import 'package:butlerly/features/foundation/presentation/legal_licenses_page.dart';
+import 'package:butlerly/features/foundation/presentation/receipt_capture_page.dart';
 import 'package:butlerly/features/foundation/presentation/search_page.dart';
 import 'package:butlerly/features/foundation/presentation/settings_page.dart';
-import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/features/tools/presentation/tools_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../features/transactions/transaction_lifecycle_test.dart'
+    show
+        MemoryCategories,
+        MemoryEvidence,
+        MemoryMerchants,
+        MemoryPaymentSources,
+        MemoryTags,
+        MemoryTransactionRepository,
+        MemoryUserPreferences;
 
 void main() {
   setUp(() {
@@ -286,6 +303,59 @@ void main() {
     );
   });
 
+  testWidgets('Wide Add keeps the shell for capture receipt workflow', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(1200, 800));
+
+    final finance = FinanceServices(
+      MemoryTransactionRepository(),
+      MemoryPaymentSources(),
+      MemoryMerchants(),
+      MemoryCategories(),
+      MemoryTags(),
+      MemoryEvidence(),
+      MemoryUserPreferences(),
+    );
+    services.registerSingleton<FinanceServices>(finance);
+    services.registerSingleton<LocalEvidenceStore>(
+      LocalEvidenceStore(
+        LocalDataManager(
+          LocalDatabase(logger: AppLogger()),
+          localEvidenceDirectory: Directory.systemTemp,
+        ),
+        finance,
+      ),
+    );
+    addTearDown(() {
+      services.unregister<LocalEvidenceStore>();
+      services.unregister<FinanceServices>();
+    });
+
+    final navigation = find.byKey(const ValueKey('primary-wide-navigation'));
+    await tester.tap(
+      find.descendant(of: navigation, matching: find.text('Add')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(of: navigation, matching: find.text('Scan receipt')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ReceiptCapturePage), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('primary-wide-navigation')),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<Semantics>(find.byKey(const ValueKey('wide-add-navigation')))
+          .properties
+          .selected,
+      isTrue,
+    );
+  });
+
   testWidgets('expanded Wide About Butlerly opens Legal & licenses', (
     tester,
   ) async {
@@ -470,13 +540,21 @@ void main() {
     await tester.tap(
       find.descendant(
         of: find.byKey(const ValueKey('primary-wide-navigation')),
-        matching: find.text('Transactions'),
+        matching: find.text('Home'),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(TransactionsPage), findsOneWidget);
+    expect(appRouter.routeInformationProvider.value.uri.path, '/');
+    expect(find.byKey(const ValueKey('home-page-content')), findsOneWidget);
     expect(find.byType(WidePrimaryShell), findsOneWidget);
+    expect(
+      tester
+          .widget<Semantics>(find.byKey(const ValueKey('wide-home-navigation')))
+          .properties
+          .selected,
+      isTrue,
+    );
   });
 
   testWidgets('collapsed Wide state survives secondary navigation', (
@@ -492,6 +570,16 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(AnalysisPage), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const ValueKey('primary-wide-navigation'))),
+      const Size(ButlerlySize.wideNavigationCollapsedWidth, 800),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('wide-collapsed-home')));
+    await tester.pumpAndSettle();
+
+    expect(appRouter.routeInformationProvider.value.uri.path, '/');
+    expect(find.byKey(const ValueKey('home-page-content')), findsOneWidget);
     expect(
       tester.getSize(find.byKey(const ValueKey('primary-wide-navigation'))),
       const Size(ButlerlySize.wideNavigationCollapsedWidth, 800),
