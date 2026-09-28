@@ -28,12 +28,36 @@ class WidePrimaryShell extends StatefulWidget {
 }
 
 class _WidePrimaryShellState extends State<WidePrimaryShell> {
+  final _moreNavigationKey = GlobalKey();
   bool _expanded = true;
   bool _addExpanded = true;
   bool _toolsExpanded = true;
   bool _moreExpanded = true;
+  bool _moreVisibilityScheduled = false;
 
-  void _selectParent(int branchIndex) => widget.onSelected(branchIndex);
+  void _selectParent(int branchIndex) {
+    if (branchIndex == 4) {
+      setState(() => _moreExpanded = true);
+    }
+    widget.onSelected(branchIndex);
+  }
+
+  void _ensureMoreVisible() {
+    if (!_expanded || widget.currentIndex != 4 || _moreVisibilityScheduled) {
+      return;
+    }
+    _moreVisibilityScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _moreVisibilityScheduled = false;
+      final targetContext = _moreNavigationKey.currentContext;
+      if (!mounted || targetContext == null) return;
+      Scrollable.ensureVisible(
+        targetContext,
+        alignment: 0.0,
+        duration: ButlerlyMotion.responsive(context, ButlerlyMotion.fast),
+      );
+    });
+  }
 
   Future<void> _navigate(String route) async {
     if (!mounted) return;
@@ -43,38 +67,43 @@ class _WidePrimaryShellState extends State<WidePrimaryShell> {
   Future<void> _import() => startLocalFileImport(context);
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: Row(
-      children: [
-        _WidePrimaryNavigation(
-          key: const ValueKey('primary-wide-navigation'),
-          expanded: _expanded,
-          addExpanded: _addExpanded,
-          toolsExpanded: _toolsExpanded,
-          moreExpanded: _moreExpanded,
-          currentIndex: widget.currentIndex,
-          onToggleExpanded: () => setState(() => _expanded = !_expanded),
-          onToggleAdd: () => setState(() => _addExpanded = !_addExpanded),
-          onToggleTools: () => setState(() => _toolsExpanded = !_toolsExpanded),
-          onToggleMore: () => setState(() => _moreExpanded = !_moreExpanded),
-          onParentSelected: _selectParent,
-          onMoreSectionSelected: widget.onMoreSectionSelected,
-          onNavigate: _navigate,
-          onImport: _import,
-        ),
-        Expanded(
-          child: SafeArea(
-            bottom: false,
-            child: ColoredBox(
-              key: const ValueKey('primary-wide-body-surface'),
-              color: context.colors.subtleSurface,
-              child: _wideBody(context),
+  Widget build(BuildContext context) {
+    _ensureMoreVisible();
+    return Scaffold(
+      body: Row(
+        children: [
+          _WidePrimaryNavigation(
+            key: const ValueKey('primary-wide-navigation'),
+            expanded: _expanded,
+            addExpanded: _addExpanded,
+            toolsExpanded: _toolsExpanded,
+            moreExpanded: _moreExpanded,
+            currentIndex: widget.currentIndex,
+            onToggleExpanded: () => setState(() => _expanded = !_expanded),
+            onToggleAdd: () => setState(() => _addExpanded = !_addExpanded),
+            onToggleTools: () =>
+                setState(() => _toolsExpanded = !_toolsExpanded),
+            onToggleMore: () => setState(() => _moreExpanded = !_moreExpanded),
+            moreNavigationKey: _moreNavigationKey,
+            onParentSelected: _selectParent,
+            onMoreSectionSelected: widget.onMoreSectionSelected,
+            onNavigate: _navigate,
+            onImport: _import,
+          ),
+          Expanded(
+            child: SafeArea(
+              bottom: false,
+              child: ColoredBox(
+                key: const ValueKey('primary-wide-body-surface'),
+                color: context.colors.subtleSurface,
+                child: _wideBody(context),
+              ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 
   Widget _wideBody(BuildContext context) {
     if (widget.currentIndex != 0) return widget.body;
@@ -122,6 +151,7 @@ class _WidePrimaryNavigation extends StatelessWidget {
     required this.onToggleAdd,
     required this.onToggleTools,
     required this.onToggleMore,
+    required this.moreNavigationKey,
     required this.onParentSelected,
     required this.onMoreSectionSelected,
     required this.onNavigate,
@@ -137,6 +167,7 @@ class _WidePrimaryNavigation extends StatelessWidget {
   final VoidCallback onToggleAdd;
   final VoidCallback onToggleTools;
   final VoidCallback onToggleMore;
+  final GlobalKey moreNavigationKey;
   final ValueChanged<int> onParentSelected;
   final ValueChanged<String> onMoreSectionSelected;
   final ValueChanged<String> onNavigate;
@@ -245,6 +276,7 @@ class _WidePrimaryNavigation extends StatelessWidget {
         ],
       ),
       _WideGroup(
+        key: moreNavigationKey,
         semanticKey: const ValueKey('wide-more-navigation'),
         label: context.l10n.text('more'),
         icon: Icons.more_horiz_rounded,
@@ -253,11 +285,6 @@ class _WidePrimaryNavigation extends StatelessWidget {
         onTap: () => onParentSelected(4),
         onToggle: onToggleMore,
         children: [
-          _WideChildItem(
-            icon: Icons.palette_outlined,
-            label: context.l10n.text('appearance'),
-            onTap: () => onMoreSectionSelected('appearance'),
-          ),
           _WideChildItem(
             icon: Icons.privacy_tip_outlined,
             label: context.l10n.text('privacyAndData'),
@@ -334,10 +361,6 @@ class _WidePrimaryNavigation extends StatelessWidget {
         selected: _selected(4),
         onTap: (itemContext) => _openMenu(itemContext, [
           _WidePopupAction.parent(context.l10n.text('more'), 4),
-          _WidePopupAction.moreSection(
-            context.l10n.text('appearance'),
-            'appearance',
-          ),
           _WidePopupAction.route(
             context.l10n.text('privacyAndData'),
             '/privacy-data',
@@ -482,6 +505,7 @@ class _WideTopLevelItem extends StatelessWidget {
 
 class _WideGroup extends StatelessWidget {
   const _WideGroup({
+    super.key,
     this.semanticKey,
     required this.label,
     required this.icon,

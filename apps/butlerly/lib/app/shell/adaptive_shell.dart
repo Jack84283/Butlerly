@@ -136,7 +136,9 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
   }
 
   void _selectMoreSection(String section) {
-    context.go('/settings?section=$section');
+    if (section == 'about') {
+      context.go('/legal-licenses');
+    }
   }
 
   void _handleSystemBack(bool didPop, Object? result) {
