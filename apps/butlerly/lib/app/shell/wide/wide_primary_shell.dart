@@ -572,20 +572,26 @@ class _WideChildItem extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    height: ButlerlySize.wideNavigationItemHeight,
-    child: InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: ButlerlySpacing.compact,
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: ButlerlySize.standardIcon),
-            const SizedBox(width: ButlerlySpacing.compact),
-            Expanded(child: Text(label, overflow: TextOverflow.ellipsis)),
-          ],
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    container: true,
+    label: label,
+    onTap: onTap,
+    child: SizedBox(
+      height: ButlerlySize.wideNavigationItemHeight,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: ButlerlySpacing.compact,
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: ButlerlySize.standardIcon),
+              const SizedBox(width: ButlerlySpacing.compact),
+              Expanded(child: Text(label, overflow: TextOverflow.ellipsis)),
+            ],
+          ),
         ),
       ),
     ),
