@@ -189,6 +189,44 @@ void main() {
       tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
       ButlerlySize.pageContentMaxWidth,
     );
+    final floatingHome = find.byKey(
+      const ValueKey('primary-wide-home-floating-surface'),
+    );
+    expect(floatingHome, findsOneWidget);
+    expect(
+      tester.getRect(floatingHome).left,
+      greaterThan(
+        ButlerlySize.wideNavigationExpandedWidth + ButlerlySpacing.large,
+      ),
+    );
+    expect(
+      tester.getSize(floatingHome).width,
+      ButlerlySize.pageContentMaxWidth + ButlerlySize.contentGutter * 2,
+    );
+  });
+
+  testWidgets('Wide More exposes the existing Appearance and About sections', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(1200, 800));
+
+    final navigation = find.byKey(const ValueKey('primary-wide-navigation'));
+    expect(
+      find.descendant(of: navigation, matching: find.text('Appearance')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: navigation, matching: find.text('About Butlerly')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byIcon(Icons.keyboard_double_arrow_left_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('wide-collapsed-more')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Appearance'), findsOneWidget);
+    expect(find.text('About Butlerly'), findsOneWidget);
   });
 
   testWidgets('collapsed Wide navigation exposes grouped actions in a popup', (
