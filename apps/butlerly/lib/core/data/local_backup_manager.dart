@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:butlerly/core/data/backup_container_format.dart';
+import 'package:butlerly/core/data/backup_destination_writer.dart';
 import 'package:butlerly/core/data/backup_encryption.dart';
 import 'package:butlerly/core/data/local_backup_engine.dart' as engine;
 import 'package:butlerly/core/data/local_backup_snapshot_writer.dart';
@@ -16,6 +17,7 @@ import 'package:butlerly_database/butlerly_database.dart'
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common/sqlite_api.dart';
 
+export 'backup_destination_writer.dart';
 export 'backup_encryption.dart'
     show
         BackupPasswordOrIntegrityException,
@@ -36,15 +38,19 @@ final class LocalBackupManager {
     this.database,
     this.localDataManager, {
     RestoreRecoveryState? recoveryState,
+    BackupDestinationWriter? destinationWriter,
   }) : recoveryState = recoveryState ?? RestoreRecoveryState(localDataManager),
        _engine = engine.LocalBackupManager(database, localDataManager),
-       _snapshotWriter = LocalBackupSnapshotWriter(localDataManager);
+       _snapshotWriter = LocalBackupSnapshotWriter(localDataManager),
+       _destinationWriter =
+           destinationWriter ?? const SandboxedBackupDestinationWriter();
 
   final LocalDatabase database;
   final LocalDataManager localDataManager;
   final RestoreRecoveryState recoveryState;
   final engine.LocalBackupManager _engine;
   final LocalBackupSnapshotWriter _snapshotWriter;
+  final BackupDestinationWriter _destinationWriter;
   final BackupEncryption _encryption = const BackupEncryption();
 
   static final _backupMagic = BackupContainerFormat.magic;
@@ -70,7 +76,10 @@ final class LocalBackupManager {
       ),
     );
     final encryptedCandidate = File(
-      '${destination.path}.encrypted-candidate-$operationId',
+      path.join(
+        privateDirectory.path,
+        '.portable-backup-encrypted-$operationId.butlerlybackup',
+      ),
     );
     final verificationPlain = File(
       path.join(
@@ -92,8 +101,12 @@ final class LocalBackupManager {
       await _assertSupportedBackupSchema(verificationPlain);
       await _engine.inspect(verificationPlain);
 
-      await _recoverInterruptedBackupReplacement(destination);
-      await _replaceBackupFile(encryptedCandidate, destination, operationId);
+      await _destinationWriter.publish(
+        source: encryptedCandidate,
+        destination: destination,
+        privateDirectory: privateDirectory,
+        operationId: operationId.toString(),
+      );
       return destination;
     } finally {
       await _deleteFileBestEffort(plain);
@@ -238,12 +251,12 @@ final class LocalBackupManager {
         final name = path.basename(entity.path);
         final privateStage =
             entity is Directory && name.startsWith('.butlerly-restore-stage-');
-        final plaintextTemporary =
+        final privateTemporary =
             entity is File &&
             (name.startsWith('.backup-decrypt-') ||
                 name.startsWith('.portable-backup-') ||
                 name.startsWith('.portable-backup-verify-'));
-        if (!privateStage && !plaintextTemporary) continue;
+        if (!privateStage && !privateTemporary) continue;
         try {
           if (entity is Directory) {
             await entity.delete(recursive: true);

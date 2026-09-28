@@ -59,6 +59,114 @@ void main() {
     },
   );
 
+  test(
+    'portable backup publishes through the selected file without external siblings',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final selectedDirectory = await Directory.systemTemp.createTemp(
+        'butlerly-selected-backup-',
+      );
+      addTearDown(() => selectedDirectory.delete(recursive: true));
+      await fixture.insertTransaction('selected-destination');
+      final destination = File(
+        path.join(selectedDirectory.path, 'portable.butlerlybackup'),
+      );
+
+      await fixture.manager.createPortableBackup(
+        destination,
+        password: 'correct horse battery staple',
+      );
+
+      expect(await destination.exists(), isTrue);
+      expect(
+        await fixture.manager.inspect(
+          destination,
+          password: 'correct horse battery staple',
+        ),
+        isA<BackupInspection>(),
+      );
+      expect(
+        await _namesStarting(selectedDirectory, 'portable.butlerlybackup.'),
+        isEmpty,
+      );
+      expect(await _namesStarting(fixture.root, '.portable-backup-'), isEmpty);
+    },
+  );
+
+  test(
+    'portable backup replacement does not scan or write beside destination',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final selectedDirectory = await Directory.systemTemp.createTemp(
+        'butlerly-selected-backup-replace-',
+      );
+      addTearDown(() => selectedDirectory.delete(recursive: true));
+      final destination = File(
+        path.join(selectedDirectory.path, 'portable.butlerlybackup'),
+      );
+      const password = 'correct horse battery staple';
+
+      await fixture.insertTransaction('before-replacement');
+      await fixture.manager.createPortableBackup(
+        destination,
+        password: password,
+      );
+      await fixture.insertTransaction('after-replacement');
+      await fixture.manager.createPortableBackup(
+        destination,
+        password: password,
+      );
+
+      final inspection = await fixture.manager.inspect(
+        destination,
+        password: password,
+      );
+      expect(inspection.recordCount, greaterThan(1));
+      expect(
+        await _namesStarting(selectedDirectory, 'portable.butlerlybackup.'),
+        isEmpty,
+      );
+      expect(await _namesStarting(fixture.root, '.portable-backup-'), isEmpty);
+    },
+  );
+
+  test(
+    'portable backup publication failure cleans private artifacts',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final selectedDirectory = await Directory.systemTemp.createTemp(
+        'butlerly-selected-backup-failure-',
+      );
+      addTearDown(() => selectedDirectory.delete(recursive: true));
+      final destination = File(
+        path.join(selectedDirectory.path, 'portable.butlerlybackup'),
+      )..writeAsStringSync('existing selected backup');
+      final manager = LocalBackupManager(
+        fixture.database,
+        fixture.data,
+        recoveryState: fixture.manager.recoveryState,
+        destinationWriter: const _FailingDestinationWriter(),
+      );
+
+      await expectLater(
+        manager.createPortableBackup(
+          destination,
+          password: 'correct horse battery staple',
+        ),
+        throwsA(isA<FileSystemException>()),
+      );
+      expect(await destination.readAsString(), 'existing selected backup');
+      expect(
+        await _namesStarting(selectedDirectory, 'portable.butlerlybackup.'),
+        isEmpty,
+      );
+      expect(await _namesStarting(fixture.root, '.portable-backup-'), isEmpty);
+    },
+  );
+
   test('restore accepts supported KDF parameters recorded in header', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
@@ -366,5 +474,29 @@ final class _Fixture {
   Future<void> dispose() async {
     await database.close();
     if (await root.exists()) await root.delete(recursive: true);
+  }
+}
+
+Future<List<String>> _namesStarting(Directory directory, String prefix) async {
+  if (!await directory.exists()) return const [];
+  final names = <String>[];
+  await for (final entity in directory.list(followLinks: false)) {
+    final name = path.basename(entity.path);
+    if (name.startsWith(prefix)) names.add(name);
+  }
+  return names;
+}
+
+final class _FailingDestinationWriter implements BackupDestinationWriter {
+  const _FailingDestinationWriter();
+
+  @override
+  Future<void> publish({
+    required File source,
+    required File destination,
+    required Directory privateDirectory,
+    required String operationId,
+  }) async {
+    throw const FileSystemException('simulated destination failure');
   }
 }
