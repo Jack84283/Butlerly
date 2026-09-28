@@ -14,6 +14,7 @@ void main() {
       if (entity.path.endsWith('butlerly_modal_sheet.dart')) continue;
       final source = entity.readAsStringSync();
       for (final api in [
+        'showModalBottomSheet',
         'showDialog',
         'AlertDialog',
         'SimpleDialog',
