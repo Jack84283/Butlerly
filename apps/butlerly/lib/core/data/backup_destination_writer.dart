@@ -41,6 +41,7 @@ final class SandboxedBackupDestinationWriter
         '.portable-backup-previous-$operationId.butlerlybackup',
       ),
     );
+    var preservePrevious = false;
 
     if (hadExistingDestination) {
       await _copy(destination, previous.path);
@@ -59,6 +60,7 @@ final class SandboxedBackupDestinationWriter
           await destination.delete();
         }
       } catch (rollbackError, rollbackStack) {
+        preservePrevious = true;
         Error.throwWithStackTrace(
           BackupDestinationWriteException(
             error: error,
@@ -70,7 +72,9 @@ final class SandboxedBackupDestinationWriter
       Error.throwWithStackTrace(error, stack);
     } finally {
       try {
-        if (await previous.exists()) await previous.delete();
+        if (!preservePrevious && await previous.exists()) {
+          await previous.delete();
+        }
       } catch (_) {}
     }
   }
