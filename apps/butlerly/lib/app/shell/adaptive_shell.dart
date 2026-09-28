@@ -135,6 +135,12 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     );
   }
 
+  void _selectMoreSection(String section) {
+    if (section == 'about') {
+      context.go('/legal-licenses');
+    }
+  }
+
   void _handleSystemBack(bool didPop, Object? result) {
     if (!didPop && navigationShell.currentIndex == 2) {
       navigationShell.goBranch(_previousPrimaryIndex);
@@ -199,6 +205,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
           body: navigationShell,
           currentIndex: navigationShell.currentIndex,
           onSelected: _selectDestination,
+          onMoreSectionSelected: _selectMoreSection,
         ),
       };
     }

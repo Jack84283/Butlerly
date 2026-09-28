@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -12,24 +14,50 @@ class WidePrimaryShell extends StatefulWidget {
     required this.body,
     required this.currentIndex,
     required this.onSelected,
+    required this.onMoreSectionSelected,
     super.key,
   });
 
   final Widget body;
   final int currentIndex;
   final ValueChanged<int> onSelected;
+  final ValueChanged<String> onMoreSectionSelected;
 
   @override
   State<WidePrimaryShell> createState() => _WidePrimaryShellState();
 }
 
 class _WidePrimaryShellState extends State<WidePrimaryShell> {
+  final _moreNavigationKey = GlobalKey();
   bool _expanded = true;
   bool _addExpanded = true;
   bool _toolsExpanded = true;
   bool _moreExpanded = true;
+  bool _moreVisibilityScheduled = false;
 
-  void _selectParent(int branchIndex) => widget.onSelected(branchIndex);
+  void _selectParent(int branchIndex) {
+    if (branchIndex == 4) {
+      setState(() => _moreExpanded = true);
+    }
+    widget.onSelected(branchIndex);
+  }
+
+  void _ensureMoreVisible() {
+    if (!_expanded || widget.currentIndex != 4 || _moreVisibilityScheduled) {
+      return;
+    }
+    _moreVisibilityScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _moreVisibilityScheduled = false;
+      final targetContext = _moreNavigationKey.currentContext;
+      if (!mounted || targetContext == null) return;
+      Scrollable.ensureVisible(
+        targetContext,
+        alignment: 0.0,
+        duration: ButlerlyMotion.responsive(context, ButlerlyMotion.fast),
+      );
+    });
+  }
 
   Future<void> _navigate(String route) async {
     if (!mounted) return;
@@ -39,37 +67,76 @@ class _WidePrimaryShellState extends State<WidePrimaryShell> {
   Future<void> _import() => startLocalFileImport(context);
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: Row(
-      children: [
-        _WidePrimaryNavigation(
-          key: const ValueKey('primary-wide-navigation'),
-          expanded: _expanded,
-          addExpanded: _addExpanded,
-          toolsExpanded: _toolsExpanded,
-          moreExpanded: _moreExpanded,
-          currentIndex: widget.currentIndex,
-          onToggleExpanded: () => setState(() => _expanded = !_expanded),
-          onToggleAdd: () => setState(() => _addExpanded = !_addExpanded),
-          onToggleTools: () => setState(() => _toolsExpanded = !_toolsExpanded),
-          onToggleMore: () => setState(() => _moreExpanded = !_moreExpanded),
-          onParentSelected: _selectParent,
-          onNavigate: _navigate,
-          onImport: _import,
-        ),
-        Expanded(
-          child: SafeArea(
-            bottom: false,
-            child: ColoredBox(
-              key: const ValueKey('primary-wide-body-surface'),
-              color: context.colors.subtleSurface,
-              child: widget.body,
+  Widget build(BuildContext context) {
+    _ensureMoreVisible();
+    return Scaffold(
+      body: Row(
+        children: [
+          _WidePrimaryNavigation(
+            key: const ValueKey('primary-wide-navigation'),
+            expanded: _expanded,
+            addExpanded: _addExpanded,
+            toolsExpanded: _toolsExpanded,
+            moreExpanded: _moreExpanded,
+            currentIndex: widget.currentIndex,
+            onToggleExpanded: () => setState(() => _expanded = !_expanded),
+            onToggleAdd: () => setState(() => _addExpanded = !_addExpanded),
+            onToggleTools: () =>
+                setState(() => _toolsExpanded = !_toolsExpanded),
+            onToggleMore: () => setState(() => _moreExpanded = !_moreExpanded),
+            moreNavigationKey: _moreNavigationKey,
+            onParentSelected: _selectParent,
+            onMoreSectionSelected: widget.onMoreSectionSelected,
+            onNavigate: _navigate,
+            onImport: _import,
+          ),
+          Expanded(
+            child: SafeArea(
+              bottom: false,
+              child: ColoredBox(
+                key: const ValueKey('primary-wide-body-surface'),
+                color: context.colors.subtleSurface,
+                child: _wideBody(context),
+              ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
+
+  Widget _wideBody(BuildContext context) {
+    if (widget.currentIndex != 0) return widget.body;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const padding = ButlerlySpacing.large;
+        final width = math.min(
+          constraints.maxWidth - (padding * 2),
+          ButlerlySize.pageContentMaxWidth + (ButlerlySize.contentGutter * 2),
+        );
+        final height = math.max(0.0, constraints.maxHeight - (padding * 2));
+        return Padding(
+          padding: const EdgeInsets.all(padding),
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: SizedBox(
+              key: const ValueKey('primary-wide-home-floating-surface'),
+              width: width,
+              height: height,
+              child: Material(
+                color: context.colors.background,
+                elevation: ButlerlyElevation.floating,
+                borderRadius: BorderRadius.circular(ButlerlyRadius.large),
+                clipBehavior: Clip.antiAlias,
+                child: widget.body,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _WidePrimaryNavigation extends StatelessWidget {
@@ -84,7 +151,9 @@ class _WidePrimaryNavigation extends StatelessWidget {
     required this.onToggleAdd,
     required this.onToggleTools,
     required this.onToggleMore,
+    required this.moreNavigationKey,
     required this.onParentSelected,
+    required this.onMoreSectionSelected,
     required this.onNavigate,
     required this.onImport,
   });
@@ -98,7 +167,9 @@ class _WidePrimaryNavigation extends StatelessWidget {
   final VoidCallback onToggleAdd;
   final VoidCallback onToggleTools;
   final VoidCallback onToggleMore;
+  final GlobalKey moreNavigationKey;
   final ValueChanged<int> onParentSelected;
+  final ValueChanged<String> onMoreSectionSelected;
   final ValueChanged<String> onNavigate;
   final Future<void> Function() onImport;
 
@@ -122,8 +193,11 @@ class _WidePrimaryNavigation extends StatelessWidget {
           _WideBrand(expanded: expanded),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: ButlerlySpacing.compact,
+              padding: const EdgeInsets.fromLTRB(
+                ButlerlySpacing.compact,
+                ButlerlySpacing.none,
+                ButlerlySpacing.compact,
+                ButlerlySize.wideNavigationItemHeight + ButlerlySpacing.large,
               ),
               child: expanded
                   ? _expandedMenu(context)
@@ -202,6 +276,7 @@ class _WidePrimaryNavigation extends StatelessWidget {
         ],
       ),
       _WideGroup(
+        key: moreNavigationKey,
         semanticKey: const ValueKey('wide-more-navigation'),
         label: context.l10n.text('more'),
         icon: Icons.more_horiz_rounded,
@@ -219,6 +294,11 @@ class _WidePrimaryNavigation extends StatelessWidget {
             icon: Icons.auto_awesome_outlined,
             label: context.l10n.text('assistant'),
             onTap: () => onNavigate('/assistant'),
+          ),
+          _WideChildItem(
+            icon: Icons.info_outline_rounded,
+            label: context.l10n.text('about'),
+            onTap: () => onMoreSectionSelected('about'),
           ),
         ],
       ),
@@ -286,6 +366,7 @@ class _WidePrimaryNavigation extends StatelessWidget {
             '/privacy-data',
           ),
           _WidePopupAction.route(context.l10n.text('assistant'), '/assistant'),
+          _WidePopupAction.moreSection(context.l10n.text('about'), 'about'),
         ]),
       ),
     ],
@@ -328,6 +409,8 @@ class _WidePrimaryNavigation extends StatelessWidget {
         onParentSelected(selected.branchIndex!);
       case _WidePopupActionKind.route:
         onNavigate(selected.route!);
+      case _WidePopupActionKind.moreSection:
+        onMoreSectionSelected(selected.section!);
       case _WidePopupActionKind.importFile:
         await onImport();
       case _WidePopupActionKind.divider:
@@ -422,6 +505,7 @@ class _WideTopLevelItem extends StatelessWidget {
 
 class _WideGroup extends StatelessWidget {
   const _WideGroup({
+    super.key,
     this.semanticKey,
     required this.label,
     required this.icon,
@@ -512,20 +596,26 @@ class _WideChildItem extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    height: ButlerlySize.wideNavigationItemHeight,
-    child: InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: ButlerlySpacing.compact,
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: ButlerlySize.standardIcon),
-            const SizedBox(width: ButlerlySpacing.compact),
-            Expanded(child: Text(label, overflow: TextOverflow.ellipsis)),
-          ],
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    container: true,
+    label: label,
+    onTap: onTap,
+    child: SizedBox(
+      height: ButlerlySize.wideNavigationItemHeight,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: ButlerlySpacing.compact,
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: ButlerlySize.standardIcon),
+              const SizedBox(width: ButlerlySpacing.compact),
+              Expanded(child: Text(label, overflow: TextOverflow.ellipsis)),
+            ],
+          ),
         ),
       ),
     ),
@@ -629,7 +719,7 @@ class _WideNavigationSurface extends StatelessWidget {
   );
 }
 
-enum _WidePopupActionKind { parent, route, importFile, divider }
+enum _WidePopupActionKind { parent, route, moreSection, importFile, divider }
 
 class _WidePopupAction {
   const _WidePopupAction._({
@@ -637,6 +727,7 @@ class _WidePopupAction {
     required this.label,
     this.branchIndex,
     this.route,
+    this.section,
   });
 
   const _WidePopupAction.parent(String label, int branchIndex)
@@ -649,6 +740,13 @@ class _WidePopupAction {
   const _WidePopupAction.route(String label, String route)
     : this._(kind: _WidePopupActionKind.route, label: label, route: route);
 
+  const _WidePopupAction.moreSection(String label, String section)
+    : this._(
+        kind: _WidePopupActionKind.moreSection,
+        label: label,
+        section: section,
+      );
+
   const _WidePopupAction.importFile(String label)
     : this._(kind: _WidePopupActionKind.importFile, label: label);
 
@@ -659,6 +757,7 @@ class _WidePopupAction {
   final String label;
   final int? branchIndex;
   final String? route;
+  final String? section;
 
   bool get isDivider => kind == _WidePopupActionKind.divider;
 }

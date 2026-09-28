@@ -9,6 +9,7 @@ import 'package:butlerly/design_system/components/butlerly_responsive_body.dart'
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
 import 'package:butlerly/features/foundation/presentation/legal_licenses_page.dart';
+import 'package:butlerly/features/foundation/presentation/settings_page.dart';
 import 'package:butlerly/features/tools/presentation/tools_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -188,6 +189,107 @@ void main() {
     expect(
       tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
       ButlerlySize.pageContentMaxWidth,
+    );
+    final floatingHome = find.byKey(
+      const ValueKey('primary-wide-home-floating-surface'),
+    );
+    expect(floatingHome, findsOneWidget);
+    expect(
+      tester.getRect(floatingHome).left,
+      greaterThan(
+        ButlerlySize.wideNavigationExpandedWidth + ButlerlySpacing.large,
+      ),
+    );
+    expect(
+      tester.getSize(floatingHome).width,
+      ButlerlySize.pageContentMaxWidth + ButlerlySize.contentGutter * 2,
+    );
+  });
+
+  testWidgets('Wide More exposes Privacy, Assistant, and About actions', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(1200, 800));
+
+    final navigation = find.byKey(const ValueKey('primary-wide-navigation'));
+    expect(
+      find.descendant(of: navigation, matching: find.text('Appearance')),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: navigation, matching: find.text('About Butlerly')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byIcon(Icons.keyboard_double_arrow_left_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('wide-collapsed-more')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Appearance'), findsNothing);
+    expect(find.text('About Butlerly'), findsOneWidget);
+
+    await tester.tap(find.text('About Butlerly'));
+    await tester.pumpAndSettle();
+    expect(
+      appRouter.routeInformationProvider.value.uri.toString(),
+      '/legal-licenses',
+    );
+    expect(find.byType(LegalLicensesPage), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+    await tester.pumpAndSettle();
+    expect(
+      appRouter.routeInformationProvider.value.uri.toString(),
+      '/settings',
+    );
+  });
+
+  testWidgets('expanded Wide About Butlerly opens Legal & licenses', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(1200, 800));
+
+    final navigation = find.byKey(const ValueKey('primary-wide-navigation'));
+    await tester.ensureVisible(
+      find.descendant(of: navigation, matching: find.text('About Butlerly')),
+    );
+    await tester.tap(
+      find.descendant(of: navigation, matching: find.text('About Butlerly')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      appRouter.routeInformationProvider.value.uri.toString(),
+      '/legal-licenses',
+    );
+    expect(find.byType(LegalLicensesPage), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+    await tester.pumpAndSettle();
+    expect(
+      appRouter.routeInformationProvider.value.uri.toString(),
+      '/settings',
+    );
+    expect(find.byType(SettingsPage), findsOneWidget);
+  });
+
+  testWidgets('selecting Wide More reveals its child actions', (tester) async {
+    await _pumpAt(tester, const Size(1200, 800));
+
+    final navigation = find.byKey(const ValueKey('primary-wide-navigation'));
+    await tester.tap(
+      find.descendant(of: navigation, matching: find.text('More')),
+    );
+    await tester.pumpAndSettle();
+
+    final about = find.descendant(
+      of: navigation,
+      matching: find.text('About Butlerly'),
+    );
+    expect(tester.getRect(about).bottom, lessThanOrEqualTo(800));
+    expect(
+      find.descendant(of: navigation, matching: find.text('Appearance')),
+      findsNothing,
     );
   });
 

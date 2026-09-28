@@ -12,11 +12,58 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:go_router/go_router.dart';
 
-class SettingsPage extends ConsumerWidget {
-  const SettingsPage({super.key});
+class SettingsPage extends ConsumerStatefulWidget {
+  const SettingsPage({this.initialSection, super.key});
+
+  final String? initialSection;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends ConsumerState<SettingsPage> {
+  final _appearanceKey = GlobalKey();
+  final _aboutKey = GlobalKey();
+  String? _scheduledSection;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _scheduleInitialScroll();
+  }
+
+  @override
+  void didUpdateWidget(covariant SettingsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialSection != widget.initialSection) {
+      _scheduleInitialScroll();
+    }
+  }
+
+  void _scheduleInitialScroll() {
+    final section = widget.initialSection;
+    if (section == null || section == _scheduledSection) return;
+    _scheduledSection = section;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final target = switch (section) {
+        'appearance' => _appearanceKey,
+        'about' => _aboutKey,
+        _ => null,
+      };
+      final targetContext = target?.currentContext;
+      if (targetContext != null) {
+        Scrollable.ensureVisible(
+          targetContext,
+          alignment: 0.0,
+          duration: ButlerlyMotion.responsive(context, ButlerlyMotion.fast),
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
     final preference = ref.watch(userPreferenceProvider).value;
     final locale = preference == null
@@ -26,7 +73,10 @@ class SettingsPage extends ConsumerWidget {
       title: context.l10n.text('more'),
       children: [
         _LocalOnlyBanner(),
-        ButlerlySectionHeader(title: context.l10n.text('appearance')),
+        ButlerlySectionHeader(
+          key: _appearanceKey,
+          title: context.l10n.text('appearance'),
+        ),
         _SettingsSectionCard(
           children: [
             _SettingsDropdownRow<ThemeMode>(
@@ -210,7 +260,10 @@ class SettingsPage extends ConsumerWidget {
             ),
           ],
         ),
-        ButlerlySectionHeader(title: context.l10n.text('about')),
+        ButlerlySectionHeader(
+          key: _aboutKey,
+          title: context.l10n.text('about'),
+        ),
         _SettingsSectionCard(
           children: [
             _SettingsRow(

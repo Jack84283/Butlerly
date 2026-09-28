@@ -5,6 +5,7 @@ import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 
 /// Offline reader for the bundled, authoritative Legal document set.
 class LegalLicensesPage extends StatelessWidget {
@@ -13,6 +14,17 @@ class LegalLicensesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ButlerlyPage(
     title: context.l10n.text('legalLicenses'),
+    leading: IconButton(
+      tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+      icon: const Icon(Icons.arrow_back_rounded),
+      onPressed: () {
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        } else {
+          context.go('/settings');
+        }
+      },
+    ),
     children: [
       ButlerlyCard(
         child: ListTile(

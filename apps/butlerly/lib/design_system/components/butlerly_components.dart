@@ -47,6 +47,7 @@ class ButlerlyPage extends StatelessWidget {
     required this.children,
     this.title,
     this.subtitle,
+    this.leading,
     this.actions = const [],
     this.padding,
     this.controller,
@@ -60,6 +61,7 @@ class ButlerlyPage extends StatelessWidget {
 
   final String? title;
   final String? subtitle;
+  final Widget? leading;
   final List<Widget> actions;
   final List<Widget> children;
   final EdgeInsets? padding;
@@ -110,6 +112,7 @@ class ButlerlyPage extends StatelessWidget {
               pinned: true,
               toolbarHeight: toolbarHeight,
               title: Text(title!),
+              leading: leading,
               actions: actions,
               bottom: pinnedSpacing.headerBottomGap > ButlerlySpacing.none
                   ? PreferredSize(

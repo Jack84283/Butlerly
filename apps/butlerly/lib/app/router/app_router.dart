@@ -8,6 +8,7 @@ import 'package:butlerly/features/foundation/presentation/add_page.dart';
 import 'package:butlerly/features/foundation/presentation/butlerly_launch_page.dart';
 import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
+import 'package:butlerly/features/foundation/presentation/legal_licenses_page.dart';
 import 'package:butlerly/features/foundation/presentation/master_data_page.dart';
 import 'package:butlerly/features/foundation/presentation/payment_sources_page.dart';
 import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart';
@@ -130,8 +131,12 @@ final appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/settings',
-              pageBuilder: (context, state) =>
-                  _primaryPage('more', const SettingsPage()),
+              pageBuilder: (context, state) => _primaryPage(
+                'more',
+                SettingsPage(
+                  initialSection: state.uri.queryParameters['section'],
+                ),
+              ),
             ),
           ],
         ),
@@ -140,6 +145,10 @@ final appRouter = GoRouter(
 
     // Secondary navigation. These pages intentionally render outside the
     // primary shell and therefore never show the footer/navigation rail.
+    GoRoute(
+      path: '/legal-licenses',
+      builder: (_, _) => const LegalLicensesPage(),
+    ),
     GoRoute(
       path: '/review',
       builder: (context, state) => ReviewPage(
