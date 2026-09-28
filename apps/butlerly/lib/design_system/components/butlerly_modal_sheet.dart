@@ -24,20 +24,17 @@ class ButlerlySheet extends StatelessWidget {
             style: Theme.of(context).textTheme.headlineMedium!,
             child: title!,
           ),
-          const SizedBox(height: ButlerlySpacing.section),
+          const SizedBox(height: ButlerlySheetTokens.titleContentGap),
         ],
         if (content != null)
           Flexible(child: SingleChildScrollView(child: content)),
         if (actions != null && actions!.isNotEmpty) ...[
-          const SizedBox(height: ButlerlySpacing.section),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              for (var index = 0; index < actions!.length; index++) ...[
-                if (index > 0) const SizedBox(width: ButlerlySpacing.compact),
-                actions![index],
-              ],
-            ],
+          const SizedBox(height: ButlerlySheetTokens.contentActionsGap),
+          Wrap(
+            alignment: WrapAlignment.end,
+            spacing: ButlerlySheetTokens.actionGap,
+            runSpacing: ButlerlySheetTokens.actionGap,
+            children: actions!,
           ),
         ],
       ],
@@ -56,35 +53,99 @@ Future<T?> showButlerlyBottomSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
   bool isScrollControlled = true,
-}) => showModalBottomSheet<T>(
-  context: context,
-  isScrollControlled: isScrollControlled,
-  useSafeArea: true,
-  showDragHandle: true,
-  constraints: BoxConstraints(
-    maxHeight: MediaQuery.sizeOf(context).height * .9,
-  ),
-  builder: (sheetContext) => Padding(
-    padding: EdgeInsets.fromLTRB(
-      ButlerlySpacing.modalHorizontal,
-      0,
-      ButlerlySpacing.modalHorizontal,
-      MediaQuery.viewInsetsOf(sheetContext).bottom +
-          ButlerlySpacing.modalBottom,
-    ),
-    child: SizedBox(
-      width: double.infinity,
-      child: Theme(
-        data: Theme.of(sheetContext).copyWith(
-          dialogTheme: Theme.of(
-            sheetContext,
-          ).dialogTheme.copyWith(insetPadding: EdgeInsets.zero),
+}) {
+  final viewport = MediaQuery.sizeOf(context);
+  final maxHeight = viewport.height * ButlerlySheetTokens.maxHeightFactor;
+  return showModalBottomSheet<T>(
+    context: context,
+    isScrollControlled: isScrollControlled,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    elevation: 0,
+    showDragHandle: false,
+    constraints: BoxConstraints(maxHeight: maxHeight),
+    builder: (sheetContext) {
+      final theme = Theme.of(sheetContext);
+      final bottomSheetTheme = theme.bottomSheetTheme;
+      final surfaceColor =
+          bottomSheetTheme.modalBackgroundColor ??
+          bottomSheetTheme.backgroundColor ??
+          theme.colorScheme.surface;
+      final shape =
+          bottomSheetTheme.shape ??
+          const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(ButlerlyRadius.sheet),
+            ),
+          );
+      return Align(
+        alignment: Alignment.bottomCenter,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: ButlerlyLayout.contentMaxWidth(viewport),
+            maxHeight: maxHeight,
+          ),
+          child: Material(
+            key: const ValueKey('butlerly-bottom-sheet-surface'),
+            color: surfaceColor,
+            elevation:
+                bottomSheetTheme.elevation ?? ButlerlyElevation.bottomSheet,
+            surfaceTintColor:
+                bottomSheetTheme.surfaceTintColor ?? Colors.transparent,
+            shape: shape,
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: ButlerlySheetTokens.dragHandleVerticalPadding,
+                  ),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.onSurfaceVariant.withValues(
+                        alpha: .4,
+                      ),
+                      borderRadius: BorderRadius.circular(
+                        ButlerlySheetTokens.dragHandleHeight,
+                      ),
+                    ),
+                    child: const SizedBox(
+                      width: ButlerlySheetTokens.dragHandleWidth,
+                      height: ButlerlySheetTokens.dragHandleHeight,
+                    ),
+                  ),
+                ),
+                Flexible(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      ButlerlySheetTokens.horizontalPadding,
+                      0,
+                      ButlerlySheetTokens.horizontalPadding,
+                      MediaQuery.viewInsetsOf(sheetContext).bottom +
+                          ButlerlySheetTokens.bottomPadding,
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: Theme(
+                        data: theme.copyWith(
+                          dialogTheme: theme.dialogTheme.copyWith(
+                            insetPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                        child: builder(sheetContext),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-        child: builder(sheetContext),
-      ),
-    ),
-  ),
-);
+      );
+    },
+  );
+}
 
 class ButlerlyMenuEntry<T> {
   const ButlerlyMenuEntry({

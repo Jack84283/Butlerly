@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -13,6 +14,7 @@ void main() {
       if (entity.path.endsWith('butlerly_modal_sheet.dart')) continue;
       final source = entity.readAsStringSync();
       for (final api in [
+        'showModalBottomSheet',
         'showDialog',
         'AlertDialog',
         'SimpleDialog',
@@ -163,6 +165,116 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('sheet width follows the responsive content body and centers', (
+    tester,
+  ) async {
+    for (final size in const [
+      Size(390, 844),
+      Size(800, 800),
+      Size(1200, 800),
+    ]) {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        _testApp(
+          FilledButton(
+            key: const ValueKey('open-width-sheet'),
+            onPressed: () => showButlerlyBottomSheet<void>(
+              context: tester.element(
+                find.byKey(const ValueKey('open-width-sheet')),
+              ),
+              builder: (_) => const ButlerlySheet(
+                title: Text('Width contract'),
+                content: Text('Content'),
+              ),
+            ),
+            child: const Text('Open width sheet'),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('open-width-sheet')));
+      await tester.pumpAndSettle();
+
+      final sheet = tester.getRect(
+        find.byKey(const ValueKey('butlerly-bottom-sheet-surface')),
+      );
+      final expectedWidth = size.width < ButlerlyLayout.contentMaxWidth(size)
+          ? size.width
+          : ButlerlyLayout.contentMaxWidth(size);
+      expect(sheet.width, closeTo(expectedWidth, 0.1));
+      expect(sheet.center.dx, closeTo(size.width / 2, 0.1));
+
+      Navigator.of(tester.element(find.byType(BottomSheet))).pop();
+      await tester.pumpAndSettle();
+    }
+  });
+
+  testWidgets('selection and confirmation sheets share outer geometry', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      _testApp(
+        Column(
+          children: [
+            FilledButton(
+              key: const ValueKey('open-shared-selection'),
+              onPressed: () => showButlerlySelectionSheet<String>(
+                context: tester.element(
+                  find.byKey(const ValueKey('open-shared-selection')),
+                ),
+                title: 'Choose one',
+                options: const [
+                  ButlerlySelectionOption(value: 'one', child: Text('One')),
+                ],
+              ),
+              child: const Text('Selection'),
+            ),
+            FilledButton(
+              key: const ValueKey('open-shared-confirmation'),
+              onPressed: () => showButlerlyConfirmationSheet(
+                context: tester.element(
+                  find.byKey(const ValueKey('open-shared-confirmation')),
+                ),
+                title: 'Confirm',
+                message: 'Message',
+                cancelLabel: 'Cancel',
+                confirmLabel: 'Confirm',
+              ),
+              child: const Text('Confirmation'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('open-shared-selection')));
+    await tester.pumpAndSettle();
+    final selectionSheet = tester.getRect(
+      find.byKey(const ValueKey('butlerly-bottom-sheet-surface')),
+    );
+    await tester.tap(find.text('One'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('open-shared-confirmation')));
+    await tester.pumpAndSettle();
+    final confirmationSheet = tester.getRect(
+      find.byKey(const ValueKey('butlerly-bottom-sheet-surface')),
+    );
+    expect(confirmationSheet.width, selectionSheet.width);
+    expect(confirmationSheet.left, selectionSheet.left);
+    expect(confirmationSheet.center.dx, selectionSheet.center.dx);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('selection and confirmation sheets return user choices', (
     tester,
   ) async {
@@ -227,6 +339,52 @@ void main() {
     await tester.pumpAndSettle();
     expect(confirmed, isFalse);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('form sheet keeps actions above the keyboard inset', (
+    tester,
+  ) async {
+    const size = Size(800, 800);
+    tester.view.physicalSize = size;
+    tester.view.devicePixelRatio = 1;
+    tester.view.viewInsets = const FakeViewPadding(bottom: 280);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetViewInsets);
+
+    await tester.pumpWidget(
+      _testApp(
+        FilledButton(
+          key: const ValueKey('open-keyboard-sheet'),
+          onPressed: () => showButlerlyBottomSheet<void>(
+            context: tester.element(
+              find.byKey(const ValueKey('open-keyboard-sheet')),
+            ),
+            builder: (_) => ButlerlySheet(
+              title: const Text('Form'),
+              content: const TextField(key: ValueKey('sheet-field')),
+              actions: [
+                FilledButton(
+                  key: const ValueKey('sheet-action'),
+                  onPressed: () {},
+                  child: const Text('Save'),
+                ),
+              ],
+            ),
+          ),
+          child: const Text('Open keyboard sheet'),
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey('open-keyboard-sheet')));
+    await tester.pumpAndSettle();
+
+    final surface = tester.getRect(
+      find.byKey(const ValueKey('butlerly-bottom-sheet-surface')),
+    );
+    final action = tester.getRect(find.byKey(const ValueKey('sheet-action')));
+    expect(surface.width, ButlerlySize.pageContentMaxWidth);
+    expect(action.bottom, lessThanOrEqualTo(size.height - 280 + 1));
   });
 }
 

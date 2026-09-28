@@ -8,7 +8,9 @@ import 'package:butlerly/app/shell/wide/wide_primary_shell.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
+import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
 import 'package:butlerly/features/foundation/presentation/legal_licenses_page.dart';
+import 'package:butlerly/features/foundation/presentation/search_page.dart';
 import 'package:butlerly/features/foundation/presentation/settings_page.dart';
 import 'package:butlerly/features/tools/presentation/tools_page.dart';
 import 'package:flutter/foundation.dart';
@@ -291,6 +293,39 @@ void main() {
       find.descendant(of: navigation, matching: find.text('Appearance')),
       findsNothing,
     );
+  });
+
+  testWidgets('Assistant Search navigation preserves the focused route stack', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(1200, 800));
+
+    final navigation = find.byKey(const ValueKey('primary-wide-navigation'));
+    await tester.tap(
+      find.descendant(of: navigation, matching: find.text('More')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(of: navigation, matching: find.text('Assistant')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AssistantUnavailablePage), findsOneWidget);
+    await tester.tap(find.text('Search records'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SearchPage), findsOneWidget);
+    expect(appRouter.canPop(), isTrue);
+    expect(find.byKey(const ValueKey('primary-wide-navigation')), findsNothing);
+
+    appRouter.pop();
+    await tester.pumpAndSettle();
+    expect(find.byType(AssistantUnavailablePage), findsOneWidget);
+
+    appRouter.pop();
+    await tester.pumpAndSettle();
+    expect(appRouter.routeInformationProvider.value.uri.path, '/settings');
+    expect(find.byType(SettingsPage), findsOneWidget);
   });
 
   testWidgets('collapsed Wide navigation exposes grouped actions in a popup', (

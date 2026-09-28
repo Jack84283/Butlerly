@@ -580,43 +580,41 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => ButlerlySheet(
           title: Text(context.l10n.text('createPaymentSource')),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: name,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('name'),
-                  ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: name,
+                decoration: InputDecoration(
+                  labelText: context.l10n.text('name'),
                 ),
-                const SizedBox(height: ButlerlySpacing.small),
-                DropdownButtonFormField<PaymentSourceType>(
-                  initialValue: type,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('type'),
-                  ),
-                  items: PaymentSourceType.values
-                      .map(
-                        (value) => DropdownMenuItem(
-                          value: value,
-                          child: Text(_paymentSourceTypeLabel(context, value)),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) =>
-                      setDialogState(() => type = value ?? type),
+              ),
+              const SizedBox(height: ButlerlySpacing.small),
+              DropdownButtonFormField<PaymentSourceType>(
+                initialValue: type,
+                decoration: InputDecoration(
+                  labelText: context.l10n.text('type'),
                 ),
-                const SizedBox(height: ButlerlySpacing.small),
-                TextField(
-                  controller: lastFour,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('lastFourOptional'),
-                  ),
+                items: PaymentSourceType.values
+                    .map(
+                      (value) => DropdownMenuItem(
+                        value: value,
+                        child: Text(_paymentSourceTypeLabel(context, value)),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) =>
+                    setDialogState(() => type = value ?? type),
+              ),
+              const SizedBox(height: ButlerlySpacing.small),
+              TextField(
+                controller: lastFour,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: context.l10n.text('lastFourOptional'),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
           actions: [
             TextButton(
@@ -929,103 +927,99 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => ButlerlySheet(
           title: Text(context.l10n.text('correctExtractedRow')),
-          content: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                vertical: ButlerlySpacing.small,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children:
-                    [
-                          Text(row.originalText),
-                          TextField(
-                            controller: date,
-                            decoration: InputDecoration(
-                              labelText: context.l10n.text('dateFormat'),
-                            ),
+          content: Padding(
+            padding: const EdgeInsets.symmetric(
+              vertical: ButlerlySpacing.small,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children:
+                  [
+                        Text(row.originalText),
+                        TextField(
+                          controller: date,
+                          decoration: InputDecoration(
+                            labelText: context.l10n.text('dateFormat'),
                           ),
-                          TextField(
-                            controller: postingDate,
-                            decoration: InputDecoration(
-                              labelText: context.l10n.text('postingDateFormat'),
-                            ),
+                        ),
+                        TextField(
+                          controller: postingDate,
+                          decoration: InputDecoration(
+                            labelText: context.l10n.text('postingDateFormat'),
                           ),
-                          TextField(
-                            controller: description,
-                            decoration: InputDecoration(
-                              labelText: context.l10n.text('description'),
-                            ),
+                        ),
+                        TextField(
+                          controller: description,
+                          decoration: InputDecoration(
+                            labelText: context.l10n.text('description'),
                           ),
-                          ButlerlyMerchantSelector(
-                            merchants: widget.masterData.merchants,
-                            value: merchantId,
-                            label: context.l10n.text('merchant'),
-                            clearLabel: context.l10n.text('clear'),
-                            createTooltip: context.l10n.text('create'),
-                            onChanged: (value) =>
-                                setDialogState(() => merchantId = value),
+                        ),
+                        ButlerlyMerchantSelector(
+                          merchants: widget.masterData.merchants,
+                          value: merchantId,
+                          label: context.l10n.text('merchant'),
+                          clearLabel: context.l10n.text('clear'),
+                          createTooltip: context.l10n.text('create'),
+                          onChanged: (value) =>
+                              setDialogState(() => merchantId = value),
+                        ),
+                        ButlerlyCategorySelector(
+                          categories: widget.masterData.categories,
+                          masterData: widget.masterData.presentation,
+                          value: categoryId,
+                          label: context.l10n.text('category'),
+                          clearLabel: context.l10n.text('clear'),
+                          onChanged: (value) => setDialogState(() {
+                            categoryId = value;
+                            subcategoryId = null;
+                          }),
+                        ),
+                        ButlerlySubcategorySelector(
+                          categories: widget.masterData.categories,
+                          masterData: widget.masterData.presentation,
+                          parentId: categoryId,
+                          value: subcategoryId,
+                          label: context.l10n.text('subcategory'),
+                          clearLabel: context.l10n.text('clear'),
+                          onChanged: (value) =>
+                              setDialogState(() => subcategoryId = value),
+                        ),
+                        ButlerlyTagPicker(
+                          tags: widget.masterData.tags,
+                          masterData: widget.masterData.presentation,
+                          selected: tagIds,
+                          searchLabel: context.l10n.text('search'),
+                          createLabel: context.l10n.text('create'),
+                          onChanged: (value) =>
+                              setDialogState(() => tagIds = value),
+                        ),
+                        TextField(
+                          controller: amount,
+                          decoration: InputDecoration(
+                            labelText: context.l10n.text('amount'),
                           ),
-                          ButlerlyCategorySelector(
-                            categories: widget.masterData.categories,
-                            masterData: widget.masterData.presentation,
-                            value: categoryId,
-                            label: context.l10n.text('category'),
-                            clearLabel: context.l10n.text('clear'),
-                            onChanged: (value) => setDialogState(() {
-                              categoryId = value;
-                              subcategoryId = null;
-                            }),
+                        ),
+                        TextField(
+                          controller: currency,
+                          decoration: InputDecoration(
+                            labelText: context.l10n.text('currency'),
                           ),
-                          ButlerlySubcategorySelector(
-                            categories: widget.masterData.categories,
-                            masterData: widget.masterData.presentation,
-                            parentId: categoryId,
-                            value: subcategoryId,
-                            label: context.l10n.text('subcategory'),
-                            clearLabel: context.l10n.text('clear'),
-                            onChanged: (value) =>
-                                setDialogState(() => subcategoryId = value),
-                          ),
-                          ButlerlyTagPicker(
-                            tags: widget.masterData.tags,
-                            masterData: widget.masterData.presentation,
-                            selected: tagIds,
-                            searchLabel: context.l10n.text('search'),
-                            createLabel: context.l10n.text('create'),
-                            onChanged: (value) =>
-                                setDialogState(() => tagIds = value),
-                          ),
-                          TextField(
-                            controller: amount,
-                            decoration: InputDecoration(
-                              labelText: context.l10n.text('amount'),
-                            ),
-                          ),
-                          TextField(
-                            controller: currency,
-                            decoration: InputDecoration(
-                              labelText: context.l10n.text('currency'),
-                            ),
-                          ),
-                          ButlerlyDirectionFilter(
-                            value: direction == null
-                                ? null
-                                : TransactionDirection.values.byName(
-                                    direction!,
-                                  ),
-                            label: context.l10n.text('direction'),
-                            anyLabel: context.l10n.text('clear'),
-                            onChanged: (v) =>
-                                setDialogState(() => direction = v?.name),
-                          ),
-                        ]
-                        .expand((child) sync* {
-                          yield child;
-                          yield const SizedBox(height: ButlerlySpacing.small);
-                        })
-                        .toList(growable: false),
-              ),
+                        ),
+                        ButlerlyDirectionFilter(
+                          value: direction == null
+                              ? null
+                              : TransactionDirection.values.byName(direction!),
+                          label: context.l10n.text('direction'),
+                          anyLabel: context.l10n.text('clear'),
+                          onChanged: (v) =>
+                              setDialogState(() => direction = v?.name),
+                        ),
+                      ]
+                      .expand((child) sync* {
+                        yield child;
+                        yield const SizedBox(height: ButlerlySpacing.small);
+                      })
+                      .toList(growable: false),
             ),
           ),
           actions: [
