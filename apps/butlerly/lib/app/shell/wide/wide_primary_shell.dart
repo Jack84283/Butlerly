@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -63,13 +65,46 @@ class _WidePrimaryShellState extends State<WidePrimaryShell> {
             child: ColoredBox(
               key: const ValueKey('primary-wide-body-surface'),
               color: context.colors.subtleSurface,
-              child: widget.body,
+              child: _wideBody(context),
             ),
           ),
         ),
       ],
     ),
   );
+
+  Widget _wideBody(BuildContext context) {
+    if (widget.currentIndex != 0) return widget.body;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const padding = ButlerlySpacing.large;
+        final width = math.min(
+          constraints.maxWidth - (padding * 2),
+          ButlerlySize.pageContentMaxWidth + (ButlerlySize.contentGutter * 2),
+        );
+        final height = math.max(0.0, constraints.maxHeight - (padding * 2));
+        return Padding(
+          padding: const EdgeInsets.all(padding),
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: SizedBox(
+              key: const ValueKey('primary-wide-home-floating-surface'),
+              width: width,
+              height: height,
+              child: Material(
+                color: context.colors.background,
+                elevation: ButlerlyElevation.floating,
+                borderRadius: BorderRadius.circular(ButlerlyRadius.large),
+                clipBehavior: Clip.antiAlias,
+                child: widget.body,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _WidePrimaryNavigation extends StatelessWidget {
@@ -211,6 +246,11 @@ class _WidePrimaryNavigation extends StatelessWidget {
         onToggle: onToggleMore,
         children: [
           _WideChildItem(
+            icon: Icons.palette_outlined,
+            label: context.l10n.text('appearance'),
+            onTap: () => onParentSelected(4),
+          ),
+          _WideChildItem(
             icon: Icons.privacy_tip_outlined,
             label: context.l10n.text('privacyAndData'),
             onTap: () => onNavigate('/privacy-data'),
@@ -219,6 +259,11 @@ class _WidePrimaryNavigation extends StatelessWidget {
             icon: Icons.auto_awesome_outlined,
             label: context.l10n.text('assistant'),
             onTap: () => onNavigate('/assistant'),
+          ),
+          _WideChildItem(
+            icon: Icons.info_outline_rounded,
+            label: context.l10n.text('about'),
+            onTap: () => onParentSelected(4),
           ),
         ],
       ),
@@ -281,11 +326,13 @@ class _WidePrimaryNavigation extends StatelessWidget {
         selected: _selected(4),
         onTap: (itemContext) => _openMenu(itemContext, [
           _WidePopupAction.parent(context.l10n.text('more'), 4),
+          _WidePopupAction.parent(context.l10n.text('appearance'), 4),
           _WidePopupAction.route(
             context.l10n.text('privacyAndData'),
             '/privacy-data',
           ),
           _WidePopupAction.route(context.l10n.text('assistant'), '/assistant'),
+          _WidePopupAction.parent(context.l10n.text('about'), 4),
         ]),
       ),
     ],
