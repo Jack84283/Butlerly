@@ -141,6 +141,52 @@ void main() {
       expect(await _namesStarting(selectedDirectory, 'backup.'), isEmpty);
     },
   );
+
+  test(
+    'startup recovery restores a destination after an interrupted replacement',
+    () async {
+      final root = await Directory.systemTemp.createTemp(
+        'butlerly-backup-publication-recovery-',
+      );
+      addTearDown(() => root.delete(recursive: true));
+      final privateDirectory = Directory(path.join(root.path, 'private'))
+        ..createSync();
+      final selectedDirectory = Directory(path.join(root.path, 'selected'))
+        ..createSync();
+      final source = File(path.join(privateDirectory.path, 'new.backup'))
+        ..writeAsStringSync('new backup');
+      final previous = File(
+        path.join(
+          privateDirectory.path,
+          '.portable-backup-previous-interrupted.butlerlybackup',
+        ),
+      )..writeAsStringSync('existing backup');
+      final destination = File(path.join(selectedDirectory.path, 'backup'))
+        ..writeAsStringSync('partial backup');
+      final actualRecovery = BackupPublicationRecovery(
+        operationId: 'interrupted',
+        sourcePath: source.path,
+        destinationPath: destination.path,
+        previousPath: previous.path,
+        hadExistingDestination: true,
+        previousReady: true,
+      );
+      const store = FileBackupPublicationRecoveryStore();
+      await store.write(privateDirectory, actualRecovery);
+
+      await BackupPublicationRecoveryManager().recover(privateDirectory);
+
+      expect(await destination.readAsString(), 'existing backup');
+      expect(await previous.exists(), isFalse);
+      expect(
+        await FileBackupPublicationRecoveryStore.markerFile(
+          privateDirectory,
+          'interrupted',
+        ).exists(),
+        isFalse,
+      );
+    },
+  );
 }
 
 Future<List<String>> _namesStarting(Directory directory, String prefix) async {

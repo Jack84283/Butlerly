@@ -39,17 +39,25 @@ final class LocalBackupManager {
     this.localDataManager, {
     RestoreRecoveryState? recoveryState,
     BackupDestinationWriter? destinationWriter,
+    BackupPublicationRecoveryStore? publicationRecoveryStore,
   }) : recoveryState = recoveryState ?? RestoreRecoveryState(localDataManager),
        _engine = engine.LocalBackupManager(database, localDataManager),
        _snapshotWriter = LocalBackupSnapshotWriter(localDataManager),
+       _publicationRecovery = BackupPublicationRecoveryManager(
+         store: publicationRecoveryStore,
+       ),
        _destinationWriter =
-           destinationWriter ?? const SandboxedBackupDestinationWriter();
+           destinationWriter ??
+           SandboxedBackupDestinationWriter(
+             recoveryStore: publicationRecoveryStore,
+           );
 
   final LocalDatabase database;
   final LocalDataManager localDataManager;
   final RestoreRecoveryState recoveryState;
   final engine.LocalBackupManager _engine;
   final LocalBackupSnapshotWriter _snapshotWriter;
+  final BackupPublicationRecoveryManager _publicationRecovery;
   final BackupDestinationWriter _destinationWriter;
   final BackupEncryption _encryption = const BackupEncryption();
 
@@ -65,6 +73,7 @@ final class LocalBackupManager {
     File destination, {
     required String password,
   }) async {
+    await recoverInterruptedPortableBackupPublications();
     final operationId = DateTime.now().microsecondsSinceEpoch;
     final privateDirectory = Directory(
       path.dirname(database.persistenceDatabase.path),
@@ -242,11 +251,27 @@ final class LocalBackupManager {
     }
   }
 
+  Future<void> recoverInterruptedPortableBackupPublications() async {
+    await _publicationRecovery.recover(
+      Directory(path.dirname(database.persistenceDatabase.path)),
+    );
+  }
+
   Future<void> cleanupOrphanedPrivateArtifacts() async {
     final databaseDirectory = Directory(
       path.dirname(database.persistenceDatabase.path),
     );
+    var preserveAllPortableArtifacts = false;
+    final protectedPortableArtifacts = <String>{};
     if (await databaseDirectory.exists()) {
+      try {
+        protectedPortableArtifacts.addAll(
+          await _publicationRecovery.activeArtifactNames(databaseDirectory),
+        );
+        preserveAllPortableArtifacts = protectedPortableArtifacts.remove('*');
+      } on Exception {
+        preserveAllPortableArtifacts = true;
+      }
       await for (final entity in databaseDirectory.list(followLinks: false)) {
         final name = path.basename(entity.path);
         final privateStage =
@@ -257,6 +282,11 @@ final class LocalBackupManager {
                 name.startsWith('.portable-backup-') ||
                 name.startsWith('.portable-backup-verify-'));
         if (!privateStage && !privateTemporary) continue;
+        if (privateTemporary &&
+            (preserveAllPortableArtifacts ||
+                protectedPortableArtifacts.contains(name))) {
+          continue;
+        }
         try {
           if (entity is Directory) {
             await entity.delete(recursive: true);

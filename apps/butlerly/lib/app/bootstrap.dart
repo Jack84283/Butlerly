@@ -474,10 +474,25 @@ Future<void> initializeButlerly(AppLogger logger) async {
         );
       }
 
-      phase = 'private artifact cleanup';
       final backupManager = services.isRegistered<LocalBackupManager>()
           ? services<LocalBackupManager>()
           : null;
+      phase = 'interrupted portable backup recovery';
+      if (backupManager != null) {
+        try {
+          await backupManager.recoverInterruptedPortableBackupPublications();
+          logger.info('Startup: portable backup recovery checked');
+        } catch (error, stackTrace) {
+          logger.severe(
+            'Portable backup recovery requires user action; recovery artifacts '
+            'were retained',
+            error,
+            stackTrace,
+          );
+        }
+      }
+
+      phase = 'private artifact cleanup';
       final incident = recoveryState?.incident;
       final recoveryIsUnknown =
           incident != null && incident.safetyBackupPath.isEmpty;

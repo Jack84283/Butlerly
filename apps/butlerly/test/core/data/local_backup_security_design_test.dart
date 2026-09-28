@@ -384,6 +384,52 @@ void main() {
   );
 
   test(
+    'startup cleanup preserves interrupted portable publication recovery data',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final selectedDirectory = await Directory.systemTemp.createTemp(
+        'butlerly-selected-backup-recovery-',
+      );
+      addTearDown(() => selectedDirectory.delete(recursive: true));
+      final source = File(
+        path.join(fixture.root.path, '.portable-backup-encrypted-interrupted'),
+      )..writeAsStringSync('new backup');
+      final previous = File(
+        path.join(
+          fixture.root.path,
+          '.portable-backup-previous-interrupted.butlerlybackup',
+        ),
+      )..writeAsStringSync('existing backup');
+      final destination = File(
+        path.join(selectedDirectory.path, 'portable.butlerlybackup'),
+      )..writeAsStringSync('partial backup');
+      final recovery = BackupPublicationRecovery(
+        operationId: 'interrupted',
+        sourcePath: source.path,
+        destinationPath: destination.path,
+        previousPath: previous.path,
+        hadExistingDestination: true,
+        previousReady: true,
+      );
+      const store = FileBackupPublicationRecoveryStore();
+      await store.write(fixture.root, recovery);
+
+      await fixture.manager.cleanupOrphanedPrivateArtifacts();
+
+      expect(await source.exists(), isTrue);
+      expect(await previous.exists(), isTrue);
+      expect(await store.read(fixture.root), hasLength(1));
+
+      await fixture.manager.recoverInterruptedPortableBackupPublications();
+
+      expect(await destination.readAsString(), 'existing backup');
+      expect(await previous.exists(), isFalse);
+      expect(await store.read(fixture.root), isEmpty);
+    },
+  );
+
+  test(
     'unrecoverable incident can reset local data without reopening early',
     () async {
       final fixture = await _Fixture.create();
