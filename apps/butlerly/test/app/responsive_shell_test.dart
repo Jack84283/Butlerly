@@ -636,6 +636,31 @@ void main() {
     );
   });
 
+  testWidgets('direct Wide Notifications route selects the Home parent', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(1200, 800));
+    appRouter.go('/notifications');
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NotificationsPage), findsOneWidget);
+    expect(find.byType(WidePrimaryShell), findsOneWidget);
+    expect(
+      tester
+          .widget<Semantics>(find.byKey(const ValueKey('wide-home-navigation')))
+          .properties
+          .selected,
+      isTrue,
+    );
+    expect(
+      tester
+          .widget<Semantics>(find.byKey(const ValueKey('wide-more-navigation')))
+          .properties
+          .selected,
+      isFalse,
+    );
+  });
+
   testWidgets('collapsed Wide group popups anchor to their own rail items', (
     tester,
   ) async {

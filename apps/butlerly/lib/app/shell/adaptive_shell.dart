@@ -146,10 +146,8 @@ int _parentIndexForLocation(String location, {int fallback = 4}) {
     '/payment-settlements' ||
     '/master-data' ||
     '/rules' => 3,
-    '/privacy-data' ||
-    '/assistant' ||
-    '/legal-licenses' ||
-    '/notifications' => 4,
+    '/privacy-data' || '/assistant' || '/legal-licenses' => 4,
+    '/notifications' => 0,
     '/search' => fallback,
     _ => fallback,
   };
