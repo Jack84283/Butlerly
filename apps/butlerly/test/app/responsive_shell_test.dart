@@ -9,6 +9,7 @@ import 'package:butlerly/design_system/components/butlerly_responsive_body.dart'
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
 import 'package:butlerly/features/foundation/presentation/legal_licenses_page.dart';
+import 'package:butlerly/features/foundation/presentation/settings_page.dart';
 import 'package:butlerly/features/tools/presentation/tools_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -235,6 +236,13 @@ void main() {
       '/legal-licenses',
     );
     expect(find.byType(LegalLicensesPage), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+    await tester.pumpAndSettle();
+    expect(
+      appRouter.routeInformationProvider.value.uri.toString(),
+      '/settings',
+    );
   });
 
   testWidgets('expanded Wide About Butlerly opens Legal & licenses', (
@@ -255,6 +263,14 @@ void main() {
       '/legal-licenses',
     );
     expect(find.byType(LegalLicensesPage), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+    await tester.pumpAndSettle();
+    expect(
+      appRouter.routeInformationProvider.value.uri.toString(),
+      '/settings',
+    );
+    expect(find.byType(SettingsPage), findsOneWidget);
   });
 
   testWidgets('selecting Wide More reveals its child actions', (tester) async {
