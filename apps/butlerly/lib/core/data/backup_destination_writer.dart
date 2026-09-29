@@ -178,10 +178,19 @@ final class BackupPublicationRecoveryManager {
   final BackupPublicationRecoveryStore _store;
   final BackupFileCopy _copy;
 
-  Future<void> recover(Directory privateDirectory) async {
+  Future<void> recover(
+    Directory privateDirectory, {
+    String? authorizedDestinationPath,
+  }) async {
     final recoveries = await _store.read(privateDirectory);
     final unresolved = <BackupPublicationRecovery>[];
     for (final recovery in recoveries) {
+      if (authorizedDestinationPath != null &&
+          path.normalize(recovery.destinationPath) !=
+              path.normalize(authorizedDestinationPath)) {
+        unresolved.add(recovery);
+        continue;
+      }
       try {
         await _recoverOne(privateDirectory, recovery);
       } catch (_) {
@@ -230,13 +239,11 @@ final class BackupPublicationRecoveryManager {
     final previous = File(recovery.previousPath);
 
     if (recovery.hadExistingDestination && !recovery.previousReady) {
-      if (await destination.exists() &&
-          await previous.exists() &&
-          await _sameFile(previous, destination)) {
-        await _complete(privateDirectory, recovery, previous);
-        return;
-      }
-      throw StateError('Portable backup recovery copy is not complete.');
+      // The selected destination cannot be modified before previousReady is
+      // persisted. The external destination therefore remains authoritative;
+      // discard only the unneeded private operation artifacts.
+      await _complete(privateDirectory, recovery, previous);
+      return;
     }
 
     if (await source.exists() &&
@@ -273,6 +280,10 @@ final class BackupPublicationRecoveryManager {
     File previous,
   ) async {
     await _store.clear(privateDirectory, recovery);
+    final source = File(recovery.sourcePath);
+    if (source.path != recovery.destinationPath && await source.exists()) {
+      await source.delete();
+    }
     if (await previous.exists()) await previous.delete();
   }
 
@@ -298,10 +309,12 @@ final class BackupPublicationRecoveryRequiredException implements Exception {
   const BackupPublicationRecoveryRequiredException(
     this.message, {
     this.recoveries = const [],
+    this.cause,
   });
 
   final String message;
   final List<BackupPublicationRecovery> recoveries;
+  final Object? cause;
 
   @override
   String toString() => message;
@@ -347,7 +360,8 @@ final class SandboxedBackupDestinationWriter
         '.portable-backup-previous-$operationId.butlerlybackup',
       ),
     );
-    var preserveRecovery = false;
+    var recoveryFinalized = false;
+    var previousReady = false;
     final recovery = BackupPublicationRecovery(
       operationId: operationId,
       sourcePath: source.path,
@@ -366,21 +380,53 @@ final class SandboxedBackupDestinationWriter
           privateDirectory,
           recovery.copyWith(previousReady: true),
         );
+        previousReady = true;
       }
       await _copy(source, destination.path);
       await _assertSameFile(source, destination);
-      await _clearRecoveryBestEffort(privateDirectory, recovery);
-    } catch (error, stack) {
       try {
-        if (hadExistingDestination) {
+        await _recoveryStore.clear(privateDirectory, recovery);
+        recoveryFinalized = true;
+      } catch (error, stack) {
+        Error.throwWithStackTrace(
+          BackupPublicationRecoveryRequiredException(
+            'Portable backup publication completed but its recovery state '
+            'could not be finalized.',
+            recoveries: [recovery],
+            cause: error,
+          ),
+          stack,
+        );
+      }
+    } catch (error, stack) {
+      if (error is BackupPublicationRecoveryRequiredException) {
+        Error.throwWithStackTrace(error, stack);
+      }
+      try {
+        if (hadExistingDestination && previousReady) {
           await _copy(previous, destination.path);
           await _assertSameFile(previous, destination);
-        } else if (await destination.exists()) {
+        } else if (!hadExistingDestination && await destination.exists()) {
           await destination.delete();
         }
-        await _clearRecoveryBestEffort(privateDirectory, recovery);
+        try {
+          await _recoveryStore.clear(privateDirectory, recovery);
+          recoveryFinalized = true;
+        } catch (clearError, clearStack) {
+          Error.throwWithStackTrace(
+            BackupPublicationRecoveryRequiredException(
+              'Portable backup rollback completed but its recovery state '
+              'could not be finalized.',
+              recoveries: [recovery],
+              cause: clearError,
+            ),
+            clearStack,
+          );
+        }
       } catch (rollbackError, rollbackStack) {
-        preserveRecovery = true;
+        if (rollbackError is BackupPublicationRecoveryRequiredException) {
+          Error.throwWithStackTrace(rollbackError, rollbackStack);
+        }
         Error.throwWithStackTrace(
           BackupDestinationWriteException(
             error: error,
@@ -392,7 +438,7 @@ final class SandboxedBackupDestinationWriter
       Error.throwWithStackTrace(error, stack);
     } finally {
       try {
-        if (!preserveRecovery && await previous.exists()) {
+        if (recoveryFinalized && await previous.exists()) {
           await previous.delete();
         }
       } catch (_) {}
@@ -416,15 +462,6 @@ final class SandboxedBackupDestinationWriter
         await sha256FileRange(expected) != await sha256FileRange(actual)) {
       throw StateError('Published backup does not match its source.');
     }
-  }
-
-  Future<void> _clearRecoveryBestEffort(
-    Directory privateDirectory,
-    BackupPublicationRecovery recovery,
-  ) async {
-    try {
-      await _recoveryStore.clear(privateDirectory, recovery);
-    } catch (_) {}
   }
 }
 

@@ -430,6 +430,129 @@ void main() {
   );
 
   test(
+    'startup cleanup fails closed when portable recovery metadata is unreadable',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final marker = File(
+        path.join(
+          fixture.root.path,
+          '.portable-backup-recovery-unreadable.json',
+        ),
+      )..writeAsStringSync('{not-json');
+      final source = File(
+        path.join(fixture.root.path, '.portable-backup-encrypted-orphan'),
+      )..writeAsStringSync('encrypted candidate');
+      final previous = File(
+        path.join(
+          fixture.root.path,
+          '.portable-backup-previous-orphan.butlerlybackup',
+        ),
+      )..writeAsStringSync('previous backup');
+
+      await fixture.manager.cleanupOrphanedPrivateArtifacts();
+
+      expect(await marker.exists(), isTrue);
+      expect(await source.exists(), isTrue);
+      expect(await previous.exists(), isTrue);
+    },
+  );
+
+  test(
+    'inaccessible destination surfaces recovery state until reauthorized',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final selectedDirectory = Directory(
+        path.join(fixture.root.path, 'selected-destination'),
+      );
+      final destination = File(
+        path.join(selectedDirectory.path, 'portable.butlerlybackup'),
+      );
+      final source = File(
+        path.join(fixture.root.path, '.portable-backup-encrypted-recovery'),
+      )..writeAsStringSync('new backup');
+      final previous = File(
+        path.join(
+          fixture.root.path,
+          '.portable-backup-previous-recovery.butlerlybackup',
+        ),
+      )..writeAsStringSync('existing backup');
+      final recovery = BackupPublicationRecovery(
+        operationId: 'recovery',
+        sourcePath: source.path,
+        destinationPath: destination.path,
+        previousPath: previous.path,
+        hadExistingDestination: true,
+        previousReady: true,
+      );
+      const store = FileBackupPublicationRecoveryStore();
+      await store.write(fixture.root, recovery);
+
+      await expectLater(
+        fixture.manager.recoverInterruptedPortableBackupPublications(),
+        throwsA(isA<BackupPublicationRecoveryRequiredException>()),
+      );
+      expect(
+        fixture.manager.publicationRecoveryState.isRecoveryRequired,
+        isTrue,
+      );
+      expect(await previous.exists(), isTrue);
+
+      await selectedDirectory.create(recursive: true);
+      await fixture.manager.recoverInterruptedPortableBackupPublications(
+        authorizedDestinationPath: destination.path,
+      );
+
+      expect(
+        fixture.manager.publicationRecoveryState.isRecoveryRequired,
+        isFalse,
+      );
+      expect(await destination.readAsString(), 'existing backup');
+      expect(await previous.exists(), isFalse);
+      expect(await source.exists(), isFalse);
+    },
+  );
+
+  test(
+    'portable backup keeps source artifacts when recovery finalization fails',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction('recovery-finalization');
+      final destination = File(
+        path.join(fixture.root.path, 'portable.butlerlybackup'),
+      )..writeAsStringSync('existing backup');
+      final store = _FailOnceClearStore();
+      final manager = LocalBackupManager(
+        fixture.database,
+        fixture.data,
+        recoveryState: fixture.manager.recoveryState,
+        publicationRecoveryStore: store,
+      );
+
+      await expectLater(
+        manager.createPortableBackup(
+          destination,
+          password: 'correct horse battery staple',
+        ),
+        throwsA(isA<BackupPublicationRecoveryRequiredException>()),
+      );
+      expect(
+        await _namesStarting(fixture.root, '.portable-backup-encrypted-'),
+        isNotEmpty,
+      );
+      expect(await store.read(fixture.root), hasLength(1));
+
+      await manager.recoverInterruptedPortableBackupPublications();
+
+      expect(await _namesStarting(fixture.root, '.portable-backup-'), isEmpty);
+      expect(await store.read(fixture.root), isEmpty);
+      expect(await manager.isEncryptedBackup(destination), isTrue);
+    },
+  );
+
+  test(
     'unrecoverable incident can reset local data without reopening early',
     () async {
       final fixture = await _Fixture.create();
@@ -545,4 +668,34 @@ final class _FailingDestinationWriter implements BackupDestinationWriter {
   }) async {
     throw const FileSystemException('simulated destination failure');
   }
+}
+
+final class _FailOnceClearStore implements BackupPublicationRecoveryStore {
+  _FailOnceClearStore()
+    : _delegate = const FileBackupPublicationRecoveryStore();
+
+  final BackupPublicationRecoveryStore _delegate;
+  bool _failed = false;
+
+  @override
+  Future<void> write(
+    Directory privateDirectory,
+    BackupPublicationRecovery recovery,
+  ) => _delegate.write(privateDirectory, recovery);
+
+  @override
+  Future<void> clear(
+    Directory privateDirectory,
+    BackupPublicationRecovery recovery,
+  ) {
+    if (!_failed) {
+      _failed = true;
+      throw const FileSystemException('simulated recovery marker failure');
+    }
+    return _delegate.clear(privateDirectory, recovery);
+  }
+
+  @override
+  Future<List<BackupPublicationRecovery>> read(Directory privateDirectory) =>
+      _delegate.read(privateDirectory);
 }

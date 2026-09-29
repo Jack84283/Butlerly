@@ -8,6 +8,7 @@ abstract interface class LocalDataGateway {
     String destination, {
     required String password,
   });
+  Future<void> recoverPortableBackupPublication(String destination);
   Future<String> createTemporaryBackup(
     String fileName, {
     required String password,
@@ -44,6 +45,8 @@ final class WorkspaceDataService {
     String destination, {
     required String password,
   }) => gateway.createPortableBackup(destination, password: password);
+  Future<void> recoverPortableBackupPublication(String destination) =>
+      gateway.recoverPortableBackupPublication(destination);
   Future<String> createTemporaryBackup(
     String fileName, {
     required String password,

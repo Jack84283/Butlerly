@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:butlerly/core/data/backup_container_format.dart';
 import 'package:butlerly/core/data/backup_destination_writer.dart';
 import 'package:butlerly/core/data/backup_encryption.dart';
+import 'package:butlerly/core/data/backup_publication_recovery_state.dart';
 import 'package:butlerly/core/data/local_backup_engine.dart' as engine;
 import 'package:butlerly/core/data/local_backup_snapshot_writer.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
@@ -23,6 +24,7 @@ export 'backup_encryption.dart'
         BackupPasswordOrIntegrityException,
         BackupPasswordRequiredException,
         BackupPasswordTooShortException;
+export 'backup_publication_recovery_state.dart';
 export 'local_backup_engine.dart'
     show
         BackupChangeSummary,
@@ -40,7 +42,10 @@ final class LocalBackupManager {
     RestoreRecoveryState? recoveryState,
     BackupDestinationWriter? destinationWriter,
     BackupPublicationRecoveryStore? publicationRecoveryStore,
+    BackupPublicationRecoveryState? publicationRecoveryState,
   }) : recoveryState = recoveryState ?? RestoreRecoveryState(localDataManager),
+       publicationRecoveryState =
+           publicationRecoveryState ?? BackupPublicationRecoveryState(),
        _engine = engine.LocalBackupManager(database, localDataManager),
        _snapshotWriter = LocalBackupSnapshotWriter(localDataManager),
        _publicationRecovery = BackupPublicationRecoveryManager(
@@ -55,6 +60,7 @@ final class LocalBackupManager {
   final LocalDatabase database;
   final LocalDataManager localDataManager;
   final RestoreRecoveryState recoveryState;
+  final BackupPublicationRecoveryState publicationRecoveryState;
   final engine.LocalBackupManager _engine;
   final LocalBackupSnapshotWriter _snapshotWriter;
   final BackupPublicationRecoveryManager _publicationRecovery;
@@ -97,6 +103,7 @@ final class LocalBackupManager {
       ),
     );
 
+    var preservePublicationRecovery = false;
     try {
       await EvidenceMutationLock.runExclusive(
         () => _createBackupUnlocked(plain),
@@ -117,10 +124,18 @@ final class LocalBackupManager {
         operationId: operationId.toString(),
       );
       return destination;
+    } on BackupPublicationRecoveryRequiredException {
+      preservePublicationRecovery = true;
+      rethrow;
+    } on BackupDestinationWriteException {
+      preservePublicationRecovery = true;
+      rethrow;
     } finally {
       await _deleteFileBestEffort(plain);
       await _deleteFileBestEffort(verificationPlain);
-      await _deleteFileBestEffort(encryptedCandidate);
+      if (!preservePublicationRecovery) {
+        await _deleteFileBestEffort(encryptedCandidate);
+      }
       await _cleanupCandidateArtifacts(plain);
     }
   }
@@ -251,10 +266,19 @@ final class LocalBackupManager {
     }
   }
 
-  Future<void> recoverInterruptedPortableBackupPublications() async {
-    await _publicationRecovery.recover(
-      Directory(path.dirname(database.persistenceDatabase.path)),
-    );
+  Future<void> recoverInterruptedPortableBackupPublications({
+    String? authorizedDestinationPath,
+  }) async {
+    try {
+      await _publicationRecovery.recover(
+        Directory(path.dirname(database.persistenceDatabase.path)),
+        authorizedDestinationPath: authorizedDestinationPath,
+      );
+      publicationRecoveryState.clear();
+    } on BackupPublicationRecoveryRequiredException catch (error) {
+      publicationRecoveryState.markRequired(error);
+      rethrow;
+    }
   }
 
   Future<void> cleanupOrphanedPrivateArtifacts() async {

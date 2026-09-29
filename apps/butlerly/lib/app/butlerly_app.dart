@@ -3,11 +3,13 @@ import 'package:butlerly/app/router/app_router.dart';
 import 'package:butlerly/app/session/butlerly_session_guard.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/app/theme/theme_mode_provider.dart';
+import 'package:butlerly/core/data/backup_publication_recovery_state.dart';
 import 'package:butlerly/core/data/restore_recovery_state.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/features/foundation/presentation/first_use_preferences_page.dart';
+import 'package:butlerly/features/foundation/presentation/portable_backup_recovery_required_page.dart';
 import 'package:butlerly/features/foundation/presentation/restore_recovery_required_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -28,6 +30,10 @@ class ButlerlyApp extends ConsumerWidget {
     );
     final recoveryState = services.isRegistered<RestoreRecoveryState>()
         ? services<RestoreRecoveryState>()
+        : null;
+    final portableRecoveryState =
+        services.isRegistered<BackupPublicationRecoveryState>()
+        ? services<BackupPublicationRecoveryState>()
         : null;
 
     final firstUse = preference.value?.firstUseCompleted == false;
@@ -73,15 +79,25 @@ class ButlerlyApp extends ConsumerWidget {
               return child ?? const SizedBox.shrink();
             }
 
-            if (recoveryState == null) return normalContent();
+            Widget contentWithPortableRecovery() {
+              if (portableRecoveryState == null) return normalContent();
+              return ListenableBuilder(
+                listenable: portableRecoveryState,
+                builder: (context, _) {
+                  if (portableRecoveryState.isRecoveryRequired) {
+                    return const PortableBackupRecoveryRequiredPage();
+                  }
+                  return normalContent();
+                },
+              );
+            }
+
+            if (recoveryState == null) return contentWithPortableRecovery();
             return ListenableBuilder(
               listenable: recoveryState,
-              builder: (context, _) {
-                if (recoveryState.isRecoveryRequired) {
-                  return const RestoreRecoveryRequiredPage();
-                }
-                return normalContent();
-              },
+              builder: (context, _) => recoveryState.isRecoveryRequired
+                  ? const RestoreRecoveryRequiredPage()
+                  : contentWithPortableRecovery(),
             );
           },
         ),

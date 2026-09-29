@@ -28,14 +28,19 @@ void configureDependencies({
 
   final localDataManager = LocalDataManager(database);
   final restoreRecoveryState = RestoreRecoveryState(localDataManager);
+  final publicationRecoveryState = BackupPublicationRecoveryState();
   services
     ..registerSingleton<LocalDataManager>(localDataManager)
     ..registerSingleton<RestoreRecoveryState>(restoreRecoveryState)
+    ..registerSingleton<BackupPublicationRecoveryState>(
+      publicationRecoveryState,
+    )
     ..registerSingleton<LocalBackupManager>(
       LocalBackupManager(
         database,
         localDataManager,
         recoveryState: restoreRecoveryState,
+        publicationRecoveryState: publicationRecoveryState,
       ),
     );
 
