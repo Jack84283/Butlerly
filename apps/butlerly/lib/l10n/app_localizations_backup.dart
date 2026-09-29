@@ -75,6 +75,13 @@ const _backupStrings = <String, Map<String, String>>{
     'recoveryResetConfirm': 'Erase and restart',
     'recoveryStillRequired':
         'Recovery is still required. Normal editing remains disabled and available recovery material has been preserved.',
+    'portableRecoveryTitle': 'Backup recovery required',
+    'portableRecoveryBody':
+        'A backup replacement was interrupted. Butlerly preserved the previous valid backup, but needs access to the original backup location to finish recovery.',
+    'selectBackupLocation': 'Select backup location',
+    'keepRecoveryData': 'Keep recovery data',
+    'portableRecoveryStillRequired':
+        'Recovery could not be completed. The preserved recovery data was kept.',
   },
   'es': {
     'backup': 'Crear copia de Butlerly',
@@ -129,6 +136,13 @@ const _backupStrings = <String, Map<String, String>>{
     'recoveryResetConfirm': 'Borrar y reiniciar',
     'recoveryStillRequired':
         'La recuperación sigue siendo necesaria. La edición normal continúa deshabilitada y se ha conservado el material de recuperación disponible.',
+    'portableRecoveryTitle': 'Se requiere recuperar la copia',
+    'portableRecoveryBody':
+        'Se interrumpió el reemplazo de una copia. Butlerly conservó la copia válida anterior, pero necesita acceso a la ubicación original para completar la recuperación.',
+    'selectBackupLocation': 'Seleccionar ubicación de la copia',
+    'keepRecoveryData': 'Conservar los datos de recuperación',
+    'portableRecoveryStillRequired':
+        'No se pudo completar la recuperación. Los datos de recuperación conservados permanecen disponibles.',
   },
   'zh': {
     'backup': '备份 Butlerly',
@@ -175,5 +189,10 @@ const _backupStrings = <String, Map<String, String>>{
     'recoveryResetBody': '这将永久删除此设备上的 Butlerly 本地财务数据、凭证和恢复副本。仅在无法完成恢复时使用此操作。',
     'recoveryResetConfirm': '清除并重新开始',
     'recoveryStillRequired': '仍需要执行恢复。正常编辑仍未启用，可用的恢复材料已保留。',
+    'portableRecoveryTitle': '需要恢复备份',
+    'portableRecoveryBody': '备份替换过程中断。Butlerly 已保留之前的有效备份，但需要访问原备份位置才能完成恢复。',
+    'selectBackupLocation': '选择备份位置',
+    'keepRecoveryData': '保留恢复数据',
+    'portableRecoveryStillRequired': '无法完成恢复。已保留恢复数据。',
   },
 };

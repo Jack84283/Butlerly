@@ -25,6 +25,12 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
   }
 
   @override
+  Future<void> recoverPortableBackupPublication(String destination) =>
+      backups.recoverInterruptedPortableBackupPublications(
+        authorizedDestinationPath: destination,
+      );
+
+  @override
   Future<String> createTemporaryBackup(
     String fileName, {
     required String password,

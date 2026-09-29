@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:butlerly/core/data/backup_container_format.dart';
+import 'package:butlerly/core/data/backup_destination_writer.dart';
 import 'package:butlerly/core/data/backup_encryption.dart';
+import 'package:butlerly/core/data/backup_publication_recovery_state.dart';
 import 'package:butlerly/core/data/local_backup_engine.dart' as engine;
 import 'package:butlerly/core/data/local_backup_snapshot_writer.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
@@ -16,11 +18,13 @@ import 'package:butlerly_database/butlerly_database.dart'
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common/sqlite_api.dart';
 
+export 'backup_destination_writer.dart';
 export 'backup_encryption.dart'
     show
         BackupPasswordOrIntegrityException,
         BackupPasswordRequiredException,
         BackupPasswordTooShortException;
+export 'backup_publication_recovery_state.dart';
 export 'local_backup_engine.dart'
     show
         BackupChangeSummary,
@@ -36,15 +40,31 @@ final class LocalBackupManager {
     this.database,
     this.localDataManager, {
     RestoreRecoveryState? recoveryState,
+    BackupDestinationWriter? destinationWriter,
+    BackupPublicationRecoveryStore? publicationRecoveryStore,
+    BackupPublicationRecoveryState? publicationRecoveryState,
   }) : recoveryState = recoveryState ?? RestoreRecoveryState(localDataManager),
+       publicationRecoveryState =
+           publicationRecoveryState ?? BackupPublicationRecoveryState(),
        _engine = engine.LocalBackupManager(database, localDataManager),
-       _snapshotWriter = LocalBackupSnapshotWriter(localDataManager);
+       _snapshotWriter = LocalBackupSnapshotWriter(localDataManager),
+       _publicationRecovery = BackupPublicationRecoveryManager(
+         store: publicationRecoveryStore,
+       ),
+       _destinationWriter =
+           destinationWriter ??
+           SandboxedBackupDestinationWriter(
+             recoveryStore: publicationRecoveryStore,
+           );
 
   final LocalDatabase database;
   final LocalDataManager localDataManager;
   final RestoreRecoveryState recoveryState;
+  final BackupPublicationRecoveryState publicationRecoveryState;
   final engine.LocalBackupManager _engine;
   final LocalBackupSnapshotWriter _snapshotWriter;
+  final BackupPublicationRecoveryManager _publicationRecovery;
+  final BackupDestinationWriter _destinationWriter;
   final BackupEncryption _encryption = const BackupEncryption();
 
   static final _backupMagic = BackupContainerFormat.magic;
@@ -59,6 +79,7 @@ final class LocalBackupManager {
     File destination, {
     required String password,
   }) async {
+    await recoverInterruptedPortableBackupPublications();
     final operationId = DateTime.now().microsecondsSinceEpoch;
     final privateDirectory = Directory(
       path.dirname(database.persistenceDatabase.path),
@@ -70,7 +91,10 @@ final class LocalBackupManager {
       ),
     );
     final encryptedCandidate = File(
-      '${destination.path}.encrypted-candidate-$operationId',
+      path.join(
+        privateDirectory.path,
+        '.portable-backup-encrypted-$operationId.butlerlybackup',
+      ),
     );
     final verificationPlain = File(
       path.join(
@@ -79,6 +103,7 @@ final class LocalBackupManager {
       ),
     );
 
+    var preservePublicationRecovery = false;
     try {
       await EvidenceMutationLock.runExclusive(
         () => _createBackupUnlocked(plain),
@@ -92,13 +117,25 @@ final class LocalBackupManager {
       await _assertSupportedBackupSchema(verificationPlain);
       await _engine.inspect(verificationPlain);
 
-      await _recoverInterruptedBackupReplacement(destination);
-      await _replaceBackupFile(encryptedCandidate, destination, operationId);
+      await _destinationWriter.publish(
+        source: encryptedCandidate,
+        destination: destination,
+        privateDirectory: privateDirectory,
+        operationId: operationId.toString(),
+      );
       return destination;
+    } on BackupPublicationRecoveryRequiredException {
+      preservePublicationRecovery = true;
+      rethrow;
+    } on BackupDestinationWriteException {
+      preservePublicationRecovery = true;
+      rethrow;
     } finally {
       await _deleteFileBestEffort(plain);
       await _deleteFileBestEffort(verificationPlain);
-      await _deleteFileBestEffort(encryptedCandidate);
+      if (!preservePublicationRecovery) {
+        await _deleteFileBestEffort(encryptedCandidate);
+      }
       await _cleanupCandidateArtifacts(plain);
     }
   }
@@ -229,21 +266,51 @@ final class LocalBackupManager {
     }
   }
 
+  Future<void> recoverInterruptedPortableBackupPublications({
+    String? authorizedDestinationPath,
+  }) async {
+    try {
+      await _publicationRecovery.recover(
+        Directory(path.dirname(database.persistenceDatabase.path)),
+        authorizedDestinationPath: authorizedDestinationPath,
+      );
+      publicationRecoveryState.clear();
+    } on BackupPublicationRecoveryRequiredException catch (error) {
+      publicationRecoveryState.markRequired(error);
+      rethrow;
+    }
+  }
+
   Future<void> cleanupOrphanedPrivateArtifacts() async {
     final databaseDirectory = Directory(
       path.dirname(database.persistenceDatabase.path),
     );
+    var preserveAllPortableArtifacts = false;
+    final protectedPortableArtifacts = <String>{};
     if (await databaseDirectory.exists()) {
+      try {
+        protectedPortableArtifacts.addAll(
+          await _publicationRecovery.activeArtifactNames(databaseDirectory),
+        );
+        preserveAllPortableArtifacts = protectedPortableArtifacts.remove('*');
+      } on Exception {
+        preserveAllPortableArtifacts = true;
+      }
       await for (final entity in databaseDirectory.list(followLinks: false)) {
         final name = path.basename(entity.path);
         final privateStage =
             entity is Directory && name.startsWith('.butlerly-restore-stage-');
-        final plaintextTemporary =
+        final privateTemporary =
             entity is File &&
             (name.startsWith('.backup-decrypt-') ||
                 name.startsWith('.portable-backup-') ||
                 name.startsWith('.portable-backup-verify-'));
-        if (!privateStage && !plaintextTemporary) continue;
+        if (!privateStage && !privateTemporary) continue;
+        if (privateTemporary &&
+            (preserveAllPortableArtifacts ||
+                protectedPortableArtifacts.contains(name))) {
+          continue;
+        }
         try {
           if (entity is Directory) {
             await entity.delete(recursive: true);
