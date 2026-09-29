@@ -213,20 +213,55 @@ void main() {
       tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
       ButlerlySize.pageContentMaxWidth,
     );
-    final floatingHome = find.byKey(
-      const ValueKey('primary-wide-home-floating-surface'),
-    );
-    expect(floatingHome, findsOneWidget);
     expect(
-      tester.getRect(floatingHome).left,
-      greaterThan(
-        ButlerlySize.wideNavigationExpandedWidth + ButlerlySpacing.large,
-      ),
+      find.byKey(const ValueKey('primary-wide-body-surface')),
+      findsOneWidget,
     );
     expect(
-      tester.getSize(floatingHome).width,
-      ButlerlySize.pageContentMaxWidth + ButlerlySize.contentGutter * 2,
+      find.byKey(const ValueKey('primary-wide-home-floating-surface')),
+      findsNothing,
     );
+    expect(
+      find.byKey(const ValueKey('home-page-content-surface')),
+      findsOneWidget,
+    );
+    expect(
+      tester.getSize(find.byKey(const ValueKey('primary-wide-body-surface'))),
+      const Size(1200 - ButlerlySize.wideNavigationExpandedWidth, 800),
+    );
+    expect(
+      tester
+          .widget<Semantics>(find.byKey(const ValueKey('wide-home-navigation')))
+          .properties
+          .selected,
+      isTrue,
+    );
+  });
+
+  testWidgets('Wide primary destinations share the same body surface', (
+    tester,
+  ) async {
+    const size = Size(1200, 800);
+    await _pumpAt(tester, size);
+
+    for (final route in ['/', '/transactions', '/add', '/tools', '/settings']) {
+      appRouter.go(route);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(WidePrimaryShell), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('primary-wide-body-surface')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('primary-wide-home-floating-surface')),
+        findsNothing,
+      );
+      expect(
+        tester.getSize(find.byKey(const ValueKey('primary-wide-body-surface'))),
+        const Size(1200 - ButlerlySize.wideNavigationExpandedWidth, 800),
+      );
+    }
   });
 
   testWidgets('Wide More exposes Privacy, Assistant, and About actions', (
