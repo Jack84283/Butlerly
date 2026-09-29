@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -95,45 +93,12 @@ class _WidePrimaryShellState extends State<WidePrimaryShell> {
               child: ColoredBox(
                 key: const ValueKey('primary-wide-body-surface'),
                 color: context.colors.subtleSurface,
-                child: _wideBody(context),
+                child: widget.body,
               ),
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _wideBody(BuildContext context) {
-    if (widget.currentIndex != 0) return widget.body;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const padding = ButlerlySpacing.large;
-        final width = math.min(
-          constraints.maxWidth - (padding * 2),
-          ButlerlySize.pageContentMaxWidth + (ButlerlySize.contentGutter * 2),
-        );
-        final height = math.max(0.0, constraints.maxHeight - (padding * 2));
-        return Padding(
-          padding: const EdgeInsets.all(padding),
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: SizedBox(
-              key: const ValueKey('primary-wide-home-floating-surface'),
-              width: width,
-              height: height,
-              child: Material(
-                color: context.colors.background,
-                elevation: ButlerlyElevation.floating,
-                borderRadius: BorderRadius.circular(ButlerlyRadius.large),
-                clipBehavior: Clip.antiAlias,
-                child: widget.body,
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 }
