@@ -61,6 +61,7 @@ void main() {
     final searchPage = tester.widget<SearchPage>(find.byType(SearchPage));
     expect(searchPage.initialQuery?.from, DateTime(2026, 7, 1));
     expect(searchPage.initialQuery?.to, DateTime(2026, 7, 31));
+    expect(searchPage.initialQuery?.includeUndated, isFalse);
     expect(appRouter.canPop(), isTrue);
 
     appRouter.pop();

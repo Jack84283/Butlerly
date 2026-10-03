@@ -11,6 +11,37 @@ final class _Clock implements ApplicationClock {
 }
 
 void main() {
+  test(
+    'large fallback histories reuse the timezone database and locations',
+    () {
+      final tokyo = resolveFinancialTimeZone('Asia/Tokyo');
+      final california = resolveFinancialTimeZone('America/Los_Angeles');
+      for (var index = 0; index < 1000; index++) {
+        expect(
+          financialDateAt(DateTime.utc(2026, 9, 30, 16, 30), 'Asia/Tokyo'),
+          DateTime.utc(2026, 10, 1),
+        );
+        expect(
+          financialDateAt(
+            DateTime.utc(2026, 10, 1, 6, 30),
+            'America/Los_Angeles',
+          ),
+          DateTime.utc(2026, 9, 30),
+        );
+        expect(
+          identical(resolveFinancialTimeZone('Asia/Tokyo'), tokyo),
+          isTrue,
+        );
+        expect(
+          identical(
+            resolveFinancialTimeZone('America/Los_Angeles'),
+            california,
+          ),
+          isTrue,
+        );
+      }
+    },
+  );
   final context = AnalysisContext(
     period: AnalysisPeriod(
       startDate: '2026-03-01',
@@ -131,6 +162,40 @@ void main() {
       expect(month.window.endExclusive, DateTime.utc(2026, 4, 1));
     },
   );
+
+  test(
+    'converts financial calendar bounds with positive and negative offsets',
+    () {
+      final pacific = financialInstantRangeForCalendarDates(
+        from: DateTime.utc(2026, 9, 30),
+        to: DateTime.utc(2026, 9, 30),
+        timeZoneId: 'America/Los_Angeles',
+      );
+      expect(pacific.start, DateTime.utc(2026, 9, 30, 7));
+      expect(pacific.endExclusive, DateTime.utc(2026, 10, 1, 7));
+
+      final shanghai = financialInstantRangeForCalendarDates(
+        from: DateTime.utc(2026, 3, 1),
+        to: DateTime.utc(2026, 3, 1),
+        timeZoneId: 'Asia/Shanghai',
+      );
+      expect(shanghai.start, DateTime.utc(2026, 2, 28, 16));
+      expect(shanghai.endExclusive, DateTime.utc(2026, 3, 1, 16));
+    },
+  );
+
+  test('preserves the correct local date at UTC midnight edges', () {
+    final range = financialInstantRangeForCalendarDates(
+      from: DateTime.utc(2026, 9, 30),
+      to: DateTime.utc(2026, 9, 30),
+      timeZoneId: 'America/Los_Angeles',
+    );
+    final justInside = DateTime.utc(2026, 10, 1, 6, 30);
+    final justOutside = DateTime.utc(2026, 10, 1, 7, 30);
+    expect(justInside.isAfter(range.start!), isTrue);
+    expect(justInside.isBefore(range.endExclusive!), isTrue);
+    expect(justOutside.isBefore(range.endExclusive!), isFalse);
+  });
 
   test(
     'previous equivalent period preserves duration and elapsed coverage',

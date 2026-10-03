@@ -26,6 +26,22 @@ void main() {
     );
   });
 
+  test('uses the application financial date for timezone-aware results', () {
+    final transaction = _transaction(
+      occurredAt: DateTime.utc(2026, 10, 1, 6, 30),
+      financialDate: DateTime.utc(2026, 9, 30),
+    );
+
+    expect(
+      transactionDateLabel(transaction, pendingLabel: 'Date pending'),
+      'Sep 30, 2026',
+    );
+    expect(
+      transactionCalendarDate(transaction, fallback: DateTime(1970)),
+      DateTime.utc(2026, 9, 30),
+    );
+  });
+
   test('editor fallback uses the UTC instant calendar date', () {
     final transaction = _transaction(occurredAt: DateTime.utc(2026, 8, 10, 1));
 
@@ -48,16 +64,20 @@ void main() {
   });
 }
 
-TransactionDto _transaction({DateTime? occurredAt, String? transactionDate}) =>
-    TransactionDto(
-      id: 'transaction',
-      amount: '12.50',
-      currency: 'USD',
-      direction: 'expense',
-      status: 'active',
-      reviewState: 'clear',
-      occurredAt: occurredAt,
-      transactionDate: transactionDate,
-      createdAt: DateTime.utc(2026, 8, 10),
-      updatedAt: DateTime.utc(2026, 8, 10),
-    );
+TransactionDto _transaction({
+  DateTime? occurredAt,
+  String? transactionDate,
+  DateTime? financialDate,
+}) => TransactionDto(
+  id: 'transaction',
+  amount: '12.50',
+  currency: 'USD',
+  direction: 'expense',
+  status: 'active',
+  reviewState: 'clear',
+  occurredAt: occurredAt,
+  transactionDate: transactionDate,
+  financialDate: financialDate,
+  createdAt: DateTime.utc(2026, 8, 10),
+  updatedAt: DateTime.utc(2026, 8, 10),
+);

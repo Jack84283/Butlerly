@@ -101,7 +101,7 @@ final class SqliteTransactionRepository
   Future<List<Transaction>> listAll() async {
     final rows = await database.connection.query(
       'transactions',
-      orderBy: 'COALESCE(occurred_at, created_at) DESC, id',
+      orderBy: 'julianday(COALESCE(occurred_at, created_at)) DESC, id',
     );
     return Future.wait(rows.map(_hydrate));
   }
@@ -161,19 +161,43 @@ final class SqliteTransactionRepository
     }
     final dateConditions = <String>[];
     if (query.from != null) {
-      dateConditions.add('t.transaction_date >= ?');
+      dateConditions.add('TRIM(t.transaction_date) >= ?');
       arguments.add(_dateOnly(query.from!));
     }
     if (query.to != null) {
-      dateConditions.add('t.transaction_date <= ?');
+      dateConditions.add('TRIM(t.transaction_date) <= ?');
       arguments.add(_dateOnly(query.to!));
     }
     if (dateConditions.isNotEmpty) {
-      final dateCondition = dateConditions.join(' AND ');
+      final datedCondition = [
+        "TRIM(COALESCE(t.transaction_date, '')) != ''",
+        ...dateConditions,
+      ].join(' AND ');
+      final undatedCondition = "TRIM(COALESCE(t.transaction_date, '')) = ''";
+      final occurredAtConditions = <String>[];
+      if (query.occurredAtFrom != null) {
+        occurredAtConditions.add('t.occurred_at >= ?');
+        arguments.add(_utcComparisonBound(query.occurredAtFrom!));
+      }
+      if (query.occurredAtToExclusive != null) {
+        occurredAtConditions.add('t.occurred_at < ?');
+        arguments.add(_utcComparisonBound(query.occurredAtToExclusive!));
+      }
+      final occurredCondition = occurredAtConditions.isEmpty
+          ? null
+          : '($undatedCondition AND t.occurred_at IS NOT NULL AND '
+                '${occurredAtConditions.join(' AND ')})';
+      final unknownCondition = query.includeUndated
+          ? '($undatedCondition AND t.occurred_at IS NULL)'
+          : null;
+      final periodConditions = <String>['($datedCondition)'];
+      if (occurredCondition != null) periodConditions.add(occurredCondition);
+      if (unknownCondition != null) periodConditions.add(unknownCondition);
+      conditions.add('(${periodConditions.join(' OR ')})');
+    }
+    if (dateConditions.isEmpty && !query.includeUndated) {
       conditions.add(
-        query.includeUndated
-            ? '(t.transaction_date IS NULL OR $dateCondition)'
-            : dateCondition,
+        "(TRIM(COALESCE(t.transaction_date, '')) != '' OR t.occurred_at IS NOT NULL)",
       );
     }
     if (query.categoryId != null) {
@@ -214,7 +238,12 @@ final class SqliteTransactionRepository
            LEFT JOIN categories c ON c.id = t.category_id
            LEFT JOIN payment_sources ps ON ps.id = t.payment_source_id
            ${conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}'}
-           ORDER BY t.transaction_date DESC, t.id''',
+           ORDER BY CASE WHEN TRIM(COALESCE(t.transaction_date, '')) = ''
+                         THEN 1 ELSE 0 END,
+                    CASE WHEN TRIM(COALESCE(t.transaction_date, '')) = ''
+                         THEN julianday(t.occurred_at) END DESC,
+                    TRIM(t.transaction_date) DESC,
+                    t.id''',
         arguments,
       );
       return await Future.wait(rows.map(_hydrate));
@@ -408,7 +437,9 @@ final class SqliteTransactionRepository
           .toList(),
       createdAt: DateTime.parse(row['created_at']! as String),
       updatedAt: DateTime.parse(row['updated_at']! as String),
-      transactionDate: row['transaction_date'] as String?,
+      transactionDate: _normalizedTransactionDate(
+        row['transaction_date'] as String?,
+      ),
       timeZoneId: row['time_zone_id'] as String?,
     );
   }
@@ -461,54 +492,76 @@ final class SqliteTransactionRepository
     }
   }
 
-  static Map<String, Object?> _transactionToRow(Transaction value) => {
-    'id': value.id.value,
-    'occurred_at': value.timing is KnownTransactionTime
-        ? (value.timing as KnownTransactionTime).occurredAt.toIso8601String()
-        : null,
-    'occurred_at_utc': value.timing is KnownTransactionTime
-        ? (value.timing as KnownTransactionTime).occurredAt.toIso8601String()
-        : null,
-    'transaction_date': value.transactionDate,
-    'time_zone_id': value.timeZoneId,
-    'unknown_time_reason': value.timing is UnknownTransactionTime
-        ? (value.timing as UnknownTransactionTime).reason.name
-        : null,
-    ...decimalToColumns(
-      value.money.amount,
-      'amount_coefficient',
-      'amount_scale',
-    ),
-    'currency': value.money.currency.value,
-    'direction': value.direction.name,
-    'source_type': value.sourceType.name,
-    'status': value.status.name,
-    'description': value.description,
-    'raw_counterparty': value.rawCounterparty,
-    'external_reference': value.externalReference,
-    'source_language': value.sourceLanguage,
-    'notes': value.notes,
-    'payment_source_id': value.paymentSourceId?.value,
-    'merchant_id': value.merchantId?.value,
-    'category_id': value.categoryId?.value,
-    'subcategory_id': value.subcategoryId?.value,
-    'normalized_description': normalizeMerchantName(
-      value.description ?? value.rawCounterparty ?? '',
-    ),
-    'created_at': value.createdAt.toIso8601String(),
-    'updated_at': value.updatedAt.toIso8601String(),
-  };
+  static Map<String, Object?> _transactionToRow(Transaction value) {
+    final occurredAt = value.timing is KnownTransactionTime
+        ? (value.timing as KnownTransactionTime).occurredAt
+        : null;
+    final occurredAtUtc = occurredAt?.toUtc().toIso8601String();
+    return {
+      'id': value.id.value,
+      'occurred_at': occurredAtUtc,
+      'occurred_at_utc': occurredAtUtc,
+      'transaction_date': _normalizedTransactionDate(value.transactionDate),
+      'time_zone_id': value.timeZoneId,
+      'unknown_time_reason': value.timing is UnknownTransactionTime
+          ? (value.timing as UnknownTransactionTime).reason.name
+          : null,
+      ...decimalToColumns(
+        value.money.amount,
+        'amount_coefficient',
+        'amount_scale',
+      ),
+      'currency': value.money.currency.value,
+      'direction': value.direction.name,
+      'source_type': value.sourceType.name,
+      'status': value.status.name,
+      'description': value.description,
+      'raw_counterparty': value.rawCounterparty,
+      'external_reference': value.externalReference,
+      'source_language': value.sourceLanguage,
+      'notes': value.notes,
+      'payment_source_id': value.paymentSourceId?.value,
+      'merchant_id': value.merchantId?.value,
+      'category_id': value.categoryId?.value,
+      'subcategory_id': value.subcategoryId?.value,
+      'normalized_description': normalizeMerchantName(
+        value.description ?? value.rawCounterparty ?? '',
+      ),
+      'created_at': value.createdAt.toUtc().toIso8601String(),
+      'updated_at': value.updatedAt.toUtc().toIso8601String(),
+    };
+  }
+
+  static String? _normalizedTransactionDate(String? value) {
+    final trimmed = value?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
 
   static TransactionTiming _timingFromRow(Map<String, Object?> row) {
-    final occurredAt = row['occurred_at'] as String?;
-    if (occurredAt != null) {
-      return KnownTransactionTime(DateTime.parse(occurredAt));
+    final occurredAtUtc = _tryParseDateTime(row['occurred_at_utc']);
+    if (occurredAtUtc != null) {
+      return KnownTransactionTime(occurredAtUtc.toUtc());
     }
+    final occurredAt = _tryParseDateTime(row['occurred_at']);
+    if (occurredAt != null) {
+      return KnownTransactionTime(occurredAt);
+    }
+    final reason = row['unknown_time_reason'] as String?;
     return UnknownTransactionTime(
-      UnknownTransactionTimeReason.values.byName(
-        row['unknown_time_reason']! as String,
-      ),
+      UnknownTransactionTimeReason.values
+              .where((value) => value.name == reason)
+              .firstOrNull ??
+          UnknownTransactionTimeReason.unknown,
     );
+  }
+
+  static DateTime? _tryParseDateTime(Object? value) {
+    if (value is! String || value.trim().isEmpty) return null;
+    try {
+      return DateTime.parse(value);
+    } on FormatException {
+      return null;
+    }
   }
 
   static T? _optionalId<T>(Object? value, T Function(String) create) =>
@@ -516,6 +569,15 @@ final class SqliteTransactionRepository
 
   static String _dateOnly(DateTime value) =>
       '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+
+  // v12 and new writes store UTC ISO timestamps. A fractional-prefix bound
+  // compares equally precise milliseconds and microseconds correctly: omit Z
+  // so an instant exactly on an exclusive boundary is always excluded.
+  static String _utcComparisonBound(DateTime value) {
+    final utc = value.toUtc();
+    final iso = utc.toIso8601String();
+    return iso.substring(0, iso.length - 1);
+  }
 
   static Map<String, Object?> _reviewIssueToRow(ReviewIssue value) => {
     'id': value.id.value,

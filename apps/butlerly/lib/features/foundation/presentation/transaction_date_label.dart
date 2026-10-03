@@ -6,6 +6,10 @@ String transactionDateLabel(
   required String pendingLabel,
   String locale = 'en',
 }) {
+  final financialDate = transaction.financialDate;
+  if (financialDate != null) {
+    return DateFormat.yMMMd(locale).format(financialDate);
+  }
   final businessDate = transaction.transactionDate?.trim();
   if (businessDate != null && businessDate.isNotEmpty) {
     final parsed = DateTime.tryParse(businessDate);
@@ -24,6 +28,8 @@ DateTime transactionCalendarDate(
   TransactionDto transaction, {
   required DateTime fallback,
 }) {
+  final financialDate = transaction.financialDate;
+  if (financialDate != null) return financialDate;
   final businessDate = transaction.transactionDate?.trim();
   if (businessDate != null && businessDate.isNotEmpty) {
     final parsed = DateTime.tryParse(businessDate);

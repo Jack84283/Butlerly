@@ -60,6 +60,8 @@ void main() {
       final firstValue =
           (first as ApplicationSuccess<PaymentSettlementDetailDto>).value;
       expect(firstValue.transactionCount, 1);
+      expect(settlements.lastOccurredAtFrom, DateTime.utc(2026, 8, 15));
+      expect(settlements.lastOccurredAtToExclusive, DateTime.utc(2026, 9, 15));
 
       settlements.transactions.add(activity('tx-2', now));
       final second = await GetPaymentSettlementDetail(settlements)(
@@ -340,6 +342,8 @@ final class FixedClock implements ApplicationClock {
 final class MemoryPaymentSettlements implements PaymentSettlementRepository {
   final values = <String, PaymentSettlement>{};
   final transactions = <Transaction>[];
+  DateTime? lastOccurredAtFrom;
+  DateTime? lastOccurredAtToExclusive;
 
   @override
   Future<PaymentSettlement?> findById(PaymentSettlementId id) async =>
@@ -350,8 +354,14 @@ final class MemoryPaymentSettlements implements PaymentSettlementRepository {
 
   @override
   Future<List<Transaction>> listTransactions(
-    PaymentSettlement settlement,
-  ) async => List.of(transactions);
+    PaymentSettlement settlement, {
+    DateTime? occurredAtFrom,
+    DateTime? occurredAtToExclusive,
+  }) async {
+    lastOccurredAtFrom = occurredAtFrom;
+    lastOccurredAtToExclusive = occurredAtToExclusive;
+    return List.of(transactions);
+  }
 
   @override
   Future<void> remove(PaymentSettlementId id) async {

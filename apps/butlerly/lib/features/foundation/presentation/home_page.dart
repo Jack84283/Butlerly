@@ -83,69 +83,62 @@ class _HomePageState extends State<HomePage> {
     final finance = _finance;
     final now = _now;
     if (finance == null) {
-      return _HomeData.empty(now, selectedMonth: _selectedMonth);
+      final fallback = ResolveHomePeriod.utcFallback(
+        instant: now,
+        selectedMonth: _selectedMonth,
+      );
+      return _HomeData.empty(now, resolution: fallback);
     }
 
     final activeLanguageCode =
         languageCode ??
         _loadedLanguageCode ??
         Localizations.localeOf(context).languageCode;
+    final periodResult = await finance.resolveHomePeriod(
+      instant: now,
+      selectedMonth: _selectedMonth,
+    );
+    final homePeriod = switch (periodResult) {
+      ApplicationSuccess<HomePeriodResolution>(:final value) => value,
+      _ => null,
+    };
+    if (homePeriod == null) {
+      return _HomeData.unavailable(now, selectedMonth: _selectedMonth);
+    }
     final reviewFuture = finance.listReviewItems();
     final masterDataFuture = TransactionMasterData.load(
       finance,
       languageCode: activeLanguageCode,
     );
-    final preferenceFuture = finance.loadUserPreference();
-
-    final preferenceResult = await preferenceFuture;
-    final preference = switch (preferenceResult) {
-      ApplicationSuccess<UserPreference?>(:final value) => value,
-      _ => null,
-    };
-
-    final timeZoneId = preference?.timeZoneId ?? 'UTC';
-    final currentPeriod = _homePeriodForMonth(
-      month: _monthStart(now),
-      current: true,
-      instant: now,
-      timeZoneId: timeZoneId,
-      baseCurrency: preference?.baseCurrency,
-    );
-    final currentFinancialMonth = _monthFromPeriod(currentPeriod);
-    final displayMonth = _monthStart(_selectedMonth ?? currentFinancialMonth);
-    final period = _sameMonth(displayMonth, currentFinancialMonth)
-        ? currentPeriod
-        : _homePeriodForMonth(
-            month: displayMonth,
-            current: false,
-            instant: now,
-            timeZoneId: currentPeriod.timeZoneId,
-            baseCurrency: preference?.baseCurrency,
-          );
+    final period = homePeriod.period;
+    final currentFinancialMonth = homePeriod.currentFinancialMonth;
+    final displayMonth = homePeriod.displayMonth;
 
     final transactionsFuture = finance.listTransactions(
       ListTransactionsQuery(
         from: DateTime.parse(period.startDate),
         to: DateTime.parse(period.endDate),
         status: TransactionStatus.active,
-        includeUndated: true,
+        timeZoneId: period.timeZoneId,
       ),
     );
     final transactionResult = await transactionsFuture;
     final reviewResult = await reviewFuture;
     final masterData = await masterDataFuture;
-    final allTransactions = switch (transactionResult) {
-      ApplicationSuccess<List<TransactionDto>>(:final value) => value,
-      _ => const <TransactionDto>[],
-    };
+    if (transactionResult is! ApplicationSuccess<List<TransactionDto>>) {
+      return _HomeData.transactionsUnavailable(homePeriod);
+    }
+    final allTransactions = transactionResult.value;
     final reviewItems = switch (reviewResult) {
       ApplicationSuccess<List<ReviewItemDto>>(:final value) => value,
       _ => const <ReviewItemDto>[],
     };
+    final reviewUnavailable =
+        reviewResult is! ApplicationSuccess<List<ReviewItemDto>>;
 
-    final periodTransactions = allTransactions
-        .where((transaction) => _transactionInPeriod(transaction, period))
-        .toList(growable: false);
+    // The application/database query is the authoritative period boundary.
+    // Keep this screen focused on rendering the returned period dataset.
+    final periodTransactions = allTransactions;
     final periodTransactionIds = periodTransactions
         .map((transaction) => transaction.id)
         .toSet();
@@ -161,35 +154,14 @@ class _HomePageState extends State<HomePage> {
     var analysisUnavailable = false;
 
     if (analysis != null) {
-      final currentContextResult = await analysis.contextFor(
-        'current_month',
-        instant: now,
-      );
-      if (currentContextResult case ApplicationSuccess<AnalysisContext>(
+      final selectedContextResult =
+          _sameMonth(displayMonth, currentFinancialMonth)
+          ? await analysis.contextFor('current_month', instant: now)
+          : await analysis.contextFor('selected_month', customPeriod: period);
+      if (selectedContextResult case ApplicationSuccess<AnalysisContext>(
         :final value,
       )) {
-        final analysisCurrentMonth = _monthFromPeriod(value.period);
-        if (_sameMonth(displayMonth, analysisCurrentMonth)) {
-          selectedContext = value;
-        } else {
-          final anchor = _monthStart(displayMonth);
-          final selectedContextResult = await analysis.contextFor(
-            'selected_month',
-            instant: now,
-            customPeriod: AnalysisPeriod(
-              startDate: _date(anchor),
-              endDate: _date(anchor),
-              timeZoneId: value.period.timeZoneId,
-            ),
-          );
-          if (selectedContextResult case ApplicationSuccess<AnalysisContext>(
-            :final value,
-          )) {
-            selectedContext = value;
-          } else {
-            analysisUnavailable = true;
-          }
-        }
+        selectedContext = value;
       } else {
         analysisUnavailable = true;
       }
@@ -231,6 +203,9 @@ class _HomePageState extends State<HomePage> {
       currentFinancialMonth: currentFinancialMonth,
       period: period,
       analysisUnavailable: analysisUnavailable,
+      status: reviewUnavailable
+          ? _HomeDataStatus.reviewUnavailable
+          : _HomeDataStatus.available,
     );
   }
 
@@ -302,7 +277,14 @@ class _HomePageState extends State<HomePage> {
       data.displayMonth,
       data.currentFinancialMonth,
     );
+    final period = data.period;
     if (loading) return const _HomeLoading();
+    if (data.status == _HomeDataStatus.periodUnavailable) {
+      return _HomePeriodUnavailable(onRetry: _refresh);
+    }
+    if (data.status == _HomeDataStatus.transactionsUnavailable) {
+      return _HomeTransactionsUnavailable(onRetry: _refresh);
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -317,25 +299,30 @@ class _HomePageState extends State<HomePage> {
           title: context.l10n.text('analysis.rule.r010.name'),
           action: TextButton(
             key: const Key('home-category-view-all'),
-            onPressed: () => context.push(
-              _periodRoute(
-                '/analysis',
-                data.period,
-                currentMonth: currentMonth,
-              ),
-            ),
+            onPressed: period == null
+                ? null
+                : () => context.push(
+                    _periodRoute(
+                      '/analysis',
+                      period,
+                      currentMonth: currentMonth,
+                    ),
+                  ),
             child: Text(context.l10n.text('viewAll')),
           ),
         ),
         _CategorySummary(model: data.model, masterData: data.masterData),
-        if (data.reviewCount > 0 || data.insight != null) ...[
+        if (data.status == _HomeDataStatus.reviewUnavailable) ...[
+          const SizedBox(height: ButlerlySpacing.section),
+          _HomeReviewUnavailable(onRetry: _refresh),
+        ] else if (data.reviewCount > 0 || data.insight != null) ...[
           const SizedBox(height: ButlerlySpacing.section),
           _AttentionSection(
             reviewCount: data.reviewCount,
             insight: data.insight,
             insightRoute: _periodRoute(
               '/insights',
-              data.period,
+              period!,
               currentMonth: currentMonth,
             ),
           ),
@@ -344,9 +331,11 @@ class _HomePageState extends State<HomePage> {
           title: context.l10n.text('recentTransactions'),
           action: TextButton(
             key: const Key('home-recent-view-all'),
-            onPressed: () => context.push(
-              _periodRoute('/search', data.period, currentMonth: currentMonth),
-            ),
+            onPressed: period == null
+                ? null
+                : () => context.push(
+                    _periodRoute('/search', period, currentMonth: currentMonth),
+                  ),
             child: Text(context.l10n.text('viewAll')),
           ),
         ),
@@ -397,7 +386,9 @@ class _HomePageState extends State<HomePage> {
                     return _HomeHeader(
                       month: data.displayMonth,
                       greetingKey: homeGreetingKey(_now),
-                      onMonthTap: loading ? null : () => _selectMonth(data),
+                      onMonthTap: loading || data.period == null
+                          ? null
+                          : () => _selectMonth(data),
                     );
                   },
                 ),
@@ -1357,6 +1348,123 @@ class _HomeEmptyTransactions extends StatelessWidget {
   );
 }
 
+class _HomePeriodUnavailable extends StatelessWidget {
+  const _HomePeriodUnavailable({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => _HomeUnavailableCard(
+    cardKey: const ValueKey('home-period-unavailable-card'),
+    retryKey: const ValueKey('home-period-unavailable-retry'),
+    titleKey: 'homeUnavailable',
+    bodyKey: 'homeUnavailableBody',
+    onRetry: onRetry,
+  );
+}
+
+class _HomeTransactionsUnavailable extends StatelessWidget {
+  const _HomeTransactionsUnavailable({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => _HomeUnavailableCard(
+    cardKey: const ValueKey('home-transactions-unavailable-card'),
+    retryKey: const ValueKey('home-transactions-unavailable-retry'),
+    titleKey: 'homeTransactionsUnavailable',
+    bodyKey: 'homeTransactionsUnavailableBody',
+    onRetry: onRetry,
+  );
+}
+
+class _HomeReviewUnavailable extends StatelessWidget {
+  const _HomeReviewUnavailable({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => _HomeUnavailableCard(
+    cardKey: const ValueKey('home-review-unavailable-card'),
+    retryKey: const ValueKey('home-review-unavailable-retry'),
+    titleKey: 'homeReviewUnavailable',
+    bodyKey: 'homeReviewUnavailableBody',
+    onRetry: onRetry,
+  );
+}
+
+class _HomeUnavailableCard extends StatelessWidget {
+  const _HomeUnavailableCard({
+    required this.cardKey,
+    required this.retryKey,
+    required this.titleKey,
+    required this.bodyKey,
+    required this.onRetry,
+  });
+
+  final Key cardKey;
+  final Key retryKey;
+  final String titleKey;
+  final String bodyKey;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    key: cardKey,
+    container: true,
+    liveRegion: true,
+    child: Material(
+      color: context.colors.subtleSurface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+        side: BorderSide(color: context.colors.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(ButlerlySpacing.standard),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              _homeIcon(
+                context,
+                material: Icons.error_outline,
+                cupertino: CupertinoIcons.exclamationmark_circle,
+              ),
+              color: context.colors.secondaryText,
+            ),
+            const SizedBox(width: ButlerlySpacing.small),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.l10n.text(titleKey),
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: ButlerlySpacing.compact),
+                  Text(
+                    context.l10n.text(bodyKey),
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: ButlerlySpacing.small),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TextButton(
+                      key: retryKey,
+                      onPressed: onRetry,
+                      child: Text(context.l10n.text('tryAgain')),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 class _HomeLoading extends StatelessWidget {
   const _HomeLoading();
 
@@ -1458,6 +1566,13 @@ class _HomeMonthPickerState extends State<_HomeMonthPicker> {
   }
 }
 
+enum _HomeDataStatus {
+  available,
+  periodUnavailable,
+  transactionsUnavailable,
+  reviewUnavailable,
+}
+
 class _HomeData {
   const _HomeData({
     required this.transactions,
@@ -1470,25 +1585,17 @@ class _HomeData {
     required this.currentFinancialMonth,
     required this.period,
     required this.analysisUnavailable,
+    required this.status,
   });
 
-  factory _HomeData.empty(DateTime now, {DateTime? selectedMonth}) {
-    final currentPeriod = _homePeriodForMonth(
-      month: _monthStart(now),
-      current: true,
-      instant: now,
-      timeZoneId: 'UTC',
-    );
-    final currentMonth = _monthFromPeriod(currentPeriod);
-    final displayMonth = _monthStart(selectedMonth ?? currentMonth);
-    final period = _sameMonth(displayMonth, currentMonth)
-        ? currentPeriod
-        : _homePeriodForMonth(
-            month: displayMonth,
-            current: false,
-            instant: now,
-            timeZoneId: currentPeriod.timeZoneId,
-          );
+  factory _HomeData.empty(
+    DateTime now, {
+    DateTime? selectedMonth,
+    HomePeriodResolution? resolution,
+  }) {
+    final currentMonth = resolution?.currentFinancialMonth ?? _monthStart(now);
+    final displayMonth =
+        resolution?.displayMonth ?? _monthStart(selectedMonth ?? currentMonth);
     return _HomeData(
       transactions: const [],
       reviewCount: 0,
@@ -1498,10 +1605,43 @@ class _HomeData {
       trend: const [],
       displayMonth: displayMonth,
       currentFinancialMonth: currentMonth,
-      period: period,
+      period: resolution?.period,
       analysisUnavailable: false,
+      status: _HomeDataStatus.available,
     );
   }
+
+  factory _HomeData.unavailable(DateTime now, {DateTime? selectedMonth}) {
+    final currentMonth = _monthStart(now);
+    return _HomeData(
+      transactions: const [],
+      reviewCount: 0,
+      masterData: const TransactionMasterData(),
+      model: null,
+      insight: null,
+      trend: const [],
+      displayMonth: _monthStart(selectedMonth ?? currentMonth),
+      currentFinancialMonth: currentMonth,
+      period: null,
+      analysisUnavailable: false,
+      status: _HomeDataStatus.periodUnavailable,
+    );
+  }
+
+  factory _HomeData.transactionsUnavailable(HomePeriodResolution resolution) =>
+      _HomeData(
+        transactions: const [],
+        reviewCount: 0,
+        masterData: const TransactionMasterData(),
+        model: null,
+        insight: null,
+        trend: const [],
+        displayMonth: resolution.displayMonth,
+        currentFinancialMonth: resolution.currentFinancialMonth,
+        period: null,
+        analysisUnavailable: false,
+        status: _HomeDataStatus.transactionsUnavailable,
+      );
 
   final List<TransactionDto> transactions;
   final int reviewCount;
@@ -1511,8 +1651,9 @@ class _HomeData {
   final List<_HomeTrendPoint> trend;
   final DateTime displayMonth;
   final DateTime currentFinancialMonth;
-  final AnalysisPeriod period;
+  final AnalysisPeriod? period;
   final bool analysisUnavailable;
+  final _HomeDataStatus status;
 }
 
 class _HomeTrendPoint {
@@ -1529,69 +1670,10 @@ class _HomeTrendPoint {
   final bool selected;
 }
 
-AnalysisPeriod _homePeriodForMonth({
-  required DateTime month,
-  required bool current,
-  required DateTime instant,
-  required String timeZoneId,
-  CurrencyCode? baseCurrency,
-}) {
-  AnalysisPeriod? resolve(String zone) {
-    final anchor = _date(month);
-    final context = AnalysisContext(
-      period: AnalysisPeriod(
-        startDate: anchor,
-        endDate: anchor,
-        timeZoneId: zone,
-      ),
-      datasetMode: DatasetMode.allEligible,
-      currencyBasis: CurrencyBasis.baseCurrency,
-      baseCurrency: baseCurrency,
-      periodType: current ? 'current_month' : 'selected_month',
-    );
-    final result = const AnalysisPeriodResolver().resolvePrimary(
-      type: current ? 'current_month' : 'selected_month',
-      context: context,
-      now: instant,
-    );
-    if (result case AnalysisPeriodResolved(:final window)) {
-      return AnalysisPeriod(
-        startDate: _date(window.start),
-        endDate: _date(window.endExclusive.subtract(const Duration(days: 1))),
-        timeZoneId: window.timeZoneId,
-      );
-    }
-    return null;
-  }
-
-  return resolve(timeZoneId) ?? resolve('UTC')!;
-}
-
-bool _transactionInPeriod(TransactionDto transaction, AnalysisPeriod period) {
-  final businessDate = transaction.transactionDate?.trim();
-  final date = businessDate != null && businessDate.isNotEmpty
-      ? DateTime.tryParse(businessDate)
-      : transaction.occurredAt?.toUtc();
-  if (date == null) return false;
-  final calendarDate = _date(date);
-  return calendarDate.compareTo(period.startDate) >= 0 &&
-      calendarDate.compareTo(period.endDate) <= 0;
-}
-
-DateTime _monthFromPeriod(AnalysisPeriod period) {
-  final parsed = DateTime.tryParse(period.startDate);
-  return parsed == null
-      ? DateTime.now()
-      : DateTime(parsed.year, parsed.month, 1);
-}
-
 DateTime _monthStart(DateTime value) => DateTime(value.year, value.month, 1);
 
 bool _sameMonth(DateTime left, DateTime right) =>
     left.year == right.year && left.month == right.month;
-
-String _date(DateTime value) =>
-    '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 
 IconData _homeIcon(
   BuildContext context, {
@@ -1605,6 +1687,7 @@ String _periodRoute(
   String path,
   AnalysisPeriod period, {
   required bool currentMonth,
+  bool includeUndated = false,
 }) {
   if (path == '/analysis' || path == '/insights') {
     if (currentMonth) return path;
@@ -1613,8 +1696,10 @@ String _periodRoute(
         '${start.year.toString().padLeft(4, '0')}-${start.month.toString().padLeft(2, '0')}';
     return Uri(path: path, queryParameters: {'month': month}).toString();
   }
-  return Uri(
-    path: path,
-    queryParameters: {'from': period.startDate, 'to': period.endDate},
-  ).toString();
+  final queryParameters = <String, String>{
+    'from': period.startDate,
+    'to': period.endDate,
+  };
+  if (includeUndated) queryParameters['includeUndated'] = 'true';
+  return Uri(path: path, queryParameters: queryParameters).toString();
 }

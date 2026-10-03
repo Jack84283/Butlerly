@@ -128,6 +128,7 @@ final class ListTransactionsQuery {
     this.transactionIds,
     this.from,
     this.to,
+    this.timeZoneId,
     this.categoryId,
     this.paymentSourceId,
     this.currency,
@@ -142,6 +143,7 @@ final class ListTransactionsQuery {
   final List<String>? transactionIds;
   final DateTime? from;
   final DateTime? to;
+  final String? timeZoneId;
   final String? categoryId;
   final String? paymentSourceId;
   final String? currency;

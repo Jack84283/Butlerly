@@ -26,7 +26,7 @@ void main() {
       expect(find.text('Insights'), findsOneWidget);
 
       appRouter.push(
-        '/search?locked=true&from=2026-09-01&to=2026-09-05&uncategorized=true',
+        '/search?locked=true&from=2026-09-01&to=2026-09-05&uncategorized=true&includeUndated=true',
       );
       await tester.pumpAndSettle();
 
@@ -37,6 +37,7 @@ void main() {
       expect(find.textContaining('2026-09-01'), findsOneWidget);
       expect(find.textContaining('2026-09-05'), findsOneWidget);
       expect(find.textContaining('Not categorized'), findsOneWidget);
+      expect(find.text('Undated transactions'), findsOneWidget);
       expect(find.byType(SearchBar), findsNothing);
       expect(find.byKey(const ValueKey('search-submit')), findsNothing);
       expect(find.byIcon(Icons.tune_rounded), findsNothing);

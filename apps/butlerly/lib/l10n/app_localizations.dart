@@ -40,6 +40,7 @@ class AppLocalizations {
       'collapse': 'Collapse',
       'expand': 'Expand',
       'home': 'Home',
+      'homeCompact': 'Home',
       'transactions': 'Transactions',
       'transactionsCompact': 'Txns',
       'oneTransaction': '1 transaction',
@@ -435,6 +436,7 @@ class AppLocalizations {
       'possibleDuplicatesScanFailed': 'Possible duplicate scan failed',
       'searchHint': 'Search transactions, merchants, notes…',
       'searchIntro': 'Search by merchant, date, amount, category, or notes.',
+      'undatedTransactions': 'Undated transactions',
       'noSearchYet': 'Start a local search',
       'noSearchYetBody': 'Your search remains on this device.',
       'noResults': 'No records found',
@@ -555,6 +557,15 @@ class AppLocalizations {
       'analysisUnavailable': 'Analysis is unavailable',
       'analysisUnavailableBody':
           'Local calculations could not be completed. No records were changed.',
+      'homeUnavailable': 'Home is temporarily unavailable',
+      'homeUnavailableBody':
+          'The financial period could not be resolved. Your records were not changed.',
+      'homeTransactionsUnavailable': 'Transactions are temporarily unavailable',
+      'homeTransactionsUnavailableBody':
+          'Transaction data could not be loaded. Your records were not changed.',
+      'homeReviewUnavailable': 'Data quality review is temporarily unavailable',
+      'homeReviewUnavailableBody':
+          'Butlerly could not load review items. Spending data is shown, but data quality status may be incomplete.',
       'offlineAnalysisStatus':
           'Calculated privately on this device and available offline.',
       'allClear': 'No findings',
@@ -778,6 +789,7 @@ class AppLocalizations {
       'collapse': '收起',
       'expand': '展开',
       'home': '首页',
+      'homeCompact': '首页',
       'transactions': '交易',
       'transactionsCompact': '交易',
       'oneTransaction': '1 笔交易',
@@ -1126,6 +1138,7 @@ class AppLocalizations {
       'possibleDuplicatesScanFailed': '可能重复项扫描失败',
       'searchHint': '搜索交易、商户、备注…',
       'searchIntro': '可按商户、日期、金额、分类或备注搜索。',
+      'undatedTransactions': '无日期交易',
       'noSearchYet': '开始本地搜索',
       'noSearchYetBody': '您的搜索仅在此设备上进行。',
       'noResults': '未找到记录',
@@ -1240,6 +1253,12 @@ class AppLocalizations {
       'dataQuality': '数据质量',
       'analysisUnavailable': '分析暂不可用',
       'analysisUnavailableBody': '无法完成本地计算。未更改任何记录。',
+      'homeUnavailable': '首页暂不可用',
+      'homeUnavailableBody': '无法确定财务期间。您的记录未被更改。',
+      'homeTransactionsUnavailable': '交易暂不可用',
+      'homeTransactionsUnavailableBody': '无法加载交易数据。您的记录未被更改。',
+      'homeReviewUnavailable': '数据质量检查暂不可用',
+      'homeReviewUnavailableBody': '无法加载待检查项目。支出数据仍会显示，但数据质量状态可能不完整。',
       'offlineAnalysisStatus': '在此设备上私密计算，可离线使用。',
       'allClear': '暂无发现',
       'allClearBody': '此期间没有已启用的洞察需要您关注。',
@@ -1419,8 +1438,9 @@ class AppLocalizations {
       'collapse': 'Contraer',
       'expand': 'Expandir',
       'home': 'Inicio',
+      'homeCompact': 'Ini.',
       'transactions': 'Transacciones',
-      'transactionsCompact': 'Trans.',
+      'transactionsCompact': 'Tr.',
       'oneTransaction': '1 transacción',
       'manyTransactions': '{count} transacciones',
       'statements': 'Extractos',
@@ -1502,7 +1522,7 @@ class AppLocalizations {
       'reactivate': 'Reactivar',
       'cannotEditBuiltin': 'Los registros de Butlerly no se pueden renombrar.',
       'tools': 'Herramientas',
-      'toolsCompact': 'Herr.',
+      'toolsCompact': 'Her.',
       'toolsSubtitle': 'Formas útiles de explorar y comprender tus registros.',
       'toolsSearchDescription':
           'Busca transacciones con palabras clave y filtros.',
@@ -1589,7 +1609,7 @@ class AppLocalizations {
           'Los registros inciertos aparecerán aquí sin cambios automáticos.',
       'quickActions': 'Acciones rápidas',
       'add': 'Añadir',
-      'addCompact': 'Añad.',
+      'addCompact': 'Añ.',
       'addSubtitle':
           'Añade transacciones, recibos, extractos y otra información financiera a Butlerly.',
       'addData': 'Añadir datos',
@@ -1825,6 +1845,7 @@ class AppLocalizations {
       'possibleDuplicatesScanFailed': 'Error al escanear posibles duplicados',
       'searchHint': 'Buscar transacciones, comercios, notas…',
       'searchIntro': 'Busca por comercio, fecha, importe, categoría o notas.',
+      'undatedTransactions': 'Transacciones sin fecha',
       'noSearchYet': 'Inicia una búsqueda local',
       'noSearchYetBody': 'Tu búsqueda permanece en este dispositivo.',
       'noResults': 'No se encontraron registros',
@@ -1949,6 +1970,15 @@ class AppLocalizations {
       'analysisUnavailable': 'El análisis no está disponible',
       'analysisUnavailableBody':
           'No se pudieron completar los cálculos locales. No se cambió ningún registro.',
+      'homeUnavailable': 'La pantalla de inicio no está disponible',
+      'homeUnavailableBody':
+          'No se pudo resolver el período financiero. No se cambiaron tus registros.',
+      'homeTransactionsUnavailable': 'Las transacciones no están disponibles',
+      'homeTransactionsUnavailableBody':
+          'No se pudieron cargar las transacciones. No se cambiaron tus registros.',
+      'homeReviewUnavailable': 'La revisión de calidad no está disponible',
+      'homeReviewUnavailableBody':
+          'No se pudieron cargar los elementos para revisar. Se muestran los gastos, pero el estado de calidad puede estar incompleto.',
       'offlineAnalysisStatus':
           'Calculado de forma privada en este dispositivo y disponible sin conexión.',
       'allClear': 'Sin hallazgos',

@@ -1,6 +1,4 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
-import 'package:timezone/data/latest.dart' as time_zone_data;
-import 'package:timezone/timezone.dart' as time_zone;
 
 import '../analysis/dataset_builder.dart';
 import '../analysis/period_resolver.dart';
@@ -578,17 +576,6 @@ final class CalculateInsights {
 
 DecimalValue _zero() =>
     DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0);
-
-/// Converts an instant to the calendar date in the persisted financial zone.
-/// The returned value is used only for its calendar components.
-DateTime financialDateAt(DateTime instant, String timeZoneId) {
-  time_zone_data.initializeTimeZones();
-  final value = time_zone.TZDateTime.from(
-    instant.toUtc(),
-    time_zone.getLocation(timeZoneId),
-  );
-  return DateTime.utc(value.year, value.month, value.day);
-}
 
 final class QueryTransactionsForFinancialDate {
   const QueryTransactionsForFinancialDate(this.repository);

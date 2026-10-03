@@ -26,7 +26,10 @@ final class FinanceServices {
     MerchantNormalizationPatternRepository? merchantNormalizationPatterns,
     MerchantMatchingConfigurationRepository? merchantMatchingConfiguration,
     TransactionRuleRepository? transactionRules,
-  }) : listTransactions = ListTransactions(transactions),
+  }) : listTransactions = ListTransactions(
+         transactions,
+         preferences: preferences,
+       ),
        seedInitialMasterData = SeedInitialMasterData(
          merchants,
          categories,
@@ -102,18 +105,22 @@ final class FinanceServices {
                  const SystemApplicationClock(),
                ),
        ),
-       getTransaction = GetTransaction(transactions),
+       getTransaction = GetTransaction(transactions, preferences: preferences),
+       resolveHomePeriod = ResolveHomePeriod(preferences),
        updateTransaction = UpdateTransaction(
          transactions,
          const SystemApplicationClock(),
+         preferences: preferences,
        ),
        archiveTransaction = ArchiveTransaction(
          transactions,
          const SystemApplicationClock(),
+         preferences: preferences,
        ),
        restoreTransaction = RestoreTransaction(
          transactions,
          const SystemApplicationClock(),
+         preferences: preferences,
        ),
        deleteTransactionPermanently = DeleteTransactionPermanently(
          transactions,
@@ -125,6 +132,7 @@ final class FinanceServices {
          transactions,
          paymentSources,
          const SystemApplicationClock(),
+         preferences: preferences,
        ),
        listMerchants = ListMerchants(merchants),
        listCategories = ListCategories(categories),
@@ -136,22 +144,35 @@ final class FinanceServices {
          transactions,
          merchants,
          const SystemApplicationClock(),
+         preferences: preferences,
        ),
        assignCategory = AssignCategory(
          transactions,
          categories,
          const SystemApplicationClock(),
+         preferences: preferences,
        ),
-       addTag = AddTag(transactions, tags, const SystemApplicationClock()),
-       removeTag = RemoveTag(transactions, const SystemApplicationClock()),
+       addTag = AddTag(
+         transactions,
+         tags,
+         const SystemApplicationClock(),
+         preferences: preferences,
+       ),
+       removeTag = RemoveTag(
+         transactions,
+         const SystemApplicationClock(),
+         preferences: preferences,
+       ),
        listReviewItems = ListReviewItems(transactions),
        resolveReviewIssue = ResolveReviewIssue(
          transactions,
          const SystemApplicationClock(),
+         preferences: preferences,
        ),
        dismissReviewIssue = DismissReviewIssue(
          transactions,
          const SystemApplicationClock(),
+         preferences: preferences,
        ),
        listEvidenceForTransaction = ListEvidenceForTransaction(evidence),
        getExtractionForEvidence = GetExtractionForEvidence(
@@ -310,7 +331,10 @@ final class FinanceServices {
            : ListPaymentSettlements(paymentSettlements),
        getPaymentSettlementDetail = paymentSettlements == null
            ? null
-           : GetPaymentSettlementDetail(paymentSettlements),
+           : GetPaymentSettlementDetail(
+               paymentSettlements,
+               preferences: preferences,
+             ),
        setPaymentSettlementStatus = paymentSettlements == null
            ? null
            : SetPaymentSettlementStatus(
@@ -385,6 +409,7 @@ final class FinanceServices {
   final CreatePaymentTransaction createPaymentTransaction;
   final ImportTransaction importTransaction;
   final GetTransaction getTransaction;
+  final ResolveHomePeriod resolveHomePeriod;
   final UpdateTransaction updateTransaction;
   final ArchiveTransaction archiveTransaction;
   final RestoreTransaction restoreTransaction;

@@ -102,6 +102,7 @@ class _SearchPageState extends State<SearchPage>
   TransactionStatus? _status;
   bool? _needsReview;
   bool _uncategorized = false;
+  bool _includeUndated = false;
   bool _forceNoResults = false;
   DateTime? _from;
   DateTime? _to;
@@ -134,6 +135,7 @@ class _SearchPageState extends State<SearchPage>
     _status = query?.status;
     _needsReview = query?.needsReview;
     _uncategorized = query?.uncategorized ?? false;
+    _includeUndated = query?.includeUndated ?? false;
     _from = query?.from ?? widget.initialFrom;
     _to = query?.to ?? widget.initialTo;
     if (query != null || _from != null || _to != null) _results = _search();
@@ -194,6 +196,7 @@ class _SearchPageState extends State<SearchPage>
         status: _status,
         needsReview: _needsReview,
         uncategorized: _uncategorized,
+        includeUndated: _includeUndated,
         from: _from,
         to: _to,
       ),
@@ -272,6 +275,7 @@ class _SearchPageState extends State<SearchPage>
       _status = null;
       _needsReview = null;
       _uncategorized = false;
+      _includeUndated = false;
       _forceNoResults = false;
       _from = null;
       _to = null;
@@ -350,6 +354,7 @@ class _SearchPageState extends State<SearchPage>
     _status,
     _needsReview,
     if (_uncategorized) true,
+    if (_includeUndated) true,
     _from,
     _to,
   ].where((value) => value != null).length;
@@ -366,6 +371,7 @@ class _SearchPageState extends State<SearchPage>
           categoryId: _categoryId,
           paymentSourceId: _paymentSourceId,
           needsReview: _needsReview,
+          includeUndated: _includeUndated,
           from: _from,
           to: _to,
         ),
@@ -379,6 +385,7 @@ class _SearchPageState extends State<SearchPage>
           _categoryId = value.categoryId;
           _paymentSourceId = value.paymentSourceId;
           _needsReview = value.needsReview;
+          _includeUndated = value.includeUndated;
           _from = value.from;
           _to = value.to;
           Navigator.pop(sheetContext);
@@ -460,6 +467,7 @@ class _SearchPageState extends State<SearchPage>
             currency: _currency,
             direction: _direction,
             uncategorized: _uncategorized,
+            includeUndated: _includeUndated,
             presentation: _presentation,
             paymentSourceNames: _paymentSourceNames,
           ),
@@ -541,6 +549,7 @@ class _LockedSearchCriteria extends StatelessWidget {
     required this.currency,
     required this.direction,
     required this.uncategorized,
+    required this.includeUndated,
     required this.presentation,
     required this.paymentSourceNames,
   });
@@ -553,6 +562,7 @@ class _LockedSearchCriteria extends StatelessWidget {
   final String? currency;
   final TransactionDirection? direction;
   final bool uncategorized;
+  final bool includeUndated;
   final TransactionMasterData presentation;
   final Map<String, String> paymentSourceNames;
 
@@ -570,6 +580,7 @@ class _LockedSearchCriteria extends StatelessWidget {
       if (currency != null) '${context.l10n.text('currency')}: $currency',
       if (direction != null)
         '${context.l10n.text('direction')}: ${direction!.name}',
+      if (includeUndated) context.l10n.text('undatedTransactions'),
       if (transactionIds?.isNotEmpty ?? false)
         context.l10n.text('supportingTransactions', {
           'count': '${transactionIds!.length}',

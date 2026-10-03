@@ -265,6 +265,10 @@ class TransactionRecordList extends StatelessWidget {
   }
 
   DateTime? _transactionMonth(TransactionDto transaction) {
+    final financialDate = transaction.financialDate;
+    if (financialDate != null) {
+      return DateTime(financialDate.year, financialDate.month);
+    }
     final businessDate = transaction.transactionDate?.trim();
     if (businessDate != null && businessDate.isNotEmpty) {
       final parsed = DateTime.tryParse(businessDate);

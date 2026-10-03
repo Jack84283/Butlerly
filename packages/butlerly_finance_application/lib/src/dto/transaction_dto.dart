@@ -16,6 +16,7 @@ final class TransactionDto {
     required this.updatedAt,
     this.occurredAt,
     this.transactionDate,
+    this.financialDate,
     this.timeZoneId,
     this.description,
     this.rawCounterparty,
@@ -40,6 +41,10 @@ final class TransactionDto {
   final String reviewState;
   final DateTime? occurredAt;
   final String? transactionDate;
+
+  /// The query's financial calendar date, when a timezone-aware query supplied
+  /// one. This is derived application data, not persisted transaction data.
+  final DateTime? financialDate;
   final String? timeZoneId;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -57,7 +62,10 @@ final class TransactionDto {
   final List<NormalizedMoneyDto> normalizedMoney;
   final ClassificationProposal? classificationProposal;
 
-  factory TransactionDto.fromDomain(Transaction value) => TransactionDto(
+  factory TransactionDto.fromDomain(
+    Transaction value, {
+    DateTime? financialDate,
+  }) => TransactionDto(
     id: value.id.value,
     amount: value.money.amount.toString(),
     currency: value.money.currency.value,
@@ -68,6 +76,7 @@ final class TransactionDto {
         ? (value.timing as KnownTransactionTime).occurredAt
         : null,
     transactionDate: value.transactionDate,
+    financialDate: financialDate,
     timeZoneId: value.timeZoneId,
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,

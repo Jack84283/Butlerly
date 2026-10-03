@@ -130,6 +130,8 @@ final class TransactionRepositoryQuery {
     this.transactionIds,
     this.from,
     this.to,
+    this.occurredAtFrom,
+    this.occurredAtToExclusive,
     this.categoryId,
     this.paymentSourceId,
     this.currency,
@@ -144,6 +146,15 @@ final class TransactionRepositoryQuery {
   final List<TransactionId>? transactionIds;
   final DateTime? from;
   final DateTime? to;
+
+  /// UTC instant bounds for records whose financial date comes from
+  /// [Transaction.timing] because [transaction_date] is absent.
+  ///
+  /// These bounds are applied automatically for known [occurred_at] values.
+  /// [includeUndated] is reserved for rows where both transaction_date and
+  /// occurred_at are unavailable.
+  final DateTime? occurredAtFrom;
+  final DateTime? occurredAtToExclusive;
   final CategoryId? categoryId;
   final PaymentSourceId? paymentSourceId;
   final String? currency;
@@ -158,7 +169,11 @@ abstract interface class PaymentSettlementRepository {
   Future<void> save(PaymentSettlement settlement);
   Future<PaymentSettlement?> findById(PaymentSettlementId id);
   Future<List<PaymentSettlement>> listAll();
-  Future<List<Transaction>> listTransactions(PaymentSettlement settlement);
+  Future<List<Transaction>> listTransactions(
+    PaymentSettlement settlement, {
+    DateTime? occurredAtFrom,
+    DateTime? occurredAtToExclusive,
+  });
   Future<void> remove(PaymentSettlementId id);
 }
 

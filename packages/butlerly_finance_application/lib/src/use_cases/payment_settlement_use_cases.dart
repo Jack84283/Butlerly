@@ -2,6 +2,7 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
 import '../dto/payment_settlement_dto.dart';
 import '../dto/transaction_dto.dart';
+import '../analysis/period_resolver.dart';
 import '../result/application_result.dart';
 import 'transaction_use_cases.dart';
 
@@ -88,9 +89,10 @@ final class ListPaymentSettlements {
 }
 
 final class GetPaymentSettlementDetail {
-  const GetPaymentSettlementDetail(this.repository);
+  const GetPaymentSettlementDetail(this.repository, {this.preferences});
 
   final PaymentSettlementRepository repository;
+  final UserPreferenceRepository? preferences;
 
   Future<ApplicationResult<PaymentSettlementDetailDto>> call(String id) =>
       runApplication('get payment settlement detail', () async {
@@ -101,11 +103,29 @@ final class GetPaymentSettlementDetail {
             'get payment settlement detail',
           );
         }
-        final matched = await repository.listTransactions(settlement);
+        final timeZone = await configuredFinancialTimeZone(preferences);
+        final matchedBounds = financialInstantRangeForCalendarDates(
+          from: DateTime.parse(settlement.periodStart),
+          to: DateTime.parse(settlement.periodEnd),
+          timeZoneId: timeZone.id,
+        );
+        final matched = await repository.listTransactions(
+          settlement,
+          occurredAtFrom: matchedBounds.start,
+          occurredAtToExclusive: matchedBounds.endExclusive,
+        );
         return PaymentSettlementDetailDto(
           settlement: PaymentSettlementDto.fromDomain(settlement),
           transactions: List.unmodifiable(
-            matched.map(TransactionDto.fromDomain),
+            matched.map(
+              (transaction) => TransactionDto.fromDomain(
+                transaction,
+                financialDate: transactionFinancialDate(
+                  transaction,
+                  timeZone.id,
+                ),
+              ),
+            ),
           ),
         );
       });

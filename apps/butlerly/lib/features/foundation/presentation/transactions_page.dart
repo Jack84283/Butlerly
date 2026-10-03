@@ -42,6 +42,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
   String? _categoryId;
   String? _paymentSourceId;
   bool? _needsReview;
+  bool _includeUndated = false;
   late DateTime? _from;
   late DateTime? _to;
   late Future<TransactionMasterDataSnapshot> _filterMasterData;
@@ -49,6 +50,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
   String? _loadedLanguageCode;
   int _loadGeneration = 0;
   bool _hasLoadedTransactions = false;
+  bool _defaultPeriodResolved = false;
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
@@ -57,9 +59,16 @@ class _TransactionsPageState extends State<TransactionsPage> {
   @override
   void initState() {
     super.initState();
-    final now = DateTime.now();
-    _from = DateTime(now.year, now.month - 3, 1);
-    _to = DateTime(now.year, now.month, now.day);
+    final now = DateTime.now().toUtc();
+    _currency = widget.query.currency;
+    _direction = widget.query.direction;
+    _status = widget.query.status;
+    _categoryId = widget.query.categoryId;
+    _paymentSourceId = widget.query.paymentSourceId;
+    _needsReview = widget.query.needsReview;
+    _from = widget.query.from ?? DateTime.utc(now.year, now.month - 3, 1);
+    _to = widget.query.to ?? DateTime.utc(now.year, now.month, now.day);
+    _includeUndated = widget.query.includeUndated;
     _transactions = Future.value(const _TransactionsData([]));
     transactionChanges.addListener(_handleTransactionChange);
   }
@@ -106,7 +115,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
         languageCode ??
         _loadedLanguageCode ??
         Localizations.localeOf(context).languageCode;
-    final result = await finance.listTransactions(widget.query);
+    await _ensureDefaultPeriod(finance);
+    final result = await finance.listTransactions(_repositoryQuery());
     final values = switch (result) {
       ApplicationSuccess<List<TransactionDto>>(:final value) => value,
       ApplicationFailure<List<TransactionDto>>() => throw StateError(
@@ -122,6 +132,19 @@ class _TransactionsPageState extends State<TransactionsPage> {
       paymentSourceNames: await _paymentSourceNames(finance),
       possibleDuplicateIds: await _possibleDuplicateIds(finance),
     );
+  }
+
+  Future<void> _ensureDefaultPeriod(FinanceServices finance) async {
+    if (_defaultPeriodResolved) return;
+    _defaultPeriodResolved = true;
+    if (widget.query.from != null || widget.query.to != null) return;
+
+    final result = await finance.resolveHomePeriod(instant: DateTime.now());
+    if (result case ApplicationSuccess<HomePeriodResolution>(:final value)) {
+      final end = DateTime.parse(value.period.endDate);
+      _from = DateTime.utc(end.year, end.month - 3, 1);
+      _to = DateTime.utc(end.year, end.month, end.day);
+    }
   }
 
   Future<TransactionMasterDataSnapshot> _loadFilterMasterData(
@@ -202,11 +225,37 @@ class _TransactionsPageState extends State<TransactionsPage> {
     }
   }
 
+  ListTransactionsQuery _repositoryQuery() => ListTransactionsQuery(
+    text: widget.query.text,
+    transactionIds: widget.query.transactionIds,
+    from: _from,
+    to: _to,
+    timeZoneId: widget.query.timeZoneId,
+    categoryId: _categoryId,
+    paymentSourceId: _paymentSourceId,
+    currency: _currency,
+    direction: _direction,
+    status: _status,
+    needsReview: _needsReview,
+    uncategorized: widget.query.uncategorized,
+    includeUndated: _includeUndated,
+  );
+
   bool _matchesFilters(TransactionDto transaction, _TransactionsData data) {
     final query = _search.text.trim().toLowerCase();
-    final date = transactionCalendarDate(transaction, fallback: DateTime(1970));
-    if (_from != null && date.isBefore(_from!)) return false;
-    if (_to != null && date.isAfter(_to!)) return false;
+    final date = _calendarDate(
+      transactionCalendarDate(transaction, fallback: DateTime.utc(1970)),
+    );
+    final from = _from == null ? null : _calendarDate(_from!);
+    final to = _to == null ? null : _calendarDate(_to!);
+    final isTrulyUndated =
+        (transaction.transactionDate == null ||
+            transaction.transactionDate!.trim().isEmpty) &&
+        transaction.occurredAt == null;
+    if (!(_includeUndated && isTrulyUndated)) {
+      if (from != null && date.isBefore(from)) return false;
+      if (to != null && date.isAfter(to)) return false;
+    }
     if (_currency != null && transaction.currency != _currency) return false;
     if (_direction != null && transaction.direction != _direction!.name) {
       return false;
@@ -243,6 +292,9 @@ class _TransactionsPageState extends State<TransactionsPage> {
     );
   }
 
+  DateTime _calendarDate(DateTime value) =>
+      DateTime.utc(value.year, value.month, value.day);
+
   int get _activeFilterCount => [
     _currency,
     _direction,
@@ -250,6 +302,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
     _categoryId,
     _paymentSourceId,
     _needsReview,
+    if (_includeUndated) true,
     _from,
     _to,
   ].where((value) => value != null).length;
@@ -262,9 +315,11 @@ class _TransactionsPageState extends State<TransactionsPage> {
       _categoryId = null;
       _paymentSourceId = null;
       _needsReview = null;
+      _includeUndated = false;
       _from = null;
       _to = null;
     });
+    unawaited(_refresh());
   }
 
   Future<void> _openFilters() async {
@@ -278,6 +333,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
           categoryId: _categoryId,
           paymentSourceId: _paymentSourceId,
           needsReview: _needsReview,
+          includeUndated: _includeUndated,
           from: _from,
           to: _to,
         ),
@@ -292,9 +348,11 @@ class _TransactionsPageState extends State<TransactionsPage> {
             _categoryId = value.categoryId;
             _paymentSourceId = value.paymentSourceId;
             _needsReview = value.needsReview;
+            _includeUndated = value.includeUndated;
             _from = value.from;
             _to = value.to;
           });
+          unawaited(_refresh());
           Navigator.pop(sheetContext);
         },
         onClear: () {

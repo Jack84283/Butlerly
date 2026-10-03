@@ -113,6 +113,38 @@ void main() {
     });
   });
 
+  test(
+    'includes timing-only activity when application supplies period bounds',
+    () async {
+      final settlement = _settlement();
+      await settlements.save(settlement);
+      await transactions.save(
+        _transaction(
+          id: 'timing-only-inside',
+          sourceId: 'visa',
+          transactionDate: null,
+          occurredAt: DateTime.utc(2026, 9, 14, 23),
+        ),
+      );
+      await transactions.save(
+        _transaction(
+          id: 'timing-only-outside',
+          sourceId: 'visa',
+          transactionDate: null,
+          occurredAt: DateTime.utc(2026, 9, 15),
+        ),
+      );
+
+      final result = await settlements.listTransactions(
+        settlement,
+        occurredAtFrom: DateTime.utc(2026, 8, 15),
+        occurredAtToExclusive: DateTime.utc(2026, 9, 15),
+      );
+
+      expect(result.map((value) => value.id.value), ['timing-only-inside']);
+    },
+  );
+
   test('updates payment amount and date directly on the settlement', () async {
     await settlements.save(_settlement());
 
@@ -189,12 +221,13 @@ Money _money(String amount) =>
 Transaction _transaction({
   required String id,
   required String sourceId,
-  required String transactionDate,
+  String? transactionDate,
+  DateTime? occurredAt,
   TransactionDirection direction = TransactionDirection.expense,
   TransactionStatus status = TransactionStatus.active,
   String amount = '10.00',
 }) {
-  final at = DateTime.parse('${transactionDate}T12:00:00Z');
+  final at = occurredAt ?? DateTime.parse('${transactionDate!}T12:00:00Z');
   return Transaction(
     id: TransactionId(id),
     timing: KnownTransactionTime(at),

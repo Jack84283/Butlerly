@@ -786,11 +786,19 @@ void main() {
     expect(excluded, isEmpty);
 
     final undated = minimalTransaction(now, id: 'undated-transaction');
+    final occurredFallback = timedTransaction(
+      id: 'occurred-fallback-transaction',
+      occurredAt: DateTime.utc(2026, 8, 9, 12),
+      now: now,
+    );
     await transactions.save(undated);
+    await transactions.save(occurredFallback);
     final boundedWithoutUndated = await transactions.query(
       TransactionRepositoryQuery(
         from: DateTime.utc(2026, 8, 9),
         to: DateTime.utc(2026, 8, 9),
+        occurredAtFrom: DateTime.utc(2026, 8, 9),
+        occurredAtToExclusive: DateTime.utc(2026, 8, 10),
         status: TransactionStatus.active,
       ),
     );
@@ -798,6 +806,8 @@ void main() {
       TransactionRepositoryQuery(
         from: DateTime.utc(2026, 8, 9),
         to: DateTime.utc(2026, 8, 9),
+        occurredAtFrom: DateTime.utc(2026, 8, 9),
+        occurredAtToExclusive: DateTime.utc(2026, 8, 10),
         status: TransactionStatus.active,
         includeUndated: true,
       ),
@@ -806,6 +816,10 @@ void main() {
     expect(
       boundedWithoutUndated.map((transaction) => transaction.id),
       isNot(contains(undated.id)),
+    );
+    expect(
+      boundedWithoutUndated.map((transaction) => transaction.id),
+      contains(occurredFallback.id),
     );
     expect(
       boundedWithUndated.map((transaction) => transaction.id),
@@ -900,6 +914,145 @@ void main() {
       isEmpty,
     );
   });
+
+  test(
+    'bounds null-date occurred_at fallback rows at the database query boundary',
+    () async {
+      final inside = timedTransaction(
+        id: 'financial-period-inside',
+        occurredAt: DateTime.utc(2026, 10, 1, 6, 30),
+        now: now,
+      );
+      final outside = timedTransaction(
+        id: 'financial-period-outside',
+        occurredAt: DateTime.utc(2026, 10, 1, 7, 30),
+        now: now,
+      );
+      final newerInside = timedTransaction(
+        id: 'financial-period-newer-inside',
+        occurredAt: DateTime.utc(2026, 10, 1, 6, 45),
+        now: now,
+      );
+      final legacyBlank = timedTransaction(
+        id: 'financial-period-legacy-blank',
+        occurredAt: DateTime.utc(2026, 10, 1, 6, 40),
+        now: now,
+      );
+      final archived = timedTransaction(
+        id: 'financial-period-archived',
+        occurredAt: DateTime.utc(2026, 9, 15, 12),
+        now: now,
+      ).archive(now.add(const Duration(minutes: 1)));
+      await transactions.save(inside);
+      await transactions.save(outside);
+      await transactions.save(newerInside);
+      await transactions.save(legacyBlank);
+      // A pre-existing database may contain blank text instead of NULL.
+      await database.connection.update(
+        'transactions',
+        {'transaction_date': '  '},
+        where: 'id = ?',
+        whereArgs: [legacyBlank.id.value],
+      );
+      await transactions.save(archived);
+
+      final result = await transactions.query(
+        TransactionRepositoryQuery(
+          from: DateTime.utc(2026, 9, 1),
+          to: DateTime.utc(2026, 9, 30),
+          includeUndated: true,
+          occurredAtFrom: DateTime.utc(2026, 9, 1, 7),
+          occurredAtToExclusive: DateTime.utc(2026, 10, 1, 7),
+          status: TransactionStatus.active,
+        ),
+      );
+
+      expect(result.map((value) => value.id), [
+        newerInside.id,
+        legacyBlank.id,
+        inside.id,
+      ]);
+    },
+  );
+
+  test('compares migrated legacy offset timestamps by instant', () async {
+    final legacy = timedTransaction(
+      id: 'legacy-offset-timestamp',
+      occurredAt: DateTime.utc(2026, 10, 1, 7, 30),
+      now: now,
+    );
+    await transactions.save(legacy);
+    await database.connection.update(
+      'transactions',
+      {
+        'occurred_at': '2026-10-01T00:30:00.000-07:00',
+        'occurred_at_utc': '2026-10-01T00:30:00.000-07:00',
+      },
+      where: 'id = ?',
+      whereArgs: [legacy.id.value],
+    );
+
+    for (final statement in splitSqlStatements(
+      await File('database/migrations/v11_to_v12.sql').readAsString(),
+    )) {
+      await database.connection.execute(statement);
+    }
+    final result = await transactions.query(
+      TransactionRepositoryQuery(
+        from: DateTime.utc(2026, 10, 1),
+        to: DateTime.utc(2026, 10, 1),
+        occurredAtFrom: DateTime.utc(2026, 10, 1, 7),
+        occurredAtToExclusive: DateTime.utc(2026, 10, 1, 8),
+        status: TransactionStatus.active,
+      ),
+    );
+
+    expect(result.map((value) => value.id), contains(legacy.id));
+  });
+
+  test('trims legacy transaction dates for bounded queries', () async {
+    final legacy = timedTransaction(
+      id: 'legacy-whitespace-date',
+      occurredAt: DateTime.utc(2026, 10, 1, 7, 30),
+      now: now,
+    );
+    await transactions.save(legacy);
+    await database.connection.update(
+      'transactions',
+      {'transaction_date': ' 2026-10-01 '},
+      where: 'id = ?',
+      whereArgs: [legacy.id.value],
+    );
+
+    final result = await transactions.query(
+      TransactionRepositoryQuery(
+        from: DateTime.utc(2026, 10, 1),
+        to: DateTime.utc(2026, 10, 1),
+        status: TransactionStatus.active,
+      ),
+    );
+
+    expect(result.map((value) => value.id), contains(legacy.id));
+    expect(result.single.transactionDate, '2026-10-01');
+  });
+
+  test('normalizes newly persisted transaction instants to UTC', () async {
+    final value = timedTransaction(
+      id: 'new-local-timestamp',
+      occurredAt: DateTime.parse('2026-10-01T00:30:00-07:00'),
+      now: now,
+    );
+    await transactions.save(value);
+
+    final row = (await database.connection.query(
+      'transactions',
+      columns: ['occurred_at', 'occurred_at_utc'],
+      where: 'id = ?',
+      whereArgs: [value.id.value],
+    )).single;
+    expect(row['occurred_at'], '2026-10-01T07:30:00.000Z');
+    expect(row['occurred_at_utc'], '2026-10-01T07:30:00.000Z');
+  });
 }
 
 Transaction minimalTransaction(
@@ -914,6 +1067,27 @@ Transaction minimalTransaction(
   provenance: [
     Provenance(
       id: ProvenanceId('manual-provenance'),
+      sourceType: ProvenanceSourceType.userEntry,
+      capturedAt: now,
+    ),
+  ],
+  createdAt: now,
+  updatedAt: now,
+);
+
+Transaction timedTransaction({
+  required String id,
+  required DateTime occurredAt,
+  required DateTime now,
+}) => Transaction(
+  id: TransactionId(id),
+  timing: KnownTransactionTime(occurredAt),
+  money: Money(amount: DecimalValue.parse('10'), currency: CurrencyCode('USD')),
+  direction: TransactionDirection.expense,
+  sourceType: TransactionSourceType.manual,
+  provenance: [
+    Provenance(
+      id: ProvenanceId('$id-provenance'),
       sourceType: ProvenanceSourceType.userEntry,
       capturedAt: now,
     ),

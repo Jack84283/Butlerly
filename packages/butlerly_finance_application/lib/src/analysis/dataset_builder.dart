@@ -17,8 +17,7 @@ final class AnalysisDatasetBuilder {
   final AnalysisPeriodResolver periodResolver;
 
   Future<String> timeZoneId() async {
-    final preference = await preferences.load();
-    return preference?.timeZoneId ?? 'UTC';
+    return (await configuredFinancialTimeZone(preferences)).id;
   }
 
   Future<CurrencyCode?> baseCurrency() async =>
@@ -44,6 +43,10 @@ final class AnalysisDatasetBuilder {
     for (final transaction in source) {
       if (receiptIds.contains(transaction.id)) continue;
       if (transaction.status != TransactionStatus.active) continue;
+      final transactionDate = transactionFinancialDate(
+        transaction,
+        context.period.timeZoneId,
+      )?.toIso8601String().substring(0, 10);
       final normalized = transaction.normalizedMoney
           .where(
             (value) =>
@@ -53,7 +56,7 @@ final class AnalysisDatasetBuilder {
           .firstOrNull
           ?.converted;
       final transactionQuality = <DataQualityIssue>[];
-      if (transaction.transactionDate == null) {
+      if (transactionDate == null || transactionDate.isEmpty) {
         transactionQuality.add(
           DataQualityIssue(
             code: 'missingFinancialDate',
@@ -92,7 +95,7 @@ final class AnalysisDatasetBuilder {
           money: transaction.money,
           normalizedMoney: normalized,
           direction: transaction.direction,
-          transactionDate: transaction.transactionDate,
+          transactionDate: transactionDate,
           status: transaction.status,
           categoryId: transaction.categoryId,
           subcategoryId: transaction.subcategoryId,
@@ -203,7 +206,7 @@ final class AnalysisDatasetBuilder {
     final receiptIds = links.map((value) => value.receiptTransactionId).toSet();
     return source
         .where((transaction) {
-          final date = DateTime.tryParse(transaction.transactionDate ?? '');
+          final date = transactionFinancialDate(transaction, window.timeZoneId);
           return transaction.status == TransactionStatus.active &&
               !receiptIds.contains(transaction.id) &&
               date != null &&
@@ -211,6 +214,10 @@ final class AnalysisDatasetBuilder {
               date.isBefore(window.endExclusive);
         })
         .map((transaction) {
+          final transactionDate = transactionFinancialDate(
+            transaction,
+            window.timeZoneId,
+          )?.toIso8601String().substring(0, 10);
           final normalized = transaction.normalizedMoney
               .where(
                 (value) =>
@@ -224,7 +231,7 @@ final class AnalysisDatasetBuilder {
             money: transaction.money,
             normalizedMoney: normalized,
             direction: transaction.direction,
-            transactionDate: transaction.transactionDate,
+            transactionDate: transactionDate,
             status: transaction.status,
             categoryId: transaction.categoryId,
             subcategoryId: transaction.subcategoryId,
