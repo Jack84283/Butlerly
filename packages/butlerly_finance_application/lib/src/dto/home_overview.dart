@@ -8,24 +8,79 @@ import '../use_cases/monthly_spending_trend_use_case.dart';
 ///
 /// Financial metrics remain in [analysis]. This projection only adds the
 /// Home-specific composition around that authoritative analysis result.
+enum HomeOverviewStatus {
+  available,
+  transactionsUnavailable,
+  periodUnavailable,
+}
+
 final class HomeOverview {
-  const HomeOverview({
-    required this.context,
-    required this.currentFinancialMonth,
-    required this.displayMonth,
-    required this.analysis,
-    required this.monthlyTrend,
-    required this.monthlyTrendUnavailable,
-    required this.reviewCount,
-    required this.recentTransactions,
-    required this.insights,
-    required this.analysisUnavailable,
-    required this.reviewUnavailable,
+  const HomeOverview.available({
+    required AnalysisContext context,
+    required DateTime currentFinancialMonth,
+    required DateTime displayMonth,
+    required AnalysisOverview? analysis,
+    required List<MonthlySpendingTrendPoint> monthlyTrend,
+    required bool monthlyTrendUnavailable,
+    required int reviewCount,
+    required List<TransactionDto> recentTransactions,
+    required List<InsightResult> insights,
+    required bool analysisUnavailable,
+    required bool reviewUnavailable,
+  }) : this._(
+         status: HomeOverviewStatus.available,
+         context: context,
+         currentFinancialMonth: currentFinancialMonth,
+         displayMonth: displayMonth,
+         analysis: analysis,
+         monthlyTrend: monthlyTrend,
+         monthlyTrendUnavailable: monthlyTrendUnavailable,
+         reviewCount: reviewCount,
+         recentTransactions: recentTransactions,
+         insights: insights,
+         analysisUnavailable: analysisUnavailable,
+         reviewUnavailable: reviewUnavailable,
+       );
+
+  const HomeOverview.transactionsUnavailable({
+    required AnalysisContext context,
+    required DateTime currentFinancialMonth,
+    required DateTime displayMonth,
+  }) : this._(
+         status: HomeOverviewStatus.transactionsUnavailable,
+         context: context,
+         currentFinancialMonth: currentFinancialMonth,
+         displayMonth: displayMonth,
+       );
+
+  const HomeOverview.periodUnavailable()
+    : this._(status: HomeOverviewStatus.periodUnavailable);
+
+  const HomeOverview._({
+    required this.status,
+    this.context,
+    this.currentFinancialMonth,
+    this.displayMonth,
+    this.analysis,
+    this.monthlyTrend = const [],
+    this.monthlyTrendUnavailable = true,
+    this.reviewCount = 0,
+    this.recentTransactions = const [],
+    this.insights = const [],
+    this.analysisUnavailable = false,
+    this.reviewUnavailable = false,
   });
 
-  final AnalysisContext context;
-  final DateTime currentFinancialMonth;
-  final DateTime displayMonth;
+  final HomeOverviewStatus status;
+
+  /// Null only when [status] is [HomeOverviewStatus.periodUnavailable].
+  final AnalysisContext? context;
+
+  /// Null only when [status] is [HomeOverviewStatus.periodUnavailable].
+  final DateTime? currentFinancialMonth;
+
+  /// Null only when [status] is [HomeOverviewStatus.periodUnavailable].
+  final DateTime? displayMonth;
 
   final AnalysisOverview? analysis;
 

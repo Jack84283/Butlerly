@@ -46,10 +46,8 @@ final class GetHomeOverview {
         instant: instant,
         selectedMonth: selectedMonth,
       );
-      if (fallbackResult case ApplicationFailure<_HomeContextResolution>(
-        :final failure,
-      )) {
-        return ApplicationFailure(failure);
+      if (fallbackResult case ApplicationFailure<_HomeContextResolution>()) {
+        return const ApplicationSuccess(HomeOverview.periodUnavailable());
       }
       homeResolution =
           (fallbackResult as ApplicationSuccess<_HomeContextResolution>).value;
@@ -59,10 +57,9 @@ final class GetHomeOverview {
         instant: instant,
         selectedMonth: selectedMonth,
       );
-      if (analysisResolution case ApplicationFailure<_HomeContextResolution>(
-        :final failure,
-      )) {
-        return ApplicationFailure(failure);
+      if (analysisResolution
+          case ApplicationFailure<_HomeContextResolution>()) {
+        return const ApplicationSuccess(HomeOverview.periodUnavailable());
       }
       homeResolution =
           (analysisResolution as ApplicationSuccess<_HomeContextResolution>)
@@ -87,7 +84,13 @@ final class GetHomeOverview {
     );
     if (transactionResult is ApplicationFailure<List<TransactionDto>>) {
       await reviewResultFuture;
-      return ApplicationFailure(transactionResult.failure);
+      return ApplicationSuccess(
+        HomeOverview.transactionsUnavailable(
+          context: context,
+          currentFinancialMonth: homePeriod.currentFinancialMonth,
+          displayMonth: homePeriod.displayMonth,
+        ),
+      );
     }
     final transactions =
         (transactionResult as ApplicationSuccess<List<TransactionDto>>).value;
@@ -151,7 +154,7 @@ final class GetHomeOverview {
         .length;
 
     return ApplicationSuccess(
-      HomeOverview(
+      HomeOverview.available(
         context: context,
         currentFinancialMonth: homePeriod.currentFinancialMonth,
         displayMonth: homePeriod.displayMonth,

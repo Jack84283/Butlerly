@@ -31,10 +31,11 @@ void main() {
       );
 
       final overview = (result as ApplicationSuccess<HomeOverview>).value;
-      expect(overview.context.periodType, 'current_month');
-      expect(overview.context.period.timeZoneId, 'America/Los_Angeles');
-      expect(overview.context.baseCurrency, CurrencyCode('EUR'));
-      expect(overview.context.period.startDate, '2026-09-01');
+      final context = overview.context!;
+      expect(context.periodType, 'current_month');
+      expect(context.period.timeZoneId, 'America/Los_Angeles');
+      expect(context.baseCurrency, CurrencyCode('EUR'));
+      expect(context.period.startDate, '2026-09-01');
       expect(overview.analysis?.spending?.value, DecimalValue.parse('210'));
       expect(overview.monthlyTrend, hasLength(7));
       expect(
@@ -63,9 +64,10 @@ void main() {
       );
 
       final overview = (result as ApplicationSuccess<HomeOverview>).value;
-      expect(overview.context.periodType, 'selected_month');
-      expect(overview.context.period.startDate, '2026-08-01');
-      expect(overview.context.period.endDate, '2026-08-31');
+      final context = overview.context!;
+      expect(context.periodType, 'selected_month');
+      expect(context.period.startDate, '2026-08-01');
+      expect(context.period.endDate, '2026-08-31');
       expect(overview.displayMonth, DateTime(2026, 8, 1));
       expect(overview.currentFinancialMonth, DateTime(2026, 9, 1));
       expect(overview.recentTransactions.map((value) => value.id), [
@@ -110,6 +112,38 @@ void main() {
       expect(overview.recentTransactions, hasLength(4));
     },
   );
+
+  test(
+    'returns a typed transaction-unavailable state with its period',
+    () async {
+      transactions.failTransactionQueries = true;
+
+      final result = await loadHomeOverview(
+        instant: DateTime.utc(2026, 9, 16, 12),
+      );
+
+      final overview = (result as ApplicationSuccess<HomeOverview>).value;
+      expect(overview.status, HomeOverviewStatus.transactionsUnavailable);
+      expect(overview.context?.period.startDate, '2026-09-01');
+      expect(overview.currentFinancialMonth, DateTime(2026, 9, 1));
+      expect(overview.displayMonth, DateTime(2026, 9, 1));
+      expect(overview.recentTransactions, isEmpty);
+    },
+  );
+
+  test('returns a typed period-unavailable state without a period', () async {
+    preferences.timeZoneId = 'Invalid/Timezone';
+
+    final result = await loadHomeOverview(
+      instant: DateTime.utc(2026, 9, 16, 12),
+    );
+
+    final overview = (result as ApplicationSuccess<HomeOverview>).value;
+    expect(overview.status, HomeOverviewStatus.periodUnavailable);
+    expect(overview.context, isNull);
+    expect(overview.currentFinancialMonth, isNull);
+    expect(overview.displayMonth, isNull);
+  });
 
   test('returns insights in the shared policy ranking order', () async {
     final result = await _homeOverview(transactions, preferences, [
@@ -274,6 +308,7 @@ final class _Transactions implements TransactionRepository {
 
   final List<Transaction> values;
   bool failListAll = false;
+  bool failTransactionQueries = false;
   bool failReviewQueries = false;
 
   @override
@@ -293,6 +328,12 @@ final class _Transactions implements TransactionRepository {
 
   @override
   Future<List<Transaction>> query(TransactionRepositoryQuery query) async {
+    if (failTransactionQueries && query.needsReview != true) {
+      throw const RepositoryException(
+        RepositoryFailureCode.unavailable,
+        'list transactions',
+      );
+    }
     if (failReviewQueries && query.needsReview == true) {
       throw const RepositoryException(
         RepositoryFailureCode.unavailable,
@@ -324,11 +365,13 @@ final class _Transactions implements TransactionRepository {
 }
 
 final class _Preferences implements UserPreferenceRepository {
+  String timeZoneId = 'America/Los_Angeles';
+
   @override
   Future<UserPreference?> load() async => UserPreference(
     locale: 'en',
     baseCurrency: CurrencyCode('EUR'),
-    timeZoneId: 'America/Los_Angeles',
+    timeZoneId: timeZoneId,
   );
 
   @override

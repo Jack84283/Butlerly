@@ -17,6 +17,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   late _Transactions transactions;
   late _Preferences preferences;
+  late _Merchants merchants;
   late FinanceServices finance;
 
   setUp(() async {
@@ -24,10 +25,11 @@ void main() {
     HomePage.debugCurrentDate = DateTime(2026, 9, 16, 15);
     transactions = _Transactions();
     preferences = _Preferences();
+    merchants = _Merchants();
     finance = FinanceServices(
       transactions,
       _PaymentSources(),
-      _Merchants(),
+      merchants,
       _Categories(),
       _Tags(),
       _Evidence(),
@@ -50,6 +52,28 @@ void main() {
       ),
     );
     expect(seeded, isA<ApplicationSuccess<TransactionDto>>());
+  });
+
+  testWidgets('Home starts master-data loading alongside its overview', (
+    tester,
+  ) async {
+    final readGate = Completer<void>();
+    final masterDataStarted = Completer<void>();
+    transactions.readGate = readGate.future;
+    merchants.onListAll = () {
+      if (!masterDataStarted.isCompleted) masterDataStarted.complete();
+    };
+
+    await tester.pumpWidget(const _TestApp());
+    await tester.pump();
+
+    expect(masterDataStarted.isCompleted, isTrue);
+    expect(transactions.queries, isNotEmpty);
+
+    readGate.complete();
+    transactions.readGate = null;
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
   });
 
   tearDown(() async {
@@ -552,11 +576,16 @@ final class _PaymentSources implements PaymentSourceRepository {
 }
 
 final class _Merchants implements MerchantRepository {
+  VoidCallback? onListAll;
+
   @override
   Future<Merchant?> findById(MerchantId id) async => null;
 
   @override
-  Future<List<Merchant>> listAll() async => const [];
+  Future<List<Merchant>> listAll() async {
+    onListAll?.call();
+    return const [];
+  }
 
   @override
   Future<void> save(Merchant merchant) async {}

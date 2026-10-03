@@ -95,30 +95,29 @@ class _HomePageState extends State<HomePage> {
         languageCode ??
         _loadedLanguageCode ??
         Localizations.localeOf(context).languageCode;
+    final masterDataFuture = _loadMasterDataSafely(
+      finance,
+      languageCode: activeLanguageCode,
+    );
     final overviewResult = await loadHomeOverview(
       instant: now,
       selectedMonth: _selectedMonth,
       forceAnalysisRefresh: forceAnalysisRefresh,
     );
-    if (overviewResult case ApplicationFailure<HomeOverview>(:final failure)) {
-      if (failure.operation == 'list transactions') {
-        final periodResult = await finance.resolveHomePeriod(
-          instant: now,
-          selectedMonth: _selectedMonth,
-        );
-        if (periodResult case ApplicationSuccess<HomePeriodResolution>(
-          :final value,
-        )) {
-          return _HomeData.transactionsUnavailable(value);
-        }
-      }
+    if (overviewResult is ApplicationFailure<HomeOverview>) {
       return _HomeData.unavailable(now, selectedMonth: _selectedMonth);
     }
     final overview = (overviewResult as ApplicationSuccess<HomeOverview>).value;
-    final masterData = await TransactionMasterData.load(
-      finance,
-      languageCode: activeLanguageCode,
-    );
+    if (overview.status == HomeOverviewStatus.periodUnavailable) {
+      return _HomeData.unavailable(now, selectedMonth: _selectedMonth);
+    }
+    if (overview.status == HomeOverviewStatus.transactionsUnavailable) {
+      return _HomeData.transactionsUnavailable(
+        displayMonth: overview.displayMonth!,
+        currentFinancialMonth: overview.currentFinancialMonth!,
+      );
+    }
+    final masterData = await masterDataFuture;
 
     return _HomeData(
       transactions: overview.recentTransactions,
@@ -132,18 +131,32 @@ class _HomePageState extends State<HomePage> {
             month: _monthStart(point.month),
             value: point.spending == null ? 0 : analysisNumber(point.spending!),
             metric: point.spending,
-            selected: _sameMonth(point.month, overview.displayMonth),
+            selected: _sameMonth(point.month, overview.displayMonth!),
           ),
       ],
       trendUnavailable: overview.monthlyTrendUnavailable,
-      displayMonth: overview.displayMonth,
-      currentFinancialMonth: overview.currentFinancialMonth,
-      period: overview.context.period,
+      displayMonth: overview.displayMonth!,
+      currentFinancialMonth: overview.currentFinancialMonth!,
+      period: overview.context!.period,
       analysisUnavailable: overview.analysisUnavailable,
       status: overview.reviewUnavailable
           ? _HomeDataStatus.reviewUnavailable
           : _HomeDataStatus.available,
     );
+  }
+
+  Future<TransactionMasterData> _loadMasterDataSafely(
+    FinanceServices finance, {
+    required String languageCode,
+  }) async {
+    try {
+      return await TransactionMasterData.load(
+        finance,
+        languageCode: languageCode,
+      );
+    } catch (_) {
+      return const TransactionMasterData();
+    }
   }
 
   Future<void> _refresh() async {
@@ -1549,21 +1562,23 @@ class _HomeData {
     );
   }
 
-  factory _HomeData.transactionsUnavailable(HomePeriodResolution resolution) =>
-      _HomeData(
-        transactions: const [],
-        reviewCount: 0,
-        masterData: const TransactionMasterData(),
-        model: null,
-        insight: null,
-        trend: const [],
-        trendUnavailable: true,
-        displayMonth: resolution.displayMonth,
-        currentFinancialMonth: resolution.currentFinancialMonth,
-        period: null,
-        analysisUnavailable: false,
-        status: _HomeDataStatus.transactionsUnavailable,
-      );
+  factory _HomeData.transactionsUnavailable({
+    required DateTime displayMonth,
+    required DateTime currentFinancialMonth,
+  }) => _HomeData(
+    transactions: const [],
+    reviewCount: 0,
+    masterData: const TransactionMasterData(),
+    model: null,
+    insight: null,
+    trend: const [],
+    trendUnavailable: true,
+    displayMonth: displayMonth,
+    currentFinancialMonth: currentFinancialMonth,
+    period: null,
+    analysisUnavailable: false,
+    status: _HomeDataStatus.transactionsUnavailable,
+  );
 
   final List<TransactionDto> transactions;
   final int reviewCount;
