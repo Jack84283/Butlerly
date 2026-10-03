@@ -397,7 +397,15 @@ final class FinanceServices {
                analysisFindings,
                results: analysisResults,
                rules: analysisRules,
-             );
+             ) {
+    loadHomeOverview = GetHomeOverview(
+      resolveHomePeriod: resolveHomePeriod,
+      calculateAnalysis: calculateAnalysisOverview,
+      calculateInsights: calculateInsights,
+      listTransactions: listTransactions,
+      listReviewItems: listReviewItems,
+    );
+  }
 
   final ListTransactions listTransactions;
   final SeedInitialMasterData seedInitialMasterData;
@@ -459,6 +467,7 @@ final class FinanceServices {
   final CalculateAnalysisOverview? calculateAnalysisOverview;
   final CalculateAnalysisCalendar? calculateAnalysisCalendar;
   final CalculateInsights? calculateInsights;
+  late final GetHomeOverview loadHomeOverview;
   final QueryTransactionsForFinancialDate queryTransactionsForFinancialDate;
   final UpdateFindingLifecycle? updateAnalysisFindingLifecycle;
   final InvalidateAnalysis? invalidateAnalysis;

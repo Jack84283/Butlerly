@@ -15,6 +15,7 @@ export 'src/use_cases/payment_settlement_use_cases.dart';
 export 'src/use_cases/reconciliation_use_cases.dart';
 export 'src/use_cases/transaction_use_cases.dart';
 export 'src/use_cases/home_period_use_case.dart';
+export 'src/use_cases/home_overview_use_case.dart';
 export 'src/use_cases/statement_use_cases.dart';
 export 'src/use_cases/classification_use_cases.dart';
 export 'src/use_cases/duplicate_transaction_use_cases.dart';
@@ -34,6 +35,7 @@ export 'src/use_cases/merchant_management_use_cases.dart';
 export 'src/use_cases/transaction_rule_use_cases.dart';
 
 export 'src/dto/analysis_overview.dart';
+export 'src/dto/home_overview.dart';
 export 'src/dto/local_data_dto.dart';
 export 'src/use_cases/workspace_data_service.dart';
 export 'src/use_cases/statement_intake_policy.dart';

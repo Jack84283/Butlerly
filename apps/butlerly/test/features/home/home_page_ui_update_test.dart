@@ -239,6 +239,35 @@ void main() {
     );
   });
 
+  testWidgets('Home distinguishes an unavailable trend from empty history', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: homeSpendingTrendForTest(const [], unavailable: true),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'Local calculations could not be completed. No records were changed.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('More activity is needed to show a trend.'), findsNothing);
+  });
+
   testWidgets(
     'Home keeps essential header text readable at 3x accessibility scale',
     (tester) async {
