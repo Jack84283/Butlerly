@@ -82,7 +82,8 @@ class _HomePageState extends State<HomePage> {
   }) async {
     final finance = _finance;
     final now = _now;
-    if (finance == null) {
+    final loadHomeOverview = finance?.loadHomeOverview;
+    if (finance == null || loadHomeOverview == null) {
       final fallback = ResolveHomePeriod.utcFallback(
         instant: now,
         selectedMonth: _selectedMonth,
@@ -94,143 +95,68 @@ class _HomePageState extends State<HomePage> {
         languageCode ??
         _loadedLanguageCode ??
         Localizations.localeOf(context).languageCode;
-    final periodResult = await finance.resolveHomePeriod(
-      instant: now,
-      selectedMonth: _selectedMonth,
-    );
-    final homePeriod = switch (periodResult) {
-      ApplicationSuccess<HomePeriodResolution>(:final value) => value,
-      _ => null,
-    };
-    if (homePeriod == null) {
-      return _HomeData.unavailable(now, selectedMonth: _selectedMonth);
-    }
-    final reviewFuture = finance.listReviewItems();
-    final masterDataFuture = TransactionMasterData.load(
+    final masterDataFuture = _loadMasterDataSafely(
       finance,
       languageCode: activeLanguageCode,
     );
-    final period = homePeriod.period;
-    final currentFinancialMonth = homePeriod.currentFinancialMonth;
-    final displayMonth = homePeriod.displayMonth;
-
-    final transactionsFuture = finance.listTransactions(
-      ListTransactionsQuery(
-        from: DateTime.parse(period.startDate),
-        to: DateTime.parse(period.endDate),
-        status: TransactionStatus.active,
-        timeZoneId: period.timeZoneId,
-      ),
+    final overviewResult = await loadHomeOverview(
+      instant: now,
+      selectedMonth: _selectedMonth,
+      forceAnalysisRefresh: forceAnalysisRefresh,
     );
-    final transactionResult = await transactionsFuture;
-    final reviewResult = await reviewFuture;
+    if (overviewResult is ApplicationFailure<HomeOverview>) {
+      return _HomeData.unavailable(now, selectedMonth: _selectedMonth);
+    }
+    final overview = (overviewResult as ApplicationSuccess<HomeOverview>).value;
+    if (overview.status == HomeOverviewStatus.periodUnavailable) {
+      return _HomeData.unavailable(now, selectedMonth: _selectedMonth);
+    }
+    if (overview.status == HomeOverviewStatus.transactionsUnavailable) {
+      return _HomeData.transactionsUnavailable(
+        displayMonth: overview.displayMonth!,
+        currentFinancialMonth: overview.currentFinancialMonth!,
+      );
+    }
     final masterData = await masterDataFuture;
-    if (transactionResult is! ApplicationSuccess<List<TransactionDto>>) {
-      return _HomeData.transactionsUnavailable(homePeriod);
-    }
-    final allTransactions = transactionResult.value;
-    final reviewItems = switch (reviewResult) {
-      ApplicationSuccess<List<ReviewItemDto>>(:final value) => value,
-      _ => const <ReviewItemDto>[],
-    };
-    final reviewUnavailable =
-        reviewResult is! ApplicationSuccess<List<ReviewItemDto>>;
-
-    // The application/database query is the authoritative period boundary.
-    // Keep this screen focused on rendering the returned period dataset.
-    final periodTransactions = allTransactions;
-    final periodTransactionIds = periodTransactions
-        .map((transaction) => transaction.id)
-        .toSet();
-    final reviewCount = reviewItems
-        .where((item) => periodTransactionIds.contains(item.transactionId))
-        .length;
-    final recent = periodTransactions.take(4).toList(growable: false);
-
-    final analysis = finance.calculateAnalysisOverview;
-    AnalysisContext? selectedContext;
-    AnalysisModel? model;
-    InsightResult? insight;
-    var analysisUnavailable = false;
-
-    if (analysis != null) {
-      final selectedContextResult =
-          _sameMonth(displayMonth, currentFinancialMonth)
-          ? await analysis.contextFor('current_month', instant: now)
-          : await analysis.contextFor('selected_month', customPeriod: period);
-      if (selectedContextResult case ApplicationSuccess<AnalysisContext>(
-        :final value,
-      )) {
-        selectedContext = value;
-      } else {
-        analysisUnavailable = true;
-      }
-
-      if (selectedContext != null) {
-        final result = await analysis.call(
-          selectedContext,
-          forceRefresh: forceAnalysisRefresh,
-        );
-        if (result case ApplicationSuccess<List<RuleExecutionResult>>(
-          :final value,
-        )) {
-          model = AnalysisModel.fromResults(value);
-          final insightUseCase = finance.calculateInsights;
-          if (insightUseCase != null) {
-            final active = insightUseCase
-                .fromResults(selectedContext, value)
-                .activeFindings;
-            if (active.isNotEmpty) insight = active.first;
-          }
-        } else {
-          analysisUnavailable = true;
-        }
-      }
-    }
-
-    final trend = analysis == null || selectedContext == null
-        ? const <_HomeTrendPoint>[]
-        : await _loadTrend(analysis: analysis, endingMonth: displayMonth);
 
     return _HomeData(
-      transactions: recent,
-      reviewCount: reviewCount,
+      transactions: overview.recentTransactions,
+      reviewCount: overview.reviewCount,
       masterData: masterData,
-      model: model,
-      insight: insight,
-      trend: trend,
-      displayMonth: displayMonth,
-      currentFinancialMonth: currentFinancialMonth,
-      period: period,
-      analysisUnavailable: analysisUnavailable,
-      status: reviewUnavailable
+      model: overview.analysis,
+      insight: overview.insights.firstOrNull,
+      trend: [
+        for (final point in overview.monthlyTrend)
+          _HomeTrendPoint(
+            month: _monthStart(point.month),
+            value: point.spending == null ? 0 : analysisNumber(point.spending!),
+            metric: point.spending,
+            selected: _sameMonth(point.month, overview.displayMonth!),
+          ),
+      ],
+      trendUnavailable: overview.monthlyTrendUnavailable,
+      displayMonth: overview.displayMonth!,
+      currentFinancialMonth: overview.currentFinancialMonth!,
+      period: overview.context!.period,
+      analysisUnavailable: overview.analysisUnavailable,
+      status: overview.reviewUnavailable
           ? _HomeDataStatus.reviewUnavailable
           : _HomeDataStatus.available,
     );
   }
 
-  Future<List<_HomeTrendPoint>> _loadTrend({
-    required CalculateAnalysisOverview analysis,
-    required DateTime endingMonth,
+  Future<TransactionMasterData> _loadMasterDataSafely(
+    FinanceServices finance, {
+    required String languageCode,
   }) async {
-    final result = await CalculateMonthlySpendingTrend(analysis)(
-      endingMonth: endingMonth,
-      instant: _now,
-    );
-    if (result case ApplicationSuccess<List<MonthlySpendingTrendPoint>>(
-      :final value,
-    )) {
-      return [
-        for (final point in value)
-          _HomeTrendPoint(
-            month: _monthStart(point.month),
-            value: point.spending == null ? 0 : analysisNumber(point.spending!),
-            metric: point.spending,
-            selected: _sameMonth(point.month, endingMonth),
-          ),
-      ];
+    try {
+      return await TransactionMasterData.load(
+        finance,
+        languageCode: languageCode,
+      );
+    } catch (_) {
+      return const TransactionMasterData();
     }
-    return const [];
   }
 
   Future<void> _refresh() async {
@@ -294,7 +220,7 @@ class _HomePageState extends State<HomePage> {
           onNotificationsTap: () => context.push('/notifications'),
         ),
         const SizedBox(height: ButlerlySpacing.section),
-        _SpendingTrend(points: data.trend),
+        _SpendingTrend(points: data.trend, unavailable: data.trendUnavailable),
         _HomeSectionHeader(
           title: context.l10n.text('analysis.rule.r010.name'),
           action: TextButton(
@@ -882,8 +808,10 @@ class _SpendingHero extends StatelessWidget {
 
 @visibleForTesting
 Widget homeSpendingTrendForTest(
-  List<({DateTime month, double value, bool selected})> points,
-) => _SpendingTrend(
+  List<({DateTime month, double value, bool selected})> points, {
+  bool unavailable = false,
+}) => _SpendingTrend(
+  unavailable: unavailable,
   points: [
     for (final point in points)
       _HomeTrendPoint(
@@ -896,14 +824,15 @@ Widget homeSpendingTrendForTest(
 );
 
 class _SpendingTrend extends StatelessWidget {
-  const _SpendingTrend({required this.points});
+  const _SpendingTrend({required this.points, required this.unavailable});
 
   final List<_HomeTrendPoint> points;
+  final bool unavailable;
 
   @override
   Widget build(BuildContext context) {
     final meaningful = points.any((point) => point.value > 0);
-    if (points.isEmpty || !meaningful) {
+    if (unavailable || points.isEmpty || !meaningful) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -913,7 +842,9 @@ class _SpendingTrend extends StatelessWidget {
           ),
           const SizedBox(height: ButlerlySpacing.compact),
           Text(
-            context.l10n.text('insufficientTrendData'),
+            context.l10n.text(
+              unavailable ? 'analysisUnavailableBody' : 'insufficientTrendData',
+            ),
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
@@ -1581,6 +1512,7 @@ class _HomeData {
     required this.model,
     required this.insight,
     required this.trend,
+    required this.trendUnavailable,
     required this.displayMonth,
     required this.currentFinancialMonth,
     required this.period,
@@ -1603,6 +1535,7 @@ class _HomeData {
       model: null,
       insight: null,
       trend: const [],
+      trendUnavailable: true,
       displayMonth: displayMonth,
       currentFinancialMonth: currentMonth,
       period: resolution?.period,
@@ -1620,6 +1553,7 @@ class _HomeData {
       model: null,
       insight: null,
       trend: const [],
+      trendUnavailable: true,
       displayMonth: _monthStart(selectedMonth ?? currentMonth),
       currentFinancialMonth: currentMonth,
       period: null,
@@ -1628,20 +1562,23 @@ class _HomeData {
     );
   }
 
-  factory _HomeData.transactionsUnavailable(HomePeriodResolution resolution) =>
-      _HomeData(
-        transactions: const [],
-        reviewCount: 0,
-        masterData: const TransactionMasterData(),
-        model: null,
-        insight: null,
-        trend: const [],
-        displayMonth: resolution.displayMonth,
-        currentFinancialMonth: resolution.currentFinancialMonth,
-        period: null,
-        analysisUnavailable: false,
-        status: _HomeDataStatus.transactionsUnavailable,
-      );
+  factory _HomeData.transactionsUnavailable({
+    required DateTime displayMonth,
+    required DateTime currentFinancialMonth,
+  }) => _HomeData(
+    transactions: const [],
+    reviewCount: 0,
+    masterData: const TransactionMasterData(),
+    model: null,
+    insight: null,
+    trend: const [],
+    trendUnavailable: true,
+    displayMonth: displayMonth,
+    currentFinancialMonth: currentFinancialMonth,
+    period: null,
+    analysisUnavailable: false,
+    status: _HomeDataStatus.transactionsUnavailable,
+  );
 
   final List<TransactionDto> transactions;
   final int reviewCount;
@@ -1649,6 +1586,7 @@ class _HomeData {
   final AnalysisModel? model;
   final InsightResult? insight;
   final List<_HomeTrendPoint> trend;
+  final bool trendUnavailable;
   final DateTime displayMonth;
   final DateTime currentFinancialMonth;
   final AnalysisPeriod? period;
