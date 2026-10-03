@@ -452,6 +452,7 @@ void main() {
           currency: 'usd',
           paymentSourceId: 'wallet-1',
           needsReview: false,
+          includeUndated: true,
         ),
       );
 
@@ -463,6 +464,7 @@ void main() {
         PaymentSourceId('wallet-1'),
       );
       expect(transactions.lastQuery!.needsReview, isFalse);
+      expect(transactions.lastQuery!.includeUndated, isTrue);
     },
   );
 

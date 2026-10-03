@@ -4,6 +4,7 @@ import 'package:butlerly/app/shell/wide/wide_primary_shell.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -226,28 +227,68 @@ class _PrimaryNavigationShellState extends State<PrimaryNavigationShell> {
 
   Map<int, NavigationDestination> _destinations(BuildContext context) => {
     0: NavigationDestination(
-      icon: const Icon(Icons.home_outlined),
-      selectedIcon: const Icon(Icons.home_rounded),
+      icon: _adaptiveIcon(
+        context,
+        material: Icons.home_outlined,
+        cupertino: CupertinoIcons.house,
+      ),
+      selectedIcon: _adaptiveIcon(
+        context,
+        material: Icons.home_rounded,
+        cupertino: CupertinoIcons.house_fill,
+      ),
       label: context.l10n.text('home'),
     ),
     1: NavigationDestination(
-      icon: const Icon(Icons.format_list_bulleted_rounded),
-      selectedIcon: const Icon(Icons.format_list_bulleted_rounded),
+      icon: _adaptiveIcon(
+        context,
+        material: Icons.format_list_bulleted_rounded,
+        cupertino: CupertinoIcons.list_bullet,
+      ),
+      selectedIcon: _adaptiveIcon(
+        context,
+        material: Icons.format_list_bulleted_rounded,
+        cupertino: CupertinoIcons.list_bullet,
+      ),
       label: context.l10n.text('transactions'),
     ),
     2: NavigationDestination(
-      icon: const Icon(Icons.add_rounded),
-      selectedIcon: const Icon(Icons.add_rounded),
+      icon: _adaptiveIcon(
+        context,
+        material: Icons.add_rounded,
+        cupertino: CupertinoIcons.add,
+      ),
+      selectedIcon: _adaptiveIcon(
+        context,
+        material: Icons.add_rounded,
+        cupertino: CupertinoIcons.add,
+      ),
       label: context.l10n.text('add'),
     ),
     3: NavigationDestination(
-      icon: const Icon(Icons.bar_chart_rounded),
-      selectedIcon: const Icon(Icons.bar_chart_rounded),
+      icon: _adaptiveIcon(
+        context,
+        material: Icons.bar_chart_rounded,
+        cupertino: CupertinoIcons.chart_bar,
+      ),
+      selectedIcon: _adaptiveIcon(
+        context,
+        material: Icons.bar_chart_rounded,
+        cupertino: CupertinoIcons.chart_bar_fill,
+      ),
       label: context.l10n.text('tools'),
     ),
     4: NavigationDestination(
-      icon: const Icon(Icons.more_horiz_rounded),
-      selectedIcon: const Icon(Icons.more_horiz_rounded),
+      icon: _adaptiveIcon(
+        context,
+        material: Icons.more_horiz_rounded,
+        cupertino: CupertinoIcons.ellipsis,
+      ),
+      selectedIcon: _adaptiveIcon(
+        context,
+        material: Icons.more_horiz_rounded,
+        cupertino: CupertinoIcons.ellipsis,
+      ),
       label: context.l10n.text('more'),
     ),
   };
@@ -290,3 +331,11 @@ class _PrimaryNavigationShellState extends State<PrimaryNavigationShell> {
     );
   }
 }
+
+Widget _adaptiveIcon(
+  BuildContext context, {
+  required IconData material,
+  required IconData cupertino,
+}) => Icon(
+  Theme.of(context).platform == TargetPlatform.iOS ? cupertino : material,
+);

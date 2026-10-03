@@ -15,7 +15,8 @@ import 'package:butlerly/features/foundation/presentation/transactions_page.dart
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
-import 'package:flutter/cupertino.dart' show CupertinoSliverRefreshControl;
+import 'package:flutter/cupertino.dart'
+    show CupertinoIcons, CupertinoSliverRefreshControl;
 import 'package:flutter/foundation.dart'
     show
         SynchronousFuture,
@@ -89,9 +90,6 @@ class _HomePageState extends State<HomePage> {
         languageCode ??
         _loadedLanguageCode ??
         Localizations.localeOf(context).languageCode;
-    final transactionsFuture = finance.listTransactions(
-      const ListTransactionsQuery(status: TransactionStatus.active),
-    );
     final reviewFuture = finance.listReviewItems();
     final masterDataFuture = TransactionMasterData.load(
       finance,
@@ -99,19 +97,7 @@ class _HomePageState extends State<HomePage> {
     );
     final preferenceFuture = finance.loadUserPreference();
 
-    final transactionResult = await transactionsFuture;
-    final reviewResult = await reviewFuture;
-    final masterData = await masterDataFuture;
     final preferenceResult = await preferenceFuture;
-
-    final allTransactions = switch (transactionResult) {
-      ApplicationSuccess<List<TransactionDto>>(:final value) => value,
-      _ => const <TransactionDto>[],
-    };
-    final reviewItems = switch (reviewResult) {
-      ApplicationSuccess<List<ReviewItemDto>>(:final value) => value,
-      _ => const <ReviewItemDto>[],
-    };
     final preference = switch (preferenceResult) {
       ApplicationSuccess<UserPreference?>(:final value) => value,
       _ => null,
@@ -136,6 +122,26 @@ class _HomePageState extends State<HomePage> {
             timeZoneId: currentPeriod.timeZoneId,
             baseCurrency: preference?.baseCurrency,
           );
+
+    final transactionsFuture = finance.listTransactions(
+      ListTransactionsQuery(
+        from: DateTime.parse(period.startDate),
+        to: DateTime.parse(period.endDate),
+        status: TransactionStatus.active,
+        includeUndated: true,
+      ),
+    );
+    final transactionResult = await transactionsFuture;
+    final reviewResult = await reviewFuture;
+    final masterData = await masterDataFuture;
+    final allTransactions = switch (transactionResult) {
+      ApplicationSuccess<List<TransactionDto>>(:final value) => value,
+      _ => const <TransactionDto>[],
+    };
+    final reviewItems = switch (reviewResult) {
+      ApplicationSuccess<List<ReviewItemDto>>(:final value) => value,
+      _ => const <ReviewItemDto>[],
+    };
 
     final periodTransactions = allTransactions
         .where((transaction) => _transactionInPeriod(transaction, period))
@@ -210,8 +216,7 @@ class _HomePageState extends State<HomePage> {
       }
     }
 
-    final trend =
-        analysis == null || selectedContext == null || allTransactions.isEmpty
+    final trend = analysis == null || selectedContext == null
         ? const <_HomeTrendPoint>[]
         : await _loadTrend(analysis: analysis, endingMonth: displayMonth);
 
@@ -705,7 +710,14 @@ class _HomeHeader extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: ButlerlySpacing.micro),
-                  const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+                  Icon(
+                    _homeIcon(
+                      context,
+                      material: Icons.keyboard_arrow_down_rounded,
+                      cupertino: CupertinoIcons.chevron_down,
+                    ),
+                    size: 20,
+                  ),
                 ],
               ),
             ),
@@ -812,7 +824,13 @@ class _SpendingHero extends StatelessWidget {
                 key: const Key('home-notification-action'),
                 tooltip: context.l10n.text('notifications'),
                 onPressed: onNotificationsTap,
-                icon: const Icon(Icons.notifications_none_rounded),
+                icon: Icon(
+                  _homeIcon(
+                    context,
+                    material: Icons.notifications_none_rounded,
+                    cupertino: CupertinoIcons.bell,
+                  ),
+                ),
               ),
             ],
           ),
@@ -1123,7 +1141,15 @@ class _CategorySummaryItem extends StatelessWidget {
                     color: color.withValues(alpha: 0.16),
                     border: Border.all(color: color.withValues(alpha: 0.55)),
                   ),
-                  child: Icon(Icons.category_outlined, size: 22, color: color),
+                  child: Icon(
+                    _homeIcon(
+                      context,
+                      material: Icons.category_outlined,
+                      cupertino: CupertinoIcons.square_grid_2x2,
+                    ),
+                    size: 22,
+                    color: color,
+                  ),
                 )
               : ButlerlyCategoryIcon(
                   categoryId: categoryId,
@@ -1203,9 +1229,15 @@ class _AttentionSection extends StatelessWidget {
                     color: context.colors.interactive.withValues(alpha: 0.13),
                   ),
                   child: Icon(
-                    hasReview
-                        ? Icons.notifications_none_rounded
-                        : Icons.insights_rounded,
+                    _homeIcon(
+                      context,
+                      material: hasReview
+                          ? Icons.notifications_none_rounded
+                          : Icons.insights_rounded,
+                      cupertino: hasReview
+                          ? CupertinoIcons.bell
+                          : CupertinoIcons.lightbulb,
+                    ),
                     color: context.colors.interactive,
                   ),
                 ),
@@ -1236,7 +1268,11 @@ class _AttentionSection extends StatelessWidget {
                   ),
                 ),
                 Icon(
-                  Icons.chevron_right_rounded,
+                  _homeIcon(
+                    context,
+                    material: Icons.chevron_right_rounded,
+                    cupertino: CupertinoIcons.chevron_right,
+                  ),
                   color: context.colors.tertiaryText,
                 ),
               ],
@@ -1278,47 +1314,44 @@ class _HomeEmptyTransactions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
+    key: const ValueKey('home-empty-transactions-card'),
     color: context.colors.subtleSurface,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
       side: BorderSide(color: context.colors.border),
     ),
     clipBehavior: Clip.antiAlias,
-    child: InkWell(
-      borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-      onTap: () => context.push('/add'),
-      child: Padding(
-        padding: const EdgeInsets.all(ButlerlySpacing.standard),
-        child: Row(
-          children: [
-            Icon(
-              Icons.receipt_long_outlined,
-              color: context.colors.secondaryText,
+    child: Padding(
+      padding: const EdgeInsets.all(ButlerlySpacing.standard),
+      child: Row(
+        children: [
+          Icon(
+            _homeIcon(
+              context,
+              material: Icons.receipt_long_outlined,
+              cupertino: CupertinoIcons.doc_text,
             ),
-            const SizedBox(width: ButlerlySpacing.small),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    context.l10n.text('noTransactions'),
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  Text(
-                    context.l10n.text('noTransactionsBody'),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
+            color: context.colors.secondaryText,
+          ),
+          const SizedBox(width: ButlerlySpacing.small),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.l10n.text('noTransactions'),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                Text(
+                  context.l10n.text('noTransactionsBody'),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
             ),
-            Icon(
-              Icons.chevron_right_rounded,
-              color: context.colors.tertiaryText,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     ),
   );
@@ -1364,14 +1397,26 @@ class _HomeMonthPickerState extends State<_HomeMonthPicker> {
         children: [
           IconButton(
             onPressed: () => setState(() => _year--),
-            icon: const Icon(Icons.chevron_left_rounded),
+            icon: Icon(
+              _homeIcon(
+                context,
+                material: Icons.chevron_left_rounded,
+                cupertino: CupertinoIcons.chevron_left,
+              ),
+            ),
           ),
           Expanded(child: Text('$_year', textAlign: TextAlign.center)),
           IconButton(
             onPressed: _year < widget.currentMonth.year
                 ? () => setState(() => _year++)
                 : null,
-            icon: const Icon(Icons.chevron_right_rounded),
+            icon: Icon(
+              _homeIcon(
+                context,
+                material: Icons.chevron_right_rounded,
+                cupertino: CupertinoIcons.chevron_right,
+              ),
+            ),
           ),
         ],
       ),
@@ -1547,6 +1592,14 @@ bool _sameMonth(DateTime left, DateTime right) =>
 
 String _date(DateTime value) =>
     '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+
+IconData _homeIcon(
+  BuildContext context, {
+  required IconData material,
+  required IconData cupertino,
+}) => !kIsWeb && Theme.of(context).platform == TargetPlatform.iOS
+    ? cupertino
+    : material;
 
 String _periodRoute(
   String path,

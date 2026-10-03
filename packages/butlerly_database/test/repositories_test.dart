@@ -784,6 +784,33 @@ void main() {
 
     expect(matching.single.id, value.id);
     expect(excluded, isEmpty);
+
+    final undated = minimalTransaction(now, id: 'undated-transaction');
+    await transactions.save(undated);
+    final boundedWithoutUndated = await transactions.query(
+      TransactionRepositoryQuery(
+        from: DateTime.utc(2026, 8, 9),
+        to: DateTime.utc(2026, 8, 9),
+        status: TransactionStatus.active,
+      ),
+    );
+    final boundedWithUndated = await transactions.query(
+      TransactionRepositoryQuery(
+        from: DateTime.utc(2026, 8, 9),
+        to: DateTime.utc(2026, 8, 9),
+        status: TransactionStatus.active,
+        includeUndated: true,
+      ),
+    );
+
+    expect(
+      boundedWithoutUndated.map((transaction) => transaction.id),
+      isNot(contains(undated.id)),
+    );
+    expect(
+      boundedWithUndated.map((transaction) => transaction.id),
+      contains(undated.id),
+    );
   });
 
   test('stores evidence links and suggestions separately', () async {

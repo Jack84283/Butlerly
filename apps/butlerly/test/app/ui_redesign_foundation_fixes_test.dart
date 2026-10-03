@@ -214,10 +214,10 @@ void main() {
 
         _expectNoFlutterException(tester);
         expect(find.text('Home'), findsAtLeastNWidgets(1));
-        expect(find.text('Transactions'), findsOneWidget);
+        expect(find.text('Txns'), findsOneWidget);
         expect(find.text('Tools'), findsOneWidget);
         expect(find.text('More'), findsAtLeastNWidgets(1));
-        _expectNavigationLabelIsNotEllipsized(tester, 'Transactions');
+        _expectNavigationLabelIsSingleLine(tester, 'Txns');
       },
     );
   }
@@ -236,12 +236,12 @@ void main() {
 
     _expectNoFlutterException(tester);
     expect(find.text('Inicio'), findsOneWidget);
-    expect(find.text('Transacciones'), findsOneWidget);
-    expect(find.text('Herramientas'), findsOneWidget);
+    expect(find.text('Trans.'), findsOneWidget);
+    expect(find.text('Herr.'), findsOneWidget);
     expect(find.text('Más'), findsAtLeastNWidgets(1));
-    _expectNavigationLabelIsNotEllipsized(tester, 'Transacciones');
+    _expectNavigationLabelIsSingleLine(tester, 'Trans.');
     expect(
-      tester.getSize(find.text('Transacciones')).height,
+      tester.getSize(find.text('Trans.')).height,
       greaterThan(ButlerlyTypography.navigationLabelFontSize * 3),
     );
   });
@@ -263,7 +263,7 @@ void main() {
     expect(find.text('交易'), findsAtLeastNWidgets(1));
     expect(find.text('工具'), findsOneWidget);
     expect(find.text('更多'), findsAtLeastNWidgets(1));
-    _expectNavigationLabelIsNotEllipsized(tester, '交易');
+    _expectNavigationLabelIsSingleLine(tester, '交易');
   });
 }
 
@@ -291,11 +291,11 @@ void _expectNoFlutterException(WidgetTester tester) {
   expect(exception, isNull);
 }
 
-void _expectNavigationLabelIsNotEllipsized(WidgetTester tester, String label) {
+void _expectNavigationLabelIsSingleLine(WidgetTester tester, String label) {
   final widget = tester.widget<Text>(find.text(label).last);
-  expect(widget.maxLines, isNull);
-  expect(widget.overflow, isNull);
-  expect(widget.softWrap, isNot(false));
+  expect(widget.maxLines, 1);
+  expect(widget.overflow, TextOverflow.clip);
+  expect(widget.softWrap, isFalse);
 }
 
 double _navigationLabelHeight(

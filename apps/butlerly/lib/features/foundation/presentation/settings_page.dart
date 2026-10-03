@@ -7,6 +7,8 @@ import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/legal_licenses_page.dart';
 import 'package:butlerly/features/foundation/presentation/time_zone_catalog.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -304,7 +306,7 @@ class _LocalOnlyBanner extends StatelessWidget {
               color: context.colors.brand.withValues(alpha: 0.2),
             ),
             child: Icon(
-              Icons.lock_outline_rounded,
+              _settingsIcon(context, Icons.lock_outline_rounded),
               color: context.colors.interactive,
             ),
           ),
@@ -325,7 +327,10 @@ class _LocalOnlyBanner extends StatelessWidget {
               ],
             ),
           ),
-          Icon(Icons.check_rounded, color: context.colors.success),
+          Icon(
+            _settingsIcon(context, Icons.check_rounded),
+            color: context.colors.success,
+          ),
         ],
       ),
     ),
@@ -345,8 +350,34 @@ class _SettingsIcon extends StatelessWidget {
       shape: BoxShape.circle,
       color: context.colors.selection,
     ),
-    child: Icon(icon, size: 19, color: context.colors.interactive),
+    child: Icon(
+      _settingsIcon(context, icon),
+      size: 19,
+      color: context.colors.interactive,
+    ),
   );
+}
+
+IconData _settingsIcon(BuildContext context, IconData material) {
+  if (kIsWeb || Theme.of(context).platform != TargetPlatform.iOS) {
+    return material;
+  }
+  return switch (material) {
+    Icons.lock_outline_rounded => CupertinoIcons.lock,
+    Icons.check_rounded => CupertinoIcons.check_mark,
+    Icons.palette_outlined => CupertinoIcons.paintbrush,
+    Icons.color_lens_outlined => CupertinoIcons.paintbrush_fill,
+    Icons.language_rounded => CupertinoIcons.globe,
+    Icons.currency_exchange_rounded => CupertinoIcons.money_dollar_circle,
+    Icons.schedule_rounded => CupertinoIcons.clock,
+    Icons.privacy_tip_outlined => CupertinoIcons.lock_shield,
+    Icons.cloud_off_outlined => CupertinoIcons.cloud,
+    Icons.auto_awesome_outlined => CupertinoIcons.sparkles,
+    Icons.gavel_outlined => CupertinoIcons.doc_text,
+    Icons.chevron_right_rounded => CupertinoIcons.chevron_right,
+    Icons.keyboard_arrow_down_rounded => CupertinoIcons.chevron_down,
+    _ => material,
+  };
 }
 
 class _SettingsRow extends StatelessWidget {
@@ -368,11 +399,11 @@ class _SettingsRow extends StatelessWidget {
       horizontal: ButlerlySpacing.standard,
       vertical: ButlerlySpacing.xxs,
     ),
-    leading: _SettingsIcon(icon: icon),
+    leading: _SettingsIcon(icon: _settingsIcon(context, icon)),
     title: Text(title, style: Theme.of(context).textTheme.titleMedium),
     subtitle: Text(subtitle, style: _settingsSubtitleStyle(context)),
     trailing: Icon(
-      Icons.chevron_right_rounded,
+      _settingsIcon(context, Icons.chevron_right_rounded),
       color: context.colors.tertiaryText,
     ),
     onTap: onTap,
@@ -434,11 +465,11 @@ class _SettingsDropdownRow<T> extends StatelessWidget {
       horizontal: ButlerlySpacing.standard,
       vertical: ButlerlySpacing.xxs,
     ),
-    leading: _SettingsIcon(icon: icon),
+    leading: _SettingsIcon(icon: _settingsIcon(context, icon)),
     title: Text(label, style: Theme.of(context).textTheme.bodySmall),
     subtitle: _selectedItem(context),
     trailing: Icon(
-      Icons.keyboard_arrow_down_rounded,
+      _settingsIcon(context, Icons.keyboard_arrow_down_rounded),
       color: context.colors.tertiaryText,
     ),
     dense: true,

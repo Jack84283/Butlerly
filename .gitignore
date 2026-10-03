@@ -16,3 +16,7 @@ local.properties
 .env.*
 !.env.example
 /tmp/
+
+# Local Codex and Impeccable runtime artifacts.
+.codex/
+.impeccable/critique/

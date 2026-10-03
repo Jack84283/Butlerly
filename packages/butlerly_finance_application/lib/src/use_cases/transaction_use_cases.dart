@@ -282,6 +282,7 @@ final class ListTransactions {
         status: query.status,
         needsReview: query.needsReview,
         uncategorized: query.uncategorized,
+        includeUndated: query.includeUndated,
       ),
     );
     return List.unmodifiable(values.map(TransactionDto.fromDomain));

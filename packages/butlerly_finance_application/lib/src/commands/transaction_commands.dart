@@ -135,6 +135,7 @@ final class ListTransactionsQuery {
     this.status,
     this.needsReview,
     this.uncategorized = false,
+    this.includeUndated = false,
   });
 
   final String? text;
@@ -148,4 +149,5 @@ final class ListTransactionsQuery {
   final TransactionStatus? status;
   final bool? needsReview;
   final bool uncategorized;
+  final bool includeUndated;
 }

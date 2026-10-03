@@ -1,5 +1,6 @@
 import 'package:butlerly/features/foundation/presentation/settings_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -37,4 +38,15 @@ void main() {
     );
     expect(find.text('Optional features'), findsOneWidget);
   });
+
+  testWidgets('More uses Cupertino symbols for native iOS settings controls', (
+    tester,
+  ) async {
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(CupertinoIcons.paintbrush), findsOneWidget);
+    expect(find.byIcon(Icons.palette_outlined), findsNothing);
+    expect(find.byIcon(CupertinoIcons.chevron_down), findsNWidgets(5));
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 }

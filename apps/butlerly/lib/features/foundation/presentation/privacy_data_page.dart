@@ -10,6 +10,7 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/app_localizations_backup.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -475,43 +476,43 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           ButlerlySectionHeader(title: context.l10n.text('localDataControls')),
           ListTile(
             enabled: !_busy,
-            leading: const Icon(Icons.backup_outlined),
+            leading: Icon(_privacyIcon(context, Icons.backup_outlined)),
             title: Text(context.l10n.backupText('backup')),
             subtitle: Text(
               context.l10n.backupText('backupSubtitle'),
               style: _subtitleStyle(context),
             ),
-            trailing: const Icon(Icons.chevron_right),
+            trailing: Icon(_privacyIcon(context, Icons.chevron_right)),
             onTap: _backup,
           ),
           const Divider(),
           ListTile(
             enabled: !_busy,
-            leading: const Icon(Icons.restore_outlined),
+            leading: Icon(_privacyIcon(context, Icons.restore_outlined)),
             title: Text(context.l10n.backupText('restoreBackup')),
             subtitle: Text(
               context.l10n.backupText('restoreSubtitle'),
               style: _subtitleStyle(context),
             ),
-            trailing: const Icon(Icons.chevron_right),
+            trailing: Icon(_privacyIcon(context, Icons.chevron_right)),
             onTap: _restore,
           ),
           const Divider(),
           ListTile(
             enabled: !_busy,
-            leading: const Icon(Icons.download_outlined),
+            leading: Icon(_privacyIcon(context, Icons.download_outlined)),
             title: Text(context.l10n.text('exportToFile')),
             subtitle: Text(
               context.l10n.text('exportScopeBody'),
               style: _subtitleStyle(context),
             ),
-            trailing: const Icon(Icons.chevron_right),
+            trailing: Icon(_privacyIcon(context, Icons.chevron_right)),
             onTap: _export,
           ),
           const Divider(),
           ListTile(
             enabled: !_busy,
-            leading: const Icon(Icons.delete_forever_outlined),
+            leading: Icon(_privacyIcon(context, Icons.delete_forever_outlined)),
             title: Text(context.l10n.text('resetAllData')),
             subtitle: Text(
               context.l10n.text('eraseScopeBody'),
@@ -531,3 +532,17 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
 TextStyle? _subtitleStyle(BuildContext context) => Theme.of(
   context,
 ).textTheme.bodySmall?.copyWith(color: context.colors.secondaryText);
+
+IconData _privacyIcon(BuildContext context, IconData material) {
+  if (kIsWeb || Theme.of(context).platform != TargetPlatform.iOS) {
+    return material;
+  }
+  return switch (material) {
+    Icons.backup_outlined => CupertinoIcons.archivebox,
+    Icons.restore_outlined => CupertinoIcons.arrow_counterclockwise,
+    Icons.download_outlined => CupertinoIcons.arrow_down_doc,
+    Icons.delete_forever_outlined => CupertinoIcons.trash,
+    Icons.chevron_right => CupertinoIcons.chevron_right,
+    _ => material,
+  };
+}

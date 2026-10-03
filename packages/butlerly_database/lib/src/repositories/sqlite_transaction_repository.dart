@@ -159,13 +159,22 @@ final class SqliteTransactionRepository
       )''');
       arguments.addAll(List<Object?>.filled(15, '%$text%'));
     }
+    final dateConditions = <String>[];
     if (query.from != null) {
-      conditions.add('t.transaction_date >= ?');
+      dateConditions.add('t.transaction_date >= ?');
       arguments.add(_dateOnly(query.from!));
     }
     if (query.to != null) {
-      conditions.add('t.transaction_date <= ?');
+      dateConditions.add('t.transaction_date <= ?');
       arguments.add(_dateOnly(query.to!));
+    }
+    if (dateConditions.isNotEmpty) {
+      final dateCondition = dateConditions.join(' AND ');
+      conditions.add(
+        query.includeUndated
+            ? '(t.transaction_date IS NULL OR $dateCondition)'
+            : dateCondition,
+      );
     }
     if (query.categoryId != null) {
       conditions.add('t.category_id = ?');
