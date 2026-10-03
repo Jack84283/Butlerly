@@ -92,6 +92,9 @@ components:
     height: "48px"
 ---
 
+<!-- Generated tooling context only. AGENTS.md and the approved, versioned
+     documents under docs/ are authoritative; this file is not a competing
+     design authority and must defer to them. -->
 # Design System: Butlerly
 
 <!-- Derived from the current Butlerly implementation and approved repository design references. The creative language should be confirmed if the product direction changes. -->

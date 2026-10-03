@@ -26,7 +26,10 @@ final class FinanceServices {
     MerchantNormalizationPatternRepository? merchantNormalizationPatterns,
     MerchantMatchingConfigurationRepository? merchantMatchingConfiguration,
     TransactionRuleRepository? transactionRules,
-  }) : listTransactions = ListTransactions(transactions),
+  }) : listTransactions = ListTransactions(
+         transactions,
+         preferences: preferences,
+       ),
        seedInitialMasterData = SeedInitialMasterData(
          merchants,
          categories,
@@ -102,7 +105,8 @@ final class FinanceServices {
                  const SystemApplicationClock(),
                ),
        ),
-       getTransaction = GetTransaction(transactions),
+       getTransaction = GetTransaction(transactions, preferences: preferences),
+       resolveHomePeriod = ResolveHomePeriod(preferences),
        updateTransaction = UpdateTransaction(
          transactions,
          const SystemApplicationClock(),
@@ -125,6 +129,7 @@ final class FinanceServices {
          transactions,
          paymentSources,
          const SystemApplicationClock(),
+         preferences: preferences,
        ),
        listMerchants = ListMerchants(merchants),
        listCategories = ListCategories(categories),
@@ -385,6 +390,7 @@ final class FinanceServices {
   final CreatePaymentTransaction createPaymentTransaction;
   final ImportTransaction importTransaction;
   final GetTransaction getTransaction;
+  final ResolveHomePeriod resolveHomePeriod;
   final UpdateTransaction updateTransaction;
   final ArchiveTransaction archiveTransaction;
   final RestoreTransaction restoreTransaction;

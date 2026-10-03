@@ -55,6 +55,7 @@ String compactNavigationLabel(
   NavigationDestination destination,
   int branchIndex,
 ) => switch (branchIndex) {
+  0 => context.l10n.text('homeCompact'),
   1 => context.l10n.text('transactionsCompact'),
   2 => context.l10n.text('addCompact'),
   3 => context.l10n.text('toolsCompact'),
@@ -113,6 +114,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
     return Semantics(
       button: true,
       selected: selected,
+      onTap: () => onSelected(branchIndex),
       label: branchIndex == 2
           ? context.l10n.text('addTransactionAction')
           : destination.label,
@@ -135,13 +137,13 @@ class PrimaryBottomNavigation extends StatelessWidget {
               ),
               const SizedBox(height: ButlerlySize.navigationLabelGap),
               SizedBox(
+                key: ValueKey('primary-navigation-label-$branchIndex'),
                 width: double.infinity,
                 height: labelSlotHeight,
                 child: Text(
                   visibleLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.clip,
-                  softWrap: false,
+                  softWrap: true,
+                  overflow: TextOverflow.visible,
                   textAlign: TextAlign.center,
                   style: labelStyle,
                 ),

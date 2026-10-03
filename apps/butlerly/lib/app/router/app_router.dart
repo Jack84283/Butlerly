@@ -172,6 +172,7 @@ final appRouter = GoRouter(
                   'currency',
                   'direction',
                   'uncategorized',
+                  'includeUndated',
                 }.any(parameters.containsKey);
             return SearchPage(
               initialQuery: hasInitialQuery
@@ -184,6 +185,7 @@ final appRouter = GoRouter(
                       currency: parameters['currency'],
                       direction: _queryDirection(parameters['direction']),
                       uncategorized: parameters['uncategorized'] == 'true',
+                      includeUndated: parameters['includeUndated'] == 'true',
                     )
                   : null,
               readOnly: locked,

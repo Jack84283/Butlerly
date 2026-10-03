@@ -38,6 +38,61 @@ final class AnalysisPeriodResolutionFailure extends AnalysisPeriodResolution {
   final String code;
 }
 
+/// UTC instants corresponding to the inclusive calendar-date range used by a
+/// financial period.
+final class FinancialInstantRange {
+  const FinancialInstantRange({this.start, this.endExclusive});
+
+  final DateTime? start;
+  final DateTime? endExclusive;
+}
+
+/// Converts an instant into the financial calendar date in [timeZoneId].
+///
+/// The returned value is UTC only so callers can use its calendar components
+/// without allowing the host device timezone to alter the result.
+DateTime financialDateAt(DateTime instant, String timeZoneId) {
+  time_zone_data.initializeTimeZones();
+  final value = time_zone.TZDateTime.from(
+    instant.toUtc(),
+    time_zone.getLocation(timeZoneId),
+  );
+  return DateTime.utc(value.year, value.month, value.day);
+}
+
+/// Converts date-only period bounds into UTC instants in [timeZoneId].
+///
+/// The conversion belongs at the application boundary: repositories can then
+/// apply an indexed timestamp predicate without needing to interpret IANA
+/// timezone rules themselves.
+FinancialInstantRange financialInstantRangeForCalendarDates({
+  DateTime? from,
+  DateTime? to,
+  required String timeZoneId,
+}) {
+  time_zone_data.initializeTimeZones();
+  final location = time_zone.getLocation(timeZoneId);
+  DateTime? start;
+  DateTime? endExclusive;
+  if (from != null) {
+    start = time_zone.TZDateTime(
+      location,
+      from.year,
+      from.month,
+      from.day,
+    ).toUtc();
+  }
+  if (to != null) {
+    endExclusive = time_zone.TZDateTime(
+      location,
+      to.year,
+      to.month,
+      to.day + 1,
+    ).toUtc();
+  }
+  return FinancialInstantRange(start: start, endExclusive: endExclusive);
+}
+
 /// Resolves financial windows in one application boundary. Callers provide
 /// anchors; they never calculate financial calendar boundaries themselves.
 final class AnalysisPeriodResolver {
@@ -251,14 +306,8 @@ final class AnalysisPeriodResolver {
     limitations: const ['rollingWindowIncludesCurrentDate'],
   );
 
-  DateTime _financialDate(DateTime instant, String timeZoneId) {
-    time_zone_data.initializeTimeZones();
-    final value = time_zone.TZDateTime.from(
-      instant.toUtc(),
-      time_zone.getLocation(timeZoneId),
-    );
-    return DateTime.utc(value.year, value.month, value.day);
-  }
+  DateTime _financialDate(DateTime instant, String timeZoneId) =>
+      financialDateAt(instant, timeZoneId);
 
   DateTime _parseDate(String value) {
     final parsed = DateTime.parse(value);

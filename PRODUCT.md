@@ -2,6 +2,9 @@
 
 <!-- impeccable:product-schema 1 -->
 
+<!-- Generated tooling context only. AGENTS.md and the approved, versioned
+     documents under docs/ are authoritative; this file is not a competing
+     product requirements source and must defer to them. -->
 <!-- Product context below is derived from the current repository sources because no separate product interview answers were provided. Verify it if product strategy or audience details change. -->
 
 ## Platform

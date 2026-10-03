@@ -102,6 +102,7 @@ class _SearchPageState extends State<SearchPage>
   TransactionStatus? _status;
   bool? _needsReview;
   bool _uncategorized = false;
+  bool _includeUndated = false;
   bool _forceNoResults = false;
   DateTime? _from;
   DateTime? _to;
@@ -134,6 +135,7 @@ class _SearchPageState extends State<SearchPage>
     _status = query?.status;
     _needsReview = query?.needsReview;
     _uncategorized = query?.uncategorized ?? false;
+    _includeUndated = query?.includeUndated ?? false;
     _from = query?.from ?? widget.initialFrom;
     _to = query?.to ?? widget.initialTo;
     if (query != null || _from != null || _to != null) _results = _search();
@@ -194,6 +196,7 @@ class _SearchPageState extends State<SearchPage>
         status: _status,
         needsReview: _needsReview,
         uncategorized: _uncategorized,
+        includeUndated: _includeUndated,
         from: _from,
         to: _to,
       ),
@@ -272,6 +275,7 @@ class _SearchPageState extends State<SearchPage>
       _status = null;
       _needsReview = null;
       _uncategorized = false;
+      _includeUndated = false;
       _forceNoResults = false;
       _from = null;
       _to = null;

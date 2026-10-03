@@ -169,12 +169,32 @@ final class SqliteTransactionRepository
       arguments.add(_dateOnly(query.to!));
     }
     if (dateConditions.isNotEmpty) {
-      final dateCondition = dateConditions.join(' AND ');
-      conditions.add(
-        query.includeUndated
-            ? '(t.transaction_date IS NULL OR $dateCondition)'
-            : dateCondition,
-      );
+      final datedCondition = [
+        "TRIM(COALESCE(t.transaction_date, '')) != ''",
+        ...dateConditions,
+      ].join(' AND ');
+      final undatedCondition = "TRIM(COALESCE(t.transaction_date, '')) = ''";
+      if (!query.includeUndated) {
+        conditions.add(datedCondition);
+      } else if (query.occurredAtFrom == null &&
+          query.occurredAtToExclusive == null) {
+        conditions.add('($undatedCondition OR $datedCondition)');
+      } else {
+        final occurredAtConditions = <String>[];
+        if (query.occurredAtFrom != null) {
+          occurredAtConditions.add('t.occurred_at >= ?');
+          arguments.add(query.occurredAtFrom!.toUtc().toIso8601String());
+        }
+        if (query.occurredAtToExclusive != null) {
+          occurredAtConditions.add('t.occurred_at < ?');
+          arguments.add(query.occurredAtToExclusive!.toUtc().toIso8601String());
+        }
+        conditions.add(
+          '(($datedCondition) OR '
+          '($undatedCondition AND '
+          '${occurredAtConditions.join(' AND ')}))',
+        );
+      }
     }
     if (query.categoryId != null) {
       conditions.add('t.category_id = ?');
@@ -214,7 +234,12 @@ final class SqliteTransactionRepository
            LEFT JOIN categories c ON c.id = t.category_id
            LEFT JOIN payment_sources ps ON ps.id = t.payment_source_id
            ${conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}'}
-           ORDER BY t.transaction_date DESC, t.id''',
+           ORDER BY CASE WHEN TRIM(COALESCE(t.transaction_date, '')) = ''
+                         THEN 1 ELSE 0 END,
+                    CASE WHEN TRIM(COALESCE(t.transaction_date, '')) = ''
+                         THEN t.occurred_at END DESC,
+                    t.transaction_date DESC,
+                    t.id''',
         arguments,
       );
       return await Future.wait(rows.map(_hydrate));
@@ -469,7 +494,7 @@ final class SqliteTransactionRepository
     'occurred_at_utc': value.timing is KnownTransactionTime
         ? (value.timing as KnownTransactionTime).occurredAt.toIso8601String()
         : null,
-    'transaction_date': value.transactionDate,
+    'transaction_date': _normalizedTransactionDate(value.transactionDate),
     'time_zone_id': value.timeZoneId,
     'unknown_time_reason': value.timing is UnknownTransactionTime
         ? (value.timing as UnknownTransactionTime).reason.name
@@ -498,6 +523,11 @@ final class SqliteTransactionRepository
     'created_at': value.createdAt.toIso8601String(),
     'updated_at': value.updatedAt.toIso8601String(),
   };
+
+  static String? _normalizedTransactionDate(String? value) {
+    final trimmed = value?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
 
   static TransactionTiming _timingFromRow(Map<String, Object?> row) {
     final occurredAt = row['occurred_at'] as String?;

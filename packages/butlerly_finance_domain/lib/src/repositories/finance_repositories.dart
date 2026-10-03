@@ -130,6 +130,8 @@ final class TransactionRepositoryQuery {
     this.transactionIds,
     this.from,
     this.to,
+    this.occurredAtFrom,
+    this.occurredAtToExclusive,
     this.categoryId,
     this.paymentSourceId,
     this.currency,
@@ -144,6 +146,14 @@ final class TransactionRepositoryQuery {
   final List<TransactionId>? transactionIds;
   final DateTime? from;
   final DateTime? to;
+
+  /// UTC instant bounds for null-[transaction_date] fallback records.
+  ///
+  /// These bounds are used only when [includeUndated] is true. They let a
+  /// caller apply a financial calendar period to [Transaction.timing] at the
+  /// repository query boundary without making SQLite interpret IANA zones.
+  final DateTime? occurredAtFrom;
+  final DateTime? occurredAtToExclusive;
   final CategoryId? categoryId;
   final PaymentSourceId? paymentSourceId;
   final String? currency;

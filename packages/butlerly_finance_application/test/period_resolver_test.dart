@@ -133,6 +133,40 @@ void main() {
   );
 
   test(
+    'converts financial calendar bounds with positive and negative offsets',
+    () {
+      final pacific = financialInstantRangeForCalendarDates(
+        from: DateTime.utc(2026, 9, 30),
+        to: DateTime.utc(2026, 9, 30),
+        timeZoneId: 'America/Los_Angeles',
+      );
+      expect(pacific.start, DateTime.utc(2026, 9, 30, 7));
+      expect(pacific.endExclusive, DateTime.utc(2026, 10, 1, 7));
+
+      final shanghai = financialInstantRangeForCalendarDates(
+        from: DateTime.utc(2026, 3, 1),
+        to: DateTime.utc(2026, 3, 1),
+        timeZoneId: 'Asia/Shanghai',
+      );
+      expect(shanghai.start, DateTime.utc(2026, 2, 28, 16));
+      expect(shanghai.endExclusive, DateTime.utc(2026, 3, 1, 16));
+    },
+  );
+
+  test('preserves the correct local date at UTC midnight edges', () {
+    final range = financialInstantRangeForCalendarDates(
+      from: DateTime.utc(2026, 9, 30),
+      to: DateTime.utc(2026, 9, 30),
+      timeZoneId: 'America/Los_Angeles',
+    );
+    final justInside = DateTime.utc(2026, 10, 1, 6, 30);
+    final justOutside = DateTime.utc(2026, 10, 1, 7, 30);
+    expect(justInside.isAfter(range.start!), isTrue);
+    expect(justInside.isBefore(range.endExclusive!), isTrue);
+    expect(justOutside.isBefore(range.endExclusive!), isFalse);
+  });
+
+  test(
     'previous equivalent period preserves duration and elapsed coverage',
     () {
       final resolver = AnalysisPeriodResolver(

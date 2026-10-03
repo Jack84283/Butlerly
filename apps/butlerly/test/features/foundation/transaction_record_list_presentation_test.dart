@@ -152,6 +152,44 @@ void main() {
     },
   );
 
+  testWidgets(
+    'month grouping uses the application financial date for undated rows',
+    (tester) async {
+      final transaction = TransactionDto(
+        id: 'transaction-financial-date',
+        amount: '8.00',
+        currency: 'USD',
+        direction: 'expense',
+        status: 'active',
+        reviewState: 'clear',
+        occurredAt: DateTime.utc(2026, 10, 1, 0, 30),
+        financialDate: DateTime.utc(2026, 9, 30),
+        createdAt: DateTime.utc(2026, 10, 1),
+        updatedAt: DateTime.utc(2026, 10, 1),
+        description: 'Timezone-bound purchase',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          localizationsDelegates: const [AppLocalizations.delegate],
+          supportedLocales: const [Locale('en')],
+          home: Scaffold(
+            body: TransactionRecordList(
+              transactions: [transaction],
+              groupByFinancialDate: true,
+              onTap: (_) {},
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('September 2026'), findsOneWidget);
+      expect(find.text('October 2026'), findsNothing);
+      expect(find.text('Timezone-bound purchase'), findsOneWidget);
+    },
+  );
+
   testWidgets('canonical payment source label wins over a raw page override', (
     tester,
   ) async {

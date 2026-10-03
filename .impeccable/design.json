@@ -1,6 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedAt": "2026-10-02",
+  "authority": "Generated tooling context only; AGENTS.md and approved versioned docs/ remain authoritative.",
   "title": "Design System: Butlerly",
   "extensions": {
     "colorMeta": {

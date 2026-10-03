@@ -8,6 +8,7 @@ import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -217,7 +218,7 @@ void main() {
         expect(find.text('Txns'), findsOneWidget);
         expect(find.text('Tools'), findsOneWidget);
         expect(find.text('More'), findsAtLeastNWidgets(1));
-        _expectNavigationLabelIsSingleLine(tester, 'Txns');
+        _expectNavigationLabelUsesWrappingPolicy(tester, 'Txns');
       },
     );
   }
@@ -235,13 +236,13 @@ void main() {
     await tester.pumpAndSettle();
 
     _expectNoFlutterException(tester);
-    expect(find.text('Inicio'), findsOneWidget);
-    expect(find.text('Trans.'), findsOneWidget);
-    expect(find.text('Herr.'), findsOneWidget);
+    expect(find.text('Ini.'), findsOneWidget);
+    expect(find.text('Tr.'), findsOneWidget);
+    expect(find.text('Her.'), findsOneWidget);
     expect(find.text('Más'), findsAtLeastNWidgets(1));
-    _expectNavigationLabelIsSingleLine(tester, 'Trans.');
+    _expectNavigationLabelUsesWrappingPolicy(tester, 'Tr.');
     expect(
-      tester.getSize(find.text('Trans.')).height,
+      tester.getSize(find.text('Tr.')).height,
       greaterThan(ButlerlyTypography.navigationLabelFontSize * 3),
     );
   });
@@ -263,7 +264,7 @@ void main() {
     expect(find.text('交易'), findsAtLeastNWidgets(1));
     expect(find.text('工具'), findsOneWidget);
     expect(find.text('更多'), findsAtLeastNWidgets(1));
-    _expectNavigationLabelIsSingleLine(tester, '交易');
+    _expectNavigationLabelUsesWrappingPolicy(tester, '交易');
   });
 }
 
@@ -291,11 +292,21 @@ void _expectNoFlutterException(WidgetTester tester) {
   expect(exception, isNull);
 }
 
-void _expectNavigationLabelIsSingleLine(WidgetTester tester, String label) {
+void _expectNavigationLabelUsesWrappingPolicy(
+  WidgetTester tester,
+  String label,
+) {
   final widget = tester.widget<Text>(find.text(label).last);
-  expect(widget.maxLines, 1);
-  expect(widget.overflow, TextOverflow.clip);
-  expect(widget.softWrap, isFalse);
+  expect(widget.maxLines, isNull);
+  expect(widget.overflow, TextOverflow.visible);
+  expect(widget.softWrap, isTrue);
+  final paragraph =
+      tester.renderObject(find.text(label).last) as RenderParagraph;
+  expect(paragraph.didExceedMaxLines, isFalse);
+  expect(
+    paragraph.textSize.width,
+    lessThanOrEqualTo(paragraph.size.width + 0.01),
+  );
 }
 
 double _navigationLabelHeight(

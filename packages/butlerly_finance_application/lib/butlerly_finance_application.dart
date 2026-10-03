@@ -14,6 +14,7 @@ export 'src/use_cases/payment_transaction_use_case.dart';
 export 'src/use_cases/payment_settlement_use_cases.dart';
 export 'src/use_cases/reconciliation_use_cases.dart';
 export 'src/use_cases/transaction_use_cases.dart';
+export 'src/use_cases/home_period_use_case.dart';
 export 'src/use_cases/statement_use_cases.dart';
 export 'src/use_cases/classification_use_cases.dart';
 export 'src/use_cases/duplicate_transaction_use_cases.dart';

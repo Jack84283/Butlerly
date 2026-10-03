@@ -468,6 +468,134 @@ void main() {
     },
   );
 
+  test(
+    'bounds undated fallback records in the requested financial timezone',
+    () async {
+      final inside = transaction(
+        DateTime.utc(2026, 10, 1, 6, 30),
+        id: 'inside-period',
+        transactionDate: null,
+      );
+      final outside = transaction(
+        DateTime.utc(2026, 10, 1, 7, 30),
+        id: 'outside-period',
+        transactionDate: null,
+      );
+      final datedOutside = transaction(
+        DateTime.utc(2026, 9, 15, 12),
+        id: 'dated-outside-period',
+        transactionDate: '2026-10-01',
+      );
+      transactions.values[inside.id.value] = inside;
+      transactions.values[outside.id.value] = outside;
+      transactions.values[datedOutside.id.value] = datedOutside;
+
+      final result = await ListTransactions(transactions)(
+        ListTransactionsQuery(
+          from: DateTime.utc(2026, 9, 1),
+          to: DateTime.utc(2026, 9, 30),
+          timeZoneId: 'America/Los_Angeles',
+          includeUndated: true,
+          status: TransactionStatus.active,
+        ),
+      );
+
+      final resultValues =
+          (result as ApplicationSuccess<List<TransactionDto>>).value;
+      expect(resultValues.map((value) => value.id), ['inside-period']);
+      expect(resultValues.single.financialDate, DateTime.utc(2026, 9, 30));
+      expect(
+        transactions.lastQuery!.occurredAtFrom,
+        DateTime.utc(2026, 9, 1, 7),
+      );
+      expect(
+        transactions.lastQuery!.occurredAtToExclusive,
+        DateTime.utc(2026, 10, 1, 7),
+      );
+
+      final localMarchFirst = transaction(
+        DateTime.utc(2026, 2, 28, 16, 30),
+        id: 'positive-offset-inside',
+        transactionDate: null,
+      );
+      final localFebruaryTwentyEighth = transaction(
+        DateTime.utc(2026, 2, 28, 15, 30),
+        id: 'positive-offset-outside',
+        transactionDate: null,
+      );
+      transactions.values[localMarchFirst.id.value] = localMarchFirst;
+      transactions.values[localFebruaryTwentyEighth.id.value] =
+          localFebruaryTwentyEighth;
+
+      final positiveOffsetResult = await ListTransactions(transactions)(
+        ListTransactionsQuery(
+          from: DateTime.utc(2026, 3, 1),
+          to: DateTime.utc(2026, 3, 1),
+          timeZoneId: 'Asia/Shanghai',
+          includeUndated: true,
+          status: TransactionStatus.active,
+        ),
+      );
+
+      final positiveOffsetValues =
+          (positiveOffsetResult as ApplicationSuccess<List<TransactionDto>>)
+              .value;
+      expect(positiveOffsetValues.map((value) => value.id), [
+        'positive-offset-inside',
+      ]);
+      expect(
+        positiveOffsetValues.single.financialDate,
+        DateTime.utc(2026, 3, 1),
+      );
+      expect(
+        transactions.lastQuery!.occurredAtFrom,
+        DateTime.utc(2026, 2, 28, 16),
+      );
+      expect(
+        transactions.lastQuery!.occurredAtToExclusive,
+        DateTime.utc(2026, 3, 1, 16),
+      );
+    },
+  );
+
+  test(
+    'list and get use the persisted financial timezone when callers omit it',
+    () async {
+      final value = transaction(
+        DateTime.utc(2026, 9, 30, 23, 30),
+        id: 'persisted-timezone',
+        transactionDate: null,
+      );
+      transactions.values[value.id.value] = value;
+      final preferences = _Preferences('Asia/Tokyo');
+
+      final listed =
+          await ListTransactions(transactions, preferences: preferences)(
+            ListTransactionsQuery(
+              from: DateTime.utc(2026, 10, 1),
+              to: DateTime.utc(2026, 10, 1),
+              includeUndated: true,
+            ),
+          );
+      expect(
+        (listed as ApplicationSuccess<List<TransactionDto>>)
+            .value
+            .single
+            .financialDate,
+        DateTime.utc(2026, 10, 1),
+      );
+
+      final fetched = await GetTransaction(
+        transactions,
+        preferences: preferences,
+      )('persisted-timezone');
+      expect(
+        (fetched as ApplicationSuccess<TransactionDto>).value.financialDate,
+        DateTime.utc(2026, 10, 1),
+      );
+    },
+  );
+
   test('rejects an inverted date range before repository access', () async {
     final result = await ListTransactions(transactions)(
       ListTransactionsQuery(
@@ -562,11 +690,17 @@ void main() {
     );
 
     transactions.values['transaction-1'] = transaction(now);
-    final assigned = await AssignPaymentSource(transactions, sources, clock)(
-      'transaction-1',
-      'wallet-1',
-    );
+    final assigned = await AssignPaymentSource(
+      transactions,
+      sources,
+      clock,
+      preferences: _Preferences('Asia/Tokyo'),
+    )('transaction-1', 'wallet-1');
     expect(assigned, isA<ApplicationSuccess<TransactionDto>>());
+    expect(
+      (assigned as ApplicationSuccess<TransactionDto>).value.financialDate,
+      DateTime.utc(2026, 8, 10),
+    );
     expect(
       transactions.values['transaction-1']!.paymentSourceId,
       PaymentSourceId('wallet-1'),
@@ -745,6 +879,22 @@ final class FixedClock implements ApplicationClock {
   DateTime now() => value;
 }
 
+final class _Preferences implements UserPreferenceRepository {
+  _Preferences(this.timeZoneId);
+
+  final String timeZoneId;
+
+  @override
+  Future<UserPreference?> load() async => UserPreference(
+    locale: 'en',
+    baseCurrency: CurrencyCode('USD'),
+    timeZoneId: timeZoneId,
+  );
+
+  @override
+  Future<void> save(UserPreference preference) async {}
+}
+
 final class MemoryTransactions
     implements TransactionRepository, ReviewTransactionRepository {
   final values = <String, Transaction>{};
@@ -761,7 +911,41 @@ final class MemoryTransactions
   @override
   Future<List<Transaction>> query(TransactionRepositoryQuery query) async {
     lastQuery = query;
-    return values.values.toList();
+    return values.values.where((value) {
+      if (query.status != null && value.status != query.status) return false;
+
+      final businessDate = value.transactionDate?.trim();
+      if (businessDate != null && businessDate.isNotEmpty) {
+        if (query.from == null && query.to == null) return true;
+        final parsed = DateTime.tryParse(businessDate);
+        if (parsed == null) return false;
+        final date = DateTime.utc(parsed.year, parsed.month, parsed.day);
+        final from = query.from == null
+            ? null
+            : DateTime.utc(
+                query.from!.year,
+                query.from!.month,
+                query.from!.day,
+              );
+        final to = query.to == null
+            ? null
+            : DateTime.utc(query.to!.year, query.to!.month, query.to!.day);
+        return (from == null || !date.isBefore(from)) &&
+            (to == null || !date.isAfter(to));
+      }
+
+      if (!query.includeUndated) return false;
+      if (query.occurredAtFrom == null && query.occurredAtToExclusive == null) {
+        return true;
+      }
+      final timing = value.timing;
+      if (timing is! KnownTransactionTime) return false;
+      final occurredAt = timing.occurredAt;
+      return (query.occurredAtFrom == null ||
+              !occurredAt.isBefore(query.occurredAtFrom!)) &&
+          (query.occurredAtToExclusive == null ||
+              occurredAt.isBefore(query.occurredAtToExclusive!));
+    }).toList();
   }
 
   @override
@@ -886,8 +1070,12 @@ final class FailingEvidence implements EvidenceRepository {
 Money money(String amount) =>
     Money(amount: DecimalValue.parse(amount), currency: CurrencyCode('USD'));
 
-Transaction transaction(DateTime now) => Transaction(
-  id: TransactionId('transaction-1'),
+Transaction transaction(
+  DateTime now, {
+  String id = 'transaction-1',
+  String? transactionDate,
+}) => Transaction(
+  id: TransactionId(id),
   timing: KnownTransactionTime(now),
   money: money('12.50'),
   direction: TransactionDirection.expense,
@@ -902,4 +1090,5 @@ Transaction transaction(DateTime now) => Transaction(
   ],
   createdAt: now,
   updatedAt: now,
+  transactionDate: transactionDate,
 );

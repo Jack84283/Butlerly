@@ -16,12 +16,14 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   late _Transactions transactions;
+  late _Preferences preferences;
   late FinanceServices finance;
 
   setUp(() async {
     await services.reset();
     HomePage.debugCurrentDate = DateTime(2026, 9, 16, 15);
     transactions = _Transactions();
+    preferences = _Preferences();
     finance = FinanceServices(
       transactions,
       _PaymentSources(),
@@ -29,7 +31,7 @@ void main() {
       _Categories(),
       _Tags(),
       _Evidence(),
-      _Preferences(),
+      preferences,
       analysisRules: _Rules([_expenseRule()]),
     );
     services.registerSingleton<FinanceServices>(finance);
@@ -199,6 +201,73 @@ void main() {
     },
     variant: TargetPlatformVariant.only(TargetPlatform.iOS),
   );
+
+  testWidgets(
+    'Home bounds current and historical queries in the persisted timezone',
+    (tester) async {
+      HomePage.debugCurrentDate = DateTime.utc(2026, 9, 16, 22);
+      preferences.value = UserPreference(
+        locale: 'en',
+        baseCurrency: CurrencyCode('USD'),
+        timeZoneId: 'America/Los_Angeles',
+      );
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(const _TestApp());
+      await tester.pumpAndSettle();
+
+      final current = transactions.queries.last;
+      expect(current.from, DateTime(2026, 9, 1));
+      expect(current.to, DateTime(2026, 9, 16));
+      expect(current.occurredAtFrom, DateTime.utc(2026, 9, 1, 7));
+      expect(current.occurredAtToExclusive, DateTime.utc(2026, 9, 17, 7));
+
+      await tester.tap(find.byKey(const Key('home-month-selector')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('home-month-2026-8')));
+      await tester.pumpAndSettle();
+
+      final historical = transactions.queries.last;
+      expect(historical.from, DateTime(2026, 8, 1));
+      expect(historical.to, DateTime(2026, 8, 31));
+      expect(historical.occurredAtFrom, DateTime.utc(2026, 8, 1, 7));
+      expect(historical.occurredAtToExclusive, DateTime.utc(2026, 9, 1, 7));
+    },
+  );
+
+  testWidgets(
+    'Home disables period actions when persisted timezone resolution fails',
+    (tester) async {
+      preferences.value = UserPreference(
+        locale: 'en',
+        baseCurrency: CurrencyCode('USD'),
+        timeZoneId: 'Invalid/Timezone',
+      );
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(const _TestApp());
+      await tester.pumpAndSettle();
+
+      expect(
+        tester
+            .widget<TextButton>(find.byKey(const Key('home-category-view-all')))
+            .onPressed,
+        isNull,
+      );
+      expect(
+        tester
+            .widget<TextButton>(find.byKey(const Key('home-recent-view-all')))
+            .onPressed,
+        isNull,
+      );
+    },
+  );
 }
 
 class _TestApp extends StatelessWidget {
@@ -267,7 +336,41 @@ final class _Transactions implements TransactionRepository {
   Future<List<Transaction>> query(TransactionRepositoryQuery query) async {
     queries.add(query);
     await _waitForRead();
-    return values.values.toList(growable: false);
+    return values.values
+        .where((transaction) {
+          if (query.status != null && transaction.status != query.status) {
+            return false;
+          }
+          if (query.from == null && query.to == null) return true;
+
+          final businessDate = transaction.transactionDate?.trim();
+          if (businessDate != null && businessDate.isNotEmpty) {
+            final date = DateTime.tryParse(businessDate);
+            if (date == null) return false;
+            final calendarDate = DateTime.utc(date.year, date.month, date.day);
+            final from = query.from == null
+                ? null
+                : DateTime.utc(
+                    query.from!.year,
+                    query.from!.month,
+                    query.from!.day,
+                  );
+            final to = query.to == null
+                ? null
+                : DateTime.utc(query.to!.year, query.to!.month, query.to!.day);
+            return (from == null || !calendarDate.isBefore(from)) &&
+                (to == null || !calendarDate.isAfter(to));
+          }
+
+          if (!query.includeUndated) return false;
+          final timing = transaction.timing;
+          if (timing is! KnownTransactionTime) return false;
+          return (query.occurredAtFrom == null ||
+                  !timing.occurredAt.isBefore(query.occurredAtFrom!)) &&
+              (query.occurredAtToExclusive == null ||
+                  timing.occurredAt.isBefore(query.occurredAtToExclusive!));
+        })
+        .toList(growable: false);
   }
 
   @override

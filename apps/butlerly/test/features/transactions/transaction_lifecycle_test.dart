@@ -990,6 +990,34 @@ void main() {
     expect(find.byKey(const ValueKey('apply-search-filters')), findsNothing);
   });
 
+  testWidgets('clearing period filters also clears Home undated fallback', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SearchPage(
+            initialQuery: ListTransactionsQuery(
+              from: DateTime(2026, 8, 1),
+              to: DateTime(2026, 8, 31),
+              includeUndated: true,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.tune_rounded).first);
+    await tester.pumpAndSettle();
+    final clearFilters = find.text('Clear filters').last;
+    await tester.ensureVisible(clearFilters);
+    await tester.tap(clearFilters);
+    await tester.pumpAndSettle();
+
+    expect(repository.lastQuery?.includeUndated, isFalse);
+  });
+
   testWidgets('keyboard submission and clear text update Search immediately', (
     tester,
   ) async {
@@ -2871,6 +2899,7 @@ void _expectEditorSelection(WidgetTester tester, String label) {
 
 final class MemoryTransactionRepository implements TransactionRepository {
   final values = <String, Transaction>{};
+  TransactionRepositoryQuery? lastQuery;
   Future<void>? saveGate;
 
   @override
@@ -2880,19 +2909,21 @@ final class MemoryTransactionRepository implements TransactionRepository {
   Future<List<Transaction>> listAll() async => values.values.toList();
 
   @override
-  Future<List<Transaction>> query(TransactionRepositoryQuery query) async =>
-      values.values.where((transaction) {
-        if (query.categoryId != null &&
-            transaction.categoryId != query.categoryId) {
-          return false;
-        }
-        if (query.needsReview != null &&
-            (transaction.reviewState == TransactionReviewState.needsReview) !=
-                query.needsReview) {
-          return false;
-        }
-        return true;
-      }).toList();
+  Future<List<Transaction>> query(TransactionRepositoryQuery query) async {
+    lastQuery = query;
+    return values.values.where((transaction) {
+      if (query.categoryId != null &&
+          transaction.categoryId != query.categoryId) {
+        return false;
+      }
+      if (query.needsReview != null &&
+          (transaction.reviewState == TransactionReviewState.needsReview) !=
+              query.needsReview) {
+        return false;
+      }
+      return true;
+    }).toList();
+  }
 
   @override
   Future<void> removePermanently(TransactionId id) async {

@@ -12,6 +12,32 @@ final class _Clock implements ApplicationClock {
 
 void main() {
   test(
+    'selected Home month context keeps calendar-month baseline semantics',
+    () async {
+      final calculate = CalculateAnalysisOverview(
+        _Rules([_summaryRule('ANL-R001', TransactionDirection.expense)]),
+        AnalysisDatasetBuilder(_Transactions(const []), _Preferences(), null),
+        const AnalysisRuleEngine(),
+      );
+
+      final result = await calculate.contextFor(
+        'selected_month',
+        customPeriod: AnalysisPeriod(
+          startDate: '2026-07-01',
+          endDate: '2026-07-31',
+          timeZoneId: 'UTC',
+        ),
+      );
+
+      expect(result, isA<ApplicationSuccess<AnalysisContext>>());
+      final context = (result as ApplicationSuccess<AnalysisContext>).value;
+      expect(context.periodType, 'selected_month');
+      expect(context.period.startDate, '2026-07-01');
+      expect(context.period.endDate, '2026-07-31');
+    },
+  );
+
+  test(
     'CalculateInsights treats an empty previous period as a zero baseline',
     () async {
       final now = DateTime.utc(2026, 9, 5, 12);

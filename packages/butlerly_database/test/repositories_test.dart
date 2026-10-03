@@ -900,6 +900,66 @@ void main() {
       isEmpty,
     );
   });
+
+  test(
+    'bounds null-date occurred_at fallback rows at the database query boundary',
+    () async {
+      final inside = timedTransaction(
+        id: 'financial-period-inside',
+        occurredAt: DateTime.utc(2026, 10, 1, 6, 30),
+        now: now,
+      );
+      final outside = timedTransaction(
+        id: 'financial-period-outside',
+        occurredAt: DateTime.utc(2026, 10, 1, 7, 30),
+        now: now,
+      );
+      final newerInside = timedTransaction(
+        id: 'financial-period-newer-inside',
+        occurredAt: DateTime.utc(2026, 10, 1, 6, 45),
+        now: now,
+      );
+      final legacyBlank = timedTransaction(
+        id: 'financial-period-legacy-blank',
+        occurredAt: DateTime.utc(2026, 10, 1, 6, 40),
+        now: now,
+      );
+      final archived = timedTransaction(
+        id: 'financial-period-archived',
+        occurredAt: DateTime.utc(2026, 9, 15, 12),
+        now: now,
+      ).archive(now.add(const Duration(minutes: 1)));
+      await transactions.save(inside);
+      await transactions.save(outside);
+      await transactions.save(newerInside);
+      await transactions.save(legacyBlank);
+      // A pre-existing database may contain blank text instead of NULL.
+      await database.connection.update(
+        'transactions',
+        {'transaction_date': '  '},
+        where: 'id = ?',
+        whereArgs: [legacyBlank.id.value],
+      );
+      await transactions.save(archived);
+
+      final result = await transactions.query(
+        TransactionRepositoryQuery(
+          from: DateTime.utc(2026, 9, 1),
+          to: DateTime.utc(2026, 9, 30),
+          includeUndated: true,
+          occurredAtFrom: DateTime.utc(2026, 9, 1, 7),
+          occurredAtToExclusive: DateTime.utc(2026, 10, 1, 7),
+          status: TransactionStatus.active,
+        ),
+      );
+
+      expect(result.map((value) => value.id), [
+        newerInside.id,
+        legacyBlank.id,
+        inside.id,
+      ]);
+    },
+  );
 }
 
 Transaction minimalTransaction(
@@ -914,6 +974,27 @@ Transaction minimalTransaction(
   provenance: [
     Provenance(
       id: ProvenanceId('manual-provenance'),
+      sourceType: ProvenanceSourceType.userEntry,
+      capturedAt: now,
+    ),
+  ],
+  createdAt: now,
+  updatedAt: now,
+);
+
+Transaction timedTransaction({
+  required String id,
+  required DateTime occurredAt,
+  required DateTime now,
+}) => Transaction(
+  id: TransactionId(id),
+  timing: KnownTransactionTime(occurredAt),
+  money: Money(amount: DecimalValue.parse('10'), currency: CurrencyCode('USD')),
+  direction: TransactionDirection.expense,
+  sourceType: TransactionSourceType.manual,
+  provenance: [
+    Provenance(
+      id: ProvenanceId('$id-provenance'),
       sourceType: ProvenanceSourceType.userEntry,
       capturedAt: now,
     ),

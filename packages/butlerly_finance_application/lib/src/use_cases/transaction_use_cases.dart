@@ -1,5 +1,6 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
+import '../analysis/period_resolver.dart';
 import '../commands/transaction_commands.dart';
 import '../dto/review_item_dto.dart';
 import '../dto/transaction_dto.dart';
@@ -235,27 +236,38 @@ final class ImportTransaction {
 }
 
 final class GetTransaction {
-  const GetTransaction(this.repository);
+  const GetTransaction(this.repository, {this.preferences});
 
   final TransactionRepository repository;
+  final UserPreferenceRepository? preferences;
 
-  Future<ApplicationResult<TransactionDto>> call(String id) async {
-    final result = await _find(repository, id, 'get transaction');
-    return switch (result) {
-      ApplicationSuccess<Transaction>(:final value) => ApplicationSuccess(
-        TransactionDto.fromDomain(value),
-      ),
-      ApplicationFailure<Transaction>(:final failure) => ApplicationFailure(
-        failure,
-      ),
-    };
-  }
+  Future<ApplicationResult<TransactionDto>> call(
+    String id, {
+    String? timeZoneId,
+  }) => runApplication('get transaction', () async {
+    final value = await repository.findById(TransactionId(id));
+    if (value == null) {
+      throw RepositoryException(
+        RepositoryFailureCode.notFound,
+        'get transaction',
+      );
+    }
+    final financialTimeZone =
+        timeZoneId ?? await _configuredFinancialTimeZone(preferences);
+    return TransactionDto.fromDomain(
+      value,
+      financialDate: financialTimeZone == null
+          ? null
+          : _financialDateFor(value, financialTimeZone),
+    );
+  });
 }
 
 final class ListTransactions {
-  const ListTransactions(this.repository);
+  const ListTransactions(this.repository, {this.preferences});
 
   final TransactionRepository repository;
+  final UserPreferenceRepository? preferences;
 
   Future<ApplicationResult<List<TransactionDto>>> call(
     ListTransactionsQuery query,
@@ -269,12 +281,23 @@ final class ListTransactions {
         message: 'The start of a date range cannot follow its end.',
       );
     }
+    final financialTimeZone =
+        query.timeZoneId ?? await _configuredFinancialTimeZone(preferences);
+    final occurredAtBounds = financialTimeZone == null
+        ? null
+        : financialInstantRangeForCalendarDates(
+            from: query.from,
+            to: query.to,
+            timeZoneId: financialTimeZone,
+          );
     final values = await repository.query(
       TransactionRepositoryQuery(
         text: query.text,
         transactionIds: query.transactionIds?.map(TransactionId.new).toList(),
         from: query.from,
         to: query.to,
+        occurredAtFrom: occurredAtBounds?.start,
+        occurredAtToExclusive: occurredAtBounds?.endExclusive,
         categoryId: _optional(query.categoryId, CategoryId.new),
         paymentSourceId: _optional(query.paymentSourceId, PaymentSourceId.new),
         currency: query.currency,
@@ -285,8 +308,45 @@ final class ListTransactions {
         includeUndated: query.includeUndated,
       ),
     );
-    return List.unmodifiable(values.map(TransactionDto.fromDomain));
+    return List.unmodifiable(
+      values.map(
+        (value) => TransactionDto.fromDomain(
+          value,
+          financialDate: financialTimeZone == null
+              ? null
+              : _financialDateFor(value, financialTimeZone),
+        ),
+      ),
+    );
   });
+}
+
+Future<String?> _configuredFinancialTimeZone(
+  UserPreferenceRepository? preferences,
+) async {
+  if (preferences == null) return null;
+  try {
+    return (await preferences.load())?.timeZoneId ?? 'UTC';
+  } catch (_) {
+    // Listing transactions historically remained available when preferences
+    // were unavailable. Preserve that behavior while using the persisted zone
+    // whenever it can be read.
+    return 'UTC';
+  }
+}
+
+DateTime? _financialDateFor(Transaction value, String timeZoneId) {
+  final businessDate = value.transactionDate?.trim();
+  if (businessDate != null && businessDate.isNotEmpty) {
+    final parsed = DateTime.tryParse(businessDate);
+    return parsed == null
+        ? null
+        : DateTime.utc(parsed.year, parsed.month, parsed.day);
+  }
+  final timing = value.timing;
+  return timing is KnownTransactionTime
+      ? financialDateAt(timing.occurredAt, timeZoneId)
+      : null;
 }
 
 final class ArchiveTransaction {
@@ -380,11 +440,17 @@ final class AssignCategory {
 }
 
 final class AssignPaymentSource {
-  const AssignPaymentSource(this.repository, this.sources, this.clock);
+  const AssignPaymentSource(
+    this.repository,
+    this.sources,
+    this.clock, {
+    this.preferences,
+  });
 
   final TransactionRepository repository;
   final PaymentSourceRepository sources;
   final ApplicationClock clock;
+  final UserPreferenceRepository? preferences;
 
   Future<ApplicationResult<TransactionDto>> call(
     String transactionId,
@@ -394,12 +460,16 @@ final class AssignPaymentSource {
         await sources.findById(PaymentSourceId(paymentSourceId)) == null) {
       return notFound('assign payment source');
     }
-    return _mutate(repository, transactionId, 'assign payment source', (value) {
-      return value.assignPaymentSource(
+    return _mutate(
+      repository,
+      transactionId,
+      'assign payment source',
+      (value) => value.assignPaymentSource(
         paymentSourceId == null ? null : PaymentSourceId(paymentSourceId),
         clock.now(),
-      );
-    });
+      ),
+      preferences: preferences,
+    );
   }
 }
 
@@ -542,8 +612,9 @@ Future<ApplicationResult<TransactionDto>> _mutate(
   TransactionRepository repository,
   String id,
   String operation,
-  Transaction Function(Transaction) change,
-) async {
+  Transaction Function(Transaction) change, {
+  UserPreferenceRepository? preferences,
+}) async {
   final found = await _find(repository, id, operation);
   if (found case ApplicationFailure<Transaction> failure) {
     return ApplicationFailure(failure.failure);
@@ -551,7 +622,13 @@ Future<ApplicationResult<TransactionDto>> _mutate(
   return runApplication(operation, () async {
     final updated = change((found as ApplicationSuccess<Transaction>).value);
     await repository.save(updated);
-    return TransactionDto.fromDomain(updated);
+    final financialTimeZone = await _configuredFinancialTimeZone(preferences);
+    return TransactionDto.fromDomain(
+      updated,
+      financialDate: financialTimeZone == null
+          ? null
+          : _financialDateFor(updated, financialTimeZone),
+    );
   });
 }
 
