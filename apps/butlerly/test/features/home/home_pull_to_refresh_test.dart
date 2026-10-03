@@ -296,6 +296,45 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets('Home distinguishes transaction load failure from empty data', (
+    tester,
+  ) async {
+    transactions.failQueries = true;
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const _TestApp());
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('home-transactions-unavailable-card')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('home-empty-transactions-card')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('home-period-unavailable-card')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('home-transactions-unavailable-retry')),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .getSemantics(
+            find.byKey(const ValueKey('home-transactions-unavailable-card')),
+          )
+          .flagsCollection
+          .isLiveRegion,
+      isTrue,
+    );
+  });
 }
 
 class _TestApp extends StatelessWidget {
@@ -346,6 +385,7 @@ final class _Transactions implements TransactionRepository {
   final values = <String, Transaction>{};
   final queries = <TransactionRepositoryQuery>[];
   Future<void>? readGate;
+  bool failQueries = false;
 
   Future<void> _waitForRead() async {
     if (readGate case final pending?) await pending;
@@ -363,6 +403,12 @@ final class _Transactions implements TransactionRepository {
   @override
   Future<List<Transaction>> query(TransactionRepositoryQuery query) async {
     queries.add(query);
+    if (failQueries) {
+      throw const RepositoryException(
+        RepositoryFailureCode.unavailable,
+        'list transactions',
+      );
+    }
     await _waitForRead();
     return values.values
         .where((transaction) {

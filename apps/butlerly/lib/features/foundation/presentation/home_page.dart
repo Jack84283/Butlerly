@@ -125,10 +125,10 @@ class _HomePageState extends State<HomePage> {
     final transactionResult = await transactionsFuture;
     final reviewResult = await reviewFuture;
     final masterData = await masterDataFuture;
-    final allTransactions = switch (transactionResult) {
-      ApplicationSuccess<List<TransactionDto>>(:final value) => value,
-      _ => const <TransactionDto>[],
-    };
+    if (transactionResult is! ApplicationSuccess<List<TransactionDto>>) {
+      return _HomeData.transactionsUnavailable(homePeriod);
+    }
+    final allTransactions = transactionResult.value;
     final reviewItems = switch (reviewResult) {
       ApplicationSuccess<List<ReviewItemDto>>(:final value) => value,
       _ => const <ReviewItemDto>[],
@@ -278,6 +278,9 @@ class _HomePageState extends State<HomePage> {
     if (data.status == _HomeDataStatus.periodUnavailable) {
       return _HomePeriodUnavailable(onRetry: _refresh);
     }
+    if (data.status == _HomeDataStatus.transactionsUnavailable) {
+      return _HomeTransactionsUnavailable(onRetry: _refresh);
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -377,8 +380,7 @@ class _HomePageState extends State<HomePage> {
                       month: data.displayMonth,
                       greetingKey: homeGreetingKey(_now),
                       onMonthTap:
-                          loading ||
-                              data.status == _HomeDataStatus.periodUnavailable
+                          loading || data.status != _HomeDataStatus.available
                           ? null
                           : () => _selectMonth(data),
                     );
@@ -1346,53 +1348,97 @@ class _HomePeriodUnavailable extends StatelessWidget {
   final VoidCallback onRetry;
 
   @override
-  Widget build(BuildContext context) => Material(
-    key: const ValueKey('home-period-unavailable-card'),
-    color: context.colors.subtleSurface,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-      side: BorderSide(color: context.colors.border),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.all(ButlerlySpacing.standard),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            _homeIcon(
-              context,
-              material: Icons.error_outline,
-              cupertino: CupertinoIcons.exclamationmark_circle,
+  Widget build(BuildContext context) => _HomeUnavailableCard(
+    cardKey: const ValueKey('home-period-unavailable-card'),
+    retryKey: const ValueKey('home-period-unavailable-retry'),
+    titleKey: 'homeUnavailable',
+    bodyKey: 'homeUnavailableBody',
+    onRetry: onRetry,
+  );
+}
+
+class _HomeTransactionsUnavailable extends StatelessWidget {
+  const _HomeTransactionsUnavailable({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => _HomeUnavailableCard(
+    cardKey: const ValueKey('home-transactions-unavailable-card'),
+    retryKey: const ValueKey('home-transactions-unavailable-retry'),
+    titleKey: 'homeTransactionsUnavailable',
+    bodyKey: 'homeTransactionsUnavailableBody',
+    onRetry: onRetry,
+  );
+}
+
+class _HomeUnavailableCard extends StatelessWidget {
+  const _HomeUnavailableCard({
+    required this.cardKey,
+    required this.retryKey,
+    required this.titleKey,
+    required this.bodyKey,
+    required this.onRetry,
+  });
+
+  final Key cardKey;
+  final Key retryKey;
+  final String titleKey;
+  final String bodyKey;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    key: cardKey,
+    container: true,
+    liveRegion: true,
+    child: Material(
+      color: context.colors.subtleSurface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+        side: BorderSide(color: context.colors.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(ButlerlySpacing.standard),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              _homeIcon(
+                context,
+                material: Icons.error_outline,
+                cupertino: CupertinoIcons.exclamationmark_circle,
+              ),
+              color: context.colors.secondaryText,
             ),
-            color: context.colors.secondaryText,
-          ),
-          const SizedBox(width: ButlerlySpacing.small),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  context.l10n.text('homeUnavailable'),
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: ButlerlySpacing.compact),
-                Text(
-                  context.l10n.text('homeUnavailableBody'),
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: ButlerlySpacing.small),
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: TextButton(
-                    key: const ValueKey('home-period-unavailable-retry'),
-                    onPressed: onRetry,
-                    child: Text(context.l10n.text('tryAgain')),
+            const SizedBox(width: ButlerlySpacing.small),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.l10n.text(titleKey),
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
-                ),
-              ],
+                  const SizedBox(height: ButlerlySpacing.compact),
+                  Text(
+                    context.l10n.text(bodyKey),
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: ButlerlySpacing.small),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TextButton(
+                      key: retryKey,
+                      onPressed: onRetry,
+                      child: Text(context.l10n.text('tryAgain')),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     ),
   );
@@ -1499,7 +1545,7 @@ class _HomeMonthPickerState extends State<_HomeMonthPicker> {
   }
 }
 
-enum _HomeDataStatus { available, periodUnavailable }
+enum _HomeDataStatus { available, periodUnavailable, transactionsUnavailable }
 
 class _HomeData {
   const _HomeData({
@@ -1555,6 +1601,21 @@ class _HomeData {
       status: _HomeDataStatus.periodUnavailable,
     );
   }
+
+  factory _HomeData.transactionsUnavailable(HomePeriodResolution resolution) =>
+      _HomeData(
+        transactions: const [],
+        reviewCount: 0,
+        masterData: const TransactionMasterData(),
+        model: null,
+        insight: null,
+        trend: const [],
+        displayMonth: resolution.displayMonth,
+        currentFinancialMonth: resolution.currentFinancialMonth,
+        period: null,
+        analysisUnavailable: false,
+        status: _HomeDataStatus.transactionsUnavailable,
+      );
 
   final List<TransactionDto> transactions;
   final int reviewCount;
