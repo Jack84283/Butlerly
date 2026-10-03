@@ -117,7 +117,15 @@ final class GetPaymentSettlementDetail {
         return PaymentSettlementDetailDto(
           settlement: PaymentSettlementDto.fromDomain(settlement),
           transactions: List.unmodifiable(
-            matched.map(TransactionDto.fromDomain),
+            matched.map(
+              (transaction) => TransactionDto.fromDomain(
+                transaction,
+                financialDate: transactionFinancialDate(
+                  transaction,
+                  timeZone.id,
+                ),
+              ),
+            ),
           ),
         );
       });

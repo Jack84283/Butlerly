@@ -176,12 +176,12 @@ final class SqliteTransactionRepository
       final undatedCondition = "TRIM(COALESCE(t.transaction_date, '')) = ''";
       final occurredAtConditions = <String>[];
       if (query.occurredAtFrom != null) {
-        occurredAtConditions.add('julianday(t.occurred_at) >= julianday(?)');
-        arguments.add(query.occurredAtFrom!.toUtc().toIso8601String());
+        occurredAtConditions.add('t.occurred_at >= ?');
+        arguments.add(_utcComparisonBound(query.occurredAtFrom!));
       }
       if (query.occurredAtToExclusive != null) {
-        occurredAtConditions.add('julianday(t.occurred_at) < julianday(?)');
-        arguments.add(query.occurredAtToExclusive!.toUtc().toIso8601String());
+        occurredAtConditions.add('t.occurred_at < ?');
+        arguments.add(_utcComparisonBound(query.occurredAtToExclusive!));
       }
       final occurredCondition = occurredAtConditions.isEmpty
           ? null
@@ -194,6 +194,11 @@ final class SqliteTransactionRepository
       if (occurredCondition != null) periodConditions.add(occurredCondition);
       if (unknownCondition != null) periodConditions.add(unknownCondition);
       conditions.add('(${periodConditions.join(' OR ')})');
+    }
+    if (dateConditions.isEmpty && !query.includeUndated) {
+      conditions.add(
+        "(TRIM(COALESCE(t.transaction_date, '')) != '' OR t.occurred_at IS NOT NULL)",
+      );
     }
     if (query.categoryId != null) {
       conditions.add('t.category_id = ?');
@@ -564,6 +569,15 @@ final class SqliteTransactionRepository
 
   static String _dateOnly(DateTime value) =>
       '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+
+  // v12 and new writes store UTC ISO timestamps. A fractional-prefix bound
+  // compares equally precise milliseconds and microseconds correctly: omit Z
+  // so an instant exactly on an exclusive boundary is always excluded.
+  static String _utcComparisonBound(DateTime value) {
+    final utc = value.toUtc();
+    final iso = utc.toIso8601String();
+    return iso.substring(0, iso.length - 1);
+  }
 
   static Map<String, Object?> _reviewIssueToRow(ReviewIssue value) => {
     'id': value.id.value,

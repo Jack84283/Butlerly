@@ -975,7 +975,7 @@ void main() {
     },
   );
 
-  test('compares legacy offset timestamps by instant, not text', () async {
+  test('compares migrated legacy offset timestamps by instant', () async {
     final legacy = timedTransaction(
       id: 'legacy-offset-timestamp',
       occurredAt: DateTime.utc(2026, 10, 1, 7, 30),
@@ -992,6 +992,11 @@ void main() {
       whereArgs: [legacy.id.value],
     );
 
+    for (final statement in splitSqlStatements(
+      await File('database/migrations/v11_to_v12.sql').readAsString(),
+    )) {
+      await database.connection.execute(statement);
+    }
     final result = await transactions.query(
       TransactionRepositoryQuery(
         from: DateTime.utc(2026, 10, 1),

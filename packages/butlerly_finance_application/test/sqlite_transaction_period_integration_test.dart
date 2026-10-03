@@ -9,6 +9,171 @@ import 'package:test/test.dart';
 void main() {
   setUpAll(sqfliteFfiInit);
 
+  for (final zone in ['Asia/Tokyo', 'America/Los_Angeles']) {
+    test(
+      'Home, Analysis and settlement share financial dates in $zone',
+      () async {
+        final database = ButlerlyDatabase(
+          factory: databaseFactoryFfi,
+          path: inMemoryDatabasePath,
+          schemaSql: await File(
+            '../butlerly_database/database/schema/v1.sql',
+          ).readAsString(),
+        );
+        await database.open();
+        addTearDown(database.close);
+        final repository = SqliteTransactionRepository(database);
+        final preferences = SqliteUserPreferenceRepository(database);
+        await preferences.save(_preference(zone));
+        final now = DateTime.utc(2026, 10, 2, 12);
+        final source = PaymentSourceId('card');
+        final category = CategoryId('test-category');
+        await SqliteCategoryRepository(database).save(
+          Category(
+            id: category,
+            name: 'Test category',
+            origin: CategoryOrigin.user,
+          ),
+        );
+        await SqlitePaymentSourceRepository(database).save(
+          PaymentSource(
+            id: source,
+            name: 'Card',
+            type: PaymentSourceType.wallet,
+          ),
+        );
+        final inside = zone == 'Asia/Tokyo'
+            ? DateTime.utc(2026, 9, 30, 16, 30)
+            : DateTime.utc(2026, 10, 1, 7, 30);
+        final outside = zone == 'Asia/Tokyo'
+            ? DateTime.utc(2026, 9, 30, 14, 30)
+            : DateTime.utc(2026, 10, 1, 6, 30);
+        final values = [
+          _transaction(id: 'fallback', occurredAt: inside, now: now),
+          _transaction(id: 'outside', occurredAt: outside, now: now),
+          _transaction(
+            id: 'explicit',
+            occurredAt: outside,
+            transactionDate: '2026-10-01',
+            now: now,
+          ),
+          _transaction(
+            id: 'explicit-outside',
+            occurredAt: inside,
+            transactionDate: '2026-09-30',
+            now: now,
+          ),
+          _transaction(id: 'unknown', occurredAt: null, now: now),
+        ];
+        for (final value in values) {
+          await repository.save(
+            value
+                .assignPaymentSource(source, now)
+                .assignCategory(category, now),
+          );
+        }
+        final period =
+            (await ResolveHomePeriod(preferences)(instant: now)
+                    as ApplicationSuccess<HomePeriodResolution>)
+                .value
+                .period;
+        final list = ListTransactions(repository, preferences: preferences);
+        final home =
+            (await list(
+                      ListTransactionsQuery(
+                        from: DateTime.parse(period.startDate),
+                        to: DateTime.parse(period.endDate),
+                        status: TransactionStatus.active,
+                      ),
+                    )
+                    as ApplicationSuccess<List<TransactionDto>>)
+                .value;
+        expect(
+          home.map((v) => v.id),
+          unorderedEquals(['fallback', 'explicit']),
+        );
+        final analysis =
+            await AnalysisDatasetBuilder(repository, preferences, null).build(
+                  AnalysisContext(
+                    period: period,
+                    datasetMode: DatasetMode.allEligible,
+                    currencyBasis: CurrencyBasis.original,
+                  ),
+                )
+                as ApplicationDatasetSuccess;
+        expect(
+          analysis.dataset.primaryTransactionsByPeriod['selected_period']!.map(
+            (v) => v.id.value,
+          ),
+          unorderedEquals(home.map((v) => v.id)),
+        );
+        expect(
+          analysis.dataset.qualityIssues
+              .where((q) => q.code == 'missingFinancialDate')
+              .map((q) => q.transactionId!.value),
+          ['unknown'],
+        );
+        for (final bounded in [false, true]) {
+          for (final include in [false, true]) {
+            final query = ListTransactionsQuery(
+              from: bounded ? DateTime.utc(2026, 10, 1) : null,
+              to: bounded ? DateTime.utc(2026, 10, 2) : null,
+              includeUndated: include,
+              text: 'financial fixture',
+              categoryId: category.value,
+              paymentSourceId: 'card',
+              status: TransactionStatus.active,
+            );
+            final listed =
+                (await list(query) as ApplicationSuccess<List<TransactionDto>>)
+                    .value;
+            expect(listed.any((v) => v.id == 'unknown'), include);
+            expect(listed.any((v) => v.id == 'fallback'), isTrue);
+            final direct = await repository.query(
+              TransactionRepositoryQuery(
+                includeUndated: include,
+                text: 'financial fixture',
+                categoryId: category,
+                paymentSourceId: source,
+                status: TransactionStatus.active,
+              ),
+            );
+            expect(direct.any((v) => v.id.value == 'unknown'), include);
+          }
+        }
+        final settlements = SqlitePaymentSettlementRepository(database);
+        await settlements.save(
+          PaymentSettlement(
+            id: PaymentSettlementId('october'),
+            paymentSourceId: source,
+            payment: values.first.money,
+            paymentDate: '2026-10-02',
+            periodStart: '2026-10-01',
+            periodEnd: '2026-10-31',
+            status: PaymentSettlementStatus.open,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+        final detail =
+            (await GetPaymentSettlementDetail(
+                      settlements,
+                      preferences: preferences,
+                    )('october')
+                    as ApplicationSuccess<PaymentSettlementDetailDto>)
+                .value;
+        expect(
+          detail.transactions.map((v) => v.id),
+          unorderedEquals(['fallback', 'explicit']),
+        );
+        expect(
+          detail.transactions.map((v) => v.financialDate),
+          everyElement(DateTime.utc(2026, 10, 1)),
+        );
+      },
+    );
+  }
+
   test(
     'reopens persisted transactions before applying financial timezone bounds',
     () async {
@@ -154,15 +319,18 @@ UserPreference _preference(String timeZoneId) => UserPreference(
 
 Transaction _transaction({
   required String id,
-  required DateTime occurredAt,
+  required DateTime? occurredAt,
   required DateTime now,
   String? transactionDate,
 }) => Transaction(
   id: TransactionId(id),
-  timing: KnownTransactionTime(occurredAt),
+  timing: occurredAt == null
+      ? const UnknownTransactionTime(UnknownTransactionTimeReason.unknown)
+      : KnownTransactionTime(occurredAt),
   money: Money(amount: DecimalValue.parse('10'), currency: CurrencyCode('USD')),
   direction: TransactionDirection.expense,
   sourceType: TransactionSourceType.manual,
+  description: 'financial fixture',
   transactionDate: transactionDate,
   provenance: [
     Provenance(

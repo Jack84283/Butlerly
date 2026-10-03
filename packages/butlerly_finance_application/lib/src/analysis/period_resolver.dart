@@ -61,6 +61,9 @@ final class ResolvedFinancialTimeZone {
   final time_zone.Location location;
 }
 
+bool _financialTimeZonesInitialized = false;
+final _financialTimeZones = <String, ResolvedFinancialTimeZone>{};
+
 ResolvedFinancialTimeZone resolveFinancialTimeZone(String timeZoneId) {
   final normalized = timeZoneId.trim();
   if (normalized.isEmpty) {
@@ -70,11 +73,17 @@ ResolvedFinancialTimeZone resolveFinancialTimeZone(String timeZoneId) {
       message: 'Financial timezone must be a valid IANA timezone.',
     );
   }
-  time_zone_data.initializeTimeZones();
+  if (!_financialTimeZonesInitialized) {
+    time_zone_data.initializeTimeZones();
+    _financialTimeZonesInitialized = true;
+  }
   try {
-    return ResolvedFinancialTimeZone(
-      id: normalized,
-      location: time_zone.getLocation(normalized),
+    return _financialTimeZones.putIfAbsent(
+      normalized,
+      () => ResolvedFinancialTimeZone(
+        id: normalized,
+        location: time_zone.getLocation(normalized),
+      ),
     );
   } on Object {
     throw const DomainValidationException(
@@ -104,10 +113,24 @@ Future<ResolvedFinancialTimeZone> configuredFinancialTimeZone(
   return resolveFinancialTimeZone(preference?.timeZoneId ?? 'UTC');
 }
 
-/// Converts an instant into the financial calendar date in [timeZoneId].
-///
-/// The returned value is UTC only so callers can use its calendar components
-/// without allowing the host device timezone to alter the result.
+/// Resolves the authoritative transaction date, then the occurrence date in
+/// the financial timezone. Truly undated records remain unknown.
+DateTime? transactionFinancialDate(Transaction value, String timeZoneId) {
+  final businessDate = value.transactionDate?.trim();
+  if (businessDate != null && businessDate.isNotEmpty) {
+    final parsed = DateTime.tryParse(businessDate);
+    return parsed == null
+        ? null
+        : DateTime.utc(parsed.year, parsed.month, parsed.day);
+  }
+  final timing = value.timing;
+  return timing is KnownTransactionTime
+      ? financialDateAt(timing.occurredAt, timeZoneId)
+      : null;
+}
+
+/// Returns financial calendar components in a UTC container so device timezone
+/// conversion cannot shift a date-only value.
 DateTime financialDateAt(DateTime instant, String timeZoneId) {
   final financialTimeZone = resolveFinancialTimeZone(timeZoneId);
   final value = time_zone.TZDateTime.from(

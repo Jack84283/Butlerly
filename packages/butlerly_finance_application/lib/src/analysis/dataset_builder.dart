@@ -43,7 +43,10 @@ final class AnalysisDatasetBuilder {
     for (final transaction in source) {
       if (receiptIds.contains(transaction.id)) continue;
       if (transaction.status != TransactionStatus.active) continue;
-      final transactionDate = transaction.transactionDate?.trim();
+      final transactionDate = transactionFinancialDate(
+        transaction,
+        context.period.timeZoneId,
+      )?.toIso8601String().substring(0, 10);
       final normalized = transaction.normalizedMoney
           .where(
             (value) =>
@@ -203,8 +206,7 @@ final class AnalysisDatasetBuilder {
     final receiptIds = links.map((value) => value.receiptTransactionId).toSet();
     return source
         .where((transaction) {
-          final transactionDate = transaction.transactionDate?.trim();
-          final date = DateTime.tryParse(transactionDate ?? '');
+          final date = transactionFinancialDate(transaction, window.timeZoneId);
           return transaction.status == TransactionStatus.active &&
               !receiptIds.contains(transaction.id) &&
               date != null &&
@@ -212,7 +214,10 @@ final class AnalysisDatasetBuilder {
               date.isBefore(window.endExclusive);
         })
         .map((transaction) {
-          final transactionDate = transaction.transactionDate?.trim();
+          final transactionDate = transactionFinancialDate(
+            transaction,
+            window.timeZoneId,
+          )?.toIso8601String().substring(0, 10);
           final normalized = transaction.normalizedMoney
               .where(
                 (value) =>

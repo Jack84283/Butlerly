@@ -11,6 +11,37 @@ final class _Clock implements ApplicationClock {
 }
 
 void main() {
+  test(
+    'large fallback histories reuse the timezone database and locations',
+    () {
+      final tokyo = resolveFinancialTimeZone('Asia/Tokyo');
+      final california = resolveFinancialTimeZone('America/Los_Angeles');
+      for (var index = 0; index < 1000; index++) {
+        expect(
+          financialDateAt(DateTime.utc(2026, 9, 30, 16, 30), 'Asia/Tokyo'),
+          DateTime.utc(2026, 10, 1),
+        );
+        expect(
+          financialDateAt(
+            DateTime.utc(2026, 10, 1, 6, 30),
+            'America/Los_Angeles',
+          ),
+          DateTime.utc(2026, 9, 30),
+        );
+        expect(
+          identical(resolveFinancialTimeZone('Asia/Tokyo'), tokyo),
+          isTrue,
+        );
+        expect(
+          identical(
+            resolveFinancialTimeZone('America/Los_Angeles'),
+            california,
+          ),
+          isTrue,
+        );
+      }
+    },
+  );
   final context = AnalysisContext(
     period: AnalysisPeriod(
       startDate: '2026-03-01',

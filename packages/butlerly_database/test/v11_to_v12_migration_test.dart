@@ -67,6 +67,17 @@ void main() {
       addTearDown(upgraded.close);
 
       expect(await upgraded.connection.getVersion(), 12);
+      await upgraded.close();
+      await upgraded.open();
+      final persisted = await SqliteTransactionRepository(upgraded).query(
+        TransactionRepositoryQuery(
+          from: DateTime.utc(2026, 10, 1),
+          to: DateTime.utc(2026, 10, 1),
+          occurredAtFrom: DateTime.utc(2026, 10, 1, 7, 30),
+          occurredAtToExclusive: DateTime.utc(2026, 10, 1, 8),
+        ),
+      );
+      expect(persisted.map((value) => value.id), [transaction.id]);
       expect(
         (await upgraded.connection.query(
           'transactions',

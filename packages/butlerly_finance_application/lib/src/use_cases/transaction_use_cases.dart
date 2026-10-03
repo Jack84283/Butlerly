@@ -318,19 +318,8 @@ final class ListTransactions {
   });
 }
 
-DateTime? _financialDateFor(Transaction value, String timeZoneId) {
-  final businessDate = value.transactionDate?.trim();
-  if (businessDate != null && businessDate.isNotEmpty) {
-    final parsed = DateTime.tryParse(businessDate);
-    return parsed == null
-        ? null
-        : DateTime.utc(parsed.year, parsed.month, parsed.day);
-  }
-  final timing = value.timing;
-  return timing is KnownTransactionTime
-      ? financialDateAt(timing.occurredAt, timeZoneId)
-      : null;
-}
+DateTime? _financialDateFor(Transaction value, String timeZoneId) =>
+    transactionFinancialDate(value, timeZoneId);
 
 final class ArchiveTransaction {
   const ArchiveTransaction(this.repository, this.clock, {this.preferences});
