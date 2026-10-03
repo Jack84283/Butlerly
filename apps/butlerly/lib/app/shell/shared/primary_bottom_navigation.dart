@@ -50,6 +50,18 @@ double compactNavigationHeightForLabels({
       : requiredHeight;
 }
 
+String compactNavigationLabel(
+  BuildContext context,
+  NavigationDestination destination,
+  int branchIndex,
+) => switch (branchIndex) {
+  1 => context.l10n.text('transactionsCompact'),
+  2 => context.l10n.text('addCompact'),
+  3 => context.l10n.text('toolsCompact'),
+  4 => context.l10n.text('moreCompact'),
+  _ => destination.label,
+};
+
 class PrimaryBottomNavigation extends StatelessWidget {
   const PrimaryBottomNavigation({
     required this.navigationKey,
@@ -73,6 +85,11 @@ class PrimaryBottomNavigation extends StatelessWidget {
     double labelSlotHeight,
   ) {
     final selected = currentIndex == branchIndex;
+    final visibleLabel = compactNavigationLabel(
+      context,
+      destination,
+      branchIndex,
+    );
     final labelStyle = ButlerlyTypography.navigationLabel(
       Theme.of(context).textTheme.labelSmall!,
       color: selected
@@ -121,9 +138,11 @@ class PrimaryBottomNavigation extends StatelessWidget {
                 width: double.infinity,
                 height: labelSlotHeight,
                 child: Text(
-                  destination.label,
+                  visibleLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.clip,
+                  softWrap: false,
                   textAlign: TextAlign.center,
-                  softWrap: true,
                   style: labelStyle,
                 ),
               ),
@@ -145,9 +164,14 @@ class PrimaryBottomNavigation extends StatelessWidget {
       itemWidth: availableWidth / visualBranchIndexes.length,
       standardLabels: [
         for (final branchIndex in visualBranchIndexes)
-          if (branchIndex != 2) destinations[branchIndex]!.label,
+          if (branchIndex != 2)
+            compactNavigationLabel(
+              context,
+              destinations[branchIndex]!,
+              branchIndex,
+            ),
       ],
-      addLabel: destinations[2]!.label,
+      addLabel: compactNavigationLabel(context, destinations[2]!, 2),
       labelStyle: labelStyle,
       textDirection: Directionality.of(context),
     );

@@ -66,6 +66,24 @@ void main() {
       await tester.pumpWidget(const _TestApp());
       await tester.pumpAndSettle();
       expect(find.text('10.00 USD'), findsOneWidget);
+      expect(
+        transactions.queries,
+        contains(
+          isA<TransactionRepositoryQuery>()
+              .having(
+                (query) => query.status,
+                'status',
+                TransactionStatus.active,
+              )
+              .having((query) => query.from, 'from', isNotNull)
+              .having((query) => query.to, 'to', isNotNull)
+              .having(
+                (query) => query.includeUndated,
+                'includeUndated',
+                isTrue,
+              ),
+        ),
+      );
 
       final scrollFinder = find.byType(CustomScrollView);
       final scrollView = tester.widget<CustomScrollView>(scrollFinder);
@@ -229,6 +247,7 @@ AnalysisRuleDefinition _expenseRule() => AnalysisRuleDefinition(
 
 final class _Transactions implements TransactionRepository {
   final values = <String, Transaction>{};
+  final queries = <TransactionRepositoryQuery>[];
   Future<void>? readGate;
 
   Future<void> _waitForRead() async {
@@ -246,6 +265,7 @@ final class _Transactions implements TransactionRepository {
 
   @override
   Future<List<Transaction>> query(TransactionRepositoryQuery query) async {
+    queries.add(query);
     await _waitForRead();
     return values.values.toList(growable: false);
   }

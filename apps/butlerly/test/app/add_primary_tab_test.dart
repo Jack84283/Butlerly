@@ -74,7 +74,7 @@ void main() {
 
     expect(find.text('Add transaction manually'), findsOneWidget);
     expect(find.text('Home'), findsOneWidget);
-    expect(find.text('Transactions'), findsOneWidget);
+    expect(find.text('Txns'), findsOneWidget);
     expect(find.text('Tools'), findsOneWidget);
     expect(find.text('More'), findsOneWidget);
     expect(

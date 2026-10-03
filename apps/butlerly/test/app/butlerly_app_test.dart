@@ -122,7 +122,7 @@ void main() {
     expect(find.text('Recent transactions'), findsOneWidget);
     expect(find.text('No transactions yet'), findsOneWidget);
     expect(find.text('Home'), findsAtLeastNWidgets(1));
-    expect(find.text('Transactions'), findsOneWidget);
+    expect(find.text('Txns'), findsOneWidget);
     expect(find.bySemanticsLabel('Add transaction'), findsOneWidget);
     expect(find.text('Tools'), findsOneWidget);
     expect(find.text('More'), findsAtLeastNWidgets(1));
@@ -131,6 +131,25 @@ void main() {
     expect(find.text('Add data'), findsNothing);
     expect(find.text('Quick actions'), findsNothing);
   });
+
+  testWidgets(
+    'empty Home state is informational beside the primary Add action',
+    (tester) async {
+      HomePage.debugCurrentDate = DateTime(2026, 8, 13, 9);
+      addTearDown(() => HomePage.debugCurrentDate = null);
+      setPhoneViewport(tester);
+      await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+      await tester.pumpAndSettle();
+
+      final card = find.byKey(const ValueKey('home-empty-transactions-card'));
+      expect(card, findsOneWidget);
+      expect(
+        find.ancestor(of: card, matching: find.byType(InkWell)),
+        findsNothing,
+      );
+      expect(find.bySemanticsLabel('Add transaction'), findsOneWidget);
+    },
+  );
 
   testWidgets('Home month selector switches months and disables the future', (
     tester,
@@ -165,7 +184,7 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     await tester.pumpAndSettle();
 
-    for (final destination in const ['Home', 'Transactions', 'Tools', 'More']) {
+    for (final destination in const ['Home', 'Txns', 'Tools', 'More']) {
       await tester.tap(find.text(destination).last);
       await tester.pumpAndSettle();
       expect(

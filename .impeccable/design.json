@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-02",
+  "title": "Design System: Butlerly",
+  "extensions": {
+    "colorMeta": {
+      "brand-burgundy": {
+        "role": "primary",
+        "displayName": "Butler Burgundy",
+        "canonical": "#7A1E3A",
+        "tonalRamp": ["#210A13", "#391020", "#541127", "#6A1834", "#7A1E3A", "#9A3655", "#C76F8B", "#F0C7D2"]
+      },
+      "brand-deep": {
+        "role": "primary",
+        "displayName": "Deep Burgundy",
+        "canonical": "#541127",
+        "tonalRamp": ["#18050B", "#2A0914", "#3E0D1D", "#541127", "#6A1834", "#7A1E3A", "#9A3655", "#D8A0B1"]
+      },
+      "interactive-rose": {
+        "role": "primary",
+        "displayName": "Soft Rose",
+        "canonical": "#C76F8B",
+        "tonalRamp": ["#3B1522", "#61243A", "#88344F", "#A84D6A", "#C76F8B", "#D895A9", "#E8B6C5", "#F7E5EA"]
+      },
+      "paper-light": {
+        "role": "neutral",
+        "displayName": "Warm Paper",
+        "canonical": "#F7F5F1",
+        "tonalRamp": ["#2A2927", "#4A4844", "#6A6762", "#8A867F", "#AAA59D", "#CAC5BC", "#E5E1DA", "#F7F5F1"]
+      },
+      "canvas-dark": {
+        "role": "neutral",
+        "displayName": "Near-Black Canvas",
+        "canonical": "#0A0A0D",
+        "tonalRamp": ["#0A0A0D", "#17171C", "#25252B", "#3D3C42", "#5B5960", "#817C75", "#B8B2AA", "#F4F1EC"]
+      },
+      "surface-light": {
+        "role": "neutral",
+        "displayName": "White Surface",
+        "canonical": "#FFFFFF",
+        "tonalRamp": ["#292827", "#494744", "#696662", "#898580", "#A9A49D", "#C9C4BC", "#E5E1DB", "#FFFFFF"]
+      },
+      "surface-dark": {
+        "role": "neutral",
+        "displayName": "Dark Surface",
+        "canonical": "#111114",
+        "tonalRamp": ["#111114", "#202025", "#2F2F36", "#47464D", "#65636A", "#817C75", "#B8B2AA", "#F4F1EC"]
+      }
+    },
+    "typographyMeta": {
+      "display": {"displayName": "Editorial Display", "purpose": "Major summary and editorial emphasis."},
+      "body": {"displayName": "Platform Body", "purpose": "Functional and explanatory UI copy."}
+    },
+    "shadows": [
+      {"name": "overlay", "value": "semantic elevation 4", "purpose": "Floating surfaces above the working canvas."},
+      {"name": "modal", "value": "semantic elevation 8", "purpose": "Dialogs and bottom sheets only."}
+    ],
+    "motion": [
+      {"name": "fast", "value": "120ms easeInOut", "purpose": "Small state changes and feedback."},
+      {"name": "standard", "value": "200ms easeInOut", "purpose": "Default control and surface transitions."},
+      {"name": "deliberate", "value": "300ms easeInOut", "purpose": "Meaningful modal or layout transitions."}
+    ],
+    "breakpoints": [
+      {"name": "compact", "value": "<600px"},
+      {"name": "medium", "value": "600px-1023px"},
+      {"name": "wide", "value": ">=1024px"}
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Deep burgundy filled action with a generous target and quiet focus treatment.",
+      "html": "<button class=\"ds-btn-primary\">Save</button>",
+      "css": ".ds-btn-primary { background: #541127; color: #fff; padding: 12px 16px; min-height: 48px; border: 0; border-radius: 12px; font: 500 14px/1.43 system-ui, sans-serif; transition: background 200ms ease-in-out; } .ds-btn-primary:hover { background: #64162F; } .ds-btn-primary:focus-visible { outline: 2px solid #C76F8B; outline-offset: 2px; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Tonal content surface with a quiet border and no resting shadow.",
+      "html": "<section class=\"ds-card\"><h3>Recent transactions</h3><p>Review your latest activity.</p></section>",
+      "css": ".ds-card { background: #fff; color: #19181A; padding: 16px; border: 1px solid #E2DDD7; border-radius: 12px; } .ds-card:focus-within { border-color: #7A1E3A; }"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Filled field with a semantic border and preserved geometry across states.",
+      "html": "<label class=\"ds-input-label\">Merchant<input class=\"ds-input\" /></label>",
+      "css": ".ds-input-label { color: #68635E; font: 500 14px/1.43 system-ui, sans-serif; } .ds-input { display: block; width: 100%; box-sizing: border-box; margin-top: 4px; min-height: 48px; padding: 16px; background: #F1EEE8; color: #19181A; border: 1px solid #E2DDD7; border-radius: 12px; font: 400 16px/1.45 system-ui, sans-serif; } .ds-input:focus-visible { outline: 1.5px solid #7A1E3A; outline-offset: 0; }"
+    },
+    {
+      "name": "Navigation",
+      "kind": "nav",
+      "refersTo": "navigation",
+      "description": "Labeled compact navigation that keeps selected state visible without a heavy indicator.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item is-selected\" href=\"#home\">Home</a><a class=\"ds-nav-item\" href=\"#transactions\">Transactions</a></nav>",
+      "css": ".ds-nav { display: flex; min-height: 48px; background: #F7F5F1; border-top: 1px solid #D9D4CE; } .ds-nav-item { flex: 1; display: grid; place-items: center; color: #68635E; font: 400 10.5px/1.2 system-ui, sans-serif; text-decoration: none; } .ds-nav-item.is-selected { color: #7A1E3A; font-weight: 600; } .ds-nav-item:focus-visible { outline: 2px solid #C76F8B; outline-offset: -2px; }"
+    },
+    {
+      "name": "Bottom Sheet",
+      "kind": "custom",
+      "refersTo": "bottom-sheet",
+      "description": "Safe-area aware modal surface for focused decisions and selection flows.",
+      "html": "<aside class=\"ds-sheet\"><span class=\"ds-sheet-handle\"></span><h2>Choose a category</h2><div>Options</div></aside>",
+      "css": ".ds-sheet { max-width: 760px; padding: 8px 16px 16px; background: #FCFAF7; color: #19181A; border-radius: 18px 18px 0 0; border: 1px solid #E2DDD7; } .ds-sheet-handle { display: block; width: 32px; height: 4px; margin: 0 auto 24px; background: #8A847D; border-radius: 4px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Ledger",
+    "overview": "Butlerly's visual language treats personal finance as a calm, consequential practice rather than a dashboard spectacle. A quiet-premium neutral foundation gives financial information room to breathe, while a restrained burgundy accent marks actions, review states, and brand presence. The system is deliberately editorial in moments that ask users to interpret money, and deliberately platform-native in functional controls.\n\nThe experience is smartphone-first but width-driven rather than device-branded. Content stays readable inside a centered surface, navigation adapts across compact, medium, and wide layouts, and the same semantic color roles work in light and dark appearance. Depth comes primarily from tonal surfaces and fine borders; elevation is reserved for overlays and modal decisions.",
+    "keyCharacteristics": ["Quiet-premium, editorial clarity for financial decisions.", "Serif hierarchy for editorial and financial emphasis; platform sans-serif for functional UI.", "Burgundy interaction language with stable semantic status colors.", "Flat, tonal surfaces with restrained borders and deliberate geometry.", "Width-driven responsive behavior with accessible touch targets and text scaling."],
+    "rules": [
+      {"name": "The Rare Accent Rule", "body": "Burgundy is an intentional signal for action, selection, and brand—not a background texture applied to every surface.", "section": "colors"},
+      {"name": "The Meaningful Color Rule", "body": "Financial status colors remain semantically stable across accent themes and are never the sole carrier of meaning.", "section": "colors"},
+      {"name": "The Editorial-Functional Split", "body": "Use the serif for interpretation and financial emphasis; use the platform sans-serif for controls, labels, and operational copy.", "section": "typography"},
+      {"name": "The Tonal Layer Rule", "body": "Establish hierarchy with surface changes before adding elevation.", "section": "elevation"},
+      {"name": "The Calm Overlay Rule", "body": "Motion and elevation should clarify a transition or decision, never compete with the financial content.", "section": "elevation"}
+    ],
+    "dos": ["Do use semantic color roles from ButlerlySemanticColors instead of feature-local colors.", "Do preserve the width-driven compact, medium, and wide layout modes.", "Do keep interactive targets at least 44px and prefer 48px for primary controls.", "Do use the existing spacing and radius tokens rather than introducing one-off dimensions.", "Do verify light, dark, localized, and large-text states before considering a surface complete."],
+    "donts": ["Don't use color alone to communicate financial status, review state, or errors.", "Don't replace the editorial/functional typography split with one generic font everywhere.", "Don't add heavy shadows, gradients, or decorative effects that compete with financial comprehension.", "Don't introduce a new navigation or modal pattern when the shared components already cover the behavior.", "Don't treat a desktop-width layout as a scaled-up phone screen; use the existing adaptive shell and readable surface."]
+  }
+}

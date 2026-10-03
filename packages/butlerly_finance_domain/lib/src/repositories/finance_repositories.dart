@@ -137,6 +137,7 @@ final class TransactionRepositoryQuery {
     this.status,
     this.needsReview,
     this.uncategorized = false,
+    this.includeUndated = false,
   });
 
   final String? text;
@@ -150,6 +151,7 @@ final class TransactionRepositoryQuery {
   final TransactionStatus? status;
   final bool? needsReview;
   final bool uncategorized;
+  final bool includeUndated;
 }
 
 abstract interface class PaymentSettlementRepository {

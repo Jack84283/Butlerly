@@ -151,7 +151,7 @@ void main() {
       find.descendant(of: navigation, matching: find.byType(InkWell)),
       findsNWidgets(5),
     );
-    for (final label in const ['Home', 'Transactions', 'Tools', 'More']) {
+    for (final label in const ['Home', 'Txns', 'Tools', 'More']) {
       expect(
         find.descendant(of: navigation, matching: find.text(label)),
         findsOneWidget,

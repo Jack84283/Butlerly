@@ -107,7 +107,7 @@ void main() {
     );
     expect(find.text('Add'), findsOneWidget);
 
-    await tester.tap(find.text('Transactions'));
+    await tester.tap(find.text('Txns'));
     expect(selectedBranch, 1);
 
     await tester.tap(find.byKey(const ValueKey('bottom-page-action')));

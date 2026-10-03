@@ -1,6 +1,7 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -97,6 +98,21 @@ void main() {
     );
     expect(find.text('A CALMER WAY TO MONEY'), findsNothing);
   });
+
+  testWidgets('Home uses Cupertino symbols for native iOS controls', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(_testApp(router));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(CupertinoIcons.bell), findsOneWidget);
+    expect(find.byIcon(Icons.notifications_none_rounded), findsNothing);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
   testWidgets(
     'Home section actions stay right aligned and category dividers stay removed',
