@@ -562,6 +562,9 @@ class AppLocalizations {
       'homeTransactionsUnavailable': 'Transactions are temporarily unavailable',
       'homeTransactionsUnavailableBody':
           'Transaction data could not be loaded. Your records were not changed.',
+      'homeReviewUnavailable': 'Data quality review is temporarily unavailable',
+      'homeReviewUnavailableBody':
+          'Butlerly could not load review items. Spending data is shown, but data quality status may be incomplete.',
       'offlineAnalysisStatus':
           'Calculated privately on this device and available offline.',
       'allClear': 'No findings',
@@ -1252,6 +1255,8 @@ class AppLocalizations {
       'homeUnavailableBody': '无法确定财务期间。您的记录未被更改。',
       'homeTransactionsUnavailable': '交易暂不可用',
       'homeTransactionsUnavailableBody': '无法加载交易数据。您的记录未被更改。',
+      'homeReviewUnavailable': '数据质量检查暂不可用',
+      'homeReviewUnavailableBody': '无法加载待检查项目。支出数据仍会显示，但数据质量状态可能不完整。',
       'offlineAnalysisStatus': '在此设备上私密计算，可离线使用。',
       'allClear': '暂无发现',
       'allClearBody': '此期间没有已启用的洞察需要您关注。',
@@ -1968,6 +1973,9 @@ class AppLocalizations {
       'homeTransactionsUnavailable': 'Las transacciones no están disponibles',
       'homeTransactionsUnavailableBody':
           'No se pudieron cargar las transacciones. No se cambiaron tus registros.',
+      'homeReviewUnavailable': 'La revisión de calidad no está disponible',
+      'homeReviewUnavailableBody':
+          'No se pudieron cargar los elementos para revisar. Se muestran los gastos, pero el estado de calidad puede estar incompleto.',
       'offlineAnalysisStatus':
           'Calculado de forma privada en este dispositivo y disponible sin conexión.',
       'allClear': 'Sin hallazgos',

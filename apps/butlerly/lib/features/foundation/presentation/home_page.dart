@@ -133,6 +133,8 @@ class _HomePageState extends State<HomePage> {
       ApplicationSuccess<List<ReviewItemDto>>(:final value) => value,
       _ => const <ReviewItemDto>[],
     };
+    final reviewUnavailable =
+        reviewResult is! ApplicationSuccess<List<ReviewItemDto>>;
 
     // The application/database query is the authoritative period boundary.
     // Keep this screen focused on rendering the returned period dataset.
@@ -201,7 +203,9 @@ class _HomePageState extends State<HomePage> {
       currentFinancialMonth: currentFinancialMonth,
       period: period,
       analysisUnavailable: analysisUnavailable,
-      status: _HomeDataStatus.available,
+      status: reviewUnavailable
+          ? _HomeDataStatus.reviewUnavailable
+          : _HomeDataStatus.available,
     );
   }
 
@@ -308,7 +312,10 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         _CategorySummary(model: data.model, masterData: data.masterData),
-        if (data.reviewCount > 0 || data.insight != null) ...[
+        if (data.status == _HomeDataStatus.reviewUnavailable) ...[
+          const SizedBox(height: ButlerlySpacing.section),
+          _HomeReviewUnavailable(onRetry: _refresh),
+        ] else if (data.reviewCount > 0 || data.insight != null) ...[
           const SizedBox(height: ButlerlySpacing.section),
           _AttentionSection(
             reviewCount: data.reviewCount,
@@ -379,8 +386,7 @@ class _HomePageState extends State<HomePage> {
                     return _HomeHeader(
                       month: data.displayMonth,
                       greetingKey: homeGreetingKey(_now),
-                      onMonthTap:
-                          loading || data.status != _HomeDataStatus.available
+                      onMonthTap: loading || data.period == null
                           ? null
                           : () => _selectMonth(data),
                     );
@@ -1372,6 +1378,21 @@ class _HomeTransactionsUnavailable extends StatelessWidget {
   );
 }
 
+class _HomeReviewUnavailable extends StatelessWidget {
+  const _HomeReviewUnavailable({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => _HomeUnavailableCard(
+    cardKey: const ValueKey('home-review-unavailable-card'),
+    retryKey: const ValueKey('home-review-unavailable-retry'),
+    titleKey: 'homeReviewUnavailable',
+    bodyKey: 'homeReviewUnavailableBody',
+    onRetry: onRetry,
+  );
+}
+
 class _HomeUnavailableCard extends StatelessWidget {
   const _HomeUnavailableCard({
     required this.cardKey,
@@ -1545,7 +1566,12 @@ class _HomeMonthPickerState extends State<_HomeMonthPicker> {
   }
 }
 
-enum _HomeDataStatus { available, periodUnavailable, transactionsUnavailable }
+enum _HomeDataStatus {
+  available,
+  periodUnavailable,
+  transactionsUnavailable,
+  reviewUnavailable,
+}
 
 class _HomeData {
   const _HomeData({
