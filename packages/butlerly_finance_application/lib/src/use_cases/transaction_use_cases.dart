@@ -245,6 +245,9 @@ final class GetTransaction {
     String id, {
     String? timeZoneId,
   }) => runApplication('get transaction', () async {
+    final financialTimeZone = timeZoneId == null
+        ? await configuredFinancialTimeZone(preferences)
+        : resolveFinancialTimeZone(timeZoneId);
     final value = await repository.findById(TransactionId(id));
     if (value == null) {
       throw RepositoryException(
@@ -252,13 +255,9 @@ final class GetTransaction {
         'get transaction',
       );
     }
-    final financialTimeZone =
-        timeZoneId ?? await _configuredFinancialTimeZone(preferences);
     return TransactionDto.fromDomain(
       value,
-      financialDate: financialTimeZone == null
-          ? null
-          : _financialDateFor(value, financialTimeZone),
+      financialDate: _financialDateFor(value, financialTimeZone.id),
     );
   });
 }
@@ -281,23 +280,22 @@ final class ListTransactions {
         message: 'The start of a date range cannot follow its end.',
       );
     }
-    final financialTimeZone =
-        query.timeZoneId ?? await _configuredFinancialTimeZone(preferences);
-    final occurredAtBounds = financialTimeZone == null
-        ? null
-        : financialInstantRangeForCalendarDates(
-            from: query.from,
-            to: query.to,
-            timeZoneId: financialTimeZone,
-          );
+    final financialTimeZone = query.timeZoneId == null
+        ? await configuredFinancialTimeZone(preferences)
+        : resolveFinancialTimeZone(query.timeZoneId!);
+    final occurredAtBounds = financialInstantRangeForCalendarDates(
+      from: query.from,
+      to: query.to,
+      timeZoneId: financialTimeZone.id,
+    );
     final values = await repository.query(
       TransactionRepositoryQuery(
         text: query.text,
         transactionIds: query.transactionIds?.map(TransactionId.new).toList(),
         from: query.from,
         to: query.to,
-        occurredAtFrom: occurredAtBounds?.start,
-        occurredAtToExclusive: occurredAtBounds?.endExclusive,
+        occurredAtFrom: occurredAtBounds.start,
+        occurredAtToExclusive: occurredAtBounds.endExclusive,
         categoryId: _optional(query.categoryId, CategoryId.new),
         paymentSourceId: _optional(query.paymentSourceId, PaymentSourceId.new),
         currency: query.currency,
@@ -312,27 +310,11 @@ final class ListTransactions {
       values.map(
         (value) => TransactionDto.fromDomain(
           value,
-          financialDate: financialTimeZone == null
-              ? null
-              : _financialDateFor(value, financialTimeZone),
+          financialDate: _financialDateFor(value, financialTimeZone.id),
         ),
       ),
     );
   });
-}
-
-Future<String?> _configuredFinancialTimeZone(
-  UserPreferenceRepository? preferences,
-) async {
-  if (preferences == null) return null;
-  try {
-    return (await preferences.load())?.timeZoneId ?? 'UTC';
-  } catch (_) {
-    // Listing transactions historically remained available when preferences
-    // were unavailable. Preserve that behavior while using the persisted zone
-    // whenever it can be read.
-    return 'UTC';
-  }
 }
 
 DateTime? _financialDateFor(Transaction value, String timeZoneId) {
@@ -350,27 +332,35 @@ DateTime? _financialDateFor(Transaction value, String timeZoneId) {
 }
 
 final class ArchiveTransaction {
-  const ArchiveTransaction(this.repository, this.clock);
+  const ArchiveTransaction(this.repository, this.clock, {this.preferences});
 
   final TransactionRepository repository;
   final ApplicationClock clock;
+  final UserPreferenceRepository? preferences;
 
-  Future<ApplicationResult<TransactionDto>> call(String id) =>
-      _mutate(repository, id, 'archive transaction', (value) {
-        return value.archive(clock.now());
-      });
+  Future<ApplicationResult<TransactionDto>> call(String id) => _mutate(
+    repository,
+    id,
+    'archive transaction',
+    (value) => value.archive(clock.now()),
+    preferences: preferences,
+  );
 }
 
 final class RestoreTransaction {
-  const RestoreTransaction(this.repository, this.clock);
+  const RestoreTransaction(this.repository, this.clock, {this.preferences});
 
   final TransactionRepository repository;
   final ApplicationClock clock;
+  final UserPreferenceRepository? preferences;
 
-  Future<ApplicationResult<TransactionDto>> call(String id) =>
-      _mutate(repository, id, 'restore transaction', (value) {
-        return value.restore(clock.now());
-      });
+  Future<ApplicationResult<TransactionDto>> call(String id) => _mutate(
+    repository,
+    id,
+    'restore transaction',
+    (value) => value.restore(clock.now()),
+    preferences: preferences,
+  );
 }
 
 final class DeleteTransactionPermanently {
@@ -392,11 +382,17 @@ final class DeleteTransactionPermanently {
 }
 
 final class AssignMerchant {
-  const AssignMerchant(this.repository, this.merchants, this.clock);
+  const AssignMerchant(
+    this.repository,
+    this.merchants,
+    this.clock, {
+    this.preferences,
+  });
 
   final TransactionRepository repository;
   final MerchantRepository merchants;
   final ApplicationClock clock;
+  final UserPreferenceRepository? preferences;
 
   Future<ApplicationResult<TransactionDto>> call(
     String transactionId,
@@ -406,21 +402,31 @@ final class AssignMerchant {
         await merchants.findById(MerchantId(merchantId)) == null) {
       return notFound('assign merchant');
     }
-    return _mutate(repository, transactionId, 'assign merchant', (value) {
-      return value.assignMerchant(
+    return _mutate(
+      repository,
+      transactionId,
+      'assign merchant',
+      (value) => value.assignMerchant(
         merchantId == null ? null : MerchantId(merchantId),
         clock.now(),
-      );
-    });
+      ),
+      preferences: preferences,
+    );
   }
 }
 
 final class AssignCategory {
-  const AssignCategory(this.repository, this.categories, this.clock);
+  const AssignCategory(
+    this.repository,
+    this.categories,
+    this.clock, {
+    this.preferences,
+  });
 
   final TransactionRepository repository;
   final CategoryRepository categories;
   final ApplicationClock clock;
+  final UserPreferenceRepository? preferences;
 
   Future<ApplicationResult<TransactionDto>> call(
     String transactionId,
@@ -430,12 +436,16 @@ final class AssignCategory {
         await categories.findById(CategoryId(categoryId)) == null) {
       return notFound('assign category');
     }
-    return _mutate(repository, transactionId, 'assign category', (value) {
-      return value.assignCategory(
+    return _mutate(
+      repository,
+      transactionId,
+      'assign category',
+      (value) => value.assignCategory(
         categoryId == null ? null : CategoryId(categoryId),
         clock.now(),
-      );
-    });
+      ),
+      preferences: preferences,
+    );
   }
 }
 
@@ -474,11 +484,12 @@ final class AssignPaymentSource {
 }
 
 final class AddTag {
-  const AddTag(this.repository, this.tags, this.clock);
+  const AddTag(this.repository, this.tags, this.clock, {this.preferences});
 
   final TransactionRepository repository;
   final TagRepository tags;
   final ApplicationClock clock;
+  final UserPreferenceRepository? preferences;
 
   Future<ApplicationResult<TransactionDto>> call(
     String transactionId,
@@ -487,24 +498,33 @@ final class AddTag {
     if (await tags.findById(TagId(tagId)) == null) {
       return notFound('add tag');
     }
-    return _mutate(repository, transactionId, 'add tag', (value) {
-      return value.addTag(TagId(tagId), clock.now());
-    });
+    return _mutate(
+      repository,
+      transactionId,
+      'add tag',
+      (value) => value.addTag(TagId(tagId), clock.now()),
+      preferences: preferences,
+    );
   }
 }
 
 final class RemoveTag {
-  const RemoveTag(this.repository, this.clock);
+  const RemoveTag(this.repository, this.clock, {this.preferences});
 
   final TransactionRepository repository;
   final ApplicationClock clock;
+  final UserPreferenceRepository? preferences;
 
   Future<ApplicationResult<TransactionDto>> call(
     String transactionId,
     String tagId,
-  ) => _mutate(repository, transactionId, 'remove tag', (value) {
-    return value.removeTag(TagId(tagId), clock.now());
-  });
+  ) => _mutate(
+    repository,
+    transactionId,
+    'remove tag',
+    (value) => value.removeTag(TagId(tagId), clock.now()),
+    preferences: preferences,
+  );
 }
 
 final class ListReviewItems {
@@ -537,31 +557,41 @@ final class ListReviewItems {
 }
 
 final class ResolveReviewIssue {
-  const ResolveReviewIssue(this.repository, this.clock);
+  const ResolveReviewIssue(this.repository, this.clock, {this.preferences});
 
   final TransactionRepository repository;
   final ApplicationClock clock;
+  final UserPreferenceRepository? preferences;
 
   Future<ApplicationResult<TransactionDto>> call(
     String transactionId,
     String issueId,
-  ) => _mutate(repository, transactionId, 'resolve review issue', (value) {
-    return value.resolveReviewIssue(ReviewIssueId(issueId), clock.now());
-  });
+  ) => _mutate(
+    repository,
+    transactionId,
+    'resolve review issue',
+    (value) => value.resolveReviewIssue(ReviewIssueId(issueId), clock.now()),
+    preferences: preferences,
+  );
 }
 
 final class DismissReviewIssue {
-  const DismissReviewIssue(this.repository, this.clock);
+  const DismissReviewIssue(this.repository, this.clock, {this.preferences});
 
   final TransactionRepository repository;
   final ApplicationClock clock;
+  final UserPreferenceRepository? preferences;
 
   Future<ApplicationResult<TransactionDto>> call(
     String transactionId,
     String issueId,
-  ) => _mutate(repository, transactionId, 'dismiss review issue', (value) {
-    return value.dismissReviewIssue(ReviewIssueId(issueId), clock.now());
-  });
+  ) => _mutate(
+    repository,
+    transactionId,
+    'dismiss review issue',
+    (value) => value.dismissReviewIssue(ReviewIssueId(issueId), clock.now()),
+    preferences: preferences,
+  );
 }
 
 final class AttachEvidence {
@@ -615,19 +645,17 @@ Future<ApplicationResult<TransactionDto>> _mutate(
   Transaction Function(Transaction) change, {
   UserPreferenceRepository? preferences,
 }) async {
-  final found = await _find(repository, id, operation);
-  if (found case ApplicationFailure<Transaction> failure) {
-    return ApplicationFailure(failure.failure);
-  }
   return runApplication(operation, () async {
-    final updated = change((found as ApplicationSuccess<Transaction>).value);
+    final financialTimeZone = await configuredFinancialTimeZone(preferences);
+    final existing = await repository.findById(TransactionId(id));
+    if (existing == null) {
+      throw RepositoryException(RepositoryFailureCode.notFound, operation);
+    }
+    final updated = change(existing);
     await repository.save(updated);
-    final financialTimeZone = await _configuredFinancialTimeZone(preferences);
     return TransactionDto.fromDomain(
       updated,
-      financialDate: financialTimeZone == null
-          ? null
-          : _financialDateFor(updated, financialTimeZone),
+      financialDate: _financialDateFor(updated, financialTimeZone.id),
     );
   });
 }

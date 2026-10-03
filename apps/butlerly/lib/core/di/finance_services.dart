@@ -114,10 +114,12 @@ final class FinanceServices {
        archiveTransaction = ArchiveTransaction(
          transactions,
          const SystemApplicationClock(),
+         preferences: preferences,
        ),
        restoreTransaction = RestoreTransaction(
          transactions,
          const SystemApplicationClock(),
+         preferences: preferences,
        ),
        deleteTransactionPermanently = DeleteTransactionPermanently(
          transactions,
@@ -141,22 +143,35 @@ final class FinanceServices {
          transactions,
          merchants,
          const SystemApplicationClock(),
+         preferences: preferences,
        ),
        assignCategory = AssignCategory(
          transactions,
          categories,
          const SystemApplicationClock(),
+         preferences: preferences,
        ),
-       addTag = AddTag(transactions, tags, const SystemApplicationClock()),
-       removeTag = RemoveTag(transactions, const SystemApplicationClock()),
+       addTag = AddTag(
+         transactions,
+         tags,
+         const SystemApplicationClock(),
+         preferences: preferences,
+       ),
+       removeTag = RemoveTag(
+         transactions,
+         const SystemApplicationClock(),
+         preferences: preferences,
+       ),
        listReviewItems = ListReviewItems(transactions),
        resolveReviewIssue = ResolveReviewIssue(
          transactions,
          const SystemApplicationClock(),
+         preferences: preferences,
        ),
        dismissReviewIssue = DismissReviewIssue(
          transactions,
          const SystemApplicationClock(),
+         preferences: preferences,
        ),
        listEvidenceForTransaction = ListEvidenceForTransaction(evidence),
        getExtractionForEvidence = GetExtractionForEvidence(

@@ -94,11 +94,6 @@ class _HomePageState extends State<HomePage> {
         languageCode ??
         _loadedLanguageCode ??
         Localizations.localeOf(context).languageCode;
-    final reviewFuture = finance.listReviewItems();
-    final masterDataFuture = TransactionMasterData.load(
-      finance,
-      languageCode: activeLanguageCode,
-    );
     final periodResult = await finance.resolveHomePeriod(
       instant: now,
       selectedMonth: _selectedMonth,
@@ -108,8 +103,13 @@ class _HomePageState extends State<HomePage> {
       _ => null,
     };
     if (homePeriod == null) {
-      return _HomeData.empty(now, selectedMonth: _selectedMonth);
+      return _HomeData.unavailable(now, selectedMonth: _selectedMonth);
     }
+    final reviewFuture = finance.listReviewItems();
+    final masterDataFuture = TransactionMasterData.load(
+      finance,
+      languageCode: activeLanguageCode,
+    );
     final period = homePeriod.period;
     final currentFinancialMonth = homePeriod.currentFinancialMonth;
     final displayMonth = homePeriod.displayMonth;
@@ -119,7 +119,6 @@ class _HomePageState extends State<HomePage> {
         from: DateTime.parse(period.startDate),
         to: DateTime.parse(period.endDate),
         status: TransactionStatus.active,
-        includeUndated: true,
         timeZoneId: period.timeZoneId,
       ),
     );
@@ -202,6 +201,7 @@ class _HomePageState extends State<HomePage> {
       currentFinancialMonth: currentFinancialMonth,
       period: period,
       analysisUnavailable: analysisUnavailable,
+      status: _HomeDataStatus.available,
     );
   }
 
@@ -275,6 +275,9 @@ class _HomePageState extends State<HomePage> {
     );
     final period = data.period;
     if (loading) return const _HomeLoading();
+    if (data.status == _HomeDataStatus.periodUnavailable) {
+      return _HomePeriodUnavailable(onRetry: _refresh);
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -321,12 +324,7 @@ class _HomePageState extends State<HomePage> {
             onPressed: period == null
                 ? null
                 : () => context.push(
-                    _periodRoute(
-                      '/search',
-                      period,
-                      currentMonth: currentMonth,
-                      includeUndated: true,
-                    ),
+                    _periodRoute('/search', period, currentMonth: currentMonth),
                   ),
             child: Text(context.l10n.text('viewAll')),
           ),
@@ -378,7 +376,11 @@ class _HomePageState extends State<HomePage> {
                     return _HomeHeader(
                       month: data.displayMonth,
                       greetingKey: homeGreetingKey(_now),
-                      onMonthTap: loading ? null : () => _selectMonth(data),
+                      onMonthTap:
+                          loading ||
+                              data.status == _HomeDataStatus.periodUnavailable
+                          ? null
+                          : () => _selectMonth(data),
                     );
                   },
                 ),
@@ -1338,6 +1340,64 @@ class _HomeEmptyTransactions extends StatelessWidget {
   );
 }
 
+class _HomePeriodUnavailable extends StatelessWidget {
+  const _HomePeriodUnavailable({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    key: const ValueKey('home-period-unavailable-card'),
+    color: context.colors.subtleSurface,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+      side: BorderSide(color: context.colors.border),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(ButlerlySpacing.standard),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            _homeIcon(
+              context,
+              material: Icons.error_outline,
+              cupertino: CupertinoIcons.exclamationmark_circle,
+            ),
+            color: context.colors.secondaryText,
+          ),
+          const SizedBox(width: ButlerlySpacing.small),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.l10n.text('homeUnavailable'),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: ButlerlySpacing.compact),
+                Text(
+                  context.l10n.text('homeUnavailableBody'),
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: ButlerlySpacing.small),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: TextButton(
+                    key: const ValueKey('home-period-unavailable-retry'),
+                    onPressed: onRetry,
+                    child: Text(context.l10n.text('tryAgain')),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 class _HomeLoading extends StatelessWidget {
   const _HomeLoading();
 
@@ -1439,6 +1499,8 @@ class _HomeMonthPickerState extends State<_HomeMonthPicker> {
   }
 }
 
+enum _HomeDataStatus { available, periodUnavailable }
+
 class _HomeData {
   const _HomeData({
     required this.transactions,
@@ -1451,6 +1513,7 @@ class _HomeData {
     required this.currentFinancialMonth,
     required this.period,
     required this.analysisUnavailable,
+    required this.status,
   });
 
   factory _HomeData.empty(
@@ -1472,6 +1535,24 @@ class _HomeData {
       currentFinancialMonth: currentMonth,
       period: resolution?.period,
       analysisUnavailable: false,
+      status: _HomeDataStatus.available,
+    );
+  }
+
+  factory _HomeData.unavailable(DateTime now, {DateTime? selectedMonth}) {
+    final currentMonth = _monthStart(now);
+    return _HomeData(
+      transactions: const [],
+      reviewCount: 0,
+      masterData: const TransactionMasterData(),
+      model: null,
+      insight: null,
+      trend: const [],
+      displayMonth: _monthStart(selectedMonth ?? currentMonth),
+      currentFinancialMonth: currentMonth,
+      period: null,
+      analysisUnavailable: false,
+      status: _HomeDataStatus.periodUnavailable,
     );
   }
 
@@ -1485,6 +1566,7 @@ class _HomeData {
   final DateTime currentFinancialMonth;
   final AnalysisPeriod? period;
   final bool analysisUnavailable;
+  final _HomeDataStatus status;
 }
 
 class _HomeTrendPoint {

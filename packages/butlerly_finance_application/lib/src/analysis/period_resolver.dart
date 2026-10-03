@@ -47,15 +47,72 @@ final class FinancialInstantRange {
   final DateTime? endExclusive;
 }
 
+/// A validated financial timezone resolved by the application boundary.
+///
+/// Missing preferences and preference-store failures deliberately use UTC at
+/// the caller boundary. A persisted but invalid IANA identifier is different:
+/// it is a validation failure and is converted into an ApplicationFailure by
+/// the surrounding use case. Keeping that policy here prevents callers from
+/// applying different timezone validation or fallback behavior.
+final class ResolvedFinancialTimeZone {
+  const ResolvedFinancialTimeZone({required this.id, required this.location});
+
+  final String id;
+  final time_zone.Location location;
+}
+
+ResolvedFinancialTimeZone resolveFinancialTimeZone(String timeZoneId) {
+  final normalized = timeZoneId.trim();
+  if (normalized.isEmpty) {
+    throw const DomainValidationException(
+      code: DomainErrorCode.invalidState,
+      field: 'timeZoneId',
+      message: 'Financial timezone must be a valid IANA timezone.',
+    );
+  }
+  time_zone_data.initializeTimeZones();
+  try {
+    return ResolvedFinancialTimeZone(
+      id: normalized,
+      location: time_zone.getLocation(normalized),
+    );
+  } on Object {
+    throw const DomainValidationException(
+      code: DomainErrorCode.invalidState,
+      field: 'timeZoneId',
+      message: 'Financial timezone must be a valid IANA timezone.',
+    );
+  }
+}
+
+/// Loads and validates the configured financial timezone using one policy.
+///
+/// A missing preference, missing timezone value, or preference read failure
+/// uses the explicit UTC fallback. An invalid persisted identifier returns a
+/// structured validation failure to the caller instead of falling through to
+/// a raw timezone-library exception.
+Future<ResolvedFinancialTimeZone> configuredFinancialTimeZone(
+  UserPreferenceRepository? preferences,
+) async {
+  if (preferences == null) return resolveFinancialTimeZone('UTC');
+  UserPreference? preference;
+  try {
+    preference = await preferences.load();
+  } on Object {
+    return resolveFinancialTimeZone('UTC');
+  }
+  return resolveFinancialTimeZone(preference?.timeZoneId ?? 'UTC');
+}
+
 /// Converts an instant into the financial calendar date in [timeZoneId].
 ///
 /// The returned value is UTC only so callers can use its calendar components
 /// without allowing the host device timezone to alter the result.
 DateTime financialDateAt(DateTime instant, String timeZoneId) {
-  time_zone_data.initializeTimeZones();
+  final financialTimeZone = resolveFinancialTimeZone(timeZoneId);
   final value = time_zone.TZDateTime.from(
     instant.toUtc(),
-    time_zone.getLocation(timeZoneId),
+    financialTimeZone.location,
   );
   return DateTime.utc(value.year, value.month, value.day);
 }
@@ -70,8 +127,7 @@ FinancialInstantRange financialInstantRangeForCalendarDates({
   DateTime? to,
   required String timeZoneId,
 }) {
-  time_zone_data.initializeTimeZones();
-  final location = time_zone.getLocation(timeZoneId);
+  final location = resolveFinancialTimeZone(timeZoneId).location;
   DateTime? start;
   DateTime? endExclusive;
   if (from != null) {

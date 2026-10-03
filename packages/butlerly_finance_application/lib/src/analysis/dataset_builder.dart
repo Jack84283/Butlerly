@@ -17,8 +17,7 @@ final class AnalysisDatasetBuilder {
   final AnalysisPeriodResolver periodResolver;
 
   Future<String> timeZoneId() async {
-    final preference = await preferences.load();
-    return preference?.timeZoneId ?? 'UTC';
+    return (await configuredFinancialTimeZone(preferences)).id;
   }
 
   Future<CurrencyCode?> baseCurrency() async =>

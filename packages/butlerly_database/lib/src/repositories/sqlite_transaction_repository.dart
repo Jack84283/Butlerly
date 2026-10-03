@@ -174,27 +174,26 @@ final class SqliteTransactionRepository
         ...dateConditions,
       ].join(' AND ');
       final undatedCondition = "TRIM(COALESCE(t.transaction_date, '')) = ''";
-      if (!query.includeUndated) {
-        conditions.add(datedCondition);
-      } else if (query.occurredAtFrom == null &&
-          query.occurredAtToExclusive == null) {
-        conditions.add('($undatedCondition OR $datedCondition)');
-      } else {
-        final occurredAtConditions = <String>[];
-        if (query.occurredAtFrom != null) {
-          occurredAtConditions.add('t.occurred_at >= ?');
-          arguments.add(query.occurredAtFrom!.toUtc().toIso8601String());
-        }
-        if (query.occurredAtToExclusive != null) {
-          occurredAtConditions.add('t.occurred_at < ?');
-          arguments.add(query.occurredAtToExclusive!.toUtc().toIso8601String());
-        }
-        conditions.add(
-          '(($datedCondition) OR '
-          '($undatedCondition AND '
-          '${occurredAtConditions.join(' AND ')}))',
-        );
+      final occurredAtConditions = <String>[];
+      if (query.occurredAtFrom != null) {
+        occurredAtConditions.add('t.occurred_at >= ?');
+        arguments.add(query.occurredAtFrom!.toUtc().toIso8601String());
       }
+      if (query.occurredAtToExclusive != null) {
+        occurredAtConditions.add('t.occurred_at < ?');
+        arguments.add(query.occurredAtToExclusive!.toUtc().toIso8601String());
+      }
+      final occurredCondition = occurredAtConditions.isEmpty
+          ? null
+          : '($undatedCondition AND t.occurred_at IS NOT NULL AND '
+                '${occurredAtConditions.join(' AND ')})';
+      final unknownCondition = query.includeUndated
+          ? '($undatedCondition AND t.occurred_at IS NULL)'
+          : null;
+      final periodConditions = <String>['($datedCondition)'];
+      if (occurredCondition != null) periodConditions.add(occurredCondition);
+      if (unknownCondition != null) periodConditions.add(unknownCondition);
+      conditions.add('(${periodConditions.join(' OR ')})');
     }
     if (query.categoryId != null) {
       conditions.add('t.category_id = ?');

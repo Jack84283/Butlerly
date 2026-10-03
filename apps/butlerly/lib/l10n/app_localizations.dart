@@ -556,6 +556,9 @@ class AppLocalizations {
       'analysisUnavailable': 'Analysis is unavailable',
       'analysisUnavailableBody':
           'Local calculations could not be completed. No records were changed.',
+      'homeUnavailable': 'Home is temporarily unavailable',
+      'homeUnavailableBody':
+          'The financial period could not be resolved. Your records were not changed.',
       'offlineAnalysisStatus':
           'Calculated privately on this device and available offline.',
       'allClear': 'No findings',
@@ -1242,6 +1245,8 @@ class AppLocalizations {
       'dataQuality': '数据质量',
       'analysisUnavailable': '分析暂不可用',
       'analysisUnavailableBody': '无法完成本地计算。未更改任何记录。',
+      'homeUnavailable': '首页暂不可用',
+      'homeUnavailableBody': '无法确定财务期间。您的记录未被更改。',
       'offlineAnalysisStatus': '在此设备上私密计算，可离线使用。',
       'allClear': '暂无发现',
       'allClearBody': '此期间没有已启用的洞察需要您关注。',
@@ -1952,6 +1957,9 @@ class AppLocalizations {
       'analysisUnavailable': 'El análisis no está disponible',
       'analysisUnavailableBody':
           'No se pudieron completar los cálculos locales. No se cambió ningún registro.',
+      'homeUnavailable': 'La pantalla de inicio no está disponible',
+      'homeUnavailableBody':
+          'No se pudo resolver el período financiero. No se cambiaron tus registros.',
       'offlineAnalysisStatus':
           'Calculado de forma privada en este dispositivo y disponible sin conexión.',
       'allClear': 'Sin hallazgos',

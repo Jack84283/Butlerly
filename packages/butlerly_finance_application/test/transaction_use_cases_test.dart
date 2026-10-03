@@ -596,6 +596,127 @@ void main() {
     },
   );
 
+  test(
+    'invalid persisted timezone returns structured failures for reads and mutations',
+    () async {
+      final explicit = transaction(
+        DateTime.utc(2026, 8, 9, 20),
+        id: 'explicit-date-invalid-zone',
+        transactionDate: '2026-08-09',
+      );
+      final fallback = transaction(
+        DateTime.utc(2026, 8, 9, 20),
+        id: 'occurred-at-invalid-zone',
+        transactionDate: null,
+      );
+      transactions.values[explicit.id.value] = explicit;
+      transactions.values[fallback.id.value] = fallback;
+      final preferences = _Preferences('Invalid/Timezone');
+
+      final listed =
+          await ListTransactions(transactions, preferences: preferences)(
+            ListTransactionsQuery(
+              from: DateTime.utc(2026, 8, 9),
+              to: DateTime.utc(2026, 8, 9),
+              status: TransactionStatus.active,
+            ),
+          );
+      expect(
+        listed,
+        isA<ApplicationFailure<List<TransactionDto>>>().having(
+          (value) => value.failure.code,
+          'code',
+          ApplicationFailureCode.validation,
+        ),
+      );
+      expect(transactions.lastQuery, isNull);
+
+      final unbounded = await ListTransactions(
+        transactions,
+        preferences: preferences,
+      )(const ListTransactionsQuery());
+      expect(
+        unbounded,
+        isA<ApplicationFailure<List<TransactionDto>>>().having(
+          (value) => value.failure.code,
+          'code',
+          ApplicationFailureCode.validation,
+        ),
+      );
+
+      final fetched = await GetTransaction(
+        transactions,
+        preferences: preferences,
+      )(explicit.id.value);
+      expect(
+        fetched,
+        isA<ApplicationFailure<TransactionDto>>().having(
+          (value) => value.failure.code,
+          'code',
+          ApplicationFailureCode.validation,
+        ),
+      );
+
+      final sources = MemoryPaymentSources();
+      await sources.save(
+        PaymentSource(
+          id: PaymentSourceId('invalid-zone-source'),
+          name: 'Wallet',
+          type: PaymentSourceType.wallet,
+        ),
+      );
+      final mutated = await AssignPaymentSource(
+        transactions,
+        sources,
+        clock,
+        preferences: preferences,
+      )(fallback.id.value, 'invalid-zone-source');
+      expect(
+        mutated,
+        isA<ApplicationFailure<TransactionDto>>().having(
+          (value) => value.failure.code,
+          'code',
+          ApplicationFailureCode.validation,
+        ),
+      );
+      expect(transactions.values[fallback.id.value]!.paymentSourceId, isNull);
+    },
+  );
+
+  test(
+    'missing and unreadable preferences use the explicit UTC fallback',
+    () async {
+      final value = transaction(
+        DateTime.utc(2026, 8, 9, 23, 30),
+        id: 'utc-fallback',
+        transactionDate: null,
+      );
+      transactions.values[value.id.value] = value;
+
+      for (final preferences in [
+        _Preferences(null),
+        _Preferences(null, failOnLoad: true),
+      ]) {
+        final result =
+            await ListTransactions(transactions, preferences: preferences)(
+              ListTransactionsQuery(
+                from: DateTime.utc(2026, 8, 9),
+                to: DateTime.utc(2026, 8, 9),
+                status: TransactionStatus.active,
+              ),
+            );
+        expect(result, isA<ApplicationSuccess<List<TransactionDto>>>());
+        expect(
+          (result as ApplicationSuccess<List<TransactionDto>>)
+              .value
+              .single
+              .financialDate,
+          DateTime.utc(2026, 8, 9),
+        );
+      }
+    },
+  );
+
   test('rejects an inverted date range before repository access', () async {
     final result = await ListTransactions(transactions)(
       ListTransactionsQuery(
@@ -880,16 +1001,27 @@ final class FixedClock implements ApplicationClock {
 }
 
 final class _Preferences implements UserPreferenceRepository {
-  _Preferences(this.timeZoneId);
+  _Preferences(this.timeZoneId, {this.failOnLoad = false});
 
-  final String timeZoneId;
+  final String? timeZoneId;
+  final bool failOnLoad;
 
   @override
-  Future<UserPreference?> load() async => UserPreference(
-    locale: 'en',
-    baseCurrency: CurrencyCode('USD'),
-    timeZoneId: timeZoneId,
-  );
+  Future<UserPreference?> load() async {
+    if (failOnLoad) {
+      throw const RepositoryException(
+        RepositoryFailureCode.unavailable,
+        'load preferences',
+      );
+    }
+    final value = timeZoneId;
+    if (value == null) return null;
+    return UserPreference(
+      locale: 'en',
+      baseCurrency: CurrencyCode('USD'),
+      timeZoneId: value,
+    );
+  }
 
   @override
   Future<void> save(UserPreference preference) async {}
@@ -914,6 +1046,8 @@ final class MemoryTransactions
     return values.values.where((value) {
       if (query.status != null && value.status != query.status) return false;
 
+      if (query.from == null && query.to == null) return true;
+
       final businessDate = value.transactionDate?.trim();
       if (businessDate != null && businessDate.isNotEmpty) {
         if (query.from == null && query.to == null) return true;
@@ -934,17 +1068,15 @@ final class MemoryTransactions
             (to == null || !date.isAfter(to));
       }
 
-      if (!query.includeUndated) return false;
-      if (query.occurredAtFrom == null && query.occurredAtToExclusive == null) {
-        return true;
-      }
       final timing = value.timing;
-      if (timing is! KnownTransactionTime) return false;
-      final occurredAt = timing.occurredAt;
-      return (query.occurredAtFrom == null ||
-              !occurredAt.isBefore(query.occurredAtFrom!)) &&
-          (query.occurredAtToExclusive == null ||
-              occurredAt.isBefore(query.occurredAtToExclusive!));
+      if (timing is KnownTransactionTime) {
+        final occurredAt = timing.occurredAt;
+        return (query.occurredAtFrom == null ||
+                !occurredAt.isBefore(query.occurredAtFrom!)) &&
+            (query.occurredAtToExclusive == null ||
+                occurredAt.isBefore(query.occurredAtToExclusive!));
+      }
+      return query.includeUndated;
     }).toList();
   }
 

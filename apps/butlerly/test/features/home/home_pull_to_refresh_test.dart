@@ -82,7 +82,7 @@ void main() {
               .having(
                 (query) => query.includeUndated,
                 'includeUndated',
-                isTrue,
+                isFalse,
               ),
         ),
       );
@@ -255,19 +255,47 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        tester
-            .widget<TextButton>(find.byKey(const Key('home-category-view-all')))
-            .onPressed,
-        isNull,
+        find.byKey(const ValueKey('home-period-unavailable-card')),
+        findsOneWidget,
       );
       expect(
-        tester
-            .widget<TextButton>(find.byKey(const Key('home-recent-view-all')))
-            .onPressed,
-        isNull,
+        find.byKey(const ValueKey('home-empty-transactions-card')),
+        findsNothing,
       );
+      expect(
+        find.byKey(const ValueKey('home-period-unavailable-retry')),
+        findsOneWidget,
+      );
+      expect(transactions.queries, isEmpty);
+      expect(find.byKey(const Key('home-category-view-all')), findsNothing);
+      expect(find.byKey(const Key('home-recent-view-all')), findsNothing);
     },
   );
+
+  testWidgets('Home keeps a valid zero-transaction period distinct', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const _TestApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('home-month-selector')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('home-month-2026-8')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('home-empty-transactions-card')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('home-period-unavailable-card')),
+      findsNothing,
+    );
+  });
 }
 
 class _TestApp extends StatelessWidget {
@@ -362,13 +390,14 @@ final class _Transactions implements TransactionRepository {
                 (to == null || !calendarDate.isAfter(to));
           }
 
-          if (!query.includeUndated) return false;
           final timing = transaction.timing;
-          if (timing is! KnownTransactionTime) return false;
-          return (query.occurredAtFrom == null ||
-                  !timing.occurredAt.isBefore(query.occurredAtFrom!)) &&
-              (query.occurredAtToExclusive == null ||
-                  timing.occurredAt.isBefore(query.occurredAtToExclusive!));
+          if (timing is KnownTransactionTime) {
+            return (query.occurredAtFrom == null ||
+                    !timing.occurredAt.isBefore(query.occurredAtFrom!)) &&
+                (query.occurredAtToExclusive == null ||
+                    timing.occurredAt.isBefore(query.occurredAtToExclusive!));
+          }
+          return query.includeUndated;
         })
         .toList(growable: false);
   }

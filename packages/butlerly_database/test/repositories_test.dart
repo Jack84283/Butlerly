@@ -786,11 +786,19 @@ void main() {
     expect(excluded, isEmpty);
 
     final undated = minimalTransaction(now, id: 'undated-transaction');
+    final occurredFallback = timedTransaction(
+      id: 'occurred-fallback-transaction',
+      occurredAt: DateTime.utc(2026, 8, 9, 12),
+      now: now,
+    );
     await transactions.save(undated);
+    await transactions.save(occurredFallback);
     final boundedWithoutUndated = await transactions.query(
       TransactionRepositoryQuery(
         from: DateTime.utc(2026, 8, 9),
         to: DateTime.utc(2026, 8, 9),
+        occurredAtFrom: DateTime.utc(2026, 8, 9),
+        occurredAtToExclusive: DateTime.utc(2026, 8, 10),
         status: TransactionStatus.active,
       ),
     );
@@ -798,6 +806,8 @@ void main() {
       TransactionRepositoryQuery(
         from: DateTime.utc(2026, 8, 9),
         to: DateTime.utc(2026, 8, 9),
+        occurredAtFrom: DateTime.utc(2026, 8, 9),
+        occurredAtToExclusive: DateTime.utc(2026, 8, 10),
         status: TransactionStatus.active,
         includeUndated: true,
       ),
@@ -806,6 +816,10 @@ void main() {
     expect(
       boundedWithoutUndated.map((transaction) => transaction.id),
       isNot(contains(undated.id)),
+    );
+    expect(
+      boundedWithoutUndated.map((transaction) => transaction.id),
+      contains(occurredFallback.id),
     );
     expect(
       boundedWithUndated.map((transaction) => transaction.id),

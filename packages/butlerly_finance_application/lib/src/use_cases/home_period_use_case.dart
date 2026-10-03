@@ -39,15 +39,7 @@ final class ResolveHomePeriod {
     required DateTime instant,
     DateTime? selectedMonth,
   }) => runApplication('resolve Home period', () async {
-    UserPreference? preference;
-    try {
-      preference = await preferences.load();
-    } catch (_) {
-      // Home previously continued with UTC when preferences were unavailable.
-      // Keep period reads usable while still honoring the persisted zone when
-      // it can be loaded.
-    }
-    final timeZoneId = preference?.timeZoneId ?? 'UTC';
+    final timeZoneId = (await configuredFinancialTimeZone(preferences)).id;
     return _resolveHomePeriod(
       instant: instant,
       selectedMonth: selectedMonth,

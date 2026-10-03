@@ -186,7 +186,7 @@ void main() {
       expect(uri.path, '/search');
       expect(uri.queryParameters['from'], '2026-09-01');
       expect(uri.queryParameters['to'], isNotNull);
-      expect(uri.queryParameters['includeUndated'], 'true');
+      expect(uri.queryParameters['includeUndated'], isNull);
       expect(DateTime.parse(uri.queryParameters['to']!).year, 2026);
       expect(DateTime.parse(uri.queryParameters['to']!).month, 9);
       expect(router.canPop(), isTrue);

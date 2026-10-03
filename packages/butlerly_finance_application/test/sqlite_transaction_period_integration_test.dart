@@ -100,7 +100,6 @@ void main() {
               from: DateTime.utc(2026, 10, 1),
               to: DateTime.utc(2026, 10, 1),
               status: TransactionStatus.active,
-              includeUndated: true,
             ),
           );
 
@@ -127,7 +126,6 @@ void main() {
               from: DateTime.utc(2026, 9, 30),
               to: DateTime.utc(2026, 9, 30),
               status: TransactionStatus.active,
-              includeUndated: true,
             ),
           );
 
