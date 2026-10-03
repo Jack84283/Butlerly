@@ -20,8 +20,9 @@ void main() {
   ) async {
     await _openJulyHome(tester);
 
-    final actions = find.widgetWithText(TextButton, 'View all');
-    final analysisButton = tester.widget<TextButton>(actions.first);
+    final analysisButton = tester.widget<TextButton>(
+      find.byKey(const Key('home-category-view-all')),
+    );
     analysisButton.onPressed!();
     await tester.pumpAndSettle();
 
@@ -36,8 +37,9 @@ void main() {
   ) async {
     await _openHome(tester);
 
-    final actions = find.widgetWithText(TextButton, 'View all');
-    final analysisButton = tester.widget<TextButton>(actions.first);
+    final analysisButton = tester.widget<TextButton>(
+      find.byKey(const Key('home-category-view-all')),
+    );
     analysisButton.onPressed!();
     await tester.pumpAndSettle();
 
@@ -52,7 +54,7 @@ void main() {
     // this regression exercises the production push/back stack directly.
     await _openJulyHome(tester, size: const Size(390, 1400));
 
-    final searchAction = find.widgetWithText(TextButton, 'View all').last;
+    final searchAction = find.byKey(const Key('home-recent-view-all'));
     expect(searchAction, findsOneWidget);
     await tester.tap(searchAction);
     await tester.pumpAndSettle();

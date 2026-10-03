@@ -210,6 +210,36 @@ void main() {
     expect(find.byType(Card), findsOneWidget);
   });
 
+  testWidgets('card header keeps actions reachable at large text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    tester.view.platformDispatcher.textScaleFactorTestValue = 3;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: const Scaffold(
+          body: Padding(
+            padding: EdgeInsets.all(16),
+            child: ButlerlyCardHeader(
+              title: 'Summary',
+              action: TextButton(onPressed: null, child: Text('View all')),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Summary'), findsOneWidget);
+    expect(find.text('View all'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('review actions inherit localized labels from the app', (
     tester,
   ) async {

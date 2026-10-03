@@ -275,6 +275,56 @@ class ButlerlyCard extends StatelessWidget {
   );
 }
 
+/// Responsive title row shared by semantic cards across Butlerly surfaces.
+class ButlerlyCardHeader extends StatelessWidget {
+  const ButlerlyCardHeader({
+    required this.title,
+    this.subtitle,
+    this.action,
+    super.key,
+  });
+
+  final String title;
+  final String? subtitle;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final stacked =
+          MediaQuery.textScalerOf(context).scale(14) > 20 ||
+          constraints.maxWidth < 280;
+      final titleBlock = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleLarge),
+          if (subtitle != null) ...[
+            const SizedBox(height: ButlerlySpacing.micro),
+            Text(subtitle!, style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ],
+      );
+      if (action == null) return titleBlock;
+      if (stacked) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            titleBlock,
+            Align(alignment: AlignmentDirectional.centerEnd, child: action),
+          ],
+        );
+      }
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: titleBlock),
+          action!,
+        ],
+      );
+    },
+  );
+}
+
 /// Shared container for chart content with a semantic title and consistent
 /// title-to-visual spacing. Chart-specific geometry remains owned by the
 /// visualization inside the card.

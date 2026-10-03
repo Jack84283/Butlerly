@@ -155,6 +155,9 @@ final appRouter = GoRouter(
             showPossibleDuplicates:
                 state.uri.queryParameters['view'] == 'duplicates',
             showNeedsReview: state.uri.queryParameters['view'] == 'needsReview',
+            reviewFrom: state.uri.queryParameters['from'],
+            reviewTo: state.uri.queryParameters['to'],
+            reviewTimeZoneId: state.uri.queryParameters['timeZoneId'],
           ),
         ),
         GoRoute(
