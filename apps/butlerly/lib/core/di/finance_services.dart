@@ -110,6 +110,7 @@ final class FinanceServices {
        updateTransaction = UpdateTransaction(
          transactions,
          const SystemApplicationClock(),
+         preferences: preferences,
        ),
        archiveTransaction = ArchiveTransaction(
          transactions,
@@ -330,7 +331,10 @@ final class FinanceServices {
            : ListPaymentSettlements(paymentSettlements),
        getPaymentSettlementDetail = paymentSettlements == null
            ? null
-           : GetPaymentSettlementDetail(paymentSettlements),
+           : GetPaymentSettlementDetail(
+               paymentSettlements,
+               preferences: preferences,
+             ),
        setPaymentSettlementStatus = paymentSettlements == null
            ? null
            : SetPaymentSettlementStatus(

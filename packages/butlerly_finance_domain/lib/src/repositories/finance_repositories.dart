@@ -169,7 +169,11 @@ abstract interface class PaymentSettlementRepository {
   Future<void> save(PaymentSettlement settlement);
   Future<PaymentSettlement?> findById(PaymentSettlementId id);
   Future<List<PaymentSettlement>> listAll();
-  Future<List<Transaction>> listTransactions(PaymentSettlement settlement);
+  Future<List<Transaction>> listTransactions(
+    PaymentSettlement settlement, {
+    DateTime? occurredAtFrom,
+    DateTime? occurredAtToExclusive,
+  });
   Future<void> remove(PaymentSettlementId id);
 }
 

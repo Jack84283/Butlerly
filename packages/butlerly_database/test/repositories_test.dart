@@ -974,6 +974,80 @@ void main() {
       ]);
     },
   );
+
+  test('compares legacy offset timestamps by instant, not text', () async {
+    final legacy = timedTransaction(
+      id: 'legacy-offset-timestamp',
+      occurredAt: DateTime.utc(2026, 10, 1, 7, 30),
+      now: now,
+    );
+    await transactions.save(legacy);
+    await database.connection.update(
+      'transactions',
+      {
+        'occurred_at': '2026-10-01T00:30:00.000-07:00',
+        'occurred_at_utc': '2026-10-01T00:30:00.000-07:00',
+      },
+      where: 'id = ?',
+      whereArgs: [legacy.id.value],
+    );
+
+    final result = await transactions.query(
+      TransactionRepositoryQuery(
+        from: DateTime.utc(2026, 10, 1),
+        to: DateTime.utc(2026, 10, 1),
+        occurredAtFrom: DateTime.utc(2026, 10, 1, 7),
+        occurredAtToExclusive: DateTime.utc(2026, 10, 1, 8),
+        status: TransactionStatus.active,
+      ),
+    );
+
+    expect(result.map((value) => value.id), contains(legacy.id));
+  });
+
+  test('trims legacy transaction dates for bounded queries', () async {
+    final legacy = timedTransaction(
+      id: 'legacy-whitespace-date',
+      occurredAt: DateTime.utc(2026, 10, 1, 7, 30),
+      now: now,
+    );
+    await transactions.save(legacy);
+    await database.connection.update(
+      'transactions',
+      {'transaction_date': ' 2026-10-01 '},
+      where: 'id = ?',
+      whereArgs: [legacy.id.value],
+    );
+
+    final result = await transactions.query(
+      TransactionRepositoryQuery(
+        from: DateTime.utc(2026, 10, 1),
+        to: DateTime.utc(2026, 10, 1),
+        status: TransactionStatus.active,
+      ),
+    );
+
+    expect(result.map((value) => value.id), contains(legacy.id));
+    expect(result.single.transactionDate, '2026-10-01');
+  });
+
+  test('normalizes newly persisted transaction instants to UTC', () async {
+    final value = timedTransaction(
+      id: 'new-local-timestamp',
+      occurredAt: DateTime.parse('2026-10-01T00:30:00-07:00'),
+      now: now,
+    );
+    await transactions.save(value);
+
+    final row = (await database.connection.query(
+      'transactions',
+      columns: ['occurred_at', 'occurred_at_utc'],
+      where: 'id = ?',
+      whereArgs: [value.id.value],
+    )).single;
+    expect(row['occurred_at'], '2026-10-01T07:30:00.000Z');
+    expect(row['occurred_at_utc'], '2026-10-01T07:30:00.000Z');
+  });
 }
 
 Transaction minimalTransaction(

@@ -94,63 +94,64 @@ final class CreateTransaction {
 }
 
 final class UpdateTransaction {
-  const UpdateTransaction(this.repository, this.clock);
+  const UpdateTransaction(this.repository, this.clock, {this.preferences});
 
   final TransactionRepository repository;
   final ApplicationClock clock;
+  final UserPreferenceRepository? preferences;
 
   Future<ApplicationResult<TransactionDto>> call(
     UpdateTransactionCommand command,
-  ) async {
+  ) => runApplication('update transaction', () async {
     final operation = 'update transaction';
-    final existing = await _find(repository, command.id, operation);
-    if (existing case ApplicationFailure<Transaction> failure) {
-      return ApplicationFailure(failure.failure);
+    final financialTimeZone = await configuredFinancialTimeZone(preferences);
+    final current = await repository.findById(TransactionId(command.id));
+    if (current == null) {
+      throw RepositoryException(RepositoryFailureCode.notFound, operation);
     }
-    final current = (existing as ApplicationSuccess<Transaction>).value;
-    return runApplication(operation, () async {
-      final updated = Transaction(
-        id: current.id,
-        timing: command.timing,
-        money: command.money,
-        direction: command.direction,
-        sourceType: current.sourceType,
-        status: current.status,
-        description: command.description,
-        rawCounterparty: command.rawCounterparty,
-        sourceLanguage: command.sourceLanguage,
-        notes: command.notes,
-        externalReference:
-            command.externalReference ?? current.externalReference,
-        paymentSourceId: !command.replacePaymentSource
-            ? current.paymentSourceId
-            : _optional(command.paymentSourceId, PaymentSourceId.new),
-        merchantId: !command.replaceMerchant
-            ? current.merchantId
-            : _optional(command.merchantId, MerchantId.new),
-        categoryId: !command.replaceCategory
-            ? current.categoryId
-            : _optional(command.categoryId, CategoryId.new),
-        subcategoryId: !command.replaceCategory
-            ? current.subcategoryId
-            : _optional(command.subcategoryId, CategoryId.new),
-        tagIds: command.replaceTags
-            ? command.tagIds?.map(TagId.new).toList(growable: false) ?? const []
-            : current.tagIds,
-        provenance: current.provenance,
-        reviewIssues: current.reviewIssues,
-        normalizedMoney: command.money == current.money
-            ? current.normalizedMoney
-            : const [],
-        createdAt: current.createdAt,
-        updatedAt: clock.now(),
-        transactionDate: command.transactionDate ?? current.transactionDate,
-        timeZoneId: command.timeZoneId ?? current.timeZoneId,
-      );
-      await repository.save(updated);
-      return TransactionDto.fromDomain(updated);
-    });
-  }
+    final updated = Transaction(
+      id: current.id,
+      timing: command.timing,
+      money: command.money,
+      direction: command.direction,
+      sourceType: current.sourceType,
+      status: current.status,
+      description: command.description,
+      rawCounterparty: command.rawCounterparty,
+      sourceLanguage: command.sourceLanguage,
+      notes: command.notes,
+      externalReference: command.externalReference ?? current.externalReference,
+      paymentSourceId: !command.replacePaymentSource
+          ? current.paymentSourceId
+          : _optional(command.paymentSourceId, PaymentSourceId.new),
+      merchantId: !command.replaceMerchant
+          ? current.merchantId
+          : _optional(command.merchantId, MerchantId.new),
+      categoryId: !command.replaceCategory
+          ? current.categoryId
+          : _optional(command.categoryId, CategoryId.new),
+      subcategoryId: !command.replaceCategory
+          ? current.subcategoryId
+          : _optional(command.subcategoryId, CategoryId.new),
+      tagIds: command.replaceTags
+          ? command.tagIds?.map(TagId.new).toList(growable: false) ?? const []
+          : current.tagIds,
+      provenance: current.provenance,
+      reviewIssues: current.reviewIssues,
+      normalizedMoney: command.money == current.money
+          ? current.normalizedMoney
+          : const [],
+      createdAt: current.createdAt,
+      updatedAt: clock.now(),
+      transactionDate: command.transactionDate ?? current.transactionDate,
+      timeZoneId: command.timeZoneId ?? current.timeZoneId,
+    );
+    await repository.save(updated);
+    return TransactionDto.fromDomain(
+      updated,
+      financialDate: _financialDateFor(updated, financialTimeZone.id),
+    );
+  });
 }
 
 final class ImportTransaction {

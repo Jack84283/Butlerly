@@ -3,6 +3,60 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test(
+    'analysis keeps legacy transaction dates after trimming persisted text',
+    () async {
+      final at = DateTime.utc(2026, 7, 15, 12);
+      final transaction = Transaction(
+        id: TransactionId('legacy-date'),
+        timing: KnownTransactionTime(at),
+        money: Money(
+          amount: DecimalValue.parse('10'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        sourceType: TransactionSourceType.import,
+        provenance: [
+          Provenance(
+            id: ProvenanceId('legacy-date-provenance'),
+            sourceType: ProvenanceSourceType.import,
+            capturedAt: at,
+            originalRepresentation: 'legacy-date',
+          ),
+        ],
+        transactionDate: ' 2026-07-15 ',
+        createdAt: at,
+        updatedAt: at,
+      );
+      final result =
+          await AnalysisDatasetBuilder(
+            _Transactions([transaction]),
+            _Preferences(),
+            null,
+          ).build(
+            AnalysisContext(
+              period: AnalysisPeriod(
+                startDate: '2026-07-01',
+                endDate: '2026-07-31',
+                timeZoneId: 'UTC',
+              ),
+              datasetMode: DatasetMode.allEligible,
+              currencyBasis: CurrencyBasis.baseCurrency,
+              baseCurrency: CurrencyCode('USD'),
+            ),
+          );
+
+      final dataset = (result as ApplicationDatasetSuccess).dataset;
+      expect(
+        dataset
+            .primaryTransactionsByPeriod['selected_period']!
+            .single
+            .transactionDate,
+        '2026-07-15',
+      );
+    },
+  );
+
   test('fromResults keeps the shared multi-rule insight ranking', () {
     final context = AnalysisContext(
       period: AnalysisPeriod(
@@ -120,11 +174,15 @@ final class _Rules implements AnalysisRuleRepository {
 }
 
 final class _Transactions implements TransactionRepository {
+  const _Transactions([this.values = const []]);
+
+  final List<Transaction> values;
+
   @override
   Future<Transaction?> findById(TransactionId id) async => null;
 
   @override
-  Future<List<Transaction>> listAll() async => const [];
+  Future<List<Transaction>> listAll() async => values;
 
   @override
   Future<List<Transaction>> query(TransactionRepositoryQuery query) async =>

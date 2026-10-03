@@ -371,6 +371,7 @@ class _SearchPageState extends State<SearchPage>
           categoryId: _categoryId,
           paymentSourceId: _paymentSourceId,
           needsReview: _needsReview,
+          includeUndated: _includeUndated,
           from: _from,
           to: _to,
         ),
@@ -384,6 +385,7 @@ class _SearchPageState extends State<SearchPage>
           _categoryId = value.categoryId;
           _paymentSourceId = value.paymentSourceId;
           _needsReview = value.needsReview;
+          _includeUndated = value.includeUndated;
           _from = value.from;
           _to = value.to;
           Navigator.pop(sheetContext);

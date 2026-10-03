@@ -43,6 +43,7 @@ final class AnalysisDatasetBuilder {
     for (final transaction in source) {
       if (receiptIds.contains(transaction.id)) continue;
       if (transaction.status != TransactionStatus.active) continue;
+      final transactionDate = transaction.transactionDate?.trim();
       final normalized = transaction.normalizedMoney
           .where(
             (value) =>
@@ -52,7 +53,7 @@ final class AnalysisDatasetBuilder {
           .firstOrNull
           ?.converted;
       final transactionQuality = <DataQualityIssue>[];
-      if (transaction.transactionDate == null) {
+      if (transactionDate == null || transactionDate.isEmpty) {
         transactionQuality.add(
           DataQualityIssue(
             code: 'missingFinancialDate',
@@ -91,7 +92,7 @@ final class AnalysisDatasetBuilder {
           money: transaction.money,
           normalizedMoney: normalized,
           direction: transaction.direction,
-          transactionDate: transaction.transactionDate,
+          transactionDate: transactionDate,
           status: transaction.status,
           categoryId: transaction.categoryId,
           subcategoryId: transaction.subcategoryId,
@@ -202,7 +203,8 @@ final class AnalysisDatasetBuilder {
     final receiptIds = links.map((value) => value.receiptTransactionId).toSet();
     return source
         .where((transaction) {
-          final date = DateTime.tryParse(transaction.transactionDate ?? '');
+          final transactionDate = transaction.transactionDate?.trim();
+          final date = DateTime.tryParse(transactionDate ?? '');
           return transaction.status == TransactionStatus.active &&
               !receiptIds.contains(transaction.id) &&
               date != null &&
@@ -210,6 +212,7 @@ final class AnalysisDatasetBuilder {
               date.isBefore(window.endExclusive);
         })
         .map((transaction) {
+          final transactionDate = transaction.transactionDate?.trim();
           final normalized = transaction.normalizedMoney
               .where(
                 (value) =>
@@ -223,7 +226,7 @@ final class AnalysisDatasetBuilder {
             money: transaction.money,
             normalizedMoney: normalized,
             direction: transaction.direction,
-            transactionDate: transaction.transactionDate,
+            transactionDate: transactionDate,
             status: transaction.status,
             categoryId: transaction.categoryId,
             subcategoryId: transaction.subcategoryId,

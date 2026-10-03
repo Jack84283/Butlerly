@@ -97,6 +97,7 @@ final appRouter = GoRouter(
                       from: _queryDate(parameters['from']),
                       to: _queryDate(parameters['to']),
                       categoryId: parameters['category'],
+                      includeUndated: parameters['includeUndated'] == 'true',
                     );
                     return _primaryPage(
                       'transactions',

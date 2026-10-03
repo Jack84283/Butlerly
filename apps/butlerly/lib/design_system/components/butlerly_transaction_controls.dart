@@ -92,6 +92,7 @@ class ButlerlyTransactionFilterValue {
     this.categoryId,
     this.paymentSourceId,
     this.needsReview,
+    this.includeUndated = false,
     this.from,
     this.to,
   });
@@ -102,6 +103,7 @@ class ButlerlyTransactionFilterValue {
   final String? categoryId;
   final String? paymentSourceId;
   final bool? needsReview;
+  final bool includeUndated;
   final DateTime? from;
   final DateTime? to;
 }
@@ -137,6 +139,7 @@ class _ButlerlyTransactionFilterSheetState
   late String? _categoryId;
   late String? _paymentSourceId;
   late bool? _needsReview;
+  late bool _includeUndated;
   late DateTime? _from;
   late DateTime? _to;
 
@@ -150,6 +153,7 @@ class _ButlerlyTransactionFilterSheetState
     _categoryId = value.categoryId;
     _paymentSourceId = value.paymentSourceId;
     _needsReview = value.needsReview;
+    _includeUndated = value.includeUndated;
     _from = value.from;
     _to = value.to;
   }
@@ -226,6 +230,14 @@ class _ButlerlyTransactionFilterSheetState
           label: context.l10n.text('needsReview'),
           onChanged: (value) => setState(() => _needsReview = value),
         ),
+        const SizedBox(height: ButlerlySpacing.standard),
+        SwitchListTile.adaptive(
+          key: const ValueKey('search-undated-filter'),
+          contentPadding: EdgeInsets.zero,
+          title: Text(context.l10n.text('undatedTransactions')),
+          value: _includeUndated,
+          onChanged: (value) => setState(() => _includeUndated = value),
+        ),
         const SizedBox(height: ButlerlySpacing.section),
         FilledButton(
           key: const ValueKey('apply-search-filters'),
@@ -238,6 +250,7 @@ class _ButlerlyTransactionFilterSheetState
                 categoryId: _categoryId,
                 paymentSourceId: _paymentSourceId,
                 needsReview: _needsReview,
+                includeUndated: _includeUndated,
                 from: _from,
                 to: _to,
               ),

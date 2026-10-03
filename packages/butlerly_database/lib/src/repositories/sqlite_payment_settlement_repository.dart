@@ -65,12 +65,16 @@ final class SqlitePaymentSettlementRepository
 
   @override
   Future<List<Transaction>> listTransactions(
-    PaymentSettlement settlement,
-  ) async {
+    PaymentSettlement settlement, {
+    DateTime? occurredAtFrom,
+    DateTime? occurredAtToExclusive,
+  }) async {
     final values = await SqliteTransactionRepository(database).query(
       TransactionRepositoryQuery(
         from: DateTime.parse(settlement.periodStart),
         to: DateTime.parse(settlement.periodEnd),
+        occurredAtFrom: occurredAtFrom,
+        occurredAtToExclusive: occurredAtToExclusive,
         paymentSourceId: settlement.paymentSourceId,
         status: TransactionStatus.active,
       ),

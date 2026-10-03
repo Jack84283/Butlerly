@@ -680,6 +680,28 @@ void main() {
         ),
       );
       expect(transactions.values[fallback.id.value]!.paymentSourceId, isNull);
+
+      final updated =
+          await UpdateTransaction(
+            transactions,
+            clock,
+            preferences: preferences,
+          )(
+            UpdateTransactionCommand(
+              id: fallback.id.value,
+              timing: fallback.timing,
+              money: fallback.money,
+              direction: fallback.direction,
+            ),
+          );
+      expect(
+        updated,
+        isA<ApplicationFailure<TransactionDto>>().having(
+          (value) => value.failure.code,
+          'code',
+          ApplicationFailureCode.validation,
+        ),
+      );
     },
   );
 
