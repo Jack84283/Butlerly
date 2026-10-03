@@ -354,6 +354,7 @@ class _SearchPageState extends State<SearchPage>
     _status,
     _needsReview,
     if (_uncategorized) true,
+    if (_includeUndated) true,
     _from,
     _to,
   ].where((value) => value != null).length;
@@ -464,6 +465,7 @@ class _SearchPageState extends State<SearchPage>
             currency: _currency,
             direction: _direction,
             uncategorized: _uncategorized,
+            includeUndated: _includeUndated,
             presentation: _presentation,
             paymentSourceNames: _paymentSourceNames,
           ),
@@ -545,6 +547,7 @@ class _LockedSearchCriteria extends StatelessWidget {
     required this.currency,
     required this.direction,
     required this.uncategorized,
+    required this.includeUndated,
     required this.presentation,
     required this.paymentSourceNames,
   });
@@ -557,6 +560,7 @@ class _LockedSearchCriteria extends StatelessWidget {
   final String? currency;
   final TransactionDirection? direction;
   final bool uncategorized;
+  final bool includeUndated;
   final TransactionMasterData presentation;
   final Map<String, String> paymentSourceNames;
 
@@ -574,6 +578,7 @@ class _LockedSearchCriteria extends StatelessWidget {
       if (currency != null) '${context.l10n.text('currency')}: $currency',
       if (direction != null)
         '${context.l10n.text('direction')}: ${direction!.name}',
+      if (includeUndated) context.l10n.text('undatedTransactions'),
       if (transactionIds?.isNotEmpty ?? false)
         context.l10n.text('supportingTransactions', {
           'count': '${transactionIds!.length}',

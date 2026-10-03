@@ -1008,6 +1008,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('Clear filters'), findsOneWidget);
+
     await tester.tap(find.byIcon(Icons.tune_rounded).first);
     await tester.pumpAndSettle();
     final clearFilters = find.text('Clear filters').last;
