@@ -2,6 +2,7 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
 import '../dto/analysis_overview.dart';
 import '../dto/home_overview.dart';
+import '../dto/monthly_spending_trend_point.dart';
 import '../dto/review_item_dto.dart';
 import '../dto/transaction_dto.dart';
 import '../result/application_result.dart';

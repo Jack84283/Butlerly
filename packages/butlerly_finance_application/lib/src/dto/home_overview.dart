@@ -1,8 +1,8 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
 import 'analysis_overview.dart';
+import 'monthly_spending_trend_point.dart';
 import 'transaction_dto.dart';
-import '../use_cases/monthly_spending_trend_use_case.dart';
 
 /// Application-owned composition of the data needed by the Home surface.
 ///

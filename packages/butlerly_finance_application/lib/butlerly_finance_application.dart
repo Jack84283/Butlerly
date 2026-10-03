@@ -36,6 +36,7 @@ export 'src/use_cases/transaction_rule_use_cases.dart';
 
 export 'src/dto/analysis_overview.dart';
 export 'src/dto/home_overview.dart';
+export 'src/dto/monthly_spending_trend_point.dart';
 export 'src/dto/local_data_dto.dart';
 export 'src/use_cases/workspace_data_service.dart';
 export 'src/use_cases/statement_intake_policy.dart';

@@ -1,22 +1,9 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
 import '../analysis/dataset_builder.dart';
+import '../dto/monthly_spending_trend_point.dart';
 import '../result/application_result.dart';
 import 'analysis_use_cases.dart';
-
-/// One authoritative monthly spending value for presentation trends.
-///
-/// [month] is a calendar anchor only. Financial boundaries and timezone
-/// semantics remain owned by the analysis period resolver.
-final class MonthlySpendingTrendPoint {
-  const MonthlySpendingTrendPoint({
-    required this.month,
-    required this.spending,
-  });
-
-  final DateTime month;
-  final AnalysisMetric? spending;
-}
 
 /// Builds a bounded month-by-month spending trend without persisting findings.
 ///
