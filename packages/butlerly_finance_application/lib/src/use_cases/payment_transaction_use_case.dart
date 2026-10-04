@@ -73,10 +73,10 @@ final class CreatePaymentTransaction {
       createdAt: now,
       updatedAt: now,
     );
-    final resolved = synchronizeMerchantReviewIssue(
+    final resolved = await synchronizeMerchantReviewIssueBestEffort(
       transaction,
       now,
-      merchants: merchants == null ? const [] : await merchants!.listAll(),
+      merchantRepository: merchants,
     );
     await repository.save(resolved);
     return TransactionDto.fromDomain(resolved);

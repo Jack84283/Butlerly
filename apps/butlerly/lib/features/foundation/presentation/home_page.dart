@@ -448,7 +448,18 @@ Widget _homeEllipsisAction({
   child: Semantics(
     button: true,
     label: semanticLabel,
-    child: TextButton(key: key, onPressed: onPressed, child: const Text('...')),
+    child: TextButton(
+      key: key,
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        alignment: Alignment.topCenter,
+        fixedSize: const Size(44, 44),
+        minimumSize: const Size(44, 44),
+        padding: EdgeInsets.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: const Text('...'),
+    ),
   ),
 );
 
@@ -548,11 +559,8 @@ double _homeHeaderExtent(
   final monthHeight = monthButtonHeight(monthWidth);
   final largeText = scaler.scale(14) > 18;
   final stackedTopRow = largeText || availableWidth < 360;
-  final stackedControlsHeight = largeText
-      ? kMinInteractiveDimension + ButlerlySpacing.small + monthHeight
-      : monthHeight;
   final topRowHeight = stackedTopRow
-      ? brandHeight + ButlerlySpacing.small + stackedControlsHeight
+      ? brandHeight + ButlerlySpacing.small + monthHeight
       : brandHeight > monthHeight
       ? brandHeight
       : monthHeight;
@@ -680,24 +688,6 @@ class _HomeHeader extends StatelessWidget {
             ],
           ),
         );
-        final notificationButton = SizedBox(
-          width: kMinInteractiveDimension,
-          height: kMinInteractiveDimension,
-          child: IconButton(
-            key: const Key('home-notification-action'),
-            tooltip: context.l10n.text('notifications'),
-            onPressed: () => context.push('/notifications'),
-            constraints: const BoxConstraints.expand(),
-            padding: EdgeInsets.zero,
-            icon: Icon(
-              _homeIcon(
-                context,
-                material: Icons.notifications_none_rounded,
-                cupertino: CupertinoIcons.bell,
-              ),
-            ),
-          ),
-        );
         final availableWidth = constraints.maxWidth;
         final stackedTopRow =
             MediaQuery.textScalerOf(context).scale(14) > 18 ||
@@ -709,21 +699,14 @@ class _HomeHeader extends StatelessWidget {
                   brand,
                   const SizedBox(height: ButlerlySpacing.small),
                   if (MediaQuery.textScalerOf(context).scale(14) > 18)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Align(
-                          alignment: AlignmentDirectional.centerEnd,
-                          child: notificationButton,
-                        ),
-                        const SizedBox(height: ButlerlySpacing.small),
-                        monthButton,
-                      ],
+                    Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: monthButton,
                     )
                   else
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
-                      children: [notificationButton, monthButton],
+                      children: [monthButton],
                     ),
                 ],
               )
@@ -732,8 +715,6 @@ class _HomeHeader extends StatelessWidget {
                 children: [
                   Expanded(child: brand),
                   const SizedBox(width: ButlerlySpacing.standard),
-                  notificationButton,
-                  const SizedBox(width: ButlerlySpacing.compact),
                   Flexible(
                     child: Align(
                       alignment: AlignmentDirectional.topEnd,
@@ -1575,14 +1556,14 @@ class _CategorySummaryItem extends StatelessWidget {
             metricUnavailable ? '—' : _homeMetricMoney(context, metric),
             textAlign: TextAlign.end,
             softWrap: true,
-            style: ButlerlyTypography.rowAmount(
+            style: ButlerlyTypography.denseRowAmount(
               Theme.of(context).textTheme.titleMedium ?? const TextStyle(),
             ),
           );
           final name = Text(
             label,
             softWrap: true,
-            style: ButlerlyTypography.rowTitle(
+            style: ButlerlyTypography.denseRowTitle(
               Theme.of(context).textTheme.bodyLarge ?? const TextStyle(),
             ),
           );

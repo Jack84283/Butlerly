@@ -45,14 +45,14 @@ abstract final class ButlerlyTransactionItemTokens {
 
 /// Semantic styles for the transaction title, amount, and supporting metadata.
 extension ButlerlyTransactionItemStyles on BuildContext {
-  TextStyle get transactionItemAmount =>
-      Theme.of(this).textTheme.titleMedium!.copyWith(
-        fontSize: ButlerlyTransactionItemTokens.amountFontSize,
-        height: ButlerlyTransactionItemTokens.amountLineHeight,
-        fontWeight: FontWeight.w600,
-        color: colors.primaryText,
-        fontFeatures: ButlerlyTypography.financialAmountFeatures,
-      );
+  TextStyle get transactionItemAmount {
+    final base = Theme.of(this).textTheme.titleMedium!;
+    return ButlerlyTypography.denseRowAmount(base).copyWith(
+      color: colors.primaryText,
+      fontFamily: base.fontFamily,
+      fontFamilyFallback: base.fontFamilyFallback,
+    );
+  }
 
   TextStyle get transactionItemDate =>
       Theme.of(this).textTheme.bodyMedium!.copyWith(
@@ -62,13 +62,14 @@ extension ButlerlyTransactionItemStyles on BuildContext {
         color: colors.secondaryText,
       );
 
-  TextStyle get transactionItemDescription =>
-      Theme.of(this).textTheme.bodyMedium!.copyWith(
-        fontSize: ButlerlyTransactionItemTokens.titleFontSize,
-        height: ButlerlyTransactionItemTokens.titleLineHeight,
-        fontWeight: FontWeight.w600,
-        color: colors.primaryText,
-      );
+  TextStyle get transactionItemDescription {
+    final base = Theme.of(this).textTheme.bodyMedium!;
+    return ButlerlyTypography.denseRowTitle(base).copyWith(
+      color: colors.primaryText,
+      fontFamily: base.fontFamily,
+      fontFamilyFallback: base.fontFamilyFallback,
+    );
+  }
 
   TextStyle get transactionItemMetadata =>
       Theme.of(this).textTheme.bodyMedium!.copyWith(

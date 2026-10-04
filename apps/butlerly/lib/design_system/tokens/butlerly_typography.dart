@@ -122,6 +122,25 @@ abstract final class ButlerlyTypography {
     fontFeatures: financialAmountFeatures,
   );
 
+  /// Dense row roles shared by compact dashboard lists and transaction rows.
+  /// These preserve the row hierarchy while matching the tighter reference
+  /// scale used when several records share a card.
+  static TextStyle denseRowTitle(TextStyle base) => _systemSans(
+    base,
+    fontSize: 15,
+    height: 20 / 15,
+    fontWeight: FontWeight.w600,
+  );
+
+  static TextStyle denseRowAmount(TextStyle base) => _systemSans(
+    base,
+    fontSize: 15,
+    height: 20 / 15,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.1,
+    fontFeatures: financialAmountFeatures,
+  );
+
   static TextStyle badgeLabel(TextStyle base) =>
       _systemSans(base, fontSize: 13, height: 1.2, fontWeight: FontWeight.w500);
 

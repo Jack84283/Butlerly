@@ -611,10 +611,10 @@ final class StatementServices {
     final classified = applyRules == null
         ? transaction
         : await applyRules!(transaction);
-    final resolved = synchronizeMerchantReviewIssue(
+    final resolved = await synchronizeMerchantReviewIssueBestEffort(
       classified,
       now,
-      merchants: merchants == null ? const [] : await merchants!.listAll(),
+      merchantRepository: merchants,
     );
     return _PreparedStatementTransaction(value: resolved, proposal: proposal);
   }

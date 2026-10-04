@@ -38,6 +38,138 @@ void main() {
     },
   );
 
+  test(
+    'saves manual, updated, and imported transactions when merchant enrichment fails',
+    () async {
+      final merchants = ThrowingMerchants();
+
+      final created =
+          await CreateTransaction(transactions, clock, merchants: merchants)(
+            CreateTransactionCommand(
+              id: 'manual-enrichment-failure',
+              provenanceId: 'manual-enrichment-failure-provenance',
+              timing: KnownTransactionTime(now),
+              money: money('12.50'),
+              direction: TransactionDirection.expense,
+              rawCounterparty: 'Unknown merchant',
+            ),
+          );
+      expect(created, isA<ApplicationSuccess<TransactionDto>>());
+      expect(
+        transactions.values['manual-enrichment-failure']!.reviewIssues,
+        isEmpty,
+      );
+
+      transactions.values['updated-enrichment-failure'] = transaction(
+        now,
+        id: 'updated-enrichment-failure',
+        rawCounterparty: 'Unknown merchant',
+      );
+      final updated =
+          await UpdateTransaction(transactions, clock, merchants: merchants)(
+            UpdateTransactionCommand(
+              id: 'updated-enrichment-failure',
+              timing: KnownTransactionTime(now),
+              money: money('13.50'),
+              direction: TransactionDirection.expense,
+              rawCounterparty: 'Unknown merchant',
+            ),
+          );
+      expect(updated, isA<ApplicationSuccess<TransactionDto>>());
+      expect(
+        transactions.values['updated-enrichment-failure']!.reviewIssues,
+        isEmpty,
+      );
+
+      final imported =
+          await ImportTransaction(transactions, clock, merchants: merchants)(
+            ImportTransactionCommand(
+              id: 'import-enrichment-failure',
+              provenanceId: 'import-enrichment-failure-provenance',
+              sourceId: 'transactions.csv',
+              originalRepresentation: 'Unknown merchant,12.50',
+              money: money('12.50'),
+              direction: TransactionDirection.expense,
+              transactionDate: '2026-08-09',
+              rawCounterparty: 'Unknown merchant',
+            ),
+          );
+      expect(imported, isA<ApplicationSuccess<TransactionDto>>());
+      expect(
+        transactions.values['import-enrichment-failure']!.reviewIssues,
+        isEmpty,
+      );
+    },
+  );
+
+  test(
+    'AssignMerchant saves the assignment when merchant enrichment fails',
+    () async {
+      final merchants = ThrowingMerchants(
+        known: Merchant(
+          id: MerchantId('merchant.known'),
+          name: 'Known merchant',
+        ),
+      );
+      transactions.values['assign-enrichment-failure'] = transaction(
+        now,
+        id: 'assign-enrichment-failure',
+        rawCounterparty: 'Unknown merchant',
+      );
+
+      final result = await AssignMerchant(transactions, merchants, clock)(
+        'assign-enrichment-failure',
+        'merchant.known',
+      );
+
+      expect(result, isA<ApplicationSuccess<TransactionDto>>());
+      expect(
+        transactions.values['assign-enrichment-failure']!.merchantId,
+        MerchantId('merchant.known'),
+      );
+    },
+  );
+
+  test(
+    'startup reconciliation repairs merchant review state after enrichment recovers',
+    () async {
+      final merchants = ThrowingMerchants();
+      final created =
+          await CreateTransaction(transactions, clock, merchants: merchants)(
+            CreateTransactionCommand(
+              id: 'reconcile-enrichment-failure',
+              provenanceId: 'reconcile-enrichment-failure-provenance',
+              timing: KnownTransactionTime(now),
+              money: money('12.50'),
+              direction: TransactionDirection.expense,
+              rawCounterparty: 'Unknown merchant',
+            ),
+          );
+      expect(created, isA<ApplicationSuccess<TransactionDto>>());
+      expect(
+        transactions.values['reconcile-enrichment-failure']!.reviewIssues,
+        isEmpty,
+      );
+
+      final recoveredMerchants = MemoryMerchants();
+      final result = await SynchronizeMerchantReviewIssues(
+        transactions,
+        recoveredMerchants,
+        clock.now,
+      )();
+
+      expect(result, isA<ApplicationSuccess<int>>());
+      expect(
+        transactions
+            .values['reconcile-enrichment-failure']!
+            .reviewIssues
+            .single
+            .status,
+        ReviewIssueStatus.active,
+      );
+    },
+  );
+
   test('rejects a missing or nested subcategory parent', () async {
     final categories = MemoryCategories();
     final save = SaveCategory(categories);
@@ -1421,6 +1553,27 @@ final class MemoryMerchants implements MerchantRepository {
   @override
   Future<void> save(Merchant merchant) async =>
       values[merchant.id.value] = merchant;
+}
+
+final class ThrowingMerchants implements MerchantRepository {
+  ThrowingMerchants({this.known});
+
+  final Merchant? known;
+
+  @override
+  Future<Merchant?> findById(MerchantId id) async =>
+      known?.id == id ? known : null;
+
+  @override
+  Future<List<Merchant>> listAll() async {
+    throw const RepositoryException(
+      RepositoryFailureCode.unavailable,
+      'list merchants',
+    );
+  }
+
+  @override
+  Future<void> save(Merchant merchant) async {}
 }
 
 final class MemoryCategories implements CategoryRepository {

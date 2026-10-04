@@ -2,7 +2,6 @@ import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -112,41 +111,6 @@ void main() {
     );
   });
 
-  testWidgets('Home uses Cupertino symbols for native iOS controls', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    await tester.pumpWidget(_testApp(router));
-    await tester.pumpAndSettle();
-
-    expect(find.byIcon(CupertinoIcons.bell), findsOneWidget);
-    expect(find.byIcon(Icons.notifications_none_rounded), findsNothing);
-  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
-
-  testWidgets('Home keeps notification navigation available', (tester) async {
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    await tester.pumpWidget(_testApp(router));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byKey(const Key('home-notification-action')));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('notifications-route')), findsOneWidget);
-    expect(router.canPop(), isTrue);
-
-    router.pop();
-    await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('notifications-route')), findsNothing);
-    expect(find.byType(HomePage), findsOneWidget);
-  });
-
   testWidgets('Home keeps all dashboard cards when there is no activity', (
     tester,
   ) async {
@@ -171,6 +135,59 @@ void main() {
     expect(find.byKey(const Key('home-category-view-all')), findsOneWidget);
     expect(find.byKey(const Key('home-recent-view-all')), findsOneWidget);
     expect(find.text('...'), findsNWidgets(4));
+    expect(find.byKey(const Key('home-notification-action')), findsNothing);
+  });
+
+  testWidgets('Home card ellipsis actions keep their visible glyph aligned', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(_testApp(router));
+    await tester.pumpAndSettle();
+
+    for (final entry in const [
+      (
+        card: 'home-category-card',
+        title: 'Top categories',
+        action: 'home-category-view-all',
+      ),
+      (
+        card: 'home-attention-card',
+        title: 'Needs attention',
+        action: 'home-attention-view-all',
+      ),
+      (
+        card: 'home-recent-card',
+        title: 'Recent transactions',
+        action: 'home-recent-view-all',
+      ),
+      (
+        card: 'home-insight-card',
+        title: 'Insights',
+        action: 'home-insight-view-all',
+      ),
+    ]) {
+      final card = find.byKey(ValueKey(entry.card));
+      final title = find.descendant(of: card, matching: find.text(entry.title));
+      final action = find.descendant(
+        of: card,
+        matching: find.byKey(ValueKey(entry.action)),
+      );
+      final glyph = find.descendant(of: action, matching: find.text('...'));
+      expect(title, findsOneWidget);
+      expect(action, findsOneWidget);
+      expect(glyph, findsOneWidget);
+      expect(tester.getSize(action).width, greaterThanOrEqualTo(44));
+      expect(tester.getSize(action).height, greaterThanOrEqualTo(44));
+      expect(
+        (tester.getTopLeft(glyph).dy - tester.getTopLeft(title).dy).abs(),
+        lessThan(6),
+      );
+    }
   });
 
   testWidgets('Home Recent ellipsis keeps the selected month in Search', (

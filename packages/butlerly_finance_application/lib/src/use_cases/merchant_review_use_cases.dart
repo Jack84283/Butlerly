@@ -77,6 +77,47 @@ Transaction synchronizeMerchantReviewIssue(
       : transaction;
 }
 
+/// Enriches a transaction with merchant-review state without making the
+/// merchant catalog a prerequisite for saving the transaction.
+///
+/// A catalog read is secondary data enrichment. If it is unavailable, preserve
+/// the transaction exactly as produced by the primary write path. An explicit
+/// merchant assignment is sufficient to resolve an active merchant issue even
+/// when the catalog cannot be read; an unassigned transaction must not be
+/// synchronized against an empty catalog, because that would create a false
+/// merchant-review issue.
+Future<Transaction> synchronizeMerchantReviewIssueBestEffort(
+  Transaction transaction,
+  DateTime at, {
+  MerchantRepository? merchantRepository,
+}) async {
+  final repository = merchantRepository;
+  // A missing optional repository means no catalog is configured, so retain
+  // the existing empty-catalog synchronization semantics. A repository that
+  // fails while being read is handled separately below and must not be
+  // treated as an empty catalog.
+  if (repository == null) {
+    return synchronizeMerchantReviewIssue(transaction, at);
+  }
+
+  try {
+    return synchronizeMerchantReviewIssue(
+      transaction,
+      at,
+      merchants: await repository.listAll(),
+    );
+  } catch (_) {
+    if (transaction.merchantId != null) {
+      return synchronizeMerchantReviewIssue(
+        transaction,
+        at,
+        merchants: const [],
+      );
+    }
+    return transaction;
+  }
+}
+
 /// Reconciles merchant-review issues for transactions that predate the
 /// persisted lifecycle synchronization.
 ///

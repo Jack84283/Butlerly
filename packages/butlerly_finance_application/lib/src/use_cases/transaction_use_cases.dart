@@ -91,10 +91,10 @@ final class CreateTransaction {
     final classified = applyRules == null
         ? transaction
         : await applyRules!(transaction);
-    final resolved = synchronizeMerchantReviewIssue(
+    final resolved = await synchronizeMerchantReviewIssueBestEffort(
       classified,
       now,
-      merchants: merchants == null ? const [] : await merchants!.listAll(),
+      merchantRepository: merchants,
     );
     await repository.save(resolved);
     return TransactionDto.fromDomain(resolved);
@@ -124,7 +124,7 @@ final class UpdateTransaction {
       throw RepositoryException(RepositoryFailureCode.notFound, operation);
     }
     final updatedAt = clock.now();
-    final updated = synchronizeMerchantReviewIssue(
+    final updated = await synchronizeMerchantReviewIssueBestEffort(
       Transaction(
         id: current.id,
         timing: command.timing,
@@ -164,7 +164,7 @@ final class UpdateTransaction {
         timeZoneId: command.timeZoneId ?? current.timeZoneId,
       ),
       updatedAt,
-      merchants: merchants == null ? const [] : await merchants!.listAll(),
+      merchantRepository: merchants,
     );
     await repository.save(updated);
     return TransactionDto.fromDomain(
@@ -253,10 +253,10 @@ final class ImportTransaction {
     final classified = applyRules == null
         ? transaction
         : await applyRules!(transaction);
-    final resolved = synchronizeMerchantReviewIssue(
+    final resolved = await synchronizeMerchantReviewIssueBestEffort(
       classified,
       now,
-      merchants: merchants == null ? const [] : await merchants!.listAll(),
+      merchantRepository: merchants,
     );
     await repository.save(resolved);
     return TransactionDto.fromDomain(resolved);
@@ -432,13 +432,13 @@ final class AssignMerchant {
         );
       }
       final now = clock.now();
-      final updated = synchronizeMerchantReviewIssue(
+      final updated = await synchronizeMerchantReviewIssueBestEffort(
         existing.assignMerchant(
           merchantId == null ? null : MerchantId(merchantId),
           now,
         ),
         now,
-        merchants: await merchants.listAll(),
+        merchantRepository: merchants,
       );
       await repository.save(updated);
       return TransactionDto.fromDomain(

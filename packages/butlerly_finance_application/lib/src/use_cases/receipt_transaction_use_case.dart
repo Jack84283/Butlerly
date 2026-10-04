@@ -119,10 +119,10 @@ final class CreateReceiptTransaction {
       final classified = applyRules == null
           ? transaction
           : await applyRules!(transaction);
-      final resolved = synchronizeMerchantReviewIssue(
+      final resolved = await synchronizeMerchantReviewIssueBestEffort(
         classified,
         now,
-        merchants: merchants == null ? const [] : await merchants!.listAll(),
+        merchantRepository: merchants,
       );
       await repository.save(resolved);
       final dto = TransactionDto.fromDomain(resolved);
