@@ -48,6 +48,7 @@ void main() {
         'sep-2',
         'sep-3',
         'sep-4',
+        'sep-5',
       ]);
       expect(overview.reviewCount, 1);
       expect(overview.reviewUnavailable, isFalse);
@@ -109,7 +110,7 @@ void main() {
       final overview = (result as ApplicationSuccess<HomeOverview>).value;
       expect(overview.analysis, isNull);
       expect(overview.analysisUnavailable, isTrue);
-      expect(overview.recentTransactions, hasLength(4));
+      expect(overview.recentTransactions, hasLength(5));
     },
   );
 

@@ -210,7 +210,7 @@ final class GetHomeOverview {
             .length,
         possibleDuplicateCount: possibleDuplicateCount,
         merchantReviewCount: merchantCandidateKeys.length,
-        recentTransactions: transactions.take(4).toList(growable: false),
+        recentTransactions: transactions.take(5).toList(growable: false),
         insights: insights,
         analysisUnavailable: analysisUnavailable,
         reviewUnavailable: reviewResult is! ApplicationSuccess,

@@ -35,6 +35,52 @@ void main() {
     expect(secondGroups.single.selectedTransactionId, isNull);
   });
 
+  test(
+    'scoped listing returns only groups with transactions in the period',
+    () async {
+      final repository = _Groups(const [], [
+        _group('in-period', ['in-period-a', 'in-period-b']),
+        _group('outside-period', ['outside-period-a', 'outside-period-b']),
+      ]);
+      final transactions = _Transactions()
+        ..values['in-period-a'] = _transaction(
+          'in-period-a',
+          date: '2026-09-02',
+        )
+        ..values['in-period-b'] = _transaction(
+          'in-period-b',
+          date: '2026-09-03',
+        )
+        ..values['outside-period-a'] = _transaction(
+          'outside-period-a',
+          date: '2026-08-02',
+        )
+        ..values['outside-period-b'] = _transaction(
+          'outside-period-b',
+          date: '2026-08-03',
+        );
+
+      final result =
+          await ListDuplicateCandidateGroups(
+            repository,
+            transactions: ListTransactions(transactions),
+          )(
+            scope: ReviewPeriodScope.fromDateValues(
+              startDate: '2026-09-01',
+              endDate: '2026-09-30',
+              timeZoneId: 'UTC',
+            ),
+          );
+
+      expect(
+        (result as ApplicationSuccess<List<DuplicateCandidateGroup>>).value.map(
+          (group) => group.id,
+        ),
+        ['in-period'],
+      );
+    },
+  );
+
   test('explicit scan reopens consolidated groups', () async {
     final repository = _Groups([_match('a', '25'), _match('b', '25')]);
     final clock = _Clock(DateTime.utc(2026, 1, 1));
@@ -546,6 +592,21 @@ final class _Groups implements DuplicateCandidateGroupRepository {
       groups.removeWhere((value) => value.id == id);
 }
 
+DuplicateCandidateGroup _group(String id, List<String> transactionIds) =>
+    DuplicateCandidateGroup(
+      id: id,
+      transactionIds: transactionIds.map(TransactionId.new).toList(),
+      duplicateKey: DuplicateTransactionKey(
+        transactionDate: '2026-09-01',
+        amount: DecimalValue.parse('25'),
+        currency: 'USD',
+        direction: 'expense',
+      ),
+      status: DuplicateCandidateGroupStatus.unresolved,
+      createdAt: DateTime.utc(2026, 9, 1),
+      updatedAt: DateTime.utc(2026, 9, 1),
+    );
+
 final class _Transactions implements TransactionRepository {
   final values = <String, Transaction>{};
 
@@ -556,8 +617,24 @@ final class _Transactions implements TransactionRepository {
   Future<List<Transaction>> listAll() async => values.values.toList();
 
   @override
-  Future<List<Transaction>> query(TransactionRepositoryQuery query) async =>
-      values.values.toList();
+  Future<List<Transaction>> query(TransactionRepositoryQuery query) async {
+    return values.values
+        .where(
+          (value) =>
+              (query.from == null ||
+                  value.transactionDate!.compareTo(
+                        query.from!.toIso8601String().substring(0, 10),
+                      ) >=
+                      0) &&
+              (query.to == null ||
+                  value.transactionDate!.compareTo(
+                        query.to!.toIso8601String().substring(0, 10),
+                      ) <=
+                      0) &&
+              (query.status == null || value.status == query.status),
+        )
+        .toList();
+  }
 
   @override
   Future<void> removePermanently(TransactionId id) async {

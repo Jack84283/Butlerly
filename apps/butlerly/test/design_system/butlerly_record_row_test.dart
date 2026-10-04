@@ -250,7 +250,7 @@ void main() {
     expect(find.text('+4820.00 USD'), findsOneWidget);
   });
 
-  testWidgets('navigable item preserves tap behavior without a chevron', (
+  testWidgets('navigable item preserves tap behavior with a chevron', (
     tester,
   ) async {
     var tapped = false;
@@ -270,7 +270,7 @@ void main() {
       ),
     );
 
-    expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
+    expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
     await tester.tap(find.text('Coffee'));
     expect(tapped, isTrue);
   });

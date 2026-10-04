@@ -26,12 +26,14 @@ final class CreateTransaction {
     this.clock, {
     this.classifier,
     this.applyRules,
+    this.merchants,
   });
 
   final TransactionRepository repository;
   final ApplicationClock clock;
   final ProposeTransactionClassification? classifier;
   final ApplyTransactionRules? applyRules;
+  final MerchantRepository? merchants;
 
   Future<ApplicationResult<TransactionDto>> call(
     CreateTransactionCommand command,
@@ -89,18 +91,28 @@ final class CreateTransaction {
     final classified = applyRules == null
         ? transaction
         : await applyRules!(transaction);
-    final resolved = synchronizeMerchantReviewIssue(classified, now);
+    final resolved = synchronizeMerchantReviewIssue(
+      classified,
+      now,
+      merchants: merchants == null ? const [] : await merchants!.listAll(),
+    );
     await repository.save(resolved);
     return TransactionDto.fromDomain(resolved);
   });
 }
 
 final class UpdateTransaction {
-  const UpdateTransaction(this.repository, this.clock, {this.preferences});
+  const UpdateTransaction(
+    this.repository,
+    this.clock, {
+    this.preferences,
+    this.merchants,
+  });
 
   final TransactionRepository repository;
   final ApplicationClock clock;
   final UserPreferenceRepository? preferences;
+  final MerchantRepository? merchants;
 
   Future<ApplicationResult<TransactionDto>> call(
     UpdateTransactionCommand command,
@@ -152,6 +164,7 @@ final class UpdateTransaction {
         timeZoneId: command.timeZoneId ?? current.timeZoneId,
       ),
       updatedAt,
+      merchants: merchants == null ? const [] : await merchants!.listAll(),
     );
     await repository.save(updated);
     return TransactionDto.fromDomain(
@@ -167,12 +180,14 @@ final class ImportTransaction {
     this.clock, {
     this.classifier,
     this.applyRules,
+    this.merchants,
   });
 
   final TransactionRepository repository;
   final ApplicationClock clock;
   final ProposeTransactionClassification? classifier;
   final ApplyTransactionRules? applyRules;
+  final MerchantRepository? merchants;
 
   Future<ApplicationResult<TransactionDto>> call(
     ImportTransactionCommand command,
@@ -238,7 +253,11 @@ final class ImportTransaction {
     final classified = applyRules == null
         ? transaction
         : await applyRules!(transaction);
-    final resolved = synchronizeMerchantReviewIssue(classified, now);
+    final resolved = synchronizeMerchantReviewIssue(
+      classified,
+      now,
+      merchants: merchants == null ? const [] : await merchants!.listAll(),
+    );
     await repository.save(resolved);
     return TransactionDto.fromDomain(resolved);
   });

@@ -71,6 +71,7 @@ final class StatementServices {
     this.clock, {
     this.evidence,
     this.applyRules,
+    this.merchants,
     required this.duplicateGroups,
     required this.duplicateChecker,
     this.classifier,
@@ -83,6 +84,7 @@ final class StatementServices {
   final ApplicationClock clock;
   final EvidenceRepository? evidence;
   final ApplyTransactionRules? applyRules;
+  final MerchantRepository? merchants;
   final DuplicateCandidateGroupRepository duplicateGroups;
   final DuplicateTransactionChecker duplicateChecker;
   final ProposeTransactionClassification? classifier;
@@ -609,7 +611,11 @@ final class StatementServices {
     final classified = applyRules == null
         ? transaction
         : await applyRules!(transaction);
-    final resolved = synchronizeMerchantReviewIssue(classified, now);
+    final resolved = synchronizeMerchantReviewIssue(
+      classified,
+      now,
+      merchants: merchants == null ? const [] : await merchants!.listAll(),
+    );
     return _PreparedStatementTransaction(value: resolved, proposal: proposal);
   }
 

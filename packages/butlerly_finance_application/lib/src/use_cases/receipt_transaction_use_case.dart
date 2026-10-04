@@ -45,12 +45,14 @@ final class CreateReceiptTransaction {
     this.clock, {
     this.classifier,
     this.applyRules,
+    this.merchants,
   });
 
   final TransactionRepository repository;
   final ApplicationClock clock;
   final ProposeTransactionClassification? classifier;
   final ApplyTransactionRules? applyRules;
+  final MerchantRepository? merchants;
 
   Future<ApplicationResult<TransactionDto>> call(
     ReceiptTransactionCommand command,
@@ -117,7 +119,11 @@ final class CreateReceiptTransaction {
       final classified = applyRules == null
           ? transaction
           : await applyRules!(transaction);
-      final resolved = synchronizeMerchantReviewIssue(classified, now);
+      final resolved = synchronizeMerchantReviewIssue(
+        classified,
+        now,
+        merchants: merchants == null ? const [] : await merchants!.listAll(),
+      );
       await repository.save(resolved);
       final dto = TransactionDto.fromDomain(resolved);
       return TransactionDto(

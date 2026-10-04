@@ -47,6 +47,50 @@ void main() {
       normalizeMerchantName('TRADER JOES'),
     }, hasLength(2));
   });
+
+  test(
+    'canonical, alias, and normalization-pattern matches resolve evidence',
+    () {
+      final merchantId = MerchantId('merchant-safeway');
+      final merchant = Merchant(
+        id: merchantId,
+        name: 'Safeway',
+        aliases: [
+          MerchantAlias(
+            id: MerchantAliasId('alias-safeway'),
+            merchantId: merchantId,
+            alias: 'Safeway Grocery',
+            createdAt: at,
+            updatedAt: at,
+          ),
+        ],
+        normalizationPatterns: [
+          MerchantNormalizationPattern(
+            id: MerchantNormalizationPatternId('pattern-safeway'),
+            merchantId: merchantId,
+            pattern: 'Safeway Fuel',
+            createdAt: at,
+            updatedAt: at,
+          ),
+        ],
+      );
+
+      for (final evidence in [
+        'SAFEWAY',
+        'SAFEWAY GROCERY',
+        'SAFEWAY FUEL #4',
+      ]) {
+        expect(
+          synchronizeMerchantReviewIssue(
+            _transaction(rawCounterparty: evidence),
+            at,
+            merchants: [merchant],
+          ).reviewIssues,
+          isEmpty,
+        );
+      }
+    },
+  );
 }
 
 Transaction _transaction({String? rawCounterparty}) => Transaction(

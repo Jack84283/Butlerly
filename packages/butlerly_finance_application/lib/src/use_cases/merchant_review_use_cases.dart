@@ -1,5 +1,7 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
+import 'classification_use_cases.dart';
+
 const merchantReviewIssuePrefix = 'merchant-review:';
 
 String merchantEvidenceFor(Transaction transaction) =>
@@ -12,8 +14,9 @@ String merchantEvidenceFor(Transaction transaction) =>
 /// transaction's merchant assignment.
 Transaction synchronizeMerchantReviewIssue(
   Transaction transaction,
-  DateTime at,
-) {
+  DateTime at, {
+  Iterable<Merchant> merchants = const [],
+}) {
   final issueId = ReviewIssueId(
     '$merchantReviewIssuePrefix${transaction.id.value}',
   );
@@ -23,10 +26,17 @@ Transaction synchronizeMerchantReviewIssue(
   final usableEvidence = normalizeMerchantName(
     merchantEvidenceFor(transaction),
   ).isNotEmpty;
+  final hasDeterministicMerchant =
+      resolveMerchantFromEvidence(
+        merchants,
+        merchantEvidenceFor(transaction),
+      ) !=
+      null;
   final needsReview =
       transaction.status == TransactionStatus.active &&
       transaction.merchantId == null &&
-      usableEvidence;
+      usableEvidence &&
+      !hasDeterministicMerchant;
 
   if (needsReview) {
     if (existing == null) {

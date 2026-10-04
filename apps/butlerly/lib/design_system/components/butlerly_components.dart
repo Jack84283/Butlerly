@@ -746,6 +746,8 @@ class ButlerlyTransactionList extends StatelessWidget {
   );
 }
 
+enum ButlerlyTransactionRowVariant { standard, dashboard }
+
 class ButlerlyTransactionListItem extends StatelessWidget {
   const ButlerlyTransactionListItem({
     required this.title,
@@ -769,6 +771,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     this.onTap,
     this.showNavigationIndicator = false,
     this.showCategoryPill = false,
+    this.variant = ButlerlyTransactionRowVariant.standard,
     super.key,
   });
 
@@ -793,6 +796,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
   final VoidCallback? onTap;
   final bool showNavigationIndicator;
   final bool showCategoryPill;
+  final ButlerlyTransactionRowVariant variant;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -852,23 +856,38 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: _title(context)),
-                        const SizedBox(
-                          width:
-                              ButlerlyTransactionItemTokens.titleAmountSpacing,
-                        ),
-                        Flexible(
-                          child: Align(
-                            alignment: AlignmentDirectional.centerEnd,
-                            child: _signedAmount(context),
+                    if (_dashboardReflows(context))
+                      _dashboardHeader(context)
+                    else
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: _titleWithDashboardPill(context)),
+                          const SizedBox(
+                            width: ButlerlyTransactionItemTokens
+                                .titleAmountSpacing,
                           ),
-                        ),
-                      ],
-                    ),
-                    if (showCategoryPill &&
+                          Flexible(
+                            child: Align(
+                              alignment: AlignmentDirectional.centerEnd,
+                              child: _signedAmount(context),
+                            ),
+                          ),
+                          if (showNavigationIndicator)
+                            Padding(
+                              padding: const EdgeInsetsDirectional.only(
+                                start: ButlerlySpacing.compact,
+                              ),
+                              child: Icon(
+                                Icons.chevron_right_rounded,
+                                size: 20,
+                                color: context.colors.tertiaryText,
+                              ),
+                            ),
+                        ],
+                      ),
+                    if (variant != ButlerlyTransactionRowVariant.dashboard &&
+                        showCategoryPill &&
                         categoryLabel?.trim().isNotEmpty == true)
                       Padding(
                         padding: const EdgeInsets.only(
@@ -876,28 +895,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                         ),
                         child: Align(
                           alignment: AlignmentDirectional.centerStart,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: ButlerlyChartColors.category(
-                                categoryId ?? categoryLabel!,
-                              ).withValues(alpha: 0.14),
-                              borderRadius: BorderRadius.circular(
-                                ButlerlyRadius.full,
-                              ),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: ButlerlySpacing.compact,
-                                vertical: ButlerlySpacing.micro,
-                              ),
-                              child: Text(
-                                categoryLabel!,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: context.transactionItemMetadata,
-                              ),
-                            ),
-                          ),
+                          child: _categoryPill(context),
                         ),
                       ),
                     if (_metadataParts.isNotEmpty) ...[
@@ -1018,6 +1016,12 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                         ),
                       ),
                     ),
+                  if (showNavigationIndicator)
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      size: 20,
+                      color: context.colors.tertiaryText,
+                    ),
                   ?selectionControl,
                 ],
               ),
@@ -1054,6 +1058,73 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     textHeightBehavior: ButlerlyTransactionItemTokens.textHeightBehavior,
   );
 
+  bool _dashboardReflows(BuildContext context) =>
+      variant == ButlerlyTransactionRowVariant.dashboard &&
+      MediaQuery.textScalerOf(context).scale(14) > 20;
+
+  Widget _titleWithDashboardPill(BuildContext context) =>
+      variant == ButlerlyTransactionRowVariant.dashboard
+      ? Row(
+          children: [
+            Expanded(child: _title(context)),
+            if (showCategoryPill &&
+                categoryLabel?.trim().isNotEmpty == true) ...[
+              const SizedBox(width: ButlerlySpacing.compact),
+              _categoryPill(context),
+            ],
+          ],
+        )
+      : _title(context);
+
+  Widget _dashboardHeader(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      _titleWithDashboardPill(context),
+      const SizedBox(height: ButlerlySpacing.micro),
+      Row(
+        children: [
+          Flexible(
+            child: Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: _signedAmount(context),
+            ),
+          ),
+          if (showNavigationIndicator) _navigationIndicator(context),
+        ],
+      ),
+    ],
+  );
+
+  Widget _navigationIndicator(BuildContext context) => Padding(
+    padding: const EdgeInsetsDirectional.only(start: ButlerlySpacing.compact),
+    child: Icon(
+      Icons.chevron_right_rounded,
+      size: 20,
+      color: context.colors.tertiaryText,
+    ),
+  );
+
+  Widget _categoryPill(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      color: ButlerlyChartColors.category(
+        categoryId ?? categoryLabel!,
+      ).withValues(alpha: 0.14),
+      borderRadius: BorderRadius.circular(ButlerlyRadius.full),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: ButlerlySpacing.compact,
+        vertical: ButlerlySpacing.micro,
+      ),
+      child: Text(
+        categoryLabel!,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: context.transactionItemMetadata,
+      ),
+    ),
+  );
+
   Widget _metadataText(BuildContext context) => Text(
     _metadataParts.join(' · '),
     maxLines: 1,
@@ -1068,7 +1139,11 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     overflow: TextOverflow.ellipsis,
     textAlign: TextAlign.end,
     style: context.transactionItemAmount.copyWith(
-      color: isIncome ? context.colors.success : null,
+      color: isIncome
+          ? context.colors.success
+          : variant == ButlerlyTransactionRowVariant.dashboard
+          ? context.colors.error
+          : null,
     ),
     textHeightBehavior: ButlerlyTransactionItemTokens.textHeightBehavior,
   );
@@ -1187,6 +1262,7 @@ class ButlerlyRecordRow extends ButlerlyTransactionListItem {
     super.onTap,
     super.showNavigationIndicator,
     super.showCategoryPill,
+    super.variant,
     super.key,
   });
 }

@@ -36,10 +36,11 @@ final class PaymentTransactionCommand {
 }
 
 final class CreatePaymentTransaction {
-  const CreatePaymentTransaction(this.repository, this.clock);
+  const CreatePaymentTransaction(this.repository, this.clock, {this.merchants});
 
   final TransactionRepository repository;
   final ApplicationClock clock;
+  final MerchantRepository? merchants;
 
   Future<ApplicationResult<TransactionDto>> call(
     PaymentTransactionCommand command,
@@ -72,7 +73,11 @@ final class CreatePaymentTransaction {
       createdAt: now,
       updatedAt: now,
     );
-    final resolved = synchronizeMerchantReviewIssue(transaction, now);
+    final resolved = synchronizeMerchantReviewIssue(
+      transaction,
+      now,
+      merchants: merchants == null ? const [] : await merchants!.listAll(),
+    );
     await repository.save(resolved);
     return TransactionDto.fromDomain(resolved);
   });

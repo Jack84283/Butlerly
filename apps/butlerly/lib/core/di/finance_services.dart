@@ -66,6 +66,7 @@ final class FinanceServices {
                  transactionRules,
                  const SystemApplicationClock(),
                ),
+         merchants: merchants,
        ),
        createReceiptTransaction = CreateReceiptTransaction(
          transactions,
@@ -83,10 +84,12 @@ final class FinanceServices {
                  transactionRules,
                  const SystemApplicationClock(),
                ),
+         merchants: merchants,
        ),
        createPaymentTransaction = CreatePaymentTransaction(
          transactions,
          const SystemApplicationClock(),
+         merchants: merchants,
        ),
        importTransaction = ImportTransaction(
          transactions,
@@ -104,6 +107,7 @@ final class FinanceServices {
                  transactionRules,
                  const SystemApplicationClock(),
                ),
+         merchants: merchants,
        ),
        getTransaction = GetTransaction(transactions, preferences: preferences),
        resolveHomePeriod = ResolveHomePeriod(preferences),
@@ -111,6 +115,7 @@ final class FinanceServices {
          transactions,
          const SystemApplicationClock(),
          preferences: preferences,
+         merchants: merchants,
        ),
        archiveTransaction = ArchiveTransaction(
          transactions,
@@ -229,7 +234,13 @@ final class FinanceServices {
              ),
        listDuplicateCandidateGroups = duplicateGroups == null
            ? null
-           : ListDuplicateCandidateGroups(duplicateGroups),
+           : ListDuplicateCandidateGroups(
+               duplicateGroups,
+               transactions: ListTransactions(
+                 transactions,
+                 preferences: preferences,
+               ),
+             ),
        resolveDuplicateCandidateGroup = duplicateGroups == null
            ? null
            : ResolveDuplicateCandidateGroup(
@@ -303,6 +314,7 @@ final class FinanceServices {
                statements as StatementWorkflowRepository,
                const SystemApplicationClock(),
                evidence: evidence,
+               merchants: merchants,
                applyRules: transactionRules == null
                    ? null
                    : ApplyTransactionRules(
