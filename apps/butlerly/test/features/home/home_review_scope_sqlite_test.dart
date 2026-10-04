@@ -57,21 +57,61 @@ void main() {
         description: 'SQLite outside-period review',
         date: '2026-08-05',
       );
-      final result = await finance.listTransactions(
-        ListTransactionsQuery(
-          from: DateTime(2026, 9, 1),
-          to: DateTime(2026, 9, 16),
-          timeZoneId: 'UTC',
-          status: TransactionStatus.active,
-          needsReview: true,
+      final result = await finance.listReviewItems(
+        ListReviewItemsQuery(
+          scope: ReviewPeriodScope.fromDateValues(
+            startDate: '2026-09-01',
+            endDate: '2026-09-16',
+            timeZoneId: 'UTC',
+          ),
         ),
       );
-      expect(result, isA<ApplicationSuccess<List<TransactionDto>>>());
-      final transactions =
-          (result as ApplicationSuccess<List<TransactionDto>>).value;
-      expect(transactions.map((value) => value.id), [
+      expect(result, isA<ApplicationSuccess<List<ReviewItemDto>>>());
+      final items = (result as ApplicationSuccess<List<ReviewItemDto>>).value;
+      expect(items.map((value) => value.transactionId), [
         'sqlite-review-in-period',
       ]);
+    },
+  );
+
+  test(
+    'scoped Review applies timezone DST boundaries to undated occurrences',
+    () async {
+      await _saveReviewTransaction(
+        database,
+        id: 'sqlite-review-dst-start',
+        description: 'SQLite DST period start',
+        occurredAt: DateTime.utc(2026, 3, 8, 8),
+      );
+      await _saveReviewTransaction(
+        database,
+        id: 'sqlite-review-dst-end',
+        description: 'SQLite DST period end',
+        occurredAt: DateTime.utc(2026, 3, 9, 6, 59, 59),
+      );
+      await _saveReviewTransaction(
+        database,
+        id: 'sqlite-review-dst-outside',
+        description: 'SQLite after DST period',
+        occurredAt: DateTime.utc(2026, 3, 9, 7),
+      );
+
+      final result = await finance.listReviewItems(
+        ListReviewItemsQuery(
+          scope: ReviewPeriodScope.fromDateValues(
+            startDate: '2026-03-08',
+            endDate: '2026-03-08',
+            timeZoneId: 'America/Los_Angeles',
+          ),
+        ),
+      );
+      expect(result, isA<ApplicationSuccess<List<ReviewItemDto>>>());
+      final items = (result as ApplicationSuccess<List<ReviewItemDto>>).value;
+      expect(items, hasLength(2));
+      expect(
+        items.map((value) => value.transactionId).toSet(),
+        equals({'sqlite-review-dst-start', 'sqlite-review-dst-end'}),
+      );
     },
   );
 }
@@ -80,12 +120,14 @@ Future<void> _saveReviewTransaction(
   LocalDatabase database, {
   required String id,
   required String description,
-  required String date,
+  String? date,
+  DateTime? occurredAt,
 }) async {
-  final occurredAt = DateTime.parse('${date}T12:00:00Z');
+  final effectiveOccurredAt =
+      occurredAt ?? DateTime.parse('${date!}T12:00:00Z');
   final transaction = Transaction(
     id: TransactionId(id),
-    timing: KnownTransactionTime(occurredAt),
+    timing: KnownTransactionTime(effectiveOccurredAt),
     transactionDate: date,
     money: Money(
       amount: DecimalValue.parse('12.50'),
@@ -98,14 +140,14 @@ Future<void> _saveReviewTransaction(
       Provenance(
         id: ProvenanceId('$id-provenance'),
         sourceType: ProvenanceSourceType.userEntry,
-        capturedAt: occurredAt,
+        capturedAt: effectiveOccurredAt,
       ),
     ],
-    createdAt: occurredAt,
-    updatedAt: occurredAt,
+    createdAt: effectiveOccurredAt,
+    updatedAt: effectiveOccurredAt,
   );
   final repository = SqliteTransactionRepository(database.persistenceDatabase);
-  final updatedAt = occurredAt.add(const Duration(seconds: 1));
+  final updatedAt = effectiveOccurredAt.add(const Duration(seconds: 1));
   await repository.save(
     transaction.addReviewIssue(
       ReviewIssue(

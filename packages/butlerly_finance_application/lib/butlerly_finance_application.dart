@@ -3,6 +3,7 @@ library;
 export 'src/commands/transaction_commands.dart';
 export 'src/dto/transaction_dto.dart';
 export 'src/dto/review_item_dto.dart';
+export 'src/dto/review_period_scope.dart';
 export 'src/dto/provenance_dto.dart';
 export 'src/dto/normalized_money_dto.dart';
 export 'src/dto/payment_settlement_dto.dart';

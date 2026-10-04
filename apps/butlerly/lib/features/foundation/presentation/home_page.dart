@@ -239,7 +239,7 @@ class _HomePageState extends State<HomePage> {
         data.insight != null ||
         data.reviewCount > 0 ||
         data.status == _HomeDataStatus.reviewUnavailable ||
-        data.trend.any((point) => point.value > 0);
+        data.trend.any((point) => point.selected && point.value > 0);
     if (!data.analysisUnavailable && !hasUsefulActivity) {
       return _HomeEmptyState(
         onAdd: () => context.push('/add'),
@@ -753,28 +753,33 @@ class _HomeSummaryCard extends StatelessWidget {
         ),
         LayoutBuilder(
           builder: (context, constraints) {
-            final columnCount = constraints.maxWidth < 320 ? 1 : 2;
+            final largeText = MediaQuery.textScalerOf(context).scale(14) > 18;
+            final stacked = largeText || constraints.maxWidth < 320;
             final cells = [
               _HomeMetricCell(
+                key: const ValueKey('home-summary-metric-spending'),
                 label: context.l10n.text('totalSpending'),
                 metric: model?.spending,
               ),
               _HomeMetricCell(
+                key: const ValueKey('home-summary-metric-income'),
                 label: context.l10n.text('income'),
                 metric: model?.income,
               ),
               _HomeMetricCell(
+                key: const ValueKey('home-summary-metric-net'),
                 label: context.l10n.text('netCashFlow'),
                 metric: model?.net,
                 signed: true,
               ),
               _HomeMetricCell(
+                key: const ValueKey('home-summary-metric-count'),
                 label: context.l10n.text('transactionCount'),
                 metric: model?.transactionCount,
                 count: true,
               ),
             ];
-            if (columnCount == 1) {
+            if (stacked) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -819,6 +824,7 @@ class _HomeSummaryCard extends StatelessWidget {
 
 class _HomeMetricCell extends StatelessWidget {
   const _HomeMetricCell({
+    super.key,
     required this.label,
     required this.metric,
     this.count = false,
@@ -850,15 +856,12 @@ class _HomeMetricCell extends StatelessWidget {
             ),
           ),
           const SizedBox(height: ButlerlySpacing.micro),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: AlignmentDirectional.centerStart,
-            child: Text(
-              value,
-              style: ButlerlyTypography.financialAmount(
-                Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
-              ).copyWith(fontSize: 24),
-            ),
+          Text(
+            value,
+            softWrap: true,
+            style: ButlerlyTypography.financialAmount(
+              Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
+            ).copyWith(fontSize: 24),
           ),
         ],
       ),
@@ -1534,10 +1537,10 @@ String? _homeInsightValues(BuildContext context, InsightResult insight) {
 String _homeInsightContext(BuildContext context, InsightResult insight) {
   final periods = <String>[
     '${context.l10n.text('currentPeriod')}: '
-        '${insight.context.period.startDate} – ${insight.context.period.endDate}',
+        '${localizedPeriodRange(context, startDate: insight.context.period.startDate, endDate: insight.context.period.endDate)}',
     if (insight.baselineContext case final baseline?)
       '${context.l10n.text('previousPeriod')}: '
-          '${baseline.period.startDate} – ${baseline.period.endDate}',
+          '${localizedPeriodRange(context, startDate: baseline.period.startDate, endDate: baseline.period.endDate)}',
   ];
   return periods.join(' · ');
 }

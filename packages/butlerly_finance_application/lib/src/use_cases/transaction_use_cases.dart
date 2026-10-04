@@ -522,28 +522,60 @@ final class ListReviewItems {
 
   final TransactionRepository repository;
 
-  Future<ApplicationResult<List<ReviewItemDto>>> call() =>
-      runApplication('list review items', () async {
-        final List<Transaction> transactions;
-        if (repository is ReviewTransactionRepository) {
-          transactions = await (repository as ReviewTransactionRepository)
-              .queryTransactionsForReview();
-        } else {
-          transactions = await repository.query(
-            const TransactionRepositoryQuery(
-              needsReview: true,
-              status: TransactionStatus.active,
-            ),
-          );
-        }
-        return List.unmodifiable(
-          transactions.expand(
-            (transaction) => transaction.reviewIssues
-                .where((issue) => issue.status == ReviewIssueStatus.active)
-                .map((issue) => ReviewItemDto.fromDomain(transaction, issue)),
-          ),
+  Future<ApplicationResult<List<ReviewItemDto>>> call([
+    ListReviewItemsQuery query = const ListReviewItemsQuery(),
+  ]) => runApplication('list review items', () async {
+    final scope = query.scope;
+    if (scope.isInvalid || (scope.isScoped && scope.period == null)) {
+      throw const DomainValidationException(
+        code: DomainErrorCode.invalidState,
+        field: 'period',
+        message: 'Review period is invalid.',
+      );
+    }
+    final period = scope.period;
+    final List<Transaction> transactions;
+    if (period == null && repository is ReviewTransactionRepository) {
+      transactions = await (repository as ReviewTransactionRepository)
+          .queryTransactionsForReview();
+    } else {
+      final from = period == null
+          ? null
+          : parseFinancialDateOnly(period.startDate);
+      final to = period == null ? null : parseFinancialDateOnly(period.endDate);
+      if (from != null && to != null && from.isAfter(to)) {
+        throw const DomainValidationException(
+          code: DomainErrorCode.invalidRange,
+          field: 'period',
+          message: 'Review period start cannot follow its end.',
         );
-      });
+      }
+      final occurredAtBounds = period == null
+          ? const FinancialInstantRange()
+          : financialInstantRangeForCalendarDates(
+              from: from,
+              to: to,
+              timeZoneId: period.timeZoneId,
+            );
+      transactions = await repository.query(
+        TransactionRepositoryQuery(
+          from: from,
+          to: to,
+          occurredAtFrom: occurredAtBounds.start,
+          occurredAtToExclusive: occurredAtBounds.endExclusive,
+          needsReview: true,
+          status: TransactionStatus.active,
+        ),
+      );
+    }
+    return List.unmodifiable(
+      transactions.expand(
+        (transaction) => transaction.reviewIssues
+            .where((issue) => issue.status == ReviewIssueStatus.active)
+            .map((issue) => ReviewItemDto.fromDomain(transaction, issue)),
+      ),
+    );
+  });
 }
 
 final class ResolveReviewIssue {

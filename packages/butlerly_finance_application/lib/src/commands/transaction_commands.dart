@@ -1,5 +1,7 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
+import '../dto/review_period_scope.dart';
+
 final class CreateTransactionCommand {
   const CreateTransactionCommand({
     required this.id,
@@ -152,4 +154,10 @@ final class ListTransactionsQuery {
   final bool? needsReview;
   final bool uncategorized;
   final bool includeUndated;
+}
+
+final class ListReviewItemsQuery {
+  const ListReviewItemsQuery({this.scope = const ReviewPeriodScope.unscoped()});
+
+  final ReviewPeriodScope scope;
 }

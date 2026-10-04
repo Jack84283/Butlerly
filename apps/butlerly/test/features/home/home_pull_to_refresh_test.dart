@@ -193,10 +193,12 @@ void main() {
       }
       final positions = cards.map((card) => tester.getTopLeft(card).dy);
       expect(positions, orderedEquals([...positions]..sort()));
+      expect(find.textContaining('Sep 1, 2026 – Sep 16, 2026'), findsOneWidget);
 
       await tester.ensureVisible(
         find.byKey(const ValueKey('home-attention-card')),
       );
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('home-attention-card')));
       await tester.pumpAndSettle();
       expect(
@@ -219,6 +221,61 @@ void main() {
 
     expect(find.byKey(const ValueKey('home-summary-card')), findsOneWidget);
     expect(find.byKey(const ValueKey('home-category-card')), findsOneWidget);
+    final metricKeys = [
+      const ValueKey('home-summary-metric-spending'),
+      const ValueKey('home-summary-metric-income'),
+      const ValueKey('home-summary-metric-net'),
+      const ValueKey('home-summary-metric-count'),
+    ];
+    final metricPositions = [
+      for (final key in metricKeys) tester.getTopLeft(find.byKey(key)),
+    ];
+    for (var index = 1; index < metricPositions.length; index++) {
+      expect(
+        metricPositions[index].dy,
+        greaterThan(metricPositions[index - 1].dy),
+      );
+    }
+    for (final label in [
+      'Total spending',
+      'Income',
+      'Net cash flow',
+      'Transaction count',
+    ]) {
+      expect(find.text(label), findsOneWidget);
+    }
+    expect(find.text('10.00 USD'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home Summary keeps its compact two-column layout normally', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const _TestApp());
+    await tester.pumpAndSettle();
+
+    final spending = tester.getTopLeft(
+      find.byKey(const ValueKey('home-summary-metric-spending')),
+    );
+    final income = tester.getTopLeft(
+      find.byKey(const ValueKey('home-summary-metric-income')),
+    );
+    final net = tester.getTopLeft(
+      find.byKey(const ValueKey('home-summary-metric-net')),
+    );
+    final count = tester.getTopLeft(
+      find.byKey(const ValueKey('home-summary-metric-count')),
+    );
+
+    expect(spending.dy, closeTo(income.dy, 0.01));
+    expect(net.dy, closeTo(count.dy, 0.01));
+    expect(spending.dy, lessThan(net.dy));
+    expect(spending.dx, lessThan(income.dx));
     expect(tester.takeException(), isNull);
   });
 
@@ -497,6 +554,46 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets(
+    'Home shows the selected empty period despite earlier historical spending',
+    (tester) async {
+      final historical = await finance.createTransaction(
+        CreateTransactionCommand(
+          id: 'home-historical-spending',
+          provenanceId: 'home-historical-spending-provenance',
+          timing: KnownTransactionTime(DateTime.utc(2026, 6, 15, 12)),
+          transactionDate: '2026-06-15',
+          money: Money(
+            amount: DecimalValue.parse('25.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+          description: 'Earlier Home spending',
+        ),
+      );
+      expect(historical, isA<ApplicationSuccess<TransactionDto>>());
+
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(const _TestApp());
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('home-month-selector')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('home-month-2026-7')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('home-empty-transactions-card')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('home-summary-card')), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('Home distinguishes transaction load failure from empty data', (
     tester,

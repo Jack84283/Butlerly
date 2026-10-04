@@ -21,17 +21,13 @@ class ReviewPage extends StatefulWidget {
   const ReviewPage({
     this.showPossibleDuplicates = false,
     this.showNeedsReview = false,
-    this.reviewFrom,
-    this.reviewTo,
-    this.reviewTimeZoneId,
+    this.reviewScope = const ReviewPeriodScope.unscoped(),
     super.key,
   });
 
   final bool showPossibleDuplicates;
   final bool showNeedsReview;
-  final String? reviewFrom;
-  final String? reviewTo;
-  final String? reviewTimeZoneId;
+  final ReviewPeriodScope reviewScope;
 
   @override
   State<ReviewPage> createState() => _ReviewPageState();
@@ -51,52 +47,16 @@ class _ReviewPageState extends State<ReviewPage> {
       : null;
 
   bool get _hasReviewScope =>
-      widget.reviewFrom != null ||
-      widget.reviewTo != null ||
-      widget.reviewTimeZoneId != null;
+      widget.reviewScope.status != ReviewPeriodScopeStatus.unscoped;
 
-  bool get _reviewScopeIsValid {
-    if (!_hasReviewScope) return true;
-    final from = widget.reviewFrom;
-    final to = widget.reviewTo;
-    final timeZoneId = widget.reviewTimeZoneId;
-    if (from == null || to == null || timeZoneId == null) return false;
-    final fromDate = _strictDate(from);
-    final toDate = _strictDate(to);
-    return fromDate != null &&
-        toDate != null &&
-        !fromDate.isAfter(toDate) &&
-        (timeZoneId == 'UTC' || timeZoneId.contains('/'));
-  }
-
-  DateTime? get _reviewFromDate => _strictDate(widget.reviewFrom);
-
-  DateTime? get _reviewToDate => _strictDate(widget.reviewTo);
-
-  static DateTime? _strictDate(String? value) {
-    if (value == null) return null;
-    final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(value);
-    if (match == null) return null;
-    final year = int.parse(match.group(1)!);
-    final month = int.parse(match.group(2)!);
-    final day = int.parse(match.group(3)!);
-    final parsed = DateTime.tryParse(value);
-    if (parsed == null || parsed.isUtc) return null;
-    return parsed.year == year &&
-            parsed.month == month &&
-            parsed.day == day &&
-            month >= 1 &&
-            month <= 12 &&
-            day >= 1 &&
-            day <= DateUtils.getDaysInMonth(year, month)
-        ? DateTime(year, month, day)
-        : null;
-  }
+  bool get _reviewScopeIsValid => !widget.reviewScope.isInvalid;
 
   @override
   void initState() {
     super.initState();
-    _view = widget.showPossibleDuplicates
+    _view = _hasReviewScope
+        ? _ReviewView.needsReview
+        : widget.showPossibleDuplicates
         ? _ReviewView.duplicates
         : widget.showNeedsReview
         ? _ReviewView.needsReview
@@ -129,13 +89,13 @@ class _ReviewPageState extends State<ReviewPage> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.showPossibleDuplicates == widget.showPossibleDuplicates &&
         oldWidget.showNeedsReview == widget.showNeedsReview &&
-        oldWidget.reviewFrom == widget.reviewFrom &&
-        oldWidget.reviewTo == widget.reviewTo &&
-        oldWidget.reviewTimeZoneId == widget.reviewTimeZoneId) {
+        oldWidget.reviewScope == widget.reviewScope) {
       return;
     }
     setState(() {
-      _view = widget.showPossibleDuplicates
+      _view = _hasReviewScope
+          ? _ReviewView.needsReview
+          : widget.showPossibleDuplicates
           ? _ReviewView.duplicates
           : widget.showNeedsReview
           ? _ReviewView.needsReview
@@ -183,17 +143,14 @@ class _ReviewPageState extends State<ReviewPage> {
   Future<List<_ReviewEntry>> _load() async {
     final finance = _finance;
     if (finance == null) return const [];
-    final result = await finance.listReviewItems();
+    final result = await finance.listReviewItems(
+      ListReviewItemsQuery(scope: widget.reviewScope),
+    );
     if (result is! ApplicationSuccess<List<ReviewItemDto>>) {
       throw StateError('Review items could not be loaded.');
     }
-    final periodTransactionIds = await _periodTransactionIds(finance);
     final grouped = <String, List<ReviewItemDto>>{};
     for (final item in result.value) {
-      if (periodTransactionIds != null &&
-          !periodTransactionIds.contains(item.transactionId)) {
-        continue;
-      }
       grouped.putIfAbsent(item.transactionId, () => []).add(item);
     }
     return Future.wait(
@@ -207,36 +164,8 @@ class _ReviewPageState extends State<ReviewPage> {
     );
   }
 
-  Future<Set<String>?> _periodTransactionIds(FinanceServices finance) async {
-    if (!_hasReviewScope) return null;
-    if (!_reviewScopeIsValid) {
-      throw StateError('Review period is invalid.');
-    }
-    final from = _reviewFromDate;
-    final to = _reviewToDate;
-    final timeZoneId = widget.reviewTimeZoneId;
-    if (from == null || to == null || timeZoneId == null) {
-      throw StateError('Review period is invalid.');
-    }
-    final result = await finance.listTransactions(
-      ListTransactionsQuery(
-        from: from,
-        to: to,
-        timeZoneId: timeZoneId,
-        status: TransactionStatus.active,
-        needsReview: true,
-      ),
-    );
-    return switch (result) {
-      ApplicationSuccess<List<TransactionDto>>(:final value) =>
-        value.map((transaction) => transaction.id).toSet(),
-      ApplicationFailure<List<TransactionDto>>() => throw StateError(
-        'Review period could not be loaded.',
-      ),
-    };
-  }
-
   Future<void> _refresh() async {
+    if (_hasReviewScope && !_reviewScopeIsValid) return;
     final items = _load();
     final statementExceptions = _hasReviewScope
         ? Future.value(const <StatementReviewException>[])
@@ -284,26 +213,6 @@ class _ReviewPageState extends State<ReviewPage> {
   Future<List<TransactionDto>> _loadUncategorized() async {
     final finance = _finance;
     if (finance == null) return const [];
-    if (_hasReviewScope) {
-      if (!_reviewScopeIsValid) {
-        throw StateError('Review period is invalid.');
-      }
-      final result = await finance.listTransactions(
-        ListTransactionsQuery(
-          from: _reviewFromDate!,
-          to: _reviewToDate!,
-          timeZoneId: widget.reviewTimeZoneId,
-          uncategorized: true,
-          status: TransactionStatus.active,
-        ),
-      );
-      return switch (result) {
-        ApplicationSuccess<List<TransactionDto>>(:final value) => value,
-        ApplicationFailure<List<TransactionDto>>() => throw StateError(
-          'Uncategorized transactions could not be loaded.',
-        ),
-      };
-    }
     final result = await finance.listTransactions(
       const ListTransactionsQuery(
         uncategorized: true,
@@ -481,12 +390,10 @@ class _ReviewPageState extends State<ReviewPage> {
         title: context.l10n.text('review'),
         pinnedSpacing: ButlerlyPinnedPageSpacing.primary,
         children: [
-          ButlerlyErrorState(
+          ButlerlyEmptyState(
+            icon: Icons.error_outline_rounded,
             title: context.l10n.text('reviewLoadError'),
-            message: context.l10n.text('tryAgain'),
-            preserved: context.l10n.text('dataPreserved'),
-            actionLabel: context.l10n.text('tryAgain'),
-            onAction: () => context.go('/review?view=needsReview'),
+            message: context.l10n.text('dataPreserved'),
           ),
         ],
       );

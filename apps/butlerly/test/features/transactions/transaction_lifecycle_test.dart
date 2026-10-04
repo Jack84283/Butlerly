@@ -1597,12 +1597,13 @@ void main() {
       }
 
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
           home: ReviewPage(
-            showNeedsReview: true,
-            reviewFrom: '2026-09-01',
-            reviewTo: '2026-09-16',
-            reviewTimeZoneId: 'UTC',
+            reviewScope: ReviewPeriodScope.fromDateValues(
+              startDate: '2026-09-01',
+              endDate: '2026-09-16',
+              timeZoneId: 'UTC',
+            ),
           ),
         ),
       );
@@ -1621,8 +1622,7 @@ void main() {
         const MaterialApp(
           home: ReviewPage(
             showNeedsReview: true,
-            reviewFrom: '2026-09-01',
-            reviewTimeZoneId: 'UTC',
+            reviewScope: ReviewPeriodScope.invalid(),
           ),
         ),
       );
@@ -1630,6 +1630,7 @@ void main() {
 
       expect(find.text('Review items could not be loaded'), findsOneWidget);
       expect(find.byType(ButlerlyCompactSectionSelector), findsNothing);
+      expect(find.text('Try again'), findsNothing);
     },
   );
 
@@ -1640,9 +1641,7 @@ void main() {
         const MaterialApp(
           home: ReviewPage(
             showNeedsReview: true,
-            reviewFrom: '2026-02-30',
-            reviewTo: '2026-03-16',
-            reviewTimeZoneId: 'UTC',
+            reviewScope: ReviewPeriodScope.invalid(),
           ),
         ),
       );

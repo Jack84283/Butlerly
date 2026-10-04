@@ -155,9 +155,7 @@ final appRouter = GoRouter(
             showPossibleDuplicates:
                 state.uri.queryParameters['view'] == 'duplicates',
             showNeedsReview: state.uri.queryParameters['view'] == 'needsReview',
-            reviewFrom: state.uri.queryParameters['from'],
-            reviewTo: state.uri.queryParameters['to'],
-            reviewTimeZoneId: state.uri.queryParameters['timeZoneId'],
+            reviewScope: _reviewScope(state.uri.queryParameters),
           ),
         ),
         GoRoute(
@@ -295,6 +293,23 @@ final appRouter = GoRouter(
 
 DateTime? _queryDate(String? value) =>
     value == null ? null : DateTime.tryParse(value);
+
+ReviewPeriodScope _reviewScope(Map<String, String> parameters) {
+  final from = parameters['from'];
+  final to = parameters['to'];
+  final timeZoneId = parameters['timeZoneId'];
+  if (from == null && to == null && timeZoneId == null) {
+    return const ReviewPeriodScope.unscoped();
+  }
+  if (from == null || to == null || timeZoneId == null) {
+    return const ReviewPeriodScope.invalid();
+  }
+  return ReviewPeriodScope.fromDateValues(
+    startDate: from,
+    endDate: to,
+    timeZoneId: timeZoneId,
+  );
+}
 
 DateTime? _queryMonth(String? value) {
   if (value == null || !RegExp(r'^\d{4}-\d{2}$').hasMatch(value)) return null;
