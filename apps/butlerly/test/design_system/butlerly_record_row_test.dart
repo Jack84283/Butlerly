@@ -297,6 +297,7 @@ void main() {
                 showDate: true,
                 showCategoryPill: true,
                 showNavigationIndicator: true,
+                needsReview: true,
                 variant: ButlerlyTransactionRowVariant.dashboard,
               ),
             ),
@@ -309,6 +310,7 @@ void main() {
       expect(find.text('Restaurants'), findsNothing);
       expect(find.text('Visa ••••8421'), findsNothing);
       expect(find.text('Aug 14, 2026'), findsOneWidget);
+      expect(find.text('Needs review'), findsNothing);
       expect(find.text('−42.19 USD'), findsOneWidget);
       expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
       expect(

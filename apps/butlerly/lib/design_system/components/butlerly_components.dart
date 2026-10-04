@@ -955,7 +955,9 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                         ),
                         child: content,
                       )
-                    else if (needsReview || possibleDuplicate)
+                    else if (variant !=
+                            ButlerlyTransactionRowVariant.dashboard &&
+                        (needsReview || possibleDuplicate))
                       _duplicateWarning(context),
                   ],
                 ),
@@ -1059,7 +1061,9 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                   textHeightBehavior:
                       ButlerlyTransactionItemTokens.textHeightBehavior,
                 ),
-              if (needsReview || possibleDuplicate) _duplicateWarning(context),
+              if (variant != ButlerlyTransactionRowVariant.dashboard &&
+                  (needsReview || possibleDuplicate))
+                _duplicateWarning(context),
             ],
           ),
         ),

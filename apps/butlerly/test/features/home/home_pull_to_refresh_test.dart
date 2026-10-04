@@ -214,9 +214,30 @@ void main() {
     for (final card in cards) {
       expect(card, findsOneWidget);
     }
+    final insightCard = find.byKey(const ValueKey('home-insight-card'));
+    expect(
+      find.descendant(
+        of: insightCard,
+        matching: find.byKey(const ValueKey('home-insight-icon')),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: insightCard,
+        matching: find.textContaining('Current period:'),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: insightCard,
+        matching: find.textContaining('Previous period:'),
+      ),
+      findsNothing,
+    );
     final positions = cards.map((card) => tester.getTopLeft(card).dy);
     expect(positions, orderedEquals([...positions]..sort()));
-    expect(find.textContaining('Sep 1, 2026 – Sep 16, 2026'), findsOneWidget);
 
     await tester.ensureVisible(
       find.byKey(const ValueKey('home-attention-card')),

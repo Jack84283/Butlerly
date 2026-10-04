@@ -250,6 +250,15 @@ void main() {
       tester.getBottomLeft(selectedBar).dy,
       closeTo(tester.getBottomLeft(plot).dy, 0.01),
     );
+    for (final month in [6, 8, 11]) {
+      final barCenter = tester.getCenter(
+        find.byKey(ValueKey('home-spending-trend-bar-2026-$month')),
+      );
+      final labelCenter = tester.getCenter(
+        find.byKey(ValueKey('home-spending-trend-label-2026-$month')),
+      );
+      expect((barCenter.dx - labelCenter.dx).abs(), lessThan(1.0));
+    }
   });
 
   testWidgets('Home distinguishes an unavailable trend from empty history', (

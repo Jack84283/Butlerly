@@ -1233,26 +1233,41 @@ class _HomeTrendPlot extends StatelessWidget {
           const SizedBox(height: ButlerlySpacing.compact),
           Row(
             children: [
-              for (final point in points)
-                Expanded(
-                  child: ExcludeSemantics(
-                    child: Text(
-                      DateFormat.MMM(locale).format(point.month).toUpperCase(),
-                      maxLines: 1,
-                      textAlign: TextAlign.center,
-                      style:
-                          ButlerlyTypography.badgeLabel(
-                            Theme.of(context).textTheme.bodySmall ??
-                                const TextStyle(),
-                          ).copyWith(
-                            color: point.selected
-                                ? context.colors.interactive
-                                : null,
-                            fontWeight: point.selected ? FontWeight.w600 : null,
+              const SizedBox(width: 32),
+              const SizedBox(width: ButlerlySpacing.compact),
+              Expanded(
+                child: Row(
+                  children: [
+                    for (final point in points)
+                      Expanded(
+                        child: ExcludeSemantics(
+                          child: Text(
+                            DateFormat.MMM(
+                              locale,
+                            ).format(point.month).toUpperCase(),
+                            key: ValueKey(
+                              'home-spending-trend-label-${point.month.year}-${point.month.month}',
+                            ),
+                            maxLines: 1,
+                            textAlign: TextAlign.center,
+                            style:
+                                ButlerlyTypography.badgeLabel(
+                                  Theme.of(context).textTheme.bodySmall ??
+                                      const TextStyle(),
+                                ).copyWith(
+                                  color: point.selected
+                                      ? context.colors.interactive
+                                      : null,
+                                  fontWeight: point.selected
+                                      ? FontWeight.w600
+                                      : null,
+                                ),
                           ),
-                    ),
-                  ),
+                        ),
+                      ),
+                  ],
                 ),
+              ),
             ],
           ),
         ],
@@ -1853,29 +1868,6 @@ class _HomeInsightCard extends StatelessWidget {
                                 const TextStyle(),
                           ),
                         ),
-                        if (_homeInsightValues(context, insight)
-                            case final values?) ...[
-                          const SizedBox(height: ButlerlySpacing.small),
-                          Text(
-                            values,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: ButlerlyTypography.metricChange(
-                              Theme.of(context).textTheme.bodyMedium ??
-                                  const TextStyle(),
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: ButlerlySpacing.micro),
-                        Text(
-                          _homeInsightContext(context, insight),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: ButlerlyTypography.badgeLabel(
-                            Theme.of(context).textTheme.bodySmall ??
-                                const TextStyle(),
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -1998,46 +1990,6 @@ class _HomeEmptyState extends StatelessWidget {
       ),
     ),
   );
-}
-
-String? _homeInsightValues(BuildContext context, InsightResult insight) {
-  String? value(DecimalValue? input) {
-    if (input == null) return null;
-    final formatted = localizedDecimal(context, input.toString());
-    if (insight.rule.measure.operation == RuleOperation.share) {
-      return '$formatted%';
-    }
-    final currency = insight.currency?.value;
-    return currency == null || currency.isEmpty
-        ? formatted
-        : '$formatted $currency';
-  }
-
-  final current = value(insight.currentValue);
-  final baseline = value(insight.baselineValue);
-  final difference = value(insight.absoluteChange);
-  final percent = insight.percentageChange == null
-      ? null
-      : '${localizedDecimal(context, insight.percentageChange.toString())}%';
-  final values = <String>[
-    ?baseline,
-    if (baseline != null && current != null) '→',
-    ?current,
-    ?difference,
-    ?percent,
-  ];
-  return values.isEmpty ? null : values.join(' · ');
-}
-
-String _homeInsightContext(BuildContext context, InsightResult insight) {
-  final periods = <String>[
-    '${context.l10n.text('currentPeriod')}: '
-        '${localizedPeriodRange(context, startDate: insight.context.period.startDate, endDate: insight.context.period.endDate)}',
-    if (insight.baselineContext case final baseline?)
-      '${context.l10n.text('previousPeriod')}: '
-          '${localizedPeriodRange(context, startDate: baseline.period.startDate, endDate: baseline.period.endDate)}',
-  ];
-  return periods.join(' · ');
 }
 
 class _HomeEmptyTransactions extends StatelessWidget {
