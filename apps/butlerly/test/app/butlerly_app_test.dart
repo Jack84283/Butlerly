@@ -114,7 +114,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Butlerly'), findsOneWidget);
-    expect(find.text('August 2026'), findsOneWidget);
+    expect(find.text('Aug 2026'), findsOneWidget);
     expect(find.text('Good morning'), findsOneWidget);
     expect(find.text('No financial activity in this period.'), findsOneWidget);
     expect(
@@ -167,7 +167,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('home-month-2026-7')));
     await tester.pumpAndSettle();
-    expect(find.text('July 2026'), findsOneWidget);
+    expect(find.text('Jul 2026'), findsOneWidget);
     expect(find.text('No financial activity in this period.'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('home-month-selector')));
@@ -306,7 +306,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Butlerly'), findsOneWidget);
-    expect(find.text('August 2026'), findsOneWidget);
+    expect(find.text('Aug 2026'), findsOneWidget);
     expect(find.text('Good evening'), findsOneWidget);
     expect(find.text('No financial activity in this period.'), findsOneWidget);
     expect(
@@ -335,7 +335,7 @@ void main() {
       }
       expect(exception, isNull);
       expect(find.text('Good morning'), findsOneWidget);
-      expect(find.text('August 2026'), findsOneWidget);
+      expect(find.text('Aug 2026'), findsOneWidget);
       expect(
         find.text('No financial activity in this period.'),
         findsOneWidget,

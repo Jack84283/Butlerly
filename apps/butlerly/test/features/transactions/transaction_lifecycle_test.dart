@@ -1219,7 +1219,7 @@ void main() {
       expect(find.text('Home Weekly'), findsNothing);
 
       final title = tester.widget<Text>(find.text('Home Market'));
-      final amount = tester.widget<Text>(find.text('−19.75 USD'));
+      final amount = tester.widget<Text>(find.text(r'-$19.75'));
       expect(amount.style?.fontSize, title.style?.fontSize);
     },
   );

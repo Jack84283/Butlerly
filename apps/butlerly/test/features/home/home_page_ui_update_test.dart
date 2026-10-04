@@ -1,6 +1,7 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -71,7 +72,7 @@ void main() {
 
       expect(find.text('Butlerly'), findsOneWidget);
       expect(find.text('Good afternoon'), findsOneWidget);
-      expect(find.text('September 2026'), findsOneWidget);
+      expect(find.text('Sep 2026'), findsOneWidget);
       expect(
         find.text("Here's your financial overview for September 2026."),
         findsOneWidget,
@@ -261,6 +262,80 @@ void main() {
     }
   });
 
+  testWidgets('Home spending trend uses a readable four-step currency scale', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: homeSpendingTrendForTest([
+            (month: DateTime(2026, 6), value: 3300, selected: false),
+            (month: DateTime(2026, 7), value: 2400, selected: false),
+            (month: DateTime(2026, 8), value: 1800, selected: true),
+            (month: DateTime(2026, 9), value: 1200, selected: false),
+            (month: DateTime(2026, 10), value: 600, selected: false),
+            (month: DateTime(2026, 11), value: 300, selected: false),
+          ]),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('4K'), findsOneWidget);
+    expect(find.text('3K'), findsOneWidget);
+    expect(find.text('2K'), findsOneWidget);
+    expect(find.text('1K'), findsOneWidget);
+    expect(find.text('0'), findsOneWidget);
+  });
+
+  testWidgets('Home spending trend uses the spending comparison', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: homeSpendingTrendForTest(
+            [
+              (month: DateTime(2026, 6), value: 20, selected: false),
+              (month: DateTime(2026, 7), value: 32, selected: false),
+              (month: DateTime(2026, 8), value: 42, selected: true),
+              (month: DateTime(2026, 9), value: 28, selected: false),
+              (month: DateTime(2026, 10), value: 18, selected: false),
+              (month: DateTime(2026, 11), value: 36, selected: false),
+            ],
+            comparison: AnalysisComparison(
+              currentValue: DecimalValue.parse('12'),
+              baselineValue: DecimalValue.parse('10'),
+              absoluteChange: DecimalValue.parse('2'),
+              percentageChange: DecimalValue.parse('20'),
+              availability: AnalysisDataAvailability.sufficient,
+            ),
+            selectedMetric: _trendMetric(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('↑ 20% vs. last month'), findsOneWidget);
+  });
+
   testWidgets('Home distinguishes an unavailable trend from empty history', (
     tester,
   ) async {
@@ -308,7 +383,7 @@ void main() {
       final intro = tester.widget<Text>(
         find.text("Here's your financial overview for September 2026."),
       );
-      final month = tester.widget<Text>(find.text('September 2026'));
+      final month = tester.widget<Text>(find.text('Sep 2026'));
       for (final text in [brand, greeting, intro, month]) {
         expect(text.overflow, isNot(TextOverflow.ellipsis));
       }
@@ -329,4 +404,43 @@ Widget _testApp(GoRouter router, {Locale? locale}) => MaterialApp.router(
     GlobalWidgetsLocalizations.delegate,
     GlobalCupertinoLocalizations.delegate,
   ],
+);
+
+AnalysisMetric _trendMetric() => AnalysisMetric(
+  id: 'trend-result',
+  rule: AnalysisRuleDefinition(
+    identity: RuleIdentity('ANL-R098'),
+    version: RuleVersion('1.0.0'),
+    schemaVersion: '1.0.0',
+    type: AnalysisRuleType.metric,
+    nameKey: 'analysis.rule.r010.name',
+    descriptionKey: 'analysis.rule.r010.description',
+    enabled: true,
+    status: AnalysisRuleStatus.active,
+    period: 'selected_period',
+    measure: const RuleMeasure(
+      operation: RuleOperation.sum,
+      field: 'amount',
+      currencyBasis: CurrencyBasis.baseCurrency,
+    ),
+    grouping: RuleGrouping.none,
+    baseline: RuleBaseline.none,
+    condition: const RuleCondition(operator: 'none'),
+    severity: RuleSeverity.info,
+    surface: AnalysisSurface.trends,
+    definitionHash: RuleDefinitionHash('c' * 64),
+  ),
+  context: AnalysisContext(
+    period: AnalysisPeriod(
+      startDate: '2026-09-01',
+      endDate: '2026-09-16',
+      timeZoneId: 'UTC',
+    ),
+    datasetMode: DatasetMode.allEligible,
+    currencyBasis: CurrencyBasis.baseCurrency,
+    baseCurrency: CurrencyCode('USD'),
+  ),
+  value: DecimalValue.parse('42'),
+  currency: CurrencyCode('USD'),
+  calculatedAt: DateTime.utc(2026, 9, 16),
 );

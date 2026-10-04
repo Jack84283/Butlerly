@@ -96,5 +96,5 @@ Future<void> _openJulyHome(
   await tester.tap(find.byKey(const Key('home-month-2026-7')));
   await tester.pumpAndSettle();
 
-  expect(find.text('July 2026'), findsOneWidget);
+  expect(find.text('Jul 2026'), findsOneWidget);
 }

@@ -289,7 +289,7 @@ class _HomePageState extends State<HomePage> {
         _SpendingTrend(
           points: data.trend,
           unavailable: data.trendUnavailable,
-          comparison: data.model?.comparison,
+          comparison: data.model?.spendingComparison,
         ),
         const SizedBox(height: ButlerlySpacing.cardGap),
         _CategorySummary(
@@ -529,7 +529,7 @@ double _homeHeaderExtent(
   ];
   final monthLabels = <String>[
     for (var month = 1; month <= 12; month++)
-      DateFormat.yMMMM(localeTag).format(DateTime(2026, month)),
+      DateFormat.yMMM(localeTag).format(DateTime(2026, month)),
   ];
   final introLabels = <String>[
     for (var month = 1; month <= 12; month++)
@@ -639,8 +639,9 @@ class _HomeHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final locale = Localizations.localeOf(context).toLanguageTag();
     final monthLabel = DateFormat.yMMMM(locale).format(month);
+    final selectorMonthLabel = DateFormat.yMMM(locale).format(month);
     return LayoutBuilder(
-      builder: (context, _) {
+      builder: (context, constraints) {
         final brand = Text(
           context.l10n.text('appName'),
           style: ButlerlyTypography.brandTitle(
@@ -669,7 +670,7 @@ class _HomeHeader extends StatelessWidget {
             children: [
               Flexible(
                 child: Text(
-                  monthLabel,
+                  selectorMonthLabel,
                   softWrap: true,
                   textAlign: TextAlign.end,
                   style: ButlerlyTypography.cardAction(
@@ -690,8 +691,7 @@ class _HomeHeader extends StatelessWidget {
             ],
           ),
         );
-        final availableWidth =
-            MediaQuery.sizeOf(context).width - ButlerlySize.contentGutter * 2;
+        final availableWidth = constraints.maxWidth;
         final stackedTopRow =
             MediaQuery.textScalerOf(context).scale(14) > 18 ||
             availableWidth < 360;
@@ -778,6 +778,7 @@ class _HomeSummaryCard extends StatelessWidget {
             ),
             action: headerAction,
           ),
+          const SizedBox(height: ButlerlySpacing.small),
           LayoutBuilder(
             builder: (context, constraints) {
               final largeText = MediaQuery.textScalerOf(context).scale(14) > 18;
@@ -807,8 +808,10 @@ class _HomeSummaryCard extends StatelessWidget {
                   value: model?.savings,
                   supportingText: model?.savingsRate == null
                       ? null
-                      : '${analysisPercentageRatio(context, model!.savingsRate!)} '
-                            '${context.l10n.text('savingsRateOfIncome')}',
+                      : analysisPercentageRatio(context, model!.savingsRate!),
+                  secondarySupportingText: model?.savingsRate == null
+                      ? null
+                      : context.l10n.text('savingsRateOfIncome'),
                   icon: Icons.savings_outlined,
                   color: context.colors.info,
                   supportingColor: context.colors.info,
@@ -819,12 +822,14 @@ class _HomeSummaryCard extends StatelessWidget {
                   metric: model?.net,
                   supportingText: model?.netComparison == null
                       ? null
-                      : analysisAbsoluteChange(
+                      : localizedCompactSignedMoney(
                           context,
-                          model!.netComparison!,
-                          model?.net?.currency,
+                          model!.netComparison!.absoluteChange?.toString() ??
+                              '',
+                          model?.net?.currency?.value ??
+                              model?.net?.context.baseCurrency?.value ??
+                              '',
                         ),
-                  signed: true,
                   icon: Icons.account_balance_wallet_outlined,
                   color: context.colors.warning,
                   supportingColor: _homeNetChangeColor(
@@ -852,7 +857,14 @@ class _HomeSummaryCard extends StatelessWidget {
                     if (index > 0)
                       const SizedBox(
                         height: 92,
-                        child: VerticalDivider(width: ButlerlySpacing.standard),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: ButlerlySpacing.micro,
+                          ),
+                          child: VerticalDivider(
+                            width: ButlerlySize.dividerWidth,
+                          ),
+                        ),
                       ),
                     Expanded(child: cells[index]),
                   ],
@@ -883,10 +895,10 @@ class _HomeMetricCell extends StatelessWidget {
     this.value,
     this.comparison,
     this.supportingText,
+    this.secondarySupportingText,
     this.supportingColor,
     required this.icon,
     required this.color,
-    this.signed = false,
   });
 
   final String label;
@@ -894,10 +906,10 @@ class _HomeMetricCell extends StatelessWidget {
   final AnalysisValue? value;
   final AnalysisComparison? comparison;
   final String? supportingText;
+  final String? secondarySupportingText;
   final Color? supportingColor;
   final IconData icon;
   final Color color;
-  final bool signed;
 
   @override
   Widget build(BuildContext context) {
@@ -913,15 +925,24 @@ class _HomeMetricCell extends StatelessWidget {
     final displayValue = displayUnavailable
         ? '—'
         : value == null
-        ? _homeMoney(context, metric!, signed: signed)
-        : analysisValueMoney(context, value!);
+        ? _homeMoney(context, metric!)
+        : _homeValueMoney(context, value!);
     final comparisonText = comparison == null
         ? null
         : analysisComparisonChangeText(context, comparison!);
     final support = supportingText ?? comparisonText;
+    final secondarySupport = supportingText == null
+        ? null
+        : secondarySupportingText;
+    final semanticSupport = [
+      if (support != null && support.isNotEmpty) support,
+      if (secondarySupport != null && secondarySupport.isNotEmpty)
+        secondarySupport,
+    ].join(', ');
     return Semantics(
       label:
-          '$label, ${displayUnavailable ? context.l10n.text('notAvailable') : displayValue}',
+          '$label, ${displayUnavailable ? context.l10n.text('notAvailable') : displayValue}'
+          '${semanticSupport.isEmpty ? '' : ', $semanticSupport'}',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -947,7 +968,7 @@ class _HomeMetricCell extends StatelessWidget {
             displayValue,
             softWrap: true,
             textAlign: TextAlign.center,
-            style: ButlerlyTypography.metricValue(
+            style: ButlerlyTypography.compactMetricValue(
               Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
             ),
           ),
@@ -966,6 +987,20 @@ class _HomeMetricCell extends StatelessWidget {
                   ).copyWith(
                     color: supportingColor ?? context.colors.secondaryText,
                   ),
+            ),
+          ],
+          if (!valueUnavailable &&
+              !metricUnavailable &&
+              secondarySupport != null &&
+              secondarySupport.isNotEmpty) ...[
+            const SizedBox(height: ButlerlySpacing.micro),
+            Text(
+              secondarySupport,
+              textAlign: TextAlign.center,
+              softWrap: true,
+              style: ButlerlyTypography.metricChange(
+                Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+              ).copyWith(color: context.colors.secondaryText),
             ),
           ],
         ],
@@ -990,14 +1025,17 @@ Color _homeNetChangeColor(
 Widget homeSpendingTrendForTest(
   List<({DateTime month, double value, bool selected})> points, {
   bool unavailable = false,
+  AnalysisComparison? comparison,
+  AnalysisMetric? selectedMetric,
 }) => _SpendingTrend(
   unavailable: unavailable,
+  comparison: comparison,
   points: [
     for (final point in points)
       _HomeTrendPoint(
         month: point.month,
         value: point.value,
-        metric: null,
+        metric: point.selected ? selectedMetric : null,
         selected: point.selected,
       ),
   ],
@@ -1037,14 +1075,19 @@ class _SpendingTrend extends StatelessWidget {
     final selectedPoint = points.where((point) => point.selected).firstOrNull;
     final comparisonText = comparison == null
         ? ''
-        : analysisComparisonText(context, comparison!);
+        : analysisComparisonText(
+            context,
+            comparison!,
+            comparisonLabelKey: 'vsLastMonth',
+            compact: true,
+          );
     final trendAction = Semantics(
       container: true,
       label: context.l10n.text('lastSixMonths'),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: context.colors.subtleSurface,
-          borderRadius: BorderRadius.circular(ButlerlyRadius.full),
+          borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
           border: Border.all(color: context.colors.border),
         ),
         child: Padding(
@@ -1108,7 +1151,7 @@ class _SpendingTrend extends StatelessWidget {
                   runSpacing: ButlerlySpacing.micro,
                   children: [
                     Text(
-                      analysisMoney(context, metric),
+                      _homeMetricMoney(context, metric),
                       style: ButlerlyTypography.metricValue(
                         Theme.of(context).textTheme.titleLarge ??
                             const TextStyle(),
@@ -1199,7 +1242,7 @@ class _HomeTrendPlot extends StatelessWidget {
                             Expanded(
                               child: Semantics(
                                 label:
-                                    '${DateFormat.yMMMM(locale).format(point.month)}, ${point.metric == null ? context.l10n.text('noSpendingInPeriod') : analysisMoney(context, point.metric!)}',
+                                    '${DateFormat.yMMMM(locale).format(point.month)}, ${point.metric == null ? context.l10n.text('noSpendingInPeriod') : _homeMetricMoney(context, point.metric!)}',
                                 child: Align(
                                   alignment: Alignment.bottomCenter,
                                   child: FractionallySizedBox(
@@ -1406,13 +1449,13 @@ class _CategorySummaryItem extends StatelessWidget {
         : (double.tryParse(share.toString()) ?? 0).clamp(0.0, 1.0).toDouble();
     return Semantics(
       label:
-          '$label, ${metricUnavailable ? context.l10n.text('notAvailable') : analysisMoney(context, metric)}${percentage == null ? '' : ', $percentage'}',
+          '$label, ${metricUnavailable ? context.l10n.text('notAvailable') : _homeMetricMoney(context, metric)}${percentage == null ? '' : ', $percentage'}',
       child: LayoutBuilder(
         builder: (context, constraints) {
           final scaledBody = MediaQuery.textScalerOf(context).scale(14);
           final stacked = scaledBody > 18 || constraints.maxWidth < 300;
           final amount = Text(
-            metricUnavailable ? '—' : analysisMoney(context, metric),
+            metricUnavailable ? '—' : _homeMetricMoney(context, metric),
             textAlign: TextAlign.end,
             softWrap: true,
             style: ButlerlyTypography.rowAmount(
@@ -1576,6 +1619,7 @@ class _AttentionSection extends StatelessWidget {
           if (uncategorizedTransactionCount > 0)
             _AttentionRow(
               icon: Icons.category_outlined,
+              color: context.colors.warning,
               title: context.l10n.text('manyTransactions', {
                 'count': localizedCount(
                   context,
@@ -1589,6 +1633,7 @@ class _AttentionSection extends StatelessWidget {
           if (possibleDuplicateCount > 0)
             _AttentionRow(
               icon: Icons.copy_all_outlined,
+              color: context.colors.error,
               title: context.l10n.text('possibleDuplicatesCount', {
                 'count': localizedCount(
                   context,
@@ -1602,6 +1647,7 @@ class _AttentionSection extends StatelessWidget {
           if (duplicateUnavailable)
             _AttentionRow(
               icon: Icons.copy_all_outlined,
+              color: context.colors.error,
               title: context.l10n.text('possibleDuplicatesUnavailable'),
               subtitle: context.l10n.text('possibleDuplicatesUnavailableBody'),
               onTap: () =>
@@ -1610,6 +1656,7 @@ class _AttentionSection extends StatelessWidget {
           if (merchantReviewCount > 0)
             _AttentionRow(
               icon: Icons.storefront_outlined,
+              color: context.colors.warning,
               title: context.l10n.text(
                 merchantReviewCount == 1
                     ? 'oneMerchantToReview'
@@ -1639,6 +1686,7 @@ class _AttentionSection extends StatelessWidget {
               merchantReviewCount == 0)
             _AttentionRow(
               icon: Icons.rate_review_outlined,
+              color: context.colors.review,
               title: context.l10n.text(
                 reviewCount == 1 ? 'oneReviewItem' : 'manyReviewItems',
                 {'count': localizedCount(context, reviewCount.toString())},
@@ -1655,12 +1703,14 @@ class _AttentionSection extends StatelessWidget {
 class _AttentionRow extends StatelessWidget {
   const _AttentionRow({
     required this.icon,
+    required this.color,
     required this.title,
     required this.subtitle,
     required this.onTap,
   });
 
   final IconData icon;
+  final Color color;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
@@ -1685,10 +1735,10 @@ class _AttentionRow extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: context.colors.interactive.withValues(alpha: 0.16),
+                  color: color.withValues(alpha: 0.16),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: context.colors.interactive, size: 20),
+                child: Icon(icon, color: color, size: 20),
               ),
               const SizedBox(width: ButlerlySpacing.standard),
               Expanded(
@@ -1786,6 +1836,7 @@ class _HomeRecentActivity extends StatelessWidget {
                   masterData: masterData,
                   showDate: true,
                   showCategoryPill: true,
+                  compactMoney: true,
                   showNavigationIndicator: true,
                   variant: ButlerlyTransactionRowVariant.dashboard,
                   onTap: () => onTap(transaction),
@@ -1811,6 +1862,28 @@ class _HomeInsightCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final preview = _homeInsightPreview(context, insight, masterData);
+    final insightColor = switch (preview.direction) {
+      _HomeInsightDirection.up => context.colors.error,
+      _HomeInsightDirection.down => context.colors.success,
+      null => context.colors.info,
+    };
+    final insightIcon = switch (preview.direction) {
+      _HomeInsightDirection.up => _homeIcon(
+        context,
+        material: Icons.trending_up,
+        cupertino: CupertinoIcons.arrow_up,
+      ),
+      _HomeInsightDirection.down => _homeIcon(
+        context,
+        material: Icons.trending_down,
+        cupertino: CupertinoIcons.arrow_down,
+      ),
+      null => _homeIcon(
+        context,
+        material: Icons.lightbulb_outline,
+        cupertino: CupertinoIcons.lightbulb,
+      ),
+    };
     return ButlerlyCard(
       key: const ValueKey('home-insight-card'),
       variant: ButlerlyCardVariant.dashboard,
@@ -1845,20 +1918,12 @@ class _HomeInsightCard extends StatelessWidget {
                     DecoratedBox(
                       key: const ValueKey('home-insight-icon'),
                       decoration: BoxDecoration(
-                        color: context.colors.info.withValues(alpha: 0.16),
+                        color: insightColor.withValues(alpha: 0.16),
                         shape: BoxShape.circle,
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(ButlerlySpacing.small),
-                        child: Icon(
-                          _homeIcon(
-                            context,
-                            material: Icons.lightbulb_outline,
-                            cupertino: CupertinoIcons.lightbulb,
-                          ),
-                          size: 20,
-                          color: context.colors.info,
-                        ),
+                        child: Icon(insightIcon, size: 20, color: insightColor),
                       ),
                     ),
                     const SizedBox(width: ButlerlySpacing.standard),
@@ -1907,11 +1972,18 @@ class _HomeInsightCard extends StatelessWidget {
 }
 
 final class _HomeInsightPreview {
-  const _HomeInsightPreview({required this.title, required this.description});
+  const _HomeInsightPreview({
+    required this.title,
+    required this.description,
+    this.direction,
+  });
 
   final String title;
   final String description;
+  final _HomeInsightDirection? direction;
 }
+
+enum _HomeInsightDirection { up, down }
 
 _HomeInsightPreview _homeInsightPreview(
   BuildContext context,
@@ -1928,7 +2000,10 @@ _HomeInsightPreview _homeInsightPreview(
       !percentage.isZero &&
       dimension != null &&
       hasComparableBaseline) {
-    final magnitude = localizedDecimal(context, percentage.abs().toString());
+    final magnitude = localizedCompactPercentage(
+      context,
+      percentage.abs().toString(),
+    );
     final direction = percentage.isNegative ? 'down' : 'up';
     final comparison =
         insight.rule.baseline == RuleBaseline.previousEquivalentPeriod
@@ -1936,16 +2011,19 @@ _HomeInsightPreview _homeInsightPreview(
         : context.l10n.text('homeInsightPreviousPeriod');
     return _HomeInsightPreview(
       title: context.l10n.text('homeInsightSpending$direction', {
-        'percent': '$magnitude%',
+        'percent': magnitude,
       }),
       description: context.l10n.text(
         'homeInsightSpending${percentage.isNegative ? 'Lower' : 'Higher'}',
         {
           'dimension': dimension,
-          'percent': '$magnitude%',
+          'percent': magnitude,
           'comparison': comparison,
         },
       ),
+      direction: percentage.isNegative
+          ? _HomeInsightDirection.down
+          : _HomeInsightDirection.up,
     );
   }
   return _HomeInsightPreview(
@@ -2145,19 +2223,19 @@ class _SpendingTrendGrid extends StatelessWidget {
 
 double _trendScaleMax(double maxValue) {
   if (maxValue <= 0) return 1;
-  var magnitude = 1.0;
-  while (magnitude * 10 <= maxValue) {
-    magnitude *= 10;
-  }
-  final normalized = maxValue / magnitude;
-  final step = normalized <= 1
+  final rawStep = maxValue / 4;
+  final magnitude = math
+      .pow(10, (math.log(rawStep) / math.ln10).floor())
+      .toDouble();
+  final normalized = rawStep / magnitude;
+  final niceStep = normalized <= 1
       ? 1
       : normalized <= 2
       ? 2
       : normalized <= 5
       ? 5
       : 10;
-  return step * magnitude;
+  return niceStep * magnitude * 4;
 }
 
 String _trendScaleLabel(String locale, double value) =>
@@ -2523,16 +2601,24 @@ DateTime _monthStart(DateTime value) => DateTime(value.year, value.month, 1);
 bool _sameMonth(DateTime left, DateTime right) =>
     left.year == right.year && left.month == right.month;
 
-String _homeMoney(
-  BuildContext context,
-  AnalysisMetric metric, {
-  bool signed = false,
-}) {
-  final formatted = analysisMoney(context, metric);
-  if (!signed || analysisNumber(metric) <= 0 || formatted.startsWith('+')) {
-    return formatted;
-  }
-  return '+$formatted';
+String _homeMoney(BuildContext context, AnalysisMetric metric) {
+  final currency = metric.currency?.value;
+  return currency == null
+      ? localizedDecimal(context, metric.value.toString())
+      : localizedCompactMoney(context, metric.value.toString(), currency);
+}
+
+String _homeValueMoney(BuildContext context, AnalysisValue value) {
+  final currency =
+      value.currency?.value ?? value.context.baseCurrency?.value ?? '';
+  return localizedCompactMoney(context, value.value.toString(), currency);
+}
+
+String _homeMetricMoney(BuildContext context, AnalysisMetric metric) {
+  final currency = metric.currency?.value;
+  return currency == null
+      ? localizedDecimal(context, metric.value.toString())
+      : localizedCompactMoney(context, metric.value.toString(), currency);
 }
 
 IconData _homeIcon(

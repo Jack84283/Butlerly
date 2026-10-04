@@ -771,6 +771,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     this.onTap,
     this.showNavigationIndicator = false,
     this.showCategoryPill = false,
+    this.amountIncludesCurrency = false,
     this.variant = ButlerlyTransactionRowVariant.standard,
     super.key,
   });
@@ -796,13 +797,14 @@ class ButlerlyTransactionListItem extends StatelessWidget {
   final VoidCallback? onTap;
   final bool showNavigationIndicator;
   final bool showCategoryPill;
+  final bool amountIncludesCurrency;
   final ButlerlyTransactionRowVariant variant;
 
   @override
   Widget build(BuildContext context) => Semantics(
     button: onTap != null,
     label:
-        '$title, $amount $currency${_semanticClassification.isEmpty ? '' : ', $_semanticClassification'}'
+        '$title, ${amountIncludesCurrency ? (isIncome ? '+' : '-') : '$amount $currency'}${amountIncludesCurrency ? amount : ''}${_semanticClassification.isEmpty ? '' : ', $_semanticClassification'}'
         '${needsReview ? ', ${context.l10n.text('needsReview')}' : ''}'
         '${possibleDuplicate && possibleDuplicateLabel != null ? ', $possibleDuplicateLabel' : ''}',
     child:
@@ -1008,7 +1010,9 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                     child: Row(
                       children: [
                         Text(
-                          '$amount $currency',
+                          amountIncludesCurrency
+                              ? '${isIncome ? '+' : '-'}$amount'
+                              : '$amount $currency',
                           style: context.transactionItemAmount,
                           textHeightBehavior:
                               ButlerlyTransactionItemTokens.textHeightBehavior,
@@ -1163,7 +1167,9 @@ class ButlerlyTransactionListItem extends StatelessWidget {
   );
 
   Widget _signedAmount(BuildContext context) => Text(
-    '${isIncome ? '+' : '−'}$amount $currency',
+    amountIncludesCurrency
+        ? '${isIncome ? '+' : '-'}$amount'
+        : '${isIncome ? '+' : '−'}$amount $currency',
     maxLines: 1,
     overflow: TextOverflow.ellipsis,
     textAlign: TextAlign.end,
@@ -1291,6 +1297,7 @@ class ButlerlyRecordRow extends ButlerlyTransactionListItem {
     super.onTap,
     super.showNavigationIndicator,
     super.showCategoryPill,
+    super.amountIncludesCurrency,
     super.variant,
     super.key,
   });

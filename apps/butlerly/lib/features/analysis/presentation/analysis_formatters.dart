@@ -33,20 +33,26 @@ String analysisValueMoney(BuildContext context, AnalysisValue value) =>
         .trim();
 
 String analysisPercentageRatio(BuildContext context, DecimalValue ratio) =>
-    '${localizedDecimal(context, ratio.multiply(DecimalValue.parse('100')).toString())}%';
+    localizedCompactPercentage(context, ratio.toString(), ratio: true);
 
 String analysisMoneyValue(BuildContext context, Money money) =>
     '${localizedDecimal(context, money.amount.toString())} ${money.currency.value}';
 
 String analysisComparisonText(
   BuildContext context,
-  AnalysisComparison comparison,
-) {
+  AnalysisComparison comparison, {
+  String comparisonLabelKey = 'vsPreviousPeriod',
+  bool compact = false,
+}) {
   final change = comparison.percentageChange;
   if (!isUsableComparison(comparison) || change == null) return '';
   final direction = change.isNegative ? '↓' : '↑';
   final magnitude = change.toString().replaceFirst('-', '');
-  return '$direction ${localizedDecimal(context, magnitude)}% ${context.l10n.text('vsPreviousPeriod')}';
+  final formattedMagnitude = compact
+      ? localizedCompactPercentage(context, magnitude)
+      : '${localizedDecimal(context, magnitude)}%';
+  return '$direction $formattedMagnitude '
+      '${context.l10n.text(comparisonLabelKey)}';
 }
 
 String analysisComparisonChangeText(
@@ -57,7 +63,7 @@ String analysisComparisonChangeText(
   if (!isUsableComparison(comparison) || change == null) return '';
   final direction = change.isNegative ? '↓' : '↑';
   final magnitude = change.toString().replaceFirst('-', '');
-  return '$direction ${localizedDecimal(context, magnitude)}%';
+  return '$direction ${localizedCompactPercentage(context, magnitude)}';
 }
 
 String analysisAbsoluteChange(

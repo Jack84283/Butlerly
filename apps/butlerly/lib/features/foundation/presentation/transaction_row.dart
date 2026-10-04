@@ -31,6 +31,7 @@ class TransactionRow extends StatelessWidget {
     this.selectionControl,
     this.showNavigationIndicator = false,
     this.showCategoryPill = false,
+    this.compactMoney = false,
     this.variant = ButlerlyTransactionRowVariant.standard,
     super.key,
   });
@@ -49,6 +50,7 @@ class TransactionRow extends StatelessWidget {
   final VoidCallback onTap;
   final bool showNavigationIndicator;
   final bool showCategoryPill;
+  final bool compactMoney;
   final ButlerlyTransactionRowVariant variant;
 
   @override
@@ -84,13 +86,17 @@ class TransactionRow extends StatelessWidget {
               .toList(growable: false)
         : const <String>[];
 
+    final unsignedAmount = transaction.amount.replaceFirst(
+      RegExp(r'^[+-]'),
+      '',
+    );
     return ButlerlyRecordRow(
       title: transactionRowTitle(context, transaction, masterData),
-      amount: localizedTransactionAmount(
-        context,
-        transaction.amount.replaceFirst(RegExp(r'^[+-]'), ''),
-      ),
-      currency: transaction.currency,
+      amount: compactMoney
+          ? localizedCompactMoney(context, unsignedAmount, transaction.currency)
+          : localizedTransactionAmount(context, unsignedAmount),
+      currency: compactMoney ? '' : transaction.currency,
+      amountIncludesCurrency: compactMoney,
       categoryId: iconCategoryId,
       categoryLabel: category ?? missingCategoryLabel ?? '',
       subcategoryLabel: subcategory,

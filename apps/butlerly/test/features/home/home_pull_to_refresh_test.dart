@@ -128,7 +128,7 @@ void main() {
     final summaryAmount = tester.widget<Text>(
       find.descendant(
         of: find.byKey(const ValueKey('home-summary-card')),
-        matching: find.text('10.00 USD'),
+        matching: find.text('\$10.00'),
       ),
     );
     expect(
@@ -481,7 +481,7 @@ void main() {
     expect(
       find.descendant(
         of: find.byKey(const ValueKey('home-summary-card')),
-        matching: find.text('10.00 USD'),
+        matching: find.text('\$10.00'),
       ),
       findsOneWidget,
     );
@@ -587,14 +587,20 @@ void main() {
       _lastTextIn(tester, 'home-summary-metric-income').style?.color,
       colors.success,
     );
-    expect(
-      _lastTextIn(tester, 'home-summary-metric-savings').style?.color,
-      colors.info,
-    );
+    expect(tester.widget<Text>(find.text('50%')).style?.color, colors.info);
     expect(
       _lastTextIn(tester, 'home-summary-metric-net-position').style?.color,
       colors.success,
     );
+    final savingsSemantics = tester.getSemantics(
+      find.byKey(const ValueKey('home-summary-metric-savings')),
+    );
+    expect(savingsSemantics.label, contains('50%'));
+    expect(savingsSemantics.label, contains('of income'));
+    final netSemantics = tester.getSemantics(
+      find.byKey(const ValueKey('home-summary-metric-net-position')),
+    );
+    expect(netSemantics.label, contains('+4.00'));
   });
 
   testWidgets('Home Insight preview uses data-driven localized copy', (
@@ -640,10 +646,10 @@ void main() {
       ),
     );
 
-    expect(find.text('Spending up 28.00%'), findsOneWidget);
+    expect(find.text('Spending up 28%'), findsOneWidget);
     expect(
       find.textContaining(
-        'Your Restaurants spending is 28.00% higher than the comparable previous period.',
+        'Your Restaurants spending is 28% higher than the comparable previous period.',
       ),
       findsOneWidget,
     );
@@ -702,7 +708,7 @@ void main() {
     expect(
       find.descendant(
         of: find.byKey(const ValueKey('home-summary-metric-savings')),
-        matching: find.text('50.0% of income'),
+        matching: find.text('50%'),
       ),
       findsNothing,
     );
@@ -819,7 +825,7 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('1,234,567.89 USD'), findsNothing);
+    expect(find.text('\$1,234,567.89'), findsNothing);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -842,7 +848,7 @@ void main() {
     );
 
     expect(find.text('—'), findsOneWidget);
-    expect(find.text('1,234,567.89 USD'), findsNothing);
+    expect(find.text('\$1,234,567.89'), findsNothing);
   });
 
   testWidgets('Home category amounts reflow at large text scale', (
@@ -872,7 +878,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('1,234,567.89 USD'), findsOneWidget);
+    expect(find.text('\$1,234,567.89'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -894,7 +900,7 @@ void main() {
       expect(
         find.descendant(
           of: find.byKey(const ValueKey('home-summary-card')),
-          matching: find.text('10.00 USD'),
+          matching: find.text('\$10.00'),
         ),
         findsOneWidget,
       );
@@ -988,11 +994,11 @@ void main() {
       expect(
         find.descendant(
           of: find.byKey(const ValueKey('home-summary-card')),
-          matching: find.text('10.00 USD'),
+          matching: find.text('\$10.00'),
         ),
         findsOneWidget,
       );
-      expect(find.text('15.00 USD'), findsNothing);
+      expect(find.text('\$15.00'), findsNothing);
 
       final readGate = Completer<void>();
       transactions.readGate = readGate.future;
@@ -1009,11 +1015,11 @@ void main() {
       expect(
         find.descendant(
           of: find.byKey(const ValueKey('home-summary-card')),
-          matching: find.text('10.00 USD'),
+          matching: find.text('\$10.00'),
         ),
         findsOneWidget,
       );
-      expect(find.text('15.00 USD'), findsNothing);
+      expect(find.text('\$15.00'), findsNothing);
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(
         tester.getTopLeft(headerFinder).dy,
@@ -1026,11 +1032,11 @@ void main() {
 
       final afterRefresh = (tester.widget(bodyFinder) as FutureBuilder).future;
       expect(identical(beforeRefresh, afterRefresh), isFalse);
-      expect(find.text('10.00 USD'), findsNothing);
+      expect(find.text('\$10.00'), findsNothing);
       expect(
         find.descendant(
           of: find.byKey(const ValueKey('home-summary-card')),
-          matching: find.text('15.00 USD'),
+          matching: find.text('\$15.00'),
         ),
         findsOneWidget,
       );
@@ -1247,7 +1253,7 @@ void main() {
     expect(
       find.descendant(
         of: find.byKey(const ValueKey('home-summary-card')),
-        matching: find.text('10.00 USD'),
+        matching: find.text('\$10.00'),
       ),
       findsOneWidget,
     );
