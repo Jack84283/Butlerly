@@ -22,12 +22,16 @@ class ReviewPage extends StatefulWidget {
     this.showPossibleDuplicates = false,
     this.showNeedsReview = false,
     this.reviewScope = const ReviewPeriodScope.unscoped(),
+    this.reviewReason,
+    this.invalidReviewReason = false,
     super.key,
   });
 
   final bool showPossibleDuplicates;
   final bool showNeedsReview;
   final ReviewPeriodScope reviewScope;
+  final ReviewIssueReason? reviewReason;
+  final bool invalidReviewReason;
 
   @override
   State<ReviewPage> createState() => _ReviewPageState();
@@ -49,7 +53,8 @@ class _ReviewPageState extends State<ReviewPage> {
   bool get _hasReviewScope =>
       widget.reviewScope.status != ReviewPeriodScopeStatus.unscoped;
 
-  bool get _reviewScopeIsValid => !widget.reviewScope.isInvalid;
+  bool get _reviewScopeIsValid =>
+      !widget.reviewScope.isInvalid && !widget.invalidReviewReason;
 
   @override
   void initState() {
@@ -89,7 +94,9 @@ class _ReviewPageState extends State<ReviewPage> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.showPossibleDuplicates == widget.showPossibleDuplicates &&
         oldWidget.showNeedsReview == widget.showNeedsReview &&
-        oldWidget.reviewScope == widget.reviewScope) {
+        oldWidget.reviewScope == widget.reviewScope &&
+        oldWidget.reviewReason == widget.reviewReason &&
+        oldWidget.invalidReviewReason == widget.invalidReviewReason) {
       return;
     }
     setState(() {
@@ -144,7 +151,10 @@ class _ReviewPageState extends State<ReviewPage> {
     final finance = _finance;
     if (finance == null) return const [];
     final result = await finance.listReviewItems(
-      ListReviewItemsQuery(scope: widget.reviewScope),
+      ListReviewItemsQuery(
+        scope: widget.reviewScope,
+        reason: widget.reviewReason,
+      ),
     );
     if (result is! ApplicationSuccess<List<ReviewItemDto>>) {
       throw StateError('Review items could not be loaded.');

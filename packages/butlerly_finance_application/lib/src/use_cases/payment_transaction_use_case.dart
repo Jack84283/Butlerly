@@ -2,6 +2,7 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
 import '../dto/transaction_dto.dart';
 import '../result/application_result.dart';
+import 'merchant_review_use_cases.dart';
 import 'transaction_use_cases.dart';
 
 final class PaymentTransactionCommand {
@@ -71,7 +72,8 @@ final class CreatePaymentTransaction {
       createdAt: now,
       updatedAt: now,
     );
-    await repository.save(transaction);
-    return TransactionDto.fromDomain(transaction);
+    final resolved = synchronizeMerchantReviewIssue(transaction, now);
+    await repository.save(resolved);
+    return TransactionDto.fromDomain(resolved);
   });
 }

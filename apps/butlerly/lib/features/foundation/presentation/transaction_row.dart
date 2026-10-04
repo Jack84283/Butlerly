@@ -30,6 +30,7 @@ class TransactionRow extends StatelessWidget {
     this.onPossibleDuplicateTap,
     this.selectionControl,
     this.showNavigationIndicator = false,
+    this.showCategoryPill = false,
     super.key,
   });
 
@@ -46,6 +47,7 @@ class TransactionRow extends StatelessWidget {
   final Widget? selectionControl;
   final VoidCallback onTap;
   final bool showNavigationIndicator;
+  final bool showCategoryPill;
 
   @override
   Widget build(BuildContext context) {
@@ -109,6 +111,7 @@ class TransactionRow extends StatelessWidget {
       selectionControl: selectionControl,
       onTap: onTap,
       showNavigationIndicator: showNavigationIndicator,
+      showCategoryPill: showCategoryPill,
     );
   }
 }

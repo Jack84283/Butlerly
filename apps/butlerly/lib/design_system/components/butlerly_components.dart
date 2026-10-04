@@ -243,6 +243,8 @@ class _ButlerlyPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
       oldDelegate.bottomGap != bottomGap;
 }
 
+enum ButlerlyCardVariant { standard, dashboard }
+
 class ButlerlyCard extends StatelessWidget {
   const ButlerlyCard({
     required this.child,
@@ -250,6 +252,7 @@ class ButlerlyCard extends StatelessWidget {
     this.onTap,
     this.semanticLabel,
     this.color,
+    this.variant = ButlerlyCardVariant.standard,
     super.key,
   });
 
@@ -258,25 +261,36 @@ class ButlerlyCard extends StatelessWidget {
   final VoidCallback? onTap;
   final String? semanticLabel;
   final Color? color;
+  final ButlerlyCardVariant variant;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    container: true,
-    button: onTap != null,
-    label: semanticLabel,
-    child: Card(
-      color: color,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(ButlerlyRadius.card),
-        side: BorderSide(color: context.colors.border.withValues(alpha: 0.8)),
+  Widget build(BuildContext context) {
+    final dashboard = variant == ButlerlyCardVariant.dashboard;
+    final radius = dashboard
+        ? ButlerlyRadius.dashboardCard
+        : ButlerlyRadius.standard;
+    return Semantics(
+      container: true,
+      button: onTap != null,
+      label: semanticLabel,
+      child: Card(
+        color: color,
+        shape: dashboard
+            ? RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(radius),
+                side: BorderSide(
+                  color: context.colors.border.withValues(alpha: 0.8),
+                ),
+              )
+            : null,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(radius),
+          onTap: onTap,
+          child: Padding(padding: padding, child: child),
+        ),
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(ButlerlyRadius.card),
-        onTap: onTap,
-        child: Padding(padding: padding, child: child),
-      ),
-    ),
-  );
+    );
+  }
 }
 
 /// Responsive title row shared by semantic cards across Butlerly surfaces.
@@ -754,6 +768,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     this.selectionControl,
     this.onTap,
     this.showNavigationIndicator = false,
+    this.showCategoryPill = false,
     super.key,
   });
 
@@ -777,6 +792,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
   final Widget? selectionControl;
   final VoidCallback? onTap;
   final bool showNavigationIndicator;
+  final bool showCategoryPill;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -852,6 +868,38 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                         ),
                       ],
                     ),
+                    if (showCategoryPill &&
+                        categoryLabel?.trim().isNotEmpty == true)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          top: ButlerlyTransactionItemTokens.headerSpacing,
+                        ),
+                        child: Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: ButlerlyChartColors.category(
+                                categoryId ?? categoryLabel!,
+                              ).withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(
+                                ButlerlyRadius.full,
+                              ),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: ButlerlySpacing.compact,
+                                vertical: ButlerlySpacing.micro,
+                              ),
+                              child: Text(
+                                categoryLabel!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: context.transactionItemMetadata,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     if (_metadataParts.isNotEmpty) ...[
                       const SizedBox(
                         height: ButlerlyTransactionItemTokens.headerSpacing,
@@ -1026,8 +1074,10 @@ class ButlerlyTransactionListItem extends StatelessWidget {
   );
 
   List<String> get _metadataParts => [
-    if (categoryLabel case final value? when value.trim().isNotEmpty)
-      value.trim(),
+    if (!showCategoryPill &&
+        categoryLabel != null &&
+        categoryLabel!.trim().isNotEmpty)
+      categoryLabel!.trim(),
     if (subcategoryLabel case final value?
         when value.trim().isNotEmpty && value.trim() != categoryLabel?.trim())
       value.trim(),
@@ -1136,6 +1186,7 @@ class ButlerlyRecordRow extends ButlerlyTransactionListItem {
     super.selectionControl,
     super.onTap,
     super.showNavigationIndicator,
+    super.showCategoryPill,
     super.key,
   });
 }

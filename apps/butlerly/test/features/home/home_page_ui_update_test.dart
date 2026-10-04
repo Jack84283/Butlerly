@@ -72,7 +72,10 @@ void main() {
       expect(find.text('Butlerly'), findsOneWidget);
       expect(find.text('Good afternoon'), findsOneWidget);
       expect(find.text('September 2026'), findsOneWidget);
-      expect(find.text('A CALMER WAY TO MONEY'), findsOneWidget);
+      expect(
+        find.text("Here's your financial overview for September 2026."),
+        findsOneWidget,
+      );
       expect(find.byKey(const Key('home-notification-action')), findsOneWidget);
 
       final initialHeaderTop = tester.getTopLeft(find.text('Butlerly')).dy;
@@ -87,7 +90,9 @@ void main() {
     },
   );
 
-  testWidgets('Home tagline is localized outside English', (tester) async {
+  testWidgets('Home period introduction is localized outside English', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -97,10 +102,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.text('UNA FORMA MÁS TRANQUILA DE VIVIR EL DINERO'),
+      find.text('Aquí tienes tu resumen financiero de septiembre de 2026.'),
       findsOneWidget,
     );
-    expect(find.text('A CALMER WAY TO MONEY'), findsNothing);
+    expect(
+      find.text("Here's your financial overview for September 2026."),
+      findsNothing,
+    );
   });
 
   testWidgets('Home uses Cupertino symbols for native iOS controls', (
@@ -270,9 +278,11 @@ void main() {
 
       final brand = tester.widget<Text>(find.text('Butlerly'));
       final greeting = tester.widget<Text>(find.text('Good afternoon'));
-      final tagline = tester.widget<Text>(find.text('A CALMER WAY TO MONEY'));
+      final intro = tester.widget<Text>(
+        find.text("Here's your financial overview for September 2026."),
+      );
       final month = tester.widget<Text>(find.text('September 2026'));
-      for (final text in [brand, greeting, tagline, month]) {
+      for (final text in [brand, greeting, intro, month]) {
         expect(text.overflow, isNot(TextOverflow.ellipsis));
       }
       expect(find.byKey(const Key('home-month-selector')), findsOneWidget);

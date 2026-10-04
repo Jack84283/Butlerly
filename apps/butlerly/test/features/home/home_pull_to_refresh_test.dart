@@ -102,13 +102,14 @@ void main() {
     }
     final positions = cards.map((card) => tester.getTopLeft(card).dy).toList();
     expect(positions, orderedEquals([...positions]..sort()));
-    expect(find.text('Financial summary'), findsOneWidget);
-    expect(find.text('Total spending'), findsOneWidget);
+    expect(find.text('Monthly summary'), findsOneWidget);
+    expect(find.text('Spending'), findsOneWidget);
     expect(find.text('Spending trend'), findsOneWidget);
     expect(find.text('Spending by category'), findsOneWidget);
-    expect(find.text('Transaction count'), findsOneWidget);
+    expect(find.text('Savings'), findsOneWidget);
+    expect(find.text('Net position'), findsOneWidget);
     expect(find.text('Recent transactions'), findsOneWidget);
-    final summaryTitle = tester.widget<Text>(find.text('Financial summary'));
+    final summaryTitle = tester.widget<Text>(find.text('Monthly summary'));
     expect(
       summaryTitle.style?.fontFamily,
       isNot(ButlerlyTypography.editorialFontFamily),
@@ -124,7 +125,8 @@ void main() {
       isNot(ButlerlyTypography.editorialFontFamily),
     );
     expect(summaryAmount.style?.fontFeatures, isNotEmpty);
-    expect(find.byKey(const ValueKey('home-attention-card')), findsNothing);
+    expect(find.byKey(const ValueKey('home-attention-card')), findsOneWidget);
+    expect(find.text('1 merchant to review'), findsOneWidget);
     expect(find.byKey(const ValueKey('home-insight-card')), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -238,7 +240,7 @@ void main() {
 
     // At 3x text scale the pinned header legitimately consumes more vertical
     // space. Scroll the sliver so its lazily-built cards enter the viewport.
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -900));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('home-summary-card')), findsOneWidget);
@@ -246,8 +248,8 @@ void main() {
     final metricKeys = [
       const ValueKey('home-summary-metric-spending'),
       const ValueKey('home-summary-metric-income'),
-      const ValueKey('home-summary-metric-net'),
-      const ValueKey('home-summary-metric-count'),
+      const ValueKey('home-summary-metric-savings'),
+      const ValueKey('home-summary-metric-net-position'),
     ];
     final metricPositions = [
       for (final key in metricKeys) tester.getTopLeft(find.byKey(key)),
@@ -258,12 +260,7 @@ void main() {
         greaterThan(metricPositions[index - 1].dy),
       );
     }
-    for (final label in [
-      'Total spending',
-      'Income',
-      'Net cash flow',
-      'Transaction count',
-    ]) {
+    for (final label in ['Spending', 'Income', 'Savings', 'Net position']) {
       expect(find.text(label), findsOneWidget);
     }
     expect(
@@ -293,16 +290,16 @@ void main() {
     final income = tester.getTopLeft(
       find.byKey(const ValueKey('home-summary-metric-income')),
     );
-    final net = tester.getTopLeft(
-      find.byKey(const ValueKey('home-summary-metric-net')),
+    final savings = tester.getTopLeft(
+      find.byKey(const ValueKey('home-summary-metric-savings')),
     );
-    final count = tester.getTopLeft(
-      find.byKey(const ValueKey('home-summary-metric-count')),
+    final netPosition = tester.getTopLeft(
+      find.byKey(const ValueKey('home-summary-metric-net-position')),
     );
 
     expect(spending.dy, closeTo(income.dy, 0.01));
-    expect(net.dy, closeTo(count.dy, 0.01));
-    expect(spending.dy, lessThan(net.dy));
+    expect(savings.dy, closeTo(netPosition.dy, 0.01));
+    expect(spending.dy, lessThan(savings.dy));
     expect(spending.dx, lessThan(income.dx));
     expect(tester.takeException(), isNull);
   });

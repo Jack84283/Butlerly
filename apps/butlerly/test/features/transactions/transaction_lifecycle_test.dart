@@ -872,6 +872,7 @@ void main() {
         ),
         direction: TransactionDirection.expense,
         description: 'Lunch',
+        merchantId: 'test-canonical-merchant',
       ),
     );
     await finance.createTransaction(
@@ -1303,6 +1304,7 @@ void main() {
         ),
         direction: TransactionDirection.expense,
         description: 'Lunch',
+        merchantId: 'test-canonical-merchant',
       ),
     );
     final stored = repository.values['reviewable']!;
@@ -1469,6 +1471,7 @@ void main() {
         ),
         direction: TransactionDirection.expense,
         description: 'Canonical review row',
+        merchantId: 'test-canonical-merchant',
       ),
     );
     final stored = repository.values['review-canonical']!;
@@ -1519,7 +1522,6 @@ void main() {
     expect(find.text('(1)'), findsNothing);
     expect(find.text('Possible duplicates (0)'), findsOneWidget);
     expect(find.text('Canonical review row'), findsOneWidget);
-    expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
     await tester.tap(find.text('Canonical review row'));
     await tester.pumpAndSettle();
     expect(find.byType(TransactionDetailPage), findsOneWidget);
@@ -1669,6 +1671,7 @@ void main() {
           ),
           direction: TransactionDirection.expense,
           description: 'Grouped merchant $i',
+          merchantId: 'test-canonical-merchant',
         ),
       );
       var stored = repository.values['group-$i']!;
@@ -1740,6 +1743,7 @@ void main() {
         ),
         direction: TransactionDirection.expense,
         description: 'Normalize me',
+        merchantId: 'test-canonical-merchant',
       ),
     );
     final stored = repository.values['normalize-review']!;

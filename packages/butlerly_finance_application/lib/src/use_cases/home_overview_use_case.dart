@@ -4,12 +4,15 @@ import '../dto/analysis_overview.dart';
 import '../dto/home_overview.dart';
 import '../dto/monthly_spending_trend_point.dart';
 import '../dto/review_item_dto.dart';
+import '../dto/review_period_scope.dart';
 import '../dto/transaction_dto.dart';
 import '../result/application_result.dart';
 import 'analysis_use_cases.dart';
 import '../commands/transaction_commands.dart';
 import 'home_period_use_case.dart';
 import 'monthly_spending_trend_use_case.dart';
+import 'duplicate_review_use_cases.dart';
+import 'classification_use_cases.dart';
 import 'transaction_use_cases.dart';
 
 /// Coordinates the application data needed by Home for one selected month.
@@ -24,6 +27,8 @@ final class GetHomeOverview {
     required this.calculateInsights,
     required this.listTransactions,
     required this.listReviewItems,
+    this.listDuplicateCandidateGroups,
+    this.merchants,
   });
 
   final ResolveHomePeriod resolveHomePeriod;
@@ -31,6 +36,8 @@ final class GetHomeOverview {
   final CalculateInsights? calculateInsights;
   final ListTransactions listTransactions;
   final ListReviewItems listReviewItems;
+  final ListDuplicateCandidateGroups? listDuplicateCandidateGroups;
+  final MerchantRepository? merchants;
 
   Future<ApplicationResult<HomeOverview>> call({
     required DateTime instant,
@@ -74,7 +81,12 @@ final class GetHomeOverview {
     // Review is independent of the selected-period transaction read. Start it
     // before awaiting the transaction query so the existing Home loading
     // behavior remains responsive without moving review filtering here.
-    final reviewResultFuture = listReviewItems();
+    final reviewResultFuture = listReviewItems(
+      ListReviewItemsQuery(
+        scope: ReviewPeriodScope.scoped(period: context.period),
+      ),
+    );
+    final duplicateResultFuture = listDuplicateCandidateGroups?.call();
     final transactionResult = await listTransactions(
       ListTransactionsQuery(
         from: DateTime.parse(context.period.startDate),
@@ -85,6 +97,7 @@ final class GetHomeOverview {
     );
     if (transactionResult is ApplicationFailure<List<TransactionDto>>) {
       await reviewResultFuture;
+      await duplicateResultFuture;
       return ApplicationSuccess(
         HomeOverview.transactionsUnavailable(
           context: context,
@@ -96,6 +109,7 @@ final class GetHomeOverview {
     final transactions =
         (transactionResult as ApplicationSuccess<List<TransactionDto>>).value;
     final reviewResult = await reviewResultFuture;
+    final duplicateResult = await duplicateResultFuture;
 
     final AnalysisOverview? analysis;
     final List<InsightResult> insights;
@@ -145,14 +159,42 @@ final class GetHomeOverview {
       }
     }
 
-    final periodTransactionIds = transactions.map((value) => value.id).toSet();
     final reviewItems = switch (reviewResult) {
       ApplicationSuccess<List<ReviewItemDto>>(:final value) => value,
       _ => const <ReviewItemDto>[],
     };
-    final reviewCount = reviewItems
-        .where((item) => periodTransactionIds.contains(item.transactionId))
+    final duplicateGroups = switch (duplicateResult) {
+      ApplicationSuccess<List<DuplicateCandidateGroup>>(:final value) => value,
+      _ => const <DuplicateCandidateGroup>[],
+    };
+    final transactionById = {
+      for (final transaction in transactions) transaction.id: transaction,
+    };
+    final merchantValues = merchants == null
+        ? const <Merchant>[]
+        : await merchants!.listAll();
+    final merchantCandidateKeys = <String>{};
+    for (final item in reviewItems.where(
+      (value) => value.reason == ReviewIssueReason.merchantNeedsReview.name,
+    )) {
+      final transaction = transactionById[item.transactionId];
+      if (transaction == null || transaction.merchantId != null) continue;
+      final evidence = transaction.rawCounterparty ?? transaction.description;
+      final normalized = normalizeMerchantName(evidence ?? '');
+      if (normalized.isEmpty ||
+          resolveMerchantFromEvidence(merchantValues, evidence) != null) {
+        continue;
+      }
+      merchantCandidateKeys.add(normalized);
+    }
+    final possibleDuplicateCount = duplicateGroups
+        .where(
+          (group) => group.transactionIds.any(
+            (id) => transactionById.containsKey(id.value),
+          ),
+        )
         .length;
+    final reviewCount = reviewItems.length;
 
     return ApplicationSuccess(
       HomeOverview.available(
@@ -163,6 +205,11 @@ final class GetHomeOverview {
         monthlyTrend: monthlyTrend,
         monthlyTrendUnavailable: monthlyTrendUnavailable,
         reviewCount: reviewCount,
+        uncategorizedTransactionCount: transactions
+            .where((transaction) => transaction.categoryId == null)
+            .length,
+        possibleDuplicateCount: possibleDuplicateCount,
+        merchantReviewCount: merchantCandidateKeys.length,
         recentTransactions: transactions.take(4).toList(growable: false),
         insights: insights,
         analysisUnavailable: analysisUnavailable,

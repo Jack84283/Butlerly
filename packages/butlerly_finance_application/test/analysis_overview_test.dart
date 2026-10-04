@@ -38,6 +38,40 @@ void main() {
     expect(overview.transactionCount, same(count.metric));
   });
 
+  test('derives savings and category shares from authoritative metrics', () {
+    final spending = _result(
+      'ANL-R701',
+      '60',
+      role: AnalysisSemanticRole.expenseTotal,
+    );
+    final income = _result(
+      'ANL-R702',
+      '100',
+      role: AnalysisSemanticRole.incomeTotal,
+    );
+    final groceries = _result(
+      'ANL-R703',
+      '25',
+      surface: AnalysisSurface.spending,
+      grouping: RuleGrouping.category,
+      dimension: 'category.groceries',
+    );
+
+    final overview = AnalysisOverview.fromResults([
+      spending,
+      income,
+      groceries,
+    ]);
+
+    expect(overview.savings?.value, DecimalValue.parse('40'));
+    expect(overview.savings?.currency, CurrencyCode('USD'));
+    expect(overview.savingsRate, DecimalValue.parse('0.4'));
+    expect(
+      overview.categoryShares['ANL-R703:category.groceries'],
+      DecimalValue.parse('0.416666'),
+    );
+  });
+
   test(
     'category sorting remains exact beyond binary floating-point precision',
     () {

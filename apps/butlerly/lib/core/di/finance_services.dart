@@ -404,6 +404,8 @@ final class FinanceServices {
       calculateInsights: calculateInsights,
       listTransactions: listTransactions,
       listReviewItems: listReviewItems,
+      listDuplicateCandidateGroups: listDuplicateCandidateGroups,
+      merchants: merchants,
     );
   }
 
