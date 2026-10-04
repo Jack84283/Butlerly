@@ -558,6 +558,7 @@ class AppLocalizations {
       'homeInsightSpendingLower':
           'Your {dimension} spending is {percent} lower than {comparison}.',
       'homeInsightComparablePreviousPeriod': 'the comparable previous period',
+      'homeInsightSamePeriodLastMonth': 'the same period last month',
       'homeInsightPreviousPeriod': 'the previous period',
       'spent': 'spent',
       'overview': 'Overview',
@@ -1288,6 +1289,7 @@ class AppLocalizations {
       'homeInsightSpendingHigher': '您的{dimension}支出较{comparison}高出 {percent}。',
       'homeInsightSpendingLower': '您的{dimension}支出较{comparison}低了 {percent}。',
       'homeInsightComparablePreviousPeriod': '可比上一期间',
+      'homeInsightSamePeriodLastMonth': '上月同期',
       'homeInsightPreviousPeriod': '上一期间',
       'spent': '支出',
       'overview': '概览',
@@ -2035,6 +2037,7 @@ class AppLocalizations {
       'homeInsightSpendingLower':
           'Tus gastos en {dimension} son un {percent} más bajos que {comparison}.',
       'homeInsightComparablePreviousPeriod': 'el período anterior equivalente',
+      'homeInsightSamePeriodLastMonth': 'el mismo período del mes pasado',
       'homeInsightPreviousPeriod': 'el período anterior',
       'spent': 'gastados',
       'overview': 'Resumen',

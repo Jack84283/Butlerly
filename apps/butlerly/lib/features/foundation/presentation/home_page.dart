@@ -782,7 +782,6 @@ class _HomeSummaryCard extends StatelessWidget {
           LayoutBuilder(
             builder: (context, constraints) {
               final largeText = MediaQuery.textScalerOf(context).scale(14) > 18;
-              final stacked = largeText || constraints.maxWidth < 300;
               final cells = [
                 _HomeMetricCell(
                   key: const ValueKey('home-summary-metric-spending'),
@@ -838,13 +837,31 @@ class _HomeSummaryCard extends StatelessWidget {
                   ),
                 ),
               ];
+              final dividerWidth =
+                  ButlerlySize.dividerWidth + (ButlerlySpacing.micro * 2);
+              final horizontalCellWidth =
+                  (constraints.maxWidth - (dividerWidth * (cells.length - 1))) /
+                  cells.length;
+              final stacked =
+                  largeText ||
+                  constraints.maxWidth < 300 ||
+                  cells.any(
+                    (cell) => !cell.fitsWithin(context, horizontalCellWidth),
+                  );
+              final layoutCells = [
+                for (final cell in cells) cell.withStacked(stacked),
+              ];
               if (stacked) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    for (var index = 0; index < cells.length; index++) ...[
-                      cells[index],
-                      if (index < cells.length - 1)
+                    for (
+                      var index = 0;
+                      index < layoutCells.length;
+                      index++
+                    ) ...[
+                      layoutCells[index],
+                      if (index < layoutCells.length - 1)
                         const SizedBox(height: ButlerlySpacing.standard),
                     ],
                   ],
@@ -853,7 +870,7 @@ class _HomeSummaryCard extends StatelessWidget {
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (var index = 0; index < cells.length; index++) ...[
+                  for (var index = 0; index < layoutCells.length; index++) ...[
                     if (index > 0)
                       const SizedBox(
                         height: 92,
@@ -866,7 +883,7 @@ class _HomeSummaryCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                    Expanded(child: cells[index]),
+                    Expanded(child: layoutCells[index]),
                   ],
                 ],
               );
@@ -899,6 +916,7 @@ class _HomeMetricCell extends StatelessWidget {
     this.supportingColor,
     required this.icon,
     required this.color,
+    this.stacked = false,
   });
 
   final String label;
@@ -910,6 +928,39 @@ class _HomeMetricCell extends StatelessWidget {
   final Color? supportingColor;
   final IconData icon;
   final Color color;
+  final bool stacked;
+
+  _HomeMetricCell withStacked(bool value) => _HomeMetricCell(
+    key: key,
+    label: label,
+    metric: metric,
+    value: this.value,
+    comparison: comparison,
+    supportingText: supportingText,
+    secondarySupportingText: secondarySupportingText,
+    supportingColor: supportingColor,
+    icon: icon,
+    color: color,
+    stacked: value,
+  );
+
+  bool fitsWithin(BuildContext context, double maxWidth) {
+    final displayValue = _displayValue(context);
+    final style = _homeMetricValueStyle(
+      context,
+      displayValue,
+      ButlerlyTypography.compactMetricValue(
+        Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
+      ),
+      maxWidth,
+    );
+    final painter = TextPainter(
+      text: TextSpan(text: displayValue, style: style),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+    )..layout();
+    return painter.width <= maxWidth;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -922,11 +973,7 @@ class _HomeMetricCell extends StatelessWidget {
     final displayUnavailable =
         metric == null && (value == null || valueUnavailable) ||
         metricUnavailable;
-    final displayValue = displayUnavailable
-        ? '—'
-        : value == null
-        ? _homeMoney(context, metric!)
-        : _homeValueMoney(context, value!);
+    final displayValue = _displayValue(context);
     final comparisonText = comparison == null
         ? null
         : analysisComparisonChangeText(context, comparison!);
@@ -964,13 +1011,29 @@ class _HomeMetricCell extends StatelessWidget {
             ).copyWith(color: context.colors.secondaryText),
           ),
           const SizedBox(height: ButlerlySpacing.micro),
-          Text(
-            displayValue,
-            softWrap: true,
-            textAlign: TextAlign.center,
-            style: ButlerlyTypography.compactMetricValue(
-              Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
-            ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final baseStyle = ButlerlyTypography.compactMetricValue(
+                Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
+              );
+              final valueStyle = _homeMetricValueStyle(
+                context,
+                displayValue,
+                baseStyle,
+                constraints.maxWidth,
+              );
+              return SizedBox(
+                width: constraints.maxWidth,
+                child: Text(
+                  displayValue,
+                  maxLines: stacked ? null : 1,
+                  overflow: TextOverflow.visible,
+                  softWrap: stacked,
+                  textAlign: TextAlign.center,
+                  style: valueStyle,
+                ),
+              );
+            },
           ),
           if (!valueUnavailable &&
               !metricUnavailable &&
@@ -1007,6 +1070,47 @@ class _HomeMetricCell extends StatelessWidget {
       ),
     );
   }
+
+  String _displayValue(BuildContext context) {
+    final metricUnavailable =
+        metric?.availability != null &&
+        metric!.availability != AnalysisDataAvailability.sufficient;
+    final valueUnavailable =
+        value?.availability != null &&
+        value!.availability != AnalysisDataAvailability.sufficient;
+    final displayUnavailable =
+        metric == null && (value == null || valueUnavailable) ||
+        metricUnavailable;
+    return displayUnavailable
+        ? '—'
+        : value == null
+        ? _homeMoney(context, metric!)
+        : _homeValueMoney(context, value!);
+  }
+}
+
+TextStyle _homeMetricValueStyle(
+  BuildContext context,
+  String value,
+  TextStyle baseStyle,
+  double maxWidth,
+) {
+  final baseFontSize = baseStyle.fontSize ?? 17;
+  final painter = TextPainter(
+    text: TextSpan(text: value, style: baseStyle),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+  )..layout();
+  if (painter.width <= maxWidth || maxWidth <= 0) return baseStyle;
+
+  // The reference amounts retain the 17 px role on platform fonts. This
+  // bounded fallback handles wider localized currency strings without using
+  // a paint-time scale-down widget or allowing them to overlap adjacent cells.
+  final fittedSize = (baseFontSize * maxWidth / painter.width).clamp(
+    9.0,
+    baseFontSize,
+  );
+  return baseStyle.copyWith(fontSize: fittedSize);
 }
 
 Color _homeNetChangeColor(
@@ -2007,7 +2111,7 @@ _HomeInsightPreview _homeInsightPreview(
     final direction = percentage.isNegative ? 'down' : 'up';
     final comparison =
         insight.rule.baseline == RuleBaseline.previousEquivalentPeriod
-        ? context.l10n.text('homeInsightComparablePreviousPeriod')
+        ? _homeInsightEquivalentPeriodLabel(context, insight.context)
         : context.l10n.text('homeInsightPreviousPeriod');
     return _HomeInsightPreview(
       title: context.l10n.text('homeInsightSpending$direction', {
@@ -2031,6 +2135,15 @@ _HomeInsightPreview _homeInsightPreview(
     description: context.l10n.text(insight.rule.descriptionKey),
   );
 }
+
+String _homeInsightEquivalentPeriodLabel(
+  BuildContext context,
+  AnalysisContext insightContext,
+) => switch (insightContext.periodType) {
+  'current_month' ||
+  'selected_month' => context.l10n.text('homeInsightSamePeriodLastMonth'),
+  _ => context.l10n.text('homeInsightComparablePreviousPeriod'),
+};
 
 String? _homeInsightDimension(
   BuildContext context,

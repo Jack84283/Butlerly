@@ -14,6 +14,7 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -534,6 +535,161 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Home Summary keeps reference amounts on one line', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-09-01',
+        endDate: '2026-09-16',
+        timeZoneId: 'UTC',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+      baseCurrency: CurrencyCode('USD'),
+    );
+    final model = AnalysisOverview(
+      spending: _categoryMetric(value: '2340.18'),
+      income: _categoryMetric(value: '4150.00'),
+      savings: AnalysisValue(
+        value: DecimalValue.parse('1809.82'),
+        currency: CurrencyCode('USD'),
+        context: context,
+      ),
+      net: _categoryMetric(value: '1809.82'),
+      insightUnavailable: false,
+      trend: const [],
+      categories: const [],
+      qualityCount: 0,
+      qualityEvaluated: true,
+      qualityLimited: false,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(body: homeSummaryForTest(model)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    const referenceValues = {
+      'home-summary-metric-spending': '\$2,340.18',
+      'home-summary-metric-income': '\$4,150.00',
+      'home-summary-metric-savings': '\$1,809.82',
+      'home-summary-metric-net-position': '\$1,809.82',
+    };
+    for (final entry in referenceValues.entries) {
+      final textFinder = find.descendant(
+        of: find.byKey(ValueKey(entry.key)),
+        matching: find.text(entry.value),
+      );
+      expect(textFinder, findsOneWidget);
+      final text = tester.widget<Text>(textFinder);
+      expect(text.maxLines, 1);
+      expect(text.softWrap, isFalse);
+      expect(text.overflow, TextOverflow.visible);
+      final render = tester.renderObject<RenderParagraph>(textFinder);
+      final painter = TextPainter(
+        text: TextSpan(text: entry.value, style: text.style),
+        textDirection: TextDirection.ltr,
+        textScaler: TextScaler.noScaling,
+      )..layout();
+      expect(painter.width, lessThanOrEqualTo(render.size.width + 0.01));
+    }
+    final metricTops = [
+      for (final key in referenceValues.keys)
+        tester.getTopLeft(find.byKey(ValueKey(key))).dy,
+    ];
+    for (final top in metricTops.skip(1)) {
+      expect(top, closeTo(metricTops.first, 0.01));
+    }
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home Summary stacks when an amount cannot fit a metric cell', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-09-01',
+        endDate: '2026-09-16',
+        timeZoneId: 'UTC',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+      baseCurrency: CurrencyCode('USD'),
+    );
+    final model = AnalysisOverview(
+      spending: _categoryMetric(value: '12345678901234567890'),
+      income: _categoryMetric(value: '4150.00'),
+      savings: AnalysisValue(
+        value: DecimalValue.parse('1809.82'),
+        currency: CurrencyCode('USD'),
+        context: context,
+      ),
+      net: _categoryMetric(value: '1809.82'),
+      insightUnavailable: false,
+      trend: const [],
+      categories: const [],
+      qualityCount: 0,
+      qualityEvaluated: true,
+      qualityLimited: false,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(body: homeSummaryForTest(model)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final metricKeys = [
+      const ValueKey('home-summary-metric-spending'),
+      const ValueKey('home-summary-metric-income'),
+      const ValueKey('home-summary-metric-savings'),
+      const ValueKey('home-summary-metric-net-position'),
+    ];
+    final metricTops = [
+      for (final key in metricKeys) tester.getTopLeft(find.byKey(key)).dy,
+    ];
+    for (var index = 1; index < metricTops.length; index++) {
+      expect(metricTops[index], greaterThan(metricTops[index - 1]));
+    }
+    final longValue = find.textContaining('12,345,678');
+    expect(longValue, findsOneWidget);
+    final longValueRect = tester.getRect(longValue);
+    final spendingRect = tester.getRect(find.byKey(metricKeys.first));
+    expect(longValueRect.left, greaterThanOrEqualTo(spendingRect.left - 0.01));
+    expect(longValueRect.right, lessThanOrEqualTo(spendingRect.right + 0.01));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Home Summary uses semantic colors for supporting values', (
     tester,
   ) async {
@@ -615,6 +771,7 @@ void main() {
       datasetMode: DatasetMode.allEligible,
       currencyBasis: CurrencyBasis.baseCurrency,
       baseCurrency: CurrencyCode('USD'),
+      periodType: 'selected_period',
     );
     final insight = InsightResult(
       outputType: InsightOutputType.pattern,
@@ -654,6 +811,32 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('analysis.rule.r020.name'), findsNothing);
+  });
+
+  testWidgets('Home Insight uses same-period wording for current month', (
+    tester,
+  ) async {
+    await _pumpHomeInsight(tester, 'current_month');
+
+    expect(
+      find.text(
+        'Your Restaurants spending is 28% higher than the same period last month.',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Home Insight uses same-period wording for selected month', (
+    tester,
+  ) async {
+    await _pumpHomeInsight(tester, 'selected_month');
+
+    expect(
+      find.text(
+        'Your Restaurants spending is 28% higher than the same period last month.',
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('Home Summary does not show insufficient derived savings', (
@@ -1543,6 +1726,7 @@ AnalysisRuleDefinition _categoryRule() => AnalysisRuleDefinition(
 
 AnalysisMetric _categoryMetric({
   AnalysisDataAvailability availability = AnalysisDataAvailability.sufficient,
+  String value = '1234567.89',
 }) {
   final context = AnalysisContext(
     period: AnalysisPeriod(
@@ -1558,12 +1742,57 @@ AnalysisMetric _categoryMetric({
     id: 'category-result',
     rule: _categoryRule(),
     context: context,
-    value: DecimalValue.parse('1234567.89'),
+    value: DecimalValue.parse(value),
     currency: CurrencyCode('USD'),
     dimension: 'CAT-001:categorySpending',
     availability: availability,
     calculatedAt: DateTime.utc(2026, 9, 16),
   );
+}
+
+AnalysisContext _homeInsightContext(String periodType) => AnalysisContext(
+  period: AnalysisPeriod(
+    startDate: '2026-09-01',
+    endDate: '2026-09-16',
+    timeZoneId: 'UTC',
+  ),
+  datasetMode: DatasetMode.allEligible,
+  currencyBasis: CurrencyBasis.baseCurrency,
+  baseCurrency: CurrencyCode('USD'),
+  periodType: periodType,
+);
+
+Future<void> _pumpHomeInsight(WidgetTester tester, String periodType) async {
+  final context = _homeInsightContext(periodType);
+  final insight = InsightResult(
+    outputType: InsightOutputType.pattern,
+    rule: _homeInsightRule(grouping: RuleGrouping.category),
+    context: context,
+    baselineContext: context,
+    percentageChange: DecimalValue.parse('28'),
+    dimension: 'restaurants',
+  );
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: AppTheme.light,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: homeInsightForTest(
+          insight,
+          masterData: const TransactionMasterData(
+            categoryNames: {'restaurants': 'Restaurants'},
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
 }
 
 AnalysisComparison _comparison(String change) => AnalysisComparison(
