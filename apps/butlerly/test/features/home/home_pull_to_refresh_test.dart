@@ -8,6 +8,7 @@ import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/features/foundation/presentation/review_page.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -113,6 +114,12 @@ void main() {
     expect(find.text('Savings'), findsOneWidget);
     expect(find.text('Net position'), findsOneWidget);
     expect(find.text('Recent transactions'), findsOneWidget);
+    final monthSelector = tester.widget<TextButton>(
+      find.byKey(const Key('home-month-selector')),
+    );
+    expect(monthSelector.style?.backgroundColor, isNotNull);
+    expect(monthSelector.style?.side, isNotNull);
+    expect(monthSelector.style?.shape, isNotNull);
     final summaryTitle = tester.widget<Text>(find.text('Monthly summary'));
     expect(
       summaryTitle.style?.fontFamily,
@@ -354,6 +361,7 @@ void main() {
                 showPossibleDuplicates: parameters['view'] == 'duplicates',
                 showUncategorized: parameters['view'] == 'uncategorized',
                 showNeedsReview: parameters['view'] == 'needsReview',
+                showReviewOverview: parameters['view'] == 'overview',
                 reviewScope: scope,
                 reviewReason: reason,
               ),
@@ -389,6 +397,18 @@ void main() {
     expect(find.text('Possible duplicate group'), findsOneWidget);
     expect(find.text('Initial Home spending'), findsOneWidget);
     expect(find.text('Matching Home spending'), findsOneWidget);
+
+    router.go('/');
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('home-attention-view-all')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('home-attention-view-all')));
+    await tester.pumpAndSettle();
+    expect(find.text('Not categorized'), findsWidgets);
+    expect(find.textContaining('Possible duplicates'), findsWidgets);
+    expect(find.text('Needs review'), findsWidgets);
 
     router.go('/');
     await tester.pumpAndSettle();
@@ -498,6 +518,19 @@ void main() {
     expect(spending.dx, lessThan(income.dx));
     expect(income.dx, lessThan(savings.dx));
     expect(savings.dx, lessThan(netPosition.dx));
+    for (final entry in [
+      ('home-summary-metric-spending', 'Spending'),
+      ('home-summary-metric-income', 'Income'),
+      ('home-summary-metric-savings', 'Savings'),
+      ('home-summary-metric-net-position', 'Net position'),
+    ]) {
+      final cell = find.byKey(ValueKey(entry.$1));
+      final label = find.descendant(of: cell, matching: find.text(entry.$2));
+      expect(
+        (tester.getCenter(cell).dx - tester.getCenter(label).dx).abs(),
+        lessThan(0.01),
+      );
+    }
     expect(tester.takeException(), isNull);
   });
 
@@ -562,6 +595,59 @@ void main() {
       _lastTextIn(tester, 'home-summary-metric-net-position').style?.color,
       colors.success,
     );
+  });
+
+  testWidgets('Home Insight preview uses data-driven localized copy', (
+    tester,
+  ) async {
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-09-01',
+        endDate: '2026-09-16',
+        timeZoneId: 'UTC',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+      baseCurrency: CurrencyCode('USD'),
+    );
+    final insight = InsightResult(
+      outputType: InsightOutputType.pattern,
+      rule: _homeInsightRule(grouping: RuleGrouping.category),
+      context: context,
+      baselineContext: context,
+      percentageChange: DecimalValue.parse('28'),
+      dimension: 'restaurants',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: homeInsightForTest(
+            insight,
+            masterData: const TransactionMasterData(
+              categoryNames: {'restaurants': 'Restaurants'},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Spending up 28.00%'), findsOneWidget);
+    expect(
+      find.textContaining(
+        'Your Restaurants spending is 28.00% higher than the comparable previous period.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('analysis.rule.r020.name'), findsNothing);
   });
 
   testWidgets('Home Summary does not show insufficient derived savings', (
@@ -1388,7 +1474,9 @@ final class _Rules implements AnalysisRuleRepository {
   }) async {}
 }
 
-AnalysisRuleDefinition _homeInsightRule() => AnalysisRuleDefinition(
+AnalysisRuleDefinition _homeInsightRule({
+  RuleGrouping grouping = RuleGrouping.none,
+}) => AnalysisRuleDefinition(
   identity: RuleIdentity('ANL-R099'),
   version: RuleVersion('1.0.0'),
   schemaVersion: '1.0.0',
@@ -1403,7 +1491,7 @@ AnalysisRuleDefinition _homeInsightRule() => AnalysisRuleDefinition(
     field: 'amount',
     currencyBasis: CurrencyBasis.baseCurrency,
   ),
-  grouping: RuleGrouping.none,
+  grouping: grouping,
   baseline: RuleBaseline.previousEquivalentPeriod,
   condition: RuleCondition(
     operator: 'gt',

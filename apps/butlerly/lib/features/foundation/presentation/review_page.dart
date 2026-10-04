@@ -22,6 +22,7 @@ class ReviewPage extends StatefulWidget {
     this.showPossibleDuplicates = false,
     this.showUncategorized = false,
     this.showNeedsReview = false,
+    this.showReviewOverview = false,
     this.reviewScope = const ReviewPeriodScope.unscoped(),
     this.reviewReason,
     this.invalidReviewReason = false,
@@ -31,6 +32,7 @@ class ReviewPage extends StatefulWidget {
   final bool showPossibleDuplicates;
   final bool showUncategorized;
   final bool showNeedsReview;
+  final bool showReviewOverview;
   final ReviewPeriodScope reviewScope;
   final ReviewIssueReason? reviewReason;
   final bool invalidReviewReason;
@@ -100,6 +102,7 @@ class _ReviewPageState extends State<ReviewPage> {
     if (oldWidget.showPossibleDuplicates == widget.showPossibleDuplicates &&
         oldWidget.showUncategorized == widget.showUncategorized &&
         oldWidget.showNeedsReview == widget.showNeedsReview &&
+        oldWidget.showReviewOverview == widget.showReviewOverview &&
         oldWidget.reviewScope == widget.reviewScope &&
         oldWidget.reviewReason == widget.reviewReason &&
         oldWidget.invalidReviewReason == widget.invalidReviewReason) {
@@ -427,7 +430,7 @@ class _ReviewPageState extends State<ReviewPage> {
       onRefresh: _pullToRefresh,
       refreshKey: ValueKey('review-pull-to-refresh-${_view.name}'),
       pinnedSpacing: ButlerlyPinnedPageSpacing.primary,
-      pinnedHeader: _hasReviewScope
+      pinnedHeader: _hasReviewScope && !widget.showReviewOverview
           ? null
           : FutureBuilder<List<DuplicateCandidateGroup>>(
               future: _duplicateGroups,

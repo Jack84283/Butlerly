@@ -157,6 +157,7 @@ final appRouter = GoRouter(
             showUncategorized:
                 state.uri.queryParameters['view'] == 'uncategorized',
             showNeedsReview: state.uri.queryParameters['view'] == 'needsReview',
+            showReviewOverview: state.uri.queryParameters['view'] == 'overview',
             reviewScope: _reviewScope(state.uri.queryParameters),
             reviewReason: _reviewReason(state.uri.queryParameters),
             invalidReviewReason:

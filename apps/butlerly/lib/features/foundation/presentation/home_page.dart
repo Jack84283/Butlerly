@@ -334,6 +334,7 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: ButlerlySpacing.cardGap),
           _HomeInsightCard(
             insight: data.insight!,
+            masterData: data.masterData,
             onTap: period == null
                 ? null
                 : () => context.push(
@@ -651,6 +652,12 @@ class _HomeHeader extends StatelessWidget {
           onPressed: onMonthTap,
           style: TextButton.styleFrom(
             alignment: AlignmentDirectional.centerEnd,
+            backgroundColor: context.colors.subtleSurface,
+            foregroundColor: context.colors.primaryText,
+            side: BorderSide(color: context.colors.border),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+            ),
             padding: const EdgeInsets.symmetric(
               horizontal: ButlerlySpacing.compact,
               vertical: ButlerlySpacing.compact,
@@ -916,7 +923,7 @@ class _HomeMetricCell extends StatelessWidget {
       label:
           '$label, ${displayUnavailable ? context.l10n.text('notAvailable') : displayValue}',
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
             width: 32,
@@ -930,6 +937,7 @@ class _HomeMetricCell extends StatelessWidget {
           const SizedBox(height: ButlerlySpacing.compact),
           Text(
             label,
+            textAlign: TextAlign.center,
             style: ButlerlyTypography.metricLabel(
               Theme.of(context).textTheme.labelLarge ?? const TextStyle(),
             ).copyWith(color: context.colors.secondaryText),
@@ -938,6 +946,7 @@ class _HomeMetricCell extends StatelessWidget {
           Text(
             displayValue,
             softWrap: true,
+            textAlign: TextAlign.center,
             style: ButlerlyTypography.metricValue(
               Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
             ),
@@ -949,6 +958,7 @@ class _HomeMetricCell extends StatelessWidget {
             const SizedBox(height: ButlerlySpacing.micro),
             Text(
               support,
+              textAlign: TextAlign.center,
               softWrap: true,
               style:
                   ButlerlyTypography.metricChange(
@@ -1002,6 +1012,12 @@ Widget homeCategorySummaryItemForTest({
 @visibleForTesting
 Widget homeSummaryForTest(AnalysisModel model) =>
     _HomeSummaryCard(model: model, analysisUnavailable: false);
+
+@visibleForTesting
+Widget homeInsightForTest(
+  InsightResult insight, {
+  TransactionMasterData masterData = const TransactionMasterData(),
+}) => _HomeInsightCard(insight: insight, masterData: masterData, onTap: null);
 
 class _SpendingTrend extends StatelessWidget {
   const _SpendingTrend({
@@ -1101,17 +1117,10 @@ class _SpendingTrend extends StatelessWidget {
                     if (comparisonText.isNotEmpty)
                       Text(
                         comparisonText,
-                        style:
-                            ButlerlyTypography.metricChange(
-                              Theme.of(context).textTheme.bodySmall ??
-                                  const TextStyle(),
-                            ).copyWith(
-                              color:
-                                  comparison!.percentageChange?.isNegative ==
-                                      true
-                                  ? context.colors.success
-                                  : context.colors.interactive,
-                            ),
+                        style: ButlerlyTypography.metricChange(
+                          Theme.of(context).textTheme.bodySmall ??
+                              const TextStyle(),
+                        ).copyWith(color: context.colors.interactive),
                       ),
                   ],
                 ),
@@ -1206,10 +1215,10 @@ class _HomeTrendPlot extends StatelessWidget {
                                         'home-spending-trend-bar-${point.month.year}-${point.month.month}',
                                       ),
                                       decoration: BoxDecoration(
-                                        color: point.selected
-                                            ? context.colors.interactive
-                                            : context.colors.secondaryText
-                                                  .withValues(alpha: 0.35),
+                                        color: context.colors.interactive
+                                            .withValues(
+                                              alpha: point.selected ? 1 : 0.35,
+                                            ),
                                         borderRadius:
                                             const BorderRadius.vertical(
                                               top: Radius.circular(
@@ -1555,7 +1564,8 @@ class _AttentionSection extends StatelessWidget {
                   ),
                   action: TextButton(
                     key: const Key('home-attention-view-all'),
-                    onPressed: () => context.push(_reviewRoute(period)),
+                    onPressed: () =>
+                        context.push(_reviewRoute(period, view: 'overview')),
                     child: Text(context.l10n.text('viewAll')),
                   ),
                 ),
@@ -1788,106 +1798,185 @@ class _HomeRecentActivity extends StatelessWidget {
 }
 
 class _HomeInsightCard extends StatelessWidget {
-  const _HomeInsightCard({required this.insight, required this.onTap});
+  const _HomeInsightCard({
+    required this.insight,
+    required this.masterData,
+    required this.onTap,
+  });
 
   final InsightResult insight;
+  final TransactionMasterData masterData;
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => ButlerlyCard(
-    key: const ValueKey('home-insight-card'),
-    variant: ButlerlyCardVariant.dashboard,
-    semanticLabel:
-        '${context.l10n.text('insights')}: '
-        '${context.l10n.text(insight.rule.nameKey)}',
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ButlerlyCardHeader(
-          title: context.l10n.text('insights'),
-          titleStyle: ButlerlyTypography.cardTitle(
-            Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
+  Widget build(BuildContext context) {
+    final preview = _homeInsightPreview(context, insight, masterData);
+    return ButlerlyCard(
+      key: const ValueKey('home-insight-card'),
+      variant: ButlerlyCardVariant.dashboard,
+      semanticLabel: '${context.l10n.text('insights')}: ${preview.title}',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ButlerlyCardHeader(
+            title: context.l10n.text('insights'),
+            titleStyle: ButlerlyTypography.cardTitle(
+              Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
+            ),
+            action: TextButton(
+              onPressed: onTap,
+              child: Text(context.l10n.text('viewAll')),
+            ),
           ),
-          action: TextButton(
-            onPressed: onTap,
-            child: Text(context.l10n.text('viewAll')),
-          ),
-        ),
-        const SizedBox(height: ButlerlySpacing.small),
-        Material(
-          color: context.colors.selection,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.all(ButlerlySpacing.standard),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  DecoratedBox(
-                    key: const ValueKey('home-insight-icon'),
-                    decoration: BoxDecoration(
-                      color: context.colors.info.withValues(alpha: 0.16),
-                      shape: BoxShape.circle,
+          const SizedBox(height: ButlerlySpacing.small),
+          Material(
+            color: context.colors.selection,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: onTap,
+              child: Padding(
+                padding: const EdgeInsets.all(ButlerlySpacing.standard),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    DecoratedBox(
+                      key: const ValueKey('home-insight-icon'),
+                      decoration: BoxDecoration(
+                        color: context.colors.info.withValues(alpha: 0.16),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(ButlerlySpacing.small),
+                        child: Icon(
+                          _homeIcon(
+                            context,
+                            material: Icons.lightbulb_outline,
+                            cupertino: CupertinoIcons.lightbulb,
+                          ),
+                          size: 20,
+                          color: context.colors.info,
+                        ),
+                      ),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(ButlerlySpacing.small),
-                      child: Icon(
+                    const SizedBox(width: ButlerlySpacing.standard),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            preview.title,
+                            style: ButlerlyTypography.rowTitle(
+                              Theme.of(context).textTheme.titleMedium ??
+                                  const TextStyle(),
+                            ),
+                          ),
+                          const SizedBox(height: ButlerlySpacing.micro),
+                          Text(
+                            preview.description,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: ButlerlyTypography.rowMetadata(
+                              Theme.of(context).textTheme.bodySmall ??
+                                  const TextStyle(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (onTap != null)
+                      Icon(
                         _homeIcon(
                           context,
-                          material: Icons.lightbulb_outline,
-                          cupertino: CupertinoIcons.lightbulb,
+                          material: Icons.chevron_right_rounded,
+                          cupertino: CupertinoIcons.chevron_right,
                         ),
-                        size: 20,
-                        color: context.colors.info,
+                        color: context.colors.tertiaryText,
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: ButlerlySpacing.standard),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          context.l10n.text(insight.rule.nameKey),
-                          style: ButlerlyTypography.rowTitle(
-                            Theme.of(context).textTheme.titleMedium ??
-                                const TextStyle(),
-                          ),
-                        ),
-                        const SizedBox(height: ButlerlySpacing.micro),
-                        Text(
-                          context.l10n.text(insight.rule.descriptionKey),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: ButlerlyTypography.rowMetadata(
-                            Theme.of(context).textTheme.bodySmall ??
-                                const TextStyle(),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (onTap != null)
-                    Icon(
-                      _homeIcon(
-                        context,
-                        material: Icons.chevron_right_rounded,
-                        cupertino: CupertinoIcons.chevron_right,
-                      ),
-                      color: context.colors.tertiaryText,
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      ],
-    ),
+        ],
+      ),
+    );
+  }
+}
+
+final class _HomeInsightPreview {
+  const _HomeInsightPreview({required this.title, required this.description});
+
+  final String title;
+  final String description;
+}
+
+_HomeInsightPreview _homeInsightPreview(
+  BuildContext context,
+  InsightResult insight,
+  TransactionMasterData masterData,
+) {
+  final percentage = insight.percentageChange;
+  final dimension = _homeInsightDimension(context, insight, masterData);
+  final hasComparableBaseline =
+      insight.baselineContext != null &&
+      (insight.rule.baseline == RuleBaseline.previousPeriod ||
+          insight.rule.baseline == RuleBaseline.previousEquivalentPeriod);
+  if (percentage != null &&
+      !percentage.isZero &&
+      dimension != null &&
+      hasComparableBaseline) {
+    final magnitude = localizedDecimal(context, percentage.abs().toString());
+    final direction = percentage.isNegative ? 'down' : 'up';
+    final comparison =
+        insight.rule.baseline == RuleBaseline.previousEquivalentPeriod
+        ? context.l10n.text('homeInsightComparablePreviousPeriod')
+        : context.l10n.text('homeInsightPreviousPeriod');
+    return _HomeInsightPreview(
+      title: context.l10n.text('homeInsightSpending$direction', {
+        'percent': '$magnitude%',
+      }),
+      description: context.l10n.text(
+        'homeInsightSpending${percentage.isNegative ? 'Lower' : 'Higher'}',
+        {
+          'dimension': dimension,
+          'percent': '$magnitude%',
+          'comparison': comparison,
+        },
+      ),
+    );
+  }
+  return _HomeInsightPreview(
+    title: context.l10n.text(insight.rule.nameKey),
+    description: context.l10n.text(insight.rule.descriptionKey),
   );
+}
+
+String? _homeInsightDimension(
+  BuildContext context,
+  InsightResult insight,
+  TransactionMasterData masterData,
+) {
+  final dimension = insight.dimension;
+  if (dimension == null) return null;
+  return switch (insight.rule.grouping) {
+    RuleGrouping.category =>
+      masterData.categoryName(dimension) ??
+          (dimension == 'uncategorized'
+              ? context.l10n.text('uncategorized')
+              : null),
+    RuleGrouping.subcategory =>
+      masterData.subcategoryName(dimension) ??
+          (dimension == 'uncategorized'
+              ? context.l10n.text('uncategorized')
+              : null),
+    RuleGrouping.merchant => masterData.merchantName(dimension),
+    RuleGrouping.paymentSource => masterData.paymentSourceName(dimension),
+    RuleGrouping.tag => masterData.tagName(dimension),
+    _ => null,
+  };
 }
 
 class _HomeEmptyState extends StatelessWidget {
