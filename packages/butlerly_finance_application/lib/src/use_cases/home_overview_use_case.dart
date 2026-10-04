@@ -175,9 +175,7 @@ final class GetHomeOverview {
     final transactionById = {
       for (final transaction in transactions) transaction.id: transaction,
     };
-    final merchantValues = merchants == null
-        ? const <Merchant>[]
-        : await merchants!.listAll();
+    final merchantValues = await _listMerchantsSafely();
     final merchantCandidateKeys = <String>{};
     for (final item in reviewItems.where(
       (value) => value.reason == ReviewIssueReason.merchantNeedsReview.name,
@@ -229,6 +227,18 @@ final class GetHomeOverview {
         duplicateUnavailable: duplicateUnavailable,
       ),
     );
+  }
+
+  Future<List<Merchant>> _listMerchantsSafely() async {
+    final repository = merchants;
+    if (repository == null) return const [];
+    try {
+      return await repository.listAll();
+    } catch (_) {
+      // Merchant review enrichment is optional for Home. Preserve the
+      // transaction, analysis, and review overview when its lookup fails.
+      return const [];
+    }
   }
 
   Future<ApplicationResult<_HomeContextResolution>> _resolveWithAnalysis(

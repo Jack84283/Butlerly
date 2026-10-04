@@ -151,6 +151,22 @@ void main() {
     },
   );
 
+  test('keeps the loaded overview when merchant enrichment fails', () async {
+    loadHomeOverview = _homeOverview(transactions, preferences, [
+      _expenseRule(),
+    ], merchants: _ThrowingMerchants());
+
+    final result = await loadHomeOverview(
+      instant: DateTime.utc(2026, 9, 16, 12),
+    );
+
+    final overview = (result as ApplicationSuccess<HomeOverview>).value;
+    expect(overview.status, HomeOverviewStatus.available);
+    expect(overview.analysis, isNotNull);
+    expect(overview.recentTransactions, hasLength(5));
+    expect(overview.merchantReviewCount, 0);
+  });
+
   test('returns a typed period-unavailable state without a period', () async {
     preferences.timeZoneId = 'Invalid/Timezone';
 
@@ -270,6 +286,7 @@ GetHomeOverview _homeOverview(
   _Preferences preferences,
   List<AnalysisRuleDefinition> rules, {
   DuplicateCandidateGroupRepository? duplicateGroups,
+  MerchantRepository? merchants,
 }) {
   final analysis = CalculateAnalysisOverview(
     _Rules(rules),
@@ -285,7 +302,19 @@ GetHomeOverview _homeOverview(
     listDuplicateCandidateGroups: duplicateGroups == null
         ? null
         : ListDuplicateCandidateGroups(duplicateGroups),
+    merchants: merchants,
   );
+}
+
+final class _ThrowingMerchants implements MerchantRepository {
+  @override
+  Future<Merchant?> findById(MerchantId id) async => throw StateError('read');
+
+  @override
+  Future<List<Merchant>> listAll() async => throw StateError('read');
+
+  @override
+  Future<void> save(Merchant merchant) async => throw StateError('write');
 }
 
 Transaction _transaction(
