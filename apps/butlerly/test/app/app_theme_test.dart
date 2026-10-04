@@ -61,6 +61,7 @@ void main() {
         ButlerlyTypography.metricLabel(base.labelLarge!),
         ButlerlyTypography.metricValue(base.titleLarge!),
         ButlerlyTypography.metricChange(base.bodySmall!),
+        ButlerlyTypography.compactMetricChange(base.bodySmall!),
         ButlerlyTypography.rowTitle(base.bodyLarge!),
         ButlerlyTypography.rowMetadata(base.bodySmall!),
         ButlerlyTypography.rowAmount(base.titleMedium!),
@@ -82,6 +83,10 @@ void main() {
         (role: ButlerlyTypography.metricLabel(base.labelLarge!), size: 14),
         (role: ButlerlyTypography.metricValue(base.titleLarge!), size: 24),
         (role: ButlerlyTypography.metricChange(base.bodySmall!), size: 14),
+        (
+          role: ButlerlyTypography.compactMetricChange(base.bodySmall!),
+          size: 12,
+        ),
         (role: ButlerlyTypography.rowTitle(base.bodyLarge!), size: 16),
         (role: ButlerlyTypography.rowMetadata(base.bodySmall!), size: 14),
         (role: ButlerlyTypography.rowAmount(base.titleMedium!), size: 16),
@@ -105,7 +110,7 @@ void main() {
       );
       expect(
         ButlerlyTypography.compactMetricValue(base.titleLarge!).fontSize,
-        16,
+        15,
       );
       expect(ButlerlyTypography.metricValue(base.titleLarge!).fontSize, 24);
     },

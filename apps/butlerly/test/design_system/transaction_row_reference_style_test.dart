@@ -82,4 +82,51 @@ void main() {
       greaterThan(tester.getBottomLeft(metadata).dy),
     );
   });
+
+  testWidgets('dashboard transaction row preserves Home content order', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: const Scaffold(
+          body: SizedBox(
+            width: 390,
+            child: ButlerlyRecordRow(
+              title: 'Whole Foods Market',
+              amount: '82.47',
+              currency: '',
+              amountIncludesCurrency: true,
+              categoryLabel: 'Food & Drink',
+              subcategoryLabel: 'Restaurants',
+              paymentSource: 'Visa',
+              meta: 'Sep 2, 2026',
+              showDate: true,
+              showCategoryPill: true,
+              variant: ButlerlyTransactionRowVariant.dashboard,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Whole Foods Market'), findsOneWidget);
+    expect(find.text('-82.47'), findsOneWidget);
+    expect(find.text('Food & Drink'), findsOneWidget);
+    expect(find.text('Restaurants · Visa'), findsOneWidget);
+    expect(find.text('Sep 2, 2026'), findsOneWidget);
+
+    final rowPadding = find.byWidgetPredicate(
+      (widget) =>
+          widget is Padding &&
+          widget.padding ==
+              EdgeInsets.fromLTRB(
+                ButlerlyTransactionItemTokens.horizontalInset,
+                ButlerlyTransactionItemTokens.topPadding,
+                ButlerlyTransactionItemTokens.horizontalInset,
+                ButlerlyTransactionItemTokens.bottomPadding,
+              ),
+    );
+    expect(rowPadding, findsOneWidget);
+  });
 }

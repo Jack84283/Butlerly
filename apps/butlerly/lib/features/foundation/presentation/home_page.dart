@@ -1058,7 +1058,7 @@ class _HomeMetricCell extends StatelessWidget {
               textAlign: TextAlign.center,
               softWrap: true,
               style:
-                  ButlerlyTypography.metricChange(
+                  ButlerlyTypography.compactMetricChange(
                     Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
                   ).copyWith(
                     color: supportingColor ?? context.colors.secondaryText,
@@ -1074,7 +1074,7 @@ class _HomeMetricCell extends StatelessWidget {
               secondarySupport,
               textAlign: TextAlign.center,
               softWrap: true,
-              style: ButlerlyTypography.metricChange(
+              style: ButlerlyTypography.compactMetricChange(
                 Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
               ).copyWith(color: context.colors.secondaryText),
             ),
@@ -2025,7 +2025,6 @@ class _HomeRecentActivity extends StatelessWidget {
                   showDate: true,
                   showCategoryPill: true,
                   compactMoney: true,
-                  compactSpacing: true,
                   showNavigationIndicator: false,
                   variant: ButlerlyTransactionRowVariant.dashboard,
                   onTap: () => onTap(transaction),

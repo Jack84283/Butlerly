@@ -6,6 +6,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/features/foundation/presentation/review_page.dart';
@@ -169,12 +170,23 @@ void main() {
     expect(find.byTooltip('View all transactions'), findsOneWidget);
     expect(find.byTooltip('View all attention items'), findsOneWidget);
     expect(find.byTooltip('View all insights'), findsOneWidget);
-    final monthSelector = tester.widget<TextButton>(
-      find.byKey(const Key('home-month-selector')),
+    final monthSelector = find.byKey(const Key('home-month-selector'));
+    expect(
+      tester.getSize(monthSelector).height,
+      greaterThanOrEqualTo(ButlerlySize.minimumTarget),
     );
-    expect(monthSelector.style?.backgroundColor, isNotNull);
-    expect(monthSelector.style?.side, isNotNull);
-    expect(monthSelector.style?.shape, isNotNull);
+    final monthSurface = find.descendant(
+      of: monthSelector,
+      matching: find.byType(Ink),
+    );
+    expect(monthSurface, findsOneWidget);
+    expect(
+      tester.getSize(monthSurface).height,
+      lessThan(ButlerlySize.minimumTarget),
+    );
+    final monthSurfaceWidget = tester.widget<Ink>(monthSurface);
+    expect(monthSurfaceWidget.decoration, isA<BoxDecoration>());
+    expect((monthSurfaceWidget.decoration! as BoxDecoration).border, isNotNull);
     final summaryTitle = tester.widget<Text>(find.text('Monthly summary'));
     expect(
       summaryTitle.style?.fontFamily,
@@ -195,6 +207,26 @@ void main() {
     expect(find.byKey(const ValueKey('home-attention-card')), findsOneWidget);
     expect(find.text('1 merchant to review'), findsOneWidget);
     expect(find.byKey(const ValueKey('home-insight-card')), findsOneWidget);
+    final transactionRow = find.byKey(
+      const ValueKey('home-recent-transaction-home-refresh-initial'),
+    );
+    expect(transactionRow, findsOneWidget);
+    final rowPadding = find.descendant(
+      of: transactionRow,
+      matching: find.byWidgetPredicate(
+        (widget) =>
+            widget is Padding &&
+            widget.padding ==
+                EdgeInsets.fromLTRB(
+                  ButlerlyTransactionItemTokens.horizontalInset,
+                  ButlerlyTransactionItemTokens.topPadding,
+                  ButlerlyTransactionItemTokens.horizontalInset,
+                  ButlerlyTransactionItemTokens.bottomPadding,
+                ),
+      ),
+    );
+    expect(rowPadding, findsOneWidget);
+    expect(ButlerlyTransactionItemTokens.topPadding, 12);
     expect(tester.takeException(), isNull);
   });
 
@@ -690,7 +722,7 @@ void main() {
       expect(metricTops[index], greaterThan(metricTops[index - 1]));
     }
     final value = tester.widget<Text>(find.text('\$9,999.99'));
-    expect(value.style?.fontSize, 16);
+    expect(value.style?.fontSize, 15);
     expect(value.softWrap, isTrue);
     expect(value.maxLines, isNull);
     expect(tester.takeException(), isNull);
@@ -769,7 +801,7 @@ void main() {
       expect(text.maxLines, 1);
       expect(text.softWrap, isFalse);
       expect(text.overflow, TextOverflow.visible);
-      expect(text.style?.fontSize, 16);
+      expect(text.style?.fontSize, 15);
       final render = tester.renderObject<RenderParagraph>(textFinder);
       final context = tester.element(textFinder);
       final effectiveStyle = DefaultTextStyle.of(
@@ -941,7 +973,9 @@ void main() {
       _lastTextIn(tester, 'home-summary-metric-income').style?.color,
       colors.success,
     );
-    expect(tester.widget<Text>(find.text('50%')).style?.color, colors.info);
+    final savingsRate = tester.widget<Text>(find.text('50%'));
+    expect(savingsRate.style?.color, colors.info);
+    expect(savingsRate.style?.fontSize, 12);
     expect(
       _lastTextIn(tester, 'home-summary-metric-net-position').style?.color,
       colors.success,

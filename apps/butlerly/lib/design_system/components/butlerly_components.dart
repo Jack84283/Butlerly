@@ -359,8 +359,8 @@ class ButlerlyCardHeader extends StatelessWidget {
 /// Shared compact bordered selector used by dashboard controls.
 ///
 /// The selector keeps its visual treatment independent of the field's meaning
-/// while callers provide the localized label and action. Its minimum size is
-/// a touch target rather than a visual-only text decoration.
+/// while callers provide the localized label and action. Its outer size is a
+/// touch target while the bordered surface remains compact.
 class ButlerlyCompactSelector extends StatelessWidget {
   const ButlerlyCompactSelector({
     required this.label,
@@ -381,40 +381,50 @@ class ButlerlyCompactSelector extends StatelessWidget {
     button: onPressed != null,
     enabled: onPressed != null,
     label: semanticLabel ?? label,
-    child: TextButton(
-      key: buttonKey,
-      onPressed: onPressed,
-      style: TextButton.styleFrom(
-        alignment: Alignment.center,
-        backgroundColor: context.colors.subtleSurface,
-        foregroundColor: context.colors.primaryText,
-        side: BorderSide(color: context.colors.border),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+    child: SizedBox(
+      height: ButlerlySize.minimumTarget,
+      child: TextButton(
+        key: buttonKey,
+        onPressed: onPressed,
+        style: TextButton.styleFrom(
+          foregroundColor: context.colors.primaryText,
+          minimumSize: const Size(0, ButlerlySize.minimumTarget),
+          padding: EdgeInsets.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
-        padding: const EdgeInsets.symmetric(
-          horizontal: ButlerlySpacing.compact,
-          vertical: ButlerlySpacing.compact,
-        ),
-        minimumSize: const Size(0, ButlerlySize.minimumTarget),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Flexible(
-            child: Text(
-              label,
-              softWrap: true,
-              textAlign: TextAlign.end,
-              style: ButlerlyTypography.cardAction(
-                Theme.of(context).textTheme.titleMedium ?? const TextStyle(),
+        child: Center(
+          child: Ink(
+            decoration: BoxDecoration(
+              color: context.colors.subtleSurface,
+              border: Border.all(color: context.colors.border),
+              borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: ButlerlySpacing.compact,
+                vertical: ButlerlySpacing.micro,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      label,
+                      softWrap: true,
+                      textAlign: TextAlign.end,
+                      style: ButlerlyTypography.cardAction(
+                        Theme.of(context).textTheme.titleMedium ??
+                            const TextStyle(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: ButlerlySpacing.micro),
+                  const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                ],
               ),
             ),
           ),
-          const SizedBox(width: ButlerlySpacing.micro),
-          const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-        ],
+        ),
       ),
     ),
   );

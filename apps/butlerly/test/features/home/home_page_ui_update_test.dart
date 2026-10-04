@@ -352,6 +352,22 @@ void main() {
         tester.getSize(monthSelector).height,
         closeTo(tester.getSize(trendSelector).height, 0.1),
       );
+      final monthSurface = find.descendant(
+        of: monthSelector,
+        matching: find.byType(Ink),
+      );
+      final trendSurface = find.descendant(
+        of: trendSelector,
+        matching: find.byType(Ink),
+      );
+      expect(monthSurface, findsOneWidget);
+      expect(trendSurface, findsOneWidget);
+      expect(tester.getSize(monthSurface).height, lessThan(44));
+      expect(tester.getSize(trendSurface).height, lessThan(44));
+      expect(
+        tester.getSize(monthSurface).height,
+        closeTo(tester.getSize(trendSurface).height, 0.1),
+      );
       await tester.ensureVisible(trendSelector);
       await tester.tap(trendSelector);
       await tester.pumpAndSettle();

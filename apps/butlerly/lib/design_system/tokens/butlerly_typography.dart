@@ -93,12 +93,15 @@ abstract final class ButlerlyTypography {
 
   static TextStyle compactMetricValue(TextStyle base) => _systemSans(
     base,
-    fontSize: 16,
+    fontSize: 15,
     height: 1.08,
     fontWeight: FontWeight.w700,
     letterSpacing: -0.35,
     fontFeatures: financialAmountFeatures,
   );
+
+  static TextStyle compactMetricChange(TextStyle base) =>
+      _systemSans(base, fontSize: 12, height: 1.3, fontWeight: FontWeight.w600);
 
   static TextStyle metricChange(TextStyle base) =>
       _systemSans(base, fontSize: 14, height: 1.3, fontWeight: FontWeight.w600);
