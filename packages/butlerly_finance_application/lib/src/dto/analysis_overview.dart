@@ -38,10 +38,16 @@ class AnalysisOverview {
             qualityIssues: [...spending.qualityIssues, ...income.qualityIssues],
           );
     final savingsRate =
-        savings == null || income == null || !income.value.isPositive
+        savings == null ||
+            savings.availability != AnalysisDataAvailability.sufficient ||
+            income == null ||
+            !income.value.isPositive
         ? null
         : _ratio(savings.value, income.value);
-    final categoryShares = spending == null || !spending.value.isPositive
+    final categoryShares =
+        spending == null ||
+            spending.availability != AnalysisDataAvailability.sufficient ||
+            !spending.value.isPositive
         ? const <String, DecimalValue>{}
         : <String, DecimalValue>{
             for (final category in categories)

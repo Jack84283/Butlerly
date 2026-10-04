@@ -415,20 +415,37 @@ final class AssignMerchant {
     String transactionId,
     String? merchantId,
   ) async {
-    if (merchantId != null &&
-        await merchants.findById(MerchantId(merchantId)) == null) {
-      return notFound('assign merchant');
-    }
-    return _mutate(
-      repository,
-      transactionId,
-      'assign merchant',
-      (value) => value.assignMerchant(
-        merchantId == null ? null : MerchantId(merchantId),
-        clock.now(),
-      ),
-      preferences: preferences,
-    );
+    return runApplication('assign merchant', () async {
+      if (merchantId != null &&
+          await merchants.findById(MerchantId(merchantId)) == null) {
+        throw const RepositoryException(
+          RepositoryFailureCode.notFound,
+          'assign merchant',
+        );
+      }
+      final financialTimeZone = await configuredFinancialTimeZone(preferences);
+      final existing = await repository.findById(TransactionId(transactionId));
+      if (existing == null) {
+        throw const RepositoryException(
+          RepositoryFailureCode.notFound,
+          'assign merchant',
+        );
+      }
+      final now = clock.now();
+      final updated = synchronizeMerchantReviewIssue(
+        existing.assignMerchant(
+          merchantId == null ? null : MerchantId(merchantId),
+          now,
+        ),
+        now,
+        merchants: await merchants.listAll(),
+      );
+      await repository.save(updated);
+      return TransactionDto.fromDomain(
+        updated,
+        financialDate: _financialDateFor(updated, financialTimeZone.id),
+      );
+    });
   }
 }
 

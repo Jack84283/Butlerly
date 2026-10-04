@@ -36,6 +36,46 @@ void main() {
     expect(resolved.reviewIssues.single.status, ReviewIssueStatus.resolved);
   });
 
+  test('synchronization preserves a dismissed merchant review issue', () {
+    final candidate = synchronizeMerchantReviewIssue(
+      _transaction(rawCounterparty: 'TRADER JOES'),
+      at,
+    );
+    final dismissed = candidate.dismissReviewIssue(
+      candidate.reviewIssues.single.id,
+      at,
+    );
+
+    final synchronized = synchronizeMerchantReviewIssue(dismissed, at);
+
+    expect(
+      synchronized.reviewIssues.single.status,
+      ReviewIssueStatus.dismissed,
+    );
+  });
+
+  test('uses parsed description before noisy raw statement evidence', () {
+    final merchant = Merchant(
+      id: MerchantId('merchant-trader-joes'),
+      name: 'Trader Joes',
+      defaultCategoryId: CategoryId('category.food'),
+    );
+    final transaction = _transaction(
+      rawCounterparty: 'BANK PREFIX TRADER JOES #123',
+      description: 'Trader Joes',
+    );
+
+    expect(
+      synchronizeMerchantReviewIssue(
+        transaction,
+        at,
+        merchants: [merchant],
+      ).reviewIssues,
+      isEmpty,
+    );
+    expect(merchantEvidenceFor(transaction), 'Trader Joes');
+  });
+
   test('deterministic normalization provides candidate grouping semantics', () {
     expect(
       normalizeMerchantName('SAFEWAY #123'),
@@ -93,21 +133,26 @@ void main() {
   );
 }
 
-Transaction _transaction({String? rawCounterparty}) => Transaction(
-  id: TransactionId('transaction-1'),
-  timing: KnownTransactionTime(DateTime.utc(2026, 9, 1, 12)),
-  money: Money(amount: DecimalValue.parse('12'), currency: CurrencyCode('USD')),
-  direction: TransactionDirection.expense,
-  sourceType: TransactionSourceType.manual,
-  transactionDate: '2026-09-01',
-  rawCounterparty: rawCounterparty,
-  provenance: [
-    Provenance(
-      id: ProvenanceId('provenance-1'),
-      sourceType: ProvenanceSourceType.userEntry,
-      capturedAt: DateTime.utc(2026, 9, 1),
-    ),
-  ],
-  createdAt: DateTime.utc(2026, 9, 1),
-  updatedAt: DateTime.utc(2026, 9, 1),
-);
+Transaction _transaction({String? rawCounterparty, String? description}) =>
+    Transaction(
+      id: TransactionId('transaction-1'),
+      timing: KnownTransactionTime(DateTime.utc(2026, 9, 1, 12)),
+      money: Money(
+        amount: DecimalValue.parse('12'),
+        currency: CurrencyCode('USD'),
+      ),
+      direction: TransactionDirection.expense,
+      sourceType: TransactionSourceType.manual,
+      transactionDate: '2026-09-01',
+      description: description,
+      rawCounterparty: rawCounterparty,
+      provenance: [
+        Provenance(
+          id: ProvenanceId('provenance-1'),
+          sourceType: ProvenanceSourceType.userEntry,
+          capturedAt: DateTime.utc(2026, 9, 1),
+        ),
+      ],
+      createdAt: DateTime.utc(2026, 9, 1),
+      updatedAt: DateTime.utc(2026, 9, 1),
+    );

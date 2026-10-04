@@ -275,6 +275,63 @@ void main() {
     expect(tapped, isTrue);
   });
 
+  testWidgets(
+    'dashboard item keeps metadata out of the compact row and constrains long pills',
+    (tester) async {
+      const category =
+          'Very long localized category label that should remain readable';
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: SizedBox(
+              width: 320,
+              child: ButlerlyTransactionListItem(
+                title: 'Coffee shop purchase',
+                amount: '42.19',
+                currency: 'USD',
+                categoryLabel: category,
+                subcategoryLabel: 'Restaurants',
+                paymentSource: 'Visa ••••8421',
+                meta: 'Aug 14, 2026',
+                showDate: true,
+                showCategoryPill: true,
+                showNavigationIndicator: true,
+                variant: ButlerlyTransactionRowVariant.dashboard,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.text(category), findsOneWidget);
+      expect(find.text('Restaurants'), findsNothing);
+      expect(find.text('Visa ••••8421'), findsNothing);
+      expect(find.text('Aug 14, 2026'), findsOneWidget);
+      expect(find.text('−42.19 USD'), findsOneWidget);
+      expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
+      expect(
+        tester.getSemantics(find.byType(ButlerlyTransactionListItem)).label,
+        contains('Coffee shop purchase'),
+      );
+      expect(
+        tester.getSemantics(find.byType(ButlerlyTransactionListItem)).label,
+        contains(category),
+      );
+      expect(
+        tester.getSize(find.text(category)).width,
+        lessThanOrEqualTo(
+          ButlerlyTransactionItemTokens.dashboardCategoryPillMaxWidth,
+        ),
+      );
+      expect(
+        tester.widget<Text>(find.text(category)).overflow,
+        TextOverflow.ellipsis,
+      );
+    },
+  );
+
   testWidgets('non-navigable item omits the trailing chevron', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

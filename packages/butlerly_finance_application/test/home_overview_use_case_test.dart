@@ -37,7 +37,7 @@ void main() {
       expect(context.baseCurrency, CurrencyCode('EUR'));
       expect(context.period.startDate, '2026-09-01');
       expect(overview.analysis?.spending?.value, DecimalValue.parse('210'));
-      expect(overview.monthlyTrend, hasLength(7));
+      expect(overview.monthlyTrend, hasLength(6));
       expect(
         overview.monthlyTrend.last.spending?.value,
         DecimalValue.parse('210'),
@@ -97,6 +97,25 @@ void main() {
     expect(emptyOverview.reviewCount, 0);
     expect(emptyOverview.reviewUnavailable, isFalse);
   });
+
+  test(
+    'keeps duplicate-query failures distinct from zero duplicate groups',
+    () async {
+      final groups = _Groups(const [], fail: true);
+      loadHomeOverview = _homeOverview(transactions, preferences, [
+        _expenseRule(),
+      ], duplicateGroups: groups);
+
+      final result = await loadHomeOverview(
+        instant: DateTime.utc(2026, 9, 16, 12),
+      );
+      final overview = (result as ApplicationSuccess<HomeOverview>).value;
+
+      expect(overview.possibleDuplicateCount, 0);
+      expect(overview.reviewUnavailable, isFalse);
+      expect(overview.duplicateUnavailable, isTrue);
+    },
+  );
 
   test(
     'returns transactions when analysis calculation is unavailable',
@@ -169,6 +188,14 @@ void main() {
         rawCounterparty: 'TRADER JOES',
         reviewReason: ReviewIssueReason.merchantNeedsReview,
       ),
+      _transaction(
+        'merchant-description-fallback',
+        '2026-09-10',
+        '11',
+        rawCounterparty: '   ',
+        description: 'UNKNOWN MERCHANT',
+        reviewReason: ReviewIssueReason.merchantNeedsReview,
+      ),
     ]);
     loadHomeOverview = _homeOverview(
       transactions,
@@ -196,7 +223,7 @@ void main() {
     );
     final overview = (result as ApplicationSuccess<HomeOverview>).value;
 
-    expect(overview.merchantReviewCount, 2);
+    expect(overview.merchantReviewCount, 3);
     expect(overview.possibleDuplicateCount, 1);
     expect(overview.uncategorizedTransactionCount, greaterThan(0));
   });
@@ -268,6 +295,7 @@ Transaction _transaction(
   bool review = false,
   ReviewIssueReason? reviewReason,
   String? rawCounterparty,
+  String? description,
 }) {
   final at = DateTime.utc(2026, 9, 1, 12);
   return Transaction(
@@ -280,6 +308,7 @@ Transaction _transaction(
     direction: TransactionDirection.expense,
     sourceType: TransactionSourceType.manual,
     transactionDate: date,
+    description: description,
     rawCounterparty: rawCounterparty,
     reviewIssues: review || reviewReason != null
         ? [
@@ -473,16 +502,25 @@ final class _Rules implements AnalysisRuleRepository {
 }
 
 final class _Groups implements DuplicateCandidateGroupRepository {
-  _Groups(this.values);
+  _Groups(this.values, {this.fail = false});
 
   final List<DuplicateCandidateGroup> values;
+  final bool fail;
 
   @override
   Future<List<DuplicateCandidateGroup>> list({
     DuplicateCandidateGroupStatus? status,
-  }) async => values
-      .where((value) => status == null || value.status == status)
-      .toList(growable: false);
+  }) async {
+    if (fail) {
+      throw const RepositoryException(
+        RepositoryFailureCode.unavailable,
+        'list possible duplicate groups',
+      );
+    }
+    return values
+        .where((value) => status == null || value.status == status)
+        .toList(growable: false);
+  }
 
   @override
   Future<List<DuplicateTransactionGroupMatch>>

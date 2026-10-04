@@ -1,6 +1,15 @@
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
+SynchronizeMerchantReviewIssues _merchantReviewSynchronizer(
+  TransactionRepository transactions,
+  MerchantRepository merchants,
+) => SynchronizeMerchantReviewIssues(
+  transactions,
+  merchants,
+  const SystemApplicationClock().now,
+);
+
 final class FinanceServices {
   FinanceServices(
     TransactionRepository transactions,
@@ -142,7 +151,10 @@ final class FinanceServices {
        listMerchants = ListMerchants(merchants),
        listCategories = ListCategories(categories),
        listTags = ListTags(tags),
-       saveMerchant = SaveMerchant(merchants),
+       saveMerchant = SaveMerchant(
+         merchants,
+         synchronize: _merchantReviewSynchronizer(transactions, merchants),
+       ),
        saveCategory = SaveCategory(categories),
        saveTag = SaveTag(tags),
        assignMerchant = AssignMerchant(
@@ -169,6 +181,11 @@ final class FinanceServices {
          preferences: preferences,
        ),
        listReviewItems = ListReviewItems(transactions),
+       synchronizeMerchantReviewIssues = SynchronizeMerchantReviewIssues(
+         transactions,
+         merchants,
+         const SystemApplicationClock().now,
+       ),
        resolveReviewIssue = ResolveReviewIssue(
          transactions,
          const SystemApplicationClock(),
@@ -361,10 +378,23 @@ final class FinanceServices {
            : ListMerchantAliases(merchantAliases),
        saveMerchantAlias = merchantAliases == null
            ? null
-           : SaveMerchantAlias(merchantAliases, const SystemApplicationClock()),
+           : SaveMerchantAlias(
+               merchantAliases,
+               const SystemApplicationClock(),
+               synchronize: _merchantReviewSynchronizer(
+                 transactions,
+                 merchants,
+               ),
+             ),
        deleteMerchantAlias = merchantAliases == null
            ? null
-           : DeleteMerchantAlias(merchantAliases),
+           : DeleteMerchantAlias(
+               merchantAliases,
+               synchronize: _merchantReviewSynchronizer(
+                 transactions,
+                 merchants,
+               ),
+             ),
        listMerchantNormalizationPatterns = merchantNormalizationPatterns == null
            ? null
            : ListMerchantNormalizationPatterns(merchantNormalizationPatterns),
@@ -373,17 +403,31 @@ final class FinanceServices {
            : SaveMerchantNormalizationPattern(
                merchantNormalizationPatterns,
                const SystemApplicationClock(),
+               synchronize: _merchantReviewSynchronizer(
+                 transactions,
+                 merchants,
+               ),
              ),
        deleteMerchantNormalizationPattern =
            merchantNormalizationPatterns == null
            ? null
-           : DeleteMerchantNormalizationPattern(merchantNormalizationPatterns),
+           : DeleteMerchantNormalizationPattern(
+               merchantNormalizationPatterns,
+               synchronize: _merchantReviewSynchronizer(
+                 transactions,
+                 merchants,
+               ),
+             ),
        updateMerchantMatchingConfiguration =
            merchantMatchingConfiguration == null
            ? null
            : UpdateMerchantMatchingConfiguration(
                merchantMatchingConfiguration,
                const SystemApplicationClock(),
+               synchronize: _merchantReviewSynchronizer(
+                 transactions,
+                 merchants,
+               ),
              ),
        listTransactionRules = transactionRules == null
            ? null
@@ -451,6 +495,7 @@ final class FinanceServices {
   final AddTag addTag;
   final RemoveTag removeTag;
   final ListReviewItems listReviewItems;
+  final SynchronizeMerchantReviewIssues synchronizeMerchantReviewIssues;
   final ResolveReviewIssue resolveReviewIssue;
   final DismissReviewIssue dismissReviewIssue;
   final ListEvidenceForTransaction listEvidenceForTransaction;

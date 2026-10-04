@@ -1,13 +1,19 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
 import '../result/application_result.dart';
+import 'merchant_review_use_cases.dart';
 import 'transaction_use_cases.dart';
 
 final class UpdateMerchantMatchingConfiguration {
-  const UpdateMerchantMatchingConfiguration(this.repository, this.clock);
+  const UpdateMerchantMatchingConfiguration(
+    this.repository,
+    this.clock, {
+    this.synchronize,
+  });
 
   final MerchantMatchingConfigurationRepository repository;
   final ApplicationClock clock;
+  final SynchronizeMerchantReviewIssues? synchronize;
 
   Future<ApplicationResult<Merchant>> call({
     required Merchant merchant,
@@ -66,6 +72,7 @@ final class UpdateMerchantMatchingConfiguration {
       aliases: savedAliases,
       patterns: savedPatterns,
     );
+    await synchronize?.call();
     return updated;
   });
 }
@@ -82,9 +89,10 @@ final class ListMerchantAliases {
 }
 
 final class SaveMerchantAlias {
-  const SaveMerchantAlias(this.repository, this.clock);
+  const SaveMerchantAlias(this.repository, this.clock, {this.synchronize});
   final MerchantAliasRepository repository;
   final ApplicationClock clock;
+  final SynchronizeMerchantReviewIssues? synchronize;
 
   Future<ApplicationResult<MerchantAlias>> call({
     required String id,
@@ -103,18 +111,21 @@ final class SaveMerchantAlias {
       updatedAt: now,
     );
     await repository.save(value);
+    await synchronize?.call();
     return value;
   });
 }
 
 final class DeleteMerchantAlias {
-  const DeleteMerchantAlias(this.repository);
+  const DeleteMerchantAlias(this.repository, {this.synchronize});
   final MerchantAliasRepository repository;
+  final SynchronizeMerchantReviewIssues? synchronize;
 
-  Future<ApplicationResult<void>> call(String id) => runApplication(
-    'delete merchant alias',
-    () => repository.remove(MerchantAliasId(id)),
-  );
+  Future<ApplicationResult<void>> call(String id) =>
+      runApplication('delete merchant alias', () async {
+        await repository.remove(MerchantAliasId(id));
+        await synchronize?.call();
+      });
 }
 
 final class ListMerchantNormalizationPatterns {
@@ -130,9 +141,14 @@ final class ListMerchantNormalizationPatterns {
 }
 
 final class SaveMerchantNormalizationPattern {
-  const SaveMerchantNormalizationPattern(this.repository, this.clock);
+  const SaveMerchantNormalizationPattern(
+    this.repository,
+    this.clock, {
+    this.synchronize,
+  });
   final MerchantNormalizationPatternRepository repository;
   final ApplicationClock clock;
+  final SynchronizeMerchantReviewIssues? synchronize;
 
   Future<ApplicationResult<MerchantNormalizationPattern>> call({
     required String id,
@@ -153,16 +169,19 @@ final class SaveMerchantNormalizationPattern {
       updatedAt: now,
     );
     await repository.save(value);
+    await synchronize?.call();
     return value;
   });
 }
 
 final class DeleteMerchantNormalizationPattern {
-  const DeleteMerchantNormalizationPattern(this.repository);
+  const DeleteMerchantNormalizationPattern(this.repository, {this.synchronize});
   final MerchantNormalizationPatternRepository repository;
+  final SynchronizeMerchantReviewIssues? synchronize;
 
-  Future<ApplicationResult<void>> call(String id) => runApplication(
-    'delete merchant normalization pattern',
-    () => repository.remove(MerchantNormalizationPatternId(id)),
-  );
+  Future<ApplicationResult<void>> call(String id) =>
+      runApplication('delete merchant normalization pattern', () async {
+        await repository.remove(MerchantNormalizationPatternId(id));
+        await synchronize?.call();
+      });
 }

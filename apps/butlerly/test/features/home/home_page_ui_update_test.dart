@@ -206,8 +206,12 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: homeSpendingTrendForTest([
-            (month: DateTime(2026, 7), value: 20, selected: false),
+            (month: DateTime(2026, 6), value: 20, selected: false),
+            (month: DateTime(2026, 7), value: 32, selected: false),
             (month: DateTime(2026, 8), value: 42, selected: true),
+            (month: DateTime(2026, 9), value: 28, selected: false),
+            (month: DateTime(2026, 10), value: 18, selected: false),
+            (month: DateTime(2026, 11), value: 36, selected: false),
           ]),
         ),
       ),
@@ -216,7 +220,7 @@ void main() {
 
     final plot = find.byKey(const ValueKey('home-spending-trend-plot'));
     final baseline = find.byKey(
-      const ValueKey('home-spending-trend-grid-line-3'),
+      const ValueKey('home-spending-trend-grid-line-4'),
     );
     final selectedBar = find.byKey(
       const ValueKey('home-spending-trend-bar-2026-8'),
@@ -224,6 +228,20 @@ void main() {
     expect(plot, findsOneWidget);
     expect(baseline, findsOneWidget);
     expect(selectedBar, findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('home-spending-trend-axis-label-0')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('home-spending-trend-axis-label-4')),
+      findsOneWidget,
+    );
+    for (final month in [6, 7, 8, 9, 10, 11]) {
+      expect(
+        find.byKey(ValueKey('home-spending-trend-bar-2026-$month')),
+        findsOneWidget,
+      );
+    }
     expect(
       tester.getBottomLeft(baseline).dy,
       closeTo(tester.getBottomLeft(plot).dy, 0.01),

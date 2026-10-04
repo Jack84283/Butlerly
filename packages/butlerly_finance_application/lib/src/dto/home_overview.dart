@@ -30,6 +30,7 @@ final class HomeOverview {
     required List<InsightResult> insights,
     required bool analysisUnavailable,
     required bool reviewUnavailable,
+    required bool duplicateUnavailable,
   }) : this._(
          status: HomeOverviewStatus.available,
          context: context,
@@ -46,6 +47,7 @@ final class HomeOverview {
          insights: insights,
          analysisUnavailable: analysisUnavailable,
          reviewUnavailable: reviewUnavailable,
+         duplicateUnavailable: duplicateUnavailable,
        );
 
   const HomeOverview.transactionsUnavailable({
@@ -78,6 +80,7 @@ final class HomeOverview {
     this.insights = const [],
     this.analysisUnavailable = false,
     this.reviewUnavailable = false,
+    this.duplicateUnavailable = false,
   });
 
   final HomeOverviewStatus status;
@@ -107,4 +110,5 @@ final class HomeOverview {
 
   final bool analysisUnavailable;
   final bool reviewUnavailable;
+  final bool duplicateUnavailable;
 }

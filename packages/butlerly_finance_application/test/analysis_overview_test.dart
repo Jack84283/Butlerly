@@ -73,6 +73,50 @@ void main() {
   });
 
   test(
+    'marks derived savings unavailable when source data is insufficient',
+    () {
+      final spending = _result(
+        'ANL-R701',
+        '60',
+        role: AnalysisSemanticRole.expenseTotal,
+        availability: AnalysisDataAvailability.insufficient,
+      );
+      final income = _result(
+        'ANL-R702',
+        '100',
+        role: AnalysisSemanticRole.incomeTotal,
+      );
+
+      final overview = AnalysisOverview.fromResults([spending, income]);
+
+      expect(
+        overview.savings?.availability,
+        AnalysisDataAvailability.insufficient,
+      );
+      expect(overview.savingsRate, isNull);
+    },
+  );
+
+  test('does not derive savings rate from an empty source metric', () {
+    final spending = _result(
+      'ANL-R701',
+      '0',
+      role: AnalysisSemanticRole.expenseTotal,
+      availability: AnalysisDataAvailability.empty,
+    );
+    final income = _result(
+      'ANL-R702',
+      '100',
+      role: AnalysisSemanticRole.incomeTotal,
+    );
+
+    final overview = AnalysisOverview.fromResults([spending, income]);
+
+    expect(overview.savings?.availability, AnalysisDataAvailability.empty);
+    expect(overview.savingsRate, isNull);
+  });
+
+  test(
     'category sorting remains exact beyond binary floating-point precision',
     () {
       final low = _result(
@@ -140,6 +184,7 @@ RuleExecutionResult _result(
   AnalysisSurface surface = AnalysisSurface.overview,
   RuleGrouping grouping = RuleGrouping.none,
   String? dimension,
+  AnalysisDataAvailability availability = AnalysisDataAvailability.sufficient,
 }) {
   final rule = AnalysisRuleDefinition(
     identity: RuleIdentity(id),
@@ -179,6 +224,7 @@ RuleExecutionResult _result(
       value: DecimalValue.parse(value),
       dimension: dimension,
       calculatedAt: DateTime.utc(2026),
+      availability: availability,
     ),
   );
 }

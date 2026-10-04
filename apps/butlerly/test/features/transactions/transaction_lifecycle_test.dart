@@ -1654,6 +1654,24 @@ void main() {
     },
   );
 
+  testWidgets('Review rejects an invalid reason instead of broadening it', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: ReviewPage(
+          showNeedsReview: true,
+          invalidReviewReason: true,
+          reviewScope: ReviewPeriodScope.unscoped(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Review items could not be loaded'), findsOneWidget);
+    expect(find.byType(ButlerlyCompactSectionSelector), findsNothing);
+  });
+
   testWidgets('Review groups dates and shows one issue per transaction', (
     tester,
   ) async {

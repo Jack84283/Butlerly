@@ -1,6 +1,7 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
 import '../result/application_result.dart';
+import 'merchant_review_use_cases.dart';
 
 final class InitialMasterData {
   const InitialMasterData({
@@ -160,8 +161,9 @@ final class ArchivePaymentSource {
 }
 
 final class SaveMerchant {
-  const SaveMerchant(this.repository);
+  const SaveMerchant(this.repository, {this.synchronize});
   final MerchantRepository repository;
+  final SynchronizeMerchantReviewIssues? synchronize;
 
   Future<ApplicationResult<Merchant>> call(Merchant value) =>
       runApplication('save merchant', () async {
@@ -179,6 +181,7 @@ final class SaveMerchant {
           );
         }
         await repository.save(value);
+        await synchronize?.call();
         return value;
       });
 }

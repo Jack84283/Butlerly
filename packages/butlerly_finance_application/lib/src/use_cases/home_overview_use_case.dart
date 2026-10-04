@@ -13,6 +13,7 @@ import 'home_period_use_case.dart';
 import 'monthly_spending_trend_use_case.dart';
 import 'duplicate_review_use_cases.dart';
 import 'classification_use_cases.dart';
+import 'merchant_review_use_cases.dart';
 import 'transaction_use_cases.dart';
 
 /// Coordinates the application data needed by Home for one selected month.
@@ -147,6 +148,7 @@ final class GetHomeOverview {
       final trendResult = await CalculateMonthlySpendingTrend(analysisUseCase)(
         endingMonth: homePeriod.displayMonth,
         instant: instant,
+        monthCount: 6,
       );
       if (trendResult case ApplicationSuccess<List<MonthlySpendingTrendPoint>>(
         :final value,
@@ -167,6 +169,9 @@ final class GetHomeOverview {
       ApplicationSuccess<List<DuplicateCandidateGroup>>(:final value) => value,
       _ => const <DuplicateCandidateGroup>[],
     };
+    final duplicateUnavailable =
+        duplicateResultFuture != null &&
+        duplicateResult is! ApplicationSuccess<List<DuplicateCandidateGroup>>;
     final transactionById = {
       for (final transaction in transactions) transaction.id: transaction,
     };
@@ -179,10 +184,17 @@ final class GetHomeOverview {
     )) {
       final transaction = transactionById[item.transactionId];
       if (transaction == null || transaction.merchantId != null) continue;
-      final evidence = transaction.rawCounterparty ?? transaction.description;
-      final normalized = normalizeMerchantName(evidence ?? '');
+      final evidence = merchantEvidenceForValues(
+        rawCounterparty: transaction.rawCounterparty,
+        description: transaction.description,
+      );
+      final alternateEvidence = transaction.rawCounterparty?.trim() ?? '';
+      final normalized = normalizeMerchantName(evidence);
       if (normalized.isEmpty ||
-          resolveMerchantFromEvidence(merchantValues, evidence) != null) {
+          resolveMerchantFromEvidence(merchantValues, evidence) != null ||
+          (alternateEvidence != evidence &&
+              resolveMerchantFromEvidence(merchantValues, alternateEvidence) !=
+                  null)) {
         continue;
       }
       merchantCandidateKeys.add(normalized);
@@ -214,6 +226,7 @@ final class GetHomeOverview {
         insights: insights,
         analysisUnavailable: analysisUnavailable,
         reviewUnavailable: reviewResult is! ApplicationSuccess,
+        duplicateUnavailable: duplicateUnavailable,
       ),
     );
   }

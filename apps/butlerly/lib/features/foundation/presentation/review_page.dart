@@ -53,7 +53,8 @@ class _ReviewPageState extends State<ReviewPage> {
       : null;
 
   bool get _hasReviewScope =>
-      widget.reviewScope.status != ReviewPeriodScopeStatus.unscoped;
+      widget.reviewScope.status != ReviewPeriodScopeStatus.unscoped ||
+      widget.invalidReviewReason;
 
   bool get _reviewScopeIsValid =>
       !widget.reviewScope.isInvalid && !widget.invalidReviewReason;
@@ -348,11 +349,20 @@ class _ReviewPageState extends State<ReviewPage> {
                     item: item,
                     finance: _finance!,
                     masterData: _masterData,
-                    reason: item.detail ?? _reason(item.reason, context),
+                    reason: _localizedReviewDetail(item, context),
                     recommendation: context.l10n.text('reviewRecommendation'),
-                    primaryLabel: context.l10n.text('resolve'),
+                    primaryLabel: context.l10n.text(
+                      item.reason == ReviewIssueReason.merchantNeedsReview.name
+                          ? 'dismiss'
+                          : 'resolve',
+                    ),
                     onPrimary: () async {
-                      final closed = await _close(item, dismiss: false);
+                      final closed = await _close(
+                        item,
+                        dismiss:
+                            item.reason ==
+                            ReviewIssueReason.merchantNeedsReview.name,
+                      );
                       if (closed && detailContext.mounted) {
                         Navigator.of(detailContext).pop();
                       }
@@ -667,13 +677,10 @@ class _ReviewPageState extends State<ReviewPage> {
                                           ),
                                           Expanded(
                                             child: Text(
-                                              item.detail?.trim().isNotEmpty ==
-                                                      true
-                                                  ? item.detail!
-                                                  : _reason(
-                                                      item.reason,
-                                                      context,
-                                                    ),
+                                              _localizedReviewDetail(
+                                                item,
+                                                context,
+                                              ),
                                               style: context
                                                   .transactionItemMetadata,
                                             ),
@@ -1131,8 +1138,18 @@ String _reason(String value, BuildContext context) => switch (value) {
   'conflict' => context.l10n.text('reviewConflict'),
   'normalizationMissing' => context.l10n.text('reviewNormalizationMissing'),
   'duplicateCandidate' => context.l10n.text('possibleDuplicates'),
+  'merchantNeedsReview' => context.l10n.text('merchantNeedsReview'),
   _ => context.l10n.text('needsReview'),
 };
+
+String _localizedReviewDetail(ReviewItemDto item, BuildContext context) {
+  if (item.reason == ReviewIssueReason.merchantNeedsReview.name) {
+    return _reason(item.reason, context);
+  }
+  return item.detail?.trim().isNotEmpty == true
+      ? item.detail!
+      : _reason(item.reason, context);
+}
 
 final class _ReviewEntry {
   const _ReviewEntry(this.transaction, this.items);

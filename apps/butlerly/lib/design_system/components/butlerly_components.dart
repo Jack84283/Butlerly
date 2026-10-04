@@ -802,7 +802,8 @@ class ButlerlyTransactionListItem extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
     button: onTap != null,
     label:
-        '$title, $amount $currency${needsReview ? ', ${context.l10n.text('needsReview')}' : ''}'
+        '$title, $amount $currency${_semanticClassification.isEmpty ? '' : ', $_semanticClassification'}'
+        '${needsReview ? ', ${context.l10n.text('needsReview')}' : ''}'
         '${possibleDuplicate && possibleDuplicateLabel != null ? ', $possibleDuplicateLabel' : ''}',
     child:
         categoryLabel != null ||
@@ -812,6 +813,18 @@ class ButlerlyTransactionListItem extends StatelessWidget {
         ? _buildCanonical(context)
         : _buildLegacy(context),
   );
+
+  String get _semanticClassification {
+    final values = <String>[];
+    if (categoryLabel?.trim().isNotEmpty == true) {
+      values.add(categoryLabel!.trim());
+    }
+    if (variant != ButlerlyTransactionRowVariant.dashboard &&
+        subcategoryLabel?.trim().isNotEmpty == true) {
+      values.add(subcategoryLabel!.trim());
+    }
+    return values.join(', ');
+  }
 
   Widget _buildCanonical(BuildContext context) => ConstrainedBox(
     constraints: const BoxConstraints(
@@ -898,7 +911,8 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                           child: _categoryPill(context),
                         ),
                       ),
-                    if (_metadataParts.isNotEmpty) ...[
+                    if (variant != ButlerlyTransactionRowVariant.dashboard &&
+                        _metadataParts.isNotEmpty) ...[
                       const SizedBox(
                         height: ButlerlyTransactionItemTokens.headerSpacing,
                       ),
@@ -907,7 +921,10 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                     if (showDate && meta != null)
                       Padding(
                         padding: EdgeInsets.only(
-                          top: _metadataParts.isNotEmpty
+                          top:
+                              variant !=
+                                      ButlerlyTransactionRowVariant.dashboard &&
+                                  _metadataParts.isNotEmpty
                               ? ButlerlyTransactionItemTokens.metadataSpacing
                               : ButlerlyTransactionItemTokens.headerSpacing,
                         ),
@@ -1070,7 +1087,15 @@ class ButlerlyTransactionListItem extends StatelessWidget {
             if (showCategoryPill &&
                 categoryLabel?.trim().isNotEmpty == true) ...[
               const SizedBox(width: ButlerlySpacing.compact),
-              _categoryPill(context),
+              Flexible(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxWidth: ButlerlyTransactionItemTokens
+                        .dashboardCategoryPillMaxWidth,
+                  ),
+                  child: _categoryPill(context),
+                ),
+              ),
             ],
           ],
         )

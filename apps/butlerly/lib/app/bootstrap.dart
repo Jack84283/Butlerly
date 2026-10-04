@@ -16,6 +16,7 @@ import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/features/foundation/presentation/butlerly_launch_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -81,6 +82,7 @@ ButlerlyStartupFailure classifyStartupFailure(String phase, Object error) {
     'dependency configuration' => 'INIT-DI',
     'restore recovery initialization' => 'RECOVERY-STATE',
     'interrupted restore recovery' => 'RECOVERY-RESTORE',
+    'merchant review reconciliation' => 'MERCHANT-REVIEW-RECONCILIATION',
     'private artifact cleanup' => 'MAINTENANCE-CLEANUP',
     'analysis rule installation' => 'ANALYSIS-RULES',
     _ => 'STARTUP-UNKNOWN',
@@ -512,6 +514,24 @@ Future<void> initializeButlerly(AppLogger logger) async {
 
     if (services.isRegistered<FinanceServices>() &&
         !(recoveryState?.isRecoveryRequired ?? false)) {
+      phase = 'merchant review reconciliation';
+      final merchantReviewSynchronization = await services<FinanceServices>()
+          .synchronizeMerchantReviewIssues();
+      if (merchantReviewSynchronization case ApplicationFailure<int>(
+        :final failure,
+      )) {
+        logger.warning(
+          'Merchant review reconciliation failed; continuing with retry on '
+          'next startup: ${failure.operation}',
+        );
+      } else {
+        logger.info(
+          'Startup: merchant review reconciliation complete '
+          '(${(merchantReviewSynchronization as ApplicationSuccess<int>).value} '
+          'updated)',
+        );
+      }
+
       phase = 'analysis rule installation';
       logger.info('Startup: installing bundled analysis rules');
       try {
