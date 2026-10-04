@@ -376,45 +376,37 @@ class _HomePageState extends State<HomePage> {
             ButlerlySliverContentSurface(
               surfaceKey: const ValueKey('home-page-content-surface'),
               surfaceHorizontalPadding: ButlerlySize.contentGutter * 2,
-              sliver: SliverLayoutBuilder(
-                builder: (context, constraints) => SliverToBoxAdapter(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.remainingPaintExtent,
-                    ),
-                    child: Padding(
-                      key: const ValueKey('home-page-content-padding'),
-                      padding: const EdgeInsets.fromLTRB(
-                        ButlerlySize.contentGutter,
-                        ButlerlySpacing.small,
-                        ButlerlySize.contentGutter,
-                        ButlerlySpacing.large,
-                      ),
-                      child: SizedBox(
-                        key: const ValueKey('home-page-content'),
-                        width: double.infinity,
-                        child: FutureBuilder<_HomeData>(
-                          key: const ValueKey('home-body-data'),
-                          future: future,
-                          builder: (context, snapshot) {
-                            final data = snapshot.hasError
-                                ? _HomeData.unavailable(
+              sliver: SliverToBoxAdapter(
+                child: Padding(
+                  key: const ValueKey('home-page-content-padding'),
+                  padding: const EdgeInsets.fromLTRB(
+                    ButlerlySize.contentGutter,
+                    ButlerlySpacing.small,
+                    ButlerlySize.contentGutter,
+                    ButlerlySpacing.large,
+                  ),
+                  child: SizedBox(
+                    key: const ValueKey('home-page-content'),
+                    width: double.infinity,
+                    child: FutureBuilder<_HomeData>(
+                      key: const ValueKey('home-body-data'),
+                      future: future,
+                      builder: (context, snapshot) {
+                        final data = snapshot.hasError
+                            ? _HomeData.unavailable(
+                                _now,
+                                selectedMonth: _selectedMonth,
+                              )
+                            : snapshot.data ??
+                                  _HomeData.empty(
                                     _now,
                                     selectedMonth: _selectedMonth,
-                                  )
-                                : snapshot.data ??
-                                      _HomeData.empty(
-                                        _now,
-                                        selectedMonth: _selectedMonth,
-                                      );
-                            final loading =
-                                !snapshot.hasError &&
-                                snapshot.connectionState !=
-                                    ConnectionState.done;
-                            return _homeContent(context, data, loading);
-                          },
-                        ),
-                      ),
+                                  );
+                        final loading =
+                            !snapshot.hasError &&
+                            snapshot.connectionState != ConnectionState.done;
+                        return _homeContent(context, data, loading);
+                      },
                     ),
                   ),
                 ),
@@ -453,17 +445,20 @@ double _homeHeaderExtent(
   final availableWidth = (crossAxisExtent - ButlerlySize.contentGutter * 2)
       .clamp(1.0, double.infinity)
       .toDouble();
-  final scaledBody = scaler.scale(14);
-  final stacked = scaledBody > 18 || availableWidth < 360;
   final direction = Directionality.of(context);
 
-  final appStyle = textTheme.headlineLarge ?? const TextStyle(fontSize: 32);
-  final taglineStyle = (textTheme.labelMedium ?? const TextStyle()).copyWith(
-    letterSpacing: 2.2,
-    fontSize: 9.5,
+  final appStyle = ButlerlyTypography.brandTitle(
+    textTheme.headlineLarge ?? const TextStyle(),
   );
-  final greetingStyle = textTheme.bodyMedium ?? const TextStyle(fontSize: 14);
-  final monthStyle = textTheme.titleMedium ?? const TextStyle(fontSize: 16);
+  final taglineStyle = ButlerlyTypography.badgeLabel(
+    textTheme.labelMedium ?? const TextStyle(),
+  ).copyWith(letterSpacing: 1.7, fontSize: 10);
+  final greetingStyle = ButlerlyTypography.pageHeroTitle(
+    textTheme.headlineLarge ?? const TextStyle(),
+  );
+  final monthStyle = ButlerlyTypography.cardAction(
+    textTheme.titleMedium ?? const TextStyle(),
+  );
 
   double measure(
     String text,
@@ -504,7 +499,7 @@ double _homeHeaderExtent(
       DateFormat.yMMMM(localeTag).format(DateTime(2026, month)),
   ];
 
-  double monthButtonHeight(double width, {required bool wrap}) {
+  double monthButtonHeight(double width) {
     final textWidth =
         (width - ButlerlySpacing.compact * 2 - ButlerlySpacing.micro - 20)
             .clamp(1.0, double.infinity)
@@ -513,7 +508,7 @@ double _homeHeaderExtent(
       monthLabels,
       monthStyle,
       textWidth,
-      maxLines: wrap ? null : 1,
+      maxLines: null,
     );
     final contentHeight = textHeight + ButlerlySpacing.compact * 2;
     return contentHeight > kMinInteractiveDimension
@@ -523,37 +518,26 @@ double _homeHeaderExtent(
 
   final appName = context.l10n.text('appName');
   final tagline = context.l10n.text('homeTagline');
-  if (stacked) {
-    final brandHeight =
-        measure(appName, appStyle, availableWidth) +
-        ButlerlySpacing.xxs +
-        measure(tagline, taglineStyle, availableWidth);
-    final contextHeight =
-        maxMeasured(greetingLabels, greetingStyle, availableWidth) +
-        ButlerlySpacing.xxs +
-        monthButtonHeight(availableWidth, wrap: true);
-    return brandHeight +
-        ButlerlySpacing.standard +
-        contextHeight +
-        ButlerlySpacing.small +
-        scaler.scale(2);
-  }
-
   final rowWidth = availableWidth - ButlerlySpacing.standard;
   final brandWidth = rowWidth * 5 / 9;
-  final contextWidth = rowWidth * 4 / 9;
+  final monthWidth = rowWidth * 4 / 9;
   final brandHeight =
-      measure(appName, appStyle, brandWidth, maxLines: 1) +
+      measure(appName, appStyle, brandWidth) +
       ButlerlySpacing.xxs +
-      measure(tagline, taglineStyle, brandWidth, maxLines: 2);
-  final contextHeight =
-      maxMeasured(greetingLabels, greetingStyle, contextWidth, maxLines: 1) +
-      ButlerlySpacing.xxs +
-      monthButtonHeight(contextWidth, wrap: false);
-  final contentHeight = brandHeight > contextHeight
+      measure(tagline, taglineStyle, brandWidth);
+  final topRowHeight = brandHeight > monthButtonHeight(monthWidth)
       ? brandHeight
-      : contextHeight;
-  return contentHeight + ButlerlySpacing.small + scaler.scale(2);
+      : monthButtonHeight(monthWidth);
+  final greetingHeight = maxMeasured(
+    greetingLabels,
+    greetingStyle,
+    availableWidth,
+  );
+  return topRowHeight +
+      ButlerlySpacing.small +
+      greetingHeight +
+      ButlerlySpacing.small +
+      scaler.scale(2);
 }
 
 class _HomePinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
@@ -614,105 +598,90 @@ class _HomeHeader extends StatelessWidget {
     final locale = Localizations.localeOf(context).toLanguageTag();
     final monthLabel = DateFormat.yMMMM(locale).format(month);
     return LayoutBuilder(
-      builder: (context, constraints) {
-        final scaledBody = MediaQuery.textScalerOf(context).scale(14);
-        final stacked = scaledBody > 18 || constraints.maxWidth < 360;
-        final alignContextToEdge =
-            ButlerlyLayout.modeForWidth(constraints.maxWidth) !=
-            ButlerlyLayoutMode.compact;
+      builder: (context, _) {
         final brand = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               context.l10n.text('appName'),
-              maxLines: stacked ? null : 1,
-              overflow: stacked ? null : TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.headlineLarge,
+              style: ButlerlyTypography.brandTitle(
+                Theme.of(context).textTheme.headlineLarge ?? const TextStyle(),
+              ),
             ),
             const SizedBox(height: ButlerlySpacing.xxs),
             Text(
               context.l10n.text('homeTagline'),
-              maxLines: stacked ? null : 2,
-              overflow: stacked ? null : TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                letterSpacing: 2.2,
-                fontSize: 9.5,
-              ),
+              style: ButlerlyTypography.badgeLabel(
+                Theme.of(context).textTheme.labelMedium ?? const TextStyle(),
+              ).copyWith(letterSpacing: 1.7, fontSize: 10),
             ),
           ],
         );
-        final contextBlock = Column(
+        final monthButton = TextButton(
+          key: const Key('home-month-selector'),
+          onPressed: onMonthTap,
+          style: TextButton.styleFrom(
+            alignment: AlignmentDirectional.centerEnd,
+            padding: const EdgeInsets.symmetric(
+              horizontal: ButlerlySpacing.compact,
+              vertical: ButlerlySpacing.compact,
+            ),
+            minimumSize: const Size(0, kMinInteractiveDimension),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  monthLabel,
+                  softWrap: true,
+                  textAlign: TextAlign.end,
+                  style: ButlerlyTypography.cardAction(
+                    Theme.of(context).textTheme.titleMedium ??
+                        const TextStyle(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: ButlerlySpacing.micro),
+              Icon(
+                _homeIcon(
+                  context,
+                  material: Icons.keyboard_arrow_down_rounded,
+                  cupertino: CupertinoIcons.chevron_down,
+                ),
+                size: 20,
+              ),
+            ],
+          ),
+        );
+        return Column(
           key: const ValueKey('home-header-context'),
-          crossAxisAlignment: CrossAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(flex: 5, child: brand),
+                const SizedBox(width: ButlerlySpacing.standard),
+                Flexible(
+                  flex: 4,
+                  child: Align(
+                    alignment: AlignmentDirectional.topEnd,
+                    child: monthButton,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: ButlerlySpacing.small),
             Text(
               context.l10n.text(greetingKey),
               key: const ValueKey('home-greeting'),
-              maxLines: stacked ? null : 1,
-              overflow: stacked ? null : TextOverflow.ellipsis,
-              textAlign: TextAlign.end,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: ButlerlySpacing.xxs),
-            TextButton(
-              key: const Key('home-month-selector'),
-              onPressed: onMonthTap,
-              style: TextButton.styleFrom(
-                alignment: AlignmentDirectional.centerEnd,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: ButlerlySpacing.compact,
-                  vertical: ButlerlySpacing.compact,
-                ),
-                minimumSize: const Size(0, kMinInteractiveDimension),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(
-                    child: Text(
-                      monthLabel,
-                      maxLines: stacked ? null : 1,
-                      overflow: stacked ? null : TextOverflow.ellipsis,
-                      textAlign: TextAlign.end,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ),
-                  const SizedBox(width: ButlerlySpacing.micro),
-                  Icon(
-                    _homeIcon(
-                      context,
-                      material: Icons.keyboard_arrow_down_rounded,
-                      cupertino: CupertinoIcons.chevron_down,
-                    ),
-                    size: 20,
-                  ),
-                ],
+              style: ButlerlyTypography.pageHeroTitle(
+                Theme.of(context).textTheme.headlineLarge ?? const TextStyle(),
               ),
             ),
-          ],
-        );
-        if (stacked) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              brand,
-              const SizedBox(height: ButlerlySpacing.standard),
-              contextBlock,
-            ],
-          );
-        }
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(flex: 5, child: brand),
-            const SizedBox(width: ButlerlySpacing.standard),
-            if (alignContextToEdge)
-              Expanded(flex: 4, child: contextBlock)
-            else
-              Flexible(flex: 4, child: contextBlock),
           ],
         );
       },
@@ -738,6 +707,9 @@ class _HomeSummaryCard extends StatelessWidget {
       children: [
         ButlerlyCardHeader(
           title: context.l10n.text('analysisSummary'),
+          titleStyle: ButlerlyTypography.cardTitle(
+            Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
+          ),
           action: IconButton(
             key: const Key('home-notification-action'),
             tooltip: context.l10n.text('notifications'),
@@ -812,9 +784,9 @@ class _HomeSummaryCard extends StatelessWidget {
           const SizedBox(height: ButlerlySpacing.standard),
           Text(
             context.l10n.text('analysisUnavailable'),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: context.colors.secondaryText,
-            ),
+            style: ButlerlyTypography.cardSubtitle(
+              Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+            ).copyWith(color: context.colors.secondaryText),
           ),
         ],
       ],
@@ -851,17 +823,17 @@ class _HomeMetricCell extends StatelessWidget {
         children: [
           Text(
             label,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: context.colors.secondaryText,
-            ),
+            style: ButlerlyTypography.metricLabel(
+              Theme.of(context).textTheme.labelLarge ?? const TextStyle(),
+            ).copyWith(color: context.colors.secondaryText),
           ),
           const SizedBox(height: ButlerlySpacing.micro),
           Text(
             value,
             softWrap: true,
-            style: ButlerlyTypography.financialAmount(
+            style: ButlerlyTypography.metricValue(
               Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
-            ).copyWith(fontSize: 24),
+            ),
           ),
         ],
       ),
@@ -915,6 +887,7 @@ class _SpendingTrend extends StatelessWidget {
             .where((point) => point.selected)
             .map((point) => point.month)
             .firstOrNull;
+    final selectedPoint = points.where((point) => point.selected).firstOrNull;
     return ButlerlyCard(
       key: const ValueKey('home-trend-card'),
       semanticLabel: context.l10n.text('spendingTrend'),
@@ -928,6 +901,12 @@ class _SpendingTrend extends StatelessWidget {
               subtitle: selected == null
                   ? null
                   : DateFormat.yMMMM(locale).format(selected),
+              titleStyle: ButlerlyTypography.cardTitle(
+                Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
+              ),
+              subtitleStyle: ButlerlyTypography.cardSubtitle(
+                Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+              ),
             ),
             if (unavailable || points.isEmpty || !meaningful) ...[
               const SizedBox(height: ButlerlySpacing.standard),
@@ -937,23 +916,38 @@ class _SpendingTrend extends StatelessWidget {
                       ? 'analysisUnavailableBody'
                       : 'insufficientTrendData',
                 ),
-                style: Theme.of(context).textTheme.bodySmall,
+                style: ButlerlyTypography.cardSubtitle(
+                  Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+                ),
               ),
             ] else ...[
-              const SizedBox(height: ButlerlySpacing.standard),
-              _HomeTrendPlot(points: points, locale: locale),
-              if (comparison != null &&
-                  analysisComparisonText(context, comparison!).isNotEmpty) ...[
-                const SizedBox(height: ButlerlySpacing.standard),
+              if (selectedPoint?.metric case final metric?) ...[
+                const SizedBox(height: ButlerlySpacing.small),
                 Text(
-                  analysisComparisonText(context, comparison!),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: comparison!.percentageChange?.isNegative == true
-                        ? context.colors.success
-                        : context.colors.interactive,
-                  ),
+                  analysisMoney(context, metric),
+                  style: ButlerlyTypography.metricValue(
+                    Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
+                  ).copyWith(fontSize: 30, height: 1.08),
                 ),
               ],
+              if (comparison != null &&
+                  analysisComparisonText(context, comparison!).isNotEmpty) ...[
+                const SizedBox(height: ButlerlySpacing.micro),
+                Text(
+                  analysisComparisonText(context, comparison!),
+                  style:
+                      ButlerlyTypography.metricChange(
+                        Theme.of(context).textTheme.bodySmall ??
+                            const TextStyle(),
+                      ).copyWith(
+                        color: comparison!.percentageChange?.isNegative == true
+                            ? context.colors.success
+                            : context.colors.interactive,
+                      ),
+                ),
+              ],
+              const SizedBox(height: ButlerlySpacing.standard),
+              _HomeTrendPlot(points: points, locale: locale),
             ],
           ],
         ),
@@ -1037,12 +1031,16 @@ class _HomeTrendPlot extends StatelessWidget {
                       DateFormat.MMM(locale).format(point.month).toUpperCase(),
                       maxLines: 1,
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: point.selected
-                            ? context.colors.interactive
-                            : null,
-                        fontWeight: point.selected ? FontWeight.w600 : null,
-                      ),
+                      style:
+                          ButlerlyTypography.badgeLabel(
+                            Theme.of(context).textTheme.bodySmall ??
+                                const TextStyle(),
+                          ).copyWith(
+                            color: point.selected
+                                ? context.colors.interactive
+                                : null,
+                            fontWeight: point.selected ? FontWeight.w600 : null,
+                          ),
                     ),
                   ),
                 ),
@@ -1078,22 +1076,34 @@ class _CategorySummary extends StatelessWidget {
         children: [
           ButlerlyCardHeader(
             title: context.l10n.text('analysis.rule.r010.name'),
+            titleStyle: ButlerlyTypography.cardTitle(
+              Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
+            ),
             action: TextButton(
               key: const Key('home-category-view-all'),
               onPressed: onViewAll,
-              child: Text(context.l10n.text('viewAll')),
+              child: Text(
+                context.l10n.text('viewAll'),
+                style: ButlerlyTypography.cardAction(
+                  Theme.of(context).textTheme.labelLarge ?? const TextStyle(),
+                ),
+              ),
             ),
           ),
           const SizedBox(height: ButlerlySpacing.small),
           if (model == null)
             Text(
               context.l10n.text('analysisUnavailableBody'),
-              style: Theme.of(context).textTheme.bodySmall,
+              style: ButlerlyTypography.cardSubtitle(
+                Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+              ),
             )
           else if (categories.isEmpty)
             Text(
               context.l10n.text('noSpendingInPeriod'),
-              style: Theme.of(context).textTheme.bodySmall,
+              style: ButlerlyTypography.cardSubtitle(
+                Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+              ),
             )
           else
             Column(
@@ -1158,21 +1168,23 @@ class _CategorySummaryItem extends StatelessWidget {
           final amount = Text(
             analysisMoney(context, metric),
             textAlign: TextAlign.end,
-            style: ButlerlyTypography.financialAmount(
+            softWrap: true,
+            style: ButlerlyTypography.rowAmount(
               Theme.of(context).textTheme.titleMedium ?? const TextStyle(),
-            ).copyWith(fontSize: 18),
+            ),
           );
           final name = Text(
             label,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodyLarge,
+            softWrap: true,
+            style: ButlerlyTypography.rowTitle(
+              Theme.of(context).textTheme.bodyLarge ?? const TextStyle(),
+            ),
           );
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               icon,
-              const SizedBox(width: ButlerlySpacing.standard),
+              const SizedBox(width: ButlerlySpacing.small),
               Expanded(
                 child: stacked
                     ? Column(
@@ -1235,14 +1247,18 @@ class _AttentionSection extends StatelessWidget {
             children: [
               Text(
                 context.l10n.text('needsAttention'),
-                style: Theme.of(context).textTheme.titleMedium,
+                style: ButlerlyTypography.rowTitle(
+                  Theme.of(context).textTheme.titleMedium ?? const TextStyle(),
+                ),
               ),
               const SizedBox(height: ButlerlySpacing.micro),
               Text(
                 context.l10n.text('dataQualityNeedsAttention', {
                   'count': localizedCount(context, reviewCount.toString()),
                 }),
-                style: Theme.of(context).textTheme.bodySmall,
+                style: ButlerlyTypography.rowMetadata(
+                  Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+                ),
               ),
             ],
           ),
@@ -1290,10 +1306,18 @@ class _HomeRecentActivity extends StatelessWidget {
           ),
           child: ButlerlyCardHeader(
             title: context.l10n.text('recentTransactions'),
+            titleStyle: ButlerlyTypography.cardTitle(
+              Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
+            ),
             action: TextButton(
               key: const Key('home-recent-view-all'),
               onPressed: onViewAll,
-              child: Text(context.l10n.text('viewAll')),
+              child: Text(
+                context.l10n.text('viewAll'),
+                style: ButlerlyTypography.cardAction(
+                  Theme.of(context).textTheme.labelLarge ?? const TextStyle(),
+                ),
+              ),
             ),
           ),
         ),
@@ -1347,21 +1371,25 @@ class _HomeInsightCard extends StatelessWidget {
             children: [
               Text(
                 context.l10n.text('notable'),
-                style: Theme.of(
-                  context,
-                ).textTheme.labelLarge?.copyWith(color: context.colors.info),
+                style: ButlerlyTypography.cardAction(
+                  Theme.of(context).textTheme.labelLarge ?? const TextStyle(),
+                ).copyWith(color: context.colors.info),
               ),
               const SizedBox(height: ButlerlySpacing.micro),
               Text(
                 context.l10n.text(insight.rule.nameKey),
-                style: Theme.of(context).textTheme.titleMedium,
+                style: ButlerlyTypography.rowTitle(
+                  Theme.of(context).textTheme.titleMedium ?? const TextStyle(),
+                ),
               ),
               const SizedBox(height: ButlerlySpacing.micro),
               Text(
                 context.l10n.text(insight.rule.descriptionKey),
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall,
+                style: ButlerlyTypography.rowMetadata(
+                  Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+                ),
               ),
               if (_homeInsightValues(context, insight) case final values?) ...[
                 const SizedBox(height: ButlerlySpacing.small),
@@ -1369,7 +1397,9 @@ class _HomeInsightCard extends StatelessWidget {
                   values,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  style: ButlerlyTypography.metricChange(
+                    Theme.of(context).textTheme.bodyMedium ?? const TextStyle(),
+                  ),
                 ),
               ],
               const SizedBox(height: ButlerlySpacing.micro),
@@ -1377,7 +1407,9 @@ class _HomeInsightCard extends StatelessWidget {
                 _homeInsightContext(context, insight),
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall,
+                style: ButlerlyTypography.badgeLabel(
+                  Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+                ),
               ),
               if (insight.evidence.isNotEmpty) ...[
                 const SizedBox(height: ButlerlySpacing.micro),
@@ -1388,7 +1420,9 @@ class _HomeInsightCard extends StatelessWidget {
                       insight.evidence.length.toString(),
                     ),
                   }),
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: ButlerlyTypography.badgeLabel(
+                    Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+                  ),
                 ),
               ],
             ],
@@ -1459,12 +1493,16 @@ class _HomeEmptyState extends StatelessWidget {
           const SizedBox(height: ButlerlySpacing.standard),
           Text(
             context.l10n.text('noActivityInPeriod'),
-            style: Theme.of(context).textTheme.titleLarge,
+            style: ButlerlyTypography.cardTitle(
+              Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
+            ),
           ),
           const SizedBox(height: ButlerlySpacing.micro),
           Text(
             context.l10n.text('noTransactionsBody'),
-            style: Theme.of(context).textTheme.bodyMedium,
+            style: ButlerlyTypography.cardSubtitle(
+              Theme.of(context).textTheme.bodyMedium ?? const TextStyle(),
+            ),
           ),
           const SizedBox(height: ButlerlySpacing.standard),
           OutlinedButton.icon(
@@ -1569,11 +1607,15 @@ class _HomeEmptyTransactions extends StatelessWidget {
             children: [
               Text(
                 context.l10n.text('noTransactions'),
-                style: Theme.of(context).textTheme.titleMedium,
+                style: ButlerlyTypography.rowTitle(
+                  Theme.of(context).textTheme.titleMedium ?? const TextStyle(),
+                ),
               ),
               Text(
                 context.l10n.text('noTransactionsBody'),
-                style: Theme.of(context).textTheme.bodySmall,
+                style: ButlerlyTypography.rowMetadata(
+                  Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+                ),
               ),
             ],
           ),
@@ -1694,12 +1736,18 @@ class _HomeUnavailableCard extends StatelessWidget {
                 children: [
                   Text(
                     context.l10n.text(titleKey),
-                    style: Theme.of(context).textTheme.titleMedium,
+                    style: ButlerlyTypography.rowTitle(
+                      Theme.of(context).textTheme.titleMedium ??
+                          const TextStyle(),
+                    ),
                   ),
                   const SizedBox(height: ButlerlySpacing.compact),
                   Text(
                     context.l10n.text(bodyKey),
-                    style: Theme.of(context).textTheme.bodyMedium,
+                    style: ButlerlyTypography.cardSubtitle(
+                      Theme.of(context).textTheme.bodyMedium ??
+                          const TextStyle(),
+                    ),
                   ),
                   const SizedBox(height: ButlerlySpacing.small),
                   Align(

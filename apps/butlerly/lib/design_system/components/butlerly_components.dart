@@ -266,8 +266,12 @@ class ButlerlyCard extends StatelessWidget {
     label: semanticLabel,
     child: Card(
       color: color,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(ButlerlyRadius.card),
+        side: BorderSide(color: context.colors.border.withValues(alpha: 0.8)),
+      ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+        borderRadius: BorderRadius.circular(ButlerlyRadius.card),
         onTap: onTap,
         child: Padding(padding: padding, child: child),
       ),
@@ -281,12 +285,16 @@ class ButlerlyCardHeader extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.action,
+    this.titleStyle,
+    this.subtitleStyle,
     super.key,
   });
 
   final String title;
   final String? subtitle;
   final Widget? action;
+  final TextStyle? titleStyle;
+  final TextStyle? subtitleStyle;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -297,10 +305,16 @@ class ButlerlyCardHeader extends StatelessWidget {
       final titleBlock = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            title,
+            style: titleStyle ?? Theme.of(context).textTheme.titleLarge,
+          ),
           if (subtitle != null) ...[
             const SizedBox(height: ButlerlySpacing.micro),
-            Text(subtitle!, style: Theme.of(context).textTheme.bodySmall),
+            Text(
+              subtitle!,
+              style: subtitleStyle ?? Theme.of(context).textTheme.bodySmall,
+            ),
           ],
         ],
       );

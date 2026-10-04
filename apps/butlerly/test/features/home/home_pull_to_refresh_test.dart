@@ -5,6 +5,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -107,6 +108,22 @@ void main() {
     expect(find.text('Spending by category'), findsOneWidget);
     expect(find.text('Transaction count'), findsOneWidget);
     expect(find.text('Recent transactions'), findsOneWidget);
+    final summaryTitle = tester.widget<Text>(find.text('Financial summary'));
+    expect(
+      summaryTitle.style?.fontFamily,
+      isNot(ButlerlyTypography.editorialFontFamily),
+    );
+    final summaryAmount = tester.widget<Text>(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-card')),
+        matching: find.text('10.00 USD'),
+      ),
+    );
+    expect(
+      summaryAmount.style?.fontFamily,
+      isNot(ButlerlyTypography.editorialFontFamily),
+    );
+    expect(summaryAmount.style?.fontFeatures, isNotEmpty);
     expect(find.byKey(const ValueKey('home-attention-card')), findsNothing);
     expect(find.byKey(const ValueKey('home-insight-card')), findsNothing);
     expect(tester.takeException(), isNull);
@@ -219,6 +236,11 @@ void main() {
     await tester.pumpWidget(const _TestApp());
     await tester.pumpAndSettle();
 
+    // At 3x text scale the pinned header legitimately consumes more vertical
+    // space. Scroll the sliver so its lazily-built cards enter the viewport.
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+
     expect(find.byKey(const ValueKey('home-summary-card')), findsOneWidget);
     expect(find.byKey(const ValueKey('home-category-card')), findsOneWidget);
     final metricKeys = [
@@ -244,7 +266,13 @@ void main() {
     ]) {
       expect(find.text(label), findsOneWidget);
     }
-    expect(find.text('10.00 USD'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-card')),
+        matching: find.text('10.00 USD'),
+      ),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -325,7 +353,13 @@ void main() {
 
       await tester.pumpWidget(const _TestApp());
       await tester.pumpAndSettle();
-      expect(find.text('10.00 USD'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-summary-card')),
+          matching: find.text('10.00 USD'),
+        ),
+        findsOneWidget,
+      );
       expect(
         transactions.queries,
         contains(
@@ -413,7 +447,13 @@ void main() {
         ),
       );
       expect(added, isA<ApplicationSuccess<TransactionDto>>());
-      expect(find.text('10.00 USD'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-summary-card')),
+          matching: find.text('10.00 USD'),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('15.00 USD'), findsNothing);
 
       final readGate = Completer<void>();
@@ -428,7 +468,13 @@ void main() {
 
       // While the refresh read is deliberately held open, keep the existing
       // spending snapshot visible and keep the pinned header stationary.
-      expect(find.text('10.00 USD'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-summary-card')),
+          matching: find.text('10.00 USD'),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('15.00 USD'), findsNothing);
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(
@@ -443,7 +489,13 @@ void main() {
       final afterRefresh = (tester.widget(bodyFinder) as FutureBuilder).future;
       expect(identical(beforeRefresh, afterRefresh), isFalse);
       expect(find.text('10.00 USD'), findsNothing);
-      expect(find.text('15.00 USD'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-summary-card')),
+          matching: find.text('15.00 USD'),
+        ),
+        findsOneWidget,
+      );
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(
         tester.getTopLeft(headerFinder).dy,
@@ -654,7 +706,13 @@ void main() {
       find.byKey(const ValueKey('home-review-unavailable-retry')),
       findsOneWidget,
     );
-    expect(find.text('10.00 USD'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-card')),
+        matching: find.text('10.00 USD'),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('No findings'), findsNothing);
     expect(
       tester
