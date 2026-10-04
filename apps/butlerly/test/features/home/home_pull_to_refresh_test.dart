@@ -5,7 +5,9 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
+import 'package:butlerly/features/foundation/presentation/review_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -19,6 +21,7 @@ void main() {
   late _Transactions transactions;
   late _Preferences preferences;
   late _Merchants merchants;
+  late _DuplicateGroups duplicateGroups;
   late _Rules rules;
   late FinanceServices finance;
 
@@ -28,6 +31,7 @@ void main() {
     transactions = _Transactions();
     preferences = _Preferences();
     merchants = _Merchants();
+    duplicateGroups = _DuplicateGroups();
     rules = _Rules([_expenseRule()]);
     finance = FinanceServices(
       transactions,
@@ -37,6 +41,7 @@ void main() {
       _Tags(),
       _Evidence(),
       preferences,
+      duplicateGroups: duplicateGroups,
       analysisRules: rules,
     );
     services.registerSingleton<FinanceServices>(finance);
@@ -101,13 +106,31 @@ void main() {
     }
     final positions = cards.map((card) => tester.getTopLeft(card).dy).toList();
     expect(positions, orderedEquals([...positions]..sort()));
-    expect(find.text('Financial summary'), findsOneWidget);
-    expect(find.text('Total spending'), findsOneWidget);
+    expect(find.text('Monthly summary'), findsOneWidget);
+    expect(find.text('Spending'), findsOneWidget);
     expect(find.text('Spending trend'), findsOneWidget);
     expect(find.text('Spending by category'), findsOneWidget);
-    expect(find.text('Transaction count'), findsOneWidget);
+    expect(find.text('Savings'), findsOneWidget);
+    expect(find.text('Net position'), findsOneWidget);
     expect(find.text('Recent transactions'), findsOneWidget);
-    expect(find.byKey(const ValueKey('home-attention-card')), findsNothing);
+    final summaryTitle = tester.widget<Text>(find.text('Monthly summary'));
+    expect(
+      summaryTitle.style?.fontFamily,
+      isNot(ButlerlyTypography.editorialFontFamily),
+    );
+    final summaryAmount = tester.widget<Text>(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-card')),
+        matching: find.text('10.00 USD'),
+      ),
+    );
+    expect(
+      summaryAmount.style?.fontFamily,
+      isNot(ButlerlyTypography.editorialFontFamily),
+    );
+    expect(summaryAmount.style?.fontFeatures, isNotEmpty);
+    expect(find.byKey(const ValueKey('home-attention-card')), findsOneWidget);
+    expect(find.text('1 merchant to review'), findsOneWidget);
     expect(find.byKey(const ValueKey('home-insight-card')), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -140,73 +163,199 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets(
-    'Home places attention and insight cards around recent activity',
-    (tester) async {
-      tester.view.physicalSize = const Size(390, 844);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets('Home places attention and insight cards around recent activity', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
-      rules.values.add(_homeInsightRule());
-      final stored = transactions.values['home-refresh-initial']!;
-      transactions.values['home-refresh-initial'] = stored.addReviewIssue(
-        ReviewIssue(
-          id: ReviewIssueId('home-review-issue'),
-          transactionId: stored.id,
-          reason: ReviewIssueReason.incomplete,
-          createdAt: stored.updatedAt,
+    rules.values.add(_homeInsightRule());
+    final stored = transactions.values['home-refresh-initial']!;
+    transactions.values['home-refresh-initial'] = stored.addReviewIssue(
+      ReviewIssue(
+        id: ReviewIssueId('home-review-issue'),
+        transactionId: stored.id,
+        reason: ReviewIssueReason.incomplete,
+        createdAt: stored.updatedAt,
+      ),
+      stored.updatedAt.add(const Duration(seconds: 1)),
+    );
+
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, _) => const Scaffold(body: HomePage()),
         ),
-        stored.updatedAt.add(const Duration(seconds: 1)),
-      );
-
-      final router = GoRouter(
-        initialLocation: '/',
-        routes: [
-          GoRoute(
-            path: '/',
-            builder: (_, _) => const Scaffold(body: HomePage()),
+        GoRoute(
+          path: '/review',
+          builder: (_, state) => Scaffold(
+            body: Text(state.uri.toString(), key: const Key('review-uri')),
           ),
-          GoRoute(
-            path: '/review',
-            builder: (_, state) => Scaffold(
-              body: Text(state.uri.toString(), key: const Key('review-uri')),
-            ),
-          ),
-        ],
-      );
-      addTearDown(router.dispose);
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
 
-      await tester.pumpWidget(_RouterTestApp(router: router));
-      await tester.pumpAndSettle();
+    await tester.pumpWidget(_RouterTestApp(router: router));
+    await tester.pumpAndSettle();
 
-      final cards = [
-        find.byKey(const ValueKey('home-summary-card')),
-        find.byKey(const ValueKey('home-trend-card')),
-        find.byKey(const ValueKey('home-category-card')),
-        find.byKey(const ValueKey('home-attention-card')),
-        find.byKey(const ValueKey('home-recent-card')),
-        find.byKey(const ValueKey('home-insight-card')),
-      ];
-      for (final card in cards) {
-        expect(card, findsOneWidget);
-      }
-      final positions = cards.map((card) => tester.getTopLeft(card).dy);
-      expect(positions, orderedEquals([...positions]..sort()));
-      expect(find.textContaining('Sep 1, 2026 – Sep 16, 2026'), findsOneWidget);
+    final cards = [
+      find.byKey(const ValueKey('home-summary-card')),
+      find.byKey(const ValueKey('home-trend-card')),
+      find.byKey(const ValueKey('home-category-card')),
+      find.byKey(const ValueKey('home-attention-card')),
+      find.byKey(const ValueKey('home-recent-card')),
+      find.byKey(const ValueKey('home-insight-card')),
+    ];
+    for (final card in cards) {
+      expect(card, findsOneWidget);
+    }
+    final positions = cards.map((card) => tester.getTopLeft(card).dy);
+    expect(positions, orderedEquals([...positions]..sort()));
+    expect(find.textContaining('Sep 1, 2026 – Sep 16, 2026'), findsOneWidget);
 
-      await tester.ensureVisible(
-        find.byKey(const ValueKey('home-attention-card')),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('home-attention-card')));
-      await tester.pumpAndSettle();
-      expect(
-        tester.widget<Text>(find.byKey(const Key('review-uri'))).data,
-        '/review?view=needsReview&from=2026-09-01&to=2026-09-16&timeZoneId=UTC',
-      );
-    },
-  );
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('home-attention-card')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('home-attention-card')));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<Text>(find.byKey(const Key('review-uri'))).data,
+      '/review?view=uncategorized&from=2026-09-01&to=2026-09-16&timeZoneId=UTC',
+    );
+  });
+
+  testWidgets('Home attention rows open their matching Review datasets', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final matching = await finance.createTransaction(
+      CreateTransactionCommand(
+        id: 'home-attention-matching',
+        provenanceId: 'home-attention-matching-provenance',
+        timing: KnownTransactionTime(DateTime.utc(2026, 9, 14, 12)),
+        transactionDate: '2026-09-15',
+        money: Money(
+          amount: DecimalValue.parse('10.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        description: 'Matching Home spending',
+      ),
+    );
+    expect(matching, isA<ApplicationSuccess<TransactionDto>>());
+    final initial = transactions.values['home-refresh-initial']!;
+    final matchingTransaction = transactions.values['home-attention-matching']!;
+    duplicateGroups.values.add(
+      DuplicateCandidateGroup(
+        id: 'home-attention-duplicate',
+        transactionIds: [initial.id, matchingTransaction.id],
+        duplicateKey: DuplicateTransactionKey(
+          transactionDate: '2026-09-15',
+          amount: DecimalValue.parse('10.00'),
+          currency: 'USD',
+          direction: 'expense',
+        ),
+        status: DuplicateCandidateGroupStatus.unresolved,
+        createdAt: DateTime.utc(2026, 9, 15),
+        updatedAt: DateTime.utc(2026, 9, 15),
+      ),
+    );
+
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, _) => const Scaffold(body: HomePage()),
+        ),
+        GoRoute(
+          path: '/review',
+          builder: (_, state) {
+            final parameters = state.uri.queryParameters;
+            final from = parameters['from'];
+            final to = parameters['to'];
+            final timeZoneId = parameters['timeZoneId'];
+            final scope = from == null || to == null || timeZoneId == null
+                ? const ReviewPeriodScope.invalid()
+                : ReviewPeriodScope.fromDateValues(
+                    startDate: from,
+                    endDate: to,
+                    timeZoneId: timeZoneId,
+                  );
+            final reason = ReviewIssueReason.values
+                .where((value) => value.name == parameters['reason'])
+                .firstOrNull;
+            return Scaffold(
+              body: ReviewPage(
+                showPossibleDuplicates: parameters['view'] == 'duplicates',
+                showUncategorized: parameters['view'] == 'uncategorized',
+                showNeedsReview: parameters['view'] == 'needsReview',
+                reviewScope: scope,
+                reviewReason: reason,
+              ),
+            );
+          },
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_RouterTestApp(router: router));
+    await tester.pumpAndSettle();
+
+    final uncategorizedRow = find.text('Uncategorised transactions');
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('home-attention-card')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(uncategorizedRow);
+    await tester.pumpAndSettle();
+    expect(find.text('Initial Home spending'), findsOneWidget);
+    expect(find.text('Matching Home spending'), findsOneWidget);
+
+    router.go('/');
+    await tester.pumpAndSettle();
+    final duplicateRow = find.textContaining('possible duplicate');
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('home-attention-card')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(duplicateRow);
+    await tester.pumpAndSettle();
+    expect(find.text('Possible duplicate group'), findsOneWidget);
+    expect(find.text('Initial Home spending'), findsOneWidget);
+    expect(find.text('Matching Home spending'), findsOneWidget);
+
+    router.go('/');
+    await tester.pumpAndSettle();
+    final merchantRow = find
+        .byWidgetPredicate(
+          (widget) =>
+              widget is Text &&
+              widget.data?.contains('merchant') == true &&
+              widget.data?.contains('review') == true,
+        )
+        .first;
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('home-attention-card')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(merchantRow);
+    await tester.pumpAndSettle();
+    expect(find.text('Initial Home spending'), findsOneWidget);
+    expect(find.text('Matching Home spending'), findsOneWidget);
+    expect(find.text('Possible duplicate group'), findsNothing);
+  });
 
   testWidgets('Home cards remain readable at large text scale', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -219,13 +368,18 @@ void main() {
     await tester.pumpWidget(const _TestApp());
     await tester.pumpAndSettle();
 
+    // At 3x text scale the pinned header legitimately consumes more vertical
+    // space. Scroll the sliver so its lazily-built cards enter the viewport.
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -900));
+    await tester.pumpAndSettle();
+
     expect(find.byKey(const ValueKey('home-summary-card')), findsOneWidget);
     expect(find.byKey(const ValueKey('home-category-card')), findsOneWidget);
     final metricKeys = [
       const ValueKey('home-summary-metric-spending'),
       const ValueKey('home-summary-metric-income'),
-      const ValueKey('home-summary-metric-net'),
-      const ValueKey('home-summary-metric-count'),
+      const ValueKey('home-summary-metric-savings'),
+      const ValueKey('home-summary-metric-net-position'),
     ];
     final metricPositions = [
       for (final key in metricKeys) tester.getTopLeft(find.byKey(key)),
@@ -236,19 +390,20 @@ void main() {
         greaterThan(metricPositions[index - 1].dy),
       );
     }
-    for (final label in [
-      'Total spending',
-      'Income',
-      'Net cash flow',
-      'Transaction count',
-    ]) {
+    for (final label in ['Spending', 'Income', 'Savings', 'Net position']) {
       expect(find.text(label), findsOneWidget);
     }
-    expect(find.text('10.00 USD'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-card')),
+        matching: find.text('10.00 USD'),
+      ),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Home Summary keeps its compact two-column layout normally', (
+  testWidgets('Home Summary keeps all four metrics in one row normally', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -265,17 +420,19 @@ void main() {
     final income = tester.getTopLeft(
       find.byKey(const ValueKey('home-summary-metric-income')),
     );
-    final net = tester.getTopLeft(
-      find.byKey(const ValueKey('home-summary-metric-net')),
+    final savings = tester.getTopLeft(
+      find.byKey(const ValueKey('home-summary-metric-savings')),
     );
-    final count = tester.getTopLeft(
-      find.byKey(const ValueKey('home-summary-metric-count')),
+    final netPosition = tester.getTopLeft(
+      find.byKey(const ValueKey('home-summary-metric-net-position')),
     );
 
     expect(spending.dy, closeTo(income.dy, 0.01));
-    expect(net.dy, closeTo(count.dy, 0.01));
-    expect(spending.dy, lessThan(net.dy));
+    expect(spending.dy, closeTo(savings.dy, 0.01));
+    expect(spending.dy, closeTo(netPosition.dy, 0.01));
     expect(spending.dx, lessThan(income.dx));
+    expect(income.dx, lessThan(savings.dx));
+    expect(savings.dx, lessThan(netPosition.dx));
     expect(tester.takeException(), isNull);
   });
 
@@ -325,7 +482,13 @@ void main() {
 
       await tester.pumpWidget(const _TestApp());
       await tester.pumpAndSettle();
-      expect(find.text('10.00 USD'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-summary-card')),
+          matching: find.text('10.00 USD'),
+        ),
+        findsOneWidget,
+      );
       expect(
         transactions.queries,
         contains(
@@ -413,7 +576,13 @@ void main() {
         ),
       );
       expect(added, isA<ApplicationSuccess<TransactionDto>>());
-      expect(find.text('10.00 USD'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-summary-card')),
+          matching: find.text('10.00 USD'),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('15.00 USD'), findsNothing);
 
       final readGate = Completer<void>();
@@ -428,7 +597,13 @@ void main() {
 
       // While the refresh read is deliberately held open, keep the existing
       // spending snapshot visible and keep the pinned header stationary.
-      expect(find.text('10.00 USD'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-summary-card')),
+          matching: find.text('10.00 USD'),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('15.00 USD'), findsNothing);
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(
@@ -443,7 +618,13 @@ void main() {
       final afterRefresh = (tester.widget(bodyFinder) as FutureBuilder).future;
       expect(identical(beforeRefresh, afterRefresh), isFalse);
       expect(find.text('10.00 USD'), findsNothing);
-      expect(find.text('15.00 USD'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-summary-card')),
+          matching: find.text('15.00 USD'),
+        ),
+        findsOneWidget,
+      );
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(
         tester.getTopLeft(headerFinder).dy,
@@ -654,7 +835,13 @@ void main() {
       find.byKey(const ValueKey('home-review-unavailable-retry')),
       findsOneWidget,
     );
-    expect(find.text('10.00 USD'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-card')),
+        matching: find.text('10.00 USD'),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('No findings'), findsNothing);
     expect(
       tester
@@ -963,6 +1150,37 @@ final class _Merchants implements MerchantRepository {
 
   @override
   Future<void> save(Merchant merchant) async {}
+}
+
+final class _DuplicateGroups implements DuplicateCandidateGroupRepository {
+  final values = <DuplicateCandidateGroup>[];
+
+  @override
+  Future<List<DuplicateCandidateGroup>> list({
+    DuplicateCandidateGroupStatus? status,
+  }) async => values
+      .where((group) => status == null || group.status == status)
+      .toList(growable: false);
+
+  @override
+  Future<List<DuplicateTransactionGroupMatch>>
+  findActiveDuplicateGroups() async => const [];
+
+  @override
+  Future<List<TransactionId>> findActiveTransactionIdsForKey(
+    DuplicateTransactionKey key,
+  ) async => const [];
+
+  @override
+  Future<void> save(DuplicateCandidateGroup group) async {
+    values.removeWhere((value) => value.id == group.id);
+    values.add(group);
+  }
+
+  @override
+  Future<void> remove(String id) async {
+    values.removeWhere((value) => value.id == id);
+  }
 }
 
 final class _Categories implements CategoryRepository {

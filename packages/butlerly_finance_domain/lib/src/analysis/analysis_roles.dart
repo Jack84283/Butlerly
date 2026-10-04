@@ -3,6 +3,7 @@
 abstract final class AnalysisSemanticRole {
   static const expenseTotal = 'expenseTotal';
   static const incomeTotal = 'incomeTotal';
+  static const savings = 'savings';
   static const netCashFlow = 'netCashFlow';
   static const eligibleTransactionCount = 'eligibleTransactionCount';
   static const spendingComparison = 'comparison:spending';

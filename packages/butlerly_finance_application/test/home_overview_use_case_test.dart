@@ -48,6 +48,7 @@ void main() {
         'sep-2',
         'sep-3',
         'sep-4',
+        'sep-5',
       ]);
       expect(overview.reviewCount, 1);
       expect(overview.reviewUnavailable, isFalse);
@@ -109,7 +110,7 @@ void main() {
       final overview = (result as ApplicationSuccess<HomeOverview>).value;
       expect(overview.analysis, isNull);
       expect(overview.analysisUnavailable, isTrue);
-      expect(overview.recentTransactions, hasLength(4));
+      expect(overview.recentTransactions, hasLength(5));
     },
   );
 
@@ -143,6 +144,61 @@ void main() {
     expect(overview.context, isNull);
     expect(overview.currentFinancialMonth, isNull);
     expect(overview.displayMonth, isNull);
+  });
+
+  test('projects scoped semantic attention counts for Home', () async {
+    transactions.values.addAll([
+      _transaction(
+        'merchant-safeway-1',
+        '2026-09-07',
+        '8',
+        rawCounterparty: 'SAFEWAY #123',
+        reviewReason: ReviewIssueReason.merchantNeedsReview,
+      ),
+      _transaction(
+        'merchant-safeway-2',
+        '2026-09-08',
+        '9',
+        rawCounterparty: 'SAFEWAY #123',
+        reviewReason: ReviewIssueReason.merchantNeedsReview,
+      ),
+      _transaction(
+        'merchant-trader-joes',
+        '2026-09-09',
+        '10',
+        rawCounterparty: 'TRADER JOES',
+        reviewReason: ReviewIssueReason.merchantNeedsReview,
+      ),
+    ]);
+    loadHomeOverview = _homeOverview(
+      transactions,
+      preferences,
+      [_expenseRule()],
+      duplicateGroups: _Groups([
+        DuplicateCandidateGroup(
+          id: 'duplicate-1',
+          transactionIds: [TransactionId('sep-1'), TransactionId('sep-2')],
+          duplicateKey: DuplicateTransactionKey(
+            transactionDate: '2026-09-01',
+            amount: DecimalValue.parse('10'),
+            currency: 'EUR',
+            direction: 'expense',
+          ),
+          status: DuplicateCandidateGroupStatus.unresolved,
+          createdAt: DateTime.utc(2026, 9, 1),
+          updatedAt: DateTime.utc(2026, 9, 1),
+        ),
+      ]),
+    );
+
+    final result = await loadHomeOverview(
+      instant: DateTime.utc(2026, 9, 16, 12),
+    );
+    final overview = (result as ApplicationSuccess<HomeOverview>).value;
+
+    expect(overview.merchantReviewCount, 2);
+    expect(overview.possibleDuplicateCount, 1);
+    expect(overview.uncategorizedTransactionCount, greaterThan(0));
   });
 
   test('returns insights in the shared policy ranking order', () async {
@@ -185,8 +241,9 @@ void main() {
 GetHomeOverview _homeOverview(
   _Transactions transactions,
   _Preferences preferences,
-  List<AnalysisRuleDefinition> rules,
-) {
+  List<AnalysisRuleDefinition> rules, {
+  DuplicateCandidateGroupRepository? duplicateGroups,
+}) {
   final analysis = CalculateAnalysisOverview(
     _Rules(rules),
     AnalysisDatasetBuilder(transactions, preferences, null),
@@ -198,6 +255,9 @@ GetHomeOverview _homeOverview(
     calculateInsights: CalculateInsights(analysis),
     listTransactions: ListTransactions(transactions, preferences: preferences),
     listReviewItems: ListReviewItems(transactions),
+    listDuplicateCandidateGroups: duplicateGroups == null
+        ? null
+        : ListDuplicateCandidateGroups(duplicateGroups),
   );
 }
 
@@ -206,6 +266,8 @@ Transaction _transaction(
   String date,
   String amount, {
   bool review = false,
+  ReviewIssueReason? reviewReason,
+  String? rawCounterparty,
 }) {
   final at = DateTime.utc(2026, 9, 1, 12);
   return Transaction(
@@ -218,12 +280,13 @@ Transaction _transaction(
     direction: TransactionDirection.expense,
     sourceType: TransactionSourceType.manual,
     transactionDate: date,
-    reviewIssues: review
+    rawCounterparty: rawCounterparty,
+    reviewIssues: review || reviewReason != null
         ? [
             ReviewIssue(
               id: ReviewIssueId('issue-$id'),
               transactionId: TransactionId(id),
-              reason: ReviewIssueReason.uncertain,
+              reason: reviewReason ?? ReviewIssueReason.uncertain,
               createdAt: at,
             ),
           ]
@@ -407,4 +470,32 @@ final class _Rules implements AnalysisRuleRepository {
     required String sourceType,
     required String canonicalDefinition,
   }) async {}
+}
+
+final class _Groups implements DuplicateCandidateGroupRepository {
+  _Groups(this.values);
+
+  final List<DuplicateCandidateGroup> values;
+
+  @override
+  Future<List<DuplicateCandidateGroup>> list({
+    DuplicateCandidateGroupStatus? status,
+  }) async => values
+      .where((value) => status == null || value.status == status)
+      .toList(growable: false);
+
+  @override
+  Future<List<DuplicateTransactionGroupMatch>>
+  findActiveDuplicateGroups() async => const [];
+
+  @override
+  Future<List<TransactionId>> findActiveTransactionIdsForKey(
+    DuplicateTransactionKey key,
+  ) async => const [];
+
+  @override
+  Future<void> save(DuplicateCandidateGroup group) async {}
+
+  @override
+  Future<void> remove(String id) async {}
 }

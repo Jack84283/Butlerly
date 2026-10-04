@@ -62,16 +62,16 @@ void main() {
       expect(value.failed, 1);
       expect(
         transactions.values['statement-statement-row-low']!.reviewIssues,
-        hasLength(1),
+        hasLength(2),
       );
       expect(
         transactions.values['statement-statement-row-unresolved']!.reviewIssues,
-        hasLength(1),
+        hasLength(2),
       );
       expect(transactions.values['statement-statement-row-invalid'], isNull);
       expect(
         transactions.values['statement-statement-row-high']!.reviewIssues,
-        isEmpty,
+        hasLength(1),
       );
     },
   );

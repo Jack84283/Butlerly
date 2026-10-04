@@ -28,6 +28,13 @@ String analysisMoney(BuildContext context, AnalysisMetric metric) =>
     '${localizedDecimal(context, metric.value.toString())} ${metric.currency?.value ?? ''}'
         .trim();
 
+String analysisValueMoney(BuildContext context, AnalysisValue value) =>
+    '${localizedDecimal(context, value.value.toString())} ${value.currency?.value ?? ''}'
+        .trim();
+
+String analysisPercentageRatio(BuildContext context, DecimalValue ratio) =>
+    '${localizedDecimal(context, ratio.multiply(DecimalValue.parse('100')).toString())}%';
+
 String analysisMoneyValue(BuildContext context, Money money) =>
     '${localizedDecimal(context, money.amount.toString())} ${money.currency.value}';
 
@@ -40,6 +47,29 @@ String analysisComparisonText(
   final direction = change.isNegative ? '↓' : '↑';
   final magnitude = change.toString().replaceFirst('-', '');
   return '$direction ${localizedDecimal(context, magnitude)}% ${context.l10n.text('vsPreviousPeriod')}';
+}
+
+String analysisComparisonChangeText(
+  BuildContext context,
+  AnalysisComparison comparison,
+) {
+  final change = comparison.percentageChange;
+  if (!isUsableComparison(comparison) || change == null) return '';
+  final direction = change.isNegative ? '↓' : '↑';
+  final magnitude = change.toString().replaceFirst('-', '');
+  return '$direction ${localizedDecimal(context, magnitude)}%';
+}
+
+String analysisAbsoluteChange(
+  BuildContext context,
+  AnalysisComparison comparison,
+  CurrencyCode? currency,
+) {
+  final change = comparison.absoluteChange;
+  if (!isUsableComparison(comparison) || change == null) return '';
+  final sign = change.isNegative ? '−' : '+';
+  return '$sign${localizedDecimal(context, change.abs().toString())} ${currency?.value ?? ''}'
+      .trim();
 }
 
 String analysisDimension(

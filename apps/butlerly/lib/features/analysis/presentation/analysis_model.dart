@@ -2,7 +2,11 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
 export 'package:butlerly_finance_application/butlerly_finance_application.dart'
-    show AnalysisQualitySummary, analysisQualitySummary, isUsableComparison;
+    show
+        AnalysisQualitySummary,
+        AnalysisValue,
+        analysisQualitySummary,
+        isUsableComparison;
 
 /// Compatibility name for widgets consuming the application-owned projection.
 typedef AnalysisModel = AnalysisOverview;

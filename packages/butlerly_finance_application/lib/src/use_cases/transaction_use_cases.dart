@@ -6,6 +6,7 @@ import '../dto/review_item_dto.dart';
 import '../dto/transaction_dto.dart';
 import '../result/application_result.dart';
 import 'classification_use_cases.dart';
+import 'merchant_review_use_cases.dart';
 import 'transaction_rule_use_cases.dart';
 
 abstract interface class ApplicationClock {
@@ -25,12 +26,14 @@ final class CreateTransaction {
     this.clock, {
     this.classifier,
     this.applyRules,
+    this.merchants,
   });
 
   final TransactionRepository repository;
   final ApplicationClock clock;
   final ProposeTransactionClassification? classifier;
   final ApplyTransactionRules? applyRules;
+  final MerchantRepository? merchants;
 
   Future<ApplicationResult<TransactionDto>> call(
     CreateTransactionCommand command,
@@ -85,20 +88,31 @@ final class CreateTransaction {
       transactionDate: command.transactionDate,
       timeZoneId: command.timeZoneId,
     );
-    final resolved = applyRules == null
+    final classified = applyRules == null
         ? transaction
         : await applyRules!(transaction);
+    final resolved = synchronizeMerchantReviewIssue(
+      classified,
+      now,
+      merchants: merchants == null ? const [] : await merchants!.listAll(),
+    );
     await repository.save(resolved);
     return TransactionDto.fromDomain(resolved);
   });
 }
 
 final class UpdateTransaction {
-  const UpdateTransaction(this.repository, this.clock, {this.preferences});
+  const UpdateTransaction(
+    this.repository,
+    this.clock, {
+    this.preferences,
+    this.merchants,
+  });
 
   final TransactionRepository repository;
   final ApplicationClock clock;
   final UserPreferenceRepository? preferences;
+  final MerchantRepository? merchants;
 
   Future<ApplicationResult<TransactionDto>> call(
     UpdateTransactionCommand command,
@@ -109,42 +123,48 @@ final class UpdateTransaction {
     if (current == null) {
       throw RepositoryException(RepositoryFailureCode.notFound, operation);
     }
-    final updated = Transaction(
-      id: current.id,
-      timing: command.timing,
-      money: command.money,
-      direction: command.direction,
-      sourceType: current.sourceType,
-      status: current.status,
-      description: command.description,
-      rawCounterparty: command.rawCounterparty,
-      sourceLanguage: command.sourceLanguage,
-      notes: command.notes,
-      externalReference: command.externalReference ?? current.externalReference,
-      paymentSourceId: !command.replacePaymentSource
-          ? current.paymentSourceId
-          : _optional(command.paymentSourceId, PaymentSourceId.new),
-      merchantId: !command.replaceMerchant
-          ? current.merchantId
-          : _optional(command.merchantId, MerchantId.new),
-      categoryId: !command.replaceCategory
-          ? current.categoryId
-          : _optional(command.categoryId, CategoryId.new),
-      subcategoryId: !command.replaceCategory
-          ? current.subcategoryId
-          : _optional(command.subcategoryId, CategoryId.new),
-      tagIds: command.replaceTags
-          ? command.tagIds?.map(TagId.new).toList(growable: false) ?? const []
-          : current.tagIds,
-      provenance: current.provenance,
-      reviewIssues: current.reviewIssues,
-      normalizedMoney: command.money == current.money
-          ? current.normalizedMoney
-          : const [],
-      createdAt: current.createdAt,
-      updatedAt: clock.now(),
-      transactionDate: command.transactionDate ?? current.transactionDate,
-      timeZoneId: command.timeZoneId ?? current.timeZoneId,
+    final updatedAt = clock.now();
+    final updated = synchronizeMerchantReviewIssue(
+      Transaction(
+        id: current.id,
+        timing: command.timing,
+        money: command.money,
+        direction: command.direction,
+        sourceType: current.sourceType,
+        status: current.status,
+        description: command.description,
+        rawCounterparty: command.rawCounterparty,
+        sourceLanguage: command.sourceLanguage,
+        notes: command.notes,
+        externalReference:
+            command.externalReference ?? current.externalReference,
+        paymentSourceId: !command.replacePaymentSource
+            ? current.paymentSourceId
+            : _optional(command.paymentSourceId, PaymentSourceId.new),
+        merchantId: !command.replaceMerchant
+            ? current.merchantId
+            : _optional(command.merchantId, MerchantId.new),
+        categoryId: !command.replaceCategory
+            ? current.categoryId
+            : _optional(command.categoryId, CategoryId.new),
+        subcategoryId: !command.replaceCategory
+            ? current.subcategoryId
+            : _optional(command.subcategoryId, CategoryId.new),
+        tagIds: command.replaceTags
+            ? command.tagIds?.map(TagId.new).toList(growable: false) ?? const []
+            : current.tagIds,
+        provenance: current.provenance,
+        reviewIssues: current.reviewIssues,
+        normalizedMoney: command.money == current.money
+            ? current.normalizedMoney
+            : const [],
+        createdAt: current.createdAt,
+        updatedAt: updatedAt,
+        transactionDate: command.transactionDate ?? current.transactionDate,
+        timeZoneId: command.timeZoneId ?? current.timeZoneId,
+      ),
+      updatedAt,
+      merchants: merchants == null ? const [] : await merchants!.listAll(),
     );
     await repository.save(updated);
     return TransactionDto.fromDomain(
@@ -160,12 +180,14 @@ final class ImportTransaction {
     this.clock, {
     this.classifier,
     this.applyRules,
+    this.merchants,
   });
 
   final TransactionRepository repository;
   final ApplicationClock clock;
   final ProposeTransactionClassification? classifier;
   final ApplyTransactionRules? applyRules;
+  final MerchantRepository? merchants;
 
   Future<ApplicationResult<TransactionDto>> call(
     ImportTransactionCommand command,
@@ -228,9 +250,14 @@ final class ImportTransaction {
       transactionDate: command.transactionDate,
       timeZoneId: command.timeZoneId,
     );
-    final resolved = applyRules == null
+    final classified = applyRules == null
         ? transaction
         : await applyRules!(transaction);
+    final resolved = synchronizeMerchantReviewIssue(
+      classified,
+      now,
+      merchants: merchants == null ? const [] : await merchants!.listAll(),
+    );
     await repository.save(resolved);
     return TransactionDto.fromDomain(resolved);
   });
@@ -571,7 +598,11 @@ final class ListReviewItems {
     return List.unmodifiable(
       transactions.expand(
         (transaction) => transaction.reviewIssues
-            .where((issue) => issue.status == ReviewIssueStatus.active)
+            .where(
+              (issue) =>
+                  issue.status == ReviewIssueStatus.active &&
+                  (query.reason == null || issue.reason == query.reason),
+            )
             .map((issue) => ReviewItemDto.fromDomain(transaction, issue)),
       ),
     );

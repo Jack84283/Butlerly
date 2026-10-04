@@ -41,7 +41,7 @@ final class ProposeTransactionClassification {
   }) => runApplication('propose transaction classification', () async {
     final allMerchants = await merchants.listAll();
     final merchant = merchantId == null
-        ? _resolveMerchant(allMerchants, description)
+        ? resolveMerchantFromEvidence(allMerchants, description)
         : allMerchants.where((value) => value.id == merchantId).firstOrNull;
     final normalizedDescription = normalizeMerchantName(description ?? '');
     final candidates = historical == null
@@ -70,7 +70,7 @@ final class ProposeTransactionClassification {
                 : normalizedDescription,
             excludeTransactionId: excludeTransactionId,
           );
-    final classification = _consistentClassification(candidates);
+    final classification = consistentClassification(candidates);
     if (classification != null) {
       return ClassificationProposal(
         merchantId: merchant?.id,
@@ -98,100 +98,100 @@ final class ProposeTransactionClassification {
       reason: 'no confirmed history or merchant default matched',
     );
   });
+}
 
-  static Merchant? _resolveMerchant(List<Merchant> values, String? text) {
-    final normalized = normalizeMerchantName(text ?? '');
-    if (normalized.isEmpty) return null;
-    final matches = <_MerchantMatch>[];
-    for (final merchant in values.where(
-      (value) => value.status == MerchantStatus.active,
-    )) {
-      final evidence = <_MerchantMatch>[];
-      if (normalized == merchant.normalizedName) {
-        evidence.add(
-          _MerchantMatch(
-            merchant: merchant,
-            evidenceLength: merchant.normalizedName.length,
-            kind: _MerchantMatchKind.exactCanonical,
-          ),
-        );
-      } else if (normalized.startsWith('${merchant.normalizedName} ')) {
-        evidence.add(
-          _MerchantMatch(
-            merchant: merchant,
-            evidenceLength: merchant.normalizedName.length,
-            kind: _MerchantMatchKind.canonicalPrefix,
-          ),
-        );
-      }
-      for (final alias in merchant.aliases.where(
-        (value) => value.status == MerchantMatchingStatus.active,
-      )) {
-        if (normalized == alias.normalizedAlias) {
-          evidence.add(
-            _MerchantMatch(
-              merchant: merchant,
-              evidenceLength: alias.normalizedAlias.length,
-              kind: _MerchantMatchKind.exactAlias,
-            ),
-          );
-        } else if (normalized.startsWith('${alias.normalizedAlias} ')) {
-          evidence.add(
-            _MerchantMatch(
-              merchant: merchant,
-              evidenceLength: alias.normalizedAlias.length,
-              kind: _MerchantMatchKind.aliasPrefix,
-            ),
-          );
-        }
-      }
-      for (final pattern in merchant.normalizationPatterns.where(
-        (value) => value.status == MerchantMatchingStatus.active,
-      )) {
-        if (normalized.contains(pattern.normalizedPattern)) {
-          evidence.add(
-            _MerchantMatch(
-              merchant: merchant,
-              evidenceLength: pattern.normalizedPattern.length,
-              kind: _MerchantMatchKind.normalizationPattern,
-            ),
-          );
-        }
-      }
-      if (evidence.isNotEmpty) {
-        evidence.sort(_MerchantMatch.compare);
-        matches.add(evidence.first);
-      }
-    }
-    if (matches.isEmpty) return null;
-    matches.sort(_MerchantMatch.compare);
-    return matches.first.merchant;
-  }
-
-  static (CategoryId, CategoryId?)? _consistentClassification(
-    List<Transaction> values,
-  ) {
-    if (values.isEmpty) return null;
-    final counts = <String, int>{};
-    for (final value in values) {
-      final key =
-          '${value.categoryId!.value}\u0000${value.subcategoryId?.value ?? ''}';
-      counts[key] = (counts[key] ?? 0) + 1;
-    }
-    final sorted = counts.entries.toList()
-      ..sort(
-        (a, b) => b.value == a.value
-            ? a.key.compareTo(b.key)
-            : b.value.compareTo(a.value),
+/// Resolves a merchant only through Butlerly's deterministic canonical,
+/// alias, and normalization-pattern matching rules.
+Merchant? resolveMerchantFromEvidence(Iterable<Merchant> values, String? text) {
+  final normalized = normalizeMerchantName(text ?? '');
+  if (normalized.isEmpty) return null;
+  final matches = <_MerchantMatch>[];
+  for (final merchant in values.where(
+    (value) => value.status == MerchantStatus.active,
+  )) {
+    final evidence = <_MerchantMatch>[];
+    if (normalized == merchant.normalizedName) {
+      evidence.add(
+        _MerchantMatch(
+          merchant: merchant,
+          evidenceLength: merchant.normalizedName.length,
+          kind: _MerchantMatchKind.exactCanonical,
+        ),
       );
-    final winner = sorted.first;
-    if (sorted.length > 1 && winner.value == sorted[1].value) return null;
-    final parts = winner.key.split('\u0000');
-    return (
-      CategoryId(parts.first),
-      parts.length == 1 || parts[1].isEmpty ? null : CategoryId(parts[1]),
-    );
+    } else if (normalized.startsWith('${merchant.normalizedName} ')) {
+      evidence.add(
+        _MerchantMatch(
+          merchant: merchant,
+          evidenceLength: merchant.normalizedName.length,
+          kind: _MerchantMatchKind.canonicalPrefix,
+        ),
+      );
+    }
+    for (final alias in merchant.aliases.where(
+      (value) => value.status == MerchantMatchingStatus.active,
+    )) {
+      if (normalized == alias.normalizedAlias) {
+        evidence.add(
+          _MerchantMatch(
+            merchant: merchant,
+            evidenceLength: alias.normalizedAlias.length,
+            kind: _MerchantMatchKind.exactAlias,
+          ),
+        );
+      } else if (normalized.startsWith('${alias.normalizedAlias} ')) {
+        evidence.add(
+          _MerchantMatch(
+            merchant: merchant,
+            evidenceLength: alias.normalizedAlias.length,
+            kind: _MerchantMatchKind.aliasPrefix,
+          ),
+        );
+      }
+    }
+    for (final pattern in merchant.normalizationPatterns.where(
+      (value) => value.status == MerchantMatchingStatus.active,
+    )) {
+      if (normalized.contains(pattern.normalizedPattern)) {
+        evidence.add(
+          _MerchantMatch(
+            merchant: merchant,
+            evidenceLength: pattern.normalizedPattern.length,
+            kind: _MerchantMatchKind.normalizationPattern,
+          ),
+        );
+      }
+    }
+    if (evidence.isNotEmpty) {
+      evidence.sort(_MerchantMatch.compare);
+      matches.add(evidence.first);
+    }
   }
+  if (matches.isEmpty) return null;
+  matches.sort(_MerchantMatch.compare);
+  return matches.first.merchant;
+}
+
+(CategoryId, CategoryId?)? consistentClassification(List<Transaction> values) {
+  if (values.isEmpty) return null;
+  final counts = <String, int>{};
+  for (final value in values) {
+    final key =
+        '${value.categoryId!.value}\u0000${value.subcategoryId?.value ?? ''}';
+    counts[key] = (counts[key] ?? 0) + 1;
+  }
+  final sorted = counts.entries.toList()
+    ..sort(
+      (a, b) => b.value == a.value
+          ? a.key.compareTo(b.key)
+          : b.value.compareTo(a.value),
+    );
+  final winner = sorted.first;
+  if (sorted.length > 1 && winner.value == sorted[1].value) return null;
+  final parts = winner.key.split('\u0000');
+  return (
+    CategoryId(parts.first),
+    parts.length == 1 || parts[1].isEmpty ? null : CategoryId(parts[1]),
+  );
 }
 
 /// A match is ranked by the evidence that matched the source text, not by the

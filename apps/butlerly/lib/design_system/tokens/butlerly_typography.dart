@@ -14,6 +14,99 @@ abstract final class ButlerlyTypography {
   static const financialAmountFeatures = [FontFeature.tabularFigures()];
   static const navigationLabelFontSize = 10.5;
 
+  // Semantic system-sans roles used by dense operational surfaces. These are
+  // intentionally separate from the editorial TextTheme so a screen can opt
+  // into the platform-native reading voice without changing every surface.
+  static TextStyle _systemSans(
+    TextStyle base, {
+    required double fontSize,
+    required double height,
+    required FontWeight fontWeight,
+    double? letterSpacing,
+    List<FontFeature>? fontFeatures,
+  }) => TextStyle(
+    color: base.color,
+    fontSize: fontSize,
+    height: height,
+    fontWeight: fontWeight,
+    letterSpacing: letterSpacing,
+    fontFeatures: fontFeatures,
+    decoration: base.decoration,
+    decorationColor: base.decorationColor,
+    decorationStyle: base.decorationStyle,
+    decorationThickness: base.decorationThickness,
+  );
+
+  static TextStyle pageHeroTitle(TextStyle base) => _systemSans(
+    base,
+    fontSize: 32,
+    height: 1.12,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.3,
+  );
+
+  static TextStyle pageIntro(TextStyle base) =>
+      _systemSans(base, fontSize: 16, height: 1.3, fontWeight: FontWeight.w400);
+
+  static TextStyle brandTitle(TextStyle base) => _systemSans(
+    base,
+    fontSize: 20,
+    height: 1.15,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.2,
+  );
+
+  static TextStyle cardTitle(TextStyle base) => _systemSans(
+    base,
+    fontSize: 21,
+    height: 1.18,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.15,
+  );
+
+  static TextStyle cardSubtitle(TextStyle base) =>
+      _systemSans(base, fontSize: 14, height: 1.3, fontWeight: FontWeight.w400);
+
+  static TextStyle cardAction(TextStyle base) =>
+      _systemSans(base, fontSize: 14, height: 1.3, fontWeight: FontWeight.w600);
+
+  static TextStyle metricLabel(TextStyle base) =>
+      _systemSans(base, fontSize: 14, height: 1.3, fontWeight: FontWeight.w500);
+
+  static TextStyle metricValue(TextStyle base) => _systemSans(
+    base,
+    fontSize: 24,
+    height: 1.08,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.25,
+    fontFeatures: financialAmountFeatures,
+  );
+
+  static TextStyle metricChange(TextStyle base) =>
+      _systemSans(base, fontSize: 14, height: 1.3, fontWeight: FontWeight.w600);
+
+  static TextStyle rowTitle(TextStyle base) => _systemSans(
+    base,
+    fontSize: 16,
+    height: 1.25,
+    fontWeight: FontWeight.w600,
+  );
+
+  static TextStyle rowMetadata(TextStyle base) =>
+      _systemSans(base, fontSize: 14, height: 1.3, fontWeight: FontWeight.w400);
+
+  static TextStyle rowAmount(TextStyle base) => _systemSans(
+    base,
+    fontSize: 16,
+    height: 1.25,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.1,
+    fontFeatures: financialAmountFeatures,
+  );
+
+  static TextStyle badgeLabel(TextStyle base) =>
+      _systemSans(base, fontSize: 13, height: 1.2, fontWeight: FontWeight.w500);
+
   static TextStyle _editorial(TextStyle? base) =>
       (base ?? const TextStyle()).copyWith(
         fontFamily: editorialFontFamily,

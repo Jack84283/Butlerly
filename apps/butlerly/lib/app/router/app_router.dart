@@ -154,8 +154,14 @@ final appRouter = GoRouter(
           builder: (context, state) => ReviewPage(
             showPossibleDuplicates:
                 state.uri.queryParameters['view'] == 'duplicates',
+            showUncategorized:
+                state.uri.queryParameters['view'] == 'uncategorized',
             showNeedsReview: state.uri.queryParameters['view'] == 'needsReview',
             reviewScope: _reviewScope(state.uri.queryParameters),
+            reviewReason: _reviewReason(state.uri.queryParameters),
+            invalidReviewReason:
+                state.uri.queryParameters.containsKey('reason') &&
+                _reviewReason(state.uri.queryParameters) == null,
           ),
         ),
         GoRoute(
@@ -309,6 +315,15 @@ ReviewPeriodScope _reviewScope(Map<String, String> parameters) {
     endDate: to,
     timeZoneId: timeZoneId,
   );
+}
+
+ReviewIssueReason? _reviewReason(Map<String, String> parameters) {
+  final value = parameters['reason'];
+  if (value == null) return null;
+  for (final reason in ReviewIssueReason.values) {
+    if (reason.name == value) return reason;
+  }
+  return null;
 }
 
 DateTime? _queryMonth(String? value) {

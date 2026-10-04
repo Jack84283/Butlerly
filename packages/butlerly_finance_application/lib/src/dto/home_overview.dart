@@ -23,6 +23,9 @@ final class HomeOverview {
     required List<MonthlySpendingTrendPoint> monthlyTrend,
     required bool monthlyTrendUnavailable,
     required int reviewCount,
+    required int uncategorizedTransactionCount,
+    required int possibleDuplicateCount,
+    required int merchantReviewCount,
     required List<TransactionDto> recentTransactions,
     required List<InsightResult> insights,
     required bool analysisUnavailable,
@@ -36,6 +39,9 @@ final class HomeOverview {
          monthlyTrend: monthlyTrend,
          monthlyTrendUnavailable: monthlyTrendUnavailable,
          reviewCount: reviewCount,
+         uncategorizedTransactionCount: uncategorizedTransactionCount,
+         possibleDuplicateCount: possibleDuplicateCount,
+         merchantReviewCount: merchantReviewCount,
          recentTransactions: recentTransactions,
          insights: insights,
          analysisUnavailable: analysisUnavailable,
@@ -65,6 +71,9 @@ final class HomeOverview {
     this.monthlyTrend = const [],
     this.monthlyTrendUnavailable = true,
     this.reviewCount = 0,
+    this.uncategorizedTransactionCount = 0,
+    this.possibleDuplicateCount = 0,
+    this.merchantReviewCount = 0,
     this.recentTransactions = const [],
     this.insights = const [],
     this.analysisUnavailable = false,
@@ -88,6 +97,9 @@ final class HomeOverview {
   final bool monthlyTrendUnavailable;
 
   final int reviewCount;
+  final int uncategorizedTransactionCount;
+  final int possibleDuplicateCount;
+  final int merchantReviewCount;
 
   final List<TransactionDto> recentTransactions;
 

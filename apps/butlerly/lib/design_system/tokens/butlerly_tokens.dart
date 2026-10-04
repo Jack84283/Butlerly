@@ -180,6 +180,7 @@ abstract final class ButlerlyRadius {
   static const control = small;
   static const input = standard;
   static const card = standard;
+  static const dashboardCard = 16.0;
   static const sheet = large;
   static const dialog = large;
   static const pill = full;

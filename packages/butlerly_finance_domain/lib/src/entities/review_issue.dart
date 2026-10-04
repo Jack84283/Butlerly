@@ -6,6 +6,7 @@ enum ReviewIssueReason {
   uncertain,
   conflict,
   duplicateCandidate,
+  merchantNeedsReview,
   other,
   normalizationMissing,
 }

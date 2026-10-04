@@ -30,6 +30,8 @@ class TransactionRow extends StatelessWidget {
     this.onPossibleDuplicateTap,
     this.selectionControl,
     this.showNavigationIndicator = false,
+    this.showCategoryPill = false,
+    this.variant = ButlerlyTransactionRowVariant.standard,
     super.key,
   });
 
@@ -46,6 +48,8 @@ class TransactionRow extends StatelessWidget {
   final Widget? selectionControl;
   final VoidCallback onTap;
   final bool showNavigationIndicator;
+  final bool showCategoryPill;
+  final ButlerlyTransactionRowVariant variant;
 
   @override
   Widget build(BuildContext context) {
@@ -109,6 +113,8 @@ class TransactionRow extends StatelessWidget {
       selectionControl: selectionControl,
       onTap: onTap,
       showNavigationIndicator: showNavigationIndicator,
+      showCategoryPill: showCategoryPill,
+      variant: variant,
     );
   }
 }

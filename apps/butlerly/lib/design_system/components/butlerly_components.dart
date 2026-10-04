@@ -243,6 +243,8 @@ class _ButlerlyPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
       oldDelegate.bottomGap != bottomGap;
 }
 
+enum ButlerlyCardVariant { standard, dashboard }
+
 class ButlerlyCard extends StatelessWidget {
   const ButlerlyCard({
     required this.child,
@@ -250,6 +252,7 @@ class ButlerlyCard extends StatelessWidget {
     this.onTap,
     this.semanticLabel,
     this.color,
+    this.variant = ButlerlyCardVariant.standard,
     super.key,
   });
 
@@ -258,21 +261,36 @@ class ButlerlyCard extends StatelessWidget {
   final VoidCallback? onTap;
   final String? semanticLabel;
   final Color? color;
+  final ButlerlyCardVariant variant;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    container: true,
-    button: onTap != null,
-    label: semanticLabel,
-    child: Card(
-      color: color,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-        onTap: onTap,
-        child: Padding(padding: padding, child: child),
+  Widget build(BuildContext context) {
+    final dashboard = variant == ButlerlyCardVariant.dashboard;
+    final radius = dashboard
+        ? ButlerlyRadius.dashboardCard
+        : ButlerlyRadius.standard;
+    return Semantics(
+      container: true,
+      button: onTap != null,
+      label: semanticLabel,
+      child: Card(
+        color: color,
+        shape: dashboard
+            ? RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(radius),
+                side: BorderSide(
+                  color: context.colors.border.withValues(alpha: 0.8),
+                ),
+              )
+            : null,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(radius),
+          onTap: onTap,
+          child: Padding(padding: padding, child: child),
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 /// Responsive title row shared by semantic cards across Butlerly surfaces.
@@ -281,12 +299,16 @@ class ButlerlyCardHeader extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.action,
+    this.titleStyle,
+    this.subtitleStyle,
     super.key,
   });
 
   final String title;
   final String? subtitle;
   final Widget? action;
+  final TextStyle? titleStyle;
+  final TextStyle? subtitleStyle;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -297,10 +319,16 @@ class ButlerlyCardHeader extends StatelessWidget {
       final titleBlock = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            title,
+            style: titleStyle ?? Theme.of(context).textTheme.titleLarge,
+          ),
           if (subtitle != null) ...[
             const SizedBox(height: ButlerlySpacing.micro),
-            Text(subtitle!, style: Theme.of(context).textTheme.bodySmall),
+            Text(
+              subtitle!,
+              style: subtitleStyle ?? Theme.of(context).textTheme.bodySmall,
+            ),
           ],
         ],
       );
@@ -718,6 +746,8 @@ class ButlerlyTransactionList extends StatelessWidget {
   );
 }
 
+enum ButlerlyTransactionRowVariant { standard, dashboard }
+
 class ButlerlyTransactionListItem extends StatelessWidget {
   const ButlerlyTransactionListItem({
     required this.title,
@@ -740,6 +770,8 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     this.selectionControl,
     this.onTap,
     this.showNavigationIndicator = false,
+    this.showCategoryPill = false,
+    this.variant = ButlerlyTransactionRowVariant.standard,
     super.key,
   });
 
@@ -763,6 +795,8 @@ class ButlerlyTransactionListItem extends StatelessWidget {
   final Widget? selectionControl;
   final VoidCallback? onTap;
   final bool showNavigationIndicator;
+  final bool showCategoryPill;
+  final ButlerlyTransactionRowVariant variant;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -822,22 +856,48 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: _title(context)),
-                        const SizedBox(
-                          width:
-                              ButlerlyTransactionItemTokens.titleAmountSpacing,
-                        ),
-                        Flexible(
-                          child: Align(
-                            alignment: AlignmentDirectional.centerEnd,
-                            child: _signedAmount(context),
+                    if (_dashboardReflows(context))
+                      _dashboardHeader(context)
+                    else
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: _titleWithDashboardPill(context)),
+                          const SizedBox(
+                            width: ButlerlyTransactionItemTokens
+                                .titleAmountSpacing,
                           ),
+                          Flexible(
+                            child: Align(
+                              alignment: AlignmentDirectional.centerEnd,
+                              child: _signedAmount(context),
+                            ),
+                          ),
+                          if (showNavigationIndicator)
+                            Padding(
+                              padding: const EdgeInsetsDirectional.only(
+                                start: ButlerlySpacing.compact,
+                              ),
+                              child: Icon(
+                                Icons.chevron_right_rounded,
+                                size: 20,
+                                color: context.colors.tertiaryText,
+                              ),
+                            ),
+                        ],
+                      ),
+                    if (variant != ButlerlyTransactionRowVariant.dashboard &&
+                        showCategoryPill &&
+                        categoryLabel?.trim().isNotEmpty == true)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          top: ButlerlyTransactionItemTokens.headerSpacing,
                         ),
-                      ],
-                    ),
+                        child: Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: _categoryPill(context),
+                        ),
+                      ),
                     if (_metadataParts.isNotEmpty) ...[
                       const SizedBox(
                         height: ButlerlyTransactionItemTokens.headerSpacing,
@@ -956,6 +1016,12 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                         ),
                       ),
                     ),
+                  if (showNavigationIndicator)
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      size: 20,
+                      color: context.colors.tertiaryText,
+                    ),
                   ?selectionControl,
                 ],
               ),
@@ -992,6 +1058,73 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     textHeightBehavior: ButlerlyTransactionItemTokens.textHeightBehavior,
   );
 
+  bool _dashboardReflows(BuildContext context) =>
+      variant == ButlerlyTransactionRowVariant.dashboard &&
+      MediaQuery.textScalerOf(context).scale(14) > 20;
+
+  Widget _titleWithDashboardPill(BuildContext context) =>
+      variant == ButlerlyTransactionRowVariant.dashboard
+      ? Row(
+          children: [
+            Expanded(child: _title(context)),
+            if (showCategoryPill &&
+                categoryLabel?.trim().isNotEmpty == true) ...[
+              const SizedBox(width: ButlerlySpacing.compact),
+              _categoryPill(context),
+            ],
+          ],
+        )
+      : _title(context);
+
+  Widget _dashboardHeader(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      _titleWithDashboardPill(context),
+      const SizedBox(height: ButlerlySpacing.micro),
+      Row(
+        children: [
+          Flexible(
+            child: Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: _signedAmount(context),
+            ),
+          ),
+          if (showNavigationIndicator) _navigationIndicator(context),
+        ],
+      ),
+    ],
+  );
+
+  Widget _navigationIndicator(BuildContext context) => Padding(
+    padding: const EdgeInsetsDirectional.only(start: ButlerlySpacing.compact),
+    child: Icon(
+      Icons.chevron_right_rounded,
+      size: 20,
+      color: context.colors.tertiaryText,
+    ),
+  );
+
+  Widget _categoryPill(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      color: ButlerlyChartColors.category(
+        categoryId ?? categoryLabel!,
+      ).withValues(alpha: 0.14),
+      borderRadius: BorderRadius.circular(ButlerlyRadius.full),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: ButlerlySpacing.compact,
+        vertical: ButlerlySpacing.micro,
+      ),
+      child: Text(
+        categoryLabel!,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: context.transactionItemMetadata,
+      ),
+    ),
+  );
+
   Widget _metadataText(BuildContext context) => Text(
     _metadataParts.join(' · '),
     maxLines: 1,
@@ -1006,14 +1139,20 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     overflow: TextOverflow.ellipsis,
     textAlign: TextAlign.end,
     style: context.transactionItemAmount.copyWith(
-      color: isIncome ? context.colors.success : null,
+      color: isIncome
+          ? context.colors.success
+          : variant == ButlerlyTransactionRowVariant.dashboard
+          ? context.colors.error
+          : null,
     ),
     textHeightBehavior: ButlerlyTransactionItemTokens.textHeightBehavior,
   );
 
   List<String> get _metadataParts => [
-    if (categoryLabel case final value? when value.trim().isNotEmpty)
-      value.trim(),
+    if (!showCategoryPill &&
+        categoryLabel != null &&
+        categoryLabel!.trim().isNotEmpty)
+      categoryLabel!.trim(),
     if (subcategoryLabel case final value?
         when value.trim().isNotEmpty && value.trim() != categoryLabel?.trim())
       value.trim(),
@@ -1122,6 +1261,8 @@ class ButlerlyRecordRow extends ButlerlyTransactionListItem {
     super.selectionControl,
     super.onTap,
     super.showNavigationIndicator,
+    super.showCategoryPill,
+    super.variant,
     super.key,
   });
 }
