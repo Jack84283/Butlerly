@@ -332,93 +332,101 @@ class _HomePageState extends State<HomePage> {
     final content = ButlerlyContentCanvas(
       canvasKey: const ValueKey('home-page-canvas'),
       child: LayoutBuilder(
-        builder: (context, constraints) => CustomScrollView(
-          physics: useCupertinoRefresh
-              ? const BouncingScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics(),
-                )
-              : const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _HomePinnedHeaderDelegate(
-                extent: _homeHeaderExtent(
+        builder: (context, constraints) {
+          final headerExtent = _homeHeaderExtent(
+            context,
+            crossAxisExtent: constraints.maxWidth,
+          );
+          return CustomScrollView(
+            physics: useCupertinoRefresh
+                ? const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  )
+                : const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverPersistentHeader(
+                pinned: _homeHeaderShouldPin(
                   context,
+                  viewportHeight: constraints.maxHeight,
                   crossAxisExtent: constraints.maxWidth,
+                  headerExtent: headerExtent,
                 ),
-                child: FutureBuilder<_HomeData>(
-                  future: future,
-                  builder: (context, snapshot) {
-                    final data = snapshot.hasError
-                        ? _HomeData.unavailable(
-                            _now,
-                            selectedMonth: _selectedMonth,
-                          )
-                        : snapshot.data ??
-                              _HomeData.empty(
-                                _now,
-                                selectedMonth: _selectedMonth,
-                              );
-                    final loading =
-                        !snapshot.hasError &&
-                        snapshot.connectionState != ConnectionState.done;
-                    return _HomeHeader(
-                      month: data.displayMonth,
-                      greetingKey: homeGreetingKey(_now),
-                      onMonthTap: loading || data.period == null
-                          ? null
-                          : () => _selectMonth(data),
-                    );
-                  },
-                ),
-              ),
-            ),
-            if (useCupertinoRefresh)
-              CupertinoSliverRefreshControl(
-                key: const ValueKey('home-cupertino-refresh-control'),
-                onRefresh: _refresh,
-              ),
-            ButlerlySliverContentSurface(
-              surfaceKey: const ValueKey('home-page-content-surface'),
-              surfaceHorizontalPadding: ButlerlySize.contentGutter * 2,
-              sliver: SliverToBoxAdapter(
-                child: Padding(
-                  key: const ValueKey('home-page-content-padding'),
-                  padding: const EdgeInsets.fromLTRB(
-                    ButlerlySize.contentGutter,
-                    ButlerlySpacing.small,
-                    ButlerlySize.contentGutter,
-                    ButlerlySpacing.large,
+                delegate: _HomePinnedHeaderDelegate(
+                  extent: headerExtent,
+                  child: FutureBuilder<_HomeData>(
+                    future: future,
+                    builder: (context, snapshot) {
+                      final data = snapshot.hasError
+                          ? _HomeData.unavailable(
+                              _now,
+                              selectedMonth: _selectedMonth,
+                            )
+                          : snapshot.data ??
+                                _HomeData.empty(
+                                  _now,
+                                  selectedMonth: _selectedMonth,
+                                );
+                      final loading =
+                          !snapshot.hasError &&
+                          snapshot.connectionState != ConnectionState.done;
+                      return _HomeHeader(
+                        month: data.displayMonth,
+                        greetingKey: homeGreetingKey(_now),
+                        onMonthTap: loading || data.period == null
+                            ? null
+                            : () => _selectMonth(data),
+                      );
+                    },
                   ),
-                  child: SizedBox(
-                    key: const ValueKey('home-page-content'),
-                    width: double.infinity,
-                    child: FutureBuilder<_HomeData>(
-                      key: const ValueKey('home-body-data'),
-                      future: future,
-                      builder: (context, snapshot) {
-                        final data = snapshot.hasError
-                            ? _HomeData.unavailable(
-                                _now,
-                                selectedMonth: _selectedMonth,
-                              )
-                            : snapshot.data ??
-                                  _HomeData.empty(
-                                    _now,
-                                    selectedMonth: _selectedMonth,
-                                  );
-                        final loading =
-                            !snapshot.hasError &&
-                            snapshot.connectionState != ConnectionState.done;
-                        return _homeContent(context, data, loading);
-                      },
+                ),
+              ),
+              if (useCupertinoRefresh)
+                CupertinoSliverRefreshControl(
+                  key: const ValueKey('home-cupertino-refresh-control'),
+                  onRefresh: _refresh,
+                ),
+              ButlerlySliverContentSurface(
+                surfaceKey: const ValueKey('home-page-content-surface'),
+                surfaceHorizontalPadding: ButlerlySize.contentGutter * 2,
+                sliver: SliverToBoxAdapter(
+                  child: Padding(
+                    key: const ValueKey('home-page-content-padding'),
+                    padding: const EdgeInsets.fromLTRB(
+                      ButlerlySize.contentGutter,
+                      ButlerlySpacing.small,
+                      ButlerlySize.contentGutter,
+                      ButlerlySpacing.large,
+                    ),
+                    child: SizedBox(
+                      key: const ValueKey('home-page-content'),
+                      width: double.infinity,
+                      child: FutureBuilder<_HomeData>(
+                        key: const ValueKey('home-body-data'),
+                        future: future,
+                        builder: (context, snapshot) {
+                          final data = snapshot.hasError
+                              ? _HomeData.unavailable(
+                                  _now,
+                                  selectedMonth: _selectedMonth,
+                                )
+                              : snapshot.data ??
+                                    _HomeData.empty(
+                                      _now,
+                                      selectedMonth: _selectedMonth,
+                                    );
+                          final loading =
+                              !snapshot.hasError &&
+                              snapshot.connectionState != ConnectionState.done;
+                          return _homeContent(context, data, loading);
+                        },
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
+            ],
+          );
+        },
       ),
     );
 
@@ -577,6 +585,18 @@ double _homeHeaderExtent(
       introHeight +
       ButlerlySpacing.small +
       ButlerlySpacing.micro;
+}
+
+bool _homeHeaderShouldPin(
+  BuildContext context, {
+  required double viewportHeight,
+  required double crossAxisExtent,
+  required double headerExtent,
+}) {
+  final scaler = MediaQuery.textScalerOf(context);
+  final compactAccessibilityViewport =
+      scaler.scale(14) >= 35 && viewportHeight < 640 && crossAxisExtent < 360;
+  return !compactAccessibilityViewport && headerExtent < viewportHeight;
 }
 
 class _HomePinnedHeaderDelegate extends SliverPersistentHeaderDelegate {

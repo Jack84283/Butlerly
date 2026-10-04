@@ -90,6 +90,38 @@ void main() {
     },
   );
 
+  testWidgets(
+    'Home lets an oversized narrow accessibility header scroll away',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.devicePixelRatio = 1;
+      tester.view.platformDispatcher.textScaleFactorTestValue = 3;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
+
+      await tester.pumpWidget(_testApp(router));
+      await tester.pumpAndSettle();
+
+      final scrollView = tester.widget<CustomScrollView>(
+        find.byType(CustomScrollView),
+      );
+      final header = scrollView.slivers
+          .whereType<SliverPersistentHeader>()
+          .single;
+      expect(header.pinned, isFalse);
+
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('home-summary-card')),
+        400,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('home-summary-card')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('Home period introduction is localized outside English', (
     tester,
   ) async {
