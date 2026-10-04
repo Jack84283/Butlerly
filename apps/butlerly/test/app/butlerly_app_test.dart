@@ -116,14 +116,15 @@ void main() {
     expect(find.text('Butlerly'), findsOneWidget);
     expect(find.text('August 2026'), findsOneWidget);
     expect(find.text('Good morning'), findsOneWidget);
-    expect(find.text('Total spending'), findsOneWidget);
-    expect(find.text('Spending trend'), findsOneWidget);
-    expect(find.text('Spending by category'), findsOneWidget);
-    expect(find.text('Recent transactions'), findsOneWidget);
-    expect(find.text('No transactions yet'), findsOneWidget);
+    expect(find.text('No financial activity in this period.'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('home-empty-transactions-card')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('home-notification-action')), findsOneWidget);
     expect(find.text('Home'), findsAtLeastNWidgets(1));
     expect(find.text('Txns'), findsOneWidget);
-    expect(find.bySemanticsLabel('Add transaction'), findsOneWidget);
+    expect(find.bySemanticsLabel('Add transaction'), findsAtLeastNWidgets(1));
     expect(find.text('Tools'), findsOneWidget);
     expect(find.text('More'), findsAtLeastNWidgets(1));
     expect(find.text('More...'), findsNothing);
@@ -147,7 +148,7 @@ void main() {
         find.ancestor(of: card, matching: find.byType(InkWell)),
         findsNothing,
       );
-      expect(find.bySemanticsLabel('Add transaction'), findsOneWidget);
+      expect(find.bySemanticsLabel('Add transaction'), findsAtLeastNWidgets(1));
     },
   );
 
@@ -167,7 +168,7 @@ void main() {
     await tester.tap(find.byKey(const Key('home-month-2026-7')));
     await tester.pumpAndSettle();
     expect(find.text('July 2026'), findsOneWidget);
-    expect(find.text('Total spending'), findsOneWidget);
+    expect(find.text('No financial activity in this period.'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('home-month-selector')));
     await tester.pumpAndSettle();
@@ -196,13 +197,11 @@ void main() {
         isTrue,
       );
     }
-    await tester.tap(find.bySemanticsLabel('Add transaction'));
+    final addActions = find.bySemanticsLabel('Add transaction');
+    await tester.tap(addActions.last);
     await tester.pumpAndSettle();
     expect(
-      tester
-              .getSemantics(find.bySemanticsLabel('Add transaction'))
-              .flagsCollection
-              .isSelected ==
+      tester.getSemantics(addActions.last).flagsCollection.isSelected ==
           Tristate.isTrue,
       isTrue,
     );
@@ -309,10 +308,11 @@ void main() {
     expect(find.text('Butlerly'), findsOneWidget);
     expect(find.text('August 2026'), findsOneWidget);
     expect(find.text('Good evening'), findsOneWidget);
-    expect(find.text('Total spending'), findsOneWidget);
-    expect(find.text('Spending trend'), findsOneWidget);
-    expect(find.text('Spending by category'), findsOneWidget);
-    expect(find.text('Recent transactions'), findsOneWidget);
+    expect(find.text('No financial activity in this period.'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('home-empty-transactions-card')),
+      findsOneWidget,
+    );
   });
 
   for (final size in const [Size(320, 568), Size(390, 844), Size(430, 932)]) {
@@ -336,8 +336,14 @@ void main() {
       expect(exception, isNull);
       expect(find.text('Good morning'), findsOneWidget);
       expect(find.text('August 2026'), findsOneWidget);
-      expect(find.text('Total spending'), findsOneWidget);
-      expect(find.text('Recent transactions'), findsOneWidget);
+      expect(
+        find.text('No financial activity in this period.'),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('home-empty-transactions-card')),
+        findsOneWidget,
+      );
     });
   }
 

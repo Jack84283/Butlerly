@@ -21,7 +21,7 @@ String analysisPeriodDescription(
   });
   return value == null
       ? label
-      : '$label · ${value.startDate} – ${value.endDate}';
+      : '$label · ${localizedPeriodRange(context, startDate: value.startDate, endDate: value.endDate)}';
 }
 
 String analysisMoney(BuildContext context, AnalysisMetric metric) =>

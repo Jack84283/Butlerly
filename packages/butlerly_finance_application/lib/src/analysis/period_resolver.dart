@@ -47,6 +47,31 @@ final class FinancialInstantRange {
   final DateTime? endExclusive;
 }
 
+/// Parses a date-only financial boundary without allowing DateTime's
+/// overflow normalization to turn malformed input into another date.
+DateTime parseFinancialDateOnly(String value) {
+  final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(value);
+  if (match == null) {
+    throw const DomainValidationException(
+      code: DomainErrorCode.invalidState,
+      field: 'period',
+      message: 'Financial period dates must use YYYY-MM-DD.',
+    );
+  }
+  final year = int.parse(match.group(1)!);
+  final month = int.parse(match.group(2)!);
+  final day = int.parse(match.group(3)!);
+  final parsed = DateTime.utc(year, month, day);
+  if (parsed.year != year || parsed.month != month || parsed.day != day) {
+    throw const DomainValidationException(
+      code: DomainErrorCode.invalidState,
+      field: 'period',
+      message: 'Financial period contains an invalid calendar date.',
+    );
+  }
+  return parsed;
+}
+
 /// A validated financial timezone resolved by the application boundary.
 ///
 /// Missing preferences and preference-store failures deliberately use UTC at
@@ -389,8 +414,7 @@ final class AnalysisPeriodResolver {
       financialDateAt(instant, timeZoneId);
 
   DateTime _parseDate(String value) {
-    final parsed = DateTime.parse(value);
-    return DateTime.utc(parsed.year, parsed.month, parsed.day);
+    return parseFinancialDateOnly(value);
   }
 
   DateTime _dateOnly(DateTime value) =>

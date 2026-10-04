@@ -475,14 +475,20 @@ class _PeriodSummaryCard extends StatelessWidget {
     final values = <_InsightValue>[
       _InsightValue(
         label: context.l10n.text('currentPeriod'),
-        value:
-            '${summary.context.period.startDate} – ${summary.context.period.endDate}',
+        value: localizedPeriodRange(
+          context,
+          startDate: summary.context.period.startDate,
+          endDate: summary.context.period.endDate,
+        ),
       ),
       if (summary.baselineContext != null)
         _InsightValue(
           label: context.l10n.text('previousPeriod'),
-          value:
-              '${summary.baselineContext!.period.startDate} – ${summary.baselineContext!.period.endDate}',
+          value: localizedPeriodRange(
+            context,
+            startDate: summary.baselineContext!.period.startDate,
+            endDate: summary.baselineContext!.period.endDate,
+          ),
         ),
       _InsightValue(
         label: context.l10n.text('totalSpending'),

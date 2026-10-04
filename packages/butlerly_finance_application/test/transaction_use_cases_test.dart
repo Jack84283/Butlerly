@@ -895,6 +895,118 @@ void main() {
     );
   });
 
+  test('scoped review items are filtered by the application query', () async {
+    final inside = transaction(
+      DateTime.utc(2026, 9, 5, 12),
+      id: 'review-inside',
+      transactionDate: '2026-09-05',
+    );
+    final outside = transaction(
+      DateTime.utc(2026, 8, 5, 12),
+      id: 'review-outside',
+      transactionDate: '2026-08-05',
+    );
+    for (final value in [inside, outside]) {
+      transactions.values[value.id.value] = value.addReviewIssue(
+        ReviewIssue(
+          id: ReviewIssueId('${value.id.value}-issue'),
+          transactionId: value.id,
+          reason: ReviewIssueReason.uncertain,
+          createdAt: value.updatedAt,
+        ),
+        value.updatedAt,
+      );
+    }
+
+    final result = await ListReviewItems(transactions)(
+      ListReviewItemsQuery(
+        scope: ReviewPeriodScope.fromDateValues(
+          startDate: '2026-09-01',
+          endDate: '2026-09-16',
+          timeZoneId: 'UTC',
+        ),
+      ),
+    );
+
+    expect(result, isA<ApplicationSuccess<List<ReviewItemDto>>>());
+    expect(
+      (result as ApplicationSuccess<List<ReviewItemDto>>).value.map(
+        (item) => item.transactionId,
+      ),
+      ['review-inside'],
+    );
+    expect(transactions.reviewQueryCalls, 0);
+    expect(transactions.lastQuery?.needsReview, isTrue);
+    expect(transactions.lastQuery?.from, DateTime.utc(2026, 9, 1));
+    expect(transactions.lastQuery?.to, DateTime.utc(2026, 9, 16));
+  });
+
+  test('invalid review scope returns a validation failure', () async {
+    final result = await ListReviewItems(transactions)(
+      const ListReviewItemsQuery(scope: ReviewPeriodScope.invalid()),
+    );
+
+    expect(
+      result,
+      isA<ApplicationFailure<List<ReviewItemDto>>>().having(
+        (value) => value.failure.code,
+        'code',
+        ApplicationFailureCode.validation,
+      ),
+    );
+    expect(transactions.reviewQueryCalls, 0);
+    expect(transactions.lastQuery, isNull);
+  });
+
+  test('reversed review dates are an invalid scope', () {
+    expect(
+      ReviewPeriodScope.fromDateValues(
+        startDate: '2026-09-16',
+        endDate: '2026-09-01',
+        timeZoneId: 'UTC',
+      ).isInvalid,
+      isTrue,
+    );
+  });
+
+  test('scoped review uses the authoritative financial timezone', () async {
+    final base = transaction(
+      DateTime.utc(2026, 9, 1, 7),
+      id: 'review-timezone',
+    );
+    final value = base.addReviewIssue(
+      ReviewIssue(
+        id: ReviewIssueId('review-timezone-issue'),
+        transactionId: TransactionId('review-timezone'),
+        reason: ReviewIssueReason.uncertain,
+        createdAt: base.updatedAt,
+      ),
+      base.updatedAt,
+    );
+    transactions.values[value.id.value] = value;
+
+    final result = await ListReviewItems(transactions)(
+      ListReviewItemsQuery(
+        scope: ReviewPeriodScope.fromDateValues(
+          startDate: '2026-09-01',
+          endDate: '2026-09-01',
+          timeZoneId: 'America/Los_Angeles',
+        ),
+      ),
+    );
+
+    expect(result, isA<ApplicationSuccess<List<ReviewItemDto>>>());
+    expect(
+      (result as ApplicationSuccess<List<ReviewItemDto>>).value,
+      hasLength(1),
+    );
+    expect(transactions.lastQuery?.occurredAtFrom, DateTime.utc(2026, 9, 1, 7));
+    expect(
+      transactions.lastQuery?.occurredAtToExclusive,
+      DateTime.utc(2026, 9, 2, 7),
+    );
+  });
+
   test('maps review repository failures to an application failure', () async {
     transactions.failure = const RepositoryException(
       RepositoryFailureCode.unavailable,
@@ -1067,6 +1179,10 @@ final class MemoryTransactions
     lastQuery = query;
     return values.values.where((value) {
       if (query.status != null && value.status != query.status) return false;
+      if (query.needsReview == true &&
+          value.reviewState != TransactionReviewState.needsReview) {
+        return false;
+      }
 
       if (query.from == null && query.to == null) return true;
 

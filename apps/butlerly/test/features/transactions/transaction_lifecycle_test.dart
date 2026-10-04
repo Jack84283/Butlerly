@@ -1558,6 +1558,100 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  testWidgets(
+    'Home-scoped Review keeps review items inside the selected period',
+    (tester) async {
+      final finance = services<FinanceServices>();
+      repository.filterPeriodQueries = true;
+      for (final entry in [
+        ('review-in-period', 'In-period review', '2026-09-05'),
+        ('review-outside-period', 'Outside-period review', '2026-08-05'),
+      ]) {
+        final created = await finance.createTransaction(
+          CreateTransactionCommand(
+            id: entry.$1,
+            provenanceId: '${entry.$1}-provenance',
+            timing: KnownTransactionTime(
+              DateTime.parse('${entry.$3}T12:00:00Z'),
+            ),
+            transactionDate: entry.$3,
+            money: Money(
+              amount: DecimalValue.parse('12.50'),
+              currency: CurrencyCode('USD'),
+            ),
+            direction: TransactionDirection.expense,
+            description: entry.$2,
+          ),
+        );
+        expect(created, isA<ApplicationSuccess<TransactionDto>>());
+        final transaction = repository.values[entry.$1]!;
+        repository.values[entry.$1] = transaction.addReviewIssue(
+          ReviewIssue(
+            id: ReviewIssueId('${entry.$1}-issue'),
+            transactionId: TransactionId(entry.$1),
+            reason: ReviewIssueReason.uncertain,
+            createdAt: transaction.updatedAt.add(const Duration(seconds: 1)),
+          ),
+          transaction.updatedAt.add(const Duration(seconds: 1)),
+        );
+      }
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ReviewPage(
+            reviewScope: ReviewPeriodScope.fromDateValues(
+              startDate: '2026-09-01',
+              endDate: '2026-09-16',
+              timeZoneId: 'UTC',
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('In-period review'), findsOneWidget);
+      expect(find.text('Outside-period review'), findsNothing);
+      expect(find.byType(ButlerlyCompactSectionSelector), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'Review rejects a partial period scope instead of broadening it',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: ReviewPage(
+            showNeedsReview: true,
+            reviewScope: ReviewPeriodScope.invalid(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Review items could not be loaded'), findsOneWidget);
+      expect(find.byType(ButlerlyCompactSectionSelector), findsNothing);
+      expect(find.text('Try again'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'Review rejects an invalid calendar date instead of normalizing it',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: ReviewPage(
+            showNeedsReview: true,
+            reviewScope: ReviewPeriodScope.invalid(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Review items could not be loaded'), findsOneWidget);
+      expect(find.byType(ButlerlyCompactSectionSelector), findsNothing);
+    },
+  );
+
   testWidgets('Review groups dates and shows one issue per transaction', (
     tester,
   ) async {
@@ -2961,6 +3055,7 @@ void _expectEditorSelection(WidgetTester tester, String label) {
 final class MemoryTransactionRepository implements TransactionRepository {
   final values = <String, Transaction>{};
   TransactionRepositoryQuery? lastQuery;
+  bool filterPeriodQueries = false;
   Future<void>? saveGate;
 
   @override
@@ -2973,6 +3068,28 @@ final class MemoryTransactionRepository implements TransactionRepository {
   Future<List<Transaction>> query(TransactionRepositoryQuery query) async {
     lastQuery = query;
     return values.values.where((transaction) {
+      if (filterPeriodQueries && (query.from != null || query.to != null)) {
+        final businessDate = transaction.transactionDate?.trim();
+        final parsed = businessDate == null
+            ? null
+            : DateTime.tryParse(businessDate);
+        if (parsed == null) return false;
+        final date = DateTime.utc(parsed.year, parsed.month, parsed.day);
+        final from = query.from == null
+            ? null
+            : DateTime.utc(
+                query.from!.year,
+                query.from!.month,
+                query.from!.day,
+              );
+        final to = query.to == null
+            ? null
+            : DateTime.utc(query.to!.year, query.to!.month, query.to!.day);
+        if ((from != null && date.isBefore(from)) ||
+            (to != null && date.isAfter(to))) {
+          return false;
+        }
+      }
       if (query.categoryId != null &&
           transaction.categoryId != query.categoryId) {
         return false;

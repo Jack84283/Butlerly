@@ -2,13 +2,21 @@ import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/features/insights/presentation/insight_visualization.dart';
 import 'package:butlerly/features/insights/presentation/insights_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() {
+  setUpAll(() async {
+    await initializeDateFormatting('en');
+    await initializeDateFormatting('es');
+    await initializeDateFormatting('zh');
+  });
+
   testWidgets('shows positive savings result in grouped presentation', (
     tester,
   ) async {
@@ -119,7 +127,7 @@ void main() {
     expect(find.textContaining('↑'), findsOneWidget);
     expect(find.byIcon(Icons.trending_down), findsNothing);
     expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
-    expect(find.textContaining('2026-09-01 – 2026-09-10'), findsWidgets);
+    expect(find.textContaining('Sep 1, 2026 – Sep 10, 2026'), findsWidgets);
   });
 
   testWidgets('keeps bar visualizations in the grouped presentation', (
@@ -237,6 +245,40 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('积极变化'), findsOneWidget);
     expect(find.text('储蓄改善'), findsOneWidget);
+  });
+
+  testWidgets('insight period ranges use the selected locale', (tester) async {
+    Future<void> pumpLocale(Locale locale) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: locale,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Builder(
+            builder: (context) => Text(
+              localizedPeriodRange(
+                context,
+                startDate: '2026-09-01',
+                endDate: '2026-09-16',
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await pumpLocale(const Locale('es'));
+    expect(find.text('1 sept 2026 – 16 sept 2026'), findsOneWidget);
+
+    await pumpLocale(const Locale('zh', 'CN'));
+    expect(find.text('2026年9月1日 – 2026年9月16日'), findsOneWidget);
+    expect(find.textContaining('2026-09'), findsNothing);
   });
 
   test(

@@ -21,11 +21,13 @@ class ReviewPage extends StatefulWidget {
   const ReviewPage({
     this.showPossibleDuplicates = false,
     this.showNeedsReview = false,
+    this.reviewScope = const ReviewPeriodScope.unscoped(),
     super.key,
   });
 
   final bool showPossibleDuplicates;
   final bool showNeedsReview;
+  final ReviewPeriodScope reviewScope;
 
   @override
   State<ReviewPage> createState() => _ReviewPageState();
@@ -44,18 +46,31 @@ class _ReviewPageState extends State<ReviewPage> {
       ? services<FinanceServices>()
       : null;
 
+  bool get _hasReviewScope =>
+      widget.reviewScope.status != ReviewPeriodScopeStatus.unscoped;
+
+  bool get _reviewScopeIsValid => !widget.reviewScope.isInvalid;
+
   @override
   void initState() {
     super.initState();
-    _view = widget.showPossibleDuplicates
+    _view = _hasReviewScope
+        ? _ReviewView.needsReview
+        : widget.showPossibleDuplicates
         ? _ReviewView.duplicates
         : widget.showNeedsReview
         ? _ReviewView.needsReview
         : _ReviewView.uncategorized;
-    _items = _load();
-    _statementExceptions = _loadStatementExceptions();
-    _uncategorized = _loadUncategorized();
-    _duplicateGroups = _loadDuplicateGroups();
+    _items = _reviewScopeIsValid ? _load() : Future.value(const []);
+    _statementExceptions = _hasReviewScope
+        ? Future.value(const [])
+        : _loadStatementExceptions();
+    _uncategorized = _hasReviewScope
+        ? Future.value(const [])
+        : _loadUncategorized();
+    _duplicateGroups = _hasReviewScope
+        ? Future.value(const [])
+        : _loadDuplicateGroups();
     transactionChanges.addListener(_handleTransactionChange);
   }
 
@@ -73,15 +88,28 @@ class _ReviewPageState extends State<ReviewPage> {
   void didUpdateWidget(covariant ReviewPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.showPossibleDuplicates == widget.showPossibleDuplicates &&
-        oldWidget.showNeedsReview == widget.showNeedsReview) {
+        oldWidget.showNeedsReview == widget.showNeedsReview &&
+        oldWidget.reviewScope == widget.reviewScope) {
       return;
     }
     setState(() {
-      _view = widget.showPossibleDuplicates
+      _view = _hasReviewScope
+          ? _ReviewView.needsReview
+          : widget.showPossibleDuplicates
           ? _ReviewView.duplicates
           : widget.showNeedsReview
           ? _ReviewView.needsReview
           : _ReviewView.uncategorized;
+      _items = _reviewScopeIsValid ? _load() : Future.value(const []);
+      _statementExceptions = _hasReviewScope
+          ? Future.value(const [])
+          : _loadStatementExceptions();
+      _uncategorized = _hasReviewScope
+          ? Future.value(const [])
+          : _loadUncategorized();
+      _duplicateGroups = _hasReviewScope
+          ? Future.value(const [])
+          : _loadDuplicateGroups();
     });
   }
 
@@ -115,7 +143,9 @@ class _ReviewPageState extends State<ReviewPage> {
   Future<List<_ReviewEntry>> _load() async {
     final finance = _finance;
     if (finance == null) return const [];
-    final result = await finance.listReviewItems();
+    final result = await finance.listReviewItems(
+      ListReviewItemsQuery(scope: widget.reviewScope),
+    );
     if (result is! ApplicationSuccess<List<ReviewItemDto>>) {
       throw StateError('Review items could not be loaded.');
     }
@@ -135,10 +165,17 @@ class _ReviewPageState extends State<ReviewPage> {
   }
 
   Future<void> _refresh() async {
+    if (_hasReviewScope && !_reviewScopeIsValid) return;
     final items = _load();
-    final statementExceptions = _loadStatementExceptions();
-    final uncategorized = _loadUncategorized();
-    final duplicateGroups = _loadDuplicateGroups();
+    final statementExceptions = _hasReviewScope
+        ? Future.value(const <StatementReviewException>[])
+        : _loadStatementExceptions();
+    final uncategorized = _hasReviewScope
+        ? Future.value(const <TransactionDto>[])
+        : _loadUncategorized();
+    final duplicateGroups = _hasReviewScope
+        ? Future.value(const <DuplicateCandidateGroup>[])
+        : _loadDuplicateGroups();
     setState(() {
       _items = items;
       _statementExceptions = statementExceptions;
@@ -348,27 +385,43 @@ class _ReviewPageState extends State<ReviewPage> {
         message: context.l10n.text('reviewEmptyBody'),
       );
     }
+    if (_hasReviewScope && !_reviewScopeIsValid) {
+      return ButlerlyPage(
+        title: context.l10n.text('review'),
+        pinnedSpacing: ButlerlyPinnedPageSpacing.primary,
+        children: [
+          ButlerlyEmptyState(
+            icon: Icons.error_outline_rounded,
+            title: context.l10n.text('reviewLoadError'),
+            message: context.l10n.text('dataPreserved'),
+          ),
+        ],
+      );
+    }
     return ButlerlyPage(
       title: context.l10n.text('review'),
       onRefresh: _pullToRefresh,
       refreshKey: ValueKey('review-pull-to-refresh-${_view.name}'),
       pinnedSpacing: ButlerlyPinnedPageSpacing.primary,
-      pinnedHeader: FutureBuilder<List<DuplicateCandidateGroup>>(
-        future: _duplicateGroups,
-        builder: (context, snapshot) {
-          final count = snapshot.data?.length;
-          final duplicates = context.l10n.text('possibleDuplicates');
-          return ButlerlyCompactSectionSelector(
-            labels: [
-              context.l10n.text('uncategorized'),
-              count == null ? duplicates : '$duplicates ($count)',
-              context.l10n.text('needsReview'),
-            ],
-            selectedIndex: _tabIndex(_view),
-            onSelected: (index) => setState(() => _view = _reviewTabs[index]),
-          );
-        },
-      ),
+      pinnedHeader: _hasReviewScope
+          ? null
+          : FutureBuilder<List<DuplicateCandidateGroup>>(
+              future: _duplicateGroups,
+              builder: (context, snapshot) {
+                final count = snapshot.data?.length;
+                final duplicates = context.l10n.text('possibleDuplicates');
+                return ButlerlyCompactSectionSelector(
+                  labels: [
+                    context.l10n.text('uncategorized'),
+                    count == null ? duplicates : '$duplicates ($count)',
+                    context.l10n.text('needsReview'),
+                  ],
+                  selectedIndex: _tabIndex(_view),
+                  onSelected: (index) =>
+                      setState(() => _view = _reviewTabs[index]),
+                );
+              },
+            ),
       children: [
         if (_view == _ReviewView.duplicates)
           FutureBuilder<List<DuplicateCandidateGroup>>(

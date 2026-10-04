@@ -13,11 +13,13 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 void main() {
   late _Transactions transactions;
   late _Preferences preferences;
   late _Merchants merchants;
+  late _Rules rules;
   late FinanceServices finance;
 
   setUp(() async {
@@ -26,6 +28,7 @@ void main() {
     transactions = _Transactions();
     preferences = _Preferences();
     merchants = _Merchants();
+    rules = _Rules([_expenseRule()]);
     finance = FinanceServices(
       transactions,
       _PaymentSources(),
@@ -34,7 +37,7 @@ void main() {
       _Tags(),
       _Evidence(),
       preferences,
-      analysisRules: _Rules([_expenseRule()]),
+      analysisRules: rules,
     );
     services.registerSingleton<FinanceServices>(finance);
     final seeded = await finance.createTransaction(
@@ -73,6 +76,237 @@ void main() {
     readGate.complete();
     transactions.readGate = null;
     await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home uses the approved card order for useful activity', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const _TestApp());
+    await tester.pumpAndSettle();
+
+    final cards = [
+      find.byKey(const ValueKey('home-summary-card')),
+      find.byKey(const ValueKey('home-trend-card')),
+      find.byKey(const ValueKey('home-category-card')),
+      find.byKey(const ValueKey('home-recent-card')),
+    ];
+    for (final card in cards) {
+      expect(card, findsOneWidget);
+    }
+    final positions = cards.map((card) => tester.getTopLeft(card).dy).toList();
+    expect(positions, orderedEquals([...positions]..sort()));
+    expect(find.text('Financial summary'), findsOneWidget);
+    expect(find.text('Total spending'), findsOneWidget);
+    expect(find.text('Spending trend'), findsOneWidget);
+    expect(find.text('Spending by category'), findsOneWidget);
+    expect(find.text('Transaction count'), findsOneWidget);
+    expect(find.text('Recent transactions'), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-attention-card')), findsNothing);
+    expect(find.byKey(const ValueKey('home-insight-card')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home keeps analysis-unavailable distinct from an empty period', (
+    tester,
+  ) async {
+    await services.reset();
+    HomePage.debugCurrentDate = DateTime(2026, 10, 16, 15);
+    services.registerSingleton<FinanceServices>(
+      FinanceServices(
+        transactions,
+        _PaymentSources(),
+        merchants,
+        _Categories(),
+        _Tags(),
+        _Evidence(),
+        preferences,
+      ),
+    );
+
+    await tester.pumpWidget(const _TestApp());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Analysis is unavailable'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('home-empty-transactions-card')),
+      findsNothing,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'Home places attention and insight cards around recent activity',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      rules.values.add(_homeInsightRule());
+      final stored = transactions.values['home-refresh-initial']!;
+      transactions.values['home-refresh-initial'] = stored.addReviewIssue(
+        ReviewIssue(
+          id: ReviewIssueId('home-review-issue'),
+          transactionId: stored.id,
+          reason: ReviewIssueReason.incomplete,
+          createdAt: stored.updatedAt,
+        ),
+        stored.updatedAt.add(const Duration(seconds: 1)),
+      );
+
+      final router = GoRouter(
+        initialLocation: '/',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => const Scaffold(body: HomePage()),
+          ),
+          GoRoute(
+            path: '/review',
+            builder: (_, state) => Scaffold(
+              body: Text(state.uri.toString(), key: const Key('review-uri')),
+            ),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(_RouterTestApp(router: router));
+      await tester.pumpAndSettle();
+
+      final cards = [
+        find.byKey(const ValueKey('home-summary-card')),
+        find.byKey(const ValueKey('home-trend-card')),
+        find.byKey(const ValueKey('home-category-card')),
+        find.byKey(const ValueKey('home-attention-card')),
+        find.byKey(const ValueKey('home-recent-card')),
+        find.byKey(const ValueKey('home-insight-card')),
+      ];
+      for (final card in cards) {
+        expect(card, findsOneWidget);
+      }
+      final positions = cards.map((card) => tester.getTopLeft(card).dy);
+      expect(positions, orderedEquals([...positions]..sort()));
+      expect(find.textContaining('Sep 1, 2026 – Sep 16, 2026'), findsOneWidget);
+
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('home-attention-card')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('home-attention-card')));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<Text>(find.byKey(const Key('review-uri'))).data,
+        '/review?view=needsReview&from=2026-09-01&to=2026-09-16&timeZoneId=UTC',
+      );
+    },
+  );
+
+  testWidgets('Home cards remain readable at large text scale', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    tester.view.platformDispatcher.textScaleFactorTestValue = 3;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
+
+    await tester.pumpWidget(const _TestApp());
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('home-summary-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-category-card')), findsOneWidget);
+    final metricKeys = [
+      const ValueKey('home-summary-metric-spending'),
+      const ValueKey('home-summary-metric-income'),
+      const ValueKey('home-summary-metric-net'),
+      const ValueKey('home-summary-metric-count'),
+    ];
+    final metricPositions = [
+      for (final key in metricKeys) tester.getTopLeft(find.byKey(key)),
+    ];
+    for (var index = 1; index < metricPositions.length; index++) {
+      expect(
+        metricPositions[index].dy,
+        greaterThan(metricPositions[index - 1].dy),
+      );
+    }
+    for (final label in [
+      'Total spending',
+      'Income',
+      'Net cash flow',
+      'Transaction count',
+    ]) {
+      expect(find.text(label), findsOneWidget);
+    }
+    expect(find.text('10.00 USD'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home Summary keeps its compact two-column layout normally', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const _TestApp());
+    await tester.pumpAndSettle();
+
+    final spending = tester.getTopLeft(
+      find.byKey(const ValueKey('home-summary-metric-spending')),
+    );
+    final income = tester.getTopLeft(
+      find.byKey(const ValueKey('home-summary-metric-income')),
+    );
+    final net = tester.getTopLeft(
+      find.byKey(const ValueKey('home-summary-metric-net')),
+    );
+    final count = tester.getTopLeft(
+      find.byKey(const ValueKey('home-summary-metric-count')),
+    );
+
+    expect(spending.dy, closeTo(income.dy, 0.01));
+    expect(net.dy, closeTo(count.dy, 0.01));
+    expect(spending.dy, lessThan(net.dy));
+    expect(spending.dx, lessThan(income.dx));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home category amounts reflow at large text scale', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    tester.view.platformDispatcher.textScaleFactorTestValue = 3;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: Scaffold(
+          body: homeCategorySummaryItemForTest(metric: _categoryMetric()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('1,234,567.89 USD'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -321,6 +555,46 @@ void main() {
     );
   });
 
+  testWidgets(
+    'Home shows the selected empty period despite earlier historical spending',
+    (tester) async {
+      final historical = await finance.createTransaction(
+        CreateTransactionCommand(
+          id: 'home-historical-spending',
+          provenanceId: 'home-historical-spending-provenance',
+          timing: KnownTransactionTime(DateTime.utc(2026, 6, 15, 12)),
+          transactionDate: '2026-06-15',
+          money: Money(
+            amount: DecimalValue.parse('25.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+          description: 'Earlier Home spending',
+        ),
+      );
+      expect(historical, isA<ApplicationSuccess<TransactionDto>>());
+
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(const _TestApp());
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('home-month-selector')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('home-month-2026-7')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('home-empty-transactions-card')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('home-summary-card')), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('Home distinguishes transaction load failure from empty data', (
     tester,
   ) async {
@@ -408,6 +682,25 @@ class _TestApp extends StatelessWidget {
       GlobalCupertinoLocalizations.delegate,
     ],
     home: const Scaffold(body: HomePage()),
+  );
+}
+
+class _RouterTestApp extends StatelessWidget {
+  const _RouterTestApp({required this.router});
+
+  final GoRouter router;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp.router(
+    routerConfig: router,
+    theme: AppTheme.light,
+    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: const [
+      AppLocalizations.delegate,
+      GlobalMaterialLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+    ],
   );
 }
 
@@ -562,6 +855,87 @@ final class _Rules implements AnalysisRuleRepository {
     required String sourceType,
     required String canonicalDefinition,
   }) async {}
+}
+
+AnalysisRuleDefinition _homeInsightRule() => AnalysisRuleDefinition(
+  identity: RuleIdentity('ANL-R099'),
+  version: RuleVersion('1.0.0'),
+  schemaVersion: '1.0.0',
+  type: AnalysisRuleType.insight,
+  nameKey: 'analysis.rule.r020.name',
+  descriptionKey: 'analysis.rule.r020.description',
+  enabled: true,
+  status: AnalysisRuleStatus.active,
+  period: 'selected_period',
+  measure: const RuleMeasure(
+    operation: RuleOperation.sum,
+    field: 'amount',
+    currencyBasis: CurrencyBasis.baseCurrency,
+  ),
+  grouping: RuleGrouping.none,
+  baseline: RuleBaseline.previousEquivalentPeriod,
+  condition: RuleCondition(
+    operator: 'gt',
+    left: 'currentTotal',
+    value: DecimalValue.parse('0'),
+  ),
+  severity: RuleSeverity.info,
+  surface: AnalysisSurface.insights,
+  outputType: InsightOutputType.pattern,
+  resultPersistence: ResultPersistencePolicy.finding,
+  filters: const [
+    AnalysisFilter(kind: AnalysisFilterKind.direction, values: ['expense']),
+  ],
+  definitionHash: RuleDefinitionHash('c' * 64),
+);
+
+AnalysisRuleDefinition _categoryRule() => AnalysisRuleDefinition(
+  identity: RuleIdentity('ANL-R098'),
+  version: RuleVersion('1.0.0'),
+  schemaVersion: '1.0.0',
+  type: AnalysisRuleType.metric,
+  nameKey: 'analysis.rule.r010.name',
+  descriptionKey: 'analysis.rule.r010.name',
+  enabled: true,
+  status: AnalysisRuleStatus.active,
+  period: 'selected_period',
+  measure: const RuleMeasure(
+    operation: RuleOperation.sum,
+    field: 'amount',
+    currencyBasis: CurrencyBasis.baseCurrency,
+  ),
+  grouping: RuleGrouping.category,
+  baseline: RuleBaseline.none,
+  condition: const RuleCondition(operator: 'none'),
+  severity: RuleSeverity.info,
+  surface: AnalysisSurface.spending,
+  role: 'categorySpending',
+  filters: const [
+    AnalysisFilter(kind: AnalysisFilterKind.direction, values: ['expense']),
+  ],
+  definitionHash: RuleDefinitionHash('d' * 64),
+);
+
+AnalysisMetric _categoryMetric() {
+  final context = AnalysisContext(
+    period: AnalysisPeriod(
+      startDate: '2026-09-01',
+      endDate: '2026-09-16',
+      timeZoneId: 'UTC',
+    ),
+    datasetMode: DatasetMode.allEligible,
+    currencyBasis: CurrencyBasis.baseCurrency,
+    baseCurrency: CurrencyCode('USD'),
+  );
+  return AnalysisMetric(
+    id: 'category-result',
+    rule: _categoryRule(),
+    context: context,
+    value: DecimalValue.parse('1234567.89'),
+    currency: CurrencyCode('USD'),
+    dimension: 'CAT-001:categorySpending',
+    calculatedAt: DateTime.utc(2026, 9, 16),
+  );
 }
 
 final class _PaymentSources implements PaymentSourceRepository {
