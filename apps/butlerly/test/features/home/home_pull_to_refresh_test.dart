@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/core/di/finance_services.dart';
@@ -15,9 +16,43 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+
+const _summaryTestFontFamily = 'ButlerlyTestSans';
+
+Future<void> _loadSummaryTestFont() async {
+  final flutterRoot = Platform.environment['FLUTTER_ROOT'];
+  final candidates = [
+    if (flutterRoot != null)
+      '$flutterRoot/bin/cache/artifacts/material_fonts/Roboto-Regular.ttf',
+    '${File(Platform.resolvedExecutable).parent.parent.parent.path}'
+        '/artifacts/material_fonts/Roboto-Regular.ttf',
+  ];
+  String? fontPath;
+  for (final candidate in candidates) {
+    if (File(candidate).existsSync()) {
+      fontPath = candidate;
+      break;
+    }
+  }
+  if (fontPath == null) {
+    throw StateError('Flutter Roboto test font was not found');
+  }
+  final bytes = await File(fontPath).readAsBytes();
+  final loader = FontLoader(_summaryTestFontFamily)
+    ..addFont(Future.value(ByteData.sublistView(Uint8List.fromList(bytes))));
+  await loader.load();
+}
+
+ThemeData _summaryTestTheme() {
+  final base = AppTheme.light;
+  return base.copyWith(
+    textTheme: base.textTheme.apply(fontFamily: _summaryTestFontFamily),
+  );
+}
 
 void main() {
   late _Transactions transactions;
@@ -26,6 +61,8 @@ void main() {
   late _DuplicateGroups duplicateGroups;
   late _Rules rules;
   late FinanceServices finance;
+
+  setUpAll(_loadSummaryTestFont);
 
   setUp(() async {
     await services.reset();
@@ -106,6 +143,9 @@ void main() {
     for (final card in cards) {
       expect(card, findsOneWidget);
     }
+    final summaryRect = tester.getRect(cards.first);
+    expect(summaryRect.left, ButlerlySize.contentGutter);
+    expect(summaryRect.right, 390 - ButlerlySize.contentGutter);
     final positions = cards.map((card) => tester.getTopLeft(card).dy).toList();
     expect(positions, orderedEquals([...positions]..sort()));
     expect(find.text('Monthly summary'), findsOneWidget);
@@ -497,7 +537,34 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const _TestApp());
+    final model = AnalysisOverview(
+      insightUnavailable: false,
+      trend: const [],
+      categories: const [],
+      qualityCount: 0,
+      qualityEvaluated: true,
+      qualityLimited: false,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: _summaryTestTheme(),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: ButlerlySize.contentGutter,
+            ),
+            child: homeSummaryForTest(model),
+          ),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     final spending = tester.getTopLeft(
@@ -512,7 +579,6 @@ void main() {
     final netPosition = tester.getTopLeft(
       find.byKey(const ValueKey('home-summary-metric-net-position')),
     );
-
     expect(spending.dy, closeTo(income.dy, 0.01));
     expect(spending.dy, closeTo(savings.dy, 0.01));
     expect(spending.dy, closeTo(netPosition.dy, 0.01));
@@ -532,6 +598,84 @@ void main() {
         lessThan(0.01),
       );
     }
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home Summary uses the active text scale when deciding fit', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    tester.view.platformDispatcher.textScaleFactorTestValue = 1.2;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
+
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-09-01',
+        endDate: '2026-09-16',
+        timeZoneId: 'UTC',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+      baseCurrency: CurrencyCode('USD'),
+    );
+    final model = AnalysisOverview(
+      spending: _categoryMetric(value: '9999.99'),
+      income: _categoryMetric(value: '4150.00'),
+      savings: AnalysisValue(
+        value: DecimalValue.parse('1809.82'),
+        currency: CurrencyCode('USD'),
+        context: context,
+      ),
+      net: _categoryMetric(value: '1809.82'),
+      insightUnavailable: false,
+      trend: const [],
+      categories: const [],
+      qualityCount: 0,
+      qualityEvaluated: true,
+      qualityLimited: false,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: _summaryTestTheme(),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: ButlerlySize.contentGutter,
+            ),
+            child: homeSummaryForTest(model),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final metricKeys = [
+      const ValueKey('home-summary-metric-spending'),
+      const ValueKey('home-summary-metric-income'),
+      const ValueKey('home-summary-metric-savings'),
+      const ValueKey('home-summary-metric-net-position'),
+    ];
+    final metricTops = [
+      for (final key in metricKeys) tester.getTopLeft(find.byKey(key)).dy,
+    ];
+    for (var index = 1; index < metricTops.length; index++) {
+      expect(metricTops[index], greaterThan(metricTops[index - 1]));
+    }
+    final value = tester.widget<Text>(find.text('\$9,999.99'));
+    expect(value.style?.fontSize, 17);
+    expect(value.softWrap, isTrue);
+    expect(value.maxLines, isNull);
     expect(tester.takeException(), isNull);
   });
 
@@ -572,7 +716,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        theme: AppTheme.light,
+        theme: _summaryTestTheme(),
         localizationsDelegates: const [
           AppLocalizations.delegate,
           GlobalMaterialLocalizations.delegate,
@@ -580,7 +724,14 @@ void main() {
           GlobalCupertinoLocalizations.delegate,
         ],
         supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(body: homeSummaryForTest(model)),
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: ButlerlySize.contentGutter,
+            ),
+            child: homeSummaryForTest(model),
+          ),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -601,11 +752,16 @@ void main() {
       expect(text.maxLines, 1);
       expect(text.softWrap, isFalse);
       expect(text.overflow, TextOverflow.visible);
+      expect(text.style?.fontSize, 17);
       final render = tester.renderObject<RenderParagraph>(textFinder);
+      final context = tester.element(textFinder);
+      final effectiveStyle = DefaultTextStyle.of(
+        context,
+      ).style.merge(text.style);
       final painter = TextPainter(
-        text: TextSpan(text: entry.value, style: text.style),
-        textDirection: TextDirection.ltr,
-        textScaler: TextScaler.noScaling,
+        text: TextSpan(text: entry.value, style: effectiveStyle),
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
       )..layout();
       expect(painter.width, lessThanOrEqualTo(render.size.width + 0.01));
     }
@@ -638,7 +794,10 @@ void main() {
       baseCurrency: CurrencyCode('USD'),
     );
     final model = AnalysisOverview(
-      spending: _categoryMetric(value: '12345678901234567890'),
+      spending: _categoryMetric(
+        value: '123456789012345678901234567890',
+        currency: 'USDLONG',
+      ),
       income: _categoryMetric(value: '4150.00'),
       savings: AnalysisValue(
         value: DecimalValue.parse('1809.82'),
@@ -656,7 +815,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        theme: AppTheme.light,
+        theme: _summaryTestTheme(),
         localizationsDelegates: const [
           AppLocalizations.delegate,
           GlobalMaterialLocalizations.delegate,
@@ -664,7 +823,14 @@ void main() {
           GlobalCupertinoLocalizations.delegate,
         ],
         supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(body: homeSummaryForTest(model)),
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: ButlerlySize.contentGutter,
+            ),
+            child: homeSummaryForTest(model),
+          ),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -681,12 +847,25 @@ void main() {
     for (var index = 1; index < metricTops.length; index++) {
       expect(metricTops[index], greaterThan(metricTops[index - 1]));
     }
-    final longValue = find.textContaining('12,345,678');
+    final longValue = find.textContaining('USDLONG');
     expect(longValue, findsOneWidget);
     final longValueRect = tester.getRect(longValue);
     final spendingRect = tester.getRect(find.byKey(metricKeys.first));
     expect(longValueRect.left, greaterThanOrEqualTo(spendingRect.left - 0.01));
     expect(longValueRect.right, lessThanOrEqualTo(spendingRect.right + 0.01));
+    final valueText = tester.widget<Text>(longValue);
+    expect(valueText.softWrap, isTrue);
+    expect(valueText.maxLines, isNull);
+    final renderedValue = tester.renderObject<RenderParagraph>(longValue);
+    final singleLinePainter = TextPainter(
+      text: TextSpan(text: valueText.data, style: valueText.style),
+      textDirection: TextDirection.ltr,
+      textScaler: MediaQuery.textScalerOf(tester.element(longValue)),
+    )..layout();
+    expect(
+      renderedValue.textSize.height,
+      greaterThan(singleLinePainter.preferredLineHeight),
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -1727,6 +1906,7 @@ AnalysisRuleDefinition _categoryRule() => AnalysisRuleDefinition(
 AnalysisMetric _categoryMetric({
   AnalysisDataAvailability availability = AnalysisDataAvailability.sufficient,
   String value = '1234567.89',
+  String currency = 'USD',
 }) {
   final context = AnalysisContext(
     period: AnalysisPeriod(
@@ -1736,14 +1916,14 @@ AnalysisMetric _categoryMetric({
     ),
     datasetMode: DatasetMode.allEligible,
     currencyBasis: CurrencyBasis.baseCurrency,
-    baseCurrency: CurrencyCode('USD'),
+    baseCurrency: CurrencyCode(currency),
   );
   return AnalysisMetric(
     id: 'category-result',
     rule: _categoryRule(),
     context: context,
     value: DecimalValue.parse(value),
-    currency: CurrencyCode('USD'),
+    currency: CurrencyCode(currency),
     dimension: 'CAT-001:categorySpending',
     availability: availability,
     calculatedAt: DateTime.utc(2026, 9, 16),

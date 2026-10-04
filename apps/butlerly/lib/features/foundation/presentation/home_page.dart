@@ -946,13 +946,10 @@ class _HomeMetricCell extends StatelessWidget {
 
   bool fitsWithin(BuildContext context, double maxWidth) {
     final displayValue = _displayValue(context);
-    final style = _homeMetricValueStyle(
-      context,
-      displayValue,
+    final style = DefaultTextStyle.of(context).style.merge(
       ButlerlyTypography.compactMetricValue(
         Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
       ),
-      maxWidth,
     );
     final painter = TextPainter(
       text: TextSpan(text: displayValue, style: style),
@@ -1013,14 +1010,8 @@ class _HomeMetricCell extends StatelessWidget {
           const SizedBox(height: ButlerlySpacing.micro),
           LayoutBuilder(
             builder: (context, constraints) {
-              final baseStyle = ButlerlyTypography.compactMetricValue(
+              final valueStyle = ButlerlyTypography.compactMetricValue(
                 Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
-              );
-              final valueStyle = _homeMetricValueStyle(
-                context,
-                displayValue,
-                baseStyle,
-                constraints.maxWidth,
               );
               return SizedBox(
                 width: constraints.maxWidth,
@@ -1087,30 +1078,6 @@ class _HomeMetricCell extends StatelessWidget {
         ? _homeMoney(context, metric!)
         : _homeValueMoney(context, value!);
   }
-}
-
-TextStyle _homeMetricValueStyle(
-  BuildContext context,
-  String value,
-  TextStyle baseStyle,
-  double maxWidth,
-) {
-  final baseFontSize = baseStyle.fontSize ?? 17;
-  final painter = TextPainter(
-    text: TextSpan(text: value, style: baseStyle),
-    textDirection: Directionality.of(context),
-    textScaler: MediaQuery.textScalerOf(context),
-  )..layout();
-  if (painter.width <= maxWidth || maxWidth <= 0) return baseStyle;
-
-  // The reference amounts retain the 17 px role on platform fonts. This
-  // bounded fallback handles wider localized currency strings without using
-  // a paint-time scale-down widget or allowing them to overlap adjacent cells.
-  final fittedSize = (baseFontSize * maxWidth / painter.width).clamp(
-    9.0,
-    baseFontSize,
-  );
-  return baseStyle.copyWith(fontSize: fittedSize);
 }
 
 Color _homeNetChangeColor(
