@@ -1218,9 +1218,23 @@ void main() {
       expect(find.text('Home description fallback'), findsNothing);
       expect(find.text('Home Weekly'), findsNothing);
 
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-recent-card')),
+          matching: find.byIcon(Icons.chevron_right_rounded),
+        ),
+        findsNothing,
+      );
+
       final title = tester.widget<Text>(find.text('Home Market'));
       final amount = tester.widget<Text>(find.text(r'-$19.75'));
       expect(amount.style?.fontSize, title.style?.fontSize);
+      final headerAction = find.byKey(const Key('home-recent-view-all'));
+      expect(
+        tester.getTopLeft(find.text('Home Market')).dy -
+            tester.getBottomRight(headerAction).dy,
+        inInclusiveRange(4, 12),
+      );
     },
   );
 

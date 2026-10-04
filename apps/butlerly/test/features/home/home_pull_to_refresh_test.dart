@@ -164,7 +164,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('vs previous period'), findsOneWidget);
-    expect(find.text('...'), findsNWidgets(4));
+    expect(find.byIcon(Icons.more_horiz_rounded), findsNWidgets(4));
     expect(find.byTooltip('View all categories'), findsOneWidget);
     expect(find.byTooltip('View all transactions'), findsOneWidget);
     expect(find.byTooltip('View all attention items'), findsOneWidget);
@@ -1261,6 +1261,37 @@ void main() {
 
     expect(find.text('\$1,234,567.89'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home category summary uses compact semantic typography', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: Scaffold(
+          body: homeCategorySummaryItemForTest(
+            metric: _categoryMetric(),
+            share: DecimalValue.parse('0.25'),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final amount = tester.widget<Text>(find.text(r'$1,234,567.89'));
+    final percentage = tester.widget<Text>(find.text('25%'));
+    expect(amount.style?.fontSize, 14);
+    expect(amount.style?.fontWeight, FontWeight.w600);
+    expect(percentage.style?.fontSize, 13);
+    expect(percentage.style?.fontWeight, FontWeight.w400);
   });
 
   tearDown(() async {

@@ -275,64 +275,142 @@ void main() {
     expect(tapped, isTrue);
   });
 
-  testWidgets(
-    'dashboard item keeps metadata out of the compact row and constrains long pills',
-    (tester) async {
-      const category =
-          'Very long localized category label that should remain readable';
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.light,
-          home: Scaffold(
-            body: SizedBox(
-              width: 320,
-              child: ButlerlyTransactionListItem(
-                title: 'Coffee shop purchase',
-                amount: '42.19',
-                currency: 'USD',
-                categoryLabel: category,
-                subcategoryLabel: 'Restaurants',
-                paymentSource: 'Visa ••••8421',
-                meta: 'Aug 14, 2026',
-                showDate: true,
-                showCategoryPill: true,
-                showNavigationIndicator: true,
-                needsReview: true,
-                variant: ButlerlyTransactionRowVariant.dashboard,
-              ),
+  testWidgets('dashboard item orders title, category, metadata, and date', (
+    tester,
+  ) async {
+    const category =
+        'Very long localized category label that should remain readable';
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: SizedBox(
+            width: 320,
+            child: ButlerlyTransactionListItem(
+              title: 'Coffee shop purchase',
+              amount: '42.19',
+              currency: 'USD',
+              categoryLabel: category,
+              subcategoryLabel: 'Restaurants',
+              paymentSource: 'Visa ••••8421',
+              meta: 'Aug 14, 2026',
+              showDate: true,
+              showCategoryPill: true,
+              showNavigationIndicator: true,
+              needsReview: true,
+              variant: ButlerlyTransactionRowVariant.dashboard,
             ),
           ),
         ),
-      );
+      ),
+    );
 
-      expect(tester.takeException(), isNull);
-      expect(find.text(category), findsOneWidget);
-      expect(find.text('Restaurants'), findsNothing);
-      expect(find.text('Visa ••••8421'), findsNothing);
-      expect(find.text('Aug 14, 2026'), findsOneWidget);
-      expect(find.text('Needs review'), findsNothing);
-      expect(find.text('−42.19 USD'), findsOneWidget);
-      expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
-      expect(
-        tester.getSemantics(find.byType(ButlerlyTransactionListItem)).label,
-        contains('Coffee shop purchase'),
-      );
-      expect(
-        tester.getSemantics(find.byType(ButlerlyTransactionListItem)).label,
-        contains(category),
-      );
-      expect(
-        tester.getSize(find.text(category)).width,
-        lessThanOrEqualTo(
-          ButlerlyTransactionItemTokens.dashboardCategoryPillMaxWidth,
+    expect(tester.takeException(), isNull);
+    expect(find.text(category), findsOneWidget);
+    expect(find.textContaining('Restaurants'), findsOneWidget);
+    expect(find.textContaining('Visa ••••8421'), findsOneWidget);
+    expect(find.text('Aug 14, 2026'), findsOneWidget);
+    expect(find.text('Needs review'), findsNothing);
+    expect(find.text('−42.19 USD'), findsOneWidget);
+    expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
+    expect(
+      tester.getSemantics(find.byType(ButlerlyTransactionListItem)).label,
+      contains('Coffee shop purchase'),
+    );
+    expect(
+      tester.getSemantics(find.byType(ButlerlyTransactionListItem)).label,
+      contains(category),
+    );
+    expect(
+      tester.getSemantics(find.byType(ButlerlyTransactionListItem)).label,
+      contains('Aug 14, 2026'),
+    );
+    expect(
+      tester.getSize(find.text(category)).width,
+      lessThanOrEqualTo(
+        ButlerlyTransactionItemTokens.dashboardCategoryPillMaxWidth,
+      ),
+    );
+    expect(
+      tester.widget<Text>(find.text(category)).overflow,
+      TextOverflow.ellipsis,
+    );
+    expect(
+      tester.getTopLeft(find.text('−42.19 USD')).dy,
+      closeTo(tester.getTopLeft(find.text('Coffee shop purchase')).dy, 0.1),
+    );
+    expect(
+      tester.getTopLeft(find.text(category)).dy,
+      greaterThan(tester.getTopLeft(find.text('Coffee shop purchase')).dy),
+    );
+    expect(
+      tester.getTopLeft(find.textContaining('Restaurants')).dy,
+      greaterThan(tester.getTopLeft(find.text(category)).dy),
+    );
+    expect(
+      tester.getTopLeft(find.textContaining('Visa ••••8421')).dy,
+      greaterThanOrEqualTo(
+        tester.getTopLeft(find.textContaining('Restaurants')).dy,
+      ),
+    );
+    expect(
+      tester.getTopLeft(find.text('Aug 14, 2026')).dy,
+      greaterThan(tester.getTopLeft(find.textContaining('Visa ••••8421')).dy),
+    );
+  });
+
+  testWidgets('dashboard metadata omits separators for missing values', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: Column(
+            children: [
+              ButlerlyTransactionListItem(
+                title: 'Subcategory only',
+                amount: '10.00',
+                currency: 'USD',
+                categoryLabel: 'Food',
+                subcategoryLabel: 'Restaurants',
+                meta: 'Sep 12, 2026',
+                showDate: true,
+                showCategoryPill: true,
+                variant: ButlerlyTransactionRowVariant.dashboard,
+              ),
+              ButlerlyTransactionListItem(
+                title: 'Payment source only',
+                amount: '11.00',
+                currency: 'USD',
+                categoryLabel: 'Food',
+                paymentSource: 'Visa',
+                meta: 'Sep 11, 2026',
+                showDate: true,
+                showCategoryPill: true,
+                variant: ButlerlyTransactionRowVariant.dashboard,
+              ),
+              ButlerlyTransactionListItem(
+                title: 'No metadata',
+                amount: '12.00',
+                currency: 'USD',
+                categoryLabel: 'Food',
+                meta: 'Sep 10, 2026',
+                showDate: true,
+                showCategoryPill: true,
+                variant: ButlerlyTransactionRowVariant.dashboard,
+              ),
+            ],
+          ),
         ),
-      );
-      expect(
-        tester.widget<Text>(find.text(category)).overflow,
-        TextOverflow.ellipsis,
-      );
-    },
-  );
+      ),
+    );
+
+    expect(find.text('Restaurants'), findsOneWidget);
+    expect(find.text('Visa'), findsOneWidget);
+    expect(find.text('Restaurants · Visa'), findsNothing);
+    expect(find.text(' · '), findsNothing);
+  });
 
   testWidgets('non-navigable item omits the trailing chevron', (tester) async {
     await tester.pumpWidget(

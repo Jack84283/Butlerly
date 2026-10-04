@@ -44,6 +44,7 @@ class _HomePageState extends State<HomePage> {
   late Future<_HomeData> _data;
   String? _loadedLanguageCode;
   DateTime? _selectedMonth;
+  int _trendMonthCount = 6;
   int _loadGeneration = 0;
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
@@ -112,6 +113,7 @@ class _HomePageState extends State<HomePage> {
         instant: now,
         selectedMonth: _selectedMonth,
         forceAnalysisRefresh: forceAnalysisRefresh,
+        trendMonthCount: _trendMonthCount,
       );
       if (overviewResult is ApplicationFailure<HomeOverview>) {
         return await unavailable();
@@ -216,6 +218,27 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  Future<void> _selectTrendRange() async {
+    final selected = await showButlerlySelectionSheet<int>(
+      context: context,
+      title: context.l10n.text('trendRange'),
+      selectedValue: _trendMonthCount,
+      options: [
+        for (final count in const [3, 6, 12])
+          ButlerlySelectionOption<int>(
+            value: count,
+            child: Text(context.l10n.text(_trendRangeLabelKey(count))),
+          ),
+      ],
+    );
+    if (!mounted || selected == null || selected == _trendMonthCount) return;
+    setState(() {
+      _trendMonthCount = selected;
+      _loadGeneration++;
+      _data = _load();
+    });
+  }
+
   Future<void> _open(TransactionDto transaction) async {
     final finance = _finance;
     if (finance == null) return;
@@ -269,6 +292,8 @@ class _HomePageState extends State<HomePage> {
           points: data.trend,
           unavailable: data.trendUnavailable || overviewUnavailable,
           comparison: data.model?.spendingComparison,
+          rangeCount: _trendMonthCount,
+          onRangeChanged: (_) => _selectTrendRange(),
         ),
         const SizedBox(height: ButlerlySpacing.cardGap),
         _CategorySummary(
@@ -447,6 +472,12 @@ String homeGreetingKey(DateTime localTime) {
   return 'greetingEvening';
 }
 
+String _trendRangeLabelKey(int monthCount) => switch (monthCount) {
+  3 => 'lastThreeMonths',
+  12 => 'lastTwelveMonths',
+  _ => 'lastSixMonths',
+};
+
 Widget _homeEllipsisAction({
   required Key key,
   required String semanticLabel,
@@ -466,7 +497,13 @@ Widget _homeEllipsisAction({
         padding: EdgeInsets.zero,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
-      child: const Text('...'),
+      child: SizedBox.square(
+        dimension: ButlerlySize.minimumTarget,
+        child: const Align(
+          alignment: Alignment.topCenter,
+          child: Icon(Icons.more_horiz_rounded, size: 22),
+        ),
+      ),
     ),
   ),
 );
@@ -544,7 +581,7 @@ double _homeHeaderExtent(
 
   double monthButtonHeight(double width) {
     final textWidth =
-        (width - ButlerlySpacing.compact * 2 - ButlerlySpacing.micro - 20)
+        (width - ButlerlySpacing.compact * 2 - ButlerlySpacing.micro - 18)
             .clamp(1.0, double.infinity)
             .toDouble();
     final textHeight = maxMeasured(
@@ -554,9 +591,9 @@ double _homeHeaderExtent(
       maxLines: null,
     );
     final contentHeight = textHeight + ButlerlySpacing.compact * 2;
-    return contentHeight > kMinInteractiveDimension
+    return contentHeight > ButlerlySize.minimumTarget
         ? contentHeight
-        : kMinInteractiveDimension;
+        : ButlerlySize.minimumTarget;
   }
 
   final appName = context.l10n.text('appName');
@@ -665,48 +702,11 @@ class _HomeHeader extends StatelessWidget {
             Theme.of(context).textTheme.headlineLarge ?? const TextStyle(),
           ),
         );
-        final monthButton = TextButton(
-          key: const Key('home-month-selector'),
+        final monthButton = ButlerlyCompactSelector(
+          buttonKey: const Key('home-month-selector'),
+          label: selectorMonthLabel,
+          semanticLabel: selectorMonthLabel,
           onPressed: onMonthTap,
-          style: TextButton.styleFrom(
-            alignment: AlignmentDirectional.centerEnd,
-            backgroundColor: context.colors.subtleSurface,
-            foregroundColor: context.colors.primaryText,
-            side: BorderSide(color: context.colors.border),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-            ),
-            padding: const EdgeInsets.symmetric(
-              horizontal: ButlerlySpacing.compact,
-              vertical: ButlerlySpacing.compact,
-            ),
-            minimumSize: const Size(0, kMinInteractiveDimension),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: Text(
-                  selectorMonthLabel,
-                  softWrap: true,
-                  textAlign: TextAlign.end,
-                  style: ButlerlyTypography.cardAction(
-                    Theme.of(context).textTheme.titleMedium ??
-                        const TextStyle(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: ButlerlySpacing.micro),
-              Icon(
-                _homeIcon(
-                  context,
-                  material: Icons.keyboard_arrow_down_rounded,
-                  cupertino: CupertinoIcons.chevron_down,
-                ),
-                size: 20,
-              ),
-            ],
-          ),
         );
         final availableWidth = constraints.maxWidth;
         final stackedTopRow =
@@ -1144,9 +1144,13 @@ Widget homeSpendingTrendForTest(
   bool unavailable = false,
   AnalysisComparison? comparison,
   AnalysisMetric? selectedMetric,
+  int rangeCount = 6,
+  ValueChanged<int>? onRangeChanged,
 }) => _SpendingTrend(
   unavailable: unavailable,
   comparison: comparison,
+  rangeCount: rangeCount,
+  onRangeChanged: onRangeChanged,
   points: [
     for (final point in points)
       _HomeTrendPoint(
@@ -1162,7 +1166,9 @@ Widget homeSpendingTrendForTest(
 Widget homeCategorySummaryItemForTest({
   required AnalysisMetric metric,
   TransactionMasterData masterData = const TransactionMasterData(),
-}) => _CategorySummaryItem(metric: metric, masterData: masterData);
+  DecimalValue? share,
+}) =>
+    _CategorySummaryItem(metric: metric, masterData: masterData, share: share);
 
 @visibleForTesting
 Widget homeSummaryForTest(AnalysisModel model) => _HomeSummaryCard(
@@ -1183,11 +1189,15 @@ class _SpendingTrend extends StatelessWidget {
     required this.points,
     required this.unavailable,
     this.comparison,
+    this.rangeCount = 6,
+    this.onRangeChanged,
   });
 
   final List<_HomeTrendPoint> points;
   final bool unavailable;
   final AnalysisComparison? comparison;
+  final int rangeCount;
+  final ValueChanged<int>? onRangeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -1202,38 +1212,13 @@ class _SpendingTrend extends StatelessWidget {
             comparisonLabelKey: 'vsLastMonth',
             compact: true,
           );
-    final trendAction = Semantics(
-      container: true,
-      label: context.l10n.text('lastSixMonths'),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: context.colors.subtleSurface,
-          borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-          border: Border.all(color: context.colors.border),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: ButlerlySpacing.compact,
-            vertical: ButlerlySpacing.micro,
-          ),
-          child: SizedBox(
-            width: 150,
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    context.l10n.text('lastSixMonths'),
-                    softWrap: true,
-                    textAlign: TextAlign.end,
-                  ),
-                ),
-                const SizedBox(width: ButlerlySpacing.micro),
-                const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-              ],
-            ),
-          ),
-        ),
-      ),
+    final trendAction = ButlerlyCompactSelector(
+      buttonKey: const Key('home-trend-range-selector'),
+      label: context.l10n.text(_trendRangeLabelKey(rangeCount)),
+      semanticLabel: context.l10n.text('trendRange'),
+      onPressed: onRangeChanged == null
+          ? null
+          : () => onRangeChanged!(rangeCount),
     );
     return ButlerlyCard(
       key: const ValueKey('home-trend-card'),
@@ -1576,14 +1561,14 @@ class _CategorySummaryItem extends StatelessWidget {
             metricUnavailable ? '—' : _homeMetricMoney(context, metric),
             textAlign: TextAlign.end,
             softWrap: true,
-            style: ButlerlyTypography.denseRowAmount(
+            style: ButlerlyTypography.compactRowAmount(
               Theme.of(context).textTheme.titleMedium ?? const TextStyle(),
             ),
           );
           final name = Text(
             label,
             softWrap: true,
-            style: ButlerlyTypography.denseRowTitle(
+            style: ButlerlyTypography.compactRowTitle(
               Theme.of(context).textTheme.bodyLarge ?? const TextStyle(),
             ),
           );
@@ -1600,7 +1585,7 @@ class _CategorySummaryItem extends StatelessWidget {
                           const SizedBox(width: ButlerlySpacing.compact),
                           Text(
                             percentage,
-                            style: ButlerlyTypography.rowMetadata(
+                            style: ButlerlyTypography.compactRowMetadata(
                               Theme.of(context).textTheme.bodySmall ??
                                   const TextStyle(),
                             ),
@@ -1620,7 +1605,7 @@ class _CategorySummaryItem extends StatelessWidget {
                       const SizedBox(width: ButlerlySpacing.compact),
                       Text(
                         percentage,
-                        style: ButlerlyTypography.rowMetadata(
+                        style: ButlerlyTypography.compactRowMetadata(
                           Theme.of(context).textTheme.bodySmall ??
                               const TextStyle(),
                         ),
@@ -1996,7 +1981,7 @@ class _HomeRecentActivity extends StatelessWidget {
             ButlerlySpacing.standard,
             ButlerlySpacing.standard,
             ButlerlySpacing.standard,
-            ButlerlySpacing.small,
+            ButlerlySpacing.micro,
           ),
           child: ButlerlyCardHeader(
             title: context.l10n.text('recentTransactions'),
@@ -2033,12 +2018,15 @@ class _HomeRecentActivity extends StatelessWidget {
             children: [
               for (final transaction in transactions)
                 TransactionRow(
+                  key: ValueKey('home-recent-transaction-${transaction.id}'),
                   transaction: transaction,
                   masterData: masterData,
+                  missingCategoryLabel: context.l10n.text('uncategorized'),
                   showDate: true,
                   showCategoryPill: true,
                   compactMoney: true,
-                  showNavigationIndicator: true,
+                  compactSpacing: true,
+                  showNavigationIndicator: false,
                   variant: ButlerlyTransactionRowVariant.dashboard,
                   onTap: () => onTap(transaction),
                 ),

@@ -32,6 +32,7 @@ class TransactionRow extends StatelessWidget {
     this.showNavigationIndicator = false,
     this.showCategoryPill = false,
     this.compactMoney = false,
+    this.compactSpacing = false,
     this.variant = ButlerlyTransactionRowVariant.standard,
     super.key,
   });
@@ -51,6 +52,7 @@ class TransactionRow extends StatelessWidget {
   final bool showNavigationIndicator;
   final bool showCategoryPill;
   final bool compactMoney;
+  final bool compactSpacing;
   final ButlerlyTransactionRowVariant variant;
 
   @override
@@ -120,6 +122,7 @@ class TransactionRow extends StatelessWidget {
       onTap: onTap,
       showNavigationIndicator: showNavigationIndicator,
       showCategoryPill: showCategoryPill,
+      compactSpacing: compactSpacing,
       variant: variant,
     );
   }

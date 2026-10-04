@@ -44,6 +44,7 @@ final class GetHomeOverview {
     required DateTime instant,
     DateTime? selectedMonth,
     bool forceAnalysisRefresh = false,
+    int trendMonthCount = 6,
   }) async {
     final CalculateAnalysisOverview? analysisUseCase = calculateAnalysis;
     final _HomeContextResolution homeResolution;
@@ -148,7 +149,7 @@ final class GetHomeOverview {
       final trendResult = await CalculateMonthlySpendingTrend(analysisUseCase)(
         endingMonth: homePeriod.displayMonth,
         instant: instant,
-        monthCount: 6,
+        monthCount: trendMonthCount,
       );
       if (trendResult case ApplicationSuccess<List<MonthlySpendingTrendPoint>>(
         :final value,

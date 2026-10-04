@@ -1,8 +1,10 @@
 import 'package:butlerly/app/theme/app_theme.dart';
+import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -166,7 +168,7 @@ void main() {
     }
     expect(find.byKey(const Key('home-category-view-all')), findsOneWidget);
     expect(find.byKey(const Key('home-recent-view-all')), findsOneWidget);
-    expect(find.text('...'), findsNWidgets(4));
+    expect(find.byIcon(Icons.more_horiz_rounded), findsNWidgets(4));
     expect(find.byKey(const Key('home-notification-action')), findsNothing);
   });
 
@@ -209,15 +211,30 @@ void main() {
         of: card,
         matching: find.byKey(ValueKey(entry.action)),
       );
-      final glyph = find.descendant(of: action, matching: find.text('...'));
+      final glyph = find.descendant(
+        of: action,
+        matching: find.byIcon(Icons.more_horiz_rounded),
+      );
       expect(title, findsOneWidget);
       expect(action, findsOneWidget);
       expect(glyph, findsOneWidget);
       expect(tester.getSize(action).width, greaterThanOrEqualTo(44));
       expect(tester.getSize(action).height, greaterThanOrEqualTo(44));
+      final titleParagraph = tester.renderObject<RenderParagraph>(title);
+      final titleLine = titleParagraph
+          .getBoxesForSelection(
+            TextSelection(
+              baseOffset: 0,
+              extentOffset: titleParagraph.text.toPlainText().length,
+            ),
+          )
+          .first
+          .toRect();
       expect(
-        (tester.getTopLeft(glyph).dy - tester.getTopLeft(title).dy).abs(),
-        lessThan(6),
+        (tester.getCenter(glyph).dy -
+                titleParagraph.localToGlobal(titleLine.center).dy)
+            .abs(),
+        lessThan(3),
       );
     }
   });
@@ -315,6 +332,54 @@ void main() {
       expect((barCenter.dx - labelCenter.dx).abs(), lessThan(1.0));
     }
   });
+
+  testWidgets(
+    'Home trend range selector changes only trend points and keeps Home month',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(_testApp(router));
+      await tester.pumpAndSettle();
+      expect(find.byType(ButlerlyCompactSelector), findsNWidgets(2));
+      final monthSelector = find.byKey(const Key('home-month-selector'));
+      final trendSelector = find.byKey(const Key('home-trend-range-selector'));
+      expect(tester.getSize(monthSelector).height, greaterThanOrEqualTo(44));
+      expect(tester.getSize(trendSelector).height, greaterThanOrEqualTo(44));
+      expect(
+        tester.getSize(monthSelector).height,
+        closeTo(tester.getSize(trendSelector).height, 0.1),
+      );
+      await tester.ensureVisible(trendSelector);
+      await tester.tap(trendSelector);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Last 3 months'), findsOneWidget);
+      expect(find.text('Last 6 months'), findsWidgets);
+      expect(find.text('Last 12 months'), findsOneWidget);
+      await tester.tap(find.text('Last 3 months'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sep 2026'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('home-trend-range-selector')),
+        findsOneWidget,
+      );
+
+      await tester.tap(trendSelector);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Last 12 months'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(trendSelector);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Last 6 months').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Sep 2026'), findsOneWidget);
+    },
+  );
 
   testWidgets('Home spending trend uses a readable four-step currency scale', (
     tester,

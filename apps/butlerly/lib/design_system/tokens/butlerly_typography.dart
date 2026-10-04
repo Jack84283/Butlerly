@@ -141,6 +141,32 @@ abstract final class ButlerlyTypography {
     fontFeatures: financialAmountFeatures,
   );
 
+  /// Compact category-summary roles. These are intentionally smaller than
+  /// transaction-row roles so five category summaries can remain scannable in
+  /// a dashboard card without changing the shared transaction hierarchy.
+  static TextStyle compactRowTitle(TextStyle base) => _systemSans(
+    base,
+    fontSize: 14,
+    height: 18 / 14,
+    fontWeight: FontWeight.w600,
+  );
+
+  static TextStyle compactRowAmount(TextStyle base) => _systemSans(
+    base,
+    fontSize: 14,
+    height: 18 / 14,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.1,
+    fontFeatures: financialAmountFeatures,
+  );
+
+  static TextStyle compactRowMetadata(TextStyle base) => _systemSans(
+    base,
+    fontSize: 13,
+    height: 17 / 13,
+    fontWeight: FontWeight.w400,
+  );
+
   static TextStyle badgeLabel(TextStyle base) =>
       _systemSans(base, fontSize: 13, height: 1.2, fontWeight: FontWeight.w500);
 

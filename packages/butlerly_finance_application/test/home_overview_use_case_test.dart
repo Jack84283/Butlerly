@@ -78,6 +78,35 @@ void main() {
     },
   );
 
+  test(
+    'changes only the trend range when a historical Home month is selected',
+    () async {
+      final result = await loadHomeOverview(
+        instant: DateTime.utc(2026, 9, 16, 12),
+        selectedMonth: DateTime(2026, 8, 1),
+        trendMonthCount: 3,
+      );
+
+      final overview = (result as ApplicationSuccess<HomeOverview>).value;
+      expect(overview.displayMonth, DateTime(2026, 8, 1));
+      expect(overview.context?.period.startDate, '2026-08-01');
+      expect(overview.monthlyTrend, hasLength(3));
+      expect(overview.monthlyTrend.last.month, DateTime.utc(2026, 8, 1));
+    },
+  );
+
+  test('supports the three approved Home trend range lengths', () async {
+    for (final count in const [3, 6, 12]) {
+      final result = await loadHomeOverview(
+        instant: DateTime.utc(2026, 9, 16, 12),
+        trendMonthCount: count,
+      );
+      final overview = (result as ApplicationSuccess<HomeOverview>).value;
+      expect(overview.monthlyTrend, hasLength(count));
+      expect(overview.displayMonth, DateTime(2026, 9, 1));
+    }
+  });
+
   test('keeps review failures distinct from zero review items', () async {
     transactions.failReviewQueries = true;
 
