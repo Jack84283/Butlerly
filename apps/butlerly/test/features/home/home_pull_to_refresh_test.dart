@@ -138,7 +138,9 @@ void main() {
       find.byKey(const ValueKey('home-summary-card')),
       find.byKey(const ValueKey('home-trend-card')),
       find.byKey(const ValueKey('home-category-card')),
+      find.byKey(const ValueKey('home-attention-card')),
       find.byKey(const ValueKey('home-recent-card')),
+      find.byKey(const ValueKey('home-insight-card')),
     ];
     for (final card in cards) {
       expect(card, findsOneWidget);
@@ -155,6 +157,18 @@ void main() {
     expect(find.text('Savings'), findsOneWidget);
     expect(find.text('Net position'), findsOneWidget);
     expect(find.text('Recent transactions'), findsOneWidget);
+    expect(find.text('Insights'), findsOneWidget);
+    expect(find.text('Sep 2026'), findsOneWidget);
+    expect(
+      find.text("Here's your financial overview for September 2026."),
+      findsOneWidget,
+    );
+    expect(find.text('vs previous period'), findsOneWidget);
+    expect(find.text('...'), findsNWidgets(4));
+    expect(find.byTooltip('View all categories'), findsOneWidget);
+    expect(find.byTooltip('View all transactions'), findsOneWidget);
+    expect(find.byTooltip('View all attention items'), findsOneWidget);
+    expect(find.byTooltip('View all insights'), findsOneWidget);
     final monthSelector = tester.widget<TextButton>(
       find.byKey(const Key('home-month-selector')),
     );
@@ -166,6 +180,7 @@ void main() {
       summaryTitle.style?.fontFamily,
       isNot(ButlerlyTypography.editorialFontFamily),
     );
+    expect(summaryTitle.style?.fontSize, 18);
     final summaryAmount = tester.widget<Text>(
       find.descendant(
         of: find.byKey(const ValueKey('home-summary-card')),
@@ -179,7 +194,7 @@ void main() {
     expect(summaryAmount.style?.fontFeatures, isNotEmpty);
     expect(find.byKey(const ValueKey('home-attention-card')), findsOneWidget);
     expect(find.text('1 merchant to review'), findsOneWidget);
-    expect(find.byKey(const ValueKey('home-insight-card')), findsNothing);
+    expect(find.byKey(const ValueKey('home-insight-card')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -204,6 +219,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Analysis is unavailable'), findsOneWidget);
+    expect(find.text('Insights are unavailable'), findsOneWidget);
+    expect(find.text('Nothing needs your attention'), findsNothing);
     expect(
       find.byKey(const ValueKey('home-empty-transactions-card')),
       findsNothing,
@@ -673,7 +690,7 @@ void main() {
       expect(metricTops[index], greaterThan(metricTops[index - 1]));
     }
     final value = tester.widget<Text>(find.text('\$9,999.99'));
-    expect(value.style?.fontSize, 17);
+    expect(value.style?.fontSize, 16);
     expect(value.softWrap, isTrue);
     expect(value.maxLines, isNull);
     expect(tester.takeException(), isNull);
@@ -752,7 +769,7 @@ void main() {
       expect(text.maxLines, 1);
       expect(text.softWrap, isFalse);
       expect(text.overflow, TextOverflow.visible);
-      expect(text.style?.fontSize, 17);
+      expect(text.style?.fontSize, 16);
       final render = tester.renderObject<RenderParagraph>(textFinder);
       final context = tester.element(textFinder);
       final effectiveStyle = DefaultTextStyle.of(
@@ -775,13 +792,15 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Home Summary stacks when an amount cannot fit a metric cell', (
+  testWidgets('Home Summary stacks extreme amounts at enlarged text scale', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
+    tester.view.platformDispatcher.textScaleFactorTestValue = 1.3;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
 
     final context = AnalysisContext(
       period: AnalysisPeriod(
@@ -1470,21 +1489,37 @@ void main() {
       await tester.pumpWidget(const _TestApp());
       await tester.pumpAndSettle();
 
+      for (final key in const [
+        'home-summary-card',
+        'home-trend-card',
+        'home-category-card',
+        'home-attention-card',
+        'home-recent-card',
+        'home-insight-card',
+      ]) {
+        expect(find.byKey(ValueKey(key)), findsOneWidget);
+      }
       expect(
-        find.byKey(const ValueKey('home-period-unavailable-card')),
+        find.byKey(const ValueKey('home-review-unavailable-retry')),
         findsOneWidget,
       );
       expect(
-        find.byKey(const ValueKey('home-empty-transactions-card')),
-        findsNothing,
-      );
-      expect(
-        find.byKey(const ValueKey('home-period-unavailable-retry')),
+        find.byKey(const ValueKey('home-review-unavailable-content')),
         findsOneWidget,
       );
       expect(transactions.queries, isEmpty);
-      expect(find.byKey(const Key('home-category-view-all')), findsNothing);
-      expect(find.byKey(const Key('home-recent-view-all')), findsNothing);
+      expect(
+        tester
+            .widget<TextButton>(find.byKey(const Key('home-category-view-all')))
+            .onPressed,
+        isNull,
+      );
+      expect(
+        tester
+            .widget<TextButton>(find.byKey(const Key('home-recent-view-all')))
+            .onPressed,
+        isNull,
+      );
     },
   );
 
@@ -1503,14 +1538,23 @@ void main() {
     await tester.tap(find.byKey(const Key('home-month-2026-8')));
     await tester.pumpAndSettle();
 
+    expect(find.byKey(const ValueKey('home-summary-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-trend-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-category-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-attention-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-recent-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-insight-card')), findsOneWidget);
+    expect(find.text('\$0.00'), findsNWidgets(4));
+    expect(find.text('No spending recorded in this period.'), findsOneWidget);
+    expect(find.text('Nothing needs attention'), findsOneWidget);
     expect(
-      find.byKey(const ValueKey('home-empty-transactions-card')),
-      findsOneWidget,
+      tester
+          .getSemantics(find.byKey(const ValueKey('home-attention-card')))
+          .label,
+      contains('Nothing needs attention'),
     );
-    expect(
-      find.byKey(const ValueKey('home-period-unavailable-card')),
-      findsNothing,
-    );
+    expect(find.text('No transactions yet'), findsOneWidget);
+    expect(find.text('Nothing needs your attention'), findsOneWidget);
   });
 
   testWidgets(
@@ -1544,11 +1588,9 @@ void main() {
       await tester.tap(find.byKey(const Key('home-month-2026-7')));
       await tester.pumpAndSettle();
 
-      expect(
-        find.byKey(const ValueKey('home-empty-transactions-card')),
-        findsOneWidget,
-      );
-      expect(find.byKey(const ValueKey('home-summary-card')), findsNothing);
+      expect(find.byKey(const ValueKey('home-summary-card')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-recent-card')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-insight-card')), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -1565,26 +1607,24 @@ void main() {
     await tester.pumpWidget(const _TestApp());
     await tester.pumpAndSettle();
 
+    for (final key in const [
+      'home-summary-card',
+      'home-trend-card',
+      'home-category-card',
+      'home-attention-card',
+      'home-recent-card',
+      'home-insight-card',
+    ]) {
+      expect(find.byKey(ValueKey(key)), findsOneWidget);
+    }
     expect(
-      find.byKey(const ValueKey('home-transactions-unavailable-card')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey('home-empty-transactions-card')),
-      findsNothing,
-    );
-    expect(
-      find.byKey(const ValueKey('home-period-unavailable-card')),
-      findsNothing,
-    );
-    expect(
-      find.byKey(const ValueKey('home-transactions-unavailable-retry')),
+      find.byKey(const ValueKey('home-recent-unavailable-retry')),
       findsOneWidget,
     );
     expect(
       tester
           .getSemantics(
-            find.byKey(const ValueKey('home-transactions-unavailable-card')),
+            find.byKey(const ValueKey('home-recent-unavailable-content')),
           )
           .flagsCollection
           .isLiveRegion,
@@ -1604,10 +1644,7 @@ void main() {
     await tester.pumpWidget(const _TestApp());
     await tester.pumpAndSettle();
 
-    expect(
-      find.byKey(const ValueKey('home-review-unavailable-card')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('home-attention-card')), findsOneWidget);
     expect(
       find.byKey(const ValueKey('home-review-unavailable-retry')),
       findsOneWidget,
@@ -1623,7 +1660,7 @@ void main() {
     expect(
       tester
           .getSemantics(
-            find.byKey(const ValueKey('home-review-unavailable-card')),
+            find.byKey(const ValueKey('home-review-unavailable-content')),
           )
           .flagsCollection
           .isLiveRegion,

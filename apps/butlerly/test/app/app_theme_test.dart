@@ -55,6 +55,7 @@ void main() {
         ButlerlyTypography.pageHeroTitle(base.headlineLarge!),
         ButlerlyTypography.pageIntro(base.bodyLarge!),
         ButlerlyTypography.cardTitle(base.titleLarge!),
+        ButlerlyTypography.compactCardTitle(base.titleLarge!),
         ButlerlyTypography.cardSubtitle(base.bodySmall!),
         ButlerlyTypography.cardAction(base.labelLarge!),
         ButlerlyTypography.metricLabel(base.labelLarge!),
@@ -75,6 +76,7 @@ void main() {
         (role: ButlerlyTypography.pageIntro(base.bodyLarge!), size: 16),
         (role: ButlerlyTypography.brandTitle(base.headlineLarge!), size: 20),
         (role: ButlerlyTypography.cardTitle(base.titleLarge!), size: 21),
+        (role: ButlerlyTypography.compactCardTitle(base.titleLarge!), size: 18),
         (role: ButlerlyTypography.cardSubtitle(base.bodySmall!), size: 14),
         (role: ButlerlyTypography.cardAction(base.labelLarge!), size: 14),
         (role: ButlerlyTypography.metricLabel(base.labelLarge!), size: 14),
@@ -97,6 +99,14 @@ void main() {
         isNotEmpty,
       );
       expect(ButlerlyTypography.cardTitle(base.titleLarge!).fontSize, 21);
+      expect(
+        ButlerlyTypography.compactCardTitle(base.titleLarge!).fontSize,
+        18,
+      );
+      expect(
+        ButlerlyTypography.compactMetricValue(base.titleLarge!).fontSize,
+        16,
+      );
       expect(ButlerlyTypography.metricValue(base.titleLarge!).fontSize, 24);
     },
   );

@@ -64,6 +64,15 @@ abstract final class ButlerlyTypography {
     letterSpacing: -0.15,
   );
 
+  /// Compact title role for dense dashboard cards.
+  static TextStyle compactCardTitle(TextStyle base) => _systemSans(
+    base,
+    fontSize: 18,
+    height: 1.2,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.1,
+  );
+
   static TextStyle cardSubtitle(TextStyle base) =>
       _systemSans(base, fontSize: 14, height: 1.3, fontWeight: FontWeight.w400);
 
@@ -84,7 +93,7 @@ abstract final class ButlerlyTypography {
 
   static TextStyle compactMetricValue(TextStyle base) => _systemSans(
     base,
-    fontSize: 17,
+    fontSize: 16,
     height: 1.08,
     fontWeight: FontWeight.w700,
     letterSpacing: -0.35,

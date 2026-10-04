@@ -126,6 +126,8 @@ class _HomePageState extends State<HomePage> {
         return _HomeData.transactionsUnavailable(
           displayMonth: overview.displayMonth!,
           currentFinancialMonth: overview.currentFinancialMonth!,
+          period: overview.context?.period,
+          baseCurrency: overview.context?.baseCurrency,
         );
       }
       final masterData = await masterDataFuture;
@@ -161,6 +163,7 @@ class _HomePageState extends State<HomePage> {
         displayMonth: overview.displayMonth!,
         currentFinancialMonth: overview.currentFinancialMonth!,
         period: overview.context!.period,
+        baseCurrency: overview.context!.baseCurrency,
         analysisUnavailable: overview.analysisUnavailable,
         duplicateUnavailable: overview.duplicateUnavailable,
         status: overview.reviewUnavailable
@@ -232,63 +235,39 @@ class _HomePageState extends State<HomePage> {
     );
     final period = data.period;
     if (loading) return const _HomeLoading();
-    if (data.status == _HomeDataStatus.periodUnavailable) {
-      return _HomePeriodUnavailable(onRetry: _refresh);
-    }
-    if (data.status == _HomeDataStatus.transactionsUnavailable) {
-      return _HomeTransactionsUnavailable(onRetry: _refresh);
-    }
-
-    final hasUsefulAnalysis =
-        [
-          data.model?.spending,
-          data.model?.income,
-          data.model?.net,
-          data.model?.transactionCount,
-        ].whereType<AnalysisMetric>().any(
-          (metric) =>
-              metric.availability == AnalysisDataAvailability.sufficient &&
-              analysisNumber(metric) != 0,
-        );
-    final hasUsefulActivity =
-        data.transactions.isNotEmpty ||
-        hasUsefulAnalysis ||
-        data.model?.categories.isNotEmpty == true ||
-        data.insight != null ||
-        data.reviewCount > 0 ||
-        data.uncategorizedTransactionCount > 0 ||
-        data.possibleDuplicateCount > 0 ||
-        data.merchantReviewCount > 0 ||
-        data.duplicateUnavailable ||
-        data.status == _HomeDataStatus.reviewUnavailable ||
-        data.trend.any((point) => point.selected && point.value > 0);
-    if (!data.analysisUnavailable && !hasUsefulActivity) {
-      return _HomeEmptyState(
-        onAdd: () => context.push('/add'),
-        onViewAnalysis: period == null
-            ? null
-            : () => context.push(
-                _periodRoute('/analysis', period, currentMonth: currentMonth),
-              ),
-        onViewRecent: period == null
-            ? null
-            : () => context.push(
-                _periodRoute('/search', period, currentMonth: currentMonth),
-              ),
-      );
-    }
+    final periodUnavailable = data.status == _HomeDataStatus.periodUnavailable;
+    final transactionsUnavailable =
+        data.status == _HomeDataStatus.transactionsUnavailable;
+    final overviewUnavailable = periodUnavailable || transactionsUnavailable;
+    final reviewUnavailable =
+        data.status == _HomeDataStatus.reviewUnavailable || overviewUnavailable;
+    final unavailableTitleKey = periodUnavailable
+        ? 'homeUnavailable'
+        : transactionsUnavailable
+        ? 'homeTransactionsUnavailable'
+        : 'homeReviewUnavailable';
+    final unavailableBodyKey = periodUnavailable
+        ? 'homeUnavailableBody'
+        : transactionsUnavailable
+        ? 'homeTransactionsUnavailableBody'
+        : 'homeReviewUnavailableBody';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _HomeSummaryCard(
           model: data.model,
-          analysisUnavailable: data.analysisUnavailable,
+          analysisUnavailable: data.analysisUnavailable || overviewUnavailable,
+          baseCurrency: data.baseCurrency,
+          showZeroValues:
+              data.status == _HomeDataStatus.available &&
+              !data.analysisUnavailable &&
+              data.transactions.isEmpty,
         ),
         const SizedBox(height: ButlerlySpacing.cardGap),
         _SpendingTrend(
           points: data.trend,
-          unavailable: data.trendUnavailable,
+          unavailable: data.trendUnavailable || overviewUnavailable,
           comparison: data.model?.spendingComparison,
         ),
         const SizedBox(height: ButlerlySpacing.cardGap),
@@ -301,51 +280,44 @@ class _HomePageState extends State<HomePage> {
                   _periodRoute('/analysis', period, currentMonth: currentMonth),
                 ),
         ),
-        if (data.status == _HomeDataStatus.reviewUnavailable) ...[
-          const SizedBox(height: ButlerlySpacing.cardGap),
-          _HomeReviewUnavailable(onRetry: _refresh),
-        ] else if (data.uncategorizedTransactionCount > 0 ||
-            data.possibleDuplicateCount > 0 ||
-            data.merchantReviewCount > 0 ||
-            data.reviewCount > 0 ||
-            data.duplicateUnavailable) ...[
-          const SizedBox(height: ButlerlySpacing.cardGap),
-          _AttentionSection(
-            uncategorizedTransactionCount: data.uncategorizedTransactionCount,
-            possibleDuplicateCount: data.possibleDuplicateCount,
-            merchantReviewCount: data.merchantReviewCount,
-            reviewCount: data.reviewCount,
-            duplicateUnavailable: data.duplicateUnavailable,
-            period: period!,
-          ),
-        ],
+        const SizedBox(height: ButlerlySpacing.cardGap),
+        _AttentionSection(
+          uncategorizedTransactionCount: data.uncategorizedTransactionCount,
+          possibleDuplicateCount: data.possibleDuplicateCount,
+          merchantReviewCount: data.merchantReviewCount,
+          reviewCount: data.reviewCount,
+          duplicateUnavailable: data.duplicateUnavailable,
+          reviewUnavailable: reviewUnavailable,
+          unavailableTitleKey: overviewUnavailable ? unavailableTitleKey : null,
+          unavailableBodyKey: overviewUnavailable ? unavailableBodyKey : null,
+          onRetry: _refresh,
+          period: period,
+        ),
         const SizedBox(height: ButlerlySpacing.cardGap),
         _HomeRecentActivity(
           transactions: data.transactions,
           masterData: data.masterData,
           onTap: _open,
+          unavailableTitleKey: overviewUnavailable ? unavailableTitleKey : null,
+          unavailableBodyKey: overviewUnavailable ? unavailableBodyKey : null,
+          onRetry: _refresh,
           onViewAll: period == null
               ? null
               : () => context.push(
                   _periodRoute('/search', period, currentMonth: currentMonth),
                 ),
         ),
-        if (data.insight != null) ...[
-          const SizedBox(height: ButlerlySpacing.cardGap),
-          _HomeInsightCard(
-            insight: data.insight!,
-            masterData: data.masterData,
-            onTap: period == null
-                ? null
-                : () => context.push(
-                    _periodRoute(
-                      '/insights',
-                      period,
-                      currentMonth: currentMonth,
-                    ),
-                  ),
-          ),
-        ],
+        const SizedBox(height: ButlerlySpacing.cardGap),
+        _HomeInsightCard(
+          insight: data.insight,
+          masterData: data.masterData,
+          analysisUnavailable: data.analysisUnavailable || overviewUnavailable,
+          onTap: period == null
+              ? null
+              : () => context.push(
+                  _periodRoute('/insights', period, currentMonth: currentMonth),
+                ),
+        ),
         const SizedBox(height: ButlerlySpacing.structural),
       ],
     );
@@ -467,6 +439,19 @@ String homeGreetingKey(DateTime localTime) {
   return 'greetingEvening';
 }
 
+Widget _homeEllipsisAction({
+  required Key key,
+  required String semanticLabel,
+  required VoidCallback? onPressed,
+}) => Tooltip(
+  message: semanticLabel,
+  child: Semantics(
+    button: true,
+    label: semanticLabel,
+    child: TextButton(key: key, onPressed: onPressed, child: const Text('...')),
+  ),
+);
+
 double _homeHeaderExtent(
   BuildContext context, {
   required double crossAxisExtent,
@@ -563,8 +548,11 @@ double _homeHeaderExtent(
   final monthHeight = monthButtonHeight(monthWidth);
   final largeText = scaler.scale(14) > 18;
   final stackedTopRow = largeText || availableWidth < 360;
+  final stackedControlsHeight = largeText
+      ? kMinInteractiveDimension + ButlerlySpacing.small + monthHeight
+      : monthHeight;
   final topRowHeight = stackedTopRow
-      ? brandHeight + ButlerlySpacing.small + monthHeight
+      ? brandHeight + ButlerlySpacing.small + stackedControlsHeight
       : brandHeight > monthHeight
       ? brandHeight
       : monthHeight;
@@ -579,7 +567,8 @@ double _homeHeaderExtent(
       greetingHeight +
       ButlerlySpacing.small +
       introHeight +
-      ButlerlySpacing.small;
+      ButlerlySpacing.small +
+      ButlerlySpacing.micro;
 }
 
 class _HomePinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
@@ -691,6 +680,24 @@ class _HomeHeader extends StatelessWidget {
             ],
           ),
         );
+        final notificationButton = SizedBox(
+          width: kMinInteractiveDimension,
+          height: kMinInteractiveDimension,
+          child: IconButton(
+            key: const Key('home-notification-action'),
+            tooltip: context.l10n.text('notifications'),
+            onPressed: () => context.push('/notifications'),
+            constraints: const BoxConstraints.expand(),
+            padding: EdgeInsets.zero,
+            icon: Icon(
+              _homeIcon(
+                context,
+                material: Icons.notifications_none_rounded,
+                cupertino: CupertinoIcons.bell,
+              ),
+            ),
+          ),
+        );
         final availableWidth = constraints.maxWidth;
         final stackedTopRow =
             MediaQuery.textScalerOf(context).scale(14) > 18 ||
@@ -701,16 +708,33 @@ class _HomeHeader extends StatelessWidget {
                 children: [
                   brand,
                   const SizedBox(height: ButlerlySpacing.small),
-                  monthButton,
+                  if (MediaQuery.textScalerOf(context).scale(14) > 18)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Align(
+                          alignment: AlignmentDirectional.centerEnd,
+                          child: notificationButton,
+                        ),
+                        const SizedBox(height: ButlerlySpacing.small),
+                        monthButton,
+                      ],
+                    )
+                  else
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [notificationButton, monthButton],
+                    ),
                 ],
               )
             : Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(flex: 5, child: brand),
+                  Expanded(child: brand),
                   const SizedBox(width: ButlerlySpacing.standard),
+                  notificationButton,
+                  const SizedBox(width: ButlerlySpacing.compact),
                   Flexible(
-                    flex: 4,
                     child: Align(
                       alignment: AlignmentDirectional.topEnd,
                       child: monthButton,
@@ -751,19 +775,17 @@ class _HomeSummaryCard extends StatelessWidget {
   const _HomeSummaryCard({
     required this.model,
     required this.analysisUnavailable,
+    required this.baseCurrency,
+    required this.showZeroValues,
   });
 
   final AnalysisModel? model;
   final bool analysisUnavailable;
+  final CurrencyCode? baseCurrency;
+  final bool showZeroValues;
 
   @override
   Widget build(BuildContext context) {
-    final headerAction = Text(
-      context.l10n.text('vsLastMonth'),
-      style: ButlerlyTypography.cardAction(
-        Theme.of(context).textTheme.labelLarge ?? const TextStyle(),
-      ),
-    );
     return ButlerlyCard(
       key: const ValueKey('home-summary-card'),
       variant: ButlerlyCardVariant.dashboard,
@@ -773,20 +795,25 @@ class _HomeSummaryCard extends StatelessWidget {
         children: [
           ButlerlyCardHeader(
             title: context.l10n.text('monthlySummary'),
-            titleStyle: ButlerlyTypography.cardTitle(
+            subtitle: context.l10n.text('vsPreviousPeriod'),
+            titleStyle: ButlerlyTypography.compactCardTitle(
               Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
             ),
-            action: headerAction,
+            subtitleStyle: ButlerlyTypography.cardSubtitle(
+              Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+            ),
           ),
           const SizedBox(height: ButlerlySpacing.small),
           LayoutBuilder(
             builder: (context, constraints) {
-              final largeText = MediaQuery.textScalerOf(context).scale(14) > 18;
+              final largeText = MediaQuery.textScalerOf(context).scale(14) > 14;
               final cells = [
                 _HomeMetricCell(
                   key: const ValueKey('home-summary-metric-spending'),
                   label: context.l10n.text('spending'),
                   metric: model?.spending,
+                  fallbackCurrency: baseCurrency,
+                  showZeroWhenUnavailable: showZeroValues,
                   comparison: model?.spendingComparison,
                   icon: Icons.arrow_downward_rounded,
                   color: context.colors.error,
@@ -796,6 +823,8 @@ class _HomeSummaryCard extends StatelessWidget {
                   key: const ValueKey('home-summary-metric-income'),
                   label: context.l10n.text('income'),
                   metric: model?.income,
+                  fallbackCurrency: baseCurrency,
+                  showZeroWhenUnavailable: showZeroValues,
                   comparison: model?.incomeComparison,
                   icon: Icons.arrow_upward_rounded,
                   color: context.colors.success,
@@ -805,6 +834,8 @@ class _HomeSummaryCard extends StatelessWidget {
                   key: const ValueKey('home-summary-metric-savings'),
                   label: context.l10n.text('savings'),
                   value: model?.savings,
+                  fallbackCurrency: baseCurrency,
+                  showZeroWhenUnavailable: showZeroValues,
                   supportingText: model?.savingsRate == null
                       ? null
                       : analysisPercentageRatio(context, model!.savingsRate!),
@@ -819,6 +850,8 @@ class _HomeSummaryCard extends StatelessWidget {
                   key: const ValueKey('home-summary-metric-net-position'),
                   label: context.l10n.text('netPosition'),
                   metric: model?.net,
+                  fallbackCurrency: baseCurrency,
+                  showZeroWhenUnavailable: showZeroValues,
                   supportingText: model?.netComparison == null
                       ? null
                       : localizedCompactSignedMoney(
@@ -829,7 +862,7 @@ class _HomeSummaryCard extends StatelessWidget {
                               model?.net?.context.baseCurrency?.value ??
                               '',
                         ),
-                  icon: Icons.account_balance_wallet_outlined,
+                  icon: Icons.bar_chart_rounded,
                   color: context.colors.warning,
                   supportingColor: _homeNetChangeColor(
                     context,
@@ -837,17 +870,7 @@ class _HomeSummaryCard extends StatelessWidget {
                   ),
                 ),
               ];
-              final dividerWidth =
-                  ButlerlySize.dividerWidth + (ButlerlySpacing.micro * 2);
-              final horizontalCellWidth =
-                  (constraints.maxWidth - (dividerWidth * (cells.length - 1))) /
-                  cells.length;
-              final stacked =
-                  largeText ||
-                  constraints.maxWidth < 300 ||
-                  cells.any(
-                    (cell) => !cell.fitsWithin(context, horizontalCellWidth),
-                  );
+              final stacked = largeText || constraints.maxWidth < 300;
               final layoutCells = [
                 for (final cell in cells) cell.withStacked(stacked),
               ];
@@ -914,6 +937,8 @@ class _HomeMetricCell extends StatelessWidget {
     this.supportingText,
     this.secondarySupportingText,
     this.supportingColor,
+    this.fallbackCurrency,
+    this.showZeroWhenUnavailable = false,
     required this.icon,
     required this.color,
     this.stacked = false,
@@ -926,6 +951,8 @@ class _HomeMetricCell extends StatelessWidget {
   final String? supportingText;
   final String? secondarySupportingText;
   final Color? supportingColor;
+  final CurrencyCode? fallbackCurrency;
+  final bool showZeroWhenUnavailable;
   final IconData icon;
   final Color color;
   final bool stacked;
@@ -939,37 +966,31 @@ class _HomeMetricCell extends StatelessWidget {
     supportingText: supportingText,
     secondarySupportingText: secondarySupportingText,
     supportingColor: supportingColor,
+    fallbackCurrency: fallbackCurrency,
+    showZeroWhenUnavailable: showZeroWhenUnavailable,
     icon: icon,
     color: color,
     stacked: value,
   );
 
-  bool fitsWithin(BuildContext context, double maxWidth) {
-    final displayValue = _displayValue(context);
-    final style = DefaultTextStyle.of(context).style.merge(
-      ButlerlyTypography.compactMetricValue(
-        Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
-      ),
-    );
-    final painter = TextPainter(
-      text: TextSpan(text: displayValue, style: style),
-      textDirection: Directionality.of(context),
-      textScaler: MediaQuery.textScalerOf(context),
-    )..layout();
-    return painter.width <= maxWidth;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final metricUnavailable =
-        metric?.availability != null &&
-        metric!.availability != AnalysisDataAvailability.sufficient;
-    final valueUnavailable =
-        value?.availability != null &&
-        value!.availability != AnalysisDataAvailability.sufficient;
+    final metricUnavailable = _isUnavailable(metric?.availability);
+    final valueUnavailable = _isUnavailable(value?.availability);
+    final zeroFallbackUnavailable =
+        showZeroWhenUnavailable &&
+        fallbackCurrency == null &&
+        (metric == null ||
+            metric?.availability == AnalysisDataAvailability.empty ||
+            value == null ||
+            value?.availability == AnalysisDataAvailability.empty);
     final displayUnavailable =
-        metric == null && (value == null || valueUnavailable) ||
-        metricUnavailable;
+        (!showZeroWhenUnavailable &&
+            metric == null &&
+            (value == null || valueUnavailable)) ||
+        valueUnavailable ||
+        metricUnavailable ||
+        zeroFallbackUnavailable;
     final displayValue = _displayValue(context);
     final comparisonText = comparison == null
         ? null
@@ -1063,20 +1084,44 @@ class _HomeMetricCell extends StatelessWidget {
   }
 
   String _displayValue(BuildContext context) {
-    final metricUnavailable =
-        metric?.availability != null &&
-        metric!.availability != AnalysisDataAvailability.sufficient;
-    final valueUnavailable =
-        value?.availability != null &&
-        value!.availability != AnalysisDataAvailability.sufficient;
+    final metricUnavailable = _isUnavailable(metric?.availability);
+    final valueUnavailable = _isUnavailable(value?.availability);
+    final zeroFallbackUnavailable =
+        showZeroWhenUnavailable &&
+        fallbackCurrency == null &&
+        (metric == null ||
+            metric?.availability == AnalysisDataAvailability.empty ||
+            value == null ||
+            value?.availability == AnalysisDataAvailability.empty);
     final displayUnavailable =
-        metric == null && (value == null || valueUnavailable) ||
-        metricUnavailable;
+        (!showZeroWhenUnavailable &&
+            metric == null &&
+            (value == null || valueUnavailable)) ||
+        valueUnavailable ||
+        metricUnavailable ||
+        zeroFallbackUnavailable;
+    if (showZeroWhenUnavailable &&
+        !metricUnavailable &&
+        (metric == null ||
+            metric?.availability == AnalysisDataAvailability.empty ||
+            value?.availability == AnalysisDataAvailability.empty) &&
+        fallbackCurrency != null) {
+      return localizedCompactMoney(context, '0', fallbackCurrency!.value);
+    }
     return displayUnavailable
         ? '—'
         : value == null
         ? _homeMoney(context, metric!)
         : _homeValueMoney(context, value!);
+  }
+
+  bool _isUnavailable(AnalysisDataAvailability? availability) {
+    if (availability == null ||
+        availability == AnalysisDataAvailability.sufficient) {
+      return false;
+    }
+    return !(showZeroWhenUnavailable &&
+        availability == AnalysisDataAvailability.empty);
   }
 }
 
@@ -1119,8 +1164,12 @@ Widget homeCategorySummaryItemForTest({
 }) => _CategorySummaryItem(metric: metric, masterData: masterData);
 
 @visibleForTesting
-Widget homeSummaryForTest(AnalysisModel model) =>
-    _HomeSummaryCard(model: model, analysisUnavailable: false);
+Widget homeSummaryForTest(AnalysisModel model) => _HomeSummaryCard(
+  model: model,
+  analysisUnavailable: false,
+  baseCurrency: null,
+  showZeroValues: false,
+);
 
 @visibleForTesting
 Widget homeInsightForTest(
@@ -1196,10 +1245,11 @@ class _SpendingTrend extends StatelessWidget {
           children: [
             ButlerlyCardHeader(
               title: context.l10n.text('spendingTrend'),
-              titleStyle: ButlerlyTypography.cardTitle(
+              titleStyle: ButlerlyTypography.compactCardTitle(
                 Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
               ),
               action: trendAction,
+              keepActionInlineAtCompactWidth: true,
             ),
             if (unavailable || points.isEmpty || !meaningful) ...[
               const SizedBox(height: ButlerlySpacing.standard),
@@ -1424,19 +1474,15 @@ class _CategorySummary extends StatelessWidget {
         children: [
           ButlerlyCardHeader(
             title: context.l10n.text('topCategories'),
-            titleStyle: ButlerlyTypography.cardTitle(
+            titleStyle: ButlerlyTypography.compactCardTitle(
               Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
             ),
-            action: TextButton(
+            action: _homeEllipsisAction(
               key: const Key('home-category-view-all'),
+              semanticLabel: context.l10n.text('viewAllCategories'),
               onPressed: onViewAll,
-              child: Text(
-                context.l10n.text('viewAll'),
-                style: ButlerlyTypography.cardAction(
-                  Theme.of(context).textTheme.labelLarge ?? const TextStyle(),
-                ),
-              ),
             ),
+            keepActionInlineAtCompactWidth: true,
           ),
           const SizedBox(height: ButlerlySpacing.small),
           if (model == null)
@@ -1553,7 +1599,7 @@ class _CategorySummaryItem extends StatelessWidget {
                           const SizedBox(width: ButlerlySpacing.compact),
                           Text(
                             percentage,
-                            style: ButlerlyTypography.metricChange(
+                            style: ButlerlyTypography.rowMetadata(
                               Theme.of(context).textTheme.bodySmall ??
                                   const TextStyle(),
                             ),
@@ -1573,7 +1619,7 @@ class _CategorySummaryItem extends StatelessWidget {
                       const SizedBox(width: ButlerlySpacing.compact),
                       Text(
                         percentage,
-                        style: ButlerlyTypography.metricChange(
+                        style: ButlerlyTypography.rowMetadata(
                           Theme.of(context).textTheme.bodySmall ??
                               const TextStyle(),
                         ),
@@ -1629,6 +1675,10 @@ class _AttentionSection extends StatelessWidget {
     required this.merchantReviewCount,
     required this.reviewCount,
     required this.duplicateUnavailable,
+    required this.reviewUnavailable,
+    this.unavailableTitleKey,
+    this.unavailableBodyKey,
+    required this.onRetry,
     required this.period,
   });
 
@@ -1637,17 +1687,152 @@ class _AttentionSection extends StatelessWidget {
   final int merchantReviewCount;
   final int reviewCount;
   final bool duplicateUnavailable;
-  final AnalysisPeriod period;
+  final bool reviewUnavailable;
+  final String? unavailableTitleKey;
+  final String? unavailableBodyKey;
+  final VoidCallback onRetry;
+  final AnalysisPeriod? period;
 
   @override
   Widget build(BuildContext context) {
+    final hasAttention =
+        uncategorizedTransactionCount > 0 ||
+        possibleDuplicateCount > 0 ||
+        merchantReviewCount > 0 ||
+        reviewCount > 0 ||
+        duplicateUnavailable ||
+        reviewUnavailable;
+    final subtitleKey =
+        unavailableTitleKey ??
+        (reviewUnavailable
+            ? 'homeReviewUnavailable'
+            : hasAttention
+            ? 'attentionNeedsReview'
+            : 'nothingNeedsAttention');
+    final semanticKey =
+        unavailableTitleKey ??
+        (reviewUnavailable
+            ? 'homeReviewUnavailable'
+            : hasAttention
+            ? 'attentionNeedsReview'
+            : 'nothingNeedsAttention');
+    final body = reviewUnavailable
+        ? <Widget>[
+            Semantics(
+              key: const ValueKey('home-review-unavailable-content'),
+              container: true,
+              liveRegion: true,
+              child: _HomeUnavailableContent(
+                retryKey: const ValueKey('home-review-unavailable-retry'),
+                titleKey: unavailableTitleKey ?? 'homeReviewUnavailable',
+                bodyKey: unavailableBodyKey ?? 'homeReviewUnavailableBody',
+                onRetry: onRetry,
+              ),
+            ),
+          ]
+        : <Widget>[
+            if (uncategorizedTransactionCount > 0)
+              _AttentionRow(
+                icon: Icons.category_outlined,
+                color: context.colors.warning,
+                title: context.l10n.text('manyTransactions', {
+                  'count': localizedCount(
+                    context,
+                    uncategorizedTransactionCount.toString(),
+                  ),
+                }),
+                subtitle: context.l10n.text('uncategorizedTransactions'),
+                onTap: () =>
+                    context.push(_reviewRoute(period!, view: 'uncategorized')),
+              ),
+            if (possibleDuplicateCount > 0)
+              _AttentionRow(
+                icon: Icons.copy_all_outlined,
+                color: context.colors.error,
+                title: context.l10n.text('possibleDuplicatesCount', {
+                  'count': localizedCount(
+                    context,
+                    possibleDuplicateCount.toString(),
+                  ),
+                }),
+                subtitle: context.l10n.text('reviewSimilarTransactions'),
+                onTap: () =>
+                    context.push(_reviewRoute(period!, view: 'duplicates')),
+              ),
+            if (duplicateUnavailable)
+              _AttentionRow(
+                icon: Icons.copy_all_outlined,
+                color: context.colors.error,
+                title: context.l10n.text('possibleDuplicatesUnavailable'),
+                subtitle: context.l10n.text(
+                  'possibleDuplicatesUnavailableBody',
+                ),
+                onTap: () =>
+                    context.push(_reviewRoute(period!, view: 'duplicates')),
+              ),
+            if (merchantReviewCount > 0)
+              _AttentionRow(
+                icon: Icons.storefront_outlined,
+                color: context.colors.warning,
+                title: context.l10n.text(
+                  merchantReviewCount == 1
+                      ? 'oneMerchantToReview'
+                      : 'manyMerchantsToReview',
+                  {
+                    'count': localizedCount(
+                      context,
+                      merchantReviewCount.toString(),
+                    ),
+                  },
+                ),
+                subtitle: context.l10n.text(
+                  merchantReviewCount == 1
+                      ? 'newMerchantNeedsCategorization'
+                      : 'newMerchantsNeedCategorization',
+                ),
+                onTap: () => context.push(
+                  _reviewRoute(
+                    period!,
+                    reason: ReviewIssueReason.merchantNeedsReview,
+                  ),
+                ),
+              ),
+            if (reviewCount > 0 &&
+                uncategorizedTransactionCount == 0 &&
+                possibleDuplicateCount == 0 &&
+                merchantReviewCount == 0)
+              _AttentionRow(
+                icon: Icons.rate_review_outlined,
+                color: context.colors.review,
+                title: context.l10n.text(
+                  reviewCount == 1 ? 'oneReviewItem' : 'manyReviewItems',
+                  {'count': localizedCount(context, reviewCount.toString())},
+                ),
+                subtitle: context.l10n.text('needsReview'),
+                onTap: () => context.push(_reviewRoute(period!)),
+              ),
+            if (uncategorizedTransactionCount == 0 &&
+                possibleDuplicateCount == 0 &&
+                merchantReviewCount == 0 &&
+                reviewCount == 0 &&
+                !duplicateUnavailable)
+              Padding(
+                padding: const EdgeInsets.only(top: ButlerlySpacing.compact),
+                child: Text(
+                  context.l10n.text('nothingNeedsAttentionBody'),
+                  style: ButlerlyTypography.rowMetadata(
+                    Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+                  ),
+                ),
+              ),
+          ];
     return ButlerlyCard(
       key: const ValueKey('home-attention-card'),
       variant: ButlerlyCardVariant.dashboard,
       color: context.colors.warning.withValues(alpha: 0.08),
       semanticLabel:
           '${context.l10n.text('needsAttention')}: '
-          '${context.l10n.text('attentionNeedsReview')}',
+          '${context.l10n.text(semanticKey)}',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1672,99 +1857,26 @@ class _AttentionSection extends StatelessWidget {
               Expanded(
                 child: ButlerlyCardHeader(
                   title: context.l10n.text('needsAttention'),
-                  subtitle: context.l10n.text('attentionNeedsReview'),
-                  titleStyle: ButlerlyTypography.cardTitle(
+                  subtitle: context.l10n.text(subtitleKey),
+                  titleStyle: ButlerlyTypography.compactCardTitle(
                     Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
                   ),
-                  action: TextButton(
+                  action: _homeEllipsisAction(
                     key: const Key('home-attention-view-all'),
-                    onPressed: () =>
-                        context.push(_reviewRoute(period, view: 'overview')),
-                    child: Text(context.l10n.text('viewAll')),
+                    semanticLabel: context.l10n.text('viewAllAttention'),
+                    onPressed: period == null
+                        ? null
+                        : () => context.push(
+                            _reviewRoute(period!, view: 'overview'),
+                          ),
                   ),
+                  keepActionInlineAtCompactWidth: true,
                 ),
               ),
             ],
           ),
           const SizedBox(height: ButlerlySpacing.small),
-          if (uncategorizedTransactionCount > 0)
-            _AttentionRow(
-              icon: Icons.category_outlined,
-              color: context.colors.warning,
-              title: context.l10n.text('manyTransactions', {
-                'count': localizedCount(
-                  context,
-                  uncategorizedTransactionCount.toString(),
-                ),
-              }),
-              subtitle: context.l10n.text('uncategorizedTransactions'),
-              onTap: () =>
-                  context.push(_reviewRoute(period, view: 'uncategorized')),
-            ),
-          if (possibleDuplicateCount > 0)
-            _AttentionRow(
-              icon: Icons.copy_all_outlined,
-              color: context.colors.error,
-              title: context.l10n.text('possibleDuplicatesCount', {
-                'count': localizedCount(
-                  context,
-                  possibleDuplicateCount.toString(),
-                ),
-              }),
-              subtitle: context.l10n.text('reviewSimilarTransactions'),
-              onTap: () =>
-                  context.push(_reviewRoute(period, view: 'duplicates')),
-            ),
-          if (duplicateUnavailable)
-            _AttentionRow(
-              icon: Icons.copy_all_outlined,
-              color: context.colors.error,
-              title: context.l10n.text('possibleDuplicatesUnavailable'),
-              subtitle: context.l10n.text('possibleDuplicatesUnavailableBody'),
-              onTap: () =>
-                  context.push(_reviewRoute(period, view: 'duplicates')),
-            ),
-          if (merchantReviewCount > 0)
-            _AttentionRow(
-              icon: Icons.storefront_outlined,
-              color: context.colors.warning,
-              title: context.l10n.text(
-                merchantReviewCount == 1
-                    ? 'oneMerchantToReview'
-                    : 'manyMerchantsToReview',
-                {
-                  'count': localizedCount(
-                    context,
-                    merchantReviewCount.toString(),
-                  ),
-                },
-              ),
-              subtitle: context.l10n.text(
-                merchantReviewCount == 1
-                    ? 'newMerchantNeedsCategorization'
-                    : 'newMerchantsNeedCategorization',
-              ),
-              onTap: () => context.push(
-                _reviewRoute(
-                  period,
-                  reason: ReviewIssueReason.merchantNeedsReview,
-                ),
-              ),
-            ),
-          if (reviewCount > 0 &&
-              uncategorizedTransactionCount == 0 &&
-              possibleDuplicateCount == 0 &&
-              merchantReviewCount == 0)
-            _AttentionRow(
-              icon: Icons.rate_review_outlined,
-              color: context.colors.review,
-              title: context.l10n.text(
-                reviewCount == 1 ? 'oneReviewItem' : 'manyReviewItems',
-                {'count': localizedCount(context, reviewCount.toString())},
-              ),
-              subtitle: context.l10n.text('needsReview'),
-              onTap: () => context.push(_reviewRoute(period)),
-            ),
+          ...body,
         ],
       ),
     );
@@ -1855,12 +1967,18 @@ class _HomeRecentActivity extends StatelessWidget {
     required this.transactions,
     required this.masterData,
     required this.onTap,
+    this.unavailableTitleKey,
+    this.unavailableBodyKey,
+    required this.onRetry,
     required this.onViewAll,
   });
 
   final List<TransactionDto> transactions;
   final TransactionMasterData masterData;
   final ValueChanged<TransactionDto> onTap;
+  final String? unavailableTitleKey;
+  final String? unavailableBodyKey;
+  final VoidCallback onRetry;
   final VoidCallback? onViewAll;
 
   @override
@@ -1881,22 +1999,33 @@ class _HomeRecentActivity extends StatelessWidget {
           ),
           child: ButlerlyCardHeader(
             title: context.l10n.text('recentTransactions'),
-            titleStyle: ButlerlyTypography.cardTitle(
+            titleStyle: ButlerlyTypography.compactCardTitle(
               Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
             ),
-            action: TextButton(
+            action: _homeEllipsisAction(
               key: const Key('home-recent-view-all'),
+              semanticLabel: context.l10n.text('viewAllRecentTransactions'),
               onPressed: onViewAll,
-              child: Text(
-                context.l10n.text('viewAll'),
-                style: ButlerlyTypography.cardAction(
-                  Theme.of(context).textTheme.labelLarge ?? const TextStyle(),
-                ),
-              ),
             ),
+            keepActionInlineAtCompactWidth: true,
           ),
         ),
-        if (transactions.isEmpty)
+        if (unavailableTitleKey != null)
+          Semantics(
+            key: const ValueKey('home-recent-unavailable-content'),
+            container: true,
+            liveRegion: true,
+            child: Padding(
+              padding: const EdgeInsets.all(ButlerlySpacing.standard),
+              child: _HomeUnavailableContent(
+                retryKey: const ValueKey('home-recent-unavailable-retry'),
+                titleKey: unavailableTitleKey!,
+                bodyKey: unavailableBodyKey!,
+                onRetry: onRetry,
+              ),
+            ),
+          )
+        else if (transactions.isEmpty)
           const _HomeEmptyTransactions()
         else
           ButlerlyTransactionList(
@@ -1923,16 +2052,28 @@ class _HomeInsightCard extends StatelessWidget {
   const _HomeInsightCard({
     required this.insight,
     required this.masterData,
+    this.analysisUnavailable = false,
     required this.onTap,
   });
 
-  final InsightResult insight;
+  final InsightResult? insight;
   final TransactionMasterData masterData;
+  final bool analysisUnavailable;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final preview = _homeInsightPreview(context, insight, masterData);
+    final preview = analysisUnavailable
+        ? _HomeInsightPreview(
+            title: context.l10n.text('insightsUnavailable'),
+            description: context.l10n.text('insightsUnavailableBody'),
+          )
+        : insight == null
+        ? _HomeInsightPreview(
+            title: context.l10n.text('insightsNothingNoteworthy'),
+            description: context.l10n.text('insightsNothingNoteworthyBody'),
+          )
+        : _homeInsightPreview(context, insight!, masterData);
     final insightColor = switch (preview.direction) {
       _HomeInsightDirection.up => context.colors.error,
       _HomeInsightDirection.down => context.colors.success,
@@ -1964,13 +2105,15 @@ class _HomeInsightCard extends StatelessWidget {
         children: [
           ButlerlyCardHeader(
             title: context.l10n.text('insights'),
-            titleStyle: ButlerlyTypography.cardTitle(
+            titleStyle: ButlerlyTypography.compactCardTitle(
               Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
             ),
-            action: TextButton(
+            action: _homeEllipsisAction(
+              key: const Key('home-insight-view-all'),
+              semanticLabel: context.l10n.text('viewAllInsights'),
               onPressed: onTap,
-              child: Text(context.l10n.text('viewAll')),
             ),
+            keepActionInlineAtCompactWidth: true,
           ),
           const SizedBox(height: ButlerlySpacing.small),
           Material(
@@ -2137,108 +2280,6 @@ String? _homeInsightDimension(
   };
 }
 
-class _HomeEmptyState extends StatelessWidget {
-  const _HomeEmptyState({
-    required this.onAdd,
-    required this.onViewAnalysis,
-    required this.onViewRecent,
-  });
-
-  final VoidCallback onAdd;
-  final VoidCallback? onViewAnalysis;
-  final VoidCallback? onViewRecent;
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-    key: const ValueKey('home-empty-transactions-card'),
-    container: true,
-    explicitChildNodes: true,
-    child: ButlerlyCard(
-      variant: ButlerlyCardVariant.dashboard,
-      semanticLabel: context.l10n.text('noActivityInPeriod'),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Icon(
-                  _homeIcon(
-                    context,
-                    material: Icons.receipt_long_outlined,
-                    cupertino: CupertinoIcons.doc_text,
-                  ),
-                  color: context.colors.secondaryText,
-                  size: ButlerlySize.standardIcon,
-                ),
-              ),
-              IconButton(
-                key: const Key('home-notification-action'),
-                tooltip: context.l10n.text('notifications'),
-                onPressed: () => context.push('/notifications'),
-                icon: Icon(
-                  _homeIcon(
-                    context,
-                    material: Icons.notifications_none_rounded,
-                    cupertino: CupertinoIcons.bell,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: ButlerlySpacing.standard),
-          Text(
-            context.l10n.text('noActivityInPeriod'),
-            style: ButlerlyTypography.cardTitle(
-              Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
-            ),
-          ),
-          const SizedBox(height: ButlerlySpacing.micro),
-          Text(
-            context.l10n.text('noTransactionsBody'),
-            style: ButlerlyTypography.cardSubtitle(
-              Theme.of(context).textTheme.bodyMedium ?? const TextStyle(),
-            ),
-          ),
-          const SizedBox(height: ButlerlySpacing.standard),
-          OutlinedButton.icon(
-            onPressed: onAdd,
-            icon: Icon(
-              _homeIcon(
-                context,
-                material: Icons.add,
-                cupertino: CupertinoIcons.add,
-              ),
-            ),
-            label: Text(context.l10n.text('addFirstTransaction')),
-          ),
-          if (onViewAnalysis != null || onViewRecent != null) ...[
-            const SizedBox(height: ButlerlySpacing.compact),
-            Wrap(
-              spacing: ButlerlySpacing.compact,
-              runSpacing: ButlerlySpacing.compact,
-              children: [
-                if (onViewAnalysis != null)
-                  TextButton(
-                    key: const Key('home-category-view-all'),
-                    onPressed: onViewAnalysis,
-                    child: Text(context.l10n.text('viewAllAnalysis')),
-                  ),
-                if (onViewRecent != null)
-                  TextButton(
-                    key: const Key('home-recent-view-all'),
-                    onPressed: onViewRecent,
-                    child: Text(context.l10n.text('viewAllRecentTransactions')),
-                  ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    ),
-  );
-}
-
 class _HomeEmptyTransactions extends StatelessWidget {
   const _HomeEmptyTransactions();
 
@@ -2321,126 +2362,62 @@ double _trendScaleMax(double maxValue) {
 String _trendScaleLabel(String locale, double value) =>
     NumberFormat.compact(locale: locale).format(value);
 
-class _HomePeriodUnavailable extends StatelessWidget {
-  const _HomePeriodUnavailable({required this.onRetry});
-
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) => _HomeUnavailableCard(
-    cardKey: const ValueKey('home-period-unavailable-card'),
-    retryKey: const ValueKey('home-period-unavailable-retry'),
-    titleKey: 'homeUnavailable',
-    bodyKey: 'homeUnavailableBody',
-    onRetry: onRetry,
-  );
-}
-
-class _HomeTransactionsUnavailable extends StatelessWidget {
-  const _HomeTransactionsUnavailable({required this.onRetry});
-
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) => _HomeUnavailableCard(
-    cardKey: const ValueKey('home-transactions-unavailable-card'),
-    retryKey: const ValueKey('home-transactions-unavailable-retry'),
-    titleKey: 'homeTransactionsUnavailable',
-    bodyKey: 'homeTransactionsUnavailableBody',
-    onRetry: onRetry,
-  );
-}
-
-class _HomeReviewUnavailable extends StatelessWidget {
-  const _HomeReviewUnavailable({required this.onRetry});
-
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) => _HomeUnavailableCard(
-    cardKey: const ValueKey('home-review-unavailable-card'),
-    retryKey: const ValueKey('home-review-unavailable-retry'),
-    titleKey: 'homeReviewUnavailable',
-    bodyKey: 'homeReviewUnavailableBody',
-    onRetry: onRetry,
-  );
-}
-
-class _HomeUnavailableCard extends StatelessWidget {
-  const _HomeUnavailableCard({
-    required this.cardKey,
+class _HomeUnavailableContent extends StatelessWidget {
+  const _HomeUnavailableContent({
     required this.retryKey,
     required this.titleKey,
     required this.bodyKey,
     required this.onRetry,
   });
 
-  final Key cardKey;
   final Key retryKey;
   final String titleKey;
   final String bodyKey;
   final VoidCallback onRetry;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    key: cardKey,
-    container: true,
-    liveRegion: true,
-    child: Material(
-      color: context.colors.subtleSurface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-        side: BorderSide(color: context.colors.border),
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Icon(
+        _homeIcon(
+          context,
+          material: Icons.error_outline,
+          cupertino: CupertinoIcons.exclamationmark_circle,
+        ),
+        color: context.colors.secondaryText,
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(ButlerlySpacing.standard),
-        child: Row(
+      const SizedBox(width: ButlerlySpacing.small),
+      Expanded(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              _homeIcon(
-                context,
-                material: Icons.error_outline,
-                cupertino: CupertinoIcons.exclamationmark_circle,
+            Text(
+              context.l10n.text(titleKey),
+              style: ButlerlyTypography.rowTitle(
+                Theme.of(context).textTheme.titleMedium ?? const TextStyle(),
               ),
-              color: context.colors.secondaryText,
             ),
-            const SizedBox(width: ButlerlySpacing.small),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    context.l10n.text(titleKey),
-                    style: ButlerlyTypography.rowTitle(
-                      Theme.of(context).textTheme.titleMedium ??
-                          const TextStyle(),
-                    ),
-                  ),
-                  const SizedBox(height: ButlerlySpacing.compact),
-                  Text(
-                    context.l10n.text(bodyKey),
-                    style: ButlerlyTypography.cardSubtitle(
-                      Theme.of(context).textTheme.bodyMedium ??
-                          const TextStyle(),
-                    ),
-                  ),
-                  const SizedBox(height: ButlerlySpacing.small),
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: TextButton(
-                      key: retryKey,
-                      onPressed: onRetry,
-                      child: Text(context.l10n.text('tryAgain')),
-                    ),
-                  ),
-                ],
+            const SizedBox(height: ButlerlySpacing.compact),
+            Text(
+              context.l10n.text(bodyKey),
+              style: ButlerlyTypography.cardSubtitle(
+                Theme.of(context).textTheme.bodyMedium ?? const TextStyle(),
+              ),
+            ),
+            const SizedBox(height: ButlerlySpacing.small),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton(
+                key: retryKey,
+                onPressed: onRetry,
+                child: Text(context.l10n.text('tryAgain')),
               ),
             ),
           ],
         ),
       ),
-    ),
+    ],
   );
 }
 
@@ -2567,6 +2544,7 @@ class _HomeData {
     required this.displayMonth,
     required this.currentFinancialMonth,
     required this.period,
+    required this.baseCurrency,
     required this.analysisUnavailable,
     required this.duplicateUnavailable,
     required this.status,
@@ -2595,6 +2573,7 @@ class _HomeData {
       displayMonth: displayMonth,
       currentFinancialMonth: currentMonth,
       period: resolution?.period,
+      baseCurrency: null,
       analysisUnavailable: false,
       status: _HomeDataStatus.available,
     );
@@ -2617,6 +2596,7 @@ class _HomeData {
       displayMonth: _monthStart(selectedMonth ?? currentMonth),
       currentFinancialMonth: currentMonth,
       period: null,
+      baseCurrency: null,
       analysisUnavailable: false,
       status: _HomeDataStatus.periodUnavailable,
     );
@@ -2625,6 +2605,8 @@ class _HomeData {
   factory _HomeData.transactionsUnavailable({
     required DateTime displayMonth,
     required DateTime currentFinancialMonth,
+    required AnalysisPeriod? period,
+    required CurrencyCode? baseCurrency,
   }) => _HomeData(
     transactions: const [],
     reviewCount: 0,
@@ -2639,7 +2621,8 @@ class _HomeData {
     trendUnavailable: true,
     displayMonth: displayMonth,
     currentFinancialMonth: currentFinancialMonth,
-    period: null,
+    period: period,
+    baseCurrency: baseCurrency,
     analysisUnavailable: false,
     status: _HomeDataStatus.transactionsUnavailable,
   );
@@ -2658,6 +2641,7 @@ class _HomeData {
   final DateTime displayMonth;
   final DateTime currentFinancialMonth;
   final AnalysisPeriod? period;
+  final CurrencyCode? baseCurrency;
   final bool analysisUnavailable;
   final _HomeDataStatus status;
 }

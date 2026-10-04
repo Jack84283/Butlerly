@@ -77,7 +77,7 @@ void main() {
         find.text("Here's your financial overview for September 2026."),
         findsOneWidget,
       );
-      expect(find.byKey(const Key('home-notification-action')), findsOneWidget);
+      expect(find.byKey(const Key('home-month-selector')), findsOneWidget);
 
       final initialHeaderTop = tester.getTopLeft(find.text('Butlerly')).dy;
       await tester.drag(find.byType(CustomScrollView), const Offset(0, -260));
@@ -127,7 +127,27 @@ void main() {
     expect(find.byIcon(Icons.notifications_none_rounded), findsNothing);
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
-  testWidgets('Home avoids empty dashboard cards when there is no activity', (
+  testWidgets('Home keeps notification navigation available', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(_testApp(router));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('home-notification-action')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('notifications-route')), findsOneWidget);
+    expect(router.canPop(), isTrue);
+
+    router.pop();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('notifications-route')), findsNothing);
+    expect(find.byType(HomePage), findsOneWidget);
+  });
+
+  testWidgets('Home keeps all dashboard cards when there is no activity', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -138,61 +158,46 @@ void main() {
     await tester.pumpWidget(_testApp(router));
     await tester.pumpAndSettle();
 
-    expect(
-      find.byKey(const ValueKey('home-empty-transactions-card')),
-      findsOneWidget,
-    );
+    for (final key in const [
+      'home-summary-card',
+      'home-trend-card',
+      'home-category-card',
+      'home-attention-card',
+      'home-recent-card',
+      'home-insight-card',
+    ]) {
+      expect(find.byKey(ValueKey(key)), findsOneWidget);
+    }
     expect(find.byKey(const Key('home-category-view-all')), findsOneWidget);
     expect(find.byKey(const Key('home-recent-view-all')), findsOneWidget);
-    expect(find.byType(VerticalDivider), findsNothing);
+    expect(find.text('...'), findsNWidgets(4));
   });
 
-  testWidgets(
-    'Home keeps notification navigation available from its empty state',
-    (tester) async {
-      tester.view.physicalSize = const Size(390, 844);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets('Home Recent ellipsis keeps the selected month in Search', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(_testApp(router));
-      await tester.pumpAndSettle();
+    await tester.pumpWidget(_testApp(router));
+    await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('home-notification-action')));
-      await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('notifications-route')), findsOneWidget);
-      expect(router.canPop(), isTrue);
+    final recentViewAll = find.byKey(const Key('home-recent-view-all'));
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -1000));
+    await tester.pumpAndSettle();
+    await tester.tap(recentViewAll);
+    await tester.pumpAndSettle();
 
-      router.pop();
-      await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('notifications-route')), findsNothing);
-      expect(find.byType(HomePage), findsOneWidget);
-    },
-  );
-
-  testWidgets(
-    'Home empty-state Recent View All keeps the selected month in Search',
-    (tester) async {
-      tester.view.physicalSize = const Size(390, 844);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(_testApp(router));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const Key('home-recent-view-all')));
-      await tester.pumpAndSettle();
-
-      final uri = Uri.parse(
-        tester.widget<Text>(find.byKey(const Key('search-uri'))).data!,
-      );
-      expect(uri.path, '/search');
-      expect(uri.queryParameters['from'], '2026-09-01');
-      expect(uri.queryParameters['to'], '2026-09-14');
-      expect(uri.queryParameters['includeUndated'], isNull);
-    },
-  );
+    final uri = Uri.parse(
+      tester.widget<Text>(find.byKey(const Key('search-uri'))).data!,
+    );
+    expect(uri.path, '/search');
+    expect(uri.queryParameters['from'], '2026-09-01');
+    expect(uri.queryParameters['to'], '2026-09-14');
+    expect(uri.queryParameters['includeUndated'], isNull);
+  });
 
   testWidgets('Home spending trend grid uses the bar baseline', (tester) async {
     await tester.pumpWidget(

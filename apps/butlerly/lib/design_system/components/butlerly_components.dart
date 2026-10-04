@@ -301,6 +301,7 @@ class ButlerlyCardHeader extends StatelessWidget {
     this.action,
     this.titleStyle,
     this.subtitleStyle,
+    this.keepActionInlineAtCompactWidth = false,
     super.key,
   });
 
@@ -309,13 +310,14 @@ class ButlerlyCardHeader extends StatelessWidget {
   final Widget? action;
   final TextStyle? titleStyle;
   final TextStyle? subtitleStyle;
+  final bool keepActionInlineAtCompactWidth;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
       final stacked =
           MediaQuery.textScalerOf(context).scale(14) > 20 ||
-          constraints.maxWidth < 280;
+          (!keepActionInlineAtCompactWidth && constraints.maxWidth < 280);
       final titleBlock = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
