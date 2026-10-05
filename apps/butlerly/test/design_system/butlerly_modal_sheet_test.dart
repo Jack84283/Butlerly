@@ -416,12 +416,17 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('open-dark-selection')));
     await tester.pumpAndSettle();
 
-    final oneTile = tester.widget<Ink>(
-      find.ancestor(of: find.text('One'), matching: find.byType(Ink)).first,
+    Finder choiceInk(String label) => find.descendant(
+      of: find.ancestor(
+        of: find.text(label),
+        matching: find.byType(ButlerlySheetChoiceTile),
+      ),
+      matching: find.byWidgetPredicate(
+        (widget) => widget is Ink && widget.decoration is BoxDecoration,
+      ),
     );
-    final twoTile = tester.widget<Ink>(
-      find.ancestor(of: find.text('Two'), matching: find.byType(Ink)).first,
-    );
+    final oneTile = tester.widget<Ink>(choiceInk('One'));
+    final twoTile = tester.widget<Ink>(choiceInk('Two'));
     expect(oneTile.decoration, isA<BoxDecoration>());
     expect(twoTile.decoration, isA<BoxDecoration>());
     final oneDecoration = oneTile.decoration! as BoxDecoration;
