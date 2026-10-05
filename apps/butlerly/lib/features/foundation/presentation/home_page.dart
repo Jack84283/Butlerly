@@ -1381,7 +1381,7 @@ class _HomeTrendPlot extends StatelessWidget {
               ButlerlySpacing.section * 4,
         )
         .toDouble();
-    final chartHeight = naturalChartHeight * 2 / 3;
+    final chartHeight = naturalChartHeight / 2;
     return SizedBox(
       key: const ValueKey('home-spending-trend-chart'),
       height: chartHeight,
