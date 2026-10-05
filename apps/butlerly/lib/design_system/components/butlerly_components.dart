@@ -1263,10 +1263,8 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     ),
   );
 
-  Widget _categoryPill() => ButlerlyCategoryBadge(
-    categoryId: categoryId,
-    label: categoryLabel!,
-  );
+  Widget _categoryPill() =>
+      ButlerlyCategoryBadge(categoryId: categoryId, label: categoryLabel!);
 
   Widget _metadataText(BuildContext context) => Text(
     _metadataParts.join(' · '),
