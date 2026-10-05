@@ -1,7 +1,9 @@
+import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_category_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_content_surface.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
+import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
@@ -376,6 +378,7 @@ class ButlerlyCompactSelector extends StatelessWidget {
     this.semanticLabel,
     this.buttonKey,
     this.alignVisualEnd = false,
+    this.denseSurface = false,
     super.key,
   });
 
@@ -384,6 +387,7 @@ class ButlerlyCompactSelector extends StatelessWidget {
   final String? semanticLabel;
   final Key? buttonKey;
   final bool alignVisualEnd;
+  final bool denseSurface;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -402,38 +406,43 @@ class ButlerlyCompactSelector extends StatelessWidget {
           padding: EdgeInsets.zero,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
-        child: Align(
-          alignment: alignVisualEnd
-              ? AlignmentDirectional.topEnd
-              : Alignment.topCenter,
-          child: Ink(
-            decoration: BoxDecoration(
-              color: context.colors.subtleSurface,
-              border: Border.all(color: context.colors.border),
-              borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: ButlerlySpacing.compact,
-                vertical: ButlerlySpacing.nanoSmall,
+        child: SizedBox(
+          height: alignVisualEnd ? ButlerlySize.minimumTarget : null,
+          child: Align(
+            alignment: alignVisualEnd
+                ? AlignmentDirectional.topEnd
+                : Alignment.topCenter,
+            child: Ink(
+              decoration: BoxDecoration(
+                color: context.colors.subtleSurface,
+                border: Border.all(color: context.colors.border),
+                borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(
-                    child: Text(
-                      label,
-                      softWrap: true,
-                      textAlign: TextAlign.end,
-                      style: ButlerlyTypography.cardAction(
-                        Theme.of(context).textTheme.titleMedium ??
-                            const TextStyle(),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: ButlerlySpacing.compact,
+                  vertical: denseSurface
+                      ? ButlerlySpacing.none
+                      : ButlerlySpacing.nanoSmall,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        label,
+                        softWrap: true,
+                        textAlign: TextAlign.end,
+                        style: ButlerlyTypography.cardAction(
+                          Theme.of(context).textTheme.titleMedium ??
+                              const TextStyle(),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: ButlerlySpacing.micro),
-                  const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-                ],
+                    const SizedBox(width: ButlerlySpacing.micro),
+                    const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                  ],
+                ),
               ),
             ),
           ),
@@ -845,18 +854,36 @@ class ButlerlyCategoryBadge extends StatelessWidget {
   const ButlerlyCategoryBadge({
     required this.label,
     this.categoryId,
+    this.customColorId,
     super.key,
   });
 
   final String label;
   final String? categoryId;
+  final ButlerlyCategoryColorId? customColorId;
 
   @override
   Widget build(BuildContext context) {
-    final categoryColor = ButlerlyChartColors.category(categoryId ?? label);
-    final badgeBackground = categoryColor.withValues(
-      alpha: ButlerlyTransactionItemTokens.categoryBadgeBackgroundOpacity,
-    );
+    final identity = categoryId == null
+        ? null
+        : ButlerlyCategoryIdentity.forBuiltInId(categoryId!) ??
+              (customColorId == null
+                  ? null
+                  : ButlerlyCategoryIdentity.custom(
+                      categoryId: categoryId!,
+                      categoryColorId: customColorId!,
+                    ));
+    final categoryColor = identity == null
+        ? ButlerlyChartColors.category(categoryId ?? label)
+        : ButlerlyCategoryColors.color(identity.categoryColorId);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundOpacity = dark
+        ? ButlerlyTransactionItemTokens.categoryBadgeBackgroundOpacityDark
+        : ButlerlyTransactionItemTokens.categoryBadgeBackgroundOpacityLight;
+    final borderOpacity = dark
+        ? ButlerlyTransactionItemTokens.categoryBadgeBorderOpacityDark
+        : ButlerlyTransactionItemTokens.categoryBadgeBorderOpacityLight;
+    final badgeBackground = categoryColor.withValues(alpha: backgroundOpacity);
     final compositedBackground = Color.alphaBlend(
       badgeBackground,
       context.colors.cardSurface,
@@ -869,9 +896,7 @@ class ButlerlyCategoryBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: badgeBackground,
         border: Border.all(
-          color: categoryColor.withValues(
-            alpha: ButlerlyTransactionItemTokens.categoryBadgeBorderOpacity,
-          ),
+          color: categoryColor.withValues(alpha: borderOpacity),
         ),
         borderRadius: BorderRadius.circular(ButlerlyRadius.full),
       ),
@@ -918,6 +943,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     this.subtitle,
     this.meta,
     this.categoryId,
+    this.categoryColorId,
     this.categoryLabel,
     this.subcategoryLabel,
     this.paymentSource,
@@ -943,6 +969,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
   final String? subtitle;
   final String? meta;
   final String? categoryId;
+  final ButlerlyCategoryColorId? categoryColorId;
   final String? categoryLabel;
   final String? subcategoryLabel;
   final String? paymentSource;
@@ -1029,6 +1056,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                     ? ButlerlyCategoryIcon(
                         key: const Key('transaction-leading-icon'),
                         categoryId: categoryId!,
+                        customColorId: categoryColorId,
                         semanticLabel: categoryLabel,
                         containerSize:
                             ButlerlyTransactionItemTokens.leadingIconSize,
@@ -1284,8 +1312,11 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     ),
   );
 
-  Widget _categoryPill() =>
-      ButlerlyCategoryBadge(categoryId: categoryId, label: categoryLabel!);
+  Widget _categoryPill() => ButlerlyCategoryBadge(
+    categoryId: categoryId,
+    customColorId: categoryColorId,
+    label: categoryLabel!,
+  );
 
   Widget _metadataText(BuildContext context) => Text(
     _metadataParts.join(' · '),
@@ -1411,6 +1442,7 @@ class ButlerlyRecordRow extends ButlerlyTransactionListItem {
     super.subtitle,
     super.meta,
     super.categoryId,
+    super.categoryColorId,
     super.categoryLabel,
     super.subcategoryLabel,
     super.paymentSource,

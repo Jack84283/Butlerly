@@ -45,6 +45,14 @@ abstract final class ButlerlyTypography {
     letterSpacing: -0.3,
   );
 
+  static TextStyle homeGreetingTitle(TextStyle base) => _systemSans(
+    base,
+    fontSize: 24,
+    height: 1.15,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.2,
+  );
+
   static TextStyle pageIntro(TextStyle base) =>
       _systemSans(base, fontSize: 16, height: 1.3, fontWeight: FontWeight.w400);
 

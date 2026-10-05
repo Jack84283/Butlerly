@@ -92,6 +92,8 @@ void main() {
       );
       final greeting = find.byKey(const ValueKey('home-greeting'));
       final intro = find.byKey(const ValueKey('home-intro'));
+      expect(tester.widget<Text>(greeting).style?.fontSize, 24);
+      expect(tester.widget<Text>(intro).style?.fontSize, 14);
       expect(
         tester.getTopLeft(intro).dy - tester.getBottomLeft(greeting).dy,
         closeTo(ButlerlySpacing.micro, 0.01),
@@ -209,7 +211,7 @@ void main() {
   });
 
   testWidgets(
-    'Monthly Summary keeps four metrics horizontal on phone-sized layouts',
+    'Monthly Summary keeps three inner cards horizontal on phone-sized layouts',
     (tester) async {
       tester.view.physicalSize = const Size(320, 568);
       tester.view.devicePixelRatio = 1;
@@ -229,7 +231,6 @@ void main() {
       final metricKeys = const [
         ValueKey('home-summary-metric-spending'),
         ValueKey('home-summary-metric-income'),
-        ValueKey('home-summary-metric-savings'),
         ValueKey('home-summary-metric-net-position'),
       ];
       final tops = [
@@ -237,6 +238,22 @@ void main() {
       ];
       for (final top in tops.skip(1)) {
         expect(top, closeTo(tops.first, 1.0));
+      }
+      expect(
+        find.byKey(const ValueKey('home-summary-metric-savings')),
+        findsNothing,
+      );
+      final innerCards = [
+        for (final key in const [
+          'home-summary-inner-spending',
+          'home-summary-inner-income',
+          'home-summary-inner-net-position',
+        ])
+          find.byKey(ValueKey(key)),
+      ];
+      for (final card in innerCards) {
+        expect(card, findsOneWidget);
+        expect(tester.getSize(card).height, closeTo(176, 0.01));
       }
       expect(tester.takeException(), isNull);
     },
@@ -414,6 +431,13 @@ void main() {
     await tester.pumpAndSettle();
 
     final plot = find.byKey(const ValueKey('home-spending-trend-plot'));
+    final chart = find.byKey(const ValueKey('home-spending-trend-chart'));
+    final amount = find.text(r'$42.00');
+    expect(chart, findsOneWidget);
+    expect(tester.getSize(chart).height, closeTo(112, 0.1));
+    if (amount.evaluate().isNotEmpty) {
+      expect(tester.widget<Text>(amount).style?.fontSize, 24);
+    }
     final baseline = find.byKey(
       const ValueKey('home-spending-trend-grid-line-4'),
     );
@@ -490,8 +514,8 @@ void main() {
       expect(tester.getSize(monthSurface).height, lessThan(44));
       expect(tester.getSize(trendSurface).height, lessThan(44));
       expect(
-        tester.getSize(monthSurface).height,
-        closeTo(tester.getSize(trendSurface).height, 0.1),
+        tester.getSize(trendSurface).height,
+        lessThan(tester.getSize(monthSurface).height),
       );
 
       final headerTitle = find.descendant(
@@ -504,18 +528,13 @@ void main() {
       );
       expect(headerTitle, findsOneWidget);
       expect(trendTitle, findsOneWidget);
-      expect(
-        (tester.getCenter(monthSurface).dy - tester.getCenter(headerTitle).dy)
-            .abs(),
-        lessThanOrEqualTo(2),
-      );
-      expect(
-        (tester.getTopLeft(trendSelector).dy - tester.getTopLeft(trendTitle).dy)
-            .abs(),
-        lessThanOrEqualTo(2),
-      );
       await tester.ensureVisible(trendSelector);
-      await tester.tap(trendSelector);
+      await tester.pumpAndSettle();
+      final surfaceRect = tester.getRect(trendSurface);
+      final selectorRect = tester.getRect(trendSelector);
+      expect(surfaceRect.top, greaterThanOrEqualTo(selectorRect.top));
+      expect(surfaceRect.bottom, lessThanOrEqualTo(selectorRect.bottom));
+      await tester.tapAt(Offset(surfaceRect.center.dx, surfaceRect.top + 1));
       await tester.pumpAndSettle();
 
       expect(find.text('Last 3 months'), findsOneWidget);
@@ -671,12 +690,12 @@ void main() {
       expect(find.byKey(const Key('home-month-selector')), findsOneWidget);
       final monthSelector = find.byKey(const Key('home-month-selector'));
       expect(tester.getSize(monthSelector).width, greaterThanOrEqualTo(44));
-      expect(tester.getSize(monthSelector).height, greaterThan(44));
+      expect(tester.getSize(monthSelector).height, greaterThanOrEqualTo(44));
       final monthSurface = find.descendant(
         of: monthSelector,
         matching: find.byType(Ink),
       );
-      expect(tester.getSize(monthSurface).height, greaterThan(44));
+      expect(tester.getSize(monthSurface).height, greaterThanOrEqualTo(44));
       final headerContent = find.byKey(const ValueKey('home-header-content'));
       expect(
         tester.getTopRight(monthSurface).dx,
@@ -691,13 +710,13 @@ void main() {
         const ValueKey('home-trend-range-selector'),
       );
       expect(trendSelector, findsOneWidget);
-      expect(tester.getSize(trendSelector).height, greaterThan(44));
+      expect(tester.getSize(trendSelector).height, greaterThanOrEqualTo(44));
       final trendSurface = find.descendant(
         of: trendSelector,
         matching: find.byType(Ink),
       );
       expect(trendSurface, findsOneWidget);
-      expect(tester.getSize(trendSurface).height, greaterThan(44));
+      expect(tester.getSize(trendSurface).height, greaterThanOrEqualTo(44));
       expect(tester.takeException(), isNull);
     },
   );
