@@ -53,7 +53,6 @@ Future<T?> showButlerlyBottomSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
   bool isScrollControlled = true,
-  Color? surfaceColor,
 }) {
   final viewport = MediaQuery.sizeOf(context);
   final maxHeight = viewport.height * ButlerlySheetTokens.maxHeightFactor;
@@ -68,8 +67,7 @@ Future<T?> showButlerlyBottomSheet<T>({
     builder: (sheetContext) {
       final theme = Theme.of(sheetContext);
       final bottomSheetTheme = theme.bottomSheetTheme;
-      final resolvedSurfaceColor =
-          surfaceColor ??
+      final surfaceColor =
           bottomSheetTheme.modalBackgroundColor ??
           bottomSheetTheme.backgroundColor ??
           theme.colorScheme.surface;
@@ -89,7 +87,7 @@ Future<T?> showButlerlyBottomSheet<T>({
           ),
           child: Material(
             key: const ValueKey('butlerly-bottom-sheet-surface'),
-            color: resolvedSurfaceColor,
+            color: surfaceColor,
             elevation:
                 bottomSheetTheme.elevation ?? ButlerlyElevation.bottomSheet,
             surfaceTintColor:
