@@ -415,7 +415,7 @@ class ButlerlyCompactSelector extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: ButlerlySpacing.compact,
-                vertical: ButlerlySpacing.micro,
+                vertical: ButlerlySpacing.nanoSmall,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
