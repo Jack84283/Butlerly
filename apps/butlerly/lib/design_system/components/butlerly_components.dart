@@ -406,47 +406,40 @@ class ButlerlyCompactSelector extends StatelessWidget {
           padding: EdgeInsets.zero,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
-        child: Padding(
-          padding: EdgeInsets.only(
-            bottom: alignVisualEnd && denseSurface
-                ? ButlerlySpacing.compact
-                : ButlerlySpacing.none,
-          ),
-          child: Align(
-            alignment: alignVisualEnd
-                ? AlignmentDirectional.centerEnd
-                : Alignment.topCenter,
-            child: Ink(
-              decoration: BoxDecoration(
-                color: context.colors.subtleSurface,
-                border: Border.all(color: context.colors.border),
-                borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+        child: Align(
+          alignment: alignVisualEnd
+              ? AlignmentDirectional.topEnd
+              : Alignment.topCenter,
+          child: Ink(
+            decoration: BoxDecoration(
+              color: context.colors.subtleSurface,
+              border: Border.all(color: context.colors.border),
+              borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+            ),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: ButlerlySpacing.compact,
+                vertical: denseSurface
+                    ? ButlerlySpacing.none
+                    : ButlerlySpacing.nanoSmall,
               ),
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: ButlerlySpacing.compact,
-                  vertical: denseSurface
-                      ? ButlerlySpacing.none
-                      : ButlerlySpacing.nanoSmall,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        label,
-                        softWrap: true,
-                        textAlign: TextAlign.end,
-                        style: ButlerlyTypography.cardAction(
-                          Theme.of(context).textTheme.titleMedium ??
-                              const TextStyle(),
-                        ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      label,
+                      softWrap: true,
+                      textAlign: TextAlign.end,
+                      style: ButlerlyTypography.cardAction(
+                        Theme.of(context).textTheme.titleMedium ??
+                            const TextStyle(),
                       ),
                     ),
-                    const SizedBox(width: ButlerlySpacing.micro),
-                    const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: ButlerlySpacing.micro),
+                  const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                ],
               ),
             ),
           ),
