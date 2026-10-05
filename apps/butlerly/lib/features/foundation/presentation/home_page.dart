@@ -193,10 +193,6 @@ class _HomePageState extends State<HomePage> {
   Future<void> _selectMonth(_HomeData data) async {
     final selected = await showButlerlyBottomSheet<DateTime>(
       context: context,
-      surfaceColor: Color.alphaBlend(
-        context.colors.brand.withValues(alpha: 0.35),
-        context.colors.elevatedSurface,
-      ),
       builder: (context) => _HomeMonthPicker(
         selectedMonth: data.displayMonth,
         currentMonth: data.currentFinancialMonth,
@@ -2606,6 +2602,7 @@ class _HomeMonthPickerState extends State<_HomeMonthPicker> {
   @override
   Widget build(BuildContext context) {
     final locale = Localizations.localeOf(context).toLanguageTag();
+    final darkMode = Theme.of(context).brightness == Brightness.dark;
     return ButlerlySheet(
       title: Row(
         children: [
@@ -2651,9 +2648,16 @@ class _HomeMonthPickerState extends State<_HomeMonthPicker> {
           ).isAfter(_monthStart(widget.currentMonth));
           final selected = _sameMonth(candidate, widget.selectedMonth);
           final label = DateFormat.MMM(locale).format(candidate);
+          final availableDarkStyle = darkMode && !future;
           return selected
               ? FilledButton(
                   key: Key('home-month-${candidate.year}-${candidate.month}'),
+                  style: availableDarkStyle
+                      ? FilledButton.styleFrom(
+                          backgroundColor: context.colors.interactiveStrong,
+                          foregroundColor: context.colors.primaryText,
+                        )
+                      : null,
                   onPressed: future
                       ? null
                       : () => Navigator.of(context).pop(candidate),
@@ -2661,6 +2665,21 @@ class _HomeMonthPickerState extends State<_HomeMonthPicker> {
                 )
               : OutlinedButton(
                   key: Key('home-month-${candidate.year}-${candidate.month}'),
+                  style: availableDarkStyle
+                      ? OutlinedButton.styleFrom(
+                          foregroundColor: context.colors.primaryText,
+                          backgroundColor: Color.alphaBlend(
+                            context.colors.interactive.withValues(alpha: 0.16),
+                            context.colors.subtleSurface,
+                          ),
+                          side: BorderSide(
+                            color: context.colors.interactive.withValues(
+                              alpha: 0.85,
+                            ),
+                            width: 1.25,
+                          ),
+                        )
+                      : null,
                   onPressed: future
                       ? null
                       : () => Navigator.of(context).pop(candidate),
