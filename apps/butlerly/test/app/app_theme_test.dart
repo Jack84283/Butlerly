@@ -53,6 +53,7 @@ void main() {
       final base = AppTheme.light.textTheme;
       final roles = [
         ButlerlyTypography.pageHeroTitle(base.headlineLarge!),
+        ButlerlyTypography.homeGreetingTitle(base.headlineLarge!),
         ButlerlyTypography.pageIntro(base.bodyLarge!),
         ButlerlyTypography.cardTitle(base.titleLarge!),
         ButlerlyTypography.compactCardTitle(base.titleLarge!),
@@ -77,6 +78,10 @@ void main() {
       }
       final roleSizes = <({TextStyle role, double size})>[
         (role: ButlerlyTypography.pageHeroTitle(base.headlineLarge!), size: 32),
+        (
+          role: ButlerlyTypography.homeGreetingTitle(base.headlineLarge!),
+          size: 24,
+        ),
         (role: ButlerlyTypography.pageIntro(base.bodyLarge!), size: 16),
         (role: ButlerlyTypography.brandTitle(base.headlineLarge!), size: 20),
         (role: ButlerlyTypography.cardTitle(base.titleLarge!), size: 18),
