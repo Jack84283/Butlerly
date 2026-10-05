@@ -1244,7 +1244,6 @@ class _SpendingTrend extends StatelessWidget {
                   ),
                   action: trendAction,
                   keepActionInlineAtCompactWidth: true,
-                  centerAction: true,
                 ),
                 if (unavailable || points.isEmpty || !meaningful) ...[
                   const SizedBox(height: ButlerlySpacing.standard),
