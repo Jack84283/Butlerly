@@ -1267,6 +1267,7 @@ class _SpendingTrend extends StatelessWidget {
           ? null
           : () => onRangeChanged!(rangeCount),
       alignVisualEnd: true,
+      visualVerticalOffset: -ButlerlySpacing.xxs,
     );
     return ButlerlyCard(
       key: const ValueKey('home-trend-card'),
@@ -1284,10 +1285,7 @@ class _SpendingTrend extends StatelessWidget {
                   titleStyle: ButlerlyTypography.compactCardTitle(
                     Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
                   ),
-                  action: Transform.translate(
-                    offset: const Offset(0, -ButlerlySpacing.xxs),
-                    child: trendAction,
-                  ),
+                  action: trendAction,
                   keepActionInlineAtCompactWidth: true,
                 ),
                 if (unavailable || points.isEmpty || !meaningful) ...[
