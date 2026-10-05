@@ -386,8 +386,6 @@ void main() {
     expect(surface.width, ButlerlySize.pageContentMaxWidth);
     expect(action.bottom, lessThanOrEqualTo(size.height - 280 + 1));
   });
-}
-
 
   testWidgets('dark selection sheet makes choices visibly distinct', (
     tester,
@@ -433,6 +431,8 @@ void main() {
     expect(oneDecoration.color, isNot(equals(twoDecoration.color)));
     expect(find.byIcon(Icons.check_rounded), findsOneWidget);
   });
+
+}
 
 Widget _testApp(Widget child) => MaterialApp(
   home: Scaffold(body: Center(child: child)),
