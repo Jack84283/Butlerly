@@ -204,7 +204,9 @@ void main() {
       for (final theme in [AppTheme.light, AppTheme.dark]) {
         await tester.pumpWidget(
           MaterialApp(
-            theme: theme,
+            theme: AppTheme.light,
+            darkTheme: AppTheme.dark,
+            themeMode: dark ? ThemeMode.dark : ThemeMode.light,
             home: const Scaffold(
               body: SizedBox(
                 width: 160,
