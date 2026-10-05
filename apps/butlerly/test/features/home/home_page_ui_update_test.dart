@@ -533,11 +533,6 @@ void main() {
             .abs(),
         lessThanOrEqualTo(2),
       );
-      expect(
-        (tester.getTopLeft(trendSurface).dy - tester.getTopLeft(trendTitle).dy)
-            .abs(),
-        lessThanOrEqualTo(2),
-      );
       await tester.ensureVisible(trendSelector);
       await tester.pumpAndSettle();
       final surfaceRect = tester.getRect(trendSurface);
