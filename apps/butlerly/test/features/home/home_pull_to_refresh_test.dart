@@ -5,6 +5,7 @@ import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
@@ -717,6 +718,55 @@ void main() {
         (tester.getCenter(cell).dx - tester.getCenter(label).dx).abs(),
         lessThan(0.01),
       );
+    }
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home Summary icons use solid category-style colors', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _summaryTestApp(
+        AnalysisOverview(
+          insightUnavailable: false,
+          trend: const [],
+          categories: const [],
+          qualityCount: 0,
+          qualityEvaluated: true,
+          qualityLimited: false,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final summary = find.byKey(const ValueKey('home-summary-card'));
+    for (final entry in const [
+      (Icons.arrow_downward_rounded, ButlerlyCategoryColorId.coral),
+      (Icons.arrow_upward_rounded, ButlerlyCategoryColorId.green),
+      (Icons.savings_outlined, ButlerlyCategoryColorId.blue),
+      (Icons.bar_chart_rounded, ButlerlyCategoryColorId.gold),
+    ]) {
+      final iconFinder = find.descendant(
+        of: summary,
+        matching: find.byIcon(entry.$1),
+      );
+      expect(iconFinder, findsOneWidget);
+      expect(
+        tester.widget<Icon>(iconFinder).color,
+        ButlerlyCategoryColors.whiteGlyph,
+      );
+      final containerFinder = find.ancestor(
+        of: iconFinder,
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is Container && widget.decoration is BoxDecoration,
+        ),
+      );
+      expect(containerFinder, findsOneWidget);
+      final decoration =
+          tester.widget<Container>(containerFinder).decoration! as BoxDecoration;
+      expect(decoration.color, ButlerlyCategoryColors.color(entry.$2));
+      expect(decoration.shape, BoxShape.circle);
     }
     expect(tester.takeException(), isNull);
   });
