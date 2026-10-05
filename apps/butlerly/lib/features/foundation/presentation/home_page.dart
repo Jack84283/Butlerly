@@ -902,8 +902,7 @@ class _HomeSummaryCard extends StatelessWidget {
                   ButlerlySpacing.micro * 2 + ButlerlySize.dividerWidth;
               final metricWidth = math.max(
                 1.0,
-                (constraints.maxWidth -
-                        dividerWidth * (cells.length - 1)) /
+                (constraints.maxWidth - dividerWidth * (cells.length - 1)) /
                     cells.length,
               );
               final stacked =
