@@ -1158,12 +1158,9 @@ class _HomeMetricCell extends StatelessWidget {
             overflow: TextOverflow.clip,
             textAlign: TextAlign.center,
             softWrap: false,
-            style:
-                ButlerlyTypography.homeSummaryMetricChange(
-                  Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
-                ).copyWith(
-                  color: supportingColor ?? context.colors.secondaryText,
-                ),
+            style: ButlerlyTypography.homeSummaryMetricChange(
+              Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+            ).copyWith(color: supportingColor ?? context.colors.secondaryText),
           ),
           if (!valueUnavailable &&
               !metricUnavailable &&
@@ -1324,9 +1321,7 @@ class _SpendingTrend extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: EdgeInsetsDirectional.only(
-                    end: largeText ? 0 : 132,
-                  ),
+                  padding: EdgeInsetsDirectional.only(end: largeText ? 0 : 132),
                   child: ButlerlyCardHeader(
                     title: context.l10n.text('spendingTrend'),
                     titleStyle: ButlerlyTypography.compactCardTitle(
@@ -1383,11 +1378,7 @@ class _SpendingTrend extends StatelessWidget {
             ),
           ),
           if (!largeText)
-            PositionedDirectional(
-              top: 0,
-              end: 0,
-              child: trendAction,
-            ),
+            PositionedDirectional(top: 0, end: 0, child: trendAction),
           if (loading)
             const Positioned.fill(
               child: IgnorePointer(
