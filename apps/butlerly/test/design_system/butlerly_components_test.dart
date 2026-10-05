@@ -205,9 +205,9 @@ void main() {
         final darkMode = theme.brightness == Brightness.dark;
         await tester.pumpWidget(
           MaterialApp(
-            theme: AppTheme.light,
-            darkTheme: AppTheme.dark,
-            themeMode: darkMode ? ThemeMode.dark : ThemeMode.light,
+            key: ValueKey(theme.brightness),
+            theme: theme,
+            themeAnimationDuration: Duration.zero,
             home: const Scaffold(
               body: SizedBox(
                 width: 160,
@@ -219,7 +219,7 @@ void main() {
             ),
           ),
         );
-        await tester.pumpAndSettle();
+        await tester.pump();
 
         final badge = find.byType(ButlerlyCategoryBadge);
         final text = tester.widget<Text>(find.text(label));
