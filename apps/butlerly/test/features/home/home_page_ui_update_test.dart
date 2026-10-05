@@ -73,6 +73,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Butlerly'), findsOneWidget);
+      expect(find.text('A CALMER WAY TO MONEY'), findsOneWidget);
       expect(find.text('Good afternoon'), findsOneWidget);
       expect(find.text('Sep 2026'), findsOneWidget);
       expect(
@@ -91,9 +92,15 @@ void main() {
         closeTo(tester.getTopRight(headerContent).dx, 0.01),
       );
       final brand = find.text('Butlerly');
+      final brandTagline = find.byKey(const ValueKey('home-brand-tagline'));
       final greeting = find.byKey(const ValueKey('home-greeting'));
       final intro = find.byKey(const ValueKey('home-intro'));
       expect(tester.widget<Text>(brand).style?.fontSize, 32);
+      expect(tester.widget<Text>(brandTagline).style?.fontSize, 14);
+      expect(
+        tester.getTopLeft(brandTagline).dy - tester.getBottomLeft(brand).dy,
+        closeTo(ButlerlySpacing.micro, 0.01),
+      );
       expect(
         tester.getTopLeft(monthSurface).dy,
         closeTo(tester.getTopLeft(brand).dy, 1.0),
