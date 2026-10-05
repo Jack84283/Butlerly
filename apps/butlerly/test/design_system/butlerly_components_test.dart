@@ -190,6 +190,36 @@ void main() {
     );
   });
 
+  testWidgets('category badge is compact, bright, and never truncates', (
+    tester,
+  ) async {
+    const categoryId = 'category.professional_services';
+    const label = 'Professional services';
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: const Scaffold(
+          body: SizedBox(
+            width: 120,
+            child: ButlerlyCategoryBadge(
+              categoryId: categoryId,
+              label: label,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final text = tester.widget<Text>(find.text(label));
+    final categoryColor = ButlerlyChartColors.category(categoryId);
+    expect(text.style?.fontSize, ButlerlyTransactionItemTokens.categoryBadgeFontSize);
+    expect(text.style?.color, categoryColor);
+    expect(text.maxLines, isNull);
+    expect(text.overflow, isNull);
+    expect(text.softWrap, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('page content surface fills the remaining viewport', (
     tester,
   ) async {
