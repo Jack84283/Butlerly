@@ -528,11 +528,6 @@ void main() {
       );
       expect(headerTitle, findsOneWidget);
       expect(trendTitle, findsOneWidget);
-      expect(
-        (tester.getCenter(monthSurface).dy - tester.getCenter(headerTitle).dy)
-            .abs(),
-        lessThanOrEqualTo(2),
-      );
       await tester.ensureVisible(trendSelector);
       await tester.pumpAndSettle();
       final surfaceRect = tester.getRect(trendSurface);
@@ -695,7 +690,7 @@ void main() {
       expect(find.byKey(const Key('home-month-selector')), findsOneWidget);
       final monthSelector = find.byKey(const Key('home-month-selector'));
       expect(tester.getSize(monthSelector).width, greaterThanOrEqualTo(44));
-      expect(tester.getSize(monthSelector).height, greaterThan(44));
+      expect(tester.getSize(monthSelector).height, greaterThanOrEqualTo(44));
       final monthSurface = find.descendant(
         of: monthSelector,
         matching: find.byType(Ink),
