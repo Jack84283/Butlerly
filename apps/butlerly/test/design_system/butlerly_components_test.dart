@@ -71,7 +71,7 @@ void main() {
           findsOneWidget,
         );
         for (final card in tester.widgetList<Card>(find.byType(Card))) {
-          expect(card.color ?? theme.cardTheme.color, colors.dashboardSurface);
+          expect(card.color ?? theme.cardTheme.color, colors.cardSurface);
         }
       }
     }
@@ -139,8 +139,11 @@ void main() {
       final colors = theme.extension<ButlerlySemanticColors>()!;
       expect(cards, hasLength(3));
       for (final card in cards) {
-        expect(card.color ?? theme.cardTheme.color, colors.dashboardSurface);
-        expect(card.elevation ?? theme.cardTheme.elevation, ButlerlyElevation.card);
+        expect(card.color ?? theme.cardTheme.color, colors.cardSurface);
+        expect(
+          card.elevation ?? theme.cardTheme.elevation,
+          ButlerlyElevation.card,
+        );
         expect(card.shadowColor ?? theme.cardTheme.shadowColor, isNotNull);
         final shape =
             (card.shape ?? theme.cardTheme.shape)! as RoundedRectangleBorder;
