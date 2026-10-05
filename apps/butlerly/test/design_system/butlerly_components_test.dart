@@ -219,6 +219,7 @@ void main() {
             ),
           ),
         );
+        await tester.pumpAndSettle();
 
         final badge = find.byType(ButlerlyCategoryBadge);
         final text = tester.widget<Text>(find.text(label));
