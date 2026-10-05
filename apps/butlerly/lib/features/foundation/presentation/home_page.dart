@@ -893,22 +893,8 @@ class _HomeSummaryCard extends StatelessWidget {
                   metric: model?.net,
                   fallbackCurrency: baseCurrency,
                   showMissingAsZero: showMissingValuesAsZero,
-                  supportingText: model?.netComparison == null
-                      ? null
-                      : localizedCompactSignedMoney(
-                          context,
-                          model!.netComparison!.absoluteChange?.toString() ??
-                              '',
-                          model?.net?.currency?.value ??
-                              model?.net?.context.baseCurrency?.value ??
-                              '',
-                        ),
                   icon: Icons.bar_chart_rounded,
                   color: context.colors.warning,
-                  supportingColor: _homeNetChangeColor(
-                    context,
-                    model?.netComparison,
-                  ),
                 ),
               ];
               final stacked = largeText || constraints.maxWidth < 300;
@@ -1154,18 +1140,6 @@ class _HomeMetricCell extends StatelessWidget {
         ? localizedTransactionAmount(context, '0')
         : localizedCompactMoney(context, '0', currency);
   }
-}
-
-Color _homeNetChangeColor(
-  BuildContext context,
-  AnalysisComparison? comparison,
-) {
-  final change = comparison?.absoluteChange;
-  if (comparison == null || !isUsableComparison(comparison) || change == null) {
-    return context.colors.secondaryText;
-  }
-  if (change.isZero) return context.colors.secondaryText;
-  return change.isNegative ? context.colors.error : context.colors.success;
 }
 
 @visibleForTesting

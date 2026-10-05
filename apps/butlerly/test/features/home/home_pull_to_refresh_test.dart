@@ -1188,7 +1188,6 @@ void main() {
       savingsRate: DecimalValue.parse('0.5'),
       spendingComparison: _comparison('2'),
       incomeComparison: _comparison('-3'),
-      netComparison: _comparison('4'),
     );
     await tester.pumpWidget(
       MaterialApp(
@@ -1216,19 +1215,11 @@ void main() {
     final savingsRate = tester.widget<Text>(find.text('50%'));
     expect(savingsRate.style?.color, colors.info);
     expect(savingsRate.style?.fontSize, 11);
-    expect(
-      _lastTextIn(tester, 'home-summary-metric-net-position').style?.color,
-      colors.success,
-    );
     final savingsSemantics = tester.getSemantics(
       find.byKey(const ValueKey('home-summary-metric-savings')),
     );
     expect(savingsSemantics.label, contains('50%'));
     expect(savingsSemantics.label, contains('of income'));
-    final netSemantics = tester.getSemantics(
-      find.byKey(const ValueKey('home-summary-metric-net-position')),
-    );
-    expect(netSemantics.label, contains('+4.00'));
   });
 
   testWidgets('Home Insight preview uses data-driven localized copy', (
