@@ -2107,6 +2107,7 @@ class _HomeRecentActivity extends StatelessWidget {
                   showDate: true,
                   showCategoryPill: true,
                   compactMoney: true,
+                  // Pull only the first row closer to the card header.
                   compactSpacing: index == 0,
                   showNavigationIndicator: false,
                   variant: ButlerlyTransactionRowVariant.dashboard,
