@@ -895,10 +895,7 @@ class _HomeSummaryCard extends StatelessWidget {
                 (constraints.maxWidth - innerGap * (cells.length - 1)) /
                     cells.length,
               );
-              final metricWidth = math.max(
-                1.0,
-                tileWidth - innerPadding * 2,
-              );
+              final metricWidth = math.max(1.0, tileWidth - innerPadding * 2);
               final stacked =
                   largeText ||
                   cells.any(
@@ -1787,12 +1784,12 @@ class _AttentionSection extends StatelessWidget {
               padding: const EdgeInsets.only(top: ButlerlySpacing.compact),
               child: Semantics(
                 key: const ValueKey('home-review-unavailable-content'),
-              container: true,
-              liveRegion: true,
-              child: _HomeUnavailableContent(
-                retryKey: const ValueKey('home-review-unavailable-retry'),
-                titleKey: unavailableTitleKey ?? 'homeReviewUnavailable',
-                bodyKey: unavailableBodyKey ?? 'homeReviewUnavailableBody',
+                container: true,
+                liveRegion: true,
+                child: _HomeUnavailableContent(
+                  retryKey: const ValueKey('home-review-unavailable-retry'),
+                  titleKey: unavailableTitleKey ?? 'homeReviewUnavailable',
+                  bodyKey: unavailableBodyKey ?? 'homeReviewUnavailableBody',
                   onRetry: onRetry,
                 ),
               ),
