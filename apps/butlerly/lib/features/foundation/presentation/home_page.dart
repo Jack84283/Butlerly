@@ -898,7 +898,19 @@ class _HomeSummaryCard extends StatelessWidget {
                   color: context.colors.warning,
                 ),
               ];
-              final stacked = largeText;
+              final dividerWidth =
+                  ButlerlySpacing.micro * 2 + ButlerlySize.dividerWidth;
+              final metricWidth = math.max(
+                1.0,
+                (constraints.maxWidth -
+                        dividerWidth * (cells.length - 1)) /
+                    cells.length,
+              );
+              final stacked =
+                  largeText ||
+                  cells.any(
+                    (cell) => cell.requiresStackedLayout(context, metricWidth),
+                  );
               final layoutCells = [
                 for (final cell in cells) cell.withStacked(stacked),
               ];
@@ -1000,6 +1012,20 @@ class _HomeMetricCell extends StatelessWidget {
     color: color,
     stacked: value,
   );
+
+  bool requiresStackedLayout(BuildContext context, double maxWidth) {
+    const minimumReadableScale = 0.72;
+    final valueStyle = ButlerlyTypography.homeSummaryMetricValue(
+      Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
+    );
+    final painter = TextPainter(
+      text: TextSpan(text: _displayValue(context), style: valueStyle),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    return painter.width * minimumReadableScale > maxWidth;
+  }
 
   @override
   Widget build(BuildContext context) {
