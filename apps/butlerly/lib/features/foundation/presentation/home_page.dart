@@ -830,6 +830,10 @@ class _HomeSummaryCard extends StatelessWidget {
     return ButlerlyCard(
       key: const ValueKey('home-summary-card'),
       variant: ButlerlyCardVariant.dashboard,
+      color: Color.alphaBlend(
+        context.colors.brand.withValues(alpha: 0.06),
+        context.colors.cardSurface,
+      ),
       semanticLabel: context.l10n.text('monthlySummary'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1312,7 +1316,7 @@ class _SpendingTrend extends StatelessWidget {
                   ),
                 ] else ...[
                   if (selectedPoint?.metric case final metric?) ...[
-                    const SizedBox(height: ButlerlySpacing.small),
+                    const SizedBox(height: ButlerlySpacing.micro),
                     Wrap(
                       crossAxisAlignment: WrapCrossAlignment.center,
                       spacing: ButlerlySpacing.small,
