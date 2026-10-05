@@ -1285,6 +1285,8 @@ class _SpendingTrend extends StatelessWidget {
       alignVisualEnd: true,
       denseSurface: true,
     );
+    final largeText =
+        MediaQuery.textScalerOf(context).scale(14) > 20;
     return ButlerlyCard(
       key: const ValueKey('home-trend-card'),
       variant: ButlerlyCardVariant.dashboard,
@@ -1296,13 +1298,19 @@ class _SpendingTrend extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ButlerlyCardHeader(
-                  title: context.l10n.text('spendingTrend'),
-                  titleStyle: ButlerlyTypography.compactCardTitle(
-                    Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
+                Padding(
+                  padding: EdgeInsetsDirectional.only(
+                    end: largeText ? 0 : 132,
                   ),
-                  action: trendAction,
-                  keepActionInlineAtCompactWidth: true,
+                  child: ButlerlyCardHeader(
+                    title: context.l10n.text('spendingTrend'),
+                    titleStyle: ButlerlyTypography.compactCardTitle(
+                      Theme.of(context).textTheme.titleLarge ??
+                          const TextStyle(),
+                    ),
+                    action: largeText ? trendAction : null,
+                    keepActionInlineAtCompactWidth: true,
+                  ),
                 ),
                 if (unavailable || points.isEmpty || !meaningful) ...[
                   const SizedBox(height: ButlerlySpacing.small),
@@ -1349,6 +1357,12 @@ class _SpendingTrend extends StatelessWidget {
               ],
             ),
           ),
+          if (!largeText)
+            PositionedDirectional(
+              top: 0,
+              end: 0,
+              child: trendAction,
+            ),
           if (loading)
             const Positioned.fill(
               child: IgnorePointer(
