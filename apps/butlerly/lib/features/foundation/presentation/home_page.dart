@@ -940,7 +940,7 @@ class _HomeSummaryCard extends StatelessWidget {
                       const SizedBox(width: ButlerlySpacing.compact),
                     Expanded(
                       child: SizedBox(
-                        height: 140,
+                        height: 128,
                         child: _HomeSummaryMetricTile(
                           key: tileKeys[index],
                           child: layoutCells[index],
@@ -980,7 +980,10 @@ class _HomeSummaryMetricTile extends StatelessWidget {
       border: Border.all(color: context.colors.border),
     ),
     child: Padding(
-      padding: const EdgeInsets.all(ButlerlySpacing.small),
+      padding: const EdgeInsets.symmetric(
+        horizontal: ButlerlySpacing.small,
+        vertical: ButlerlySpacing.compact,
+      ),
       child: child,
     ),
   );
