@@ -4,6 +4,7 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/features/foundation/presentation/add_page.dart';
 import 'package:butlerly/features/foundation/presentation/payment_sources_page.dart';
 import 'package:flutter/material.dart';
@@ -190,14 +191,14 @@ void main() {
     );
   });
 
-  testWidgets('category badge is compact, bright, and never truncates', (
+  testWidgets('category badge is compact, bright, readable, and untruncated', (
     tester,
   ) async {
-    const categoryId = 'category.professional_services';
+    const categoryId = 'f';
     const label = 'Professional services';
     await tester.pumpWidget(
       MaterialApp(
-        theme: AppTheme.dark,
+        theme: AppTheme.light,
         home: const Scaffold(
           body: SizedBox(
             width: 120,
@@ -207,13 +208,39 @@ void main() {
       ),
     );
 
+    final badge = find.byType(ButlerlyCategoryBadge);
     final text = tester.widget<Text>(find.text(label));
-    final categoryColor = ButlerlyChartColors.category(categoryId);
+    final decoratedBox = tester.widget<DecoratedBox>(
+      find.descendant(of: badge, matching: find.byType(DecoratedBox)),
+    );
+    final decoration = decoratedBox.decoration as BoxDecoration;
+    final colors = AppTheme.light.extension<ButlerlySemanticColors>()!;
+    final compositedBackground = Color.alphaBlend(
+      decoration.color!,
+      colors.cardSurface,
+    );
+    final foreground = text.style!.color!;
+    final firstLuminance = foreground.computeLuminance();
+    final secondLuminance = compositedBackground.computeLuminance();
+    final lighter = firstLuminance > secondLuminance
+        ? firstLuminance
+        : secondLuminance;
+    final darker = firstLuminance > secondLuminance
+        ? secondLuminance
+        : firstLuminance;
+    final contrast = (lighter + 0.05) / (darker + 0.05);
+
     expect(
       text.style?.fontSize,
       ButlerlyTransactionItemTokens.categoryBadgeFontSize,
     );
-    expect(text.style?.color, categoryColor);
+    expect(
+      (decoration.border! as Border).top.color,
+      ButlerlyChartColors.category(categoryId).withValues(
+        alpha: ButlerlyTransactionItemTokens.categoryBadgeBorderOpacity,
+      ),
+    );
+    expect(contrast, greaterThanOrEqualTo(4.5));
     expect(text.maxLines, isNull);
     expect(text.overflow, isNull);
     expect(text.softWrap, isTrue);
