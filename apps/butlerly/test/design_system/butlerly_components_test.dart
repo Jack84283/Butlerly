@@ -278,6 +278,45 @@ void main() {
     },
   );
 
+  testWidgets('custom category badge uses the persisted identity color', (
+    tester,
+  ) async {
+    const customColorId = ButlerlyCategoryColorId.purple;
+    final categoryColor = ButlerlyCategoryColors.color(customColorId);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: const Scaffold(
+          body: ButlerlyCategoryBadge(
+            categoryId: 'custom.category.travel',
+            customColorId: customColorId,
+            label: 'Travel projects',
+          ),
+        ),
+      ),
+    );
+
+    final badge = find.byType(ButlerlyCategoryBadge);
+    final decoratedBox = tester.widget<DecoratedBox>(
+      find.descendant(of: badge, matching: find.byType(DecoratedBox)),
+    );
+    final decoration = decoratedBox.decoration as BoxDecoration;
+    expect(
+      decoration.color,
+      categoryColor.withValues(
+        alpha: ButlerlyTransactionItemTokens.categoryBadgeBackgroundOpacityDark,
+      ),
+    );
+    expect(
+      (decoration.border! as Border).top.color,
+      categoryColor.withValues(
+        alpha: ButlerlyTransactionItemTokens.categoryBadgeBorderOpacityDark,
+      ),
+    );
+    expect(find.text('Travel projects'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('page content surface fills the remaining viewport', (
     tester,
   ) async {
