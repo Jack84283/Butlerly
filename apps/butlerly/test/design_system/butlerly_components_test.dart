@@ -321,6 +321,44 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('category badge honors persisted custom category color', (
+    tester,
+  ) async {
+    const customColorId = ButlerlyCategoryColorId.teal;
+    final customColor = ButlerlyCategoryColors.color(customColorId);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: const Scaffold(
+          body: ButlerlyCategoryBadge(
+            categoryId: 'custom.category.1',
+            customColorId: customColorId,
+            label: 'Custom category',
+          ),
+        ),
+      ),
+    );
+
+    final badge = find.byType(ButlerlyCategoryBadge);
+    final decoratedBox = tester.widget<DecoratedBox>(
+      find.descendant(of: badge, matching: find.byType(DecoratedBox)),
+    );
+    final decoration = decoratedBox.decoration as BoxDecoration;
+    expect(
+      decoration.color,
+      customColor.withValues(
+        alpha: ButlerlyTransactionItemTokens.categoryBadgeBackgroundOpacityDark,
+      ),
+    );
+    expect(
+      (decoration.border! as Border).top.color,
+      customColor.withValues(
+        alpha: ButlerlyTransactionItemTokens.categoryBadgeBorderOpacityDark,
+      ),
+    );
+  });
+
   testWidgets('page content surface fills the remaining viewport', (
     tester,
   ) async {
