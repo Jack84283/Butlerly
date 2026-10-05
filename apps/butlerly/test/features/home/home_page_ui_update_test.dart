@@ -543,9 +543,7 @@ void main() {
       final selectorRect = tester.getRect(trendSelector);
       expect(surfaceRect.top, greaterThanOrEqualTo(selectorRect.top));
       expect(surfaceRect.bottom, lessThanOrEqualTo(selectorRect.bottom));
-      await tester.tapAt(
-        Offset(surfaceRect.center.dx, surfaceRect.top + 1),
-      );
+      await tester.tapAt(Offset(surfaceRect.center.dx, surfaceRect.top + 1));
       await tester.pumpAndSettle();
 
       expect(find.text('Last 3 months'), findsOneWidget);
