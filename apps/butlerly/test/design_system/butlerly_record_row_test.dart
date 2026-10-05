@@ -325,16 +325,10 @@ void main() {
       tester.getSemantics(find.byType(ButlerlyTransactionListItem)).label,
       contains('Aug 14, 2026'),
     );
-    expect(
-      tester.getSize(find.text(category)).width,
-      lessThanOrEqualTo(
-        ButlerlyTransactionItemTokens.dashboardCategoryPillMaxWidth,
-      ),
-    );
-    expect(
-      tester.widget<Text>(find.text(category)).overflow,
-      TextOverflow.ellipsis,
-    );
+    final categoryText = tester.widget<Text>(find.text(category));
+    expect(categoryText.maxLines, isNull);
+    expect(categoryText.overflow, isNull);
+    expect(categoryText.softWrap, isTrue);
     expect(
       tester.getTopLeft(find.text('−42.19 USD')).dy,
       closeTo(tester.getTopLeft(find.text('Coffee shop purchase')).dy, 0.1),
