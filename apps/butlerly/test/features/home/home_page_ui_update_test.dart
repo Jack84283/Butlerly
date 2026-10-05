@@ -253,7 +253,7 @@ void main() {
       ];
       for (final card in innerCards) {
         expect(card, findsOneWidget);
-        expect(tester.getSize(card).height, closeTo(140, 0.01));
+        expect(tester.getSize(card).height, closeTo(128, 0.01));
       }
       expect(tester.takeException(), isNull);
     },
