@@ -740,7 +740,8 @@ class _HomeHeader extends StatelessWidget {
               context.l10n.text('appName'),
               style: ButlerlyTypography.editorialText(
                 ButlerlyTypography.pageHeroTitle(
-                  Theme.of(context).textTheme.headlineLarge ?? const TextStyle(),
+                  Theme.of(context).textTheme.headlineLarge ??
+                      const TextStyle(),
                 ),
               ),
             ),
