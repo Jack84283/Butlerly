@@ -101,9 +101,7 @@ class ButlerlySheetChoiceTile extends StatelessWidget {
           enabled: enabled,
           title: DefaultTextStyle.merge(
             style: TextStyle(
-              color: darkMode && enabled
-                  ? theme.colorScheme.onSurface
-                  : null,
+              color: darkMode && enabled ? theme.colorScheme.onSurface : null,
             ),
             child: child,
           ),
