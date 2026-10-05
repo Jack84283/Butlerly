@@ -1267,7 +1267,7 @@ class _SpendingTrend extends StatelessWidget {
           ? null
           : () => onRangeChanged!(rangeCount),
       alignVisualEnd: true,
-      visualVerticalOffset: -ButlerlySpacing.xxs,
+      visualVerticalOffset: -ButlerlySpacing.small,
     );
     return ButlerlyCard(
       key: const ValueKey('home-trend-card'),
