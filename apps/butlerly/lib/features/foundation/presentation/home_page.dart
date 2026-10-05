@@ -1052,16 +1052,22 @@ class _HomeMetricCell extends StatelessWidget {
               final valueStyle = ButlerlyTypography.homeSummaryMetricValue(
                 Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
               );
+              final valueText = Text(
+                displayValue,
+                maxLines: stacked ? null : 1,
+                softWrap: stacked,
+                textAlign: TextAlign.center,
+                style: valueStyle,
+              );
               return SizedBox(
                 width: constraints.maxWidth,
-                child: Text(
-                  displayValue,
-                  maxLines: stacked ? null : 1,
-                  overflow: TextOverflow.visible,
-                  softWrap: stacked,
-                  textAlign: TextAlign.center,
-                  style: valueStyle,
-                ),
+                child: stacked
+                    ? valueText
+                    : FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.center,
+                        child: valueText,
+                      ),
               );
             },
           ),
