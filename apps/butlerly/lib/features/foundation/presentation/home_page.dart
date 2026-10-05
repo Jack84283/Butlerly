@@ -1313,7 +1313,7 @@ class _SpendingTrend extends StatelessWidget {
                   ),
                 ] else ...[
                   if (selectedPoint?.metric case final metric?) ...[
-                    const SizedBox(height: ButlerlySpacing.small),
+                    const SizedBox(height: ButlerlySpacing.compact),
                     Wrap(
                       crossAxisAlignment: WrapCrossAlignment.center,
                       spacing: ButlerlySpacing.small,
@@ -1542,7 +1542,7 @@ class _CategorySummary extends StatelessWidget {
             ),
             keepActionInlineAtCompactWidth: true,
           ),
-          const SizedBox(height: ButlerlySpacing.small),
+          const SizedBox(height: ButlerlySpacing.compact),
           if (model == null)
             Text(
               context.l10n.text('analysisUnavailableBody'),
@@ -2105,6 +2105,7 @@ class _HomeRecentActivity extends StatelessWidget {
                   showDate: true,
                   showCategoryPill: true,
                   compactMoney: true,
+                  compactSpacing: true,
                   showNavigationIndicator: false,
                   variant: ButlerlyTransactionRowVariant.dashboard,
                   onTap: () => onTap(transaction),
