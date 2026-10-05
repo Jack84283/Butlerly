@@ -201,10 +201,7 @@ void main() {
         home: const Scaffold(
           body: SizedBox(
             width: 120,
-            child: ButlerlyCategoryBadge(
-              categoryId: categoryId,
-              label: label,
-            ),
+            child: ButlerlyCategoryBadge(categoryId: categoryId, label: label),
           ),
         ),
       ),
