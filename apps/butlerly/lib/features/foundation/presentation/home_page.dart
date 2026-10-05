@@ -740,8 +740,7 @@ class _HomeHeader extends StatelessWidget {
               context.l10n.text('appName'),
               style: ButlerlyTypography.editorialText(
                 ButlerlyTypography.pageHeroTitle(
-                  Theme.of(context).textTheme.headlineLarge ??
-                      const TextStyle(),
+                  Theme.of(context).textTheme.headlineLarge ?? const TextStyle(),
                 ),
               ),
             ),
@@ -1311,8 +1310,7 @@ class _SpendingTrend extends StatelessWidget {
       alignVisualEnd: true,
       denseSurface: true,
     );
-    final largeText =
-        MediaQuery.textScalerOf(context).scale(14) > 20;
+    final largeText = MediaQuery.textScalerOf(context).scale(14) > 20;
     return ButlerlyCard(
       key: const ValueKey('home-trend-card'),
       variant: ButlerlyCardVariant.dashboard,
@@ -1325,9 +1323,7 @@ class _SpendingTrend extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: EdgeInsetsDirectional.only(
-                    end: largeText ? 0 : 132,
-                  ),
+                  padding: EdgeInsetsDirectional.only(end: largeText ? 0 : 132),
                   child: ButlerlyCardHeader(
                     title: context.l10n.text('spendingTrend'),
                     titleStyle: ButlerlyTypography.compactCardTitle(
