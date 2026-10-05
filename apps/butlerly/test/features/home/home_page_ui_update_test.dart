@@ -434,7 +434,7 @@ void main() {
     final chart = find.byKey(const ValueKey('home-spending-trend-chart'));
     final amount = find.text(r'$42.00');
     expect(chart, findsOneWidget);
-    expect(tester.getSize(chart).height, closeTo(93, 0.1));
+    expect(tester.getSize(chart).height, closeTo(112, 0.1));
     if (amount.evaluate().isNotEmpty) {
       expect(tester.widget<Text>(amount).style?.fontSize, 24);
     }
