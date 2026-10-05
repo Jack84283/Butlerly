@@ -178,10 +178,7 @@ void main() {
       find.text('Tus datos financieros de septiembre de 2026.'),
       findsOneWidget,
     );
-    expect(
-      find.text("Your financial data for September 2026."),
-      findsNothing,
-    );
+    expect(find.text("Your financial data for September 2026."), findsNothing);
   });
 
   testWidgets('Home keeps all dashboard cards when there is no activity', (
@@ -236,8 +233,7 @@ void main() {
         ValueKey('home-summary-metric-net-position'),
       ];
       final tops = [
-        for (final key in metricKeys)
-          tester.getTopLeft(find.byKey(key)).dy,
+        for (final key in metricKeys) tester.getTopLeft(find.byKey(key)).dy,
       ];
       for (final top in tops.skip(1)) {
         expect(top, closeTo(tops.first, 1.0));
@@ -246,7 +242,9 @@ void main() {
     },
   );
 
-  testWidgets('Home intro stays within an Android phone header', (tester) async {
+  testWidgets('Home intro stays within an Android phone header', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(360, 640);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -268,9 +266,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Home card titles share the canonical top inset', (
-    tester,
-  ) async {
+  testWidgets('Home card titles share the canonical top inset', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
