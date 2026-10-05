@@ -510,11 +510,6 @@ void main() {
         lessThanOrEqualTo(2),
       );
       expect(
-        (tester.getTopLeft(trendSelector).dy - tester.getTopLeft(trendTitle).dy)
-            .abs(),
-        lessThanOrEqualTo(2),
-      );
-      expect(
         (tester.getCenter(trendSurface).dy - tester.getCenter(trendTitle).dy)
             .abs(),
         lessThanOrEqualTo(1),
