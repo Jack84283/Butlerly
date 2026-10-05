@@ -1370,10 +1370,7 @@ class _HomeTrendPlot extends StatelessWidget {
     final scaleMax = _trendScaleMax(maxValue);
     final textScaler = MediaQuery.textScalerOf(context);
     final chartHeight = math
-        .max(
-          112.0,
-          textScaler.scale(16) * 6 + ButlerlySpacing.compact,
-        )
+        .max(112.0, textScaler.scale(16) * 6 + ButlerlySpacing.compact)
         .toDouble();
     return SizedBox(
       key: const ValueKey('home-spending-trend-chart'),
