@@ -202,11 +202,12 @@ void main() {
       );
 
       for (final theme in [AppTheme.light, AppTheme.dark]) {
+        final darkMode = theme.brightness == Brightness.dark;
         await tester.pumpWidget(
           MaterialApp(
             theme: AppTheme.light,
             darkTheme: AppTheme.dark,
-            themeMode: dark ? ThemeMode.dark : ThemeMode.light,
+            themeMode: darkMode ? ThemeMode.dark : ThemeMode.light,
             home: const Scaffold(
               body: SizedBox(
                 width: 160,
@@ -229,11 +230,10 @@ void main() {
           find.descendant(of: badge, matching: find.byType(Padding)),
         );
         final colors = theme.extension<ButlerlySemanticColors>()!;
-        final dark = theme.brightness == Brightness.dark;
-        final backgroundOpacity = dark
+        final backgroundOpacity = darkMode
             ? ButlerlyTransactionItemTokens.categoryBadgeBackgroundOpacityDark
             : ButlerlyTransactionItemTokens.categoryBadgeBackgroundOpacityLight;
-        final borderOpacity = dark
+        final borderOpacity = darkMode
             ? ButlerlyTransactionItemTokens.categoryBadgeBorderOpacityDark
             : ButlerlyTransactionItemTokens.categoryBadgeBorderOpacityLight;
         final compositedBackground = Color.alphaBlend(
