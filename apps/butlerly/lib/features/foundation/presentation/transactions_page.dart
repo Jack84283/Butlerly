@@ -2092,18 +2092,20 @@ Future<TransactionDto?> _assignPaymentSource(
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ListTile(
-            contentPadding: EdgeInsets.zero,
+          ButlerlySheetChoiceTile(
+            selected: transaction.paymentSourceId == null,
             onTap: () => Navigator.pop(dialogContext),
-            title: Text(dialogContext.l10n.text('noPaymentSource')),
+            child: Text(dialogContext.l10n.text('noPaymentSource')),
           ),
-          ...sources.map(
-            (value) => ListTile(
-              contentPadding: EdgeInsets.zero,
+          for (final value in sources) ...[
+            if (Theme.of(dialogContext).brightness == Brightness.dark)
+              const SizedBox(height: ButlerlySpacing.compact),
+            ButlerlySheetChoiceTile(
+              selected: transaction.paymentSourceId == value.id.value,
               onTap: () => Navigator.pop(dialogContext, value.id.value),
-              title: Text(paymentSourceDisplayLabel(value)),
+              child: Text(paymentSourceDisplayLabel(value)),
             ),
-          ),
+          ],
         ],
       ),
     ),
