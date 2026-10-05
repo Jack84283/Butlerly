@@ -247,12 +247,14 @@ class _MasterDataPageState extends State<MasterDataPage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            for (final category in roots)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                onTap: () => Navigator.pop(context, category.id),
-                title: Text(data.categoryLabel(category)),
+            for (var index = 0; index < roots.length; index++) ...[
+              if (Theme.of(context).brightness == Brightness.dark && index > 0)
+                const SizedBox(height: ButlerlySpacing.compact),
+              ButlerlySheetChoiceTile(
+                onTap: () => Navigator.pop(context, roots[index].id),
+                child: Text(data.categoryLabel(roots[index])),
               ),
+            ],
           ],
         ),
       ),
