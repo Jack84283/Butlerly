@@ -186,6 +186,7 @@ void main() {
     final action = find.byKey(const ValueKey('large-card-action'));
     expect(title, findsOneWidget);
     expect(action, findsOneWidget);
+    expect(tester.widget<Text>(title).style?.fontSize, 16);
     expect(
       tester.getTopLeft(title).dy,
       closeTo(tester.getTopLeft(action).dy, 0.01),
