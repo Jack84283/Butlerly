@@ -725,7 +725,7 @@ class _HomeHeader extends StatelessWidget {
       builder: (context, constraints) {
         final brand = Text(
           context.l10n.text('appName'),
-          style: ButlerlyTypography.brandTitle(
+          style: ButlerlyTypography.pageHeroTitle(
             Theme.of(context).textTheme.headlineLarge ?? const TextStyle(),
           ),
         );
@@ -759,13 +759,13 @@ class _HomeHeader extends StatelessWidget {
                 ],
               )
             : Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(child: brand),
                   const SizedBox(width: ButlerlySpacing.standard),
                   Expanded(
                     child: Align(
-                      alignment: AlignmentDirectional.centerEnd,
+                      alignment: AlignmentDirectional.topEnd,
                       child: monthButton,
                     ),
                   ),
