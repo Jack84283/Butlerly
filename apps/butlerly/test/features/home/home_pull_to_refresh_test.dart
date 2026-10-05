@@ -758,13 +758,13 @@ void main() {
       final containerFinder = find.ancestor(
         of: iconFinder,
         matching: find.byWidgetPredicate(
-          (widget) =>
-              widget is Container && widget.decoration is BoxDecoration,
+          (widget) => widget is Container && widget.decoration is BoxDecoration,
         ),
       );
       expect(containerFinder, findsOneWidget);
       final decoration =
-          tester.widget<Container>(containerFinder).decoration! as BoxDecoration;
+          tester.widget<Container>(containerFinder).decoration!
+              as BoxDecoration;
       expect(decoration.color, ButlerlyCategoryColors.color(entry.$2));
       expect(decoration.shape, BoxShape.circle);
     }
