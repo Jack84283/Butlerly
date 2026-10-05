@@ -408,7 +408,7 @@ class ButlerlyCompactSelector extends StatelessWidget {
         ),
         child: Align(
           alignment: alignVisualEnd
-              ? AlignmentDirectional.topEnd
+              ? AlignmentDirectional.centerEnd
               : Alignment.topCenter,
           child: Ink(
             decoration: BoxDecoration(
