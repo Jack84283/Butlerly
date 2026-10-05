@@ -854,11 +854,20 @@ class ButlerlyCategoryBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final categoryColor = ButlerlyChartColors.category(categoryId ?? label);
+    final badgeBackground = categoryColor.withValues(
+      alpha: ButlerlyTransactionItemTokens.categoryBadgeBackgroundOpacity,
+    );
+    final compositedBackground = Color.alphaBlend(
+      badgeBackground,
+      context.colors.cardSurface,
+    );
+    final foreground =
+        _contrastRatio(categoryColor, compositedBackground) >= 4.5
+        ? categoryColor
+        : context.colors.primaryText;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: categoryColor.withValues(
-          alpha: ButlerlyTransactionItemTokens.categoryBadgeBackgroundOpacity,
-        ),
+        color: badgeBackground,
         border: Border.all(
           color: categoryColor.withValues(
             alpha: ButlerlyTransactionItemTokens.categoryBadgeBorderOpacity,
@@ -876,7 +885,7 @@ class ButlerlyCategoryBadge extends StatelessWidget {
           label,
           softWrap: true,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: categoryColor,
+            color: foreground,
             fontSize: ButlerlyTransactionItemTokens.categoryBadgeFontSize,
             height: ButlerlyTransactionItemTokens.categoryBadgeLineHeight,
             fontWeight: FontWeight.w600,
@@ -885,6 +894,18 @@ class ButlerlyCategoryBadge extends StatelessWidget {
       ),
     );
   }
+}
+
+double _contrastRatio(Color first, Color second) {
+  final firstLuminance = first.computeLuminance();
+  final secondLuminance = second.computeLuminance();
+  final lighter = firstLuminance > secondLuminance
+      ? firstLuminance
+      : secondLuminance;
+  final darker = firstLuminance > secondLuminance
+      ? secondLuminance
+      : firstLuminance;
+  return (lighter + 0.05) / (darker + 0.05);
 }
 
 enum ButlerlyTransactionRowVariant { standard, dashboard }
