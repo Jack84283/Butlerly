@@ -260,6 +260,58 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'Home trend range keeps the other cards visible while loading locally',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(const _TestApp());
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('home-summary-card')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-category-card')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-recent-card')), findsOneWidget);
+
+      final trendReadGate = Completer<void>();
+      transactions.readGate = trendReadGate.future;
+      await tester.tap(find.byKey(const Key('home-trend-range-selector')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Last 12 months'));
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('home-summary-card')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-category-card')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-recent-card')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('home-trend-local-loading')),
+        findsOneWidget,
+      );
+      expect(find.text('Sep 2026'), findsOneWidget);
+
+      trendReadGate.complete();
+      transactions.readGate = null;
+      await tester.pumpAndSettle();
+
+      expect(find.text('Last 12 months'), findsOneWidget);
+      for (
+        var month = DateTime(2025, 10);
+        month.isBefore(DateTime(2026, 10));
+        month = DateTime(month.year, month.month + 1)
+      ) {
+        expect(
+          find.byKey(
+            ValueKey('home-spending-trend-label-${month.year}-${month.month}'),
+          ),
+          findsOneWidget,
+        );
+      }
+      expect(find.text('Sep 2026'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('Home places attention and insight cards around recent activity', (
     tester,
   ) async {

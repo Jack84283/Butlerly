@@ -42,6 +42,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late Future<_HomeData> _data;
+  Future<_HomeTrendData>? _trendFuture;
   String? _loadedLanguageCode;
   DateTime? _selectedMonth;
   int _trendMonthCount = 6;
@@ -66,6 +67,7 @@ class _HomePageState extends State<HomePage> {
     final languageCode = Localizations.localeOf(context).languageCode;
     if (_loadedLanguageCode == languageCode) return;
     _loadedLanguageCode = languageCode;
+    _trendFuture = null;
     _loadGeneration++;
     _data = _load(languageCode: languageCode);
   }
@@ -143,24 +145,10 @@ class _HomePageState extends State<HomePage> {
         masterData: masterData,
         model: overview.analysis,
         insight: overview.insights.firstOrNull,
-        trend: [
-          for (final point in overview.monthlyTrend)
-            _HomeTrendPoint(
-              month: _monthStart(point.month),
-              value:
-                  point.spending == null ||
-                      point.spending!.availability !=
-                          AnalysisDataAvailability.sufficient
-                  ? 0
-                  : analysisNumber(point.spending!),
-              metric:
-                  point.spending?.availability !=
-                      AnalysisDataAvailability.sufficient
-                  ? null
-                  : point.spending,
-              selected: _sameMonth(point.month, overview.displayMonth!),
-            ),
-        ],
+        trend: _homeTrendPoints(
+          overview.monthlyTrend,
+          selectedMonth: overview.displayMonth!,
+        ),
         trendUnavailable: overview.monthlyTrendUnavailable,
         displayMonth: overview.displayMonth!,
         currentFinancialMonth: overview.currentFinancialMonth!,
@@ -193,6 +181,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _refresh() async {
     final generation = ++_loadGeneration;
+    _trendFuture = null;
     final refreshed = await _load(forceAnalysisRefresh: true);
     if (!mounted || generation != _loadGeneration) return;
     setState(() {
@@ -213,12 +202,39 @@ class _HomePageState extends State<HomePage> {
       _selectedMonth = _sameMonth(selected, data.currentFinancialMonth)
           ? null
           : _monthStart(selected);
+      _trendFuture = null;
       _loadGeneration++;
       _data = _load();
     });
   }
 
-  Future<void> _selectTrendRange() async {
+  Future<_HomeTrendData> _loadTrend({
+    required DateTime endingMonth,
+    required int monthCount,
+  }) async {
+    final trendUseCase = _finance?.calculateMonthlySpendingTrend;
+    if (trendUseCase == null) return const _HomeTrendData.unavailable();
+    try {
+      final result = await trendUseCase(
+        endingMonth: endingMonth,
+        instant: _now,
+        monthCount: monthCount,
+      );
+      if (result case ApplicationSuccess<List<MonthlySpendingTrendPoint>>(
+        :final value,
+      )) {
+        return _HomeTrendData(
+          points: _homeTrendPoints(value, selectedMonth: endingMonth),
+        );
+      }
+    } catch (_) {
+      // The existing Home snapshot remains visible when a trend-only refresh
+      // is unavailable; only the trend card reports the local failure.
+    }
+    return const _HomeTrendData.unavailable();
+  }
+
+  Future<void> _selectTrendRange(_HomeData data) async {
     final selected = await showButlerlySelectionSheet<int>(
       context: context,
       title: context.l10n.text('trendRange'),
@@ -234,8 +250,10 @@ class _HomePageState extends State<HomePage> {
     if (!mounted || selected == null || selected == _trendMonthCount) return;
     setState(() {
       _trendMonthCount = selected;
-      _loadGeneration++;
-      _data = _load();
+      _trendFuture = _loadTrend(
+        endingMonth: data.displayMonth,
+        monthCount: selected,
+      );
     });
   }
 
@@ -288,12 +306,12 @@ class _HomePageState extends State<HomePage> {
               data.transactions.isEmpty,
         ),
         const SizedBox(height: ButlerlySpacing.cardGap),
-        _SpendingTrend(
-          points: data.trend,
-          unavailable: data.trendUnavailable || overviewUnavailable,
-          comparison: data.model?.spendingComparison,
+        _HomeTrend(
+          data: data,
+          unavailable: overviewUnavailable,
+          trendFuture: _trendFuture,
           rangeCount: _trendMonthCount,
-          onRangeChanged: (_) => _selectTrendRange(),
+          onRangeChanged: () => _selectTrendRange(data),
         ),
         const SizedBox(height: ButlerlySpacing.cardGap),
         _CategorySummary(
@@ -1188,6 +1206,7 @@ class _SpendingTrend extends StatelessWidget {
   const _SpendingTrend({
     required this.points,
     required this.unavailable,
+    this.loading = false,
     this.comparison,
     this.rangeCount = 6,
     this.onRangeChanged,
@@ -1195,6 +1214,7 @@ class _SpendingTrend extends StatelessWidget {
 
   final List<_HomeTrendPoint> points;
   final bool unavailable;
+  final bool loading;
   final AnalysisComparison? comparison;
   final int rangeCount;
   final ValueChanged<int>? onRangeChanged;
@@ -1224,62 +1244,77 @@ class _SpendingTrend extends StatelessWidget {
       key: const ValueKey('home-trend-card'),
       variant: ButlerlyCardVariant.dashboard,
       semanticLabel: context.l10n.text('spendingTrend'),
-      child: Semantics(
-        container: true,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ButlerlyCardHeader(
-              title: context.l10n.text('spendingTrend'),
-              titleStyle: ButlerlyTypography.compactCardTitle(
-                Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
-              ),
-              action: trendAction,
-              keepActionInlineAtCompactWidth: true,
-            ),
-            if (unavailable || points.isEmpty || !meaningful) ...[
-              const SizedBox(height: ButlerlySpacing.standard),
-              Text(
-                context.l10n.text(
-                  unavailable
-                      ? 'analysisUnavailableBody'
-                      : 'insufficientTrendData',
+      child: Stack(
+        children: [
+          Semantics(
+            container: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ButlerlyCardHeader(
+                  title: context.l10n.text('spendingTrend'),
+                  titleStyle: ButlerlyTypography.compactCardTitle(
+                    Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
+                  ),
+                  action: trendAction,
+                  keepActionInlineAtCompactWidth: true,
                 ),
-                style: ButlerlyTypography.cardSubtitle(
-                  Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
-                ),
-              ),
-            ] else ...[
-              if (selectedPoint?.metric case final metric?) ...[
-                const SizedBox(height: ButlerlySpacing.small),
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: ButlerlySpacing.small,
-                  runSpacing: ButlerlySpacing.micro,
-                  children: [
-                    Text(
-                      _homeMetricMoney(context, metric),
-                      style: ButlerlyTypography.metricValue(
-                        Theme.of(context).textTheme.titleLarge ??
-                            const TextStyle(),
-                      ).copyWith(fontSize: 30, height: 1.08),
+                if (unavailable || points.isEmpty || !meaningful) ...[
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  Text(
+                    context.l10n.text(
+                      unavailable
+                          ? 'analysisUnavailableBody'
+                          : 'insufficientTrendData',
                     ),
-                    if (comparisonText.isNotEmpty)
-                      Text(
-                        comparisonText,
-                        style: ButlerlyTypography.metricChange(
-                          Theme.of(context).textTheme.bodySmall ??
-                              const TextStyle(),
-                        ).copyWith(color: context.colors.interactive),
-                      ),
+                    style: ButlerlyTypography.cardSubtitle(
+                      Theme.of(context).textTheme.bodySmall ??
+                          const TextStyle(),
+                    ),
+                  ),
+                ] else ...[
+                  if (selectedPoint?.metric case final metric?) ...[
+                    const SizedBox(height: ButlerlySpacing.small),
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: ButlerlySpacing.small,
+                      runSpacing: ButlerlySpacing.micro,
+                      children: [
+                        Text(
+                          _homeMetricMoney(context, metric),
+                          style: ButlerlyTypography.metricValue(
+                            Theme.of(context).textTheme.titleLarge ??
+                                const TextStyle(),
+                          ).copyWith(fontSize: 30, height: 1.08),
+                        ),
+                        if (comparisonText.isNotEmpty)
+                          Text(
+                            comparisonText,
+                            style: ButlerlyTypography.metricChange(
+                              Theme.of(context).textTheme.bodySmall ??
+                                  const TextStyle(),
+                            ).copyWith(color: context.colors.interactive),
+                          ),
+                      ],
+                    ),
                   ],
-                ),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  _HomeTrendPlot(points: points, locale: locale),
+                ],
               ],
-              const SizedBox(height: ButlerlySpacing.standard),
-              _HomeTrendPlot(points: points, locale: locale),
-            ],
-          ],
-        ),
+            ),
+          ),
+          if (loading)
+            const Positioned.fill(
+              child: IgnorePointer(
+                child: Center(
+                  child: CircularProgressIndicator(
+                    key: ValueKey('home-trend-local-loading'),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -2419,6 +2454,54 @@ class _HomeLoading extends StatelessWidget {
   );
 }
 
+class _HomeTrend extends StatelessWidget {
+  const _HomeTrend({
+    required this.data,
+    required this.unavailable,
+    required this.trendFuture,
+    required this.rangeCount,
+    required this.onRangeChanged,
+  });
+
+  final _HomeData data;
+  final bool unavailable;
+  final Future<_HomeTrendData>? trendFuture;
+  final int rangeCount;
+  final VoidCallback onRangeChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final future = trendFuture;
+    if (future == null) {
+      return _SpendingTrend(
+        points: data.trend,
+        unavailable: data.trendUnavailable || unavailable,
+        comparison: data.model?.spendingComparison,
+        rangeCount: rangeCount,
+        onRangeChanged: (_) => onRangeChanged(),
+      );
+    }
+    return FutureBuilder<_HomeTrendData>(
+      future: future,
+      initialData: _HomeTrendData(
+        points: data.trend,
+        unavailable: data.trendUnavailable,
+      ),
+      builder: (context, snapshot) {
+        final trend = snapshot.data ?? _HomeTrendData.unavailable();
+        return _SpendingTrend(
+          points: trend.points,
+          unavailable: trend.unavailable || unavailable,
+          loading: snapshot.connectionState != ConnectionState.done,
+          comparison: data.model?.spendingComparison,
+          rangeCount: rangeCount,
+          onRangeChanged: (_) => onRangeChanged(),
+        );
+      },
+    );
+  }
+}
+
 class _HomeMonthPicker extends StatefulWidget {
   const _HomeMonthPicker({
     required this.selectedMonth,
@@ -2647,6 +2730,36 @@ class _HomeTrendPoint {
   final AnalysisMetric? metric;
   final bool selected;
 }
+
+class _HomeTrendData {
+  const _HomeTrendData({required this.points, this.unavailable = false});
+
+  const _HomeTrendData.unavailable() : points = const [], unavailable = true;
+
+  final List<_HomeTrendPoint> points;
+  final bool unavailable;
+}
+
+List<_HomeTrendPoint> _homeTrendPoints(
+  Iterable<MonthlySpendingTrendPoint> points, {
+  required DateTime selectedMonth,
+}) => [
+  for (final point in points)
+    _HomeTrendPoint(
+      month: _monthStart(point.month),
+      value:
+          point.spending == null ||
+              point.spending!.availability !=
+                  AnalysisDataAvailability.sufficient
+          ? 0
+          : analysisNumber(point.spending!),
+      metric:
+          point.spending?.availability != AnalysisDataAvailability.sufficient
+          ? null
+          : point.spending,
+      selected: _sameMonth(point.month, selectedMonth),
+    ),
+];
 
 DateTime _monthStart(DateTime value) => DateTime(value.year, value.month, 1);
 

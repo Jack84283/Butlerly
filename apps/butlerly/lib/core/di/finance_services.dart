@@ -454,6 +454,9 @@ final class FinanceServices {
                results: analysisResults,
                rules: analysisRules,
              ) {
+    calculateMonthlySpendingTrend = calculateAnalysisOverview == null
+        ? null
+        : CalculateMonthlySpendingTrend(calculateAnalysisOverview!);
     loadHomeOverview = GetHomeOverview(
       resolveHomePeriod: resolveHomePeriod,
       calculateAnalysis: calculateAnalysisOverview,
@@ -524,6 +527,7 @@ final class FinanceServices {
   final ResolveDuplicateCandidateGroup? resolveDuplicateCandidateGroup;
   final InstallBuiltInRules? installBuiltInRules;
   final CalculateAnalysisOverview? calculateAnalysisOverview;
+  late final CalculateMonthlySpendingTrend? calculateMonthlySpendingTrend;
   final CalculateAnalysisCalendar? calculateAnalysisCalendar;
   final CalculateInsights? calculateInsights;
   late final GetHomeOverview loadHomeOverview;
