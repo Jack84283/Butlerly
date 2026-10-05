@@ -175,7 +175,7 @@ void main() {
     expect(find.text('Spending'), findsOneWidget);
     expect(find.text('Spending trend'), findsOneWidget);
     expect(find.text('Top categories'), findsOneWidget);
-    expect(find.text('Savings'), findsOneWidget);
+    expect(find.text('Savings'), findsNothing);
     expect(find.text('Net position'), findsOneWidget);
     expect(find.text('Recent transactions'), findsOneWidget);
     expect(find.text('Insights'), findsOneWidget);
@@ -625,7 +625,6 @@ void main() {
     final metricKeys = [
       const ValueKey('home-summary-metric-spending'),
       const ValueKey('home-summary-metric-income'),
-      const ValueKey('home-summary-metric-savings'),
       const ValueKey('home-summary-metric-net-position'),
     ];
     final metricPositions = [
@@ -637,7 +636,7 @@ void main() {
         greaterThan(metricPositions[index - 1].dy),
       );
     }
-    for (final label in ['Spending', 'Income', 'Savings', 'Net position']) {
+    for (final label in ['Spending', 'Income', 'Net position']) {
       expect(find.text(label), findsOneWidget);
     }
     expect(
@@ -650,7 +649,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Home Summary keeps all four metrics in one row normally', (
+  testWidgets('Home Summary keeps all three inner cards in one row normally', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -694,22 +693,27 @@ void main() {
     final income = tester.getTopLeft(
       find.byKey(const ValueKey('home-summary-metric-income')),
     );
-    final savings = tester.getTopLeft(
-      find.byKey(const ValueKey('home-summary-metric-savings')),
-    );
     final netPosition = tester.getTopLeft(
       find.byKey(const ValueKey('home-summary-metric-net-position')),
     );
     expect(spending.dy, closeTo(income.dy, 0.01));
-    expect(spending.dy, closeTo(savings.dy, 0.01));
     expect(spending.dy, closeTo(netPosition.dy, 0.01));
     expect(spending.dx, lessThan(income.dx));
-    expect(income.dx, lessThan(savings.dx));
-    expect(savings.dx, lessThan(netPosition.dx));
+    expect(income.dx, lessThan(netPosition.dx));
+    expect(
+      find.byKey(const ValueKey('home-summary-metric-savings')),
+      findsNothing,
+    );
+    for (final key in const [
+      'home-summary-inner-spending',
+      'home-summary-inner-income',
+      'home-summary-inner-net-position',
+    ]) {
+      expect(find.byKey(ValueKey(key)), findsOneWidget);
+    }
     for (final entry in [
       ('home-summary-metric-spending', 'Spending'),
       ('home-summary-metric-income', 'Income'),
-      ('home-summary-metric-savings', 'Savings'),
       ('home-summary-metric-net-position', 'Net position'),
     ]) {
       final cell = find.byKey(ValueKey(entry.$1));
@@ -745,7 +749,6 @@ void main() {
     for (final entry in const [
       (Icons.arrow_downward_rounded, ButlerlyCategoryColorId.coral),
       (Icons.arrow_upward_rounded, ButlerlyCategoryColorId.green),
-      (Icons.savings_outlined, ButlerlyCategoryColorId.blue),
       (Icons.bar_chart_rounded, ButlerlyCategoryColorId.gold),
     ]) {
       final iconFinder = find.descendant(
@@ -801,6 +804,7 @@ void main() {
         context: context,
       ),
       savingsRate: DecimalValue.parse('1'),
+      net: _categoryMetric(value: '100'),
       insightUnavailable: false,
       trend: const [],
       categories: const [],
@@ -828,13 +832,11 @@ void main() {
     );
     expect(
       find.descendant(
-        of: find.byKey(const ValueKey('home-summary-metric-savings')),
+        of: find.byKey(const ValueKey('home-summary-metric-net-position')),
         matching: find.text(r'$100.00'),
       ),
       findsOneWidget,
     );
-    expect(find.text('100%'), findsOneWidget);
-
     final expenseOnly = AnalysisOverview(
       spending: _categoryMetric(value: '60'),
       income: _categoryMetric(
@@ -847,6 +849,7 @@ void main() {
         context: context,
       ),
       savingsRate: null,
+      net: _categoryMetric(value: '-60'),
       insightUnavailable: false,
       trend: const [],
       categories: const [],
@@ -873,7 +876,7 @@ void main() {
     );
     expect(
       find.descendant(
-        of: find.byKey(const ValueKey('home-summary-metric-savings')),
+        of: find.byKey(const ValueKey('home-summary-metric-net-position')),
         matching: find.text(r'-$60.00'),
       ),
       findsOneWidget,
@@ -894,7 +897,7 @@ void main() {
     );
     expect(
       find.descendant(
-        of: find.byKey(const ValueKey('home-summary-metric-savings')),
+        of: find.byKey(const ValueKey('home-summary-metric-net-position')),
         matching: find.text('—'),
       ),
       findsNothing,
@@ -1001,7 +1004,6 @@ void main() {
       final metricKeys = [
         const ValueKey('home-summary-metric-spending'),
         const ValueKey('home-summary-metric-income'),
-        const ValueKey('home-summary-metric-savings'),
         const ValueKey('home-summary-metric-net-position'),
       ];
       final metricTops = [
@@ -1085,7 +1087,6 @@ void main() {
     const referenceValues = {
       'home-summary-metric-spending': '\$2,340.18',
       'home-summary-metric-income': '\$4,150.00',
-      'home-summary-metric-savings': '\$1,809.82',
       'home-summary-metric-net-position': '\$1,809.82',
     };
     for (final entry in referenceValues.entries) {
@@ -1118,7 +1119,7 @@ void main() {
     for (final top in metricTops.skip(1)) {
       expect(top, closeTo(metricTops.first, 0.01));
     }
-    for (final label in ['Spending', 'Income', 'Savings', 'Net position']) {
+    for (final label in ['Spending', 'Income', 'Net position']) {
       expect(tester.widget<Text>(find.text(label)).style?.fontSize, 13);
     }
     expect(tester.takeException(), isNull);
@@ -1189,7 +1190,6 @@ void main() {
     final metricKeys = [
       const ValueKey('home-summary-metric-spending'),
       const ValueKey('home-summary-metric-income'),
-      const ValueKey('home-summary-metric-savings'),
       const ValueKey('home-summary-metric-net-position'),
     ];
     final metricTops = [
@@ -1272,16 +1272,7 @@ void main() {
       _lastTextIn(tester, 'home-summary-metric-income').style?.color,
       colors.success,
     );
-    final savingsRate = tester.widget<Text>(find.text('50%'));
-    expect(savingsRate.style?.color, colors.info);
-    expect(savingsRate.style?.fontSize, 11);
-    final savingsSemantics = tester.getSemantics(
-      find.byKey(const ValueKey('home-summary-metric-savings')),
-    );
-    expect(savingsSemantics.label, contains('50%'));
-    expect(savingsSemantics.label, contains('of income'));
   });
-
   testWidgets('Home Insight preview uses data-driven localized copy', (
     tester,
   ) async {
@@ -1360,116 +1351,6 @@ void main() {
       ),
       findsOneWidget,
     );
-  });
-
-  testWidgets('Home Summary does not show insufficient derived savings', (
-    tester,
-  ) async {
-    final context = AnalysisContext(
-      period: AnalysisPeriod(
-        startDate: '2026-09-01',
-        endDate: '2026-09-16',
-        timeZoneId: 'UTC',
-      ),
-      datasetMode: DatasetMode.allEligible,
-      currencyBasis: CurrencyBasis.baseCurrency,
-      baseCurrency: CurrencyCode('USD'),
-    );
-    final model = AnalysisOverview(
-      insightUnavailable: false,
-      trend: const [],
-      categories: const [],
-      qualityCount: 0,
-      qualityEvaluated: false,
-      qualityLimited: false,
-      savings: AnalysisValue(
-        value: DecimalValue.parse('5'),
-        currency: CurrencyCode('USD'),
-        context: context,
-        availability: AnalysisDataAvailability.insufficient,
-      ),
-      savingsRate: DecimalValue.parse('0.5'),
-    );
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.light,
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(body: homeSummaryForTest(model)),
-      ),
-    );
-
-    expect(
-      find.descendant(
-        of: find.byKey(const ValueKey('home-summary-metric-savings')),
-        matching: find.text('—'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(
-        of: find.byKey(const ValueKey('home-summary-metric-savings')),
-        matching: find.text('50%'),
-      ),
-      findsNothing,
-    );
-  });
-
-  testWidgets('Home Summary renders empty derived savings as zero', (
-    tester,
-  ) async {
-    final context = AnalysisContext(
-      period: AnalysisPeriod(
-        startDate: '2026-09-01',
-        endDate: '2026-09-16',
-        timeZoneId: 'UTC',
-      ),
-      datasetMode: DatasetMode.allEligible,
-      currencyBasis: CurrencyBasis.baseCurrency,
-      baseCurrency: CurrencyCode('USD'),
-    );
-    final model = AnalysisOverview(
-      insightUnavailable: false,
-      trend: const [],
-      categories: const [],
-      qualityCount: 0,
-      qualityEvaluated: false,
-      qualityLimited: false,
-      savings: AnalysisValue(
-        value: DecimalValue.parse('100'),
-        currency: CurrencyCode('USD'),
-        context: context,
-        availability: AnalysisDataAvailability.empty,
-      ),
-      savingsRate: null,
-    );
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.light,
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(body: homeSummaryForTest(model)),
-      ),
-    );
-
-    expect(
-      find.descendant(
-        of: find.byKey(const ValueKey('home-summary-metric-savings')),
-        matching: find.text(r'$0.00'),
-      ),
-      findsOneWidget,
-    );
-    expect(find.text('100% of income'), findsNothing);
   });
 
   testWidgets('Home Summary and categories hide insufficient metric values', (
@@ -1894,7 +1775,7 @@ void main() {
     expect(find.byKey(const ValueKey('home-attention-card')), findsOneWidget);
     expect(find.byKey(const ValueKey('home-recent-card')), findsOneWidget);
     expect(find.byKey(const ValueKey('home-insight-card')), findsOneWidget);
-    expect(find.text('\$0.00'), findsNWidgets(4));
+    expect(find.text('\$0.00'), findsNWidgets(3));
     expect(find.text('No spending recorded in this period.'), findsOneWidget);
     expect(find.text('Nothing needs attention'), findsOneWidget);
     expect(
