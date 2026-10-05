@@ -6,6 +6,7 @@ import 'package:butlerly/design_system/category/butlerly_category_identity.dart'
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
@@ -858,7 +859,9 @@ class _HomeSummaryCard extends StatelessWidget {
                   showMissingAsZero: showMissingValuesAsZero,
                   comparison: model?.spendingComparison,
                   icon: Icons.arrow_downward_rounded,
-                  color: context.colors.error,
+                  color: ButlerlyCategoryColors.color(
+                    ButlerlyCategoryColorId.coral,
+                  ),
                   supportingColor: context.colors.error,
                 ),
                 _HomeMetricCell(
@@ -869,7 +872,9 @@ class _HomeSummaryCard extends StatelessWidget {
                   showMissingAsZero: showMissingValuesAsZero,
                   comparison: model?.incomeComparison,
                   icon: Icons.arrow_upward_rounded,
-                  color: context.colors.success,
+                  color: ButlerlyCategoryColors.color(
+                    ButlerlyCategoryColorId.green,
+                  ),
                   supportingColor: context.colors.success,
                 ),
                 _HomeMetricCell(
@@ -885,7 +890,9 @@ class _HomeSummaryCard extends StatelessWidget {
                       ? null
                       : context.l10n.text('savingsRateOfIncome'),
                   icon: Icons.savings_outlined,
-                  color: context.colors.info,
+                  color: ButlerlyCategoryColors.color(
+                    ButlerlyCategoryColorId.blue,
+                  ),
                   supportingColor: context.colors.info,
                 ),
                 _HomeMetricCell(
@@ -895,7 +902,9 @@ class _HomeSummaryCard extends StatelessWidget {
                   fallbackCurrency: baseCurrency,
                   showMissingAsZero: showMissingValuesAsZero,
                   icon: Icons.bar_chart_rounded,
-                  color: context.colors.warning,
+                  color: ButlerlyCategoryColors.color(
+                    ButlerlyCategoryColorId.gold,
+                  ),
                 ),
               ];
               final dividerWidth =
@@ -1057,11 +1066,12 @@ class _HomeMetricCell extends StatelessWidget {
           Container(
             width: 32,
             height: 32,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.18),
-              shape: BoxShape.circle,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            child: Icon(
+              icon,
+              size: 18,
+              color: ButlerlyCategoryColors.whiteGlyph,
             ),
-            child: Icon(icon, size: 18, color: color),
           ),
           const SizedBox(height: ButlerlySpacing.compact),
           Text(
@@ -1274,7 +1284,10 @@ class _SpendingTrend extends StatelessWidget {
                   titleStyle: ButlerlyTypography.compactCardTitle(
                     Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
                   ),
-                  action: trendAction,
+                  action: Transform.translate(
+                    offset: const Offset(0, -ButlerlySpacing.xxs),
+                    child: trendAction,
+                  ),
                   keepActionInlineAtCompactWidth: true,
                 ),
                 if (unavailable || points.isEmpty || !meaningful) ...[
