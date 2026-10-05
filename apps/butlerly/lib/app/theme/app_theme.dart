@@ -89,7 +89,7 @@ abstract final class AppTheme {
       cardTheme: CardThemeData(
         elevation: ButlerlyElevation.card,
         margin: EdgeInsets.zero,
-        color: colors.dashboardSurface,
+        color: colors.cardSurface,
         shadowColor: scheme.shadow.withValues(alpha: 0.22),
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
