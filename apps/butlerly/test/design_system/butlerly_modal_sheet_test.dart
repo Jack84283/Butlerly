@@ -431,7 +431,6 @@ void main() {
     expect(oneDecoration.color, isNot(equals(twoDecoration.color)));
     expect(find.byIcon(Icons.check_rounded), findsOneWidget);
   });
-
 }
 
 Widget _testApp(Widget child) => MaterialApp(
