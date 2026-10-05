@@ -87,13 +87,14 @@ abstract final class AppTheme {
         titleTextStyle: textTheme.titleLarge,
       ),
       cardTheme: CardThemeData(
-        elevation: 0,
+        elevation: ButlerlyElevation.card,
         margin: EdgeInsets.zero,
-        color: colors.surface,
+        color: colors.dashboardSurface,
+        shadowColor: scheme.shadow.withValues(alpha: 0.22),
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-          side: BorderSide(color: colors.border.withValues(alpha: 0.8)),
+          borderRadius: BorderRadius.circular(ButlerlyRadius.card),
+          side: BorderSide(color: colors.border),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
