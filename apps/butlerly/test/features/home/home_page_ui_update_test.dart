@@ -211,6 +211,37 @@ void main() {
     expect(find.byKey(const Key('home-notification-action')), findsNothing);
   });
 
+  testWidgets('Home card titles share the canonical top inset', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(_testApp(router));
+    await tester.pumpAndSettle();
+
+    for (final entry in const [
+      (card: 'home-summary-card', title: 'Monthly summary'),
+      (card: 'home-trend-card', title: 'Spending trend'),
+      (card: 'home-category-card', title: 'Top categories'),
+      (card: 'home-attention-card', title: 'Needs attention'),
+      (card: 'home-recent-card', title: 'Recent transactions'),
+      (card: 'home-insight-card', title: 'Insights'),
+    ]) {
+      final card = find.byKey(ValueKey(entry.card));
+      final title = find.descendant(of: card, matching: find.text(entry.title));
+      expect(card, findsOneWidget);
+      expect(title, findsOneWidget);
+      expect(
+        tester.getTopLeft(title).dy - tester.getTopLeft(card).dy,
+        closeTo(ButlerlySpacing.cardPadding, 1.0),
+        reason: '${entry.title} should use the canonical card top inset',
+      );
+    }
+  });
+
   testWidgets('Home card ellipsis actions keep their visible glyph aligned', (
     tester,
   ) async {
