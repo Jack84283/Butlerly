@@ -71,7 +71,7 @@ void main() {
           findsOneWidget,
         );
         for (final card in tester.widgetList<Card>(find.byType(Card))) {
-          expect(card.color ?? theme.cardTheme.color, colors.surface);
+          expect(card.color ?? theme.cardTheme.color, colors.dashboardSurface);
         }
       }
     }
@@ -110,24 +110,25 @@ void main() {
     },
   );
 
-  testWidgets('dashboard cards use scoped surface, edge, and depth styling', (
+  testWidgets('all shared card variants use one canonical visual shell', (
     tester,
   ) async {
     for (final theme in [AppTheme.light, AppTheme.dark]) {
       await tester.pumpWidget(
         MaterialApp(
           theme: theme,
-          home: Column(
+          home: const Column(
             children: [
-              const ButlerlyCard(
+              ButlerlyCard(
                 key: ValueKey('standard-card'),
                 child: SizedBox(height: 20),
               ),
-              const ButlerlyCard(
+              ButlerlyCard(
                 key: ValueKey('dashboard-card'),
                 variant: ButlerlyCardVariant.dashboard,
                 child: SizedBox(height: 20),
               ),
+              Card(key: ValueKey('raw-card'), child: SizedBox(height: 20)),
             ],
           ),
         ),
@@ -136,15 +137,56 @@ void main() {
 
       final cards = tester.widgetList<Card>(find.byType(Card)).toList();
       final colors = theme.extension<ButlerlySemanticColors>()!;
-      expect(cards[0].color ?? theme.cardTheme.color, colors.surface);
-      expect(cards[0].elevation, ButlerlyElevation.card);
-      expect(cards[1].color, colors.dashboardSurface);
-      expect(cards[1].elevation, ButlerlyElevation.dashboardCard);
-      expect(cards[1].shadowColor, isNotNull);
-      final shape = cards[1].shape! as RoundedRectangleBorder;
-      expect(shape.borderRadius, BorderRadius.circular(16));
-      expect(shape.side.color, colors.border);
+      expect(cards, hasLength(3));
+      for (final card in cards) {
+        expect(card.color ?? theme.cardTheme.color, colors.dashboardSurface);
+        expect(card.elevation ?? theme.cardTheme.elevation, ButlerlyElevation.card);
+        expect(card.shadowColor ?? theme.cardTheme.shadowColor, isNotNull);
+        final shape =
+            (card.shape ?? theme.cardTheme.shape)! as RoundedRectangleBorder;
+        expect(
+          shape.borderRadius,
+          BorderRadius.circular(ButlerlyRadius.card),
+        );
+        expect(shape.side.color, colors.border);
+      }
     }
+  });
+
+  testWidgets('card header keeps the title anchored above large actions', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: const Scaffold(
+          body: Padding(
+            padding: EdgeInsets.all(16),
+            child: SizedBox(
+              width: 320,
+              child: ButlerlyCardHeader(
+                title: 'Spending trend',
+                centerAction: true,
+                action: SizedBox(
+                  key: ValueKey('large-card-action'),
+                  width: 80,
+                  height: ButlerlySize.minimumTarget,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final title = find.text('Spending trend');
+    final action = find.byKey(const ValueKey('large-card-action'));
+    expect(title, findsOneWidget);
+    expect(action, findsOneWidget);
+    expect(
+      tester.getTopLeft(title).dy,
+      closeTo(tester.getTopLeft(action).dy, 0.01),
+    );
   });
 
   testWidgets('page content surface fills the remaining viewport', (
