@@ -1,7 +1,9 @@
+import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_category_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_content_surface.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
+import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
@@ -853,10 +855,20 @@ class ButlerlyCategoryBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final categoryColor = ButlerlyChartColors.category(categoryId ?? label);
-    final badgeBackground = categoryColor.withValues(
-      alpha: ButlerlyTransactionItemTokens.categoryBadgeBackgroundOpacity,
-    );
+    final identity = categoryId == null
+        ? null
+        : ButlerlyCategoryIdentity.forBuiltInId(categoryId!);
+    final categoryColor = identity == null
+        ? ButlerlyChartColors.category(categoryId ?? label)
+        : ButlerlyCategoryColors.color(identity.categoryColorId);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundOpacity = dark
+        ? ButlerlyTransactionItemTokens.categoryBadgeBackgroundOpacityDark
+        : ButlerlyTransactionItemTokens.categoryBadgeBackgroundOpacityLight;
+    final borderOpacity = dark
+        ? ButlerlyTransactionItemTokens.categoryBadgeBorderOpacityDark
+        : ButlerlyTransactionItemTokens.categoryBadgeBorderOpacityLight;
+    final badgeBackground = categoryColor.withValues(alpha: backgroundOpacity);
     final compositedBackground = Color.alphaBlend(
       badgeBackground,
       context.colors.cardSurface,
@@ -869,9 +881,7 @@ class ButlerlyCategoryBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: badgeBackground,
         border: Border.all(
-          color: categoryColor.withValues(
-            alpha: ButlerlyTransactionItemTokens.categoryBadgeBorderOpacity,
-          ),
+          color: categoryColor.withValues(alpha: borderOpacity),
         ),
         borderRadius: BorderRadius.circular(ButlerlyRadius.full),
       ),
