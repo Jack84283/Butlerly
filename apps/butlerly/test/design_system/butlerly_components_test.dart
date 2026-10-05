@@ -197,7 +197,9 @@ void main() {
     (tester) async {
       const categoryId = 'category.food';
       const label = 'Food and dining';
-      const categoryColor = Color(0xFFC65D00);
+      final categoryColor = ButlerlyCategoryColors.color(
+        ButlerlyCategoryColorId.orange,
+      );
 
       for (final theme in [AppTheme.light, AppTheme.dark]) {
         await tester.pumpWidget(
