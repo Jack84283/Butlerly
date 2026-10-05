@@ -725,8 +725,10 @@ class _HomeHeader extends StatelessWidget {
       builder: (context, constraints) {
         final brand = Text(
           context.l10n.text('appName'),
-          style: ButlerlyTypography.pageHeroTitle(
-            Theme.of(context).textTheme.headlineLarge ?? const TextStyle(),
+          style: ButlerlyTypography.editorialText(
+            ButlerlyTypography.pageHeroTitle(
+              Theme.of(context).textTheme.headlineLarge ?? const TextStyle(),
+            ),
           ),
         );
         final monthButton = ButlerlyCompactSelector(
