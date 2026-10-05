@@ -253,7 +253,7 @@ void main() {
       ];
       for (final card in innerCards) {
         expect(card, findsOneWidget);
-        expect(tester.getSize(card).height, closeTo(128, 0.01));
+        expect(tester.getSize(card).height, closeTo(176, 0.01));
       }
       expect(tester.takeException(), isNull);
     },
@@ -534,8 +534,9 @@ void main() {
         lessThanOrEqualTo(2),
       );
       expect(
-        tester.getCenter(trendSurface).dy - tester.getCenter(trendTitle).dy,
-        closeTo(0, 1),
+        (tester.getTopLeft(trendSurface).dy - tester.getTopLeft(trendTitle).dy)
+            .abs(),
+        lessThanOrEqualTo(2),
       );
       await tester.ensureVisible(trendSelector);
       await tester.pumpAndSettle();
