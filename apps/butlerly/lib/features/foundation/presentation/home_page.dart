@@ -935,9 +935,12 @@ class _HomeSummaryCard extends StatelessWidget {
                     if (index > 0)
                       const SizedBox(width: ButlerlySpacing.compact),
                     Expanded(
-                      child: _HomeSummaryMetricTile(
-                        key: tileKeys[index],
-                        child: layoutCells[index],
+                      child: SizedBox(
+                        height: 152,
+                        child: _HomeSummaryMetricTile(
+                          key: tileKeys[index],
+                          child: layoutCells[index],
+                        ),
                       ),
                     ),
                   ],
@@ -1110,23 +1113,25 @@ class _HomeMetricCell extends StatelessWidget {
               );
             },
           ),
-          if (!valueUnavailable &&
-              !metricUnavailable &&
-              support != null &&
-              support.isNotEmpty) ...[
-            const SizedBox(height: ButlerlySpacing.micro),
-            Text(
-              support,
-              textAlign: TextAlign.center,
-              softWrap: true,
-              style:
-                  ButlerlyTypography.homeSummaryMetricChange(
-                    Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
-                  ).copyWith(
-                    color: supportingColor ?? context.colors.secondaryText,
-                  ),
-            ),
-          ],
+          const SizedBox(height: ButlerlySpacing.micro),
+          Text(
+            !valueUnavailable &&
+                    !metricUnavailable &&
+                    support != null &&
+                    support.isNotEmpty
+                ? support
+                : ' ',
+            maxLines: 1,
+            overflow: TextOverflow.clip,
+            textAlign: TextAlign.center,
+            softWrap: false,
+            style:
+                ButlerlyTypography.homeSummaryMetricChange(
+                  Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+                ).copyWith(
+                  color: supportingColor ?? context.colors.secondaryText,
+                ),
+          ),
           if (!valueUnavailable &&
               !metricUnavailable &&
               secondarySupport != null &&
