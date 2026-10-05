@@ -102,7 +102,9 @@ class TransactionRow extends StatelessWidget {
           : localizedTransactionAmount(context, unsignedAmount),
       currency: compactMoney ? '' : transaction.currency,
       amountIncludesCurrency: compactMoney,
-      categoryId: iconCategoryId ?? effectiveCategoryId,
+      categoryId:
+          iconCategoryId ??
+          (categoryColorId == null ? null : effectiveCategoryId),
       categoryColorId: categoryColorId,
       categoryLabel: category ?? missingCategoryLabel ?? '',
       subcategoryLabel: subcategory,
