@@ -510,9 +510,8 @@ void main() {
         lessThanOrEqualTo(2),
       );
       expect(
-        (tester.getCenter(trendSurface).dy - tester.getCenter(trendTitle).dy)
-            .abs(),
-        lessThanOrEqualTo(1),
+        tester.getCenter(trendSurface).dy - tester.getCenter(trendTitle).dy,
+        closeTo(0, 1),
       );
       await tester.ensureVisible(trendSelector);
       await tester.tap(trendSelector);
