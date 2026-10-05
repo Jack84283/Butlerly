@@ -22,7 +22,7 @@ void main() {
 
   test('theme surfaces use the quiet-premium palette', () {
     expect(AppTheme.dark.scaffoldBackgroundColor, const Color(0xFF0A0A0D));
-    expect(AppTheme.dark.cardTheme.color, const Color(0xFF111114));
+    expect(AppTheme.dark.cardTheme.color, const Color(0xFF17171C));
     expect(
       AppTheme.dark.colorScheme.surfaceContainerHighest,
       const Color(0xFF17171C),
