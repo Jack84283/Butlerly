@@ -212,7 +212,10 @@ void main() {
 
     final text = tester.widget<Text>(find.text(label));
     final categoryColor = ButlerlyChartColors.category(categoryId);
-    expect(text.style?.fontSize, ButlerlyTransactionItemTokens.categoryBadgeFontSize);
+    expect(
+      text.style?.fontSize,
+      ButlerlyTransactionItemTokens.categoryBadgeFontSize,
+    );
     expect(text.style?.color, categoryColor);
     expect(text.maxLines, isNull);
     expect(text.overflow, isNull);
