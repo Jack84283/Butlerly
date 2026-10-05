@@ -249,7 +249,7 @@ enum ButlerlyCardVariant { standard, dashboard }
 class ButlerlyCard extends StatelessWidget {
   const ButlerlyCard({
     required this.child,
-    this.padding = const EdgeInsets.all(ButlerlySpacing.standard),
+    this.padding = const EdgeInsets.all(ButlerlySpacing.cardPadding),
     this.onTap,
     this.semanticLabel,
     this.color,
@@ -266,28 +266,13 @@ class ButlerlyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dashboard = variant == ButlerlyCardVariant.dashboard;
-    final radius = dashboard
-        ? ButlerlyRadius.dashboardCard
-        : ButlerlyRadius.standard;
+    final radius = ButlerlyRadius.card;
     return Semantics(
       container: true,
       button: onTap != null,
       label: semanticLabel,
       child: Card(
-        color: color ?? (dashboard ? context.colors.dashboardSurface : null),
-        elevation: dashboard
-            ? ButlerlyElevation.dashboardCard
-            : ButlerlyElevation.card,
-        shadowColor: dashboard
-            ? Theme.of(context).colorScheme.shadow.withValues(alpha: 0.22)
-            : null,
-        shape: dashboard
-            ? RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(radius),
-                side: BorderSide(color: context.colors.border),
-              )
-            : null,
+        color: color,
         child: InkWell(
           borderRadius: BorderRadius.circular(radius),
           onTap: onTap,
@@ -330,13 +315,21 @@ class ButlerlyCardHeader extends StatelessWidget {
         children: [
           Text(
             title,
-            style: titleStyle ?? Theme.of(context).textTheme.titleLarge,
+            style:
+                titleStyle ??
+                ButlerlyTypography.compactCardTitle(
+                  Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
+                ),
           ),
           if (subtitle != null) ...[
             const SizedBox(height: ButlerlySpacing.micro),
             Text(
               subtitle!,
-              style: subtitleStyle ?? Theme.of(context).textTheme.bodySmall,
+              style:
+                  subtitleStyle ??
+                  ButlerlyTypography.cardSubtitle(
+                    Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+                  ),
             ),
           ],
         ],
@@ -347,17 +340,24 @@ class ButlerlyCardHeader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             titleBlock,
+            const SizedBox(height: ButlerlySpacing.compact),
             Align(alignment: AlignmentDirectional.centerEnd, child: action),
           ],
         );
       }
+      final inlineAction = centerAction
+          ? Align(
+              alignment: AlignmentDirectional.topEnd,
+              widthFactor: 1,
+              heightFactor: 1,
+              child: action,
+            )
+          : action!;
       return Row(
-        crossAxisAlignment: centerAction
-            ? CrossAxisAlignment.center
-            : CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(child: titleBlock),
-          action!,
+          inlineAction,
         ],
       );
     },
@@ -404,8 +404,8 @@ class ButlerlyCompactSelector extends StatelessWidget {
         ),
         child: Align(
           alignment: alignVisualEnd
-              ? AlignmentDirectional.centerEnd
-              : Alignment.center,
+              ? AlignmentDirectional.topEnd
+              : Alignment.topCenter,
           child: Ink(
             decoration: BoxDecoration(
               color: context.colors.subtleSurface,
@@ -464,7 +464,7 @@ class ButlerlyVisualizationCard extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: Theme.of(context).textTheme.titleSmall),
+        ButlerlyCardHeader(title: title),
         const SizedBox(height: ButlerlySpacing.small),
         child,
       ],
