@@ -1117,9 +1117,7 @@ class _HomeMetricCell extends StatelessWidget {
             ),
           ),
           SizedBox(
-            height: stacked
-                ? ButlerlySpacing.compact
-                : ButlerlySpacing.micro,
+            height: stacked ? ButlerlySpacing.compact : ButlerlySpacing.micro,
           ),
           if (stacked)
             Text(
@@ -1142,8 +1140,7 @@ class _HomeMetricCell extends StatelessWidget {
                   softWrap: false,
                   textAlign: TextAlign.center,
                   style: ButlerlyTypography.homeSummaryMetricLabel(
-                    Theme.of(context).textTheme.labelLarge ??
-                        const TextStyle(),
+                    Theme.of(context).textTheme.labelLarge ?? const TextStyle(),
                   ).copyWith(color: context.colors.secondaryText),
                 ),
               ),
@@ -1175,9 +1172,7 @@ class _HomeMetricCell extends StatelessWidget {
             },
           ),
           SizedBox(
-            height: stacked
-                ? ButlerlySpacing.micro
-                : ButlerlySpacing.xxs,
+            height: stacked ? ButlerlySpacing.micro : ButlerlySpacing.xxs,
           ),
           if (stacked)
             Text(
@@ -1191,11 +1186,12 @@ class _HomeMetricCell extends StatelessWidget {
               overflow: TextOverflow.clip,
               textAlign: TextAlign.center,
               softWrap: false,
-              style: ButlerlyTypography.homeSummaryMetricChange(
-                Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
-              ).copyWith(
-                color: supportingColor ?? context.colors.secondaryText,
-              ),
+              style:
+                  ButlerlyTypography.homeSummaryMetricChange(
+                    Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+                  ).copyWith(
+                    color: supportingColor ?? context.colors.secondaryText,
+                  ),
             )
           else
             SizedBox(
@@ -1214,12 +1210,13 @@ class _HomeMetricCell extends StatelessWidget {
                   maxLines: 1,
                   softWrap: false,
                   textAlign: TextAlign.center,
-                  style: ButlerlyTypography.homeSummaryMetricChange(
-                    Theme.of(context).textTheme.bodySmall ??
-                        const TextStyle(),
-                  ).copyWith(
-                    color: supportingColor ?? context.colors.secondaryText,
-                  ),
+                  style:
+                      ButlerlyTypography.homeSummaryMetricChange(
+                        Theme.of(context).textTheme.bodySmall ??
+                            const TextStyle(),
+                      ).copyWith(
+                        color: supportingColor ?? context.colors.secondaryText,
+                      ),
                 ),
               ),
             ),
