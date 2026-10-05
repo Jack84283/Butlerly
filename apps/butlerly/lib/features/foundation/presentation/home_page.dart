@@ -831,7 +831,7 @@ class _HomeSummaryCard extends StatelessWidget {
       key: const ValueKey('home-summary-card'),
       variant: ButlerlyCardVariant.dashboard,
       color: Color.alphaBlend(
-        context.colors.brand.withValues(alpha: 0.06),
+        context.colors.brand.withValues(alpha: 0.20),
         context.colors.cardSurface,
       ),
       semanticLabel: context.l10n.text('monthlySummary'),
