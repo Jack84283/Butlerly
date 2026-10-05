@@ -852,17 +852,25 @@ class ButlerlyCategoryBadge extends StatelessWidget {
   const ButlerlyCategoryBadge({
     required this.label,
     this.categoryId,
+    this.customColorId,
     super.key,
   });
 
   final String label;
   final String? categoryId;
+  final ButlerlyCategoryColorId? customColorId;
 
   @override
   Widget build(BuildContext context) {
     final identity = categoryId == null
         ? null
-        : ButlerlyCategoryIdentity.forBuiltInId(categoryId!);
+        : ButlerlyCategoryIdentity.forBuiltInId(categoryId!) ??
+              (customColorId == null
+                  ? null
+                  : ButlerlyCategoryIdentity.custom(
+                      categoryId: categoryId!,
+                      categoryColorId: customColorId!,
+                    ));
     final categoryColor = identity == null
         ? ButlerlyChartColors.category(categoryId ?? label)
         : ButlerlyCategoryColors.color(identity.categoryColorId);
@@ -933,6 +941,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     this.subtitle,
     this.meta,
     this.categoryId,
+    this.categoryColorId,
     this.categoryLabel,
     this.subcategoryLabel,
     this.paymentSource,
@@ -958,6 +967,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
   final String? subtitle;
   final String? meta;
   final String? categoryId;
+  final ButlerlyCategoryColorId? categoryColorId;
   final String? categoryLabel;
   final String? subcategoryLabel;
   final String? paymentSource;
@@ -1044,6 +1054,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                     ? ButlerlyCategoryIcon(
                         key: const Key('transaction-leading-icon'),
                         categoryId: categoryId!,
+                        customColorId: categoryColorId,
                         semanticLabel: categoryLabel,
                         containerSize:
                             ButlerlyTransactionItemTokens.leadingIconSize,
@@ -1299,8 +1310,11 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     ),
   );
 
-  Widget _categoryPill() =>
-      ButlerlyCategoryBadge(categoryId: categoryId, label: categoryLabel!);
+  Widget _categoryPill() => ButlerlyCategoryBadge(
+    categoryId: categoryId,
+    customColorId: categoryColorId,
+    label: categoryLabel!,
+  );
 
   Widget _metadataText(BuildContext context) => Text(
     _metadataParts.join(' · '),
@@ -1426,6 +1440,7 @@ class ButlerlyRecordRow extends ButlerlyTransactionListItem {
     super.subtitle,
     super.meta,
     super.categoryId,
+    super.categoryColorId,
     super.categoryLabel,
     super.subcategoryLabel,
     super.paymentSource,
