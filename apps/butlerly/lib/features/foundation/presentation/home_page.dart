@@ -928,23 +928,26 @@ class _HomeSummaryCard extends StatelessWidget {
                   ],
                 );
               }
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (var index = 0; index < layoutCells.length; index++) ...[
-                    if (index > 0)
-                      const SizedBox(width: ButlerlySpacing.compact),
-                    Expanded(
-                      child: SizedBox(
-                        height: 176,
+              return IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (
+                      var index = 0;
+                      index < layoutCells.length;
+                      index++
+                    ) ...[
+                      if (index > 0)
+                        const SizedBox(width: ButlerlySpacing.compact),
+                      Expanded(
                         child: _HomeSummaryMetricTile(
                           key: tileKeys[index],
                           child: layoutCells[index],
                         ),
                       ),
-                    ),
+                    ],
                   ],
-                ],
+                ),
               );
             },
           ),
