@@ -541,8 +541,13 @@ double _homeHeaderExtent(
       .toDouble();
   final direction = Directionality.of(context);
 
-  final appStyle = ButlerlyTypography.brandTitle(
-    textTheme.headlineLarge ?? const TextStyle(),
+  final appStyle = ButlerlyTypography.editorialText(
+    ButlerlyTypography.pageHeroTitle(
+      textTheme.headlineLarge ?? const TextStyle(),
+    ),
+  );
+  final brandSubtitleStyle = ButlerlyTypography.cardSubtitle(
+    textTheme.bodySmall ?? const TextStyle(),
   );
   final introStyle = ButlerlyTypography.cardSubtitle(
     textTheme.bodySmall ?? const TextStyle(),
@@ -617,13 +622,17 @@ double _homeHeaderExtent(
   }
 
   final appName = context.l10n.text('appName');
-  final rowWidth = availableWidth - ButlerlySpacing.standard;
-  final brandWidth = rowWidth * 5 / 9;
-  final monthWidth = rowWidth * 4 / 9;
-  final brandHeight = measure(appName, appStyle, brandWidth);
-  final monthHeight = monthButtonHeight(monthWidth);
+  final brandSubtitle = context.l10n.text('brandTagline');
   final largeText = scaler.scale(14) > 18;
   final stackedTopRow = largeText || availableWidth < 360;
+  final rowWidth = availableWidth - ButlerlySpacing.standard;
+  final brandWidth = stackedTopRow ? availableWidth : rowWidth / 2;
+  final monthWidth = stackedTopRow ? availableWidth : rowWidth / 2;
+  final brandHeight =
+      measure(appName, appStyle, brandWidth) +
+      ButlerlySpacing.micro +
+      measure(brandSubtitle, brandSubtitleStyle, brandWidth);
+  final monthHeight = monthButtonHeight(monthWidth);
   final topRowHeight = stackedTopRow
       ? brandHeight + ButlerlySpacing.small + monthHeight
       : brandHeight > monthHeight
@@ -723,13 +732,28 @@ class _HomeHeader extends StatelessWidget {
     final selectorMonthLabel = DateFormat.yMMM(locale).format(month);
     return LayoutBuilder(
       builder: (context, constraints) {
-        final brand = Text(
-          context.l10n.text('appName'),
-          style: ButlerlyTypography.editorialText(
-            ButlerlyTypography.pageHeroTitle(
-              Theme.of(context).textTheme.headlineLarge ?? const TextStyle(),
+        final brand = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              context.l10n.text('appName'),
+              style: ButlerlyTypography.editorialText(
+                ButlerlyTypography.pageHeroTitle(
+                  Theme.of(context).textTheme.headlineLarge ??
+                      const TextStyle(),
+                ),
+              ),
             ),
-          ),
+            const SizedBox(height: ButlerlySpacing.micro),
+            Text(
+              context.l10n.text('brandTagline'),
+              key: const ValueKey('home-brand-tagline'),
+              style: ButlerlyTypography.cardSubtitle(
+                Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+              ),
+            ),
+          ],
         );
         final monthButton = ButlerlyCompactSelector(
           buttonKey: const Key('home-month-selector'),
