@@ -872,6 +872,7 @@ void main() {
         ),
         direction: TransactionDirection.expense,
         description: 'Lunch',
+        merchantId: 'test-canonical-merchant',
       ),
     );
     await finance.createTransaction(
@@ -1217,9 +1218,23 @@ void main() {
       expect(find.text('Home description fallback'), findsNothing);
       expect(find.text('Home Weekly'), findsNothing);
 
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-recent-card')),
+          matching: find.byIcon(Icons.chevron_right_rounded),
+        ),
+        findsNothing,
+      );
+
       final title = tester.widget<Text>(find.text('Home Market'));
-      final amount = tester.widget<Text>(find.text('−19.75 USD'));
+      final amount = tester.widget<Text>(find.text(r'-$19.75'));
       expect(amount.style?.fontSize, title.style?.fontSize);
+      final headerAction = find.byKey(const Key('home-recent-view-all'));
+      expect(
+        tester.getTopLeft(find.text('Home Market')).dy -
+            tester.getBottomRight(headerAction).dy,
+        inInclusiveRange(12, 20),
+      );
     },
   );
 
@@ -1303,6 +1318,7 @@ void main() {
         ),
         direction: TransactionDirection.expense,
         description: 'Lunch',
+        merchantId: 'test-canonical-merchant',
       ),
     );
     final stored = repository.values['reviewable']!;
@@ -1469,6 +1485,7 @@ void main() {
         ),
         direction: TransactionDirection.expense,
         description: 'Canonical review row',
+        merchantId: 'test-canonical-merchant',
       ),
     );
     final stored = repository.values['review-canonical']!;
@@ -1519,7 +1536,6 @@ void main() {
     expect(find.text('(1)'), findsNothing);
     expect(find.text('Possible duplicates (0)'), findsOneWidget);
     expect(find.text('Canonical review row'), findsOneWidget);
-    expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
     await tester.tap(find.text('Canonical review row'));
     await tester.pumpAndSettle();
     expect(find.byType(TransactionDetailPage), findsOneWidget);
@@ -1652,6 +1668,24 @@ void main() {
     },
   );
 
+  testWidgets('Review rejects an invalid reason instead of broadening it', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: ReviewPage(
+          showNeedsReview: true,
+          invalidReviewReason: true,
+          reviewScope: ReviewPeriodScope.unscoped(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Review items could not be loaded'), findsOneWidget);
+    expect(find.byType(ButlerlyCompactSectionSelector), findsNothing);
+  });
+
   testWidgets('Review groups dates and shows one issue per transaction', (
     tester,
   ) async {
@@ -1669,6 +1703,7 @@ void main() {
           ),
           direction: TransactionDirection.expense,
           description: 'Grouped merchant $i',
+          merchantId: 'test-canonical-merchant',
         ),
       );
       var stored = repository.values['group-$i']!;
@@ -1740,6 +1775,7 @@ void main() {
         ),
         direction: TransactionDirection.expense,
         description: 'Normalize me',
+        merchantId: 'test-canonical-merchant',
       ),
     );
     final stored = repository.values['normalize-review']!;

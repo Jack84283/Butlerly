@@ -434,8 +434,23 @@ void main() {
             (await finance.listReviewItems()
                     as ApplicationSuccess<List<ReviewItemDto>>)
                 .value;
-        expect(review, hasLength(1));
-        expect(review.single.description, isNull);
+        expect(review, hasLength(2));
+        expect(
+          review.where(
+            (item) => item.reason == ReviewIssueReason.merchantNeedsReview.name,
+          ),
+          hasLength(1),
+        );
+        expect(
+          review
+              .where(
+                (item) =>
+                    item.reason != ReviewIssueReason.merchantNeedsReview.name,
+              )
+              .single
+              .description,
+          isNull,
+        );
         final persistedRow = (await database.database.query(
           'statement_rows',
         )).single;

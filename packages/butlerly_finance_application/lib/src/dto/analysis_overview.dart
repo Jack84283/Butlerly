@@ -1,5 +1,7 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
+import 'analysis_value.dart';
+
 /// Application projection of validated rule outputs; independent of Flutter.
 class AnalysisOverview {
   factory AnalysisOverview.fromResults(List<RuleExecutionResult> results) {
@@ -18,6 +20,45 @@ class AnalysisOverview {
             .map((r) => r.metric!)
             .toList()
           ..sort((a, b) => b.value.compareTo(a.value));
+    final spending = metric(AnalysisSemanticRole.expenseTotal);
+    final income = metric(AnalysisSemanticRole.incomeTotal);
+    final savings = spending == null || income == null
+        ? null
+        : AnalysisValue(
+            value: income.value.subtract(spending.value),
+            currency:
+                income.currency ??
+                spending.currency ??
+                income.context.baseCurrency,
+            context: income.context,
+            availability: _combinedAvailability(
+              spending.availability,
+              income.availability,
+            ),
+            qualityIssues: [...spending.qualityIssues, ...income.qualityIssues],
+          );
+    final savingsRate =
+        savings == null ||
+            savings.availability != AnalysisDataAvailability.sufficient ||
+            income == null ||
+            !income.value.isPositive
+        ? null
+        : _ratio(savings.value, income.value);
+    final categoryShares =
+        spending == null ||
+            spending.availability != AnalysisDataAvailability.sufficient ||
+            !spending.value.isPositive
+        ? const <String, DecimalValue>{}
+        : <String, DecimalValue>{
+            for (final category in categories)
+              category.id: _ratio(category.value, spending.value),
+          };
+    AnalysisComparison? comparisonFor(String role) => results
+        .where((r) => r.rule.role == role)
+        .map((r) => r.comparison)
+        .whereType<AnalysisComparison>()
+        .where(isUsableComparison)
+        .firstOrNull;
     final trend =
         results
             .where(
@@ -37,8 +78,10 @@ class AnalysisOverview {
         .firstOrNull;
     final quality = analysisQualitySummary(results);
     return AnalysisOverview(
-      spending: metric(AnalysisSemanticRole.expenseTotal),
-      income: metric(AnalysisSemanticRole.incomeTotal),
+      spending: spending,
+      income: income,
+      savings: savings,
+      savingsRate: savingsRate,
       net: metric(AnalysisSemanticRole.netCashFlow),
       transactionCount: metric(AnalysisSemanticRole.eligibleTransactionCount),
       insight: finding,
@@ -47,11 +90,15 @@ class AnalysisOverview {
           .whereType<AnalysisComparison>()
           .where(isUsableComparison)
           .firstOrNull,
+      spendingComparison: comparisonFor(AnalysisSemanticRole.expenseTotal),
+      incomeComparison: comparisonFor(AnalysisSemanticRole.incomeTotal),
+      netComparison: comparisonFor(AnalysisSemanticRole.netCashFlow),
       insightUnavailable: results.any(
         (r) => r.rule.surface == AnalysisSurface.insights && r.failure != null,
       ),
       trend: trend,
       categories: categories,
+      categoryShares: categoryShares,
       qualityCount: quality.count,
       qualityEvaluated: results.isNotEmpty,
       qualityLimited: quality.limited,
@@ -67,24 +114,59 @@ class AnalysisOverview {
     required this.insightUnavailable,
     required this.trend,
     required this.categories,
+    this.categoryShares = const {},
     required this.qualityCount,
     required this.qualityEvaluated,
     required this.qualityLimited,
     this.comparison,
+    this.spendingComparison,
+    this.incomeComparison,
+    this.netComparison,
+    this.savings,
+    this.savingsRate,
   });
 
   final AnalysisMetric? spending;
   final AnalysisMetric? income;
+  final AnalysisValue? savings;
+  final DecimalValue? savingsRate;
   final AnalysisMetric? net;
   final AnalysisMetric? transactionCount;
   final AnalysisFinding? insight;
   final bool insightUnavailable;
   final List<AnalysisMetric> trend;
   final List<AnalysisMetric> categories;
+  final Map<String, DecimalValue> categoryShares;
   final int qualityCount;
   final bool qualityEvaluated;
   final bool qualityLimited;
   final AnalysisComparison? comparison;
+  final AnalysisComparison? spendingComparison;
+  final AnalysisComparison? incomeComparison;
+  final AnalysisComparison? netComparison;
+}
+
+AnalysisDataAvailability _combinedAvailability(
+  AnalysisDataAvailability left,
+  AnalysisDataAvailability right,
+) {
+  if (left == AnalysisDataAvailability.insufficient ||
+      right == AnalysisDataAvailability.insufficient) {
+    return AnalysisDataAvailability.insufficient;
+  }
+  return AnalysisDataAvailability.sufficient;
+}
+
+DecimalValue _ratio(DecimalValue numerator, DecimalValue denominator) {
+  const scale = 6;
+  final scaledNumerator =
+      numerator.coefficient * BigInt.from(10).pow(scale + denominator.scale);
+  final scaledDenominator =
+      denominator.coefficient * BigInt.from(10).pow(numerator.scale);
+  return DecimalValue.fromParts(
+    coefficient: scaledNumerator ~/ scaledDenominator,
+    scale: scale,
+  );
 }
 
 class AnalysisQualitySummary {

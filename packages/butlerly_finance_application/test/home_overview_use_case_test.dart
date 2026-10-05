@@ -37,7 +37,7 @@ void main() {
       expect(context.baseCurrency, CurrencyCode('EUR'));
       expect(context.period.startDate, '2026-09-01');
       expect(overview.analysis?.spending?.value, DecimalValue.parse('210'));
-      expect(overview.monthlyTrend, hasLength(7));
+      expect(overview.monthlyTrend, hasLength(6));
       expect(
         overview.monthlyTrend.last.spending?.value,
         DecimalValue.parse('210'),
@@ -48,6 +48,7 @@ void main() {
         'sep-2',
         'sep-3',
         'sep-4',
+        'sep-5',
       ]);
       expect(overview.reviewCount, 1);
       expect(overview.reviewUnavailable, isFalse);
@@ -77,6 +78,35 @@ void main() {
     },
   );
 
+  test(
+    'changes only the trend range when a historical Home month is selected',
+    () async {
+      final result = await loadHomeOverview(
+        instant: DateTime.utc(2026, 9, 16, 12),
+        selectedMonth: DateTime(2026, 8, 1),
+        trendMonthCount: 3,
+      );
+
+      final overview = (result as ApplicationSuccess<HomeOverview>).value;
+      expect(overview.displayMonth, DateTime(2026, 8, 1));
+      expect(overview.context?.period.startDate, '2026-08-01');
+      expect(overview.monthlyTrend, hasLength(3));
+      expect(overview.monthlyTrend.last.month, DateTime.utc(2026, 8, 1));
+    },
+  );
+
+  test('supports the three approved Home trend range lengths', () async {
+    for (final count in const [3, 6, 12]) {
+      final result = await loadHomeOverview(
+        instant: DateTime.utc(2026, 9, 16, 12),
+        trendMonthCount: count,
+      );
+      final overview = (result as ApplicationSuccess<HomeOverview>).value;
+      expect(overview.monthlyTrend, hasLength(count));
+      expect(overview.displayMonth, DateTime(2026, 9, 1));
+    }
+  });
+
   test('keeps review failures distinct from zero review items', () async {
     transactions.failReviewQueries = true;
 
@@ -98,6 +128,25 @@ void main() {
   });
 
   test(
+    'keeps duplicate-query failures distinct from zero duplicate groups',
+    () async {
+      final groups = _Groups(const [], fail: true);
+      loadHomeOverview = _homeOverview(transactions, preferences, [
+        _expenseRule(),
+      ], duplicateGroups: groups);
+
+      final result = await loadHomeOverview(
+        instant: DateTime.utc(2026, 9, 16, 12),
+      );
+      final overview = (result as ApplicationSuccess<HomeOverview>).value;
+
+      expect(overview.possibleDuplicateCount, 0);
+      expect(overview.reviewUnavailable, isFalse);
+      expect(overview.duplicateUnavailable, isTrue);
+    },
+  );
+
+  test(
     'returns transactions when analysis calculation is unavailable',
     () async {
       transactions.failListAll = true;
@@ -109,7 +158,7 @@ void main() {
       final overview = (result as ApplicationSuccess<HomeOverview>).value;
       expect(overview.analysis, isNull);
       expect(overview.analysisUnavailable, isTrue);
-      expect(overview.recentTransactions, hasLength(4));
+      expect(overview.recentTransactions, hasLength(5));
     },
   );
 
@@ -131,6 +180,22 @@ void main() {
     },
   );
 
+  test('keeps the loaded overview when merchant enrichment fails', () async {
+    loadHomeOverview = _homeOverview(transactions, preferences, [
+      _expenseRule(),
+    ], merchants: _ThrowingMerchants());
+
+    final result = await loadHomeOverview(
+      instant: DateTime.utc(2026, 9, 16, 12),
+    );
+
+    final overview = (result as ApplicationSuccess<HomeOverview>).value;
+    expect(overview.status, HomeOverviewStatus.available);
+    expect(overview.analysis, isNotNull);
+    expect(overview.recentTransactions, hasLength(5));
+    expect(overview.merchantReviewCount, 0);
+  });
+
   test('returns a typed period-unavailable state without a period', () async {
     preferences.timeZoneId = 'Invalid/Timezone';
 
@@ -143,6 +208,69 @@ void main() {
     expect(overview.context, isNull);
     expect(overview.currentFinancialMonth, isNull);
     expect(overview.displayMonth, isNull);
+  });
+
+  test('projects scoped semantic attention counts for Home', () async {
+    transactions.values.addAll([
+      _transaction(
+        'merchant-safeway-1',
+        '2026-09-07',
+        '8',
+        rawCounterparty: 'SAFEWAY #123',
+        reviewReason: ReviewIssueReason.merchantNeedsReview,
+      ),
+      _transaction(
+        'merchant-safeway-2',
+        '2026-09-08',
+        '9',
+        rawCounterparty: 'SAFEWAY #123',
+        reviewReason: ReviewIssueReason.merchantNeedsReview,
+      ),
+      _transaction(
+        'merchant-trader-joes',
+        '2026-09-09',
+        '10',
+        rawCounterparty: 'TRADER JOES',
+        reviewReason: ReviewIssueReason.merchantNeedsReview,
+      ),
+      _transaction(
+        'merchant-description-fallback',
+        '2026-09-10',
+        '11',
+        rawCounterparty: '   ',
+        description: 'UNKNOWN MERCHANT',
+        reviewReason: ReviewIssueReason.merchantNeedsReview,
+      ),
+    ]);
+    loadHomeOverview = _homeOverview(
+      transactions,
+      preferences,
+      [_expenseRule()],
+      duplicateGroups: _Groups([
+        DuplicateCandidateGroup(
+          id: 'duplicate-1',
+          transactionIds: [TransactionId('sep-1'), TransactionId('sep-2')],
+          duplicateKey: DuplicateTransactionKey(
+            transactionDate: '2026-09-01',
+            amount: DecimalValue.parse('10'),
+            currency: 'EUR',
+            direction: 'expense',
+          ),
+          status: DuplicateCandidateGroupStatus.unresolved,
+          createdAt: DateTime.utc(2026, 9, 1),
+          updatedAt: DateTime.utc(2026, 9, 1),
+        ),
+      ]),
+    );
+
+    final result = await loadHomeOverview(
+      instant: DateTime.utc(2026, 9, 16, 12),
+    );
+    final overview = (result as ApplicationSuccess<HomeOverview>).value;
+
+    expect(overview.merchantReviewCount, 3);
+    expect(overview.possibleDuplicateCount, 1);
+    expect(overview.uncategorizedTransactionCount, greaterThan(0));
   });
 
   test('returns insights in the shared policy ranking order', () async {
@@ -185,8 +313,10 @@ void main() {
 GetHomeOverview _homeOverview(
   _Transactions transactions,
   _Preferences preferences,
-  List<AnalysisRuleDefinition> rules,
-) {
+  List<AnalysisRuleDefinition> rules, {
+  DuplicateCandidateGroupRepository? duplicateGroups,
+  MerchantRepository? merchants,
+}) {
   final analysis = CalculateAnalysisOverview(
     _Rules(rules),
     AnalysisDatasetBuilder(transactions, preferences, null),
@@ -198,7 +328,22 @@ GetHomeOverview _homeOverview(
     calculateInsights: CalculateInsights(analysis),
     listTransactions: ListTransactions(transactions, preferences: preferences),
     listReviewItems: ListReviewItems(transactions),
+    listDuplicateCandidateGroups: duplicateGroups == null
+        ? null
+        : ListDuplicateCandidateGroups(duplicateGroups),
+    merchants: merchants,
   );
+}
+
+final class _ThrowingMerchants implements MerchantRepository {
+  @override
+  Future<Merchant?> findById(MerchantId id) async => throw StateError('read');
+
+  @override
+  Future<List<Merchant>> listAll() async => throw StateError('read');
+
+  @override
+  Future<void> save(Merchant merchant) async => throw StateError('write');
 }
 
 Transaction _transaction(
@@ -206,6 +351,9 @@ Transaction _transaction(
   String date,
   String amount, {
   bool review = false,
+  ReviewIssueReason? reviewReason,
+  String? rawCounterparty,
+  String? description,
 }) {
   final at = DateTime.utc(2026, 9, 1, 12);
   return Transaction(
@@ -218,12 +366,14 @@ Transaction _transaction(
     direction: TransactionDirection.expense,
     sourceType: TransactionSourceType.manual,
     transactionDate: date,
-    reviewIssues: review
+    description: description,
+    rawCounterparty: rawCounterparty,
+    reviewIssues: review || reviewReason != null
         ? [
             ReviewIssue(
               id: ReviewIssueId('issue-$id'),
               transactionId: TransactionId(id),
-              reason: ReviewIssueReason.uncertain,
+              reason: reviewReason ?? ReviewIssueReason.uncertain,
               createdAt: at,
             ),
           ]
@@ -407,4 +557,41 @@ final class _Rules implements AnalysisRuleRepository {
     required String sourceType,
     required String canonicalDefinition,
   }) async {}
+}
+
+final class _Groups implements DuplicateCandidateGroupRepository {
+  _Groups(this.values, {this.fail = false});
+
+  final List<DuplicateCandidateGroup> values;
+  final bool fail;
+
+  @override
+  Future<List<DuplicateCandidateGroup>> list({
+    DuplicateCandidateGroupStatus? status,
+  }) async {
+    if (fail) {
+      throw const RepositoryException(
+        RepositoryFailureCode.unavailable,
+        'list possible duplicate groups',
+      );
+    }
+    return values
+        .where((value) => status == null || value.status == status)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<List<DuplicateTransactionGroupMatch>>
+  findActiveDuplicateGroups() async => const [];
+
+  @override
+  Future<List<TransactionId>> findActiveTransactionIdsForKey(
+    DuplicateTransactionKey key,
+  ) async => const [];
+
+  @override
+  Future<void> save(DuplicateCandidateGroup group) async {}
+
+  @override
+  Future<void> remove(String id) async {}
 }

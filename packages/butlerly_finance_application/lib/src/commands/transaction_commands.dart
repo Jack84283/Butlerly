@@ -157,7 +157,11 @@ final class ListTransactionsQuery {
 }
 
 final class ListReviewItemsQuery {
-  const ListReviewItemsQuery({this.scope = const ReviewPeriodScope.unscoped()});
+  const ListReviewItemsQuery({
+    this.scope = const ReviewPeriodScope.unscoped(),
+    this.reason,
+  });
 
   final ReviewPeriodScope scope;
+  final ReviewIssueReason? reason;
 }

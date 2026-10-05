@@ -42,17 +42,17 @@ void main() {
 
       expect(find.text('Butlerly'), findsOneWidget);
       expect(find.text('Buenas tardes'), findsOneWidget);
-      expect(find.text('septiembre de 2026'), findsOneWidget);
+      expect(find.text('sept 2026'), findsOneWidget);
       expect(
-        find.text('UNA FORMA MÁS TRANQUILA DE VIVIR EL DINERO'),
+        find.text('Aquí tienes tu resumen financiero de septiembre de 2026.'),
         findsOneWidget,
       );
 
       for (final finder in [
         find.text('Butlerly'),
         find.text('Buenas tardes'),
-        find.text('septiembre de 2026'),
-        find.text('UNA FORMA MÁS TRANQUILA DE VIVIR EL DINERO'),
+        find.text('sept 2026'),
+        find.text('Aquí tienes tu resumen financiero de septiembre de 2026.'),
       ]) {
         final text = tester.widget<Text>(finder);
         expect(text.overflow, isNot(TextOverflow.ellipsis));

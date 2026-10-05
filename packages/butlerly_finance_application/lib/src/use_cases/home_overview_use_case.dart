@@ -4,12 +4,16 @@ import '../dto/analysis_overview.dart';
 import '../dto/home_overview.dart';
 import '../dto/monthly_spending_trend_point.dart';
 import '../dto/review_item_dto.dart';
+import '../dto/review_period_scope.dart';
 import '../dto/transaction_dto.dart';
 import '../result/application_result.dart';
 import 'analysis_use_cases.dart';
 import '../commands/transaction_commands.dart';
 import 'home_period_use_case.dart';
 import 'monthly_spending_trend_use_case.dart';
+import 'duplicate_review_use_cases.dart';
+import 'classification_use_cases.dart';
+import 'merchant_review_use_cases.dart';
 import 'transaction_use_cases.dart';
 
 /// Coordinates the application data needed by Home for one selected month.
@@ -24,6 +28,8 @@ final class GetHomeOverview {
     required this.calculateInsights,
     required this.listTransactions,
     required this.listReviewItems,
+    this.listDuplicateCandidateGroups,
+    this.merchants,
   });
 
   final ResolveHomePeriod resolveHomePeriod;
@@ -31,11 +37,14 @@ final class GetHomeOverview {
   final CalculateInsights? calculateInsights;
   final ListTransactions listTransactions;
   final ListReviewItems listReviewItems;
+  final ListDuplicateCandidateGroups? listDuplicateCandidateGroups;
+  final MerchantRepository? merchants;
 
   Future<ApplicationResult<HomeOverview>> call({
     required DateTime instant,
     DateTime? selectedMonth,
     bool forceAnalysisRefresh = false,
+    int trendMonthCount = 6,
   }) async {
     final CalculateAnalysisOverview? analysisUseCase = calculateAnalysis;
     final _HomeContextResolution homeResolution;
@@ -74,7 +83,12 @@ final class GetHomeOverview {
     // Review is independent of the selected-period transaction read. Start it
     // before awaiting the transaction query so the existing Home loading
     // behavior remains responsive without moving review filtering here.
-    final reviewResultFuture = listReviewItems();
+    final reviewResultFuture = listReviewItems(
+      ListReviewItemsQuery(
+        scope: ReviewPeriodScope.scoped(period: context.period),
+      ),
+    );
+    final duplicateResultFuture = listDuplicateCandidateGroups?.call();
     final transactionResult = await listTransactions(
       ListTransactionsQuery(
         from: DateTime.parse(context.period.startDate),
@@ -85,6 +99,7 @@ final class GetHomeOverview {
     );
     if (transactionResult is ApplicationFailure<List<TransactionDto>>) {
       await reviewResultFuture;
+      await duplicateResultFuture;
       return ApplicationSuccess(
         HomeOverview.transactionsUnavailable(
           context: context,
@@ -96,6 +111,7 @@ final class GetHomeOverview {
     final transactions =
         (transactionResult as ApplicationSuccess<List<TransactionDto>>).value;
     final reviewResult = await reviewResultFuture;
+    final duplicateResult = await duplicateResultFuture;
 
     final AnalysisOverview? analysis;
     final List<InsightResult> insights;
@@ -133,6 +149,7 @@ final class GetHomeOverview {
       final trendResult = await CalculateMonthlySpendingTrend(analysisUseCase)(
         endingMonth: homePeriod.displayMonth,
         instant: instant,
+        monthCount: trendMonthCount,
       );
       if (trendResult case ApplicationSuccess<List<MonthlySpendingTrendPoint>>(
         :final value,
@@ -145,14 +162,50 @@ final class GetHomeOverview {
       }
     }
 
-    final periodTransactionIds = transactions.map((value) => value.id).toSet();
     final reviewItems = switch (reviewResult) {
       ApplicationSuccess<List<ReviewItemDto>>(:final value) => value,
       _ => const <ReviewItemDto>[],
     };
-    final reviewCount = reviewItems
-        .where((item) => periodTransactionIds.contains(item.transactionId))
+    final duplicateGroups = switch (duplicateResult) {
+      ApplicationSuccess<List<DuplicateCandidateGroup>>(:final value) => value,
+      _ => const <DuplicateCandidateGroup>[],
+    };
+    final duplicateUnavailable =
+        duplicateResultFuture != null &&
+        duplicateResult is! ApplicationSuccess<List<DuplicateCandidateGroup>>;
+    final transactionById = {
+      for (final transaction in transactions) transaction.id: transaction,
+    };
+    final merchantValues = await _listMerchantsSafely();
+    final merchantCandidateKeys = <String>{};
+    for (final item in reviewItems.where(
+      (value) => value.reason == ReviewIssueReason.merchantNeedsReview.name,
+    )) {
+      final transaction = transactionById[item.transactionId];
+      if (transaction == null || transaction.merchantId != null) continue;
+      final evidence = merchantEvidenceForValues(
+        rawCounterparty: transaction.rawCounterparty,
+        description: transaction.description,
+      );
+      final alternateEvidence = transaction.rawCounterparty?.trim() ?? '';
+      final normalized = normalizeMerchantName(evidence);
+      if (normalized.isEmpty ||
+          resolveMerchantFromEvidence(merchantValues, evidence) != null ||
+          (alternateEvidence != evidence &&
+              resolveMerchantFromEvidence(merchantValues, alternateEvidence) !=
+                  null)) {
+        continue;
+      }
+      merchantCandidateKeys.add(normalized);
+    }
+    final possibleDuplicateCount = duplicateGroups
+        .where(
+          (group) => group.transactionIds.any(
+            (id) => transactionById.containsKey(id.value),
+          ),
+        )
         .length;
+    final reviewCount = reviewItems.length;
 
     return ApplicationSuccess(
       HomeOverview.available(
@@ -163,12 +216,30 @@ final class GetHomeOverview {
         monthlyTrend: monthlyTrend,
         monthlyTrendUnavailable: monthlyTrendUnavailable,
         reviewCount: reviewCount,
-        recentTransactions: transactions.take(4).toList(growable: false),
+        uncategorizedTransactionCount: transactions
+            .where((transaction) => transaction.categoryId == null)
+            .length,
+        possibleDuplicateCount: possibleDuplicateCount,
+        merchantReviewCount: merchantCandidateKeys.length,
+        recentTransactions: transactions.take(5).toList(growable: false),
         insights: insights,
         analysisUnavailable: analysisUnavailable,
         reviewUnavailable: reviewResult is! ApplicationSuccess,
+        duplicateUnavailable: duplicateUnavailable,
       ),
     );
+  }
+
+  Future<List<Merchant>> _listMerchantsSafely() async {
+    final repository = merchants;
+    if (repository == null) return const [];
+    try {
+      return await repository.listAll();
+    } catch (_) {
+      // Merchant review enrichment is optional for Home. Preserve the
+      // transaction, analysis, and review overview when its lookup fails.
+      return const [];
+    }
   }
 
   Future<ApplicationResult<_HomeContextResolution>> _resolveWithAnalysis(

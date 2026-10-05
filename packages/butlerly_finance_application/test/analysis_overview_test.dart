@@ -38,6 +38,130 @@ void main() {
     expect(overview.transactionCount, same(count.metric));
   });
 
+  test('derives savings and category shares from authoritative metrics', () {
+    final spending = _result(
+      'ANL-R701',
+      '60',
+      role: AnalysisSemanticRole.expenseTotal,
+    );
+    final income = _result(
+      'ANL-R702',
+      '100',
+      role: AnalysisSemanticRole.incomeTotal,
+    );
+    final groceries = _result(
+      'ANL-R703',
+      '25',
+      surface: AnalysisSurface.spending,
+      grouping: RuleGrouping.category,
+      dimension: 'category.groceries',
+    );
+
+    final overview = AnalysisOverview.fromResults([
+      spending,
+      income,
+      groceries,
+    ]);
+
+    expect(overview.savings?.value, DecimalValue.parse('40'));
+    expect(overview.savings?.currency, CurrencyCode('USD'));
+    expect(overview.savingsRate, DecimalValue.parse('0.4'));
+    expect(
+      overview.categoryShares['ANL-R703:category.groceries'],
+      DecimalValue.parse('0.416666'),
+    );
+  });
+
+  test(
+    'marks derived savings unavailable when source data is insufficient',
+    () {
+      final spending = _result(
+        'ANL-R701',
+        '60',
+        role: AnalysisSemanticRole.expenseTotal,
+        availability: AnalysisDataAvailability.insufficient,
+      );
+      final income = _result(
+        'ANL-R702',
+        '100',
+        role: AnalysisSemanticRole.incomeTotal,
+      );
+
+      final overview = AnalysisOverview.fromResults([spending, income]);
+
+      expect(
+        overview.savings?.availability,
+        AnalysisDataAvailability.insufficient,
+      );
+      expect(overview.savingsRate, isNull);
+    },
+  );
+
+  test('treats empty spending as zero when deriving savings', () {
+    final spending = _result(
+      'ANL-R701',
+      '0',
+      role: AnalysisSemanticRole.expenseTotal,
+      availability: AnalysisDataAvailability.empty,
+    );
+    final income = _result(
+      'ANL-R702',
+      '100',
+      role: AnalysisSemanticRole.incomeTotal,
+    );
+
+    final overview = AnalysisOverview.fromResults([spending, income]);
+
+    expect(overview.savings?.value, DecimalValue.parse('100'));
+    expect(overview.savings?.availability, AnalysisDataAvailability.sufficient);
+    expect(overview.savingsRate, DecimalValue.parse('1'));
+  });
+
+  test('treats empty income as zero when deriving savings', () {
+    final spending = _result(
+      'ANL-R701',
+      '60',
+      role: AnalysisSemanticRole.expenseTotal,
+    );
+    final income = _result(
+      'ANL-R702',
+      '0',
+      role: AnalysisSemanticRole.incomeTotal,
+      availability: AnalysisDataAvailability.empty,
+    );
+
+    final overview = AnalysisOverview.fromResults([spending, income]);
+
+    expect(overview.savings?.value, DecimalValue.parse('-60'));
+    expect(overview.savings?.availability, AnalysisDataAvailability.sufficient);
+    expect(overview.savingsRate, isNull);
+  });
+
+  test(
+    'keeps derived savings insufficient when either source is insufficient',
+    () {
+      final spending = _result(
+        'ANL-R701',
+        '60',
+        role: AnalysisSemanticRole.expenseTotal,
+      );
+      final income = _result(
+        'ANL-R702',
+        '100',
+        role: AnalysisSemanticRole.incomeTotal,
+        availability: AnalysisDataAvailability.insufficient,
+      );
+
+      final overview = AnalysisOverview.fromResults([spending, income]);
+
+      expect(
+        overview.savings?.availability,
+        AnalysisDataAvailability.insufficient,
+      );
+      expect(overview.savingsRate, isNull);
+    },
+  );
+
   test(
     'category sorting remains exact beyond binary floating-point precision',
     () {
@@ -106,6 +230,7 @@ RuleExecutionResult _result(
   AnalysisSurface surface = AnalysisSurface.overview,
   RuleGrouping grouping = RuleGrouping.none,
   String? dimension,
+  AnalysisDataAvailability availability = AnalysisDataAvailability.sufficient,
 }) {
   final rule = AnalysisRuleDefinition(
     identity: RuleIdentity(id),
@@ -145,6 +270,7 @@ RuleExecutionResult _result(
       value: DecimalValue.parse(value),
       dimension: dimension,
       calculatedAt: DateTime.utc(2026),
+      availability: availability,
     ),
   );
 }

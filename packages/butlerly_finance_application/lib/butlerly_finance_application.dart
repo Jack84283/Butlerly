@@ -33,9 +33,11 @@ export 'src/analysis/dataset_builder.dart';
 export 'src/use_cases/analysis_use_cases.dart';
 export 'src/use_cases/monthly_spending_trend_use_case.dart';
 export 'src/use_cases/merchant_management_use_cases.dart';
+export 'src/use_cases/merchant_review_use_cases.dart';
 export 'src/use_cases/transaction_rule_use_cases.dart';
 
 export 'src/dto/analysis_overview.dart';
+export 'src/dto/analysis_value.dart';
 export 'src/dto/home_overview.dart';
 export 'src/dto/monthly_spending_trend_point.dart';
 export 'src/dto/local_data_dto.dart';

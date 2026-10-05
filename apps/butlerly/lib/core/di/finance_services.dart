@@ -1,6 +1,15 @@
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
+SynchronizeMerchantReviewIssues _merchantReviewSynchronizer(
+  TransactionRepository transactions,
+  MerchantRepository merchants,
+) => SynchronizeMerchantReviewIssues(
+  transactions,
+  merchants,
+  const SystemApplicationClock().now,
+);
+
 final class FinanceServices {
   FinanceServices(
     TransactionRepository transactions,
@@ -66,6 +75,7 @@ final class FinanceServices {
                  transactionRules,
                  const SystemApplicationClock(),
                ),
+         merchants: merchants,
        ),
        createReceiptTransaction = CreateReceiptTransaction(
          transactions,
@@ -83,10 +93,12 @@ final class FinanceServices {
                  transactionRules,
                  const SystemApplicationClock(),
                ),
+         merchants: merchants,
        ),
        createPaymentTransaction = CreatePaymentTransaction(
          transactions,
          const SystemApplicationClock(),
+         merchants: merchants,
        ),
        importTransaction = ImportTransaction(
          transactions,
@@ -104,6 +116,7 @@ final class FinanceServices {
                  transactionRules,
                  const SystemApplicationClock(),
                ),
+         merchants: merchants,
        ),
        getTransaction = GetTransaction(transactions, preferences: preferences),
        resolveHomePeriod = ResolveHomePeriod(preferences),
@@ -111,6 +124,7 @@ final class FinanceServices {
          transactions,
          const SystemApplicationClock(),
          preferences: preferences,
+         merchants: merchants,
        ),
        archiveTransaction = ArchiveTransaction(
          transactions,
@@ -137,7 +151,10 @@ final class FinanceServices {
        listMerchants = ListMerchants(merchants),
        listCategories = ListCategories(categories),
        listTags = ListTags(tags),
-       saveMerchant = SaveMerchant(merchants),
+       saveMerchant = SaveMerchant(
+         merchants,
+         synchronize: _merchantReviewSynchronizer(transactions, merchants),
+       ),
        saveCategory = SaveCategory(categories),
        saveTag = SaveTag(tags),
        assignMerchant = AssignMerchant(
@@ -164,6 +181,11 @@ final class FinanceServices {
          preferences: preferences,
        ),
        listReviewItems = ListReviewItems(transactions),
+       synchronizeMerchantReviewIssues = SynchronizeMerchantReviewIssues(
+         transactions,
+         merchants,
+         const SystemApplicationClock().now,
+       ),
        resolveReviewIssue = ResolveReviewIssue(
          transactions,
          const SystemApplicationClock(),
@@ -229,7 +251,13 @@ final class FinanceServices {
              ),
        listDuplicateCandidateGroups = duplicateGroups == null
            ? null
-           : ListDuplicateCandidateGroups(duplicateGroups),
+           : ListDuplicateCandidateGroups(
+               duplicateGroups,
+               transactions: ListTransactions(
+                 transactions,
+                 preferences: preferences,
+               ),
+             ),
        resolveDuplicateCandidateGroup = duplicateGroups == null
            ? null
            : ResolveDuplicateCandidateGroup(
@@ -303,6 +331,7 @@ final class FinanceServices {
                statements as StatementWorkflowRepository,
                const SystemApplicationClock(),
                evidence: evidence,
+               merchants: merchants,
                applyRules: transactionRules == null
                    ? null
                    : ApplyTransactionRules(
@@ -349,10 +378,23 @@ final class FinanceServices {
            : ListMerchantAliases(merchantAliases),
        saveMerchantAlias = merchantAliases == null
            ? null
-           : SaveMerchantAlias(merchantAliases, const SystemApplicationClock()),
+           : SaveMerchantAlias(
+               merchantAliases,
+               const SystemApplicationClock(),
+               synchronize: _merchantReviewSynchronizer(
+                 transactions,
+                 merchants,
+               ),
+             ),
        deleteMerchantAlias = merchantAliases == null
            ? null
-           : DeleteMerchantAlias(merchantAliases),
+           : DeleteMerchantAlias(
+               merchantAliases,
+               synchronize: _merchantReviewSynchronizer(
+                 transactions,
+                 merchants,
+               ),
+             ),
        listMerchantNormalizationPatterns = merchantNormalizationPatterns == null
            ? null
            : ListMerchantNormalizationPatterns(merchantNormalizationPatterns),
@@ -361,17 +403,31 @@ final class FinanceServices {
            : SaveMerchantNormalizationPattern(
                merchantNormalizationPatterns,
                const SystemApplicationClock(),
+               synchronize: _merchantReviewSynchronizer(
+                 transactions,
+                 merchants,
+               ),
              ),
        deleteMerchantNormalizationPattern =
            merchantNormalizationPatterns == null
            ? null
-           : DeleteMerchantNormalizationPattern(merchantNormalizationPatterns),
+           : DeleteMerchantNormalizationPattern(
+               merchantNormalizationPatterns,
+               synchronize: _merchantReviewSynchronizer(
+                 transactions,
+                 merchants,
+               ),
+             ),
        updateMerchantMatchingConfiguration =
            merchantMatchingConfiguration == null
            ? null
            : UpdateMerchantMatchingConfiguration(
                merchantMatchingConfiguration,
                const SystemApplicationClock(),
+               synchronize: _merchantReviewSynchronizer(
+                 transactions,
+                 merchants,
+               ),
              ),
        listTransactionRules = transactionRules == null
            ? null
@@ -398,12 +454,17 @@ final class FinanceServices {
                results: analysisResults,
                rules: analysisRules,
              ) {
+    calculateMonthlySpendingTrend = calculateAnalysisOverview == null
+        ? null
+        : CalculateMonthlySpendingTrend(calculateAnalysisOverview!);
     loadHomeOverview = GetHomeOverview(
       resolveHomePeriod: resolveHomePeriod,
       calculateAnalysis: calculateAnalysisOverview,
       calculateInsights: calculateInsights,
       listTransactions: listTransactions,
       listReviewItems: listReviewItems,
+      listDuplicateCandidateGroups: listDuplicateCandidateGroups,
+      merchants: merchants,
     );
   }
 
@@ -437,6 +498,7 @@ final class FinanceServices {
   final AddTag addTag;
   final RemoveTag removeTag;
   final ListReviewItems listReviewItems;
+  final SynchronizeMerchantReviewIssues synchronizeMerchantReviewIssues;
   final ResolveReviewIssue resolveReviewIssue;
   final DismissReviewIssue dismissReviewIssue;
   final ListEvidenceForTransaction listEvidenceForTransaction;
@@ -465,6 +527,7 @@ final class FinanceServices {
   final ResolveDuplicateCandidateGroup? resolveDuplicateCandidateGroup;
   final InstallBuiltInRules? installBuiltInRules;
   final CalculateAnalysisOverview? calculateAnalysisOverview;
+  late final CalculateMonthlySpendingTrend? calculateMonthlySpendingTrend;
   final CalculateAnalysisCalendar? calculateAnalysisCalendar;
   final CalculateInsights? calculateInsights;
   late final GetHomeOverview loadHomeOverview;

@@ -28,10 +28,34 @@ String analysisMoney(BuildContext context, AnalysisMetric metric) =>
     '${localizedDecimal(context, metric.value.toString())} ${metric.currency?.value ?? ''}'
         .trim();
 
+String analysisValueMoney(BuildContext context, AnalysisValue value) =>
+    '${localizedDecimal(context, value.value.toString())} ${value.currency?.value ?? ''}'
+        .trim();
+
+String analysisPercentageRatio(BuildContext context, DecimalValue ratio) =>
+    localizedCompactPercentage(context, ratio.toString(), ratio: true);
+
 String analysisMoneyValue(BuildContext context, Money money) =>
     '${localizedDecimal(context, money.amount.toString())} ${money.currency.value}';
 
 String analysisComparisonText(
+  BuildContext context,
+  AnalysisComparison comparison, {
+  String comparisonLabelKey = 'vsPreviousPeriod',
+  bool compact = false,
+}) {
+  final change = comparison.percentageChange;
+  if (!isUsableComparison(comparison) || change == null) return '';
+  final direction = change.isNegative ? '↓' : '↑';
+  final magnitude = change.toString().replaceFirst('-', '');
+  final formattedMagnitude = compact
+      ? localizedCompactPercentage(context, magnitude)
+      : '${localizedDecimal(context, magnitude)}%';
+  return '$direction $formattedMagnitude '
+      '${context.l10n.text(comparisonLabelKey)}';
+}
+
+String analysisComparisonChangeText(
   BuildContext context,
   AnalysisComparison comparison,
 ) {
@@ -39,7 +63,19 @@ String analysisComparisonText(
   if (!isUsableComparison(comparison) || change == null) return '';
   final direction = change.isNegative ? '↓' : '↑';
   final magnitude = change.toString().replaceFirst('-', '');
-  return '$direction ${localizedDecimal(context, magnitude)}% ${context.l10n.text('vsPreviousPeriod')}';
+  return '$direction ${localizedCompactPercentage(context, magnitude)}';
+}
+
+String analysisAbsoluteChange(
+  BuildContext context,
+  AnalysisComparison comparison,
+  CurrencyCode? currency,
+) {
+  final change = comparison.absoluteChange;
+  if (!isUsableComparison(comparison) || change == null) return '';
+  final sign = change.isNegative ? '−' : '+';
+  return '$sign${localizedDecimal(context, change.abs().toString())} ${currency?.value ?? ''}'
+      .trim();
 }
 
 String analysisDimension(

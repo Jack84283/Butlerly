@@ -20,14 +20,22 @@ import 'package:go_router/go_router.dart';
 class ReviewPage extends StatefulWidget {
   const ReviewPage({
     this.showPossibleDuplicates = false,
+    this.showUncategorized = false,
     this.showNeedsReview = false,
+    this.showReviewOverview = false,
     this.reviewScope = const ReviewPeriodScope.unscoped(),
+    this.reviewReason,
+    this.invalidReviewReason = false,
     super.key,
   });
 
   final bool showPossibleDuplicates;
+  final bool showUncategorized;
   final bool showNeedsReview;
+  final bool showReviewOverview;
   final ReviewPeriodScope reviewScope;
+  final ReviewIssueReason? reviewReason;
+  final bool invalidReviewReason;
 
   @override
   State<ReviewPage> createState() => _ReviewPageState();
@@ -47,30 +55,34 @@ class _ReviewPageState extends State<ReviewPage> {
       : null;
 
   bool get _hasReviewScope =>
-      widget.reviewScope.status != ReviewPeriodScopeStatus.unscoped;
+      widget.reviewScope.status != ReviewPeriodScopeStatus.unscoped ||
+      widget.invalidReviewReason;
 
-  bool get _reviewScopeIsValid => !widget.reviewScope.isInvalid;
+  bool get _reviewScopeIsValid =>
+      !widget.reviewScope.isInvalid && !widget.invalidReviewReason;
+
+  _ReviewView get _initialView => _hasReviewScope
+      ? widget.showPossibleDuplicates
+            ? _ReviewView.duplicates
+            : widget.showUncategorized
+            ? _ReviewView.uncategorized
+            : _ReviewView.needsReview
+      : widget.showPossibleDuplicates
+      ? _ReviewView.duplicates
+      : widget.showNeedsReview
+      ? _ReviewView.needsReview
+      : _ReviewView.uncategorized;
 
   @override
   void initState() {
     super.initState();
-    _view = _hasReviewScope
-        ? _ReviewView.needsReview
-        : widget.showPossibleDuplicates
-        ? _ReviewView.duplicates
-        : widget.showNeedsReview
-        ? _ReviewView.needsReview
-        : _ReviewView.uncategorized;
+    _view = _initialView;
     _items = _reviewScopeIsValid ? _load() : Future.value(const []);
     _statementExceptions = _hasReviewScope
         ? Future.value(const [])
         : _loadStatementExceptions();
-    _uncategorized = _hasReviewScope
-        ? Future.value(const [])
-        : _loadUncategorized();
-    _duplicateGroups = _hasReviewScope
-        ? Future.value(const [])
-        : _loadDuplicateGroups();
+    _uncategorized = _loadUncategorized();
+    _duplicateGroups = _loadDuplicateGroups();
     transactionChanges.addListener(_handleTransactionChange);
   }
 
@@ -88,28 +100,22 @@ class _ReviewPageState extends State<ReviewPage> {
   void didUpdateWidget(covariant ReviewPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.showPossibleDuplicates == widget.showPossibleDuplicates &&
+        oldWidget.showUncategorized == widget.showUncategorized &&
         oldWidget.showNeedsReview == widget.showNeedsReview &&
-        oldWidget.reviewScope == widget.reviewScope) {
+        oldWidget.showReviewOverview == widget.showReviewOverview &&
+        oldWidget.reviewScope == widget.reviewScope &&
+        oldWidget.reviewReason == widget.reviewReason &&
+        oldWidget.invalidReviewReason == widget.invalidReviewReason) {
       return;
     }
     setState(() {
-      _view = _hasReviewScope
-          ? _ReviewView.needsReview
-          : widget.showPossibleDuplicates
-          ? _ReviewView.duplicates
-          : widget.showNeedsReview
-          ? _ReviewView.needsReview
-          : _ReviewView.uncategorized;
+      _view = _initialView;
       _items = _reviewScopeIsValid ? _load() : Future.value(const []);
       _statementExceptions = _hasReviewScope
           ? Future.value(const [])
           : _loadStatementExceptions();
-      _uncategorized = _hasReviewScope
-          ? Future.value(const [])
-          : _loadUncategorized();
-      _duplicateGroups = _hasReviewScope
-          ? Future.value(const [])
-          : _loadDuplicateGroups();
+      _uncategorized = _loadUncategorized();
+      _duplicateGroups = _loadDuplicateGroups();
     });
   }
 
@@ -144,7 +150,10 @@ class _ReviewPageState extends State<ReviewPage> {
     final finance = _finance;
     if (finance == null) return const [];
     final result = await finance.listReviewItems(
-      ListReviewItemsQuery(scope: widget.reviewScope),
+      ListReviewItemsQuery(
+        scope: widget.reviewScope,
+        reason: widget.reviewReason,
+      ),
     );
     if (result is! ApplicationSuccess<List<ReviewItemDto>>) {
       throw StateError('Review items could not be loaded.');
@@ -170,12 +179,8 @@ class _ReviewPageState extends State<ReviewPage> {
     final statementExceptions = _hasReviewScope
         ? Future.value(const <StatementReviewException>[])
         : _loadStatementExceptions();
-    final uncategorized = _hasReviewScope
-        ? Future.value(const <TransactionDto>[])
-        : _loadUncategorized();
-    final duplicateGroups = _hasReviewScope
-        ? Future.value(const <DuplicateCandidateGroup>[])
-        : _loadDuplicateGroups();
+    final uncategorized = _loadUncategorized();
+    final duplicateGroups = _loadDuplicateGroups();
     setState(() {
       _items = items;
       _statementExceptions = statementExceptions;
@@ -212,9 +217,18 @@ class _ReviewPageState extends State<ReviewPage> {
 
   Future<List<TransactionDto>> _loadUncategorized() async {
     final finance = _finance;
-    if (finance == null) return const [];
+    if (finance == null || !_reviewScopeIsValid) return const [];
     final result = await finance.listTransactions(
-      const ListTransactionsQuery(
+      ListTransactionsQuery(
+        from: widget.reviewScope.isScoped
+            ? DateTime.parse(widget.reviewScope.period!.startDate)
+            : null,
+        to: widget.reviewScope.isScoped
+            ? DateTime.parse(widget.reviewScope.period!.endDate)
+            : null,
+        timeZoneId: widget.reviewScope.isScoped
+            ? widget.reviewScope.period!.timeZoneId
+            : null,
         uncategorized: true,
         status: TransactionStatus.active,
       ),
@@ -229,10 +243,14 @@ class _ReviewPageState extends State<ReviewPage> {
 
   Future<List<DuplicateCandidateGroup>> _loadDuplicateGroups() async {
     final finance = _finance;
-    if (finance == null || finance.listDuplicateCandidateGroups == null) {
+    if (finance == null ||
+        finance.listDuplicateCandidateGroups == null ||
+        !_reviewScopeIsValid) {
       return const [];
     }
-    final result = await finance.listDuplicateCandidateGroups!();
+    final result = await finance.listDuplicateCandidateGroups!(
+      scope: widget.reviewScope,
+    );
     return switch (result) {
       ApplicationSuccess<List<DuplicateCandidateGroup>>(:final value) => value,
       ApplicationFailure<List<DuplicateCandidateGroup>>() => throw StateError(
@@ -334,11 +352,20 @@ class _ReviewPageState extends State<ReviewPage> {
                     item: item,
                     finance: _finance!,
                     masterData: _masterData,
-                    reason: item.detail ?? _reason(item.reason, context),
+                    reason: _localizedReviewDetail(item, context),
                     recommendation: context.l10n.text('reviewRecommendation'),
-                    primaryLabel: context.l10n.text('resolve'),
+                    primaryLabel: context.l10n.text(
+                      item.reason == ReviewIssueReason.merchantNeedsReview.name
+                          ? 'dismiss'
+                          : 'resolve',
+                    ),
                     onPrimary: () async {
-                      final closed = await _close(item, dismiss: false);
+                      final closed = await _close(
+                        item,
+                        dismiss:
+                            item.reason ==
+                            ReviewIssueReason.merchantNeedsReview.name,
+                      );
                       if (closed && detailContext.mounted) {
                         Navigator.of(detailContext).pop();
                       }
@@ -403,7 +430,7 @@ class _ReviewPageState extends State<ReviewPage> {
       onRefresh: _pullToRefresh,
       refreshKey: ValueKey('review-pull-to-refresh-${_view.name}'),
       pinnedSpacing: ButlerlyPinnedPageSpacing.primary,
-      pinnedHeader: _hasReviewScope
+      pinnedHeader: _hasReviewScope && !widget.showReviewOverview
           ? null
           : FutureBuilder<List<DuplicateCandidateGroup>>(
               future: _duplicateGroups,
@@ -653,13 +680,10 @@ class _ReviewPageState extends State<ReviewPage> {
                                           ),
                                           Expanded(
                                             child: Text(
-                                              item.detail?.trim().isNotEmpty ==
-                                                      true
-                                                  ? item.detail!
-                                                  : _reason(
-                                                      item.reason,
-                                                      context,
-                                                    ),
+                                              _localizedReviewDetail(
+                                                item,
+                                                context,
+                                              ),
                                               style: context
                                                   .transactionItemMetadata,
                                             ),
@@ -1117,8 +1141,18 @@ String _reason(String value, BuildContext context) => switch (value) {
   'conflict' => context.l10n.text('reviewConflict'),
   'normalizationMissing' => context.l10n.text('reviewNormalizationMissing'),
   'duplicateCandidate' => context.l10n.text('possibleDuplicates'),
+  'merchantNeedsReview' => context.l10n.text('merchantNeedsReview'),
   _ => context.l10n.text('needsReview'),
 };
+
+String _localizedReviewDetail(ReviewItemDto item, BuildContext context) {
+  if (item.reason == ReviewIssueReason.merchantNeedsReview.name) {
+    return _reason(item.reason, context);
+  }
+  return item.detail?.trim().isNotEmpty == true
+      ? item.detail!
+      : _reason(item.reason, context);
+}
 
 final class _ReviewEntry {
   const _ReviewEntry(this.transaction, this.items);

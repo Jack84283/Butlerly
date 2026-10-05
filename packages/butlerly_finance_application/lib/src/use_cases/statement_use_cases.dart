@@ -4,6 +4,7 @@ import '../dto/transaction_dto.dart';
 import '../result/application_result.dart';
 import 'classification_use_cases.dart';
 import 'duplicate_transaction_use_cases.dart';
+import 'merchant_review_use_cases.dart';
 import 'reconciliation_use_cases.dart';
 import 'statement_intake_policy.dart';
 import 'transaction_use_cases.dart';
@@ -70,6 +71,7 @@ final class StatementServices {
     this.clock, {
     this.evidence,
     this.applyRules,
+    this.merchants,
     required this.duplicateGroups,
     required this.duplicateChecker,
     this.classifier,
@@ -82,6 +84,7 @@ final class StatementServices {
   final ApplicationClock clock;
   final EvidenceRepository? evidence;
   final ApplyTransactionRules? applyRules;
+  final MerchantRepository? merchants;
   final DuplicateCandidateGroupRepository duplicateGroups;
   final DuplicateTransactionChecker duplicateChecker;
   final ProposeTransactionClassification? classifier;
@@ -605,9 +608,14 @@ final class StatementServices {
       createdAt: now,
       updatedAt: now,
     );
-    final resolved = applyRules == null
+    final classified = applyRules == null
         ? transaction
         : await applyRules!(transaction);
+    final resolved = await synchronizeMerchantReviewIssueBestEffort(
+      classified,
+      now,
+      merchantRepository: merchants,
+    );
     return _PreparedStatementTransaction(value: resolved, proposal: proposal);
   }
 

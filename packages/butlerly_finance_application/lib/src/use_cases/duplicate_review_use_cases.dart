@@ -1,5 +1,8 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
+import '../commands/transaction_commands.dart';
+import '../dto/review_period_scope.dart';
+import '../dto/transaction_dto.dart';
 import '../result/application_result.dart';
 import 'transaction_use_cases.dart';
 
@@ -185,19 +188,65 @@ final class RefreshDuplicateGroupForTransaction {
 }
 
 final class ListDuplicateCandidateGroups {
-  const ListDuplicateCandidateGroups(this.repository);
+  const ListDuplicateCandidateGroups(this.repository, {this.transactions});
 
   final DuplicateCandidateGroupRepository repository;
+  final ListTransactions? transactions;
 
-  Future<ApplicationResult<List<DuplicateCandidateGroup>>> call() =>
-      runApplication('list possible duplicate groups', () async {
-        final groups = await repository.list(
-          status: DuplicateCandidateGroupStatus.unresolved,
-        );
-        return groups
-            .where((group) => group.transactionIds.length > 1)
-            .toList();
-      });
+  Future<ApplicationResult<List<DuplicateCandidateGroup>>> call({
+    ReviewPeriodScope scope = const ReviewPeriodScope.unscoped(),
+  }) => runApplication('list possible duplicate groups', () async {
+    final groups = await repository.list(
+      status: DuplicateCandidateGroupStatus.unresolved,
+    );
+    final eligibleIds = await _eligibleTransactionIds(scope);
+    return groups
+        .where((group) => group.transactionIds.length > 1)
+        .where(
+          (group) =>
+              eligibleIds == null ||
+              group.transactionIds.any(eligibleIds.contains),
+        )
+        .toList();
+  });
+
+  Future<Set<TransactionId>?> _eligibleTransactionIds(
+    ReviewPeriodScope scope,
+  ) async {
+    if (scope.isInvalid) {
+      throw const DomainValidationException(
+        code: DomainErrorCode.invalidRange,
+        field: 'period',
+        message: 'The Review period is invalid.',
+      );
+    }
+    if (!scope.isScoped) return null;
+    final listTransactions = transactions;
+    if (listTransactions == null) {
+      throw const RepositoryException(
+        RepositoryFailureCode.unavailable,
+        'list possible duplicate groups',
+      );
+    }
+    final period = scope.period!;
+    final result = await listTransactions(
+      ListTransactionsQuery(
+        from: DateTime.parse(period.startDate),
+        to: DateTime.parse(period.endDate),
+        timeZoneId: period.timeZoneId,
+        status: TransactionStatus.active,
+      ),
+    );
+    return switch (result) {
+      ApplicationSuccess<List<TransactionDto>>(:final value) =>
+        value.map((transaction) => TransactionId(transaction.id)).toSet(),
+      ApplicationFailure<List<TransactionDto>>() =>
+        throw const RepositoryException(
+          RepositoryFailureCode.unavailable,
+          'list possible duplicate groups',
+        ),
+    };
+  }
 }
 
 final class ResolveDuplicateCandidateGroup {

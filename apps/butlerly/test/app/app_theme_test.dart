@@ -47,6 +47,90 @@ void main() {
     }
   });
 
+  test(
+    'semantic operational typography uses platform sans and ledger figures',
+    () {
+      final base = AppTheme.light.textTheme;
+      final roles = [
+        ButlerlyTypography.pageHeroTitle(base.headlineLarge!),
+        ButlerlyTypography.pageIntro(base.bodyLarge!),
+        ButlerlyTypography.cardTitle(base.titleLarge!),
+        ButlerlyTypography.compactCardTitle(base.titleLarge!),
+        ButlerlyTypography.cardSubtitle(base.bodySmall!),
+        ButlerlyTypography.cardAction(base.labelLarge!),
+        ButlerlyTypography.metricLabel(base.labelLarge!),
+        ButlerlyTypography.homeSummaryMetricLabel(base.labelLarge!),
+        ButlerlyTypography.metricValue(base.titleLarge!),
+        ButlerlyTypography.homeSummaryMetricValue(base.titleLarge!),
+        ButlerlyTypography.metricChange(base.bodySmall!),
+        ButlerlyTypography.compactMetricChange(base.bodySmall!),
+        ButlerlyTypography.homeSummaryMetricChange(base.bodySmall!),
+        ButlerlyTypography.rowTitle(base.bodyLarge!),
+        ButlerlyTypography.rowMetadata(base.bodySmall!),
+        ButlerlyTypography.rowAmount(base.titleMedium!),
+        ButlerlyTypography.badgeLabel(base.bodySmall!),
+      ];
+
+      for (final role in roles) {
+        expect(role.fontFamily, isNull);
+        expect(role.fontFamilyFallback, isNull);
+      }
+      final roleSizes = <({TextStyle role, double size})>[
+        (role: ButlerlyTypography.pageHeroTitle(base.headlineLarge!), size: 32),
+        (role: ButlerlyTypography.pageIntro(base.bodyLarge!), size: 16),
+        (role: ButlerlyTypography.brandTitle(base.headlineLarge!), size: 20),
+        (role: ButlerlyTypography.cardTitle(base.titleLarge!), size: 21),
+        (role: ButlerlyTypography.compactCardTitle(base.titleLarge!), size: 18),
+        (role: ButlerlyTypography.cardSubtitle(base.bodySmall!), size: 14),
+        (role: ButlerlyTypography.cardAction(base.labelLarge!), size: 14),
+        (role: ButlerlyTypography.metricLabel(base.labelLarge!), size: 14),
+        (
+          role: ButlerlyTypography.homeSummaryMetricLabel(base.labelLarge!),
+          size: 13,
+        ),
+        (role: ButlerlyTypography.metricValue(base.titleLarge!), size: 24),
+        (
+          role: ButlerlyTypography.homeSummaryMetricValue(base.titleLarge!),
+          size: 14,
+        ),
+        (role: ButlerlyTypography.metricChange(base.bodySmall!), size: 14),
+        (
+          role: ButlerlyTypography.compactMetricChange(base.bodySmall!),
+          size: 12,
+        ),
+        (
+          role: ButlerlyTypography.homeSummaryMetricChange(base.bodySmall!),
+          size: 11,
+        ),
+        (role: ButlerlyTypography.rowTitle(base.bodyLarge!), size: 16),
+        (role: ButlerlyTypography.rowMetadata(base.bodySmall!), size: 14),
+        (role: ButlerlyTypography.rowAmount(base.titleMedium!), size: 16),
+        (role: ButlerlyTypography.badgeLabel(base.bodySmall!), size: 13),
+      ];
+      for (final spec in roleSizes) {
+        expect(spec.role.fontSize, spec.size);
+      }
+      expect(
+        ButlerlyTypography.metricValue(base.titleLarge!).fontFeatures,
+        isNotEmpty,
+      );
+      expect(
+        ButlerlyTypography.rowAmount(base.titleMedium!).fontFeatures,
+        isNotEmpty,
+      );
+      expect(ButlerlyTypography.cardTitle(base.titleLarge!).fontSize, 21);
+      expect(
+        ButlerlyTypography.compactCardTitle(base.titleLarge!).fontSize,
+        18,
+      );
+      expect(
+        ButlerlyTypography.compactMetricValue(base.titleLarge!).fontSize,
+        15,
+      );
+      expect(ButlerlyTypography.metricValue(base.titleLarge!).fontSize, 24);
+    },
+  );
+
   test('color themes produce distinct interactive palettes', () {
     final red = AppTheme.lightFor(
       ButlerlyColorTheme.butlerRed,

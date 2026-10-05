@@ -4,6 +4,7 @@ import '../dto/transaction_dto.dart';
 import '../result/application_result.dart';
 import 'transaction_use_cases.dart';
 import 'classification_use_cases.dart';
+import 'merchant_review_use_cases.dart';
 import 'transaction_rule_use_cases.dart';
 
 final class ReceiptTransactionCommand {
@@ -44,12 +45,14 @@ final class CreateReceiptTransaction {
     this.clock, {
     this.classifier,
     this.applyRules,
+    this.merchants,
   });
 
   final TransactionRepository repository;
   final ApplicationClock clock;
   final ProposeTransactionClassification? classifier;
   final ApplyTransactionRules? applyRules;
+  final MerchantRepository? merchants;
 
   Future<ApplicationResult<TransactionDto>> call(
     ReceiptTransactionCommand command,
@@ -113,9 +116,14 @@ final class CreateReceiptTransaction {
         createdAt: now,
         updatedAt: now,
       );
-      final resolved = applyRules == null
+      final classified = applyRules == null
           ? transaction
           : await applyRules!(transaction);
+      final resolved = await synchronizeMerchantReviewIssueBestEffort(
+        classified,
+        now,
+        merchantRepository: merchants,
+      );
       await repository.save(resolved);
       final dto = TransactionDto.fromDomain(resolved);
       return TransactionDto(

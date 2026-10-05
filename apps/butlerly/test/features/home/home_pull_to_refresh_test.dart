@@ -1,26 +1,88 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
+import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
+import 'package:butlerly/features/foundation/presentation/review_page.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+
+const _summaryTestFontFamily = 'ButlerlyTestSans';
+
+Future<void> _loadSummaryTestFont() async {
+  final flutterRoot = Platform.environment['FLUTTER_ROOT'];
+  final candidates = [
+    if (flutterRoot != null)
+      '$flutterRoot/bin/cache/artifacts/material_fonts/Roboto-Regular.ttf',
+    '${File(Platform.resolvedExecutable).parent.parent.parent.path}'
+        '/artifacts/material_fonts/Roboto-Regular.ttf',
+  ];
+  String? fontPath;
+  for (final candidate in candidates) {
+    if (File(candidate).existsSync()) {
+      fontPath = candidate;
+      break;
+    }
+  }
+  if (fontPath == null) {
+    throw StateError('Flutter Roboto test font was not found');
+  }
+  final bytes = await File(fontPath).readAsBytes();
+  final loader = FontLoader(_summaryTestFontFamily)
+    ..addFont(Future.value(ByteData.sublistView(Uint8List.fromList(bytes))));
+  await loader.load();
+}
+
+ThemeData _summaryTestTheme() {
+  final base = AppTheme.light;
+  return base.copyWith(
+    textTheme: base.textTheme.apply(fontFamily: _summaryTestFontFamily),
+  );
+}
+
+Widget _summaryTestApp(Widget child) => MaterialApp(
+  theme: _summaryTestTheme(),
+  localizationsDelegates: const [
+    AppLocalizations.delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+  ],
+  supportedLocales: AppLocalizations.supportedLocales,
+  home: Scaffold(
+    body: Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: ButlerlySize.contentGutter,
+      ),
+      child: child,
+    ),
+  ),
+);
 
 void main() {
   late _Transactions transactions;
   late _Preferences preferences;
   late _Merchants merchants;
+  late _DuplicateGroups duplicateGroups;
   late _Rules rules;
   late FinanceServices finance;
+
+  setUpAll(_loadSummaryTestFont);
 
   setUp(() async {
     await services.reset();
@@ -28,6 +90,7 @@ void main() {
     transactions = _Transactions();
     preferences = _Preferences();
     merchants = _Merchants();
+    duplicateGroups = _DuplicateGroups();
     rules = _Rules([_expenseRule()]);
     finance = FinanceServices(
       transactions,
@@ -37,6 +100,7 @@ void main() {
       _Tags(),
       _Evidence(),
       preferences,
+      duplicateGroups: duplicateGroups,
       analysisRules: rules,
     );
     services.registerSingleton<FinanceServices>(finance);
@@ -94,21 +158,94 @@ void main() {
       find.byKey(const ValueKey('home-summary-card')),
       find.byKey(const ValueKey('home-trend-card')),
       find.byKey(const ValueKey('home-category-card')),
+      find.byKey(const ValueKey('home-attention-card')),
       find.byKey(const ValueKey('home-recent-card')),
+      find.byKey(const ValueKey('home-insight-card')),
     ];
     for (final card in cards) {
       expect(card, findsOneWidget);
     }
+    final summaryRect = tester.getRect(cards.first);
+    expect(summaryRect.left, ButlerlySize.contentGutter);
+    expect(summaryRect.right, 390 - ButlerlySize.contentGutter);
     final positions = cards.map((card) => tester.getTopLeft(card).dy).toList();
     expect(positions, orderedEquals([...positions]..sort()));
-    expect(find.text('Financial summary'), findsOneWidget);
-    expect(find.text('Total spending'), findsOneWidget);
+    expect(find.text('Monthly summary'), findsOneWidget);
+    expect(find.text('Spending'), findsOneWidget);
     expect(find.text('Spending trend'), findsOneWidget);
-    expect(find.text('Spending by category'), findsOneWidget);
-    expect(find.text('Transaction count'), findsOneWidget);
+    expect(find.text('Top categories'), findsOneWidget);
+    expect(find.text('Savings'), findsOneWidget);
+    expect(find.text('Net position'), findsOneWidget);
     expect(find.text('Recent transactions'), findsOneWidget);
-    expect(find.byKey(const ValueKey('home-attention-card')), findsNothing);
-    expect(find.byKey(const ValueKey('home-insight-card')), findsNothing);
+    expect(find.text('Insights'), findsOneWidget);
+    expect(find.text('Sep 2026'), findsOneWidget);
+    expect(
+      find.text("Here's your financial overview for September 2026."),
+      findsOneWidget,
+    );
+    expect(find.text('vs previous period'), findsOneWidget);
+    expect(find.byIcon(Icons.more_horiz_rounded), findsNWidgets(4));
+    expect(find.byTooltip('View all categories'), findsOneWidget);
+    expect(find.byTooltip('View all transactions'), findsOneWidget);
+    expect(find.byTooltip('View all attention items'), findsOneWidget);
+    expect(find.byTooltip('View all insights'), findsOneWidget);
+    final monthSelector = find.byKey(const Key('home-month-selector'));
+    expect(
+      tester.getSize(monthSelector).height,
+      greaterThanOrEqualTo(ButlerlySize.minimumTarget),
+    );
+    final monthSurface = find.descendant(
+      of: monthSelector,
+      matching: find.byType(Ink),
+    );
+    expect(monthSurface, findsOneWidget);
+    expect(
+      tester.getSize(monthSurface).height,
+      lessThan(ButlerlySize.minimumTarget),
+    );
+    final monthSurfaceWidget = tester.widget<Ink>(monthSurface);
+    expect(monthSurfaceWidget.decoration, isA<BoxDecoration>());
+    expect((monthSurfaceWidget.decoration! as BoxDecoration).border, isNotNull);
+    final summaryTitle = tester.widget<Text>(find.text('Monthly summary'));
+    expect(
+      summaryTitle.style?.fontFamily,
+      isNot(ButlerlyTypography.editorialFontFamily),
+    );
+    expect(summaryTitle.style?.fontSize, 18);
+    final summaryAmount = tester.widget<Text>(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-card')),
+        matching: find.text('\$10.00'),
+      ),
+    );
+    expect(
+      summaryAmount.style?.fontFamily,
+      isNot(ButlerlyTypography.editorialFontFamily),
+    );
+    expect(summaryAmount.style?.fontFeatures, isNotEmpty);
+    expect(find.byKey(const ValueKey('home-attention-card')), findsOneWidget);
+    expect(find.text('1 merchant to review'), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-insight-card')), findsOneWidget);
+    final transactionRow = find.byKey(
+      const ValueKey('home-recent-transaction-home-refresh-initial'),
+    );
+    expect(transactionRow, findsOneWidget);
+    final rowPadding = find.descendant(
+      of: transactionRow,
+      matching: find.byWidgetPredicate(
+        (widget) =>
+            widget is Padding &&
+            widget.padding ==
+                EdgeInsets.fromLTRB(
+                  ButlerlyTransactionItemTokens.horizontalInset,
+                  ButlerlyTransactionItemTokens.topPadding,
+                  ButlerlyTransactionItemTokens.horizontalInset,
+                  ButlerlyTransactionItemTokens.bottomPadding,
+                ),
+      ),
+    );
+    expect(rowPadding, findsOneWidget);
+    expect(ButlerlyTransactionItemTokens.topPadding, 12);
     expect(tester.takeException(), isNull);
   });
 
@@ -133,6 +270,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Analysis is unavailable'), findsOneWidget);
+    expect(find.text('Insights are unavailable'), findsOneWidget);
+    expect(find.text('Nothing needs your attention'), findsNothing);
     expect(
       find.byKey(const ValueKey('home-empty-transactions-card')),
       findsNothing,
@@ -141,72 +280,328 @@ void main() {
   });
 
   testWidgets(
-    'Home places attention and insight cards around recent activity',
+    'Home trend range keeps the other cards visible while loading locally',
     (tester) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      rules.values.add(_homeInsightRule());
-      final stored = transactions.values['home-refresh-initial']!;
-      transactions.values['home-refresh-initial'] = stored.addReviewIssue(
-        ReviewIssue(
-          id: ReviewIssueId('home-review-issue'),
-          transactionId: stored.id,
-          reason: ReviewIssueReason.incomplete,
-          createdAt: stored.updatedAt,
-        ),
-        stored.updatedAt.add(const Duration(seconds: 1)),
-      );
-
-      final router = GoRouter(
-        initialLocation: '/',
-        routes: [
-          GoRoute(
-            path: '/',
-            builder: (_, _) => const Scaffold(body: HomePage()),
-          ),
-          GoRoute(
-            path: '/review',
-            builder: (_, state) => Scaffold(
-              body: Text(state.uri.toString(), key: const Key('review-uri')),
-            ),
-          ),
-        ],
-      );
-      addTearDown(router.dispose);
-
-      await tester.pumpWidget(_RouterTestApp(router: router));
+      await tester.pumpWidget(const _TestApp());
       await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('home-summary-card')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-category-card')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-recent-card')), findsOneWidget);
 
-      final cards = [
-        find.byKey(const ValueKey('home-summary-card')),
-        find.byKey(const ValueKey('home-trend-card')),
-        find.byKey(const ValueKey('home-category-card')),
-        find.byKey(const ValueKey('home-attention-card')),
-        find.byKey(const ValueKey('home-recent-card')),
-        find.byKey(const ValueKey('home-insight-card')),
-      ];
-      for (final card in cards) {
-        expect(card, findsOneWidget);
-      }
-      final positions = cards.map((card) => tester.getTopLeft(card).dy);
-      expect(positions, orderedEquals([...positions]..sort()));
-      expect(find.textContaining('Sep 1, 2026 – Sep 16, 2026'), findsOneWidget);
+      final trendReadGate = Completer<void>();
+      transactions.readGate = trendReadGate.future;
+      await tester.tap(find.byKey(const Key('home-trend-range-selector')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Last 12 months'));
+      await tester.pump();
 
-      await tester.ensureVisible(
-        find.byKey(const ValueKey('home-attention-card')),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('home-attention-card')));
-      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('home-summary-card')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-category-card')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-recent-card')), findsOneWidget);
       expect(
-        tester.widget<Text>(find.byKey(const Key('review-uri'))).data,
-        '/review?view=needsReview&from=2026-09-01&to=2026-09-16&timeZoneId=UTC',
+        find.byKey(const ValueKey('home-trend-local-loading')),
+        findsOneWidget,
       );
+      expect(find.text('Sep 2026'), findsOneWidget);
+
+      trendReadGate.complete();
+      transactions.readGate = null;
+      await tester.pumpAndSettle();
+
+      expect(find.text('Last 12 months'), findsOneWidget);
+      for (
+        var month = DateTime(2025, 10);
+        month.isBefore(DateTime(2026, 10));
+        month = DateTime(month.year, month.month + 1)
+      ) {
+        expect(
+          find.byKey(
+            ValueKey('home-spending-trend-label-${month.year}-${month.month}'),
+          ),
+          findsOneWidget,
+        );
+      }
+      expect(find.text('Sep 2026'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('Home places attention and insight cards around recent activity', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    rules.values.add(_homeInsightRule());
+    final stored = transactions.values['home-refresh-initial']!;
+    transactions.values['home-refresh-initial'] = stored.addReviewIssue(
+      ReviewIssue(
+        id: ReviewIssueId('home-review-issue'),
+        transactionId: stored.id,
+        reason: ReviewIssueReason.incomplete,
+        createdAt: stored.updatedAt,
+      ),
+      stored.updatedAt.add(const Duration(seconds: 1)),
+    );
+
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, _) => const Scaffold(body: HomePage()),
+        ),
+        GoRoute(
+          path: '/review',
+          builder: (_, state) => Scaffold(
+            body: Text(state.uri.toString(), key: const Key('review-uri')),
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_RouterTestApp(router: router));
+    await tester.pumpAndSettle();
+
+    final cards = [
+      find.byKey(const ValueKey('home-summary-card')),
+      find.byKey(const ValueKey('home-trend-card')),
+      find.byKey(const ValueKey('home-category-card')),
+      find.byKey(const ValueKey('home-attention-card')),
+      find.byKey(const ValueKey('home-recent-card')),
+      find.byKey(const ValueKey('home-insight-card')),
+    ];
+    for (final card in cards) {
+      expect(card, findsOneWidget);
+    }
+    final insightCard = find.byKey(const ValueKey('home-insight-card'));
+    expect(
+      find.descendant(
+        of: insightCard,
+        matching: find.byKey(const ValueKey('home-insight-icon')),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: insightCard,
+        matching: find.textContaining('Current period:'),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: insightCard,
+        matching: find.textContaining('Previous period:'),
+      ),
+      findsNothing,
+    );
+    final positions = cards.map((card) => tester.getTopLeft(card).dy);
+    expect(positions, orderedEquals([...positions]..sort()));
+
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('home-attention-card')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('home-attention-card')));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<Text>(find.byKey(const Key('review-uri'))).data,
+      '/review?view=uncategorized&from=2026-09-01&to=2026-09-16&timeZoneId=UTC',
+    );
+  });
+
+  testWidgets('Home exposes generic review issues in Needs Attention', (
+    tester,
+  ) async {
+    final stored = transactions.values['home-refresh-initial']!;
+    final at = stored.updatedAt.add(const Duration(seconds: 1));
+    final merchantReviewIssue = stored.reviewIssues.first;
+    transactions.values['home-refresh-initial'] = stored
+        .resolveReviewIssue(merchantReviewIssue.id, at)
+        .assignCategory(CategoryId('category.food'), at)
+        .addReviewIssue(
+          ReviewIssue(
+            id: ReviewIssueId('home-generic-review'),
+            transactionId: stored.id,
+            reason: ReviewIssueReason.incomplete,
+            createdAt: at,
+          ),
+          at,
+        );
+
+    await tester.pumpWidget(const _TestApp());
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('home-attention-card')), findsOneWidget);
+    expect(find.text('1 item to review'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-attention-card')),
+        matching: find.text('Needs review'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Home attention rows open their matching Review datasets', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final matching = await finance.createTransaction(
+      CreateTransactionCommand(
+        id: 'home-attention-matching',
+        provenanceId: 'home-attention-matching-provenance',
+        timing: KnownTransactionTime(DateTime.utc(2026, 9, 14, 12)),
+        transactionDate: '2026-09-15',
+        money: Money(
+          amount: DecimalValue.parse('10.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        description: 'Matching Home spending',
+      ),
+    );
+    expect(matching, isA<ApplicationSuccess<TransactionDto>>());
+    final initial = transactions.values['home-refresh-initial']!;
+    final matchingTransaction = transactions.values['home-attention-matching']!;
+    duplicateGroups.values.add(
+      DuplicateCandidateGroup(
+        id: 'home-attention-duplicate',
+        transactionIds: [initial.id, matchingTransaction.id],
+        duplicateKey: DuplicateTransactionKey(
+          transactionDate: '2026-09-15',
+          amount: DecimalValue.parse('10.00'),
+          currency: 'USD',
+          direction: 'expense',
+        ),
+        status: DuplicateCandidateGroupStatus.unresolved,
+        createdAt: DateTime.utc(2026, 9, 15),
+        updatedAt: DateTime.utc(2026, 9, 15),
+      ),
+    );
+
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, _) => const Scaffold(body: HomePage()),
+        ),
+        GoRoute(
+          path: '/review',
+          builder: (_, state) {
+            final parameters = state.uri.queryParameters;
+            final from = parameters['from'];
+            final to = parameters['to'];
+            final timeZoneId = parameters['timeZoneId'];
+            final scope = from == null || to == null || timeZoneId == null
+                ? const ReviewPeriodScope.invalid()
+                : ReviewPeriodScope.fromDateValues(
+                    startDate: from,
+                    endDate: to,
+                    timeZoneId: timeZoneId,
+                  );
+            final reason = ReviewIssueReason.values
+                .where((value) => value.name == parameters['reason'])
+                .firstOrNull;
+            return Scaffold(
+              body: ReviewPage(
+                showPossibleDuplicates: parameters['view'] == 'duplicates',
+                showUncategorized: parameters['view'] == 'uncategorized',
+                showNeedsReview: parameters['view'] == 'needsReview',
+                showReviewOverview: parameters['view'] == 'overview',
+                reviewScope: scope,
+                reviewReason: reason,
+              ),
+            );
+          },
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_RouterTestApp(router: router));
+    await tester.pumpAndSettle();
+
+    final uncategorizedRow = find.text('Uncategorised transactions');
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('home-attention-card')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(uncategorizedRow);
+    await tester.pumpAndSettle();
+    expect(find.text('Initial Home spending'), findsOneWidget);
+    expect(find.text('Matching Home spending'), findsOneWidget);
+
+    router.go('/');
+    await tester.pumpAndSettle();
+    final duplicateRow = find.textContaining('possible duplicate');
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('home-attention-card')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(duplicateRow);
+    await tester.pumpAndSettle();
+    expect(find.text('Possible duplicate group'), findsOneWidget);
+    expect(find.text('Initial Home spending'), findsOneWidget);
+    expect(find.text('Matching Home spending'), findsOneWidget);
+
+    router.go('/');
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('home-attention-view-all')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('home-attention-view-all')));
+    await tester.pumpAndSettle();
+    expect(find.text('Not categorized'), findsWidgets);
+    expect(find.textContaining('Possible duplicates'), findsWidgets);
+    expect(find.text('Needs review'), findsWidgets);
+
+    router.go('/');
+    await tester.pumpAndSettle();
+    final merchantRow = find
+        .byWidgetPredicate(
+          (widget) =>
+              widget is Text &&
+              widget.data?.contains('merchant') == true &&
+              widget.data?.contains('review') == true,
+        )
+        .first;
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('home-attention-card')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(merchantRow);
+    await tester.pumpAndSettle();
+    expect(find.text('Initial Home spending'), findsOneWidget);
+    expect(find.text('Matching Home spending'), findsOneWidget);
+    expect(find.text('Possible duplicate group'), findsNothing);
+
+    await tester.tap(find.text('Initial Home spending').first);
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(FilledButton, 'Dismiss'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Resolve'), findsNothing);
+    await tester.tap(find.widgetWithText(FilledButton, 'Dismiss'));
+    await tester.pumpAndSettle();
+    expect(
+      transactions.values['home-refresh-initial']!.reviewIssues.first.status,
+      ReviewIssueStatus.dismissed,
+    );
+  });
 
   testWidgets('Home cards remain readable at large text scale', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -219,13 +614,18 @@ void main() {
     await tester.pumpWidget(const _TestApp());
     await tester.pumpAndSettle();
 
+    // At 3x text scale the pinned header legitimately consumes more vertical
+    // space. Scroll the sliver so its lazily-built cards enter the viewport.
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -900));
+    await tester.pumpAndSettle();
+
     expect(find.byKey(const ValueKey('home-summary-card')), findsOneWidget);
     expect(find.byKey(const ValueKey('home-category-card')), findsOneWidget);
     final metricKeys = [
       const ValueKey('home-summary-metric-spending'),
       const ValueKey('home-summary-metric-income'),
-      const ValueKey('home-summary-metric-net'),
-      const ValueKey('home-summary-metric-count'),
+      const ValueKey('home-summary-metric-savings'),
+      const ValueKey('home-summary-metric-net-position'),
     ];
     final metricPositions = [
       for (final key in metricKeys) tester.getTopLeft(find.byKey(key)),
@@ -236,19 +636,20 @@ void main() {
         greaterThan(metricPositions[index - 1].dy),
       );
     }
-    for (final label in [
-      'Total spending',
-      'Income',
-      'Net cash flow',
-      'Transaction count',
-    ]) {
+    for (final label in ['Spending', 'Income', 'Savings', 'Net position']) {
       expect(find.text(label), findsOneWidget);
     }
-    expect(find.text('10.00 USD'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-card')),
+        matching: find.text('\$10.00'),
+      ),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Home Summary keeps its compact two-column layout normally', (
+  testWidgets('Home Summary keeps all four metrics in one row normally', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -256,7 +657,34 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const _TestApp());
+    final model = AnalysisOverview(
+      insightUnavailable: false,
+      trend: const [],
+      categories: const [],
+      qualityCount: 0,
+      qualityEvaluated: true,
+      qualityLimited: false,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: _summaryTestTheme(),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: ButlerlySize.contentGutter,
+            ),
+            child: homeSummaryForTest(model),
+          ),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     final spending = tester.getTopLeft(
@@ -265,18 +693,802 @@ void main() {
     final income = tester.getTopLeft(
       find.byKey(const ValueKey('home-summary-metric-income')),
     );
-    final net = tester.getTopLeft(
-      find.byKey(const ValueKey('home-summary-metric-net')),
+    final savings = tester.getTopLeft(
+      find.byKey(const ValueKey('home-summary-metric-savings')),
     );
-    final count = tester.getTopLeft(
-      find.byKey(const ValueKey('home-summary-metric-count')),
+    final netPosition = tester.getTopLeft(
+      find.byKey(const ValueKey('home-summary-metric-net-position')),
+    );
+    expect(spending.dy, closeTo(income.dy, 0.01));
+    expect(spending.dy, closeTo(savings.dy, 0.01));
+    expect(spending.dy, closeTo(netPosition.dy, 0.01));
+    expect(spending.dx, lessThan(income.dx));
+    expect(income.dx, lessThan(savings.dx));
+    expect(savings.dx, lessThan(netPosition.dx));
+    for (final entry in [
+      ('home-summary-metric-spending', 'Spending'),
+      ('home-summary-metric-income', 'Income'),
+      ('home-summary-metric-savings', 'Savings'),
+      ('home-summary-metric-net-position', 'Net position'),
+    ]) {
+      final cell = find.byKey(ValueKey(entry.$1));
+      final label = find.descendant(of: cell, matching: find.text(entry.$2));
+      expect(
+        (tester.getCenter(cell).dx - tester.getCenter(label).dx).abs(),
+        lessThan(0.01),
+      );
+    }
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home Summary renders empty sum metrics as zero', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-09-01',
+        endDate: '2026-09-16',
+        timeZoneId: 'UTC',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+      baseCurrency: CurrencyCode('USD'),
+    );
+    final incomeOnly = AnalysisOverview(
+      spending: _categoryMetric(
+        value: '0',
+        availability: AnalysisDataAvailability.empty,
+      ),
+      income: _categoryMetric(value: '100'),
+      savings: AnalysisValue(
+        value: DecimalValue.parse('100'),
+        currency: CurrencyCode('USD'),
+        context: context,
+      ),
+      savingsRate: DecimalValue.parse('1'),
+      insightUnavailable: false,
+      trend: const [],
+      categories: const [],
+      qualityCount: 0,
+      qualityEvaluated: true,
+      qualityLimited: false,
     );
 
-    expect(spending.dy, closeTo(income.dy, 0.01));
-    expect(net.dy, closeTo(count.dy, 0.01));
-    expect(spending.dy, lessThan(net.dy));
-    expect(spending.dx, lessThan(income.dx));
+    await tester.pumpWidget(_summaryTestApp(homeSummaryForTest(incomeOnly)));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-spending')),
+        matching: find.text(r'$0.00'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-income')),
+        matching: find.text(r'$100.00'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-savings')),
+        matching: find.text(r'$100.00'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('100%'), findsOneWidget);
+
+    final expenseOnly = AnalysisOverview(
+      spending: _categoryMetric(value: '60'),
+      income: _categoryMetric(
+        value: '0',
+        availability: AnalysisDataAvailability.empty,
+      ),
+      savings: AnalysisValue(
+        value: DecimalValue.parse('-60'),
+        currency: CurrencyCode('USD'),
+        context: context,
+      ),
+      savingsRate: null,
+      insightUnavailable: false,
+      trend: const [],
+      categories: const [],
+      qualityCount: 0,
+      qualityEvaluated: true,
+      qualityLimited: false,
+    );
+    await tester.pumpWidget(_summaryTestApp(homeSummaryForTest(expenseOnly)));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-income')),
+        matching: find.text(r'$0.00'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-spending')),
+        matching: find.text(r'$60.00'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-savings')),
+        matching: find.text(r'-$60.00'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-income')),
+        matching: find.text('—'),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-spending')),
+        matching: find.text('—'),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-savings')),
+        matching: find.text('—'),
+      ),
+      findsNothing,
+    );
+  });
+
+  testWidgets('Home Summary preserves a dash for insufficient metrics', (
+    tester,
+  ) async {
+    final model = AnalysisOverview(
+      spending: _categoryMetric(
+        availability: AnalysisDataAvailability.insufficient,
+      ),
+      income: _categoryMetric(
+        availability: AnalysisDataAvailability.insufficient,
+      ),
+      insightUnavailable: false,
+      trend: const [],
+      categories: const [],
+      qualityCount: 0,
+      qualityEvaluated: true,
+      qualityLimited: true,
+    );
+
+    await tester.pumpWidget(_summaryTestApp(homeSummaryForTest(model)));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-spending')),
+        matching: find.text('—'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-income')),
+        matching: find.text('—'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text(r'$0.00'), findsNothing);
+  });
+
+  testWidgets('Home Summary uses the active text scale when deciding fit', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    tester.view.platformDispatcher.textScaleFactorTestValue = 1.2;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
+
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-09-01',
+        endDate: '2026-09-16',
+        timeZoneId: 'UTC',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+      baseCurrency: CurrencyCode('USD'),
+    );
+    final model = AnalysisOverview(
+      spending: _categoryMetric(value: '9999.99'),
+      income: _categoryMetric(value: '4150.00'),
+      savings: AnalysisValue(
+        value: DecimalValue.parse('1809.82'),
+        currency: CurrencyCode('USD'),
+        context: context,
+      ),
+      net: _categoryMetric(value: '1809.82'),
+      insightUnavailable: false,
+      trend: const [],
+      categories: const [],
+      qualityCount: 0,
+      qualityEvaluated: true,
+      qualityLimited: false,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: _summaryTestTheme(),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: ButlerlySize.contentGutter,
+            ),
+            child: homeSummaryForTest(model),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final metricKeys = [
+      const ValueKey('home-summary-metric-spending'),
+      const ValueKey('home-summary-metric-income'),
+      const ValueKey('home-summary-metric-savings'),
+      const ValueKey('home-summary-metric-net-position'),
+    ];
+    final metricTops = [
+      for (final key in metricKeys) tester.getTopLeft(find.byKey(key)).dy,
+    ];
+    for (var index = 1; index < metricTops.length; index++) {
+      expect(metricTops[index], greaterThan(metricTops[index - 1]));
+    }
+    final value = tester.widget<Text>(find.text('\$9,999.99'));
+    expect(value.style?.fontSize, 14);
+    expect(value.softWrap, isTrue);
+    expect(value.maxLines, isNull);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home Summary keeps reference amounts on one line', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-09-01',
+        endDate: '2026-09-16',
+        timeZoneId: 'UTC',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+      baseCurrency: CurrencyCode('USD'),
+    );
+    final model = AnalysisOverview(
+      spending: _categoryMetric(value: '2340.18'),
+      income: _categoryMetric(value: '4150.00'),
+      savings: AnalysisValue(
+        value: DecimalValue.parse('1809.82'),
+        currency: CurrencyCode('USD'),
+        context: context,
+      ),
+      net: _categoryMetric(value: '1809.82'),
+      insightUnavailable: false,
+      trend: const [],
+      categories: const [],
+      qualityCount: 0,
+      qualityEvaluated: true,
+      qualityLimited: false,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: _summaryTestTheme(),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: ButlerlySize.contentGutter,
+            ),
+            child: homeSummaryForTest(model),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    const referenceValues = {
+      'home-summary-metric-spending': '\$2,340.18',
+      'home-summary-metric-income': '\$4,150.00',
+      'home-summary-metric-savings': '\$1,809.82',
+      'home-summary-metric-net-position': '\$1,809.82',
+    };
+    for (final entry in referenceValues.entries) {
+      final textFinder = find.descendant(
+        of: find.byKey(ValueKey(entry.key)),
+        matching: find.text(entry.value),
+      );
+      expect(textFinder, findsOneWidget);
+      final text = tester.widget<Text>(textFinder);
+      expect(text.maxLines, 1);
+      expect(text.softWrap, isFalse);
+      expect(text.overflow, TextOverflow.visible);
+      expect(text.style?.fontSize, 14);
+      final render = tester.renderObject<RenderParagraph>(textFinder);
+      final context = tester.element(textFinder);
+      final effectiveStyle = DefaultTextStyle.of(
+        context,
+      ).style.merge(text.style);
+      final painter = TextPainter(
+        text: TextSpan(text: entry.value, style: effectiveStyle),
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+      )..layout();
+      expect(painter.width, lessThanOrEqualTo(render.size.width + 0.01));
+    }
+    final metricTops = [
+      for (final key in referenceValues.keys)
+        tester.getTopLeft(find.byKey(ValueKey(key))).dy,
+    ];
+    for (final top in metricTops.skip(1)) {
+      expect(top, closeTo(metricTops.first, 0.01));
+    }
+    for (final label in ['Spending', 'Income', 'Savings', 'Net position']) {
+      expect(tester.widget<Text>(find.text(label)).style?.fontSize, 13);
+    }
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home Summary stacks extreme amounts at enlarged text scale', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    tester.view.platformDispatcher.textScaleFactorTestValue = 1.3;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
+
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-09-01',
+        endDate: '2026-09-16',
+        timeZoneId: 'UTC',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+      baseCurrency: CurrencyCode('USD'),
+    );
+    final model = AnalysisOverview(
+      spending: _categoryMetric(
+        value: '123456789012345678901234567890',
+        currency: 'USDLONG',
+      ),
+      income: _categoryMetric(value: '4150.00'),
+      savings: AnalysisValue(
+        value: DecimalValue.parse('1809.82'),
+        currency: CurrencyCode('USD'),
+        context: context,
+      ),
+      net: _categoryMetric(value: '1809.82'),
+      insightUnavailable: false,
+      trend: const [],
+      categories: const [],
+      qualityCount: 0,
+      qualityEvaluated: true,
+      qualityLimited: false,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: _summaryTestTheme(),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: ButlerlySize.contentGutter,
+            ),
+            child: homeSummaryForTest(model),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final metricKeys = [
+      const ValueKey('home-summary-metric-spending'),
+      const ValueKey('home-summary-metric-income'),
+      const ValueKey('home-summary-metric-savings'),
+      const ValueKey('home-summary-metric-net-position'),
+    ];
+    final metricTops = [
+      for (final key in metricKeys) tester.getTopLeft(find.byKey(key)).dy,
+    ];
+    for (var index = 1; index < metricTops.length; index++) {
+      expect(metricTops[index], greaterThan(metricTops[index - 1]));
+    }
+    final longValue = find.textContaining('USDLONG');
+    expect(longValue, findsOneWidget);
+    final longValueRect = tester.getRect(longValue);
+    final spendingRect = tester.getRect(find.byKey(metricKeys.first));
+    expect(longValueRect.left, greaterThanOrEqualTo(spendingRect.left - 0.01));
+    expect(longValueRect.right, lessThanOrEqualTo(spendingRect.right + 0.01));
+    final valueText = tester.widget<Text>(longValue);
+    expect(valueText.softWrap, isTrue);
+    expect(valueText.maxLines, isNull);
+    final renderedValue = tester.renderObject<RenderParagraph>(longValue);
+    final singleLinePainter = TextPainter(
+      text: TextSpan(text: valueText.data, style: valueText.style),
+      textDirection: TextDirection.ltr,
+      textScaler: MediaQuery.textScalerOf(tester.element(longValue)),
+    )..layout();
+    expect(
+      renderedValue.textSize.height,
+      greaterThan(singleLinePainter.preferredLineHeight),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home Summary uses semantic colors for supporting values', (
+    tester,
+  ) async {
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-09-01',
+        endDate: '2026-09-16',
+        timeZoneId: 'UTC',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+      baseCurrency: CurrencyCode('USD'),
+    );
+    final model = AnalysisOverview(
+      insightUnavailable: false,
+      trend: const [],
+      categories: const [],
+      qualityCount: 0,
+      qualityEvaluated: false,
+      qualityLimited: false,
+      savings: AnalysisValue(
+        value: DecimalValue.parse('5'),
+        currency: CurrencyCode('USD'),
+        context: context,
+      ),
+      savingsRate: DecimalValue.parse('0.5'),
+      spendingComparison: _comparison('2'),
+      incomeComparison: _comparison('-3'),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(body: homeSummaryForTest(model)),
+      ),
+    );
+
+    final colors = AppTheme.light.extension<ButlerlySemanticColors>()!;
+    expect(
+      _lastTextIn(tester, 'home-summary-metric-spending').style?.color,
+      colors.error,
+    );
+    expect(
+      _lastTextIn(tester, 'home-summary-metric-income').style?.color,
+      colors.success,
+    );
+    final savingsRate = tester.widget<Text>(find.text('50%'));
+    expect(savingsRate.style?.color, colors.info);
+    expect(savingsRate.style?.fontSize, 11);
+    final savingsSemantics = tester.getSemantics(
+      find.byKey(const ValueKey('home-summary-metric-savings')),
+    );
+    expect(savingsSemantics.label, contains('50%'));
+    expect(savingsSemantics.label, contains('of income'));
+  });
+
+  testWidgets('Home Insight preview uses data-driven localized copy', (
+    tester,
+  ) async {
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-09-01',
+        endDate: '2026-09-16',
+        timeZoneId: 'UTC',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+      baseCurrency: CurrencyCode('USD'),
+      periodType: 'selected_period',
+    );
+    final insight = InsightResult(
+      outputType: InsightOutputType.pattern,
+      rule: _homeInsightRule(grouping: RuleGrouping.category),
+      context: context,
+      baselineContext: context,
+      percentageChange: DecimalValue.parse('28'),
+      dimension: 'restaurants',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: homeInsightForTest(
+            insight,
+            masterData: const TransactionMasterData(
+              categoryNames: {'restaurants': 'Restaurants'},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Spending up 28%'), findsOneWidget);
+    expect(
+      find.textContaining(
+        'Your Restaurants spending is 28% higher than the comparable previous period.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('analysis.rule.r020.name'), findsNothing);
+  });
+
+  testWidgets('Home Insight uses same-period wording for current month', (
+    tester,
+  ) async {
+    await _pumpHomeInsight(tester, 'current_month');
+
+    expect(
+      find.text(
+        'Your Restaurants spending is 28% higher than the same period last month.',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Home Insight uses same-period wording for selected month', (
+    tester,
+  ) async {
+    await _pumpHomeInsight(tester, 'selected_month');
+
+    expect(
+      find.text(
+        'Your Restaurants spending is 28% higher than the same period last month.',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Home Summary does not show insufficient derived savings', (
+    tester,
+  ) async {
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-09-01',
+        endDate: '2026-09-16',
+        timeZoneId: 'UTC',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+      baseCurrency: CurrencyCode('USD'),
+    );
+    final model = AnalysisOverview(
+      insightUnavailable: false,
+      trend: const [],
+      categories: const [],
+      qualityCount: 0,
+      qualityEvaluated: false,
+      qualityLimited: false,
+      savings: AnalysisValue(
+        value: DecimalValue.parse('5'),
+        currency: CurrencyCode('USD'),
+        context: context,
+        availability: AnalysisDataAvailability.insufficient,
+      ),
+      savingsRate: DecimalValue.parse('0.5'),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(body: homeSummaryForTest(model)),
+      ),
+    );
+
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-savings')),
+        matching: find.text('—'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-savings')),
+        matching: find.text('50%'),
+      ),
+      findsNothing,
+    );
+  });
+
+  testWidgets('Home Summary renders empty derived savings as zero', (
+    tester,
+  ) async {
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-09-01',
+        endDate: '2026-09-16',
+        timeZoneId: 'UTC',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+      baseCurrency: CurrencyCode('USD'),
+    );
+    final model = AnalysisOverview(
+      insightUnavailable: false,
+      trend: const [],
+      categories: const [],
+      qualityCount: 0,
+      qualityEvaluated: false,
+      qualityLimited: false,
+      savings: AnalysisValue(
+        value: DecimalValue.parse('100'),
+        currency: CurrencyCode('USD'),
+        context: context,
+        availability: AnalysisDataAvailability.empty,
+      ),
+      savingsRate: null,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(body: homeSummaryForTest(model)),
+      ),
+    );
+
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-savings')),
+        matching: find.text(r'$0.00'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('100% of income'), findsNothing);
+  });
+
+  testWidgets('Home Summary and categories hide insufficient metric values', (
+    tester,
+  ) async {
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-09-01',
+        endDate: '2026-09-16',
+        timeZoneId: 'UTC',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+      baseCurrency: CurrencyCode('USD'),
+    );
+    final model = AnalysisOverview(
+      spending: _categoryMetric(
+        availability: AnalysisDataAvailability.insufficient,
+      ),
+      insightUnavailable: false,
+      trend: const [],
+      categories: [
+        _categoryMetric(availability: AnalysisDataAvailability.insufficient),
+      ],
+      qualityCount: 0,
+      qualityEvaluated: false,
+      qualityLimited: false,
+      savings: AnalysisValue(
+        value: DecimalValue.parse('5'),
+        currency: CurrencyCode('USD'),
+        context: context,
+        availability: AnalysisDataAvailability.insufficient,
+      ),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(body: homeSummaryForTest(model)),
+      ),
+    );
+
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-spending')),
+        matching: find.text('—'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('\$1,234,567.89'), findsNothing);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: homeCategorySummaryItemForTest(
+            metric: _categoryMetric(
+              availability: AnalysisDataAvailability.insufficient,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('—'), findsOneWidget);
+    expect(find.text('\$1,234,567.89'), findsNothing);
   });
 
   testWidgets('Home category amounts reflow at large text scale', (
@@ -306,8 +1518,39 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('1,234,567.89 USD'), findsOneWidget);
+    expect(find.text('\$1,234,567.89'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home category summary uses compact semantic typography', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: Scaffold(
+          body: homeCategorySummaryItemForTest(
+            metric: _categoryMetric(),
+            share: DecimalValue.parse('0.25'),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final amount = tester.widget<Text>(find.text(r'$1,234,567.89'));
+    final percentage = tester.widget<Text>(find.text('25%'));
+    expect(amount.style?.fontSize, 14);
+    expect(amount.style?.fontWeight, FontWeight.w600);
+    expect(percentage.style?.fontSize, 13);
+    expect(percentage.style?.fontWeight, FontWeight.w400);
   });
 
   tearDown(() async {
@@ -325,7 +1568,13 @@ void main() {
 
       await tester.pumpWidget(const _TestApp());
       await tester.pumpAndSettle();
-      expect(find.text('10.00 USD'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-summary-card')),
+          matching: find.text('\$10.00'),
+        ),
+        findsOneWidget,
+      );
       expect(
         transactions.queries,
         contains(
@@ -413,8 +1662,14 @@ void main() {
         ),
       );
       expect(added, isA<ApplicationSuccess<TransactionDto>>());
-      expect(find.text('10.00 USD'), findsOneWidget);
-      expect(find.text('15.00 USD'), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-summary-card')),
+          matching: find.text('\$10.00'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('\$15.00'), findsNothing);
 
       final readGate = Completer<void>();
       transactions.readGate = readGate.future;
@@ -428,8 +1683,14 @@ void main() {
 
       // While the refresh read is deliberately held open, keep the existing
       // spending snapshot visible and keep the pinned header stationary.
-      expect(find.text('10.00 USD'), findsOneWidget);
-      expect(find.text('15.00 USD'), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-summary-card')),
+          matching: find.text('\$10.00'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('\$15.00'), findsNothing);
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(
         tester.getTopLeft(headerFinder).dy,
@@ -442,8 +1703,14 @@ void main() {
 
       final afterRefresh = (tester.widget(bodyFinder) as FutureBuilder).future;
       expect(identical(beforeRefresh, afterRefresh), isFalse);
-      expect(find.text('10.00 USD'), findsNothing);
-      expect(find.text('15.00 USD'), findsOneWidget);
+      expect(find.text('\$10.00'), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-summary-card')),
+          matching: find.text('\$15.00'),
+        ),
+        findsOneWidget,
+      );
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(
         tester.getTopLeft(headerFinder).dy,
@@ -512,21 +1779,37 @@ void main() {
       await tester.pumpWidget(const _TestApp());
       await tester.pumpAndSettle();
 
+      for (final key in const [
+        'home-summary-card',
+        'home-trend-card',
+        'home-category-card',
+        'home-attention-card',
+        'home-recent-card',
+        'home-insight-card',
+      ]) {
+        expect(find.byKey(ValueKey(key)), findsOneWidget);
+      }
       expect(
-        find.byKey(const ValueKey('home-period-unavailable-card')),
+        find.byKey(const ValueKey('home-review-unavailable-retry')),
         findsOneWidget,
       );
       expect(
-        find.byKey(const ValueKey('home-empty-transactions-card')),
-        findsNothing,
-      );
-      expect(
-        find.byKey(const ValueKey('home-period-unavailable-retry')),
+        find.byKey(const ValueKey('home-review-unavailable-content')),
         findsOneWidget,
       );
       expect(transactions.queries, isEmpty);
-      expect(find.byKey(const Key('home-category-view-all')), findsNothing);
-      expect(find.byKey(const Key('home-recent-view-all')), findsNothing);
+      expect(
+        tester
+            .widget<TextButton>(find.byKey(const Key('home-category-view-all')))
+            .onPressed,
+        isNull,
+      );
+      expect(
+        tester
+            .widget<TextButton>(find.byKey(const Key('home-recent-view-all')))
+            .onPressed,
+        isNull,
+      );
     },
   );
 
@@ -545,14 +1828,23 @@ void main() {
     await tester.tap(find.byKey(const Key('home-month-2026-8')));
     await tester.pumpAndSettle();
 
+    expect(find.byKey(const ValueKey('home-summary-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-trend-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-category-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-attention-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-recent-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-insight-card')), findsOneWidget);
+    expect(find.text('\$0.00'), findsNWidgets(4));
+    expect(find.text('No spending recorded in this period.'), findsOneWidget);
+    expect(find.text('Nothing needs attention'), findsOneWidget);
     expect(
-      find.byKey(const ValueKey('home-empty-transactions-card')),
-      findsOneWidget,
+      tester
+          .getSemantics(find.byKey(const ValueKey('home-attention-card')))
+          .label,
+      contains('Nothing needs attention'),
     );
-    expect(
-      find.byKey(const ValueKey('home-period-unavailable-card')),
-      findsNothing,
-    );
+    expect(find.text('No transactions yet'), findsOneWidget);
+    expect(find.text('Nothing needs your attention'), findsOneWidget);
   });
 
   testWidgets(
@@ -586,11 +1878,9 @@ void main() {
       await tester.tap(find.byKey(const Key('home-month-2026-7')));
       await tester.pumpAndSettle();
 
-      expect(
-        find.byKey(const ValueKey('home-empty-transactions-card')),
-        findsOneWidget,
-      );
-      expect(find.byKey(const ValueKey('home-summary-card')), findsNothing);
+      expect(find.byKey(const ValueKey('home-summary-card')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-recent-card')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-insight-card')), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -607,26 +1897,24 @@ void main() {
     await tester.pumpWidget(const _TestApp());
     await tester.pumpAndSettle();
 
+    for (final key in const [
+      'home-summary-card',
+      'home-trend-card',
+      'home-category-card',
+      'home-attention-card',
+      'home-recent-card',
+      'home-insight-card',
+    ]) {
+      expect(find.byKey(ValueKey(key)), findsOneWidget);
+    }
     expect(
-      find.byKey(const ValueKey('home-transactions-unavailable-card')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey('home-empty-transactions-card')),
-      findsNothing,
-    );
-    expect(
-      find.byKey(const ValueKey('home-period-unavailable-card')),
-      findsNothing,
-    );
-    expect(
-      find.byKey(const ValueKey('home-transactions-unavailable-retry')),
+      find.byKey(const ValueKey('home-recent-unavailable-retry')),
       findsOneWidget,
     );
     expect(
       tester
           .getSemantics(
-            find.byKey(const ValueKey('home-transactions-unavailable-card')),
+            find.byKey(const ValueKey('home-recent-unavailable-content')),
           )
           .flagsCollection
           .isLiveRegion,
@@ -646,26 +1934,50 @@ void main() {
     await tester.pumpWidget(const _TestApp());
     await tester.pumpAndSettle();
 
-    expect(
-      find.byKey(const ValueKey('home-review-unavailable-card')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('home-attention-card')), findsOneWidget);
     expect(
       find.byKey(const ValueKey('home-review-unavailable-retry')),
       findsOneWidget,
     );
-    expect(find.text('10.00 USD'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-card')),
+        matching: find.text('\$10.00'),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('No findings'), findsNothing);
     expect(
       tester
           .getSemantics(
-            find.byKey(const ValueKey('home-review-unavailable-card')),
+            find.byKey(const ValueKey('home-review-unavailable-content')),
           )
           .flagsCollection
           .isLiveRegion,
       isTrue,
     );
   });
+
+  testWidgets(
+    'Home preserves loaded review items when duplicate detection fails',
+    (tester) async {
+      duplicateGroups.fail = true;
+
+      await tester.pumpWidget(const _TestApp());
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('home-review-unavailable-card')),
+        findsNothing,
+      );
+      expect(find.byKey(const ValueKey('home-attention-card')), findsOneWidget);
+      expect(find.text('1 merchant to review'), findsOneWidget);
+      expect(
+        find.text('Possible duplicate detection unavailable'),
+        findsOneWidget,
+      );
+    },
+  );
 }
 
 class _TestApp extends StatelessWidget {
@@ -857,7 +2169,9 @@ final class _Rules implements AnalysisRuleRepository {
   }) async {}
 }
 
-AnalysisRuleDefinition _homeInsightRule() => AnalysisRuleDefinition(
+AnalysisRuleDefinition _homeInsightRule({
+  RuleGrouping grouping = RuleGrouping.none,
+}) => AnalysisRuleDefinition(
   identity: RuleIdentity('ANL-R099'),
   version: RuleVersion('1.0.0'),
   schemaVersion: '1.0.0',
@@ -872,7 +2186,7 @@ AnalysisRuleDefinition _homeInsightRule() => AnalysisRuleDefinition(
     field: 'amount',
     currencyBasis: CurrencyBasis.baseCurrency,
   ),
-  grouping: RuleGrouping.none,
+  grouping: grouping,
   baseline: RuleBaseline.previousEquivalentPeriod,
   condition: RuleCondition(
     operator: 'gt',
@@ -916,7 +2230,11 @@ AnalysisRuleDefinition _categoryRule() => AnalysisRuleDefinition(
   definitionHash: RuleDefinitionHash('d' * 64),
 );
 
-AnalysisMetric _categoryMetric() {
+AnalysisMetric _categoryMetric({
+  AnalysisDataAvailability availability = AnalysisDataAvailability.sufficient,
+  String value = '1234567.89',
+  String currency = 'USD',
+}) {
   final context = AnalysisContext(
     period: AnalysisPeriod(
       startDate: '2026-09-01',
@@ -925,18 +2243,81 @@ AnalysisMetric _categoryMetric() {
     ),
     datasetMode: DatasetMode.allEligible,
     currencyBasis: CurrencyBasis.baseCurrency,
-    baseCurrency: CurrencyCode('USD'),
+    baseCurrency: CurrencyCode(currency),
   );
   return AnalysisMetric(
     id: 'category-result',
     rule: _categoryRule(),
     context: context,
-    value: DecimalValue.parse('1234567.89'),
-    currency: CurrencyCode('USD'),
+    value: DecimalValue.parse(value),
+    currency: CurrencyCode(currency),
     dimension: 'CAT-001:categorySpending',
+    availability: availability,
     calculatedAt: DateTime.utc(2026, 9, 16),
   );
 }
+
+AnalysisContext _homeInsightContext(String periodType) => AnalysisContext(
+  period: AnalysisPeriod(
+    startDate: '2026-09-01',
+    endDate: '2026-09-16',
+    timeZoneId: 'UTC',
+  ),
+  datasetMode: DatasetMode.allEligible,
+  currencyBasis: CurrencyBasis.baseCurrency,
+  baseCurrency: CurrencyCode('USD'),
+  periodType: periodType,
+);
+
+Future<void> _pumpHomeInsight(WidgetTester tester, String periodType) async {
+  final context = _homeInsightContext(periodType);
+  final insight = InsightResult(
+    outputType: InsightOutputType.pattern,
+    rule: _homeInsightRule(grouping: RuleGrouping.category),
+    context: context,
+    baselineContext: context,
+    percentageChange: DecimalValue.parse('28'),
+    dimension: 'restaurants',
+  );
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: AppTheme.light,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: homeInsightForTest(
+          insight,
+          masterData: const TransactionMasterData(
+            categoryNames: {'restaurants': 'Restaurants'},
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+AnalysisComparison _comparison(String change) => AnalysisComparison(
+  currentValue: DecimalValue.parse('10'),
+  baselineValue: DecimalValue.parse('8'),
+  absoluteChange: DecimalValue.parse(change),
+  percentageChange: DecimalValue.parse('25'),
+  availability: AnalysisDataAvailability.sufficient,
+);
+
+Text _lastTextIn(WidgetTester tester, String key) => tester
+    .widgetList<Text>(
+      find.descendant(
+        of: find.byKey(ValueKey(key)),
+        matching: find.byType(Text),
+      ),
+    )
+    .last;
 
 final class _PaymentSources implements PaymentSourceRepository {
   @override
@@ -963,6 +2344,46 @@ final class _Merchants implements MerchantRepository {
 
   @override
   Future<void> save(Merchant merchant) async {}
+}
+
+final class _DuplicateGroups implements DuplicateCandidateGroupRepository {
+  final values = <DuplicateCandidateGroup>[];
+  bool fail = false;
+
+  @override
+  Future<List<DuplicateCandidateGroup>> list({
+    DuplicateCandidateGroupStatus? status,
+  }) async {
+    if (fail) {
+      throw const RepositoryException(
+        RepositoryFailureCode.unavailable,
+        'duplicate query failed',
+      );
+    }
+    return values
+        .where((group) => status == null || group.status == status)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<List<DuplicateTransactionGroupMatch>>
+  findActiveDuplicateGroups() async => const [];
+
+  @override
+  Future<List<TransactionId>> findActiveTransactionIdsForKey(
+    DuplicateTransactionKey key,
+  ) async => const [];
+
+  @override
+  Future<void> save(DuplicateCandidateGroup group) async {
+    values.removeWhere((value) => value.id == group.id);
+    values.add(group);
+  }
+
+  @override
+  Future<void> remove(String id) async {
+    values.removeWhere((value) => value.id == id);
+  }
 }
 
 final class _Categories implements CategoryRepository {

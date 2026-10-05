@@ -38,6 +38,138 @@ void main() {
     },
   );
 
+  test(
+    'saves manual, updated, and imported transactions when merchant enrichment fails',
+    () async {
+      final merchants = ThrowingMerchants();
+
+      final created =
+          await CreateTransaction(transactions, clock, merchants: merchants)(
+            CreateTransactionCommand(
+              id: 'manual-enrichment-failure',
+              provenanceId: 'manual-enrichment-failure-provenance',
+              timing: KnownTransactionTime(now),
+              money: money('12.50'),
+              direction: TransactionDirection.expense,
+              rawCounterparty: 'Unknown merchant',
+            ),
+          );
+      expect(created, isA<ApplicationSuccess<TransactionDto>>());
+      expect(
+        transactions.values['manual-enrichment-failure']!.reviewIssues,
+        isEmpty,
+      );
+
+      transactions.values['updated-enrichment-failure'] = transaction(
+        now,
+        id: 'updated-enrichment-failure',
+        rawCounterparty: 'Unknown merchant',
+      );
+      final updated =
+          await UpdateTransaction(transactions, clock, merchants: merchants)(
+            UpdateTransactionCommand(
+              id: 'updated-enrichment-failure',
+              timing: KnownTransactionTime(now),
+              money: money('13.50'),
+              direction: TransactionDirection.expense,
+              rawCounterparty: 'Unknown merchant',
+            ),
+          );
+      expect(updated, isA<ApplicationSuccess<TransactionDto>>());
+      expect(
+        transactions.values['updated-enrichment-failure']!.reviewIssues,
+        isEmpty,
+      );
+
+      final imported =
+          await ImportTransaction(transactions, clock, merchants: merchants)(
+            ImportTransactionCommand(
+              id: 'import-enrichment-failure',
+              provenanceId: 'import-enrichment-failure-provenance',
+              sourceId: 'transactions.csv',
+              originalRepresentation: 'Unknown merchant,12.50',
+              money: money('12.50'),
+              direction: TransactionDirection.expense,
+              transactionDate: '2026-08-09',
+              rawCounterparty: 'Unknown merchant',
+            ),
+          );
+      expect(imported, isA<ApplicationSuccess<TransactionDto>>());
+      expect(
+        transactions.values['import-enrichment-failure']!.reviewIssues,
+        isEmpty,
+      );
+    },
+  );
+
+  test(
+    'AssignMerchant saves the assignment when merchant enrichment fails',
+    () async {
+      final merchants = ThrowingMerchants(
+        known: Merchant(
+          id: MerchantId('merchant.known'),
+          name: 'Known merchant',
+        ),
+      );
+      transactions.values['assign-enrichment-failure'] = transaction(
+        now,
+        id: 'assign-enrichment-failure',
+        rawCounterparty: 'Unknown merchant',
+      );
+
+      final result = await AssignMerchant(transactions, merchants, clock)(
+        'assign-enrichment-failure',
+        'merchant.known',
+      );
+
+      expect(result, isA<ApplicationSuccess<TransactionDto>>());
+      expect(
+        transactions.values['assign-enrichment-failure']!.merchantId,
+        MerchantId('merchant.known'),
+      );
+    },
+  );
+
+  test(
+    'startup reconciliation repairs merchant review state after enrichment recovers',
+    () async {
+      final merchants = ThrowingMerchants();
+      final created =
+          await CreateTransaction(transactions, clock, merchants: merchants)(
+            CreateTransactionCommand(
+              id: 'reconcile-enrichment-failure',
+              provenanceId: 'reconcile-enrichment-failure-provenance',
+              timing: KnownTransactionTime(now),
+              money: money('12.50'),
+              direction: TransactionDirection.expense,
+              rawCounterparty: 'Unknown merchant',
+            ),
+          );
+      expect(created, isA<ApplicationSuccess<TransactionDto>>());
+      expect(
+        transactions.values['reconcile-enrichment-failure']!.reviewIssues,
+        isEmpty,
+      );
+
+      final recoveredMerchants = MemoryMerchants();
+      final result = await SynchronizeMerchantReviewIssues(
+        transactions,
+        recoveredMerchants,
+        clock.now,
+      )();
+
+      expect(result, isA<ApplicationSuccess<int>>());
+      expect(
+        transactions
+            .values['reconcile-enrichment-failure']!
+            .reviewIssues
+            .single
+            .status,
+        ReviewIssueStatus.active,
+      );
+    },
+  );
+
   test('rejects a missing or nested subcategory parent', () async {
     final categories = MemoryCategories();
     final save = SaveCategory(categories);
@@ -286,6 +418,172 @@ void main() {
     expect(await resolve('foo premium'), 'merchant.specific');
     expect(await resolve('same evidence'), 'merchant.tie-a');
   });
+
+  test(
+    'AssignMerchant synchronizes the merchant review issue lifecycle',
+    () async {
+      final merchants = MemoryMerchants();
+      await merchants.save(
+        Merchant(
+          id: MerchantId('merchant.known'),
+          name: 'Known merchant',
+          defaultCategoryId: CategoryId('category.test'),
+        ),
+      );
+      final issue = ReviewIssue(
+        id: ReviewIssueId('$merchantReviewIssuePrefix${'transaction-1'}'),
+        transactionId: TransactionId('transaction-1'),
+        reason: ReviewIssueReason.merchantNeedsReview,
+        createdAt: now,
+      );
+      transactions.values['transaction-1'] = transaction(
+        now,
+        rawCounterparty: 'Unknown merchant',
+        reviewIssues: [issue],
+      );
+
+      final useCase = AssignMerchant(transactions, merchants, clock);
+      final assigned = await useCase('transaction-1', 'merchant.known');
+      expect(assigned, isA<ApplicationSuccess<TransactionDto>>());
+      expect(
+        transactions.values['transaction-1']!.merchantId?.value,
+        'merchant.known',
+      );
+      expect(
+        transactions.values['transaction-1']!.reviewIssues.single.status,
+        ReviewIssueStatus.resolved,
+      );
+
+      final cleared = await useCase('transaction-1', null);
+      expect(cleared, isA<ApplicationSuccess<TransactionDto>>());
+      expect(transactions.values['transaction-1']!.merchantId, isNull);
+      expect(
+        transactions.values['transaction-1']!.reviewIssues.single.status,
+        ReviewIssueStatus.active,
+      );
+    },
+  );
+
+  test(
+    'AssignMerchant does not reopen a resolved issue for deterministic merchant evidence',
+    () async {
+      final matchTime = DateTime.utc(2026, 8, 9);
+      final cases = [
+        (
+          evidence: 'Safeway',
+          merchant: Merchant(
+            id: MerchantId('merchant.canonical'),
+            name: 'Safeway',
+            defaultCategoryId: CategoryId('category.test'),
+          ),
+        ),
+        (
+          evidence: 'Market alias terminal',
+          merchant: Merchant(
+            id: MerchantId('merchant.alias'),
+            name: 'Market',
+            defaultCategoryId: CategoryId('category.test'),
+            aliases: [
+              MerchantAlias(
+                id: MerchantAliasId('alias.market'),
+                merchantId: MerchantId('merchant.alias'),
+                alias: 'Market alias',
+                createdAt: matchTime,
+                updatedAt: matchTime,
+              ),
+            ],
+          ),
+        ),
+        (
+          evidence: 'Premium service charge',
+          merchant: Merchant(
+            id: MerchantId('merchant.pattern'),
+            name: 'Premium',
+            defaultCategoryId: CategoryId('category.test'),
+            normalizationPatterns: [
+              MerchantNormalizationPattern(
+                id: MerchantNormalizationPatternId('pattern.premium'),
+                merchantId: MerchantId('merchant.pattern'),
+                pattern: 'Premium service',
+                createdAt: matchTime,
+                updatedAt: matchTime,
+              ),
+            ],
+          ),
+        ),
+      ];
+
+      for (final entry in cases.indexed) {
+        final index = entry.$1;
+        final evidence = entry.$2.evidence;
+        final merchant = entry.$2.merchant;
+        final localTransactions = MemoryTransactions();
+        final localMerchants = MemoryMerchants();
+        await localMerchants.save(merchant);
+        final transactionId = 'transaction-${index + 1}';
+        final issue = ReviewIssue(
+          id: ReviewIssueId('$merchantReviewIssuePrefix$transactionId'),
+          transactionId: TransactionId(transactionId),
+          reason: ReviewIssueReason.merchantNeedsReview,
+          createdAt: now,
+          status: ReviewIssueStatus.resolved,
+          closedAt: now,
+        );
+        localTransactions.values[transactionId] = transaction(
+          now,
+          id: transactionId,
+          rawCounterparty: evidence,
+          reviewIssues: [issue],
+        );
+
+        final useCase = AssignMerchant(
+          localTransactions,
+          localMerchants,
+          clock,
+        );
+        expect(
+          await useCase(transactionId, merchant.id.value),
+          isA<ApplicationSuccess<TransactionDto>>(),
+        );
+        expect(
+          await useCase(transactionId, null),
+          isA<ApplicationSuccess<TransactionDto>>(),
+        );
+        expect(localTransactions.values[transactionId]!.merchantId, isNull);
+        expect(
+          localTransactions.values[transactionId]!.reviewIssues.single.status,
+          ReviewIssueStatus.resolved,
+        );
+      }
+    },
+  );
+
+  test(
+    'startup synchronization backfills legacy merchant review issues',
+    () async {
+      transactions.values['legacy-transaction'] = transaction(
+        now,
+        id: 'legacy-transaction',
+        rawCounterparty: 'Unknown merchant',
+      );
+
+      final result = await SynchronizeMerchantReviewIssues(
+        transactions,
+        MemoryMerchants(),
+        clock.now,
+      )();
+
+      expect(result, isA<ApplicationSuccess<int>>());
+      expect(
+        transactions.values['legacy-transaction']!.reviewIssues.single.status,
+        ReviewIssueStatus.active,
+      );
+      expect(
+        transactions.values['legacy-transaction']!.reviewIssues.single.reason,
+        ReviewIssueReason.merchantNeedsReview,
+      );
+    },
+  );
 
   test(
     'receipt creation is idempotent and preserves reviewed fields',
@@ -1257,6 +1555,27 @@ final class MemoryMerchants implements MerchantRepository {
       values[merchant.id.value] = merchant;
 }
 
+final class ThrowingMerchants implements MerchantRepository {
+  ThrowingMerchants({this.known});
+
+  final Merchant? known;
+
+  @override
+  Future<Merchant?> findById(MerchantId id) async =>
+      known?.id == id ? known : null;
+
+  @override
+  Future<List<Merchant>> listAll() async {
+    throw const RepositoryException(
+      RepositoryFailureCode.unavailable,
+      'list merchants',
+    );
+  }
+
+  @override
+  Future<void> save(Merchant merchant) async {}
+}
+
 final class MemoryCategories implements CategoryRepository {
   final values = <String, Category>{};
 
@@ -1344,6 +1663,8 @@ Transaction transaction(
   DateTime now, {
   String id = 'transaction-1',
   String? transactionDate,
+  String? rawCounterparty,
+  List<ReviewIssue> reviewIssues = const [],
 }) => Transaction(
   id: TransactionId(id),
   timing: KnownTransactionTime(now),
@@ -1351,6 +1672,7 @@ Transaction transaction(
   direction: TransactionDirection.expense,
   sourceType: TransactionSourceType.manual,
   description: 'Lunch',
+  rawCounterparty: rawCounterparty,
   provenance: [
     Provenance(
       id: ProvenanceId('provenance-1'),
@@ -1361,4 +1683,5 @@ Transaction transaction(
   createdAt: now,
   updatedAt: now,
   transactionDate: transactionDate,
+  reviewIssues: reviewIssues,
 );

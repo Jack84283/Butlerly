@@ -23,10 +23,14 @@ final class HomeOverview {
     required List<MonthlySpendingTrendPoint> monthlyTrend,
     required bool monthlyTrendUnavailable,
     required int reviewCount,
+    required int uncategorizedTransactionCount,
+    required int possibleDuplicateCount,
+    required int merchantReviewCount,
     required List<TransactionDto> recentTransactions,
     required List<InsightResult> insights,
     required bool analysisUnavailable,
     required bool reviewUnavailable,
+    required bool duplicateUnavailable,
   }) : this._(
          status: HomeOverviewStatus.available,
          context: context,
@@ -36,10 +40,14 @@ final class HomeOverview {
          monthlyTrend: monthlyTrend,
          monthlyTrendUnavailable: monthlyTrendUnavailable,
          reviewCount: reviewCount,
+         uncategorizedTransactionCount: uncategorizedTransactionCount,
+         possibleDuplicateCount: possibleDuplicateCount,
+         merchantReviewCount: merchantReviewCount,
          recentTransactions: recentTransactions,
          insights: insights,
          analysisUnavailable: analysisUnavailable,
          reviewUnavailable: reviewUnavailable,
+         duplicateUnavailable: duplicateUnavailable,
        );
 
   const HomeOverview.transactionsUnavailable({
@@ -65,10 +73,14 @@ final class HomeOverview {
     this.monthlyTrend = const [],
     this.monthlyTrendUnavailable = true,
     this.reviewCount = 0,
+    this.uncategorizedTransactionCount = 0,
+    this.possibleDuplicateCount = 0,
+    this.merchantReviewCount = 0,
     this.recentTransactions = const [],
     this.insights = const [],
     this.analysisUnavailable = false,
     this.reviewUnavailable = false,
+    this.duplicateUnavailable = false,
   });
 
   final HomeOverviewStatus status;
@@ -88,6 +100,9 @@ final class HomeOverview {
   final bool monthlyTrendUnavailable;
 
   final int reviewCount;
+  final int uncategorizedTransactionCount;
+  final int possibleDuplicateCount;
+  final int merchantReviewCount;
 
   final List<TransactionDto> recentTransactions;
 
@@ -95,4 +110,5 @@ final class HomeOverview {
 
   final bool analysisUnavailable;
   final bool reviewUnavailable;
+  final bool duplicateUnavailable;
 }
