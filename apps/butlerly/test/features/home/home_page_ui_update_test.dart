@@ -243,12 +243,17 @@ void main() {
         find.byKey(const ValueKey('home-summary-metric-savings')),
         findsNothing,
       );
-      for (final key in const [
-        'home-summary-inner-spending',
-        'home-summary-inner-income',
-        'home-summary-inner-net-position',
-      ]) {
-        expect(find.byKey(ValueKey(key)), findsOneWidget);
+      final innerCards = [
+        for (final key in const [
+          'home-summary-inner-spending',
+          'home-summary-inner-income',
+          'home-summary-inner-net-position',
+        ])
+          find.byKey(ValueKey(key)),
+      ];
+      for (final card in innerCards) {
+        expect(card, findsOneWidget);
+        expect(tester.getSize(card).height, closeTo(128, 0.01));
       }
       expect(tester.takeException(), isNull);
     },
@@ -509,8 +514,8 @@ void main() {
       expect(tester.getSize(monthSurface).height, lessThan(44));
       expect(tester.getSize(trendSurface).height, lessThan(44));
       expect(
-        tester.getSize(monthSurface).height,
-        closeTo(tester.getSize(trendSurface).height, 0.1),
+        tester.getSize(trendSurface).height,
+        lessThan(tester.getSize(monthSurface).height),
       );
 
       final headerTitle = find.descendant(
@@ -533,7 +538,14 @@ void main() {
         closeTo(0, 1),
       );
       await tester.ensureVisible(trendSelector);
-      await tester.tap(trendSelector);
+      await tester.pumpAndSettle();
+      final surfaceRect = tester.getRect(trendSurface);
+      final selectorRect = tester.getRect(trendSelector);
+      expect(surfaceRect.top, greaterThanOrEqualTo(selectorRect.top));
+      expect(surfaceRect.bottom, lessThanOrEqualTo(selectorRect.bottom));
+      await tester.tapAt(
+        Offset(surfaceRect.center.dx, surfaceRect.top + 1),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('Last 3 months'), findsOneWidget);
