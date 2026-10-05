@@ -1008,7 +1008,7 @@ class _HomeSummaryMetricTile extends StatelessWidget {
     child: Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: ButlerlySpacing.small,
-        vertical: ButlerlySpacing.compact,
+        vertical: ButlerlySpacing.micro,
       ),
       child: child,
     ),
@@ -1101,26 +1101,53 @@ class _HomeMetricCell extends StatelessWidget {
           '$label, ${displayUnavailable ? context.l10n.text('notAvailable') : displayValue}'
           '${semanticSupport.isEmpty ? '' : ', $semanticSupport'}',
       child: Column(
+        mainAxisAlignment: stacked
+            ? MainAxisAlignment.start
+            : MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 32,
-            height: 32,
+            width: stacked ? 32 : 28,
+            height: stacked ? 32 : 28,
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             child: Icon(
               icon,
-              size: 18,
+              size: stacked ? 18 : 16,
               color: ButlerlyCategoryColors.whiteGlyph,
             ),
           ),
-          const SizedBox(height: ButlerlySpacing.compact),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: ButlerlyTypography.homeSummaryMetricLabel(
-              Theme.of(context).textTheme.labelLarge ?? const TextStyle(),
-            ).copyWith(color: context.colors.secondaryText),
+          SizedBox(
+            height: stacked
+                ? ButlerlySpacing.compact
+                : ButlerlySpacing.micro,
           ),
+          if (stacked)
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: ButlerlyTypography.homeSummaryMetricLabel(
+                Theme.of(context).textTheme.labelLarge ?? const TextStyle(),
+              ).copyWith(color: context.colors.secondaryText),
+            )
+          else
+            SizedBox(
+              height: 18,
+              width: double.infinity,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.center,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  softWrap: false,
+                  textAlign: TextAlign.center,
+                  style: ButlerlyTypography.homeSummaryMetricLabel(
+                    Theme.of(context).textTheme.labelLarge ??
+                        const TextStyle(),
+                  ).copyWith(color: context.colors.secondaryText),
+                ),
+              ),
+            ),
           const SizedBox(height: ButlerlySpacing.xxs),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -1136,6 +1163,7 @@ class _HomeMetricCell extends StatelessWidget {
               );
               return SizedBox(
                 width: constraints.maxWidth,
+                height: stacked ? null : 18,
                 child: stacked
                     ? valueText
                     : FittedBox(
@@ -1146,23 +1174,57 @@ class _HomeMetricCell extends StatelessWidget {
               );
             },
           ),
-          const SizedBox(height: ButlerlySpacing.micro),
-          Text(
-            !valueUnavailable &&
-                    !metricUnavailable &&
-                    support != null &&
-                    support.isNotEmpty
-                ? support
-                : ' ',
-            maxLines: 1,
-            overflow: TextOverflow.clip,
-            textAlign: TextAlign.center,
-            softWrap: false,
-            style: ButlerlyTypography.homeSummaryMetricChange(
-              Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
-            ).copyWith(color: supportingColor ?? context.colors.secondaryText),
+          SizedBox(
+            height: stacked
+                ? ButlerlySpacing.micro
+                : ButlerlySpacing.xxs,
           ),
-          if (!valueUnavailable &&
+          if (stacked)
+            Text(
+              !valueUnavailable &&
+                      !metricUnavailable &&
+                      support != null &&
+                      support.isNotEmpty
+                  ? support
+                  : ' ',
+              maxLines: 1,
+              overflow: TextOverflow.clip,
+              textAlign: TextAlign.center,
+              softWrap: false,
+              style: ButlerlyTypography.homeSummaryMetricChange(
+                Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+              ).copyWith(
+                color: supportingColor ?? context.colors.secondaryText,
+              ),
+            )
+          else
+            SizedBox(
+              height: 16,
+              width: double.infinity,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.center,
+                child: Text(
+                  !valueUnavailable &&
+                          !metricUnavailable &&
+                          support != null &&
+                          support.isNotEmpty
+                      ? support
+                      : ' ',
+                  maxLines: 1,
+                  softWrap: false,
+                  textAlign: TextAlign.center,
+                  style: ButlerlyTypography.homeSummaryMetricChange(
+                    Theme.of(context).textTheme.bodySmall ??
+                        const TextStyle(),
+                  ).copyWith(
+                    color: supportingColor ?? context.colors.secondaryText,
+                  ),
+                ),
+              ),
+            ),
+          if (stacked &&
+              !valueUnavailable &&
               !metricUnavailable &&
               secondarySupport != null &&
               secondarySupport.isNotEmpty) ...[
