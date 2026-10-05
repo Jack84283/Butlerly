@@ -1,6 +1,7 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -351,6 +352,45 @@ void main() {
       tester.getTopLeft(find.text('Aug 14, 2026')).dy,
       greaterThan(tester.getTopLeft(find.textContaining('Visa ••••8421')).dy),
     );
+  });
+
+  testWidgets('dashboard row forwards persisted custom category color', (
+    tester,
+  ) async {
+    const customColorId = ButlerlyCategoryColorId.teal;
+    final categoryColor = ButlerlyCategoryColors.color(customColorId);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: const Scaffold(
+          body: ButlerlyTransactionListItem(
+            title: 'Custom purchase',
+            amount: '18.00',
+            currency: 'USD',
+            categoryId: 'custom.category.work',
+            categoryColorId: customColorId,
+            categoryLabel: 'Work projects',
+            showCategoryPill: true,
+            variant: ButlerlyTransactionRowVariant.dashboard,
+          ),
+        ),
+      ),
+    );
+
+    final badge = find.byType(ButlerlyCategoryBadge);
+    expect(badge, findsOneWidget);
+    final decoratedBox = tester.widget<DecoratedBox>(
+      find.descendant(of: badge, matching: find.byType(DecoratedBox)),
+    );
+    final decoration = decoratedBox.decoration as BoxDecoration;
+    expect(
+      decoration.color,
+      categoryColor.withValues(
+        alpha: ButlerlyTransactionItemTokens.categoryBadgeBackgroundOpacityDark,
+      ),
+    );
+    expect(find.text('Work projects'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('dashboard metadata omits separators for missing values', (
