@@ -936,7 +936,7 @@ class _HomeSummaryCard extends StatelessWidget {
                       const SizedBox(width: ButlerlySpacing.compact),
                     Expanded(
                       child: SizedBox(
-                        height: 128,
+                        height: 176,
                         child: _HomeSummaryMetricTile(
                           key: tileKeys[index],
                           child: layoutCells[index],
@@ -1368,14 +1368,13 @@ class _HomeTrendPlot extends StatelessWidget {
         .map((point) => point.value)
         .fold<double>(0, (left, right) => left > right ? left : right);
     final scaleMax = _trendScaleMax(maxValue);
-    final naturalChartHeight = math
+    final textScaler = MediaQuery.textScalerOf(context);
+    final chartHeight = math
         .max(
-          156.0,
-          MediaQuery.textScalerOf(context).scale(18) * 5 +
-              ButlerlySpacing.section * 4,
+          112.0,
+          textScaler.scale(16) * 6 + ButlerlySpacing.compact,
         )
         .toDouble();
-    final chartHeight = naturalChartHeight / 2;
     return SizedBox(
       key: const ValueKey('home-spending-trend-chart'),
       height: chartHeight,
