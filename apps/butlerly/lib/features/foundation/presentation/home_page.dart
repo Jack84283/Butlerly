@@ -1013,7 +1013,7 @@ class _HomeMetricCell extends StatelessWidget {
   );
 
   bool requiresStackedLayout(BuildContext context, double maxWidth) {
-    const minimumReadableScale = 0.50;
+    const minimumReadableScale = 0.25;
     final valueStyle = ButlerlyTypography.homeSummaryMetricValue(
       Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
     );
