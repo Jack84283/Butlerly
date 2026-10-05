@@ -388,6 +388,52 @@ void main() {
   });
 }
 
+
+  testWidgets('dark selection sheet makes choices visibly distinct', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(useMaterial3: true),
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => FilledButton(
+              key: const ValueKey('open-dark-selection'),
+              onPressed: () => showButlerlySelectionSheet<String>(
+                context: context,
+                title: 'Choose one',
+                selectedValue: 'two',
+                options: const [
+                  ButlerlySelectionOption(value: 'one', child: Text('One')),
+                  ButlerlySelectionOption(value: 'two', child: Text('Two')),
+                ],
+              ),
+              child: const Text('Open'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('open-dark-selection')));
+    await tester.pumpAndSettle();
+
+    final oneTile = tester.widget<Ink>(
+      find.ancestor(of: find.text('One'), matching: find.byType(Ink)).first,
+    );
+    final twoTile = tester.widget<Ink>(
+      find.ancestor(of: find.text('Two'), matching: find.byType(Ink)).first,
+    );
+    expect(oneTile.decoration, isA<BoxDecoration>());
+    expect(twoTile.decoration, isA<BoxDecoration>());
+    final oneDecoration = oneTile.decoration! as BoxDecoration;
+    final twoDecoration = twoTile.decoration! as BoxDecoration;
+    expect(oneDecoration.border, isNotNull);
+    expect(twoDecoration.border, isNotNull);
+    expect(oneDecoration.color, isNot(equals(twoDecoration.color)));
+    expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+  });
+
 Widget _testApp(Widget child) => MaterialApp(
   home: Scaffold(body: Center(child: child)),
 );
