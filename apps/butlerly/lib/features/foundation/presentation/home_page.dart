@@ -931,11 +931,7 @@ class _HomeSummaryCard extends StatelessWidget {
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (
-                    var index = 0;
-                    index < layoutCells.length;
-                    index++
-                  ) ...[
+                  for (var index = 0; index < layoutCells.length; index++) ...[
                     if (index > 0)
                       const SizedBox(width: ButlerlySpacing.compact),
                     Expanded(
