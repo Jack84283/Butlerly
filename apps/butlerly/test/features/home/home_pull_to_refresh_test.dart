@@ -180,7 +180,7 @@ void main() {
     expect(find.text('Insights'), findsOneWidget);
     expect(find.text('Sep 2026'), findsOneWidget);
     expect(
-      find.text("Here's your financial overview for September 2026."),
+      find.text("Your financial data for September 2026."),
       findsOneWidget,
     );
     expect(find.text('vs previous period'), findsOneWidget);
@@ -211,7 +211,7 @@ void main() {
       summaryTitle.style?.fontFamily,
       isNot(ButlerlyTypography.editorialFontFamily),
     );
-    expect(summaryTitle.style?.fontSize, 18);
+    expect(summaryTitle.style?.fontSize, 16);
     final summaryAmount = tester.widget<Text>(
       find.descendant(
         of: find.byKey(const ValueKey('home-summary-card')),
@@ -887,83 +887,91 @@ void main() {
     expect(find.text(r'$0.00'), findsNothing);
   });
 
-  testWidgets('Home Summary uses the active text scale when deciding fit', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
-    tester.view.platformDispatcher.textScaleFactorTestValue = 1.2;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
+  testWidgets(
+    'Home Summary keeps populated metrics horizontal with mild text scaling',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.devicePixelRatio = 1;
+      tester.view.platformDispatcher.textScaleFactorTestValue = 1.2;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
 
-    final context = AnalysisContext(
-      period: AnalysisPeriod(
-        startDate: '2026-09-01',
-        endDate: '2026-09-16',
-        timeZoneId: 'UTC',
-      ),
-      datasetMode: DatasetMode.allEligible,
-      currencyBasis: CurrencyBasis.baseCurrency,
-      baseCurrency: CurrencyCode('USD'),
-    );
-    final model = AnalysisOverview(
-      spending: _categoryMetric(value: '9999.99'),
-      income: _categoryMetric(value: '4150.00'),
-      savings: AnalysisValue(
-        value: DecimalValue.parse('1809.82'),
-        currency: CurrencyCode('USD'),
-        context: context,
-      ),
-      net: _categoryMetric(value: '1809.82'),
-      insightUnavailable: false,
-      trend: const [],
-      categories: const [],
-      qualityCount: 0,
-      qualityEvaluated: true,
-      qualityLimited: false,
-    );
+      final context = AnalysisContext(
+        period: AnalysisPeriod(
+          startDate: '2026-09-01',
+          endDate: '2026-09-16',
+          timeZoneId: 'UTC',
+        ),
+        datasetMode: DatasetMode.allEligible,
+        currencyBasis: CurrencyBasis.baseCurrency,
+        baseCurrency: CurrencyCode('USD'),
+      );
+      final model = AnalysisOverview(
+        spending: _categoryMetric(value: '9999.99'),
+        income: _categoryMetric(value: '4150.00'),
+        savings: AnalysisValue(
+          value: DecimalValue.parse('1809.82'),
+          currency: CurrencyCode('USD'),
+          context: context,
+        ),
+        net: _categoryMetric(value: '1809.82'),
+        insightUnavailable: false,
+        trend: const [],
+        categories: const [],
+        qualityCount: 0,
+        qualityEvaluated: true,
+        qualityLimited: false,
+      );
 
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: _summaryTestTheme(),
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
-          body: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: ButlerlySize.contentGutter,
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: _summaryTestTheme(),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: ButlerlySize.contentGutter,
+              ),
+              child: homeSummaryForTest(model),
             ),
-            child: homeSummaryForTest(model),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    final metricKeys = [
-      const ValueKey('home-summary-metric-spending'),
-      const ValueKey('home-summary-metric-income'),
-      const ValueKey('home-summary-metric-savings'),
-      const ValueKey('home-summary-metric-net-position'),
-    ];
-    final metricTops = [
-      for (final key in metricKeys) tester.getTopLeft(find.byKey(key)).dy,
-    ];
-    for (var index = 1; index < metricTops.length; index++) {
-      expect(metricTops[index], greaterThan(metricTops[index - 1]));
-    }
-    final value = tester.widget<Text>(find.text('\$9,999.99'));
-    expect(value.style?.fontSize, 14);
-    expect(value.softWrap, isTrue);
-    expect(value.maxLines, isNull);
-    expect(tester.takeException(), isNull);
-  });
+      final metricKeys = [
+        const ValueKey('home-summary-metric-spending'),
+        const ValueKey('home-summary-metric-income'),
+        const ValueKey('home-summary-metric-savings'),
+        const ValueKey('home-summary-metric-net-position'),
+      ];
+      final metricTops = [
+        for (final key in metricKeys) tester.getTopLeft(find.byKey(key)).dy,
+      ];
+      for (final top in metricTops.skip(1)) {
+        expect(top, closeTo(metricTops.first, 0.01));
+      }
+      final spendingCell = find.byKey(
+        const ValueKey('home-summary-metric-spending'),
+      );
+      final value = tester.widget<Text>(find.text('\$9,999.99'));
+      expect(value.style?.fontSize, 14);
+      expect(value.softWrap, isFalse);
+      expect(value.maxLines, 1);
+      expect(
+        find.descendant(of: spendingCell, matching: find.byType(FittedBox)),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('Home Summary keeps reference amounts on one line', (
     tester,
