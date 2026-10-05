@@ -940,7 +940,7 @@ class _HomeSummaryCard extends StatelessWidget {
                       const SizedBox(width: ButlerlySpacing.compact),
                     Expanded(
                       child: SizedBox(
-                        height: 152,
+                        height: 140,
                         child: _HomeSummaryMetricTile(
                           key: tileKeys[index],
                           child: layoutCells[index],
