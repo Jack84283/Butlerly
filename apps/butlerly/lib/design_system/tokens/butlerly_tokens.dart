@@ -25,7 +25,7 @@ abstract final class ButlerlySpacing {
 
   static const pagePadding = small;
   static const contentPadding = standard;
-  static const cardPadding = small;
+  static const cardPadding = standard;
   static const cardGap = small;
   static const sectionSpacing = section;
   static const compactActionSpacing = compact;
@@ -179,8 +179,8 @@ abstract final class ButlerlyRadius {
   static const full = 999.0;
   static const control = small;
   static const input = standard;
-  static const card = standard;
-  static const dashboardCard = 16.0;
+  static const card = 16.0;
+  static const dashboardCard = card;
   static const sheet = large;
   static const dialog = large;
   static const pill = full;
@@ -272,10 +272,10 @@ abstract final class ButlerlyAccessibility {
 abstract final class ButlerlyElevation {
   static const base = 0.0;
   static const raised = 0.0;
-  static const dashboardCard = 2.0;
+  static const card = 2.0;
+  static const dashboardCard = card;
   static const overlay = 4.0;
   static const modal = 8.0;
-  static const card = raised;
   static const dialog = modal;
   static const bottomSheet = modal;
   static const floating = overlay;

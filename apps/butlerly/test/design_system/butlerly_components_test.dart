@@ -4,6 +4,7 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/features/foundation/presentation/add_page.dart';
 import 'package:butlerly/features/foundation/presentation/payment_sources_page.dart';
 import 'package:flutter/material.dart';
@@ -71,7 +72,7 @@ void main() {
           findsOneWidget,
         );
         for (final card in tester.widgetList<Card>(find.byType(Card))) {
-          expect(card.color ?? theme.cardTheme.color, colors.surface);
+          expect(card.color ?? theme.cardTheme.color, colors.cardSurface);
         }
       }
     }
@@ -110,24 +111,25 @@ void main() {
     },
   );
 
-  testWidgets('dashboard cards use scoped surface, edge, and depth styling', (
+  testWidgets('all shared card variants use one canonical visual shell', (
     tester,
   ) async {
     for (final theme in [AppTheme.light, AppTheme.dark]) {
       await tester.pumpWidget(
         MaterialApp(
           theme: theme,
-          home: Column(
+          home: const Column(
             children: [
-              const ButlerlyCard(
+              ButlerlyCard(
                 key: ValueKey('standard-card'),
                 child: SizedBox(height: 20),
               ),
-              const ButlerlyCard(
+              ButlerlyCard(
                 key: ValueKey('dashboard-card'),
                 variant: ButlerlyCardVariant.dashboard,
                 child: SizedBox(height: 20),
               ),
+              Card(key: ValueKey('raw-card'), child: SizedBox(height: 20)),
             ],
           ),
         ),
@@ -136,15 +138,113 @@ void main() {
 
       final cards = tester.widgetList<Card>(find.byType(Card)).toList();
       final colors = theme.extension<ButlerlySemanticColors>()!;
-      expect(cards[0].color ?? theme.cardTheme.color, colors.surface);
-      expect(cards[0].elevation, ButlerlyElevation.card);
-      expect(cards[1].color, colors.dashboardSurface);
-      expect(cards[1].elevation, ButlerlyElevation.dashboardCard);
-      expect(cards[1].shadowColor, isNotNull);
-      final shape = cards[1].shape! as RoundedRectangleBorder;
-      expect(shape.borderRadius, BorderRadius.circular(16));
-      expect(shape.side.color, colors.border);
+      expect(cards, hasLength(3));
+      for (final card in cards) {
+        expect(card.color ?? theme.cardTheme.color, colors.cardSurface);
+        expect(
+          card.elevation ?? theme.cardTheme.elevation,
+          ButlerlyElevation.card,
+        );
+        expect(card.shadowColor ?? theme.cardTheme.shadowColor, isNotNull);
+        final shape =
+            (card.shape ?? theme.cardTheme.shape)! as RoundedRectangleBorder;
+        expect(shape.borderRadius, BorderRadius.circular(ButlerlyRadius.card));
+        expect(shape.side.color, colors.border);
+      }
     }
+  });
+
+  testWidgets('card header keeps the title anchored above large actions', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: const Scaffold(
+          body: Padding(
+            padding: EdgeInsets.all(16),
+            child: SizedBox(
+              width: 320,
+              child: ButlerlyCardHeader(
+                title: 'Spending trend',
+                centerAction: true,
+                action: SizedBox(
+                  key: ValueKey('large-card-action'),
+                  width: 80,
+                  height: ButlerlySize.minimumTarget,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final title = find.text('Spending trend');
+    final action = find.byKey(const ValueKey('large-card-action'));
+    expect(title, findsOneWidget);
+    expect(action, findsOneWidget);
+    expect(tester.widget<Text>(title).style?.fontSize, 16);
+    expect(
+      tester.getTopLeft(title).dy,
+      closeTo(tester.getTopLeft(action).dy, 0.01),
+    );
+  });
+
+  testWidgets('category badge is compact, bright, readable, and untruncated', (
+    tester,
+  ) async {
+    const categoryId = 'f';
+    const label = 'Professional services';
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: const Scaffold(
+          body: SizedBox(
+            width: 120,
+            child: ButlerlyCategoryBadge(categoryId: categoryId, label: label),
+          ),
+        ),
+      ),
+    );
+
+    final badge = find.byType(ButlerlyCategoryBadge);
+    final text = tester.widget<Text>(find.text(label));
+    final decoratedBox = tester.widget<DecoratedBox>(
+      find.descendant(of: badge, matching: find.byType(DecoratedBox)),
+    );
+    final decoration = decoratedBox.decoration as BoxDecoration;
+    final colors = AppTheme.light.extension<ButlerlySemanticColors>()!;
+    final compositedBackground = Color.alphaBlend(
+      decoration.color!,
+      colors.cardSurface,
+    );
+    final foreground = text.style!.color!;
+    final firstLuminance = foreground.computeLuminance();
+    final secondLuminance = compositedBackground.computeLuminance();
+    final lighter = firstLuminance > secondLuminance
+        ? firstLuminance
+        : secondLuminance;
+    final darker = firstLuminance > secondLuminance
+        ? secondLuminance
+        : firstLuminance;
+    final contrast = (lighter + 0.05) / (darker + 0.05);
+
+    expect(
+      text.style?.fontSize,
+      ButlerlyTransactionItemTokens.categoryBadgeFontSize,
+    );
+    expect(
+      (decoration.border! as Border).top.color,
+      ButlerlyChartColors.category(categoryId).withValues(
+        alpha: ButlerlyTransactionItemTokens.categoryBadgeBorderOpacity,
+      ),
+    );
+    expect(contrast, greaterThanOrEqualTo(4.5));
+    expect(text.maxLines, isNull);
+    expect(text.overflow, isNull);
+    expect(text.softWrap, isTrue);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('page content surface fills the remaining viewport', (

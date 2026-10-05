@@ -591,10 +591,7 @@ class _LockedSearchCriteria extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            context.l10n.text('filters'),
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
+          ButlerlyCardHeader(title: context.l10n.text('filters')),
           const SizedBox(height: ButlerlySpacing.small),
           for (final criterion in criteria)
             Padding(

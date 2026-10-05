@@ -420,13 +420,8 @@ class _SettingsSectionCard extends StatelessWidget {
   final List<Widget> children;
 
   @override
-  Widget build(BuildContext context) => Material(
-    color: context.colors.subtleSurface,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-      side: BorderSide(color: context.colors.border),
-    ),
-    clipBehavior: Clip.antiAlias,
+  Widget build(BuildContext context) => ButlerlyCard(
+    padding: EdgeInsets.zero,
     child: ButlerlySeparatedList(children: children),
   );
 }

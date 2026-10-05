@@ -249,7 +249,7 @@ enum ButlerlyCardVariant { standard, dashboard }
 class ButlerlyCard extends StatelessWidget {
   const ButlerlyCard({
     required this.child,
-    this.padding = const EdgeInsets.all(ButlerlySpacing.standard),
+    this.padding = const EdgeInsets.all(ButlerlySpacing.cardPadding),
     this.onTap,
     this.semanticLabel,
     this.color,
@@ -266,28 +266,13 @@ class ButlerlyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dashboard = variant == ButlerlyCardVariant.dashboard;
-    final radius = dashboard
-        ? ButlerlyRadius.dashboardCard
-        : ButlerlyRadius.standard;
+    final radius = ButlerlyRadius.card;
     return Semantics(
       container: true,
       button: onTap != null,
       label: semanticLabel,
       child: Card(
-        color: color ?? (dashboard ? context.colors.dashboardSurface : null),
-        elevation: dashboard
-            ? ButlerlyElevation.dashboardCard
-            : ButlerlyElevation.card,
-        shadowColor: dashboard
-            ? Theme.of(context).colorScheme.shadow.withValues(alpha: 0.22)
-            : null,
-        shape: dashboard
-            ? RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(radius),
-                side: BorderSide(color: context.colors.border),
-              )
-            : null,
+        color: color,
         child: InkWell(
           borderRadius: BorderRadius.circular(radius),
           onTap: onTap,
@@ -330,13 +315,21 @@ class ButlerlyCardHeader extends StatelessWidget {
         children: [
           Text(
             title,
-            style: titleStyle ?? Theme.of(context).textTheme.titleLarge,
+            style:
+                titleStyle ??
+                ButlerlyTypography.compactCardTitle(
+                  Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
+                ),
           ),
           if (subtitle != null) ...[
             const SizedBox(height: ButlerlySpacing.micro),
             Text(
               subtitle!,
-              style: subtitleStyle ?? Theme.of(context).textTheme.bodySmall,
+              style:
+                  subtitleStyle ??
+                  ButlerlyTypography.cardSubtitle(
+                    Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+                  ),
             ),
           ],
         ],
@@ -347,17 +340,24 @@ class ButlerlyCardHeader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             titleBlock,
+            const SizedBox(height: ButlerlySpacing.compact),
             Align(alignment: AlignmentDirectional.centerEnd, child: action),
           ],
         );
       }
+      final inlineAction = centerAction
+          ? Align(
+              alignment: AlignmentDirectional.topEnd,
+              widthFactor: 1,
+              heightFactor: 1,
+              child: action,
+            )
+          : action!;
       return Row(
-        crossAxisAlignment: centerAction
-            ? CrossAxisAlignment.center
-            : CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(child: titleBlock),
-          action!,
+          inlineAction,
         ],
       );
     },
@@ -404,8 +404,8 @@ class ButlerlyCompactSelector extends StatelessWidget {
         ),
         child: Align(
           alignment: alignVisualEnd
-              ? AlignmentDirectional.centerEnd
-              : Alignment.center,
+              ? AlignmentDirectional.topEnd
+              : Alignment.topCenter,
           child: Ink(
             decoration: BoxDecoration(
               color: context.colors.subtleSurface,
@@ -415,7 +415,7 @@ class ButlerlyCompactSelector extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: ButlerlySpacing.compact,
-                vertical: ButlerlySpacing.micro,
+                vertical: ButlerlySpacing.nanoSmall,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -464,7 +464,7 @@ class ButlerlyVisualizationCard extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: Theme.of(context).textTheme.titleSmall),
+        ButlerlyCardHeader(title: title),
         const SizedBox(height: ButlerlySpacing.small),
         child,
       ],
@@ -836,6 +836,78 @@ class ButlerlyTransactionList extends StatelessWidget {
   );
 }
 
+/// Canonical category badge used by transaction rows and other record surfaces.
+///
+/// The badge intentionally uses the full category label, a compact text role,
+/// and the category's brighter identity color. It may wrap when necessary
+/// rather than truncating the category name.
+class ButlerlyCategoryBadge extends StatelessWidget {
+  const ButlerlyCategoryBadge({
+    required this.label,
+    this.categoryId,
+    super.key,
+  });
+
+  final String label;
+  final String? categoryId;
+
+  @override
+  Widget build(BuildContext context) {
+    final categoryColor = ButlerlyChartColors.category(categoryId ?? label);
+    final badgeBackground = categoryColor.withValues(
+      alpha: ButlerlyTransactionItemTokens.categoryBadgeBackgroundOpacity,
+    );
+    final compositedBackground = Color.alphaBlend(
+      badgeBackground,
+      context.colors.cardSurface,
+    );
+    final foreground =
+        _contrastRatio(categoryColor, compositedBackground) >= 4.5
+        ? categoryColor
+        : context.colors.primaryText;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: badgeBackground,
+        border: Border.all(
+          color: categoryColor.withValues(
+            alpha: ButlerlyTransactionItemTokens.categoryBadgeBorderOpacity,
+          ),
+        ),
+        borderRadius: BorderRadius.circular(ButlerlyRadius.full),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal:
+              ButlerlyTransactionItemTokens.categoryBadgeHorizontalPadding,
+          vertical: ButlerlyTransactionItemTokens.categoryBadgeVerticalPadding,
+        ),
+        child: Text(
+          label,
+          softWrap: true,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: foreground,
+            fontSize: ButlerlyTransactionItemTokens.categoryBadgeFontSize,
+            height: ButlerlyTransactionItemTokens.categoryBadgeLineHeight,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+double _contrastRatio(Color first, Color second) {
+  final firstLuminance = first.computeLuminance();
+  final secondLuminance = second.computeLuminance();
+  final lighter = firstLuminance > secondLuminance
+      ? firstLuminance
+      : secondLuminance;
+  final darker = firstLuminance > secondLuminance
+      ? secondLuminance
+      : firstLuminance;
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
 enum ButlerlyTransactionRowVariant { standard, dashboard }
 
 class ButlerlyTransactionListItem extends StatelessWidget {
@@ -1011,7 +1083,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                         ),
                         child: Align(
                           alignment: AlignmentDirectional.centerStart,
-                          child: _categoryPill(context),
+                          child: _categoryPill(),
                         ),
                       ),
                     if (_metadataParts.isNotEmpty) ...[
@@ -1212,33 +1284,8 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     ),
   );
 
-  Widget _categoryPill(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(
-      color: ButlerlyChartColors.category(
-        categoryId ?? categoryLabel!,
-      ).withValues(alpha: 0.14),
-      borderRadius: BorderRadius.circular(ButlerlyRadius.full),
-    ),
-    child: ConstrainedBox(
-      constraints: BoxConstraints(
-        maxWidth: variant == ButlerlyTransactionRowVariant.dashboard
-            ? ButlerlyTransactionItemTokens.dashboardCategoryPillMaxWidth
-            : double.infinity,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: ButlerlySpacing.compact,
-          vertical: ButlerlySpacing.micro,
-        ),
-        child: Text(
-          categoryLabel!,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: context.transactionItemMetadata,
-        ),
-      ),
-    ),
-  );
+  Widget _categoryPill() =>
+      ButlerlyCategoryBadge(categoryId: categoryId, label: categoryLabel!);
 
   Widget _metadataText(BuildContext context) => Text(
     _metadataParts.join(' · '),

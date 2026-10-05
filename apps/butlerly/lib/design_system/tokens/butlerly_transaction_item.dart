@@ -16,7 +16,12 @@ abstract final class ButlerlyTransactionItemTokens {
   static const leadingIconTopInset = ButlerlySpacing.xxs;
   static const leadingToContentSpacing = ButlerlySpacing.compact;
   static const titleAmountSpacing = ButlerlySpacing.compact;
-  static const dashboardCategoryPillMaxWidth = 120.0;
+  static const categoryBadgeFontSize = 12.0;
+  static const categoryBadgeLineHeight = 16 / 12;
+  static const categoryBadgeHorizontalPadding = ButlerlySpacing.microSmall;
+  static const categoryBadgeVerticalPadding = ButlerlySpacing.xxs;
+  static const categoryBadgeBackgroundOpacity = 0.16;
+  static const categoryBadgeBorderOpacity = 0.42;
   static const headerSpacing = ButlerlySpacing.xxs;
   static const metadataSpacing = ButlerlySpacing.xxs;
   static const metadataTrailingInset = ButlerlySpacing.none;

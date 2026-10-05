@@ -847,7 +847,8 @@ class _HomeSummaryCard extends StatelessWidget {
           const SizedBox(height: ButlerlySpacing.small),
           LayoutBuilder(
             builder: (context, constraints) {
-              final largeText = MediaQuery.textScalerOf(context).scale(14) > 14;
+              final largeText =
+                  MediaQuery.textScalerOf(context).scale(14) >= 28;
               final cells = [
                 _HomeMetricCell(
                   key: const ValueKey('home-summary-metric-spending'),
@@ -897,7 +898,18 @@ class _HomeSummaryCard extends StatelessWidget {
                   color: context.colors.warning,
                 ),
               ];
-              final stacked = largeText || constraints.maxWidth < 300;
+              final dividerWidth =
+                  ButlerlySpacing.micro * 2 + ButlerlySize.dividerWidth;
+              final metricWidth = math.max(
+                1.0,
+                (constraints.maxWidth - dividerWidth * (cells.length - 1)) /
+                    cells.length,
+              );
+              final stacked =
+                  largeText ||
+                  cells.any(
+                    (cell) => cell.requiresStackedLayout(context, metricWidth),
+                  );
               final layoutCells = [
                 for (final cell in cells) cell.withStacked(stacked),
               ];
@@ -1000,6 +1012,20 @@ class _HomeMetricCell extends StatelessWidget {
     stacked: value,
   );
 
+  bool requiresStackedLayout(BuildContext context, double maxWidth) {
+    const minimumReadableScale = 0.25;
+    final valueStyle = ButlerlyTypography.homeSummaryMetricValue(
+      Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
+    );
+    final painter = TextPainter(
+      text: TextSpan(text: _displayValue(context), style: valueStyle),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    return painter.width * minimumReadableScale > maxWidth;
+  }
+
   @override
   Widget build(BuildContext context) {
     final metricUnavailable = _isUnavailable(metric?.availability);
@@ -1051,16 +1077,22 @@ class _HomeMetricCell extends StatelessWidget {
               final valueStyle = ButlerlyTypography.homeSummaryMetricValue(
                 Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
               );
+              final valueText = Text(
+                displayValue,
+                maxLines: stacked ? null : 1,
+                softWrap: stacked,
+                textAlign: TextAlign.center,
+                style: valueStyle,
+              );
               return SizedBox(
                 width: constraints.maxWidth,
-                child: Text(
-                  displayValue,
-                  maxLines: stacked ? null : 1,
-                  overflow: TextOverflow.visible,
-                  softWrap: stacked,
-                  textAlign: TextAlign.center,
-                  style: valueStyle,
-                ),
+                child: stacked
+                    ? valueText
+                    : FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.center,
+                        child: valueText,
+                      ),
               );
             },
           ),
@@ -1244,7 +1276,6 @@ class _SpendingTrend extends StatelessWidget {
                   ),
                   action: trendAction,
                   keepActionInlineAtCompactWidth: true,
-                  centerAction: true,
                 ),
                 if (unavailable || points.isEmpty || !meaningful) ...[
                   const SizedBox(height: ButlerlySpacing.standard),
