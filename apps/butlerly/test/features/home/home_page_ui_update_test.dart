@@ -76,7 +76,7 @@ void main() {
       expect(find.text('Good afternoon'), findsOneWidget);
       expect(find.text('Sep 2026'), findsOneWidget);
       expect(
-        find.text("Here's your financial overview for September 2026."),
+        find.text("Your financial data for September 2026."),
         findsOneWidget,
       );
       expect(find.byKey(const Key('home-month-selector')), findsOneWidget);
@@ -175,11 +175,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.text('Aquí tienes tu resumen financiero de septiembre de 2026.'),
+      find.text('Tus datos financieros de septiembre de 2026.'),
       findsOneWidget,
     );
     expect(
-      find.text("Here's your financial overview for September 2026."),
+      find.text("Your financial data for September 2026."),
       findsNothing,
     );
   });
@@ -209,6 +209,63 @@ void main() {
     expect(find.byKey(const Key('home-recent-view-all')), findsOneWidget);
     expect(find.byIcon(Icons.more_horiz_rounded), findsNWidgets(4));
     expect(find.byKey(const Key('home-notification-action')), findsNothing);
+  });
+
+  testWidgets(
+    'Monthly Summary keeps four metrics horizontal on phone-sized layouts',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.devicePixelRatio = 1;
+      tester.view.platformDispatcher.textScaleFactorTestValue = 1.2;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
+
+      await tester.pumpWidget(_testApp(router));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('home-summary-card')),
+        200,
+      );
+      await tester.pumpAndSettle();
+
+      final metricKeys = const [
+        ValueKey('home-summary-metric-spending'),
+        ValueKey('home-summary-metric-income'),
+        ValueKey('home-summary-metric-savings'),
+        ValueKey('home-summary-metric-net-position'),
+      ];
+      final tops = [
+        for (final key in metricKeys)
+          tester.getTopLeft(find.byKey(key)).dy,
+      ];
+      for (final top in tops.skip(1)) {
+        expect(top, closeTo(tops.first, 1.0));
+      }
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('Home intro stays within an Android phone header', (tester) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(_testApp(router));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Your financial data for September 2026.'),
+      findsOneWidget,
+    );
+    final intro = find.byKey(const ValueKey('home-intro'));
+    final header = find.byKey(const ValueKey('home-header-content'));
+    expect(
+      tester.getBottomLeft(intro).dy,
+      lessThanOrEqualTo(tester.getBottomLeft(header).dy + 0.01),
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Home card titles share the canonical top inset', (
@@ -609,7 +666,7 @@ void main() {
       final brand = tester.widget<Text>(find.text('Butlerly'));
       final greeting = tester.widget<Text>(find.text('Good afternoon'));
       final intro = tester.widget<Text>(
-        find.text("Here's your financial overview for September 2026."),
+        find.text("Your financial data for September 2026."),
       );
       final month = tester.widget<Text>(find.text('Sep 2026'));
       for (final text in [brand, greeting, intro, month]) {
