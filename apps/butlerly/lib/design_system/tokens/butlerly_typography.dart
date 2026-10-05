@@ -82,6 +82,9 @@ abstract final class ButlerlyTypography {
   static TextStyle metricLabel(TextStyle base) =>
       _systemSans(base, fontSize: 14, height: 1.3, fontWeight: FontWeight.w500);
 
+  static TextStyle homeSummaryMetricLabel(TextStyle base) =>
+      _systemSans(base, fontSize: 13, height: 1.3, fontWeight: FontWeight.w500);
+
   static TextStyle metricValue(TextStyle base) => _systemSans(
     base,
     fontSize: 24,
@@ -100,8 +103,20 @@ abstract final class ButlerlyTypography {
     fontFeatures: financialAmountFeatures,
   );
 
+  static TextStyle homeSummaryMetricValue(TextStyle base) => _systemSans(
+    base,
+    fontSize: 14,
+    height: 1.08,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.35,
+    fontFeatures: financialAmountFeatures,
+  );
+
   static TextStyle compactMetricChange(TextStyle base) =>
       _systemSans(base, fontSize: 12, height: 1.3, fontWeight: FontWeight.w600);
+
+  static TextStyle homeSummaryMetricChange(TextStyle base) =>
+      _systemSans(base, fontSize: 11, height: 1.3, fontWeight: FontWeight.w600);
 
   static TextStyle metricChange(TextStyle base) =>
       _systemSans(base, fontSize: 14, height: 1.3, fontWeight: FontWeight.w600);

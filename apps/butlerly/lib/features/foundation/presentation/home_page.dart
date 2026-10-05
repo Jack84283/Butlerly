@@ -749,13 +749,13 @@ class _HomeHeader extends StatelessWidget {
                 ],
               )
             : Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(child: brand),
                   const SizedBox(width: ButlerlySpacing.standard),
                   Flexible(
                     child: Align(
-                      alignment: AlignmentDirectional.topEnd,
+                      alignment: AlignmentDirectional.centerEnd,
                       child: monthButton,
                     ),
                   ),
@@ -1043,14 +1043,14 @@ class _HomeMetricCell extends StatelessWidget {
           Text(
             label,
             textAlign: TextAlign.center,
-            style: ButlerlyTypography.metricLabel(
+            style: ButlerlyTypography.homeSummaryMetricLabel(
               Theme.of(context).textTheme.labelLarge ?? const TextStyle(),
             ).copyWith(color: context.colors.secondaryText),
           ),
           const SizedBox(height: ButlerlySpacing.micro),
           LayoutBuilder(
             builder: (context, constraints) {
-              final valueStyle = ButlerlyTypography.compactMetricValue(
+              final valueStyle = ButlerlyTypography.homeSummaryMetricValue(
                 Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
               );
               return SizedBox(
@@ -1076,7 +1076,7 @@ class _HomeMetricCell extends StatelessWidget {
               textAlign: TextAlign.center,
               softWrap: true,
               style:
-                  ButlerlyTypography.compactMetricChange(
+                  ButlerlyTypography.homeSummaryMetricChange(
                     Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
                   ).copyWith(
                     color: supportingColor ?? context.colors.secondaryText,
@@ -1092,7 +1092,7 @@ class _HomeMetricCell extends StatelessWidget {
               secondarySupport,
               textAlign: TextAlign.center,
               softWrap: true,
-              style: ButlerlyTypography.compactMetricChange(
+              style: ButlerlyTypography.homeSummaryMetricChange(
                 Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
               ).copyWith(color: context.colors.secondaryText),
             ),
@@ -1258,6 +1258,7 @@ class _SpendingTrend extends StatelessWidget {
                   ),
                   action: trendAction,
                   keepActionInlineAtCompactWidth: true,
+                  centerAction: true,
                 ),
                 if (unavailable || points.isEmpty || !meaningful) ...[
                   const SizedBox(height: ButlerlySpacing.standard),

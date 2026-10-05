@@ -368,6 +368,27 @@ void main() {
         tester.getSize(monthSurface).height,
         closeTo(tester.getSize(trendSurface).height, 0.1),
       );
+
+      final headerTitle = find.descendant(
+        of: find.byKey(const ValueKey('home-header-context')),
+        matching: find.text('Butlerly'),
+      );
+      final trendTitle = find.descendant(
+        of: find.byKey(const ValueKey('home-trend-card')),
+        matching: find.text('Spending trend'),
+      );
+      expect(headerTitle, findsOneWidget);
+      expect(trendTitle, findsOneWidget);
+      expect(
+        (tester.getCenter(monthSurface).dy - tester.getCenter(headerTitle).dy)
+            .abs(),
+        lessThanOrEqualTo(2),
+      );
+      expect(
+        (tester.getCenter(trendSurface).dy - tester.getCenter(trendTitle).dy)
+            .abs(),
+        lessThanOrEqualTo(2),
+      );
       await tester.ensureVisible(trendSelector);
       await tester.tap(trendSelector);
       await tester.pumpAndSettle();

@@ -303,6 +303,7 @@ class ButlerlyCardHeader extends StatelessWidget {
     this.titleStyle,
     this.subtitleStyle,
     this.keepActionInlineAtCompactWidth = false,
+    this.centerAction = false,
     super.key,
   });
 
@@ -312,6 +313,7 @@ class ButlerlyCardHeader extends StatelessWidget {
   final TextStyle? titleStyle;
   final TextStyle? subtitleStyle;
   final bool keepActionInlineAtCompactWidth;
+  final bool centerAction;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -346,7 +348,9 @@ class ButlerlyCardHeader extends StatelessWidget {
         );
       }
       return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: centerAction
+            ? CrossAxisAlignment.center
+            : CrossAxisAlignment.start,
         children: [
           Expanded(child: titleBlock),
           action!,

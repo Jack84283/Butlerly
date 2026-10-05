@@ -774,7 +774,7 @@ void main() {
       expect(metricTops[index], greaterThan(metricTops[index - 1]));
     }
     final value = tester.widget<Text>(find.text('\$9,999.99'));
-    expect(value.style?.fontSize, 15);
+    expect(value.style?.fontSize, 14);
     expect(value.softWrap, isTrue);
     expect(value.maxLines, isNull);
     expect(tester.takeException(), isNull);
@@ -853,7 +853,7 @@ void main() {
       expect(text.maxLines, 1);
       expect(text.softWrap, isFalse);
       expect(text.overflow, TextOverflow.visible);
-      expect(text.style?.fontSize, 15);
+      expect(text.style?.fontSize, 14);
       final render = tester.renderObject<RenderParagraph>(textFinder);
       final context = tester.element(textFinder);
       final effectiveStyle = DefaultTextStyle.of(
@@ -872,6 +872,9 @@ void main() {
     ];
     for (final top in metricTops.skip(1)) {
       expect(top, closeTo(metricTops.first, 0.01));
+    }
+    for (final label in ['Spending', 'Income', 'Savings', 'Net position']) {
+      expect(tester.widget<Text>(find.text(label)).style?.fontSize, 13);
     }
     expect(tester.takeException(), isNull);
   });
@@ -1027,7 +1030,7 @@ void main() {
     );
     final savingsRate = tester.widget<Text>(find.text('50%'));
     expect(savingsRate.style?.color, colors.info);
-    expect(savingsRate.style?.fontSize, 12);
+    expect(savingsRate.style?.fontSize, 11);
     expect(
       _lastTextIn(tester, 'home-summary-metric-net-position').style?.color,
       colors.success,
