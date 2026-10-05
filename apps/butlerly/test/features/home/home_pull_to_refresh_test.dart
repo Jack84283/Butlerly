@@ -55,6 +55,25 @@ ThemeData _summaryTestTheme() {
   );
 }
 
+Widget _summaryTestApp(Widget child) => MaterialApp(
+  theme: _summaryTestTheme(),
+  localizationsDelegates: const [
+    AppLocalizations.delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+  ],
+  supportedLocales: AppLocalizations.supportedLocales,
+  home: Scaffold(
+    body: Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: ButlerlySize.contentGutter,
+      ),
+      child: child,
+    ),
+  ),
+);
+
 void main() {
   late _Transactions transactions;
   late _Preferences preferences;
@@ -702,6 +721,172 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Home Summary renders empty sum metrics as zero', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-09-01',
+        endDate: '2026-09-16',
+        timeZoneId: 'UTC',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+      baseCurrency: CurrencyCode('USD'),
+    );
+    final incomeOnly = AnalysisOverview(
+      spending: _categoryMetric(
+        value: '0',
+        availability: AnalysisDataAvailability.empty,
+      ),
+      income: _categoryMetric(value: '100'),
+      savings: AnalysisValue(
+        value: DecimalValue.parse('100'),
+        currency: CurrencyCode('USD'),
+        context: context,
+      ),
+      savingsRate: DecimalValue.parse('1'),
+      insightUnavailable: false,
+      trend: const [],
+      categories: const [],
+      qualityCount: 0,
+      qualityEvaluated: true,
+      qualityLimited: false,
+    );
+
+    await tester.pumpWidget(_summaryTestApp(homeSummaryForTest(incomeOnly)));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-spending')),
+        matching: find.text(r'$0.00'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-income')),
+        matching: find.text(r'$100.00'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-savings')),
+        matching: find.text(r'$100.00'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('100%'), findsOneWidget);
+
+    final expenseOnly = AnalysisOverview(
+      spending: _categoryMetric(value: '60'),
+      income: _categoryMetric(
+        value: '0',
+        availability: AnalysisDataAvailability.empty,
+      ),
+      savings: AnalysisValue(
+        value: DecimalValue.parse('-60'),
+        currency: CurrencyCode('USD'),
+        context: context,
+      ),
+      savingsRate: null,
+      insightUnavailable: false,
+      trend: const [],
+      categories: const [],
+      qualityCount: 0,
+      qualityEvaluated: true,
+      qualityLimited: false,
+    );
+    await tester.pumpWidget(_summaryTestApp(homeSummaryForTest(expenseOnly)));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-income')),
+        matching: find.text(r'$0.00'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-spending')),
+        matching: find.text(r'$60.00'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-savings')),
+        matching: find.text(r'-$60.00'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-income')),
+        matching: find.text('—'),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-spending')),
+        matching: find.text('—'),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-savings')),
+        matching: find.text('—'),
+      ),
+      findsNothing,
+    );
+  });
+
+  testWidgets('Home Summary preserves a dash for insufficient metrics', (
+    tester,
+  ) async {
+    final model = AnalysisOverview(
+      spending: _categoryMetric(
+        availability: AnalysisDataAvailability.insufficient,
+      ),
+      income: _categoryMetric(
+        availability: AnalysisDataAvailability.insufficient,
+      ),
+      insightUnavailable: false,
+      trend: const [],
+      categories: const [],
+      qualityCount: 0,
+      qualityEvaluated: true,
+      qualityLimited: true,
+    );
+
+    await tester.pumpWidget(_summaryTestApp(homeSummaryForTest(model)));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-spending')),
+        matching: find.text('—'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-summary-metric-income')),
+        matching: find.text('—'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text(r'$0.00'), findsNothing);
+  });
+
   testWidgets('Home Summary uses the active text scale when deciding fit', (
     tester,
   ) async {
@@ -1184,7 +1369,7 @@ void main() {
     );
   });
 
-  testWidgets('Home Summary does not show empty derived savings', (
+  testWidgets('Home Summary renders empty derived savings as zero', (
     tester,
   ) async {
     final context = AnalysisContext(
@@ -1210,7 +1395,7 @@ void main() {
         context: context,
         availability: AnalysisDataAvailability.empty,
       ),
-      savingsRate: DecimalValue.parse('1'),
+      savingsRate: null,
     );
     await tester.pumpWidget(
       MaterialApp(
@@ -1229,17 +1414,11 @@ void main() {
     expect(
       find.descendant(
         of: find.byKey(const ValueKey('home-summary-metric-savings')),
-        matching: find.text('—'),
+        matching: find.text(r'$0.00'),
       ),
       findsOneWidget,
     );
-    expect(
-      find.descendant(
-        of: find.byKey(const ValueKey('home-summary-metric-savings')),
-        matching: find.text('100.0% of income'),
-      ),
-      findsNothing,
-    );
+    expect(find.text('100% of income'), findsNothing);
   });
 
   testWidgets('Home Summary and categories hide insufficient metric values', (

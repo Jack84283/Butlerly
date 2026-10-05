@@ -97,7 +97,7 @@ void main() {
     },
   );
 
-  test('does not derive savings rate from an empty source metric', () {
+  test('treats empty spending as zero when deriving savings', () {
     final spending = _result(
       'ANL-R701',
       '0',
@@ -112,9 +112,55 @@ void main() {
 
     final overview = AnalysisOverview.fromResults([spending, income]);
 
-    expect(overview.savings?.availability, AnalysisDataAvailability.empty);
+    expect(overview.savings?.value, DecimalValue.parse('100'));
+    expect(overview.savings?.availability, AnalysisDataAvailability.sufficient);
+    expect(overview.savingsRate, DecimalValue.parse('1'));
+  });
+
+  test('treats empty income as zero when deriving savings', () {
+    final spending = _result(
+      'ANL-R701',
+      '60',
+      role: AnalysisSemanticRole.expenseTotal,
+    );
+    final income = _result(
+      'ANL-R702',
+      '0',
+      role: AnalysisSemanticRole.incomeTotal,
+      availability: AnalysisDataAvailability.empty,
+    );
+
+    final overview = AnalysisOverview.fromResults([spending, income]);
+
+    expect(overview.savings?.value, DecimalValue.parse('-60'));
+    expect(overview.savings?.availability, AnalysisDataAvailability.sufficient);
     expect(overview.savingsRate, isNull);
   });
+
+  test(
+    'keeps derived savings insufficient when either source is insufficient',
+    () {
+      final spending = _result(
+        'ANL-R701',
+        '60',
+        role: AnalysisSemanticRole.expenseTotal,
+      );
+      final income = _result(
+        'ANL-R702',
+        '100',
+        role: AnalysisSemanticRole.incomeTotal,
+        availability: AnalysisDataAvailability.insufficient,
+      );
+
+      final overview = AnalysisOverview.fromResults([spending, income]);
+
+      expect(
+        overview.savings?.availability,
+        AnalysisDataAvailability.insufficient,
+      );
+      expect(overview.savingsRate, isNull);
+    },
+  );
 
   test(
     'category sorting remains exact beyond binary floating-point precision',

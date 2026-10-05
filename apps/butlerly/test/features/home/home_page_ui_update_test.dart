@@ -587,15 +587,33 @@ void main() {
       expect(find.byKey(const Key('home-month-selector')), findsOneWidget);
       final monthSelector = find.byKey(const Key('home-month-selector'));
       expect(tester.getSize(monthSelector).width, greaterThanOrEqualTo(44));
+      expect(tester.getSize(monthSelector).height, greaterThan(44));
       final monthSurface = find.descendant(
         of: monthSelector,
         matching: find.byType(Ink),
       );
+      expect(tester.getSize(monthSurface).height, greaterThan(44));
       final headerContent = find.byKey(const ValueKey('home-header-content'));
       expect(
         tester.getTopRight(monthSurface).dx,
         closeTo(tester.getTopRight(headerContent).dx, 0.01),
       );
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('home-trend-card')),
+        600,
+      );
+      await tester.pumpAndSettle();
+      final trendSelector = find.byKey(
+        const ValueKey('home-trend-range-selector'),
+      );
+      expect(trendSelector, findsOneWidget);
+      expect(tester.getSize(trendSelector).height, greaterThan(44));
+      final trendSurface = find.descendant(
+        of: trendSelector,
+        matching: find.byType(Ink),
+      );
+      expect(trendSurface, findsOneWidget);
+      expect(tester.getSize(trendSurface).height, greaterThan(44));
       expect(tester.takeException(), isNull);
     },
   );

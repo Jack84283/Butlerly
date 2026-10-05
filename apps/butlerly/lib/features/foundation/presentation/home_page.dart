@@ -300,10 +300,6 @@ class _HomePageState extends State<HomePage> {
           model: data.model,
           analysisUnavailable: data.analysisUnavailable || overviewUnavailable,
           baseCurrency: data.baseCurrency,
-          showZeroValues:
-              data.status == _HomeDataStatus.available &&
-              !data.analysisUnavailable &&
-              data.transactions.isEmpty,
         ),
         const SizedBox(height: ButlerlySpacing.cardGap),
         _HomeTrend(
@@ -803,21 +799,34 @@ class _HomeHeader extends StatelessWidget {
   }
 }
 
+bool _allKnownSummaryValuesEmpty(AnalysisModel model) {
+  final availabilities = [
+    model.spending?.availability,
+    model.income?.availability,
+    model.savings?.availability,
+    model.net?.availability,
+  ].whereType<AnalysisDataAvailability>().toList();
+  return availabilities.isNotEmpty &&
+      availabilities.every((value) => value == AnalysisDataAvailability.empty);
+}
+
 class _HomeSummaryCard extends StatelessWidget {
   const _HomeSummaryCard({
     required this.model,
     required this.analysisUnavailable,
     required this.baseCurrency,
-    required this.showZeroValues,
   });
 
   final AnalysisModel? model;
   final bool analysisUnavailable;
   final CurrencyCode? baseCurrency;
-  final bool showZeroValues;
 
   @override
   Widget build(BuildContext context) {
+    final showMissingValuesAsZero =
+        !analysisUnavailable &&
+        model != null &&
+        _allKnownSummaryValuesEmpty(model!);
     return ButlerlyCard(
       key: const ValueKey('home-summary-card'),
       variant: ButlerlyCardVariant.dashboard,
@@ -845,7 +854,7 @@ class _HomeSummaryCard extends StatelessWidget {
                   label: context.l10n.text('spending'),
                   metric: model?.spending,
                   fallbackCurrency: baseCurrency,
-                  showZeroWhenUnavailable: showZeroValues,
+                  showMissingAsZero: showMissingValuesAsZero,
                   comparison: model?.spendingComparison,
                   icon: Icons.arrow_downward_rounded,
                   color: context.colors.error,
@@ -856,7 +865,7 @@ class _HomeSummaryCard extends StatelessWidget {
                   label: context.l10n.text('income'),
                   metric: model?.income,
                   fallbackCurrency: baseCurrency,
-                  showZeroWhenUnavailable: showZeroValues,
+                  showMissingAsZero: showMissingValuesAsZero,
                   comparison: model?.incomeComparison,
                   icon: Icons.arrow_upward_rounded,
                   color: context.colors.success,
@@ -867,7 +876,7 @@ class _HomeSummaryCard extends StatelessWidget {
                   label: context.l10n.text('savings'),
                   value: model?.savings,
                   fallbackCurrency: baseCurrency,
-                  showZeroWhenUnavailable: showZeroValues,
+                  showMissingAsZero: showMissingValuesAsZero,
                   supportingText: model?.savingsRate == null
                       ? null
                       : analysisPercentageRatio(context, model!.savingsRate!),
@@ -883,7 +892,7 @@ class _HomeSummaryCard extends StatelessWidget {
                   label: context.l10n.text('netPosition'),
                   metric: model?.net,
                   fallbackCurrency: baseCurrency,
-                  showZeroWhenUnavailable: showZeroValues,
+                  showMissingAsZero: showMissingValuesAsZero,
                   supportingText: model?.netComparison == null
                       ? null
                       : localizedCompactSignedMoney(
@@ -970,7 +979,7 @@ class _HomeMetricCell extends StatelessWidget {
     this.secondarySupportingText,
     this.supportingColor,
     this.fallbackCurrency,
-    this.showZeroWhenUnavailable = false,
+    this.showMissingAsZero = false,
     required this.icon,
     required this.color,
     this.stacked = false,
@@ -984,7 +993,7 @@ class _HomeMetricCell extends StatelessWidget {
   final String? secondarySupportingText;
   final Color? supportingColor;
   final CurrencyCode? fallbackCurrency;
-  final bool showZeroWhenUnavailable;
+  final bool showMissingAsZero;
   final IconData icon;
   final Color color;
   final bool stacked;
@@ -999,7 +1008,7 @@ class _HomeMetricCell extends StatelessWidget {
     secondarySupportingText: secondarySupportingText,
     supportingColor: supportingColor,
     fallbackCurrency: fallbackCurrency,
-    showZeroWhenUnavailable: showZeroWhenUnavailable,
+    showMissingAsZero: showMissingAsZero,
     icon: icon,
     color: color,
     stacked: value,
@@ -1009,20 +1018,10 @@ class _HomeMetricCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final metricUnavailable = _isUnavailable(metric?.availability);
     final valueUnavailable = _isUnavailable(value?.availability);
-    final zeroFallbackUnavailable =
-        showZeroWhenUnavailable &&
-        fallbackCurrency == null &&
-        (metric == null ||
-            metric?.availability == AnalysisDataAvailability.empty ||
-            value == null ||
-            value?.availability == AnalysisDataAvailability.empty);
     final displayUnavailable =
-        (!showZeroWhenUnavailable &&
-            metric == null &&
-            (value == null || valueUnavailable)) ||
+        (!showMissingAsZero && metric == null && value == null) ||
         valueUnavailable ||
-        metricUnavailable ||
-        zeroFallbackUnavailable;
+        metricUnavailable;
     final displayValue = _displayValue(context);
     final comparisonText = comparison == null
         ? null
@@ -1118,27 +1117,16 @@ class _HomeMetricCell extends StatelessWidget {
   String _displayValue(BuildContext context) {
     final metricUnavailable = _isUnavailable(metric?.availability);
     final valueUnavailable = _isUnavailable(value?.availability);
-    final zeroFallbackUnavailable =
-        showZeroWhenUnavailable &&
-        fallbackCurrency == null &&
-        (metric == null ||
-            metric?.availability == AnalysisDataAvailability.empty ||
-            value == null ||
-            value?.availability == AnalysisDataAvailability.empty);
     final displayUnavailable =
-        (!showZeroWhenUnavailable &&
-            metric == null &&
-            (value == null || valueUnavailable)) ||
+        (!showMissingAsZero && metric == null && value == null) ||
         valueUnavailable ||
-        metricUnavailable ||
-        zeroFallbackUnavailable;
-    if (showZeroWhenUnavailable &&
-        !metricUnavailable &&
-        (metric == null ||
-            metric?.availability == AnalysisDataAvailability.empty ||
-            value?.availability == AnalysisDataAvailability.empty) &&
-        fallbackCurrency != null) {
-      return localizedCompactMoney(context, '0', fallbackCurrency!.value);
+        metricUnavailable;
+    if (showMissingAsZero && metric == null && value == null) {
+      return _zeroMoney(context);
+    }
+    if (metric?.availability == AnalysisDataAvailability.empty ||
+        value?.availability == AnalysisDataAvailability.empty) {
+      return _zeroMoney(context);
     }
     return displayUnavailable
         ? '—'
@@ -1152,8 +1140,19 @@ class _HomeMetricCell extends StatelessWidget {
         availability == AnalysisDataAvailability.sufficient) {
       return false;
     }
-    return !(showZeroWhenUnavailable &&
-        availability == AnalysisDataAvailability.empty);
+    return availability == AnalysisDataAvailability.insufficient;
+  }
+
+  String _zeroMoney(BuildContext context) {
+    final currency =
+        value?.currency?.value ??
+        metric?.currency?.value ??
+        value?.context.baseCurrency?.value ??
+        metric?.context.baseCurrency?.value ??
+        fallbackCurrency?.value;
+    return currency == null
+        ? localizedTransactionAmount(context, '0')
+        : localizedCompactMoney(context, '0', currency);
   }
 }
 
@@ -1206,7 +1205,6 @@ Widget homeSummaryForTest(AnalysisModel model) => _HomeSummaryCard(
   model: model,
   analysisUnavailable: false,
   baseCurrency: null,
-  showZeroValues: false,
 );
 
 @visibleForTesting

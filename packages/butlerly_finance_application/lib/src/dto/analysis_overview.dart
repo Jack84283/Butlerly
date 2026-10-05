@@ -154,10 +154,6 @@ AnalysisDataAvailability _combinedAvailability(
       right == AnalysisDataAvailability.insufficient) {
     return AnalysisDataAvailability.insufficient;
   }
-  if (left == AnalysisDataAvailability.empty ||
-      right == AnalysisDataAvailability.empty) {
-    return AnalysisDataAvailability.empty;
-  }
   return AnalysisDataAvailability.sufficient;
 }
 
