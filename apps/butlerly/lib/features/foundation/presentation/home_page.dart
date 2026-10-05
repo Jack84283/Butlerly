@@ -847,7 +847,8 @@ class _HomeSummaryCard extends StatelessWidget {
           const SizedBox(height: ButlerlySpacing.small),
           LayoutBuilder(
             builder: (context, constraints) {
-              final largeText = MediaQuery.textScalerOf(context).scale(14) > 14;
+              final largeText =
+                  MediaQuery.textScalerOf(context).scale(14) >= 28;
               final cells = [
                 _HomeMetricCell(
                   key: const ValueKey('home-summary-metric-spending'),
@@ -897,7 +898,7 @@ class _HomeSummaryCard extends StatelessWidget {
                   color: context.colors.warning,
                 ),
               ];
-              final stacked = largeText || constraints.maxWidth < 300;
+              final stacked = largeText;
               final layoutCells = [
                 for (final cell in cells) cell.withStacked(stacked),
               ];
