@@ -31,6 +31,10 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
   final Color background;
   final Color surface;
   final Color dashboardSurface;
+
+  /// Canonical surface for card containers across Butlerly.
+  Color get cardSurface => dashboardSurface;
+
   final Color elevatedSurface;
   final Color subtleSurface;
   final Color primaryText;
