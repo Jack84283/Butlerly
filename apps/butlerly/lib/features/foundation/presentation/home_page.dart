@@ -928,26 +928,27 @@ class _HomeSummaryCard extends StatelessWidget {
                   ],
                 );
               }
-              return IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (
-                      var index = 0;
-                      index < layoutCells.length;
-                      index++
-                    ) ...[
-                      if (index > 0)
-                        const SizedBox(width: ButlerlySpacing.compact),
-                      Expanded(
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (
+                    var index = 0;
+                    index < layoutCells.length;
+                    index++
+                  ) ...[
+                    if (index > 0)
+                      const SizedBox(width: ButlerlySpacing.compact),
+                    Expanded(
+                      child: SizedBox(
+                        height: 128,
                         child: _HomeSummaryMetricTile(
                           key: tileKeys[index],
                           child: layoutCells[index],
                         ),
                       ),
-                    ],
+                    ),
                   ],
-                ),
+                ],
               );
             },
           ),
@@ -1277,7 +1278,7 @@ class _SpendingTrend extends StatelessWidget {
           ? null
           : () => onRangeChanged!(rangeCount),
       alignVisualEnd: true,
-      visualVerticalOffset: -ButlerlySpacing.xxs,
+      denseSurface: true,
     );
     return ButlerlyCard(
       key: const ValueKey('home-trend-card'),
