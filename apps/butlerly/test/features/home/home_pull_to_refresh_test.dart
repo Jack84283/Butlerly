@@ -727,13 +727,15 @@ void main() {
   ) async {
     await tester.pumpWidget(
       _summaryTestApp(
-        AnalysisOverview(
-          insightUnavailable: false,
-          trend: const [],
-          categories: const [],
-          qualityCount: 0,
-          qualityEvaluated: true,
-          qualityLimited: false,
+        homeSummaryForTest(
+          AnalysisOverview(
+            insightUnavailable: false,
+            trend: const [],
+            categories: const [],
+            qualityCount: 0,
+            qualityEvaluated: true,
+            qualityLimited: false,
+          ),
         ),
       ),
     );
