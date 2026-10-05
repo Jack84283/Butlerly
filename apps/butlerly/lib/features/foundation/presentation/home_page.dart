@@ -1091,7 +1091,7 @@ class _HomeMetricCell extends StatelessWidget {
               Theme.of(context).textTheme.labelLarge ?? const TextStyle(),
             ).copyWith(color: context.colors.secondaryText),
           ),
-          const SizedBox(height: ButlerlySpacing.micro),
+          const SizedBox(height: ButlerlySpacing.xxs),
           LayoutBuilder(
             builder: (context, constraints) {
               final valueStyle = ButlerlyTypography.homeSummaryMetricValue(
@@ -1542,7 +1542,7 @@ class _CategorySummary extends StatelessWidget {
             ),
             keepActionInlineAtCompactWidth: true,
           ),
-          const SizedBox(height: ButlerlySpacing.small),
+          const SizedBox(height: ButlerlySpacing.compact),
           if (model == null)
             Text(
               context.l10n.text('analysisUnavailableBody'),
@@ -2096,18 +2096,21 @@ class _HomeRecentActivity extends StatelessWidget {
         else
           ButlerlyTransactionList(
             children: [
-              for (final transaction in transactions)
+              for (var index = 0; index < transactions.length; index++)
                 TransactionRow(
-                  key: ValueKey('home-recent-transaction-${transaction.id}'),
-                  transaction: transaction,
+                  key: ValueKey(
+                    'home-recent-transaction-${transactions[index].id}',
+                  ),
+                  transaction: transactions[index],
                   masterData: masterData,
                   missingCategoryLabel: context.l10n.text('uncategorized'),
                   showDate: true,
                   showCategoryPill: true,
                   compactMoney: true,
+                  compactSpacing: index == 0,
                   showNavigationIndicator: false,
                   variant: ButlerlyTransactionRowVariant.dashboard,
-                  onTap: () => onTap(transaction),
+                  onTap: () => onTap(transactions[index]),
                 ),
             ],
           ),
