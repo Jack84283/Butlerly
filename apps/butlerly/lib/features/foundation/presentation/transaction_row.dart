@@ -1,5 +1,6 @@
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -20,6 +21,7 @@ class TransactionRow extends StatelessWidget {
     required this.transaction,
     required this.onTap,
     this.masterData = const TransactionMasterData(),
+    this.categoryColorId,
     this.paymentSourceNames = const {},
     this.missingCategoryLabel,
     this.showDate = false,
@@ -39,6 +41,7 @@ class TransactionRow extends StatelessWidget {
 
   final TransactionDto transaction;
   final TransactionMasterData masterData;
+  final ButlerlyCategoryColorId? categoryColorId;
   final Map<String, String> paymentSourceNames;
   final String? missingCategoryLabel;
   final bool showDate;
@@ -99,7 +102,8 @@ class TransactionRow extends StatelessWidget {
           : localizedTransactionAmount(context, unsignedAmount),
       currency: compactMoney ? '' : transaction.currency,
       amountIncludesCurrency: compactMoney,
-      categoryId: iconCategoryId,
+      categoryId: iconCategoryId ?? effectiveCategoryId,
+      categoryColorId: categoryColorId,
       categoryLabel: category ?? missingCategoryLabel ?? '',
       subcategoryLabel: subcategory,
       paymentSource: sourceLabel,
