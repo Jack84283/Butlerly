@@ -254,7 +254,8 @@ void main() {
           const EdgeInsets.symmetric(
             horizontal:
                 ButlerlyTransactionItemTokens.categoryBadgeHorizontalPadding,
-            vertical: ButlerlyTransactionItemTokens.categoryBadgeVerticalPadding,
+            vertical:
+                ButlerlyTransactionItemTokens.categoryBadgeVerticalPadding,
           ),
         );
         expect(
