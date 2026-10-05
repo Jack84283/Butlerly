@@ -1062,7 +1062,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                         ),
                         child: Align(
                           alignment: AlignmentDirectional.centerStart,
-                          child: _categoryPill(context),
+                          child: _categoryPill(),
                         ),
                       ),
                     if (_metadataParts.isNotEmpty) ...[
@@ -1263,7 +1263,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     ),
   );
 
-  Widget _categoryPill(BuildContext context) => ButlerlyCategoryBadge(
+  Widget _categoryPill() => ButlerlyCategoryBadge(
     categoryId: categoryId,
     label: categoryLabel!,
   );
