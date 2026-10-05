@@ -836,6 +836,57 @@ class ButlerlyTransactionList extends StatelessWidget {
   );
 }
 
+/// Canonical category badge used by transaction rows and other record surfaces.
+///
+/// The badge intentionally uses the full category label, a compact text role,
+/// and the category's brighter identity color. It may wrap when necessary
+/// rather than truncating the category name.
+class ButlerlyCategoryBadge extends StatelessWidget {
+  const ButlerlyCategoryBadge({
+    required this.label,
+    this.categoryId,
+    super.key,
+  });
+
+  final String label;
+  final String? categoryId;
+
+  @override
+  Widget build(BuildContext context) {
+    final categoryColor = ButlerlyChartColors.category(categoryId ?? label);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: categoryColor.withValues(
+          alpha: ButlerlyTransactionItemTokens.categoryBadgeBackgroundOpacity,
+        ),
+        border: Border.all(
+          color: categoryColor.withValues(
+            alpha: ButlerlyTransactionItemTokens.categoryBadgeBorderOpacity,
+          ),
+        ),
+        borderRadius: BorderRadius.circular(ButlerlyRadius.full),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal:
+              ButlerlyTransactionItemTokens.categoryBadgeHorizontalPadding,
+          vertical: ButlerlyTransactionItemTokens.categoryBadgeVerticalPadding,
+        ),
+        child: Text(
+          label,
+          softWrap: true,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: categoryColor,
+            fontSize: ButlerlyTransactionItemTokens.categoryBadgeFontSize,
+            height: ButlerlyTransactionItemTokens.categoryBadgeLineHeight,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 enum ButlerlyTransactionRowVariant { standard, dashboard }
 
 class ButlerlyTransactionListItem extends StatelessWidget {
@@ -1212,32 +1263,9 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     ),
   );
 
-  Widget _categoryPill(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(
-      color: ButlerlyChartColors.category(
-        categoryId ?? categoryLabel!,
-      ).withValues(alpha: 0.14),
-      borderRadius: BorderRadius.circular(ButlerlyRadius.full),
-    ),
-    child: ConstrainedBox(
-      constraints: BoxConstraints(
-        maxWidth: variant == ButlerlyTransactionRowVariant.dashboard
-            ? ButlerlyTransactionItemTokens.dashboardCategoryPillMaxWidth
-            : double.infinity,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: ButlerlySpacing.compact,
-          vertical: ButlerlySpacing.micro,
-        ),
-        child: Text(
-          categoryLabel!,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: context.transactionItemMetadata,
-        ),
-      ),
-    ),
+  Widget _categoryPill(BuildContext context) => ButlerlyCategoryBadge(
+    categoryId: categoryId,
+    label: categoryLabel!,
   );
 
   Widget _metadataText(BuildContext context) => Text(
