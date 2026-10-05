@@ -1327,7 +1327,7 @@ class _SpendingTrend extends StatelessWidget {
                   ),
                 ] else ...[
                   if (selectedPoint?.metric case final metric?) ...[
-                    const SizedBox(height: ButlerlySpacing.compact),
+                    const SizedBox(height: ButlerlySpacing.small),
                     Wrap(
                       crossAxisAlignment: WrapCrossAlignment.center,
                       spacing: ButlerlySpacing.small,
