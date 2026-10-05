@@ -92,6 +92,8 @@ void main() {
       );
       final greeting = find.byKey(const ValueKey('home-greeting'));
       final intro = find.byKey(const ValueKey('home-intro'));
+      expect(tester.widget<Text>(greeting).style?.fontSize, 24);
+      expect(tester.widget<Text>(intro).style?.fontSize, 14);
       expect(
         tester.getTopLeft(intro).dy - tester.getBottomLeft(greeting).dy,
         closeTo(ButlerlySpacing.micro, 0.01),
@@ -209,7 +211,7 @@ void main() {
   });
 
   testWidgets(
-    'Monthly Summary keeps four metrics horizontal on phone-sized layouts',
+    'Monthly Summary keeps three inner cards horizontal on phone-sized layouts',
     (tester) async {
       tester.view.physicalSize = const Size(320, 568);
       tester.view.devicePixelRatio = 1;
@@ -229,7 +231,6 @@ void main() {
       final metricKeys = const [
         ValueKey('home-summary-metric-spending'),
         ValueKey('home-summary-metric-income'),
-        ValueKey('home-summary-metric-savings'),
         ValueKey('home-summary-metric-net-position'),
       ];
       final tops = [
@@ -237,6 +238,17 @@ void main() {
       ];
       for (final top in tops.skip(1)) {
         expect(top, closeTo(tops.first, 1.0));
+      }
+      expect(
+        find.byKey(const ValueKey('home-summary-metric-savings')),
+        findsNothing,
+      );
+      for (final key in const [
+        'home-summary-inner-spending',
+        'home-summary-inner-income',
+        'home-summary-inner-net-position',
+      ]) {
+        expect(find.byKey(ValueKey(key)), findsOneWidget);
       }
       expect(tester.takeException(), isNull);
     },
@@ -414,6 +426,13 @@ void main() {
     await tester.pumpAndSettle();
 
     final plot = find.byKey(const ValueKey('home-spending-trend-plot'));
+    final chart = find.byKey(const ValueKey('home-spending-trend-chart'));
+    final amount = find.text(r'$42.00');
+    expect(chart, findsOneWidget);
+    expect(tester.getSize(chart).height, closeTo(124, 0.1));
+    if (amount.evaluate().isNotEmpty) {
+      expect(tester.widget<Text>(amount).style?.fontSize, 24);
+    }
     final baseline = find.byKey(
       const ValueKey('home-spending-trend-grid-line-4'),
     );
