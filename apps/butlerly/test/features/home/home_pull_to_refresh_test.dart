@@ -1045,7 +1045,7 @@ void main() {
       final text = tester.widget<Text>(textFinder);
       expect(text.maxLines, 1);
       expect(text.softWrap, isFalse);
-      expect(text.overflow, TextOverflow.visible);
+      expect(text.overflow, isNull);
       expect(text.style?.fontSize, 14);
       final render = tester.renderObject<RenderParagraph>(textFinder);
       final context = tester.element(textFinder);
