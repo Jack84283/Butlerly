@@ -2081,7 +2081,12 @@ class _HomeRecentActivity extends StatelessWidget {
             container: true,
             liveRegion: true,
             child: Padding(
-              padding: const EdgeInsets.all(ButlerlySpacing.standard),
+              padding: const EdgeInsets.fromLTRB(
+                ButlerlySpacing.standard,
+                ButlerlySpacing.small,
+                ButlerlySpacing.standard,
+                ButlerlySpacing.standard,
+              ),
               child: _HomeUnavailableContent(
                 retryKey: const ValueKey('home-recent-unavailable-retry'),
                 titleKey: unavailableTitleKey!,
@@ -2353,7 +2358,12 @@ class _HomeEmptyTransactions extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     key: const ValueKey('home-empty-transactions-row'),
-    padding: const EdgeInsets.all(ButlerlySpacing.standard),
+    padding: const EdgeInsets.fromLTRB(
+      ButlerlySpacing.standard,
+      ButlerlySpacing.small,
+      ButlerlySpacing.standard,
+      ButlerlySpacing.standard,
+    ),
     child: Row(
       children: [
         Icon(
