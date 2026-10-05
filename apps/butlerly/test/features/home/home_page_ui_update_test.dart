@@ -90,8 +90,14 @@ void main() {
         tester.getTopRight(monthSurface).dx,
         closeTo(tester.getTopRight(headerContent).dx, 0.01),
       );
+      final brand = find.text('Butlerly');
       final greeting = find.byKey(const ValueKey('home-greeting'));
       final intro = find.byKey(const ValueKey('home-intro'));
+      expect(tester.widget<Text>(brand).style?.fontSize, 32);
+      expect(
+        tester.getTopLeft(monthSurface).dy,
+        closeTo(tester.getTopLeft(brand).dy, 1.0),
+      );
       expect(tester.widget<Text>(greeting).style?.fontSize, 24);
       expect(tester.widget<Text>(intro).style?.fontSize, 14);
       expect(
