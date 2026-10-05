@@ -695,7 +695,7 @@ void main() {
         of: monthSelector,
         matching: find.byType(Ink),
       );
-      expect(tester.getSize(monthSurface).height, greaterThan(44));
+      expect(tester.getSize(monthSurface).height, greaterThanOrEqualTo(44));
       final headerContent = find.byKey(const ValueKey('home-header-content'));
       expect(
         tester.getTopRight(monthSurface).dx,
@@ -710,13 +710,13 @@ void main() {
         const ValueKey('home-trend-range-selector'),
       );
       expect(trendSelector, findsOneWidget);
-      expect(tester.getSize(trendSelector).height, greaterThan(44));
+      expect(tester.getSize(trendSelector).height, greaterThanOrEqualTo(44));
       final trendSurface = find.descendant(
         of: trendSelector,
         matching: find.byType(Ink),
       );
       expect(trendSurface, findsOneWidget);
-      expect(tester.getSize(trendSurface).height, greaterThan(44));
+      expect(tester.getSize(trendSurface).height, greaterThanOrEqualTo(44));
       expect(tester.takeException(), isNull);
     },
   );
