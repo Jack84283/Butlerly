@@ -193,6 +193,10 @@ class _HomePageState extends State<HomePage> {
   Future<void> _selectMonth(_HomeData data) async {
     final selected = await showButlerlyBottomSheet<DateTime>(
       context: context,
+      surfaceColor: Color.alphaBlend(
+        context.colors.brand.withValues(alpha: 0.35),
+        context.colors.elevatedSurface,
+      ),
       builder: (context) => _HomeMonthPicker(
         selectedMonth: data.displayMonth,
         currentMonth: data.currentFinancialMonth,
