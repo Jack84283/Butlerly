@@ -275,13 +275,17 @@ class ButlerlyCard extends StatelessWidget {
       button: onTap != null,
       label: semanticLabel,
       child: Card(
-        color: color,
+        color: color ?? (dashboard ? context.colors.dashboardSurface : null),
+        elevation: dashboard
+            ? ButlerlyElevation.dashboardCard
+            : ButlerlyElevation.card,
+        shadowColor: dashboard
+            ? Theme.of(context).colorScheme.shadow.withValues(alpha: 0.22)
+            : null,
         shape: dashboard
             ? RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(radius),
-                side: BorderSide(
-                  color: context.colors.border.withValues(alpha: 0.8),
-                ),
+                side: BorderSide(color: context.colors.border),
               )
             : null,
         child: InkWell(
@@ -371,6 +375,7 @@ class ButlerlyCompactSelector extends StatelessWidget {
     this.onPressed,
     this.semanticLabel,
     this.buttonKey,
+    this.alignVisualEnd = false,
     super.key,
   });
 
@@ -378,6 +383,7 @@ class ButlerlyCompactSelector extends StatelessWidget {
   final VoidCallback? onPressed;
   final String? semanticLabel;
   final Key? buttonKey;
+  final bool alignVisualEnd;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -396,7 +402,10 @@ class ButlerlyCompactSelector extends StatelessWidget {
           padding: EdgeInsets.zero,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
-        child: Center(
+        child: Align(
+          alignment: alignVisualEnd
+              ? AlignmentDirectional.centerEnd
+              : Alignment.center,
           child: Ink(
             decoration: BoxDecoration(
               color: context.colors.subtleSurface,

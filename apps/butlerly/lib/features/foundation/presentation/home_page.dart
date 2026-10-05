@@ -534,7 +534,12 @@ double _homeHeaderExtent(
   final scaler = MediaQuery.textScalerOf(context);
   final locale = Localizations.localeOf(context);
   final localeTag = locale.toLanguageTag();
-  final availableWidth = (crossAxisExtent - ButlerlySize.contentGutter * 2)
+  final readableWidth = math.min(
+    crossAxisExtent,
+    ButlerlyLayout.contentMaxWidth(MediaQuery.sizeOf(context)) +
+        ButlerlySize.contentGutter * 2,
+  );
+  final availableWidth = (readableWidth - ButlerlySize.contentGutter * 2)
       .clamp(1.0, double.infinity)
       .toDouble();
   final direction = Directionality.of(context);
@@ -636,7 +641,7 @@ double _homeHeaderExtent(
   return topRowHeight +
       ButlerlySpacing.small +
       greetingHeight +
-      ButlerlySpacing.small +
+      ButlerlySpacing.micro +
       introHeight +
       ButlerlySpacing.small +
       ButlerlySpacing.micro;
@@ -675,17 +680,24 @@ class _HomePinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
     key: const ValueKey('home-header-surface'),
     color: context.colors.background,
     child: Center(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          ButlerlySize.contentGutter,
-          ButlerlySpacing.small,
-          ButlerlySize.contentGutter,
-          0,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth:
+              ButlerlyLayout.contentMaxWidth(MediaQuery.sizeOf(context)) +
+              ButlerlySize.contentGutter * 2,
         ),
-        child: SizedBox(
-          key: const ValueKey('home-header-content'),
-          width: double.infinity,
-          child: child,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            ButlerlySize.contentGutter,
+            ButlerlySpacing.small,
+            ButlerlySize.contentGutter,
+            0,
+          ),
+          child: SizedBox(
+            key: const ValueKey('home-header-content'),
+            width: double.infinity,
+            child: child,
+          ),
         ),
       ),
     ),
@@ -725,6 +737,7 @@ class _HomeHeader extends StatelessWidget {
           label: selectorMonthLabel,
           semanticLabel: selectorMonthLabel,
           onPressed: onMonthTap,
+          alignVisualEnd: true,
         );
         final availableWidth = constraints.maxWidth;
         final stackedTopRow =
@@ -753,7 +766,7 @@ class _HomeHeader extends StatelessWidget {
                 children: [
                   Expanded(child: brand),
                   const SizedBox(width: ButlerlySpacing.standard),
-                  Flexible(
+                  Expanded(
                     child: Align(
                       alignment: AlignmentDirectional.centerEnd,
                       child: monthButton,
@@ -775,7 +788,7 @@ class _HomeHeader extends StatelessWidget {
                 Theme.of(context).textTheme.headlineLarge ?? const TextStyle(),
               ),
             ),
-            const SizedBox(height: ButlerlySpacing.small),
+            const SizedBox(height: ButlerlySpacing.micro),
             Text(
               context.l10n.text('homeSubtitle', {'period': monthLabel}),
               key: const ValueKey('home-intro'),
@@ -1239,6 +1252,7 @@ class _SpendingTrend extends StatelessWidget {
       onPressed: onRangeChanged == null
           ? null
           : () => onRangeChanged!(rangeCount),
+      alignVisualEnd: true,
     );
     return ButlerlyCard(
       key: const ValueKey('home-trend-card'),

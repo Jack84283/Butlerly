@@ -110,6 +110,43 @@ void main() {
     },
   );
 
+  testWidgets('dashboard cards use scoped surface, edge, and depth styling', (
+    tester,
+  ) async {
+    for (final theme in [AppTheme.light, AppTheme.dark]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: Column(
+            children: [
+              const ButlerlyCard(
+                key: ValueKey('standard-card'),
+                child: SizedBox(height: 20),
+              ),
+              const ButlerlyCard(
+                key: ValueKey('dashboard-card'),
+                variant: ButlerlyCardVariant.dashboard,
+                child: SizedBox(height: 20),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final cards = tester.widgetList<Card>(find.byType(Card)).toList();
+      final colors = theme.extension<ButlerlySemanticColors>()!;
+      expect(cards[0].color ?? theme.cardTheme.color, colors.surface);
+      expect(cards[0].elevation, ButlerlyElevation.card);
+      expect(cards[1].color, colors.dashboardSurface);
+      expect(cards[1].elevation, ButlerlyElevation.dashboardCard);
+      expect(cards[1].shadowColor, isNotNull);
+      final shape = cards[1].shape! as RoundedRectangleBorder;
+      expect(shape.borderRadius, BorderRadius.circular(16));
+      expect(shape.side.color, colors.border);
+    }
+  });
+
   testWidgets('page content surface fills the remaining viewport', (
     tester,
   ) async {

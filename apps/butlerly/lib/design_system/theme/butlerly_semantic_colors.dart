@@ -7,6 +7,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
   const ButlerlySemanticColors({
     required this.background,
     required this.surface,
+    required this.dashboardSurface,
     required this.elevatedSurface,
     required this.subtleSurface,
     required this.primaryText,
@@ -29,6 +30,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
 
   final Color background;
   final Color surface;
+  final Color dashboardSurface;
   final Color elevatedSurface;
   final Color subtleSurface;
   final Color primaryText;
@@ -53,6 +55,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
   static const dark = ButlerlySemanticColors(
     background: Color(0xFF0A0A0D),
     surface: Color(0xFF111114),
+    dashboardSurface: Color(0xFF17171C),
     elevatedSurface: Color(0xFF17171C),
     subtleSurface: Color(0xFF0F1013),
     primaryText: Color(0xFFF4F1EC),
@@ -76,6 +79,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
   static const light = ButlerlySemanticColors(
     background: Color(0xFFF7F5F1),
     surface: Color(0xFFFFFFFF),
+    dashboardSurface: Color(0xFFFFFFFF),
     elevatedSurface: Color(0xFFFCFAF7),
     subtleSurface: Color(0xFFF1EEE8),
     primaryText: Color(0xFF19181A),
@@ -156,6 +160,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
   ButlerlySemanticColors copyWith({
     Color? background,
     Color? surface,
+    Color? dashboardSurface,
     Color? elevatedSurface,
     Color? subtleSurface,
     Color? primaryText,
@@ -177,6 +182,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
   }) => ButlerlySemanticColors(
     background: background ?? this.background,
     surface: surface ?? this.surface,
+    dashboardSurface: dashboardSurface ?? this.dashboardSurface,
     elevatedSurface: elevatedSurface ?? this.elevatedSurface,
     subtleSurface: subtleSurface ?? this.subtleSurface,
     primaryText: primaryText ?? this.primaryText,
@@ -206,6 +212,11 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
     return ButlerlySemanticColors(
       background: Color.lerp(background, other.background, t)!,
       surface: Color.lerp(surface, other.surface, t)!,
+      dashboardSurface: Color.lerp(
+        dashboardSurface,
+        other.dashboardSurface,
+        t,
+      )!,
       elevatedSurface: Color.lerp(elevatedSurface, other.elevatedSurface, t)!,
       subtleSurface: Color.lerp(subtleSurface, other.subtleSurface, t)!,
       primaryText: Color.lerp(primaryText, other.primaryText, t)!,

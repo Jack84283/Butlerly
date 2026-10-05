@@ -32,6 +32,14 @@ void main() {
     expect(AppTheme.light.textTheme.bodySmall?.color, const Color(0xFF68635E));
     expect(AppTheme.light.cardTheme.color, const Color(0xFFFFFFFF));
     expect(
+      AppTheme.light.extension<ButlerlySemanticColors>()?.dashboardSurface,
+      const Color(0xFFFFFFFF),
+    );
+    expect(
+      AppTheme.dark.extension<ButlerlySemanticColors>()?.dashboardSurface,
+      const Color(0xFF17171C),
+    );
+    expect(
       AppTheme.light.extension<ButlerlySemanticColors>()?.cardDivider,
       const Color(0xFFD9D4CE),
     );

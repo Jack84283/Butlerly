@@ -1,5 +1,6 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -80,6 +81,22 @@ void main() {
       );
       expect(find.byKey(const Key('home-month-selector')), findsOneWidget);
 
+      final headerContent = find.byKey(const ValueKey('home-header-content'));
+      final monthSurface = find.descendant(
+        of: find.byKey(const Key('home-month-selector')),
+        matching: find.byType(Ink),
+      );
+      expect(
+        tester.getTopRight(monthSurface).dx,
+        closeTo(tester.getTopRight(headerContent).dx, 0.01),
+      );
+      final greeting = find.byKey(const ValueKey('home-greeting'));
+      final intro = find.byKey(const ValueKey('home-intro'));
+      expect(
+        tester.getTopLeft(intro).dy - tester.getBottomLeft(greeting).dy,
+        closeTo(ButlerlySpacing.micro, 0.01),
+      );
+
       final initialHeaderTop = tester.getTopLeft(find.text('Butlerly')).dy;
       await tester.drag(find.byType(CustomScrollView), const Offset(0, -260));
       await tester.pumpAndSettle();
@@ -91,6 +108,28 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('Home header follows the readable card width on wide layouts', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1024, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(_testApp(router));
+    await tester.pumpAndSettle();
+
+    final monthSurface = find.descendant(
+      of: find.byKey(const Key('home-month-selector')),
+      matching: find.byType(Ink),
+    );
+    final summaryCard = find.byKey(const ValueKey('home-summary-card'));
+    expect(
+      tester.getTopRight(monthSurface).dx,
+      closeTo(tester.getTopRight(summaryCard).dx, 0.01),
+    );
+  });
 
   testWidgets(
     'Home lets an oversized narrow accessibility header scroll away',
@@ -347,7 +386,9 @@ void main() {
       final monthSelector = find.byKey(const Key('home-month-selector'));
       final trendSelector = find.byKey(const Key('home-trend-range-selector'));
       expect(tester.getSize(monthSelector).height, greaterThanOrEqualTo(44));
+      expect(tester.getSize(monthSelector).width, greaterThanOrEqualTo(44));
       expect(tester.getSize(trendSelector).height, greaterThanOrEqualTo(44));
+      expect(tester.getSize(trendSelector).width, greaterThanOrEqualTo(44));
       expect(
         tester.getSize(monthSelector).height,
         closeTo(tester.getSize(trendSelector).height, 0.1),
@@ -544,6 +585,17 @@ void main() {
         expect(text.overflow, isNot(TextOverflow.ellipsis));
       }
       expect(find.byKey(const Key('home-month-selector')), findsOneWidget);
+      final monthSelector = find.byKey(const Key('home-month-selector'));
+      expect(tester.getSize(monthSelector).width, greaterThanOrEqualTo(44));
+      final monthSurface = find.descendant(
+        of: monthSelector,
+        matching: find.byType(Ink),
+      );
+      final headerContent = find.byKey(const ValueKey('home-header-content'));
+      expect(
+        tester.getTopRight(monthSurface).dx,
+        closeTo(tester.getTopRight(headerContent).dx, 0.01),
+      );
       expect(tester.takeException(), isNull);
     },
   );
