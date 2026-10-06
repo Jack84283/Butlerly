@@ -2718,7 +2718,6 @@ void main() {
     );
     expect(financialCard, findsOneWidget);
     expect(descriptionCard, findsOneWidget);
-    expect(organizationCard, findsOneWidget);
     expect(
       find.descendant(
         of: financialCard,
@@ -2733,6 +2732,9 @@ void main() {
       ),
       findsOneWidget,
     );
+
+    await _scrollEditorToMasterData(tester);
+    expect(organizationCard, findsOneWidget);
     expect(
       find.descendant(
         of: organizationCard,
@@ -2764,6 +2766,7 @@ void main() {
       find.byKey(const ValueKey('transaction-editor-description-card')),
       findsOneWidget,
     );
+    await _scrollEditorToMasterData(tester);
     expect(
       find.byKey(const ValueKey('transaction-editor-organization-card')),
       findsOneWidget,
