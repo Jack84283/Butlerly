@@ -884,72 +884,89 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                 title: context.l10n.text('amount'),
                               ),
                               const SizedBox(height: ButlerlySpacing.standard),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    flex: 2,
-                                    child: TextFormField(
-                                      key: const ValueKey(
-                                        'transaction-amount-field',
-                                      ),
-                                      controller: _amount,
-                                      keyboardType:
-                                          const TextInputType.numberWithOptions(
-                                            decimal: true,
-                                          ),
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .headlineMedium
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                      decoration: InputDecoration(
-                                        labelText: context.l10n.text('amount'),
-                                        prefixIcon: const Icon(
-                                          Icons.attach_money_rounded,
-                                        ),
-                                      ),
-                                      validator: (value) {
-                                        try {
-                                          DecimalValue.parse(
-                                            value?.trim() ?? '',
-                                          );
-                                          return null;
-                                        } on DomainValidationException {
-                                          return context.l10n.text(
-                                            'invalidAmount',
-                                          );
-                                        }
-                                      },
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final amountField = TextFormField(
+                                    key: const ValueKey(
+                                      'transaction-amount-field',
                                     ),
-                                  ),
-                                  const SizedBox(
-                                    width: ButlerlySpacing.compact,
-                                  ),
-                                  Expanded(
-                                    child: TextFormField(
-                                      controller: _currency,
-                                      textCapitalization:
-                                          TextCapitalization.characters,
-                                      decoration: InputDecoration(
-                                        labelText: context.l10n.text(
-                                          'currency',
+                                    controller: _amount,
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                          decimal: true,
                                         ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                    decoration: InputDecoration(
+                                      labelText: context.l10n.text('amount'),
+                                      prefixIcon: const Icon(
+                                        Icons.attach_money_rounded,
                                       ),
-                                      validator: (value) {
-                                        try {
-                                          CurrencyCode(value?.trim() ?? '');
-                                          return null;
-                                        } on DomainValidationException {
-                                          return context.l10n.text(
-                                            'invalidCurrency',
-                                          );
-                                        }
-                                      },
                                     ),
-                                  ),
-                                ],
+                                    validator: (value) {
+                                      try {
+                                        DecimalValue.parse(
+                                          value?.trim() ?? '',
+                                        );
+                                        return null;
+                                      } on DomainValidationException {
+                                        return context.l10n.text(
+                                          'invalidAmount',
+                                        );
+                                      }
+                                    },
+                                  );
+                                  final currencyField = TextFormField(
+                                    controller: _currency,
+                                    textCapitalization:
+                                        TextCapitalization.characters,
+                                    decoration: InputDecoration(
+                                      labelText: context.l10n.text('currency'),
+                                    ),
+                                    validator: (value) {
+                                      try {
+                                        CurrencyCode(value?.trim() ?? '');
+                                        return null;
+                                      } on DomainValidationException {
+                                        return context.l10n.text(
+                                          'invalidCurrency',
+                                        );
+                                      }
+                                    },
+                                  );
+                                  final stackFields =
+                                      constraints.maxWidth < 280 ||
+                                      MediaQuery.textScalerOf(
+                                            context,
+                                          ).scale(14) >
+                                          20;
+                                  if (stackFields) {
+                                    return Column(
+                                      children: [
+                                        amountField,
+                                        const SizedBox(
+                                          height: ButlerlySpacing.compact,
+                                        ),
+                                        currencyField,
+                                      ],
+                                    );
+                                  }
+                                  return Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(flex: 2, child: amountField),
+                                      const SizedBox(
+                                        width: ButlerlySpacing.compact,
+                                      ),
+                                      Expanded(child: currencyField),
+                                    ],
+                                  );
+                                },
                               ),
                               const SizedBox(height: ButlerlySpacing.standard),
                               ButlerlyDirectionSelector(
@@ -972,7 +989,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                             children: [
                               _TransactionEditorSectionHeader(
                                 icon: Icons.receipt_long_outlined,
-                                title: context.l10n.text('transactionDetail'),
+                                title: context.l10n.text('transactionDetails'),
                               ),
                               const SizedBox(height: ButlerlySpacing.standard),
                               ButlerlyMerchantSelector(
