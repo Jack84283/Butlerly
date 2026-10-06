@@ -884,38 +884,83 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                 title: context.l10n.text('amount'),
                               ),
                               const SizedBox(height: ButlerlySpacing.standard),
-                              ListTile(
-                                key: const ValueKey('transaction-date-field'),
-                                contentPadding: EdgeInsets.zero,
-                                leading: const Icon(
-                                  Icons.calendar_today_outlined,
-                                ),
-                                title: Text(context.l10n.text('date')),
-                                subtitle: Text(
-                                  _shortDate(_date),
-                                  key: const ValueKey(
-                                    'transaction-date-value',
-                                  ),
-                                ),
-                                trailing: const Icon(
-                                  Icons.chevron_right_rounded,
-                                ),
-                                onTap: () async {
-                                  final selected = await showButlerlyDatePicker(
-                                    context: context,
-                                    title: context.l10n.text('date'),
-                                    cancelLabel: context.l10n.text('cancel'),
-                                    doneLabel: context.l10n.text('done'),
-                                    firstDate: DateTime(2000),
-                                    lastDate: DateTime(2100),
-                                    initialDate: _date,
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final amountField = TextFormField(
+                                    key: const ValueKey(
+                                      'transaction-amount-field',
+                                    ),
+                                    controller: _amount,
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                          decimal: true,
+                                        ),
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.headlineMedium,
+                                    decoration: InputDecoration(
+                                      labelText: context.l10n.text('amount'),
+                                      prefixIcon: const Icon(
+                                        Icons.payments_outlined,
+                                      ),
+                                    ),
+                                    validator: (value) {
+                                      try {
+                                        DecimalValue.parse(value?.trim() ?? '');
+                                        return null;
+                                      } on DomainValidationException {
+                                        return context.l10n.text(
+                                          'invalidAmount',
+                                        );
+                                      }
+                                    },
                                   );
-                                  if (selected != null) {
-                                    setState(() {
-                                      _date = selected;
-                                      _dateChanged = true;
-                                    });
+                                  final currencyField = TextFormField(
+                                    key: const ValueKey(
+                                      'transaction-currency-field',
+                                    ),
+                                    controller: _currency,
+                                    textCapitalization:
+                                        TextCapitalization.characters,
+                                    decoration: InputDecoration(
+                                      labelText: context.l10n.text('currency'),
+                                    ),
+                                    validator: (value) {
+                                      try {
+                                        CurrencyCode(value?.trim() ?? '');
+                                        return null;
+                                      } on DomainValidationException {
+                                        return context.l10n.text(
+                                          'invalidCurrency',
+                                        );
+                                      }
+                                    },
+                                  );
+                                  if (constraints.maxWidth < 280) {
+                                    return Column(
+                                      children: [
+                                        amountField,
+                                        const SizedBox(
+                                          height: ButlerlySpacing.standard,
+                                        ),
+                                        currencyField,
+                                      ],
+                                    );
                                   }
+                                  return Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(child: amountField),
+                                      const SizedBox(
+                                        width: ButlerlySpacing.compact,
+                                      ),
+                                      SizedBox(
+                                        width: 112,
+                                        child: currencyField,
+                                      ),
+                                    ],
+                                  );
                                 },
                               ),
                               const SizedBox(height: ButlerlySpacing.standard),
@@ -1007,74 +1052,38 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                 title: context.l10n.text('date'),
                               ),
                               const SizedBox(height: ButlerlySpacing.compact),
-                              LayoutBuilder(
-                                builder: (context, constraints) {
-                                  final textScale = MediaQuery.textScalerOf(
-                                    context,
-                                  ).scale(1);
-                                  final stackDate =
-                                      constraints.maxWidth < 280 ||
-                                      textScale > 1.3;
-                                  return ListTile(
-                                    key: const ValueKey(
-                                      'transaction-date-field',
-                                    ),
-                                    contentPadding: EdgeInsets.zero,
-                                    leading: const Icon(
-                                      Icons.calendar_today_outlined,
-                                    ),
-                                    title: Text(context.l10n.text('date')),
-                                    subtitle: stackDate
-                                        ? Text(
-                                            _shortDate(_date),
-                                            key: const ValueKey(
-                                              'transaction-date-value',
-                                            ),
-                                          )
-                                        : null,
-                                    trailing: stackDate
-                                        ? const Icon(
-                                            Icons.chevron_right_rounded,
-                                          )
-                                        : Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Text(
-                                                _shortDate(_date),
-                                                key: const ValueKey(
-                                                  'transaction-date-value',
-                                                ),
-                                              ),
-                                              const SizedBox(
-                                                width:
-                                                    ButlerlySpacing.compact,
-                                              ),
-                                              const Icon(
-                                                Icons.chevron_right_rounded,
-                                              ),
-                                            ],
-                                          ),
-                                    onTap: () async {
-                                      final selected =
-                                          await showButlerlyDatePicker(
-                                            context: context,
-                                            title: context.l10n.text('date'),
-                                            cancelLabel: context.l10n.text(
-                                              'cancel',
-                                            ),
-                                            doneLabel: context.l10n.text('done'),
-                                            firstDate: DateTime(2000),
-                                            lastDate: DateTime(2100),
-                                            initialDate: _date,
-                                          );
-                                      if (selected != null) {
-                                        setState(() {
-                                          _date = selected;
-                                          _dateChanged = true;
-                                        });
-                                      }
-                                    },
+                              ListTile(
+                                key: const ValueKey('transaction-date-field'),
+                                contentPadding: EdgeInsets.zero,
+                                leading: const Icon(
+                                  Icons.calendar_today_outlined,
+                                ),
+                                title: Text(context.l10n.text('date')),
+                                subtitle: Text(
+                                  _shortDate(_date),
+                                  key: const ValueKey(
+                                    'transaction-date-value',
+                                  ),
+                                ),
+                                trailing: const Icon(
+                                  Icons.chevron_right_rounded,
+                                ),
+                                onTap: () async {
+                                  final selected = await showButlerlyDatePicker(
+                                    context: context,
+                                    title: context.l10n.text('date'),
+                                    cancelLabel: context.l10n.text('cancel'),
+                                    doneLabel: context.l10n.text('done'),
+                                    firstDate: DateTime(2000),
+                                    lastDate: DateTime(2100),
+                                    initialDate: _date,
                                   );
+                                  if (selected != null) {
+                                    setState(() {
+                                      _date = selected;
+                                      _dateChanged = true;
+                                    });
+                                  }
                                 },
                               ),
                             ],
