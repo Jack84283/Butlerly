@@ -916,9 +916,6 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                     },
                                   );
                                   final currencyField = TextFormField(
-                                    key: const ValueKey(
-                                      'transaction-currency-field',
-                                    ),
                                     controller: _currency,
                                     textCapitalization:
                                         TextCapitalization.characters,
@@ -1053,20 +1050,11 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                               ),
                               const SizedBox(height: ButlerlySpacing.compact),
                               ListTile(
-                                key: const ValueKey('transaction-date-field'),
                                 contentPadding: EdgeInsets.zero,
-                                leading: const Icon(
-                                  Icons.calendar_today_outlined,
-                                ),
                                 title: Text(context.l10n.text('date')),
-                                subtitle: Text(
-                                  _shortDate(_date),
-                                  key: const ValueKey(
-                                    'transaction-date-value',
-                                  ),
-                                ),
+                                subtitle: Text(_shortDate(_date)),
                                 trailing: const Icon(
-                                  Icons.chevron_right_rounded,
+                                  Icons.calendar_today_outlined,
                                 ),
                                 onTap: () async {
                                   final selected = await showButlerlyDatePicker(
@@ -1117,9 +1105,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                               ),
                               const SizedBox(height: ButlerlySpacing.standard),
                               TextFormField(
-                                key: const ValueKey(
-                                  'transaction-notes-field',
-                                ),
+                                key: const ValueKey('transaction-notes-field'),
                                 controller: _notes,
                                 decoration: InputDecoration(
                                   labelText: context.l10n.text('notesOptional'),
