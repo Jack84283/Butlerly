@@ -830,7 +830,15 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.edit_outlined));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextFormField).at(2), 'Corrected lunch');
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('transaction-editor-description-card')),
+      160,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('transaction-description-field')),
+      'Corrected lunch',
+    );
     await tester.scrollUntilVisible(
       find.text('Save locally'),
       160,
