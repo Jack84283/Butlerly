@@ -151,18 +151,13 @@ class TransactionRecordList extends StatelessWidget {
       tilePadding: monthSectionsAsCards
           ? const EdgeInsets.symmetric(horizontal: ButlerlySpacing.cardPadding)
           : EdgeInsets.zero,
-      childrenPadding: const EdgeInsets.only(
-        bottom: ButlerlySpacing.standard,
-      ),
+      childrenPadding: const EdgeInsets.only(bottom: ButlerlySpacing.standard),
       shape: const Border(),
       collapsedShape: const Border(),
       title: Row(
         children: [
           Expanded(
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            child: Text(label, style: Theme.of(context).textTheme.titleMedium),
           ),
           Text(
             '${entry.value.length}',
@@ -173,9 +168,7 @@ class TransactionRecordList extends StatelessWidget {
       ),
       children: [
         ButlerlyTransactionList(
-          children: [
-            for (final transaction in entry.value) rows[transaction]!,
-          ],
+          children: [for (final transaction in entry.value) rows[transaction]!],
         ),
       ],
     );
