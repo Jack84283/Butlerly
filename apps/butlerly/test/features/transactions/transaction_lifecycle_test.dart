@@ -2707,7 +2707,6 @@ void main() {
   ) async {
     await _openEditorForTest(tester);
 
-    final editorList = find.byKey(const ValueKey('transaction-editor-list'));
     final financialCard = find.byKey(
       const ValueKey('transaction-editor-financial-card'),
     );
