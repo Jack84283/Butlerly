@@ -194,8 +194,11 @@ Future<void> _scrollToDescription(WidgetTester tester) async {
 }
 
 Future<void> _scrollToSelectors(WidgetTester tester) async {
-  final scrollable = find.byType(Scrollable).first;
-  await tester.drag(scrollable, const Offset(0, -600));
+  await tester.scrollUntilVisible(
+    find.byKey(const ValueKey('transaction-editor-organization-card')),
+    160,
+    scrollable: find.byType(Scrollable).first,
+  );
   await tester.pumpAndSettle();
 }
 
