@@ -901,7 +901,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                     decoration: InputDecoration(
                                       labelText: context.l10n.text('amount'),
                                       prefixIcon: const Icon(
-                                        Icons.attach_money_rounded,
+                                        Icons.payments_outlined,
                                       ),
                                     ),
                                     validator: (value) {
@@ -916,6 +916,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                     },
                                   );
                                   final currencyField = TextFormField(
+                                    key: const ValueKey(
+                                      'transaction-currency-field',
+                                    ),
                                     controller: _currency,
                                     textCapitalization:
                                         TextCapitalization.characters,
@@ -1049,23 +1052,54 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                 title: context.l10n.text('date'),
                               ),
                               const SizedBox(height: ButlerlySpacing.compact),
-                              ListTile(
-                                contentPadding: EdgeInsets.zero,
-                                leading: const Icon(
-                                  Icons.calendar_today_outlined,
-                                ),
-                                title: Text(context.l10n.text('date')),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(_shortDate(_date)),
-                                    const SizedBox(
-                                      width: ButlerlySpacing.compact,
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final textScale = MediaQuery.textScalerOf(
+                                    context,
+                                  ).scale(1);
+                                  final stackDate =
+                                      constraints.maxWidth < 280 ||
+                                      textScale > 1.3;
+                                  return ListTile(
+                                    key: const ValueKey(
+                                      'transaction-date-field',
                                     ),
-                                    const Icon(Icons.chevron_right_rounded),
-                                  ],
-                                ),
-                                onTap: () async {
+                                    contentPadding: EdgeInsets.zero,
+                                    leading: const Icon(
+                                      Icons.calendar_today_outlined,
+                                    ),
+                                    title: Text(context.l10n.text('date')),
+                                    subtitle: stackDate
+                                        ? Text(
+                                            _shortDate(_date),
+                                            key: const ValueKey(
+                                              'transaction-date-value',
+                                            ),
+                                          )
+                                        : null,
+                                    trailing: stackDate
+                                        ? const Icon(
+                                            Icons.chevron_right_rounded,
+                                          )
+                                        : Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                _shortDate(_date),
+                                                key: const ValueKey(
+                                                  'transaction-date-value',
+                                                ),
+                                              ),
+                                              const SizedBox(
+                                                width:
+                                                    ButlerlySpacing.compact,
+                                              ),
+                                              const Icon(
+                                                Icons.chevron_right_rounded,
+                                              ),
+                                            ],
+                                          ),
+                                    onTap: () async {
                                   final selected = await showButlerlyDatePicker(
                                     context: context,
                                     title: context.l10n.text('date'),
@@ -1081,6 +1115,8 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                       _dateChanged = true;
                                     });
                                   }
+                                },
+                                  );
                                 },
                               ),
                             ],
@@ -1114,6 +1150,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                               ),
                               const SizedBox(height: ButlerlySpacing.standard),
                               TextFormField(
+                                key: const ValueKey(
+                                  'transaction-notes-field',
+                                ),
                                 controller: _notes,
                                 decoration: InputDecoration(
                                   labelText: context.l10n.text('notesOptional'),
