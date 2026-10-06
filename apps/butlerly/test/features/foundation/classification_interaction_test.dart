@@ -142,7 +142,11 @@ void main() {
   ) async {
     await seedMerchant(withHistory: true);
     await pumpApp(tester, TransactionEditorPage(finance: finance));
-    await tester.enterText(find.byKey(const ValueKey('transaction-description-field')), 'SAFEWAY #5678');
+    await _scrollToDescription(tester);
+    await tester.enterText(
+      find.byKey(const ValueKey('transaction-description-field')),
+      'SAFEWAY #5678',
+    );
     await tester.pumpAndSettle();
     await _scrollToSelectors(tester);
     _expectSelectorValue(tester, 'Food & Dining');
