@@ -1253,7 +1253,7 @@ final class _TransactionEditorCardHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      Icon(icon, size: 22, color: context.colors.brand),
+      Icon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
       const SizedBox(width: ButlerlySpacing.compact),
       Expanded(
         child: Text(
