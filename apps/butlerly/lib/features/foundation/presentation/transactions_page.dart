@@ -465,6 +465,9 @@ class _TransactionsPageState extends State<TransactionsPage> {
                       paymentSourceNames: data.paymentSourceNames,
                       groupByFinancialDate: true,
                       collapsibleMonthSections: true,
+                      monthSectionsAsCards: true,
+                      dashboardRowStyle: true,
+                      missingCategoryLabel: context.l10n.text('uncategorized'),
                       possibleDuplicateIds: data.possibleDuplicateIds,
                       possibleDuplicateLabel: context.l10n.text(
                         'possibleDuplicate',

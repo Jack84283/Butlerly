@@ -25,6 +25,8 @@ class TransactionRecordList extends StatelessWidget {
     this.navigates = false,
     this.groupByFinancialDate = false,
     this.collapsibleMonthSections = false,
+    this.monthSectionsAsCards = false,
+    this.dashboardRowStyle = false,
     this.wrapInCard = false,
     this.showDateInRows = false,
     this.supportingContentBuilder,
@@ -42,6 +44,8 @@ class TransactionRecordList extends StatelessWidget {
   final bool navigates;
   final bool groupByFinancialDate;
   final bool collapsibleMonthSections;
+  final bool monthSectionsAsCards;
+  final bool dashboardRowStyle;
   final bool wrapInCard;
   final bool showDateInRows;
   final Widget Function(BuildContext, TransactionDto)? supportingContentBuilder;
@@ -59,7 +63,9 @@ class TransactionRecordList extends StatelessWidget {
           paymentSourceNames: paymentSourceNames,
           missingCategoryLabel: missingCategoryLabel,
           showDate: effectiveShowDateInRows,
-          showTags: true,
+          showTags: !dashboardRowStyle,
+          showCategoryPill: dashboardRowStyle,
+          compactMoney: dashboardRowStyle,
           supportingContent: supportingContentBuilder?.call(
             context,
             transaction,
@@ -68,7 +74,10 @@ class TransactionRecordList extends StatelessWidget {
           possibleDuplicateLabel: possibleDuplicateLabel,
           onPossibleDuplicateTap: onPossibleDuplicateTap,
           onTap: () => onTap(transaction),
-          showNavigationIndicator: navigates,
+          showNavigationIndicator: dashboardRowStyle ? false : navigates,
+          variant: dashboardRowStyle
+              ? ButlerlyTransactionRowVariant.dashboard
+              : ButlerlyTransactionRowVariant.standard,
         ),
     };
     if (!groupByFinancialDate) {
@@ -112,48 +121,65 @@ class TransactionRecordList extends StatelessWidget {
       children: [
         for (var index = 0; index < entries.length; index++) ...[
           if (index > 0) const SizedBox(height: ButlerlySpacing.compact),
-          Material(
-            type: MaterialType.transparency,
-            child: ExpansionTile(
-              key: ValueKey('transaction-month-${entries[index].key}'),
-              initiallyExpanded: index == 0,
-              tilePadding: EdgeInsets.zero,
-              childrenPadding: const EdgeInsets.only(
-                bottom: ButlerlySpacing.standard,
-              ),
-              shape: const Border(),
-              collapsedShape: const Border(),
-              title: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _monthSectionLabel(
-                        context,
-                        entries[index].value.first,
-                        locale: locale,
-                      ),
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ),
-                  Text(
-                    '${entries[index].value.length}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(width: ButlerlySpacing.compact),
-                ],
-              ),
-              children: [
-                ButlerlyTransactionList(
-                  children: [
-                    for (final transaction in entries[index].value)
-                      rows[transaction]!,
-                  ],
-                ),
-              ],
-            ),
+          _collapsibleMonthSection(
+            context,
+            entries[index],
+            rows,
+            locale: locale,
+            initiallyExpanded: index == 0,
           ),
         ],
       ],
+    );
+  }
+
+  Widget _collapsibleMonthSection(
+    BuildContext context,
+    MapEntry<String, List<TransactionDto>> entry,
+    Map<TransactionDto, Widget> rows, {
+    required String locale,
+    required bool initiallyExpanded,
+  }) {
+    final label = _monthSectionLabel(
+      context,
+      entry.value.first,
+      locale: locale,
+    );
+    final tile = ExpansionTile(
+      key: ValueKey('transaction-month-${entry.key}'),
+      initiallyExpanded: initiallyExpanded,
+      tilePadding: monthSectionsAsCards
+          ? const EdgeInsets.symmetric(horizontal: ButlerlySpacing.cardPadding)
+          : EdgeInsets.zero,
+      childrenPadding: const EdgeInsets.only(bottom: ButlerlySpacing.standard),
+      shape: const Border(),
+      collapsedShape: const Border(),
+      title: Row(
+        children: [
+          Expanded(
+            child: Text(label, style: Theme.of(context).textTheme.titleMedium),
+          ),
+          Text(
+            '${entry.value.length}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(width: ButlerlySpacing.compact),
+        ],
+      ),
+      children: [
+        ButlerlyTransactionList(
+          children: [for (final transaction in entry.value) rows[transaction]!],
+        ),
+      ],
+    );
+    if (!monthSectionsAsCards) {
+      return Material(type: MaterialType.transparency, child: tile);
+    }
+    return ButlerlyCard(
+      key: ValueKey('transaction-month-card-${entry.key}'),
+      padding: EdgeInsets.zero,
+      semanticLabel: label,
+      child: tile,
     );
   }
 
