@@ -1100,22 +1100,27 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                             ],
                                           ),
                                     onTap: () async {
-                                  final selected = await showButlerlyDatePicker(
-                                    context: context,
-                                    title: context.l10n.text('date'),
-                                    cancelLabel: context.l10n.text('cancel'),
-                                    doneLabel: context.l10n.text('done'),
-                                    firstDate: DateTime(2000),
-                                    lastDate: DateTime(2100),
-                                    initialDate: _date,
-                                  );
-                                  if (selected != null) {
-                                    setState(() {
-                                      _date = selected;
-                                      _dateChanged = true;
-                                    });
-                                  }
-                                },
+                                      final selected =
+                                          await showButlerlyDatePicker(
+                                            context: context,
+                                            title: context.l10n.text('date'),
+                                            cancelLabel: context.l10n.text(
+                                              'cancel',
+                                            ),
+                                            doneLabel: context.l10n.text(
+                                              'done',
+                                            ),
+                                            firstDate: DateTime(2000),
+                                            lastDate: DateTime(2100),
+                                            initialDate: _date,
+                                          );
+                                      if (selected != null) {
+                                        setState(() {
+                                          _date = selected;
+                                          _dateChanged = true;
+                                        });
+                                      }
+                                    },
                                   );
                                 },
                               ),
