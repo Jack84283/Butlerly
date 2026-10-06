@@ -149,9 +149,7 @@ class TransactionRecordList extends StatelessWidget {
       key: ValueKey('transaction-month-${entry.key}'),
       initiallyExpanded: initiallyExpanded,
       tilePadding: monthSectionsAsCards
-          ? const EdgeInsets.symmetric(
-              horizontal: ButlerlySpacing.cardPadding,
-            )
+          ? const EdgeInsets.symmetric(horizontal: ButlerlySpacing.cardPadding)
           : EdgeInsets.zero,
       childrenPadding: const EdgeInsets.only(
         bottom: ButlerlySpacing.standard,
