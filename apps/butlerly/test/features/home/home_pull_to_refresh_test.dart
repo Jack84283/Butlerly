@@ -1012,15 +1012,15 @@ void main() {
       for (final top in metricTops.skip(1)) {
         expect(top, closeTo(metricTops.first, 0.01));
       }
-      final spendingCell = find.byKey(
-        const ValueKey('home-summary-metric-spending'),
-      );
       final value = tester.widget<Text>(find.text('\$9,999.99'));
       expect(value.style?.fontSize, 14);
       expect(value.softWrap, isFalse);
       expect(value.maxLines, 1);
       expect(
-        find.ancestor(of: find.text('\$9,999.99'), matching: find.byType(FittedBox)),
+        find.ancestor(
+          of: find.text('\$9,999.99'),
+          matching: find.byType(FittedBox),
+        ),
         findsOneWidget,
       );
       expect(tester.takeException(), isNull);
