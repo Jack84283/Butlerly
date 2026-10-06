@@ -127,7 +127,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Corner Cafe'), findsOneWidget);
-      expect(find.text('Food · Dining · Visa'), findsOneWidget);
+      expect(find.text('Food'), findsOneWidget);
+      expect(find.text('Dining · Visa'), findsOneWidget);
 
       await tester.tap(find.text('Corner Cafe'));
       await tester.pumpAndSettle();
