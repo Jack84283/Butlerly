@@ -1233,7 +1233,7 @@ void main() {
       expect(
         tester.getTopLeft(find.text('Home Market')).dy -
             tester.getBottomRight(headerAction).dy,
-        inInclusiveRange(12, 20),
+        closeTo(ButlerlySpacing.micro, 0.01),
       );
     },
   );

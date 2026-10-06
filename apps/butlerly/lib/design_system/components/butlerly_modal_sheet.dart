@@ -49,6 +49,70 @@ class ButlerlySelectionOption<T> {
   final Widget child;
 }
 
+class ButlerlySheetChoiceTile extends StatelessWidget {
+  const ButlerlySheetChoiceTile({
+    required this.child,
+    required this.onTap,
+    this.selected = false,
+    this.enabled = true,
+    this.trailing,
+    super.key,
+  });
+
+  final Widget child;
+  final VoidCallback? onTap;
+  final bool selected;
+  final bool enabled;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final darkMode = theme.brightness == Brightness.dark;
+    final accent = theme.colorScheme.inversePrimary;
+    final decoration = darkMode
+        ? BoxDecoration(
+            color: selected
+                ? accent
+                : Color.alphaBlend(
+                    accent.withValues(alpha: 0.16),
+                    theme.colorScheme.surfaceContainerHighest,
+                  ),
+            borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+            border: Border.all(
+              color: accent.withValues(alpha: selected ? 1 : 0.85),
+              width: 1.25,
+            ),
+          )
+        : null;
+    return Semantics(
+      button: true,
+      selected: selected,
+      enabled: enabled,
+      child: Ink(
+        decoration: decoration,
+        child: ListTile(
+          contentPadding: darkMode
+              ? const EdgeInsets.symmetric(
+                  horizontal: ButlerlySpacing.small,
+                  vertical: ButlerlySpacing.xxs,
+                )
+              : EdgeInsets.zero,
+          enabled: enabled,
+          title: DefaultTextStyle.merge(
+            style: TextStyle(
+              color: darkMode && enabled ? theme.colorScheme.onSurface : null,
+            ),
+            child: child,
+          ),
+          trailing: trailing,
+          onTap: enabled ? onTap : null,
+        ),
+      ),
+    );
+  }
+}
+
 Future<T?> showButlerlyBottomSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
@@ -223,26 +287,34 @@ Future<T?> showButlerlySelectionSheet<T>({
   required List<ButlerlySelectionOption<T>> options,
 }) => showButlerlyBottomSheet<T>(
   context: context,
-  builder: (sheetContext) => ButlerlySheet(
-    title: Text(title),
-    content: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (final option in options)
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: option.child,
-            trailing: option.value == selectedValue
-                ? Icon(
-                    Icons.check_rounded,
-                    color: Theme.of(sheetContext).colorScheme.primary,
-                  )
-                : null,
-            onTap: () => Navigator.pop(sheetContext, option.value),
-          ),
-      ],
-    ),
-  ),
+  builder: (sheetContext) {
+    final darkMode = Theme.of(sheetContext).brightness == Brightness.dark;
+    return ButlerlySheet(
+      title: Text(title),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var index = 0; index < options.length; index++) ...[
+            if (darkMode && index > 0)
+              const SizedBox(height: ButlerlySpacing.compact),
+            ButlerlySheetChoiceTile(
+              selected: options[index].value == selectedValue,
+              onTap: () => Navigator.pop(sheetContext, options[index].value),
+              trailing: options[index].value == selectedValue
+                  ? Icon(
+                      Icons.check_rounded,
+                      color: darkMode
+                          ? Theme.of(sheetContext).colorScheme.onSurface
+                          : Theme.of(sheetContext).colorScheme.primary,
+                    )
+                  : null,
+              child: options[index].child,
+            ),
+          ],
+        ],
+      ),
+    );
+  },
 );
 
 Future<bool?> showButlerlyConfirmationSheet({

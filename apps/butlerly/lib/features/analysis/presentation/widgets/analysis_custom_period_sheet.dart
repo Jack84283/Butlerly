@@ -116,28 +116,59 @@ class _DateChoice extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    button: true,
-    selected: selected,
-    label: '$label, $value',
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: ButlerlySpacing.compact),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: Theme.of(context).textTheme.labelMedium),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: selected ? Theme.of(context).colorScheme.primary : null,
-              ),
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final darkMode = theme.brightness == Brightness.dark;
+    final accent = theme.colorScheme.inversePrimary;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '$label, $value',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+        child: Ink(
+          decoration: darkMode
+              ? BoxDecoration(
+                  color: selected
+                      ? accent
+                      : Color.alphaBlend(
+                          accent.withValues(alpha: 0.16),
+                          theme.colorScheme.surfaceContainerHighest,
+                        ),
+                  borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+                  border: Border.all(
+                    color: accent.withValues(alpha: selected ? 1 : 0.85),
+                    width: 1.25,
+                  ),
+                )
+              : null,
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: darkMode
+                  ? ButlerlySpacing.small
+                  : ButlerlySpacing.none,
+              vertical: ButlerlySpacing.compact,
             ),
-          ],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: theme.textTheme.labelMedium),
+                Text(
+                  value,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: darkMode
+                        ? theme.colorScheme.onSurface
+                        : selected
+                        ? theme.colorScheme.primary
+                        : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }

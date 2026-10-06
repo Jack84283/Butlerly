@@ -541,8 +541,13 @@ double _homeHeaderExtent(
       .toDouble();
   final direction = Directionality.of(context);
 
-  final appStyle = ButlerlyTypography.brandTitle(
-    textTheme.headlineLarge ?? const TextStyle(),
+  final appStyle = ButlerlyTypography.editorialText(
+    ButlerlyTypography.pageHeroTitle(
+      textTheme.headlineLarge ?? const TextStyle(),
+    ),
+  );
+  final brandSubtitleStyle = ButlerlyTypography.cardSubtitle(
+    textTheme.bodySmall ?? const TextStyle(),
   );
   final introStyle = ButlerlyTypography.cardSubtitle(
     textTheme.bodySmall ?? const TextStyle(),
@@ -617,13 +622,17 @@ double _homeHeaderExtent(
   }
 
   final appName = context.l10n.text('appName');
-  final rowWidth = availableWidth - ButlerlySpacing.standard;
-  final brandWidth = rowWidth * 5 / 9;
-  final monthWidth = rowWidth * 4 / 9;
-  final brandHeight = measure(appName, appStyle, brandWidth);
-  final monthHeight = monthButtonHeight(monthWidth);
+  final brandSubtitle = context.l10n.text('brandTagline');
   final largeText = scaler.scale(14) > 18;
   final stackedTopRow = largeText || availableWidth < 360;
+  final rowWidth = availableWidth - ButlerlySpacing.standard;
+  final brandWidth = stackedTopRow ? availableWidth : rowWidth * 5 / 9;
+  final monthWidth = stackedTopRow ? availableWidth : rowWidth * 4 / 9;
+  final brandHeight =
+      measure(appName, appStyle, brandWidth) +
+      ButlerlySpacing.micro +
+      measure(brandSubtitle, brandSubtitleStyle, brandWidth);
+  final monthHeight = monthButtonHeight(monthWidth);
   final topRowHeight = stackedTopRow
       ? brandHeight + ButlerlySpacing.small + monthHeight
       : brandHeight > monthHeight
@@ -723,11 +732,30 @@ class _HomeHeader extends StatelessWidget {
     final selectorMonthLabel = DateFormat.yMMM(locale).format(month);
     return LayoutBuilder(
       builder: (context, constraints) {
-        final brand = Text(
-          context.l10n.text('appName'),
-          style: ButlerlyTypography.brandTitle(
-            Theme.of(context).textTheme.headlineLarge ?? const TextStyle(),
-          ),
+        final brand = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              context.l10n.text('appName'),
+              style: ButlerlyTypography.editorialText(
+                ButlerlyTypography.pageHeroTitle(
+                  Theme.of(context).textTheme.headlineLarge ??
+                      const TextStyle(),
+                ),
+              ),
+            ),
+            const SizedBox(height: ButlerlySpacing.micro),
+            Text(
+              context.l10n.text('brandTagline'),
+              key: const ValueKey('home-brand-tagline'),
+              maxLines: 1,
+              softWrap: false,
+              style: ButlerlyTypography.cardSubtitle(
+                Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+              ),
+            ),
+          ],
         );
         final monthButton = ButlerlyCompactSelector(
           buttonKey: const Key('home-month-selector'),
@@ -759,13 +787,14 @@ class _HomeHeader extends StatelessWidget {
                 ],
               )
             : Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: brand),
+                  Expanded(flex: 5, child: brand),
                   const SizedBox(width: ButlerlySpacing.standard),
                   Expanded(
+                    flex: 4,
                     child: Align(
-                      alignment: AlignmentDirectional.centerEnd,
+                      alignment: AlignmentDirectional.topEnd,
                       child: monthButton,
                     ),
                   ),
@@ -830,6 +859,10 @@ class _HomeSummaryCard extends StatelessWidget {
     return ButlerlyCard(
       key: const ValueKey('home-summary-card'),
       variant: ButlerlyCardVariant.dashboard,
+      color: Color.alphaBlend(
+        context.colors.brand.withValues(alpha: 0.50),
+        context.colors.cardSurface,
+      ),
       semanticLabel: context.l10n.text('monthlySummary'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -935,9 +968,12 @@ class _HomeSummaryCard extends StatelessWidget {
                     if (index > 0)
                       const SizedBox(width: ButlerlySpacing.compact),
                     Expanded(
-                      child: _HomeSummaryMetricTile(
-                        key: tileKeys[index],
-                        child: layoutCells[index],
+                      child: SizedBox(
+                        height: 108,
+                        child: _HomeSummaryMetricTile(
+                          key: tileKeys[index],
+                          child: layoutCells[index],
+                        ),
                       ),
                     ),
                   ],
@@ -973,7 +1009,10 @@ class _HomeSummaryMetricTile extends StatelessWidget {
       border: Border.all(color: context.colors.border),
     ),
     child: Padding(
-      padding: const EdgeInsets.all(ButlerlySpacing.small),
+      padding: const EdgeInsets.symmetric(
+        horizontal: ButlerlySpacing.small,
+        vertical: ButlerlySpacing.micro,
+      ),
       child: child,
     ),
   );
@@ -1065,26 +1104,50 @@ class _HomeMetricCell extends StatelessWidget {
           '$label, ${displayUnavailable ? context.l10n.text('notAvailable') : displayValue}'
           '${semanticSupport.isEmpty ? '' : ', $semanticSupport'}',
       child: Column(
+        mainAxisAlignment: stacked
+            ? MainAxisAlignment.start
+            : MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 32,
-            height: 32,
+            width: stacked ? 32 : 28,
+            height: stacked ? 32 : 28,
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             child: Icon(
               icon,
-              size: 18,
+              size: stacked ? 18 : 16,
               color: ButlerlyCategoryColors.whiteGlyph,
             ),
           ),
-          const SizedBox(height: ButlerlySpacing.compact),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: ButlerlyTypography.homeSummaryMetricLabel(
-              Theme.of(context).textTheme.labelLarge ?? const TextStyle(),
-            ).copyWith(color: context.colors.secondaryText),
+          SizedBox(
+            height: stacked ? ButlerlySpacing.compact : ButlerlySpacing.micro,
           ),
+          if (stacked)
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: ButlerlyTypography.homeSummaryMetricLabel(
+                Theme.of(context).textTheme.labelLarge ?? const TextStyle(),
+              ).copyWith(color: context.colors.secondaryText),
+            )
+          else
+            SizedBox(
+              height: 18,
+              width: double.infinity,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.center,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  softWrap: false,
+                  textAlign: TextAlign.center,
+                  style: ButlerlyTypography.homeSummaryMetricLabel(
+                    Theme.of(context).textTheme.labelLarge ?? const TextStyle(),
+                  ).copyWith(color: context.colors.secondaryText),
+                ),
+              ),
+            ),
           const SizedBox(height: ButlerlySpacing.xxs),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -1100,6 +1163,7 @@ class _HomeMetricCell extends StatelessWidget {
               );
               return SizedBox(
                 width: constraints.maxWidth,
+                height: stacked ? null : 18,
                 child: stacked
                     ? valueText
                     : FittedBox(
@@ -1110,24 +1174,57 @@ class _HomeMetricCell extends StatelessWidget {
               );
             },
           ),
-          if (!valueUnavailable &&
-              !metricUnavailable &&
-              support != null &&
-              support.isNotEmpty) ...[
-            const SizedBox(height: ButlerlySpacing.micro),
+          SizedBox(
+            height: stacked ? ButlerlySpacing.micro : ButlerlySpacing.xxs,
+          ),
+          if (stacked)
             Text(
-              support,
+              !valueUnavailable &&
+                      !metricUnavailable &&
+                      support != null &&
+                      support.isNotEmpty
+                  ? support
+                  : ' ',
+              maxLines: 1,
+              overflow: TextOverflow.clip,
               textAlign: TextAlign.center,
-              softWrap: true,
+              softWrap: false,
               style:
                   ButlerlyTypography.homeSummaryMetricChange(
                     Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
                   ).copyWith(
                     color: supportingColor ?? context.colors.secondaryText,
                   ),
+            )
+          else
+            SizedBox(
+              height: 16,
+              width: double.infinity,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.center,
+                child: Text(
+                  !valueUnavailable &&
+                          !metricUnavailable &&
+                          support != null &&
+                          support.isNotEmpty
+                      ? support
+                      : ' ',
+                  maxLines: 1,
+                  softWrap: false,
+                  textAlign: TextAlign.center,
+                  style:
+                      ButlerlyTypography.homeSummaryMetricChange(
+                        Theme.of(context).textTheme.bodySmall ??
+                            const TextStyle(),
+                      ).copyWith(
+                        color: supportingColor ?? context.colors.secondaryText,
+                      ),
+                ),
+              ),
             ),
-          ],
-          if (!valueUnavailable &&
+          if (stacked &&
+              !valueUnavailable &&
               !metricUnavailable &&
               secondarySupport != null &&
               secondarySupport.isNotEmpty) ...[
@@ -1273,6 +1370,7 @@ class _SpendingTrend extends StatelessWidget {
       alignVisualEnd: true,
       denseSurface: true,
     );
+    final largeText = MediaQuery.textScalerOf(context).scale(14) > 20;
     return ButlerlyCard(
       key: const ValueKey('home-trend-card'),
       variant: ButlerlyCardVariant.dashboard,
@@ -1284,13 +1382,17 @@ class _SpendingTrend extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ButlerlyCardHeader(
-                  title: context.l10n.text('spendingTrend'),
-                  titleStyle: ButlerlyTypography.compactCardTitle(
-                    Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
+                Padding(
+                  padding: EdgeInsetsDirectional.only(end: largeText ? 0 : 132),
+                  child: ButlerlyCardHeader(
+                    title: context.l10n.text('spendingTrend'),
+                    titleStyle: ButlerlyTypography.compactCardTitle(
+                      Theme.of(context).textTheme.titleLarge ??
+                          const TextStyle(),
+                    ),
+                    action: largeText ? trendAction : null,
+                    keepActionInlineAtCompactWidth: true,
                   ),
-                  action: trendAction,
-                  keepActionInlineAtCompactWidth: true,
                 ),
                 if (unavailable || points.isEmpty || !meaningful) ...[
                   const SizedBox(height: ButlerlySpacing.small),
@@ -1337,6 +1439,8 @@ class _SpendingTrend extends StatelessWidget {
               ],
             ),
           ),
+          if (!largeText)
+            PositionedDirectional(top: 0, end: 0, child: trendAction),
           if (loading)
             const Positioned.fill(
               child: IgnorePointer(
@@ -2574,6 +2678,7 @@ class _HomeMonthPickerState extends State<_HomeMonthPicker> {
   @override
   Widget build(BuildContext context) {
     final locale = Localizations.localeOf(context).toLanguageTag();
+    final darkMode = Theme.of(context).brightness == Brightness.dark;
     return ButlerlySheet(
       title: Row(
         children: [
@@ -2619,9 +2724,16 @@ class _HomeMonthPickerState extends State<_HomeMonthPicker> {
           ).isAfter(_monthStart(widget.currentMonth));
           final selected = _sameMonth(candidate, widget.selectedMonth);
           final label = DateFormat.MMM(locale).format(candidate);
+          final availableDarkStyle = darkMode && !future;
           return selected
               ? FilledButton(
                   key: Key('home-month-${candidate.year}-${candidate.month}'),
+                  style: availableDarkStyle
+                      ? FilledButton.styleFrom(
+                          backgroundColor: context.colors.interactiveStrong,
+                          foregroundColor: context.colors.primaryText,
+                        )
+                      : null,
                   onPressed: future
                       ? null
                       : () => Navigator.of(context).pop(candidate),
@@ -2629,6 +2741,21 @@ class _HomeMonthPickerState extends State<_HomeMonthPicker> {
                 )
               : OutlinedButton(
                   key: Key('home-month-${candidate.year}-${candidate.month}'),
+                  style: availableDarkStyle
+                      ? OutlinedButton.styleFrom(
+                          foregroundColor: context.colors.primaryText,
+                          backgroundColor: Color.alphaBlend(
+                            context.colors.interactive.withValues(alpha: 0.16),
+                            context.colors.subtleSurface,
+                          ),
+                          side: BorderSide(
+                            color: context.colors.interactive.withValues(
+                              alpha: 0.85,
+                            ),
+                            width: 1.25,
+                          ),
+                        )
+                      : null,
                   onPressed: future
                       ? null
                       : () => Navigator.of(context).pop(candidate),
