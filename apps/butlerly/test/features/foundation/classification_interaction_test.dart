@@ -188,7 +188,7 @@ Future<void> _scrollToDescription(WidgetTester tester) async {
   await tester.scrollUntilVisible(
     find.byKey(const ValueKey('transaction-editor-description-card')),
     160,
-    scrollable: find.byKey(const ValueKey('transaction-editor-list')),
+    scrollable: find.byType(Scrollable).last,
   );
   await tester.pumpAndSettle();
 }
