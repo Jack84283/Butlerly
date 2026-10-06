@@ -2741,7 +2741,7 @@ void main() {
     await tester.scrollUntilVisible(
       detailsCard,
       180,
-      scrollable: editorList,
+      scrollable: find.byType(Scrollable).last,
     );
     expect(detailsCard, findsOneWidget);
     expect(
@@ -2762,7 +2762,7 @@ void main() {
     await tester.scrollUntilVisible(
       dateCard,
       180,
-      scrollable: editorList,
+      scrollable: find.byType(Scrollable).last,
     );
     expect(dateCard, findsOneWidget);
     expect(find.text('Time'), findsNothing);
@@ -2770,7 +2770,7 @@ void main() {
     await tester.scrollUntilVisible(
       notesCard,
       180,
-      scrollable: editorList,
+      scrollable: find.byType(Scrollable).last,
     );
     expect(notesCard, findsOneWidget);
     expect(
@@ -2806,7 +2806,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('transaction-editor-date-card')),
       180,
-      scrollable: find.byKey(const ValueKey('transaction-editor-list')),
+      scrollable: find.byType(Scrollable).last,
     );
     expect(
       find.byKey(const ValueKey('transaction-editor-date-card')),
