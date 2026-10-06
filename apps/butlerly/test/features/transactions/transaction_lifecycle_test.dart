@@ -144,7 +144,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.byKey(const ValueKey('transaction-editor-description-card')),
         160,
-        scrollable: find.byType(Scrollable).last,
+        scrollable: find.byType(Scrollable).first,
       );
       await tester.enterText(
         find.byKey(const ValueKey('transaction-description-field')),
@@ -531,7 +531,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.text('Organize transaction'),
         200,
-        scrollable: find.byType(Scrollable).last,
+        scrollable: find.byType(Scrollable).first,
       );
       await tester.tap(find.text('Organize transaction'));
       await tester.pumpAndSettle();
@@ -613,7 +613,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.text('Organize transaction'),
         200,
-        scrollable: find.byType(Scrollable).last,
+        scrollable: find.byType(Scrollable).first,
       );
       await tester.tap(find.text('Organize transaction'));
       await tester.pumpAndSettle();
@@ -785,7 +785,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('transaction-editor-description-card')),
       160,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.enterText(
       find.byKey(const ValueKey('transaction-description-field')),
@@ -798,7 +798,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('Save locally'),
       160,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.tap(find.text('Save locally'));
     await tester.pumpAndSettle();
@@ -816,7 +816,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('Organize transaction'),
       200,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.ensureVisible(find.text('Organize transaction'));
     await tester.tap(find.text('Organize transaction'));
@@ -834,7 +834,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('Save locally'),
       160,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.tap(find.text('Save locally'));
     await tester.pumpAndSettle();
@@ -843,7 +843,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('Archive transaction'),
       200,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.tap(find.text('Archive transaction'));
     await tester.pumpAndSettle();
@@ -928,7 +928,7 @@ void main() {
     await tester.scrollUntilVisible(
       categoryFilter,
       160,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.tap(categoryFilter);
     await tester.pumpAndSettle();
@@ -937,7 +937,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('apply-search-filters')),
       160,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.tap(find.byKey(const ValueKey('apply-search-filters')));
     await tester.pumpAndSettle();
@@ -1012,7 +1012,7 @@ void main() {
     await tester.scrollUntilVisible(
       categoryFilter,
       160,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.tap(categoryFilter);
     await tester.pumpAndSettle();
@@ -2534,7 +2534,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('Organize transaction'),
       200,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.tap(find.text('Organize transaction'));
     await tester.pumpAndSettle();
@@ -2592,7 +2592,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('Organize transaction'),
       200,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.tap(find.text('Organize transaction'));
     await tester.pumpAndSettle();
@@ -2639,7 +2639,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('transaction-editor-date-card')),
       160,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: find.byType(Scrollable).first,
     );
     expect(
       find.descendant(
@@ -2693,7 +2693,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('整理交易'),
       200,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.tap(find.text('整理交易'));
     await tester.pumpAndSettle();
@@ -2724,7 +2724,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('Save locally'),
       160,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.tap(find.text('Save locally'));
     await tester.pumpAndSettle();
@@ -2784,7 +2784,7 @@ void main() {
     await tester.scrollUntilVisible(
       descriptionCard,
       160,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: find.byType(Scrollable).first,
     );
     expect(descriptionCard, findsOneWidget);
     expect(
@@ -2826,7 +2826,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('transaction-editor-description-card')),
       160,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: find.byType(Scrollable).first,
     );
     expect(
       find.byKey(const ValueKey('transaction-editor-description-card')),
@@ -2912,7 +2912,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.text('Save locally'),
         160,
-        scrollable: find.byType(Scrollable).last,
+        scrollable: find.byType(Scrollable).first,
       );
       await tester.tap(find.text('Save locally'));
       await tester.pumpAndSettle();
@@ -2946,7 +2946,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('Save locally'),
       160,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.tap(find.text('Save locally'));
     await tester.pumpAndSettle();
