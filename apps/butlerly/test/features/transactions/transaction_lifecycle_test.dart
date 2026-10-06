@@ -144,7 +144,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.byKey(const ValueKey('transaction-editor-description-card')),
         160,
-        scrollable: find.byKey(const ValueKey('transaction-editor-list')),
+        scrollable: find.byType(Scrollable).last,
       );
       await tester.enterText(
         find.byKey(const ValueKey('transaction-description-field')),
@@ -785,7 +785,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('transaction-editor-description-card')),
       160,
-      scrollable: find.byKey(const ValueKey('transaction-editor-list')),
+      scrollable: find.byType(Scrollable).last,
     );
     await tester.enterText(
       find.byKey(const ValueKey('transaction-description-field')),
@@ -2639,7 +2639,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('transaction-editor-date-card')),
       160,
-      scrollable: find.byKey(const ValueKey('transaction-editor-list')),
+      scrollable: find.byType(Scrollable).last,
     );
     expect(
       find.descendant(
