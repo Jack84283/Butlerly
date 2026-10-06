@@ -2729,9 +2729,7 @@ void main() {
     expect(
       find.descendant(
         of: descriptionCard,
-        matching: find.byKey(
-          const ValueKey('transaction-description-field'),
-        ),
+        matching: find.byKey(const ValueKey('transaction-description-field')),
       ),
       findsOneWidget,
     );
@@ -2754,9 +2752,7 @@ void main() {
     await repository.save(_editorTransaction('card-edit'));
     await _openEditorForTest(
       tester,
-      existing: TransactionDto.fromDomain(
-        repository.values['card-edit']!,
-      ),
+      existing: TransactionDto.fromDomain(repository.values['card-edit']!),
     );
 
     expect(find.text('Edit transaction'), findsOneWidget);
