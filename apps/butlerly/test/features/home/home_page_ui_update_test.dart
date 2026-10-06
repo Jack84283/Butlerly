@@ -96,7 +96,10 @@ void main() {
       final greeting = find.byKey(const ValueKey('home-greeting'));
       final intro = find.byKey(const ValueKey('home-intro'));
       expect(tester.widget<Text>(brand).style?.fontSize, 32);
-      expect(tester.widget<Text>(brandTagline).style?.fontSize, 14);
+      final taglineText = tester.widget<Text>(brandTagline);
+      expect(taglineText.style?.fontSize, 14);
+      expect(taglineText.maxLines, 1);
+      expect(taglineText.softWrap, isFalse);
       expect(
         tester.getTopLeft(brandTagline).dy - tester.getBottomLeft(brand).dy,
         closeTo(ButlerlySpacing.micro, 0.01),
