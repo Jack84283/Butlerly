@@ -898,9 +898,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                     style: Theme.of(context)
                                         .textTheme
                                         .headlineMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                        ?.copyWith(fontWeight: FontWeight.w600),
                                     decoration: InputDecoration(
                                       labelText: context.l10n.text('amount'),
                                       prefixIcon: const Icon(
@@ -909,9 +907,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                     ),
                                     validator: (value) {
                                       try {
-                                        DecimalValue.parse(
-                                          value?.trim() ?? '',
-                                        );
+                                        DecimalValue.parse(value?.trim() ?? '');
                                         return null;
                                       } on DomainValidationException {
                                         return context.l10n.text(
@@ -1074,18 +1070,15 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                   ],
                                 ),
                                 onTap: () async {
-                                  final selected =
-                                      await showButlerlyDatePicker(
-                                        context: context,
-                                        title: context.l10n.text('date'),
-                                        cancelLabel: context.l10n.text(
-                                          'cancel',
-                                        ),
-                                        doneLabel: context.l10n.text('done'),
-                                        firstDate: DateTime(2000),
-                                        lastDate: DateTime(2100),
-                                        initialDate: _date,
-                                      );
+                                  final selected = await showButlerlyDatePicker(
+                                    context: context,
+                                    title: context.l10n.text('date'),
+                                    cancelLabel: context.l10n.text('cancel'),
+                                    doneLabel: context.l10n.text('done'),
+                                    firstDate: DateTime(2000),
+                                    lastDate: DateTime(2100),
+                                    initialDate: _date,
+                                  );
                                   if (selected != null) {
                                     setState(() {
                                       _date = selected;
@@ -1282,9 +1275,9 @@ class _TransactionEditorSectionHeader extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
         ),
       ],
