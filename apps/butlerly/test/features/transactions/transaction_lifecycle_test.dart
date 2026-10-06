@@ -141,6 +141,11 @@ void main() {
 
       await tester.tap(find.byIcon(Icons.edit_outlined));
       await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('transaction-editor-description-card')),
+        160,
+        scrollable: find.byKey(const ValueKey('transaction-editor-list')),
+      );
       await tester.enterText(
         find.byKey(const ValueKey('transaction-description-field')),
         'Updated lunch',
@@ -773,9 +778,23 @@ void main() {
 
     await tester.tap(find.text('Add transaction manually'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextFormField).at(0), '12.50');
-    await tester.enterText(find.byType(TextFormField).at(2), 'Lunch');
-    await tester.enterText(find.byType(TextFormField).at(3), 'Team meal');
+    await tester.enterText(
+      find.byKey(const ValueKey('transaction-amount-field')),
+      '12.50',
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('transaction-editor-description-card')),
+      160,
+      scrollable: find.byKey(const ValueKey('transaction-editor-list')),
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('transaction-description-field')),
+      'Lunch',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('transaction-notes-field')),
+      'Team meal',
+    );
     await tester.scrollUntilVisible(
       find.text('Save locally'),
       160,
@@ -2617,7 +2636,18 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('2026-08-10'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('transaction-editor-date-card')),
+      160,
+      scrollable: find.byKey(const ValueKey('transaction-editor-list')),
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('transaction-editor-date-card')),
+        matching: find.text('2026-08-10'),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('2026-08-11'), findsNothing);
   });
 
