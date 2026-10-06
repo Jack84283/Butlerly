@@ -2716,9 +2716,7 @@ void main() {
     final organizationCard = find.byKey(
       const ValueKey('transaction-editor-organization-card'),
     );
-    final dateCard = find.byKey(
-      const ValueKey('transaction-editor-date-card'),
-    );
+    final dateCard = find.byKey(const ValueKey('transaction-editor-date-card'));
     expect(financialCard, findsOneWidget);
     expect(
       find.descendant(
