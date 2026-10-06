@@ -112,7 +112,11 @@ void main() {
   ) async {
     await seedMerchant(withHistory: true);
     await pumpApp(tester, TransactionEditorPage(finance: finance));
-    await tester.enterText(find.byKey(const ValueKey('transaction-description-field')), 'SAFEWAY #5678');
+    await _scrollToDescription(tester);
+    await tester.enterText(
+      find.byKey(const ValueKey('transaction-description-field')),
+      'SAFEWAY #5678',
+    );
     await tester.pumpAndSettle();
     await _scrollToSelectors(tester);
 
@@ -147,6 +151,7 @@ void main() {
     await _chooseDropdown(tester, 1, 'Travel');
     await _chooseDropdown(tester, 2, 'Transport');
     await _scrollToTop(tester);
+    await _scrollToDescription(tester);
     await tester.enterText(
       find.byKey(const ValueKey('transaction-description-field')),
       'A different shop',
@@ -172,6 +177,15 @@ Future<void> _chooseDropdown(
     (entry) => entry.label == label,
   );
   menu.onSelected!(entry.value);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _scrollToDescription(WidgetTester tester) async {
+  await tester.scrollUntilVisible(
+    find.byKey(const ValueKey('transaction-editor-description-card')),
+    160,
+    scrollable: find.byKey(const ValueKey('transaction-editor-list')),
+  );
   await tester.pumpAndSettle();
 }
 
