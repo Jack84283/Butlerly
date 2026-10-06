@@ -906,9 +906,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                     ),
                                     validator: (value) {
                                       try {
-                                        DecimalValue.parse(
-                                          value?.trim() ?? '',
-                                        );
+                                        DecimalValue.parse(value?.trim() ?? '');
                                         return null;
                                       } on DomainValidationException {
                                         return context.l10n.text(
@@ -1247,10 +1245,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
 }
 
 final class _TransactionEditorCardHeader extends StatelessWidget {
-  const _TransactionEditorCardHeader({
-    required this.icon,
-    required this.title,
-  });
+  const _TransactionEditorCardHeader({required this.icon, required this.title});
 
   final IconData icon;
   final String title;
@@ -1263,9 +1258,9 @@ final class _TransactionEditorCardHeader extends StatelessWidget {
       Expanded(
         child: Text(
           title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
       ),
     ],
