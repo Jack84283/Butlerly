@@ -1107,9 +1107,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                             cancelLabel: context.l10n.text(
                                               'cancel',
                                             ),
-                                            doneLabel: context.l10n.text(
-                                              'done',
-                                            ),
+                                            doneLabel: context.l10n.text('done'),
                                             firstDate: DateTime(2000),
                                             lastDate: DateTime(2100),
                                             initialDate: _date,
