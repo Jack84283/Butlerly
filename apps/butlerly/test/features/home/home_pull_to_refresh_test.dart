@@ -239,14 +239,14 @@ void main() {
             widget.padding ==
                 EdgeInsets.fromLTRB(
                   ButlerlyTransactionItemTokens.horizontalInset,
-                  ButlerlyTransactionItemTokens.topPadding,
+                  ButlerlySpacing.micro,
                   ButlerlyTransactionItemTokens.horizontalInset,
                   ButlerlyTransactionItemTokens.bottomPadding,
                 ),
       ),
     );
     expect(rowPadding, findsOneWidget);
-    expect(ButlerlyTransactionItemTokens.topPadding, 12);
+    expect(ButlerlySpacing.micro, 4);
     expect(tester.takeException(), isNull);
   });
 
@@ -1020,7 +1020,7 @@ void main() {
       expect(value.softWrap, isFalse);
       expect(value.maxLines, 1);
       expect(
-        find.descendant(of: spendingCell, matching: find.byType(FittedBox)),
+        find.ancestor(of: find.text('\$9,999.99'), matching: find.byType(FittedBox)),
         findsOneWidget,
       );
       expect(tester.takeException(), isNull);
