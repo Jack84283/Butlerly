@@ -626,8 +626,8 @@ double _homeHeaderExtent(
   final largeText = scaler.scale(14) > 18;
   final stackedTopRow = largeText || availableWidth < 360;
   final rowWidth = availableWidth - ButlerlySpacing.standard;
-  final brandWidth = stackedTopRow ? availableWidth : rowWidth / 2;
-  final monthWidth = stackedTopRow ? availableWidth : rowWidth / 2;
+  final brandWidth = stackedTopRow ? availableWidth : rowWidth * 5 / 9;
+  final monthWidth = stackedTopRow ? availableWidth : rowWidth * 4 / 9;
   final brandHeight =
       measure(appName, appStyle, brandWidth) +
       ButlerlySpacing.micro +
@@ -749,6 +749,8 @@ class _HomeHeader extends StatelessWidget {
             Text(
               context.l10n.text('brandTagline'),
               key: const ValueKey('home-brand-tagline'),
+              maxLines: 1,
+              softWrap: false,
               style: ButlerlyTypography.cardSubtitle(
                 Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
               ),
@@ -787,9 +789,10 @@ class _HomeHeader extends StatelessWidget {
             : Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: brand),
+                  Expanded(flex: 5, child: brand),
                   const SizedBox(width: ButlerlySpacing.standard),
                   Expanded(
+                    flex: 4,
                     child: Align(
                       alignment: AlignmentDirectional.topEnd,
                       child: monthButton,
