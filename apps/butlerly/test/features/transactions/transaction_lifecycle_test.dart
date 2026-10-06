@@ -2702,6 +2702,78 @@ void main() {
     expect(repository.values, hasLength(1));
   });
 
+  testWidgets('add and edit editors use card-based form sections', (
+    tester,
+  ) async {
+    await _openEditorForTest(tester);
+
+    final financialCard = find.byKey(
+      const ValueKey('transaction-editor-financial-card'),
+    );
+    final descriptionCard = find.byKey(
+      const ValueKey('transaction-editor-description-card'),
+    );
+    final organizationCard = find.byKey(
+      const ValueKey('transaction-editor-organization-card'),
+    );
+    expect(financialCard, findsOneWidget);
+    expect(descriptionCard, findsOneWidget);
+    expect(organizationCard, findsOneWidget);
+    expect(
+      find.descendant(
+        of: financialCard,
+        matching: find.byKey(const ValueKey('transaction-amount-field')),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: descriptionCard,
+        matching: find.byKey(
+          const ValueKey('transaction-description-field'),
+        ),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: organizationCard,
+        matching: find.byType(ButlerlyMerchantSelector),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: organizationCard,
+        matching: find.byType(ButlerlyTagPicker),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.pumpWidget(const SizedBox());
+    await repository.save(_editorTransaction('card-edit'));
+    await _openEditorForTest(
+      tester,
+      existing: TransactionDto.fromDomain(
+        repository.values['card-edit']!,
+      ),
+    );
+
+    expect(find.text('Edit transaction'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('transaction-editor-financial-card')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('transaction-editor-description-card')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('transaction-editor-organization-card')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets(
     'add editor keeps its save action fixed while the form scrolls on a narrow phone',
     (tester) async {
