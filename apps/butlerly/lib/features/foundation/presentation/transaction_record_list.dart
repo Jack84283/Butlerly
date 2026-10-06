@@ -26,6 +26,7 @@ class TransactionRecordList extends StatelessWidget {
     this.groupByFinancialDate = false,
     this.collapsibleMonthSections = false,
     this.monthSectionsAsCards = false,
+    this.dashboardRowStyle = false,
     this.wrapInCard = false,
     this.showDateInRows = false,
     this.supportingContentBuilder,
@@ -44,6 +45,7 @@ class TransactionRecordList extends StatelessWidget {
   final bool groupByFinancialDate;
   final bool collapsibleMonthSections;
   final bool monthSectionsAsCards;
+  final bool dashboardRowStyle;
   final bool wrapInCard;
   final bool showDateInRows;
   final Widget Function(BuildContext, TransactionDto)? supportingContentBuilder;
@@ -61,7 +63,9 @@ class TransactionRecordList extends StatelessWidget {
           paymentSourceNames: paymentSourceNames,
           missingCategoryLabel: missingCategoryLabel,
           showDate: effectiveShowDateInRows,
-          showTags: true,
+          showTags: !dashboardRowStyle,
+          showCategoryPill: dashboardRowStyle,
+          compactMoney: dashboardRowStyle,
           supportingContent: supportingContentBuilder?.call(
             context,
             transaction,
@@ -70,7 +74,10 @@ class TransactionRecordList extends StatelessWidget {
           possibleDuplicateLabel: possibleDuplicateLabel,
           onPossibleDuplicateTap: onPossibleDuplicateTap,
           onTap: () => onTap(transaction),
-          showNavigationIndicator: navigates,
+          showNavigationIndicator: dashboardRowStyle ? false : navigates,
+          variant: dashboardRowStyle
+              ? ButlerlyTransactionRowVariant.dashboard
+              : ButlerlyTransactionRowVariant.standard,
         ),
     };
     if (!groupByFinancialDate) {
