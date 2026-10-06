@@ -1293,7 +1293,18 @@ void main() {
     expect(find.text('2 transactions'), findsOneWidget);
     expect(find.text('Aug 11, 2026'), findsOneWidget);
     expect(find.text('Aug 10, 2026'), findsOneWidget);
-    expect(find.byType(Card), findsNothing);
+    final monthCard = find.byKey(
+      const ValueKey('transaction-month-card-2026-08'),
+    );
+    expect(monthCard, findsOneWidget);
+    expect(
+      find.descendant(of: monthCard, matching: find.byType(Card)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: monthCard, matching: find.byType(ExpansionTile)),
+      findsOneWidget,
+    );
     expect(find.byType(ButlerlyRecordRow), findsNWidgets(2));
     final controlsBottom = tester.getBottomLeft(
       find.byKey(const ValueKey('transactions-pinned-controls')),
