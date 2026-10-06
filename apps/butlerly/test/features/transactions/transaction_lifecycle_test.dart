@@ -2702,7 +2702,7 @@ void main() {
     expect(repository.values, hasLength(1));
   });
 
-  testWidgets('add and edit editors use card-based form sections', (
+  testWidgets('add and edit editors use screenshot-inspired cards', (
     tester,
   ) async {
     await _openEditorForTest(tester);
@@ -2710,14 +2710,15 @@ void main() {
     final financialCard = find.byKey(
       const ValueKey('transaction-editor-financial-card'),
     );
-    final descriptionCard = find.byKey(
-      const ValueKey('transaction-editor-description-card'),
-    );
-    final organizationCard = find.byKey(
+    final detailsCard = find.byKey(
       const ValueKey('transaction-editor-organization-card'),
     );
+    final dateCard = find.byKey(const ValueKey('transaction-editor-date-card'));
+    final notesCard = find.byKey(
+      const ValueKey('transaction-editor-description-card'),
+    );
+
     expect(financialCard, findsOneWidget);
-    expect(descriptionCard, findsOneWidget);
     expect(
       find.descendant(
         of: financialCard,
@@ -2727,28 +2728,60 @@ void main() {
     );
     expect(
       find.descendant(
-        of: descriptionCard,
-        matching: find.byKey(const ValueKey('transaction-description-field')),
+        of: financialCard,
+        matching: find.byType(ButlerlyDirectionSelector),
       ),
       findsOneWidget,
     );
+    expect(find.text('Transfer'), findsNothing);
 
-    await _scrollEditorToMasterData(tester);
-    expect(organizationCard, findsOneWidget);
+    await tester.scrollUntilVisible(
+      detailsCard,
+      180,
+      scrollable: find.byType(Scrollable).last,
+    );
+    expect(detailsCard, findsOneWidget);
     expect(
       find.descendant(
-        of: organizationCard,
+        of: detailsCard,
         matching: find.byType(ButlerlyMerchantSelector),
       ),
       findsOneWidget,
     );
     expect(
       find.descendant(
-        of: organizationCard,
-        matching: find.byType(ButlerlyTagPicker),
+        of: detailsCard,
+        matching: find.byType(ButlerlyPaymentSourceSelector),
       ),
       findsOneWidget,
     );
+
+    await tester.scrollUntilVisible(
+      dateCard,
+      180,
+      scrollable: find.byType(Scrollable).last,
+    );
+    expect(dateCard, findsOneWidget);
+    expect(find.text('Time'), findsNothing);
+
+    await tester.scrollUntilVisible(
+      notesCard,
+      180,
+      scrollable: find.byType(Scrollable).last,
+    );
+    expect(notesCard, findsOneWidget);
+    expect(
+      find.descendant(
+        of: notesCard,
+        matching: find.byKey(const ValueKey('transaction-description-field')),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: notesCard, matching: find.byType(ButlerlyTagPicker)),
+      findsOneWidget,
+    );
+    expect(find.text('Receipt / Attachment'), findsNothing);
 
     await tester.pumpWidget(const SizedBox());
     await repository.save(_editorTransaction('card-edit'));
@@ -2762,13 +2795,13 @@ void main() {
       find.byKey(const ValueKey('transaction-editor-financial-card')),
       findsOneWidget,
     );
-    expect(
-      find.byKey(const ValueKey('transaction-editor-description-card')),
-      findsOneWidget,
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('transaction-editor-date-card')),
+      180,
+      scrollable: find.byType(Scrollable).last,
     );
-    await _scrollEditorToMasterData(tester);
     expect(
-      find.byKey(const ValueKey('transaction-editor-organization-card')),
+      find.byKey(const ValueKey('transaction-editor-date-card')),
       findsOneWidget,
     );
   });
