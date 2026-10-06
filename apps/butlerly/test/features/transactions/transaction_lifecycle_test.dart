@@ -2716,8 +2716,10 @@ void main() {
     final organizationCard = find.byKey(
       const ValueKey('transaction-editor-organization-card'),
     );
+    final dateCard = find.byKey(
+      const ValueKey('transaction-editor-date-card'),
+    );
     expect(financialCard, findsOneWidget);
-    expect(descriptionCard, findsOneWidget);
     expect(
       find.descendant(
         of: financialCard,
@@ -2727,8 +2729,8 @@ void main() {
     );
     expect(
       find.descendant(
-        of: descriptionCard,
-        matching: find.byKey(const ValueKey('transaction-description-field')),
+        of: financialCard,
+        matching: find.byType(ButlerlyDirectionSelector),
       ),
       findsOneWidget,
     );
@@ -2745,6 +2747,28 @@ void main() {
     expect(
       find.descendant(
         of: organizationCard,
+        matching: find.byType(ButlerlyPaymentSourceSelector),
+      ),
+      findsOneWidget,
+    );
+    expect(dateCard, findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      descriptionCard,
+      160,
+      scrollable: find.byType(Scrollable).last,
+    );
+    expect(descriptionCard, findsOneWidget);
+    expect(
+      find.descendant(
+        of: descriptionCard,
+        matching: find.byKey(const ValueKey('transaction-description-field')),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: descriptionCard,
         matching: find.byType(ButlerlyTagPicker),
       ),
       findsOneWidget,
@@ -2762,13 +2786,22 @@ void main() {
       find.byKey(const ValueKey('transaction-editor-financial-card')),
       findsOneWidget,
     );
-    expect(
-      find.byKey(const ValueKey('transaction-editor-description-card')),
-      findsOneWidget,
-    );
     await _scrollEditorToMasterData(tester);
     expect(
       find.byKey(const ValueKey('transaction-editor-organization-card')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('transaction-editor-date-card')),
+      findsOneWidget,
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('transaction-editor-description-card')),
+      160,
+      scrollable: find.byType(Scrollable).last,
+    );
+    expect(
+      find.byKey(const ValueKey('transaction-editor-description-card')),
       findsOneWidget,
     );
   });
