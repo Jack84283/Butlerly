@@ -1238,7 +1238,7 @@ void main() {
     },
   );
 
-  testWidgets('transaction rows show merchant category and tags', (
+  testWidgets('Transactions rows use the Home dashboard row style', (
     tester,
   ) async {
     final finance = services<FinanceServices>();
@@ -1289,7 +1289,7 @@ void main() {
     expect(find.text('Corner Market'), findsOneWidget);
     expect(find.text('Organized row'), findsNothing);
     expect(find.text('Groceries'), findsOneWidget);
-    expect(find.text('Weekly'), findsOneWidget);
+    expect(find.text('Weekly'), findsNothing);
     expect(find.text('2 transactions'), findsOneWidget);
     expect(find.text('Aug 11, 2026'), findsOneWidget);
     expect(find.text('Aug 10, 2026'), findsOneWidget);
@@ -1306,6 +1306,16 @@ void main() {
       findsOneWidget,
     );
     expect(find.byType(ButlerlyRecordRow), findsNWidgets(2));
+    final rows = tester.widgetList<ButlerlyRecordRow>(
+      find.byType(ButlerlyRecordRow),
+    );
+    for (final row in rows) {
+      expect(row.variant, ButlerlyTransactionRowVariant.dashboard);
+      expect(row.showCategoryPill, isTrue);
+      expect(row.amountIncludesCurrency, isTrue);
+      expect(row.showNavigationIndicator, isFalse);
+      expect(row.tags, isEmpty);
+    }
     final controlsBottom = tester.getBottomLeft(
       find.byKey(const ValueKey('transactions-pinned-controls')),
     );
