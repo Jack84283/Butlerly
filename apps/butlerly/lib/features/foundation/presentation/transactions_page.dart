@@ -886,13 +886,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                 onChanged: (value) =>
                                     setState(() => _direction = value),
                               ),
-                              const SizedBox(
-                                height: ButlerlySpacing.section,
-                              ),
+                              const SizedBox(height: ButlerlySpacing.section),
                               TextFormField(
-                                key: const ValueKey(
-                                  'transaction-amount-field',
-                                ),
+                                key: const ValueKey('transaction-amount-field'),
                                 controller: _amount,
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
@@ -913,9 +909,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                   }
                                 },
                               ),
-                              const SizedBox(
-                                height: ButlerlySpacing.standard,
-                              ),
+                              const SizedBox(height: ButlerlySpacing.standard),
                               TextFormField(
                                 controller: _currency,
                                 textCapitalization:
@@ -932,9 +926,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                   }
                                 },
                               ),
-                              const SizedBox(
-                                height: ButlerlySpacing.standard,
-                              ),
+                              const SizedBox(height: ButlerlySpacing.standard),
                               ListTile(
                                 contentPadding: EdgeInsets.zero,
                                 title: Text(context.l10n.text('date')),
@@ -943,18 +935,15 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                   Icons.calendar_today_outlined,
                                 ),
                                 onTap: () async {
-                                  final selected =
-                                      await showButlerlyDatePicker(
-                                        context: context,
-                                        title: context.l10n.text('date'),
-                                        cancelLabel: context.l10n.text(
-                                          'cancel',
-                                        ),
-                                        doneLabel: context.l10n.text('done'),
-                                        firstDate: DateTime(2000),
-                                        lastDate: DateTime(2100),
-                                        initialDate: _date,
-                                      );
+                                  final selected = await showButlerlyDatePicker(
+                                    context: context,
+                                    title: context.l10n.text('date'),
+                                    cancelLabel: context.l10n.text('cancel'),
+                                    doneLabel: context.l10n.text('done'),
+                                    firstDate: DateTime(2000),
+                                    lastDate: DateTime(2100),
+                                    initialDate: _date,
+                                  );
                                   if (selected != null) {
                                     setState(() {
                                       _date = selected;
@@ -986,9 +975,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                 ),
                                 maxLines: 2,
                               ),
-                              const SizedBox(
-                                height: ButlerlySpacing.standard,
-                              ),
+                              const SizedBox(height: ButlerlySpacing.standard),
                               TextFormField(
                                 controller: _notes,
                                 decoration: InputDecoration(
@@ -1019,9 +1006,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                 onCreate: () => _createMerchant(data),
                                 createTooltip: context.l10n.text('merchant'),
                               ),
-                              const SizedBox(
-                                height: ButlerlySpacing.standard,
-                              ),
+                              const SizedBox(height: ButlerlySpacing.standard),
                               ButlerlyCategorySelector(
                                 label: context.l10n.text('category'),
                                 clearLabel: context.l10n.text('clear'),
@@ -1037,9 +1022,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                   _subcategoryId = null;
                                 }),
                               ),
-                              const SizedBox(
-                                height: ButlerlySpacing.standard,
-                              ),
+                              const SizedBox(height: ButlerlySpacing.standard),
                               ButlerlySubcategorySelector(
                                 label: context.l10n.text('subcategory'),
                                 clearLabel: context.l10n.text('clear'),
@@ -1056,9 +1039,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                   _categoryId = selectedParentId;
                                 }),
                               ),
-                              const SizedBox(
-                                height: ButlerlySpacing.standard,
-                              ),
+                              const SizedBox(height: ButlerlySpacing.standard),
                               ButlerlyPaymentSourceSelector(
                                 label: context.l10n.text('paymentSource'),
                                 clearLabel: context.l10n.text('clear'),
@@ -1067,9 +1048,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                 onChanged: (value) =>
                                     setState(() => _paymentSourceId = value),
                               ),
-                              const SizedBox(
-                                height: ButlerlySpacing.standard,
-                              ),
+                              const SizedBox(height: ButlerlySpacing.standard),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
