@@ -112,7 +112,7 @@ void main() {
   ) async {
     await seedMerchant(withHistory: true);
     await pumpApp(tester, TransactionEditorPage(finance: finance));
-    await tester.enterText(find.byType(TextFormField).at(2), 'SAFEWAY #5678');
+    await tester.enterText(find.byKey(const ValueKey('transaction-description-field')), 'SAFEWAY #5678');
     await tester.pumpAndSettle();
     await _scrollToSelectors(tester);
 
@@ -138,7 +138,7 @@ void main() {
   ) async {
     await seedMerchant(withHistory: true);
     await pumpApp(tester, TransactionEditorPage(finance: finance));
-    await tester.enterText(find.byType(TextFormField).at(2), 'SAFEWAY #5678');
+    await tester.enterText(find.byKey(const ValueKey('transaction-description-field')), 'SAFEWAY #5678');
     await tester.pumpAndSettle();
     await _scrollToSelectors(tester);
     _expectSelectorValue(tester, 'Food & Dining');
@@ -148,7 +148,7 @@ void main() {
     await _chooseDropdown(tester, 2, 'Transport');
     await _scrollToTop(tester);
     await tester.enterText(
-      find.byType(TextFormField).at(2),
+      find.byKey(const ValueKey('transaction-description-field')),
       'A different shop',
     );
     await tester.pumpAndSettle();
