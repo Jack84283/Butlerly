@@ -872,168 +872,230 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                         ButlerlySpacing.bottomActionSpacing,
                       ),
                       children: [
-                        ButlerlyDirectionSelector(
-                          value: _direction,
-                          expenseLabel: context.l10n.text('expense'),
-                          incomeLabel: context.l10n.text('income'),
-                          onChanged: (value) =>
-                              setState(() => _direction = value),
-                        ),
-                        const SizedBox(height: ButlerlySpacing.section),
-                        TextFormField(
-                          key: const ValueKey('transaction-amount-field'),
-                          controller: _amount,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
+                        ButlerlyCard(
+                          key: const ValueKey(
+                            'transaction-editor-financial-card',
                           ),
-                          decoration: InputDecoration(
-                            labelText: context.l10n.text('amount'),
-                            prefixIcon: const Icon(Icons.payments_outlined),
-                          ),
-                          validator: (value) {
-                            try {
-                              DecimalValue.parse(value?.trim() ?? '');
-                              return null;
-                            } on DomainValidationException {
-                              return context.l10n.text('invalidAmount');
-                            }
-                          },
-                        ),
-                        const SizedBox(height: ButlerlySpacing.standard),
-                        TextFormField(
-                          controller: _currency,
-                          textCapitalization: TextCapitalization.characters,
-                          decoration: InputDecoration(
-                            labelText: context.l10n.text('currency'),
-                          ),
-                          validator: (value) {
-                            try {
-                              CurrencyCode(value?.trim() ?? '');
-                              return null;
-                            } on DomainValidationException {
-                              return context.l10n.text('invalidCurrency');
-                            }
-                          },
-                        ),
-                        const SizedBox(height: ButlerlySpacing.standard),
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(context.l10n.text('date')),
-                          subtitle: Text(_shortDate(_date)),
-                          trailing: const Icon(Icons.calendar_today_outlined),
-                          onTap: () async {
-                            final selected = await showButlerlyDatePicker(
-                              context: context,
-                              title: context.l10n.text('date'),
-                              cancelLabel: context.l10n.text('cancel'),
-                              doneLabel: context.l10n.text('done'),
-                              firstDate: DateTime(2000),
-                              lastDate: DateTime(2100),
-                              initialDate: _date,
-                            );
-                            if (selected != null) {
-                              setState(() {
-                                _date = selected;
-                                _dateChanged = true;
-                              });
-                            }
-                          },
-                        ),
-                        const SizedBox(height: ButlerlySpacing.standard),
-                        TextFormField(
-                          key: const ValueKey('transaction-description-field'),
-                          controller: _description,
-                          decoration: InputDecoration(
-                            labelText: context.l10n.text('descriptionOptional'),
-                            prefixIcon: const Icon(Icons.notes_rounded),
-                          ),
-                          maxLines: 2,
-                        ),
-                        const SizedBox(height: ButlerlySpacing.standard),
-                        TextFormField(
-                          controller: _notes,
-                          decoration: InputDecoration(
-                            labelText: context.l10n.text('notesOptional'),
-                            prefixIcon: const Icon(
-                              Icons.sticky_note_2_outlined,
-                            ),
-                          ),
-                          maxLines: 3,
-                        ),
-                        const SizedBox(height: ButlerlySpacing.standard),
-                        ButlerlyMerchantSelector(
-                          label: context.l10n.text('merchant'),
-                          clearLabel: context.l10n.text('clear'),
-                          merchants: data.merchants,
-                          value: _merchantId,
-                          onChanged: _selectMerchant,
-                          onCreate: () => _createMerchant(data),
-                          createTooltip: context.l10n.text('merchant'),
-                        ),
-                        const SizedBox(height: ButlerlySpacing.standard),
-                        ButlerlyCategorySelector(
-                          label: context.l10n.text('category'),
-                          clearLabel: context.l10n.text('clear'),
-                          categories: data.categories,
-                          masterData: TransactionMasterData(
-                            categoryNames: data.categoryLabels,
-                            tagNames: data.tagLabels,
-                          ),
-                          value: selectedParentId,
-                          onChanged: (value) => setState(() {
-                            _classificationOverridden = true;
-                            _categoryId = value;
-                            _subcategoryId = null;
-                          }),
-                        ),
-                        const SizedBox(height: ButlerlySpacing.standard),
-                        ButlerlySubcategorySelector(
-                          label: context.l10n.text('subcategory'),
-                          clearLabel: context.l10n.text('clear'),
-                          categories: data.categories,
-                          masterData: TransactionMasterData(
-                            categoryNames: data.categoryLabels,
-                            tagNames: data.tagLabels,
-                          ),
-                          parentId: selectedParentId,
-                          value: _subcategoryId,
-                          onChanged: (value) => setState(() {
-                            _classificationOverridden = true;
-                            _subcategoryId = value;
-                            _categoryId = selectedParentId;
-                          }),
-                        ),
-                        const SizedBox(height: ButlerlySpacing.standard),
-                        ButlerlyPaymentSourceSelector(
-                          label: context.l10n.text('paymentSource'),
-                          clearLabel: context.l10n.text('clear'),
-                          sources: data.paymentSources,
-                          value: _paymentSourceId,
-                          onChanged: (value) =>
-                              setState(() => _paymentSourceId = value),
-                        ),
-                        const SizedBox(height: 16),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              context.l10n.text('tags'),
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                            ButlerlyTagPicker(
-                              searchLabel: context.l10n.text('search'),
-                              createLabel: context.l10n.text('addTag'),
-                              tags: data.tags,
-                              masterData: TransactionMasterData(
-                                categoryNames: data.categoryLabels,
-                                tagNames: data.tagLabels,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              ButlerlyDirectionSelector(
+                                value: _direction,
+                                expenseLabel: context.l10n.text('expense'),
+                                incomeLabel: context.l10n.text('income'),
+                                onChanged: (value) =>
+                                    setState(() => _direction = value),
                               ),
-                              selected: _tagIds,
-                              onChanged: (value) =>
-                                  setState(() => _tagIds = value),
-                              onCreate: () => _createTag(data),
-                            ),
-                          ],
+                              const SizedBox(
+                                height: ButlerlySpacing.section,
+                              ),
+                              TextFormField(
+                                key: const ValueKey(
+                                  'transaction-amount-field',
+                                ),
+                                controller: _amount,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
+                                decoration: InputDecoration(
+                                  labelText: context.l10n.text('amount'),
+                                  prefixIcon: const Icon(
+                                    Icons.payments_outlined,
+                                  ),
+                                ),
+                                validator: (value) {
+                                  try {
+                                    DecimalValue.parse(value?.trim() ?? '');
+                                    return null;
+                                  } on DomainValidationException {
+                                    return context.l10n.text('invalidAmount');
+                                  }
+                                },
+                              ),
+                              const SizedBox(
+                                height: ButlerlySpacing.standard,
+                              ),
+                              TextFormField(
+                                controller: _currency,
+                                textCapitalization:
+                                    TextCapitalization.characters,
+                                decoration: InputDecoration(
+                                  labelText: context.l10n.text('currency'),
+                                ),
+                                validator: (value) {
+                                  try {
+                                    CurrencyCode(value?.trim() ?? '');
+                                    return null;
+                                  } on DomainValidationException {
+                                    return context.l10n.text('invalidCurrency');
+                                  }
+                                },
+                              ),
+                              const SizedBox(
+                                height: ButlerlySpacing.standard,
+                              ),
+                              ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: Text(context.l10n.text('date')),
+                                subtitle: Text(_shortDate(_date)),
+                                trailing: const Icon(
+                                  Icons.calendar_today_outlined,
+                                ),
+                                onTap: () async {
+                                  final selected =
+                                      await showButlerlyDatePicker(
+                                        context: context,
+                                        title: context.l10n.text('date'),
+                                        cancelLabel: context.l10n.text(
+                                          'cancel',
+                                        ),
+                                        doneLabel: context.l10n.text('done'),
+                                        firstDate: DateTime(2000),
+                                        lastDate: DateTime(2100),
+                                        initialDate: _date,
+                                      );
+                                  if (selected != null) {
+                                    setState(() {
+                                      _date = selected;
+                                      _dateChanged = true;
+                                    });
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: ButlerlySpacing.standard),
+                        ButlerlyCard(
+                          key: const ValueKey(
+                            'transaction-editor-description-card',
+                          ),
+                          child: Column(
+                            children: [
+                              TextFormField(
+                                key: const ValueKey(
+                                  'transaction-description-field',
+                                ),
+                                controller: _description,
+                                decoration: InputDecoration(
+                                  labelText: context.l10n.text(
+                                    'descriptionOptional',
+                                  ),
+                                  prefixIcon: const Icon(Icons.notes_rounded),
+                                ),
+                                maxLines: 2,
+                              ),
+                              const SizedBox(
+                                height: ButlerlySpacing.standard,
+                              ),
+                              TextFormField(
+                                controller: _notes,
+                                decoration: InputDecoration(
+                                  labelText: context.l10n.text('notesOptional'),
+                                  prefixIcon: const Icon(
+                                    Icons.sticky_note_2_outlined,
+                                  ),
+                                ),
+                                maxLines: 3,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: ButlerlySpacing.standard),
+                        ButlerlyCard(
+                          key: const ValueKey(
+                            'transaction-editor-organization-card',
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              ButlerlyMerchantSelector(
+                                label: context.l10n.text('merchant'),
+                                clearLabel: context.l10n.text('clear'),
+                                merchants: data.merchants,
+                                value: _merchantId,
+                                onChanged: _selectMerchant,
+                                onCreate: () => _createMerchant(data),
+                                createTooltip: context.l10n.text('merchant'),
+                              ),
+                              const SizedBox(
+                                height: ButlerlySpacing.standard,
+                              ),
+                              ButlerlyCategorySelector(
+                                label: context.l10n.text('category'),
+                                clearLabel: context.l10n.text('clear'),
+                                categories: data.categories,
+                                masterData: TransactionMasterData(
+                                  categoryNames: data.categoryLabels,
+                                  tagNames: data.tagLabels,
+                                ),
+                                value: selectedParentId,
+                                onChanged: (value) => setState(() {
+                                  _classificationOverridden = true;
+                                  _categoryId = value;
+                                  _subcategoryId = null;
+                                }),
+                              ),
+                              const SizedBox(
+                                height: ButlerlySpacing.standard,
+                              ),
+                              ButlerlySubcategorySelector(
+                                label: context.l10n.text('subcategory'),
+                                clearLabel: context.l10n.text('clear'),
+                                categories: data.categories,
+                                masterData: TransactionMasterData(
+                                  categoryNames: data.categoryLabels,
+                                  tagNames: data.tagLabels,
+                                ),
+                                parentId: selectedParentId,
+                                value: _subcategoryId,
+                                onChanged: (value) => setState(() {
+                                  _classificationOverridden = true;
+                                  _subcategoryId = value;
+                                  _categoryId = selectedParentId;
+                                }),
+                              ),
+                              const SizedBox(
+                                height: ButlerlySpacing.standard,
+                              ),
+                              ButlerlyPaymentSourceSelector(
+                                label: context.l10n.text('paymentSource'),
+                                clearLabel: context.l10n.text('clear'),
+                                sources: data.paymentSources,
+                                value: _paymentSourceId,
+                                onChanged: (value) =>
+                                    setState(() => _paymentSourceId = value),
+                              ),
+                              const SizedBox(
+                                height: ButlerlySpacing.standard,
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    context.l10n.text('tags'),
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodySmall,
+                                  ),
+                                  ButlerlyTagPicker(
+                                    searchLabel: context.l10n.text('search'),
+                                    createLabel: context.l10n.text('addTag'),
+                                    tags: data.tags,
+                                    masterData: TransactionMasterData(
+                                      categoryNames: data.categoryLabels,
+                                      tagNames: data.tagLabels,
+                                    ),
+                                    selected: _tagIds,
+                                    onChanged: (value) =>
+                                        setState(() => _tagIds = value),
+                                    onCreate: () => _createTag(data),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
