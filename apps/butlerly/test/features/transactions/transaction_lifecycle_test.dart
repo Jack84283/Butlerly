@@ -2714,9 +2714,7 @@ void main() {
     final detailsCard = find.byKey(
       const ValueKey('transaction-editor-organization-card'),
     );
-    final dateCard = find.byKey(
-      const ValueKey('transaction-editor-date-card'),
-    );
+    final dateCard = find.byKey(const ValueKey('transaction-editor-date-card'));
     final notesCard = find.byKey(
       const ValueKey('transaction-editor-description-card'),
     );
@@ -2776,17 +2774,12 @@ void main() {
     expect(
       find.descendant(
         of: notesCard,
-        matching: find.byKey(
-          const ValueKey('transaction-description-field'),
-        ),
+        matching: find.byKey(const ValueKey('transaction-description-field')),
       ),
       findsOneWidget,
     );
     expect(
-      find.descendant(
-        of: notesCard,
-        matching: find.byType(ButlerlyTagPicker),
-      ),
+      find.descendant(of: notesCard, matching: find.byType(ButlerlyTagPicker)),
       findsOneWidget,
     );
     expect(find.text('Receipt / Attachment'), findsNothing);
