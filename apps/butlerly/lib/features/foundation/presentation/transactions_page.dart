@@ -973,7 +973,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: ButlerlySpacing.standard),
+                        const SizedBox(height: ButlerlySpacing.cardGap),
                         ButlerlyCard(
                           key: const ValueKey(
                             'transaction-editor-organization-card',
@@ -1052,7 +1052,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: ButlerlySpacing.standard),
+                        const SizedBox(height: ButlerlySpacing.cardGap),
                         ButlerlyCard(
                           key: const ValueKey('transaction-editor-date-card'),
                           child: Column(
@@ -1067,8 +1067,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                 contentPadding: EdgeInsets.zero,
                                 title: Text(context.l10n.text('date')),
                                 subtitle: Text(_shortDate(_date)),
-                                trailing: const Icon(
+                                trailing: Icon(
                                   Icons.calendar_today_outlined,
+                                  color: _transactionCardIconColor(context),
                                 ),
                                 onTap: () async {
                                   final selected = await showButlerlyDatePicker(
@@ -1091,7 +1092,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: ButlerlySpacing.standard),
+                        const SizedBox(height: ButlerlySpacing.cardGap),
                         ButlerlyCard(
                           key: const ValueKey(
                             'transaction-editor-description-card',
@@ -1250,7 +1251,17 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   }
 }
 
-final class _TransactionEditorCardHeader extends StatelessWidget {
+final Color _transactionCardIconColor(BuildContext context) {
+  final theme = Theme.of(context);
+  final colors = theme.colorScheme;
+  if (theme.brightness != Brightness.dark) return colors.primary;
+  return Color.alphaBlend(
+    colors.primary.withValues(alpha: 0.65),
+    colors.onSurface,
+  );
+}
+
+class _TransactionEditorCardHeader extends StatelessWidget {
   const _TransactionEditorCardHeader({required this.icon, required this.title});
 
   final IconData icon;
@@ -1259,7 +1270,7 @@ final class _TransactionEditorCardHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      Icon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
+      Icon(icon, size: 22, color: _transactionCardIconColor(context)),
       const SizedBox(width: ButlerlySpacing.compact),
       Expanded(
         child: Text(
@@ -1502,14 +1513,14 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     decoration: BoxDecoration(
                       color: Theme.of(
                         context,
-                      ).colorScheme.primary.withValues(alpha: 0.12),
+                      ).colorScheme.primary.withValues(alpha: 0.50),
                       borderRadius: BorderRadius.circular(
                         ButlerlyRadius.standard,
                       ),
                     ),
                     child: Icon(
                       Icons.receipt_long_outlined,
-                      color: Theme.of(context).colorScheme.primary,
+                      color: _transactionCardIconColor(context),
                     ),
                   );
                   if (stackSummary) {
@@ -1552,7 +1563,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 transaction.categoryId != null ||
                 transaction.subcategoryId != null ||
                 transaction.paymentSourceId != null) ...[
-              const SizedBox(height: ButlerlySpacing.standard),
+              const SizedBox(height: ButlerlySpacing.cardGap),
               ButlerlyCard(
                 key: const ValueKey('transaction-detail-classification-card'),
                 child: Column(
@@ -1588,7 +1599,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 ),
               ),
             ],
-            const SizedBox(height: ButlerlySpacing.standard),
+            const SizedBox(height: ButlerlySpacing.cardGap),
             ButlerlyCard(
               key: const ValueKey('transaction-detail-amount-card'),
               child: Column(
@@ -1633,7 +1644,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 ],
               ),
             ),
-            const SizedBox(height: ButlerlySpacing.standard),
+            const SizedBox(height: ButlerlySpacing.cardGap),
             ButlerlyCard(
               key: const ValueKey('transaction-detail-date-card'),
               child: Column(
@@ -1656,7 +1667,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 ],
               ),
             ),
-            const SizedBox(height: ButlerlySpacing.standard),
+            const SizedBox(height: ButlerlySpacing.cardGap),
             ButlerlyCard(
               key: const ValueKey('transaction-detail-notes-card'),
               child: Column(
@@ -1688,9 +1699,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 ],
               ),
             ),
-            const SizedBox(height: ButlerlySpacing.standard),
+            const SizedBox(height: ButlerlySpacing.cardGap),
             _EvidenceSection(finance: finance, transactionId: transaction.id),
-            const SizedBox(height: ButlerlySpacing.standard),
+            const SizedBox(height: ButlerlySpacing.cardGap),
             ButlerlyCard(
               key: const ValueKey('transaction-detail-record-card'),
               child: Column(
@@ -2289,7 +2300,7 @@ class _TransactionDetailCardHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      Icon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
+      Icon(icon, size: 22, color: _transactionCardIconColor(context)),
       const SizedBox(width: ButlerlySpacing.compact),
       Expanded(
         child: Text(
