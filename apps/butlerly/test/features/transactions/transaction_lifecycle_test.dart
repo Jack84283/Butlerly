@@ -2562,45 +2562,45 @@ void main() {
   testWidgets(
     'transaction detail uses Simplified Chinese and hides extra actions',
     (tester) async {
-    final finance = services<FinanceServices>();
-    await finance.createTransaction(
-      CreateTransactionCommand(
-        id: 'localized-detail',
-        provenanceId: 'localized-detail-provenance',
-        timing: KnownTransactionTime(DateTime.utc(2026, 8, 10)),
-        money: Money(
-          amount: DecimalValue.parse('8.50'),
-          currency: CurrencyCode('USD'),
+      final finance = services<FinanceServices>();
+      await finance.createTransaction(
+        CreateTransactionCommand(
+          id: 'localized-detail',
+          provenanceId: 'localized-detail-provenance',
+          timing: KnownTransactionTime(DateTime.utc(2026, 8, 10)),
+          money: Money(
+            amount: DecimalValue.parse('8.50'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+          description: 'Source name',
         ),
-        direction: TransactionDirection.expense,
-        description: 'Source name',
-      ),
-    );
-    final result = await finance.getTransaction('localized-detail');
-    final transaction = (result as ApplicationSuccess<TransactionDto>).value;
+      );
+      final result = await finance.getTransaction('localized-detail');
+      final transaction = (result as ApplicationSuccess<TransactionDto>).value;
 
-    await tester.pumpWidget(
-      MaterialApp(
-        locale: const Locale('zh', 'CN'),
-        supportedLocales: AppLocalizations.supportedLocales,
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        home: TransactionDetailPage(finance: finance, transaction: transaction),
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('zh', 'CN'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: TransactionDetailPage(finance: finance, transaction: transaction),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('交易详情'), findsWidgets);
-    expect(find.text('方向'), findsOneWidget);
-    expect(find.text('支出'), findsOneWidget);
-    expect(find.text('Transaction detail'), findsNothing);
-    expect(find.byType(PopupMenuButton<String>), findsNothing);
-    expect(find.text('整理交易'), findsNothing);
-    expect(find.text('指定付款来源'), findsNothing);
+      expect(find.text('交易详情'), findsWidgets);
+      expect(find.text('方向'), findsOneWidget);
+      expect(find.text('支出'), findsOneWidget);
+      expect(find.text('Transaction detail'), findsNothing);
+      expect(find.byType(PopupMenuButton<String>), findsNothing);
+      expect(find.text('整理交易'), findsNothing);
+      expect(find.text('指定付款来源'), findsNothing);
     },
   );
 
