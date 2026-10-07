@@ -481,7 +481,7 @@ void main() {
   );
 
   testWidgets(
-    'organizer clears a stored subcategory whose parent mismatches category',
+    'editor clears a stored subcategory whose parent mismatches category',
     (tester) async {
       final finance = services<FinanceServices>();
       categories.values['category-food-organize-mismatch'] = Category(
@@ -535,7 +535,8 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await _tapTransactionDetailOrganize(tester);
+      await _tapTransactionDetailEdit(tester);
+      await _scrollEditorToMasterData(tester);
 
       _expectEditorSelection(tester, 'Food organize mismatch');
       expect(
@@ -547,8 +548,7 @@ void main() {
         findsNothing,
       );
 
-      await tester.tap(find.text('Save organization'));
-      await tester.pumpAndSettle();
+      await _tapEditorSave(tester);
 
       final refreshed = await finance.getTransaction(
         'mismatched-organizer-shape',
@@ -560,7 +560,7 @@ void main() {
   );
 
   testWidgets(
-    'organizer keeps selected archived category hierarchy visible and intact',
+    'editor keeps selected archived category hierarchy visible and intact',
     (tester) async {
       final finance = services<FinanceServices>();
       categories.values['category-old-organize'] = Category(
@@ -611,7 +611,8 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await _tapTransactionDetailOrganize(tester);
+      await _tapTransactionDetailEdit(tester);
+      await _scrollEditorToMasterData(tester);
 
       for (final selectedLabel in ['Archived Parent', 'Archived Child']) {
         expect(
@@ -624,8 +625,7 @@ void main() {
         );
       }
 
-      await tester.tap(find.text('Save organization'));
-      await tester.pumpAndSettle();
+      await _tapEditorSave(tester);
 
       final refreshed = await finance.getTransaction(
         'archived-organizer-category',
