@@ -787,7 +787,7 @@ void main() {
     );
   });
 
-  testWidgets('creates, edits, archives, and permanently deletes locally', (
+  testWidgets('creates, edits, and permanently deletes locally', (
     tester,
   ) async {
     final router = GoRouter(
@@ -846,18 +846,12 @@ void main() {
       find.byKey(const ValueKey('transaction-detail-edit-button')),
       findsNothing,
     );
+    expect(find.byType(PopupMenuButton<String>), findsNothing);
     expect(find.text('Organize transaction'), findsNothing);
     expect(find.text('Assign payment source'), findsNothing);
     expect(find.text('Archive transaction'), findsNothing);
+    expect(find.text('Restore transaction'), findsNothing);
     expect(find.text('Team meal'), findsOneWidget);
-
-    await _tapTransactionDetailOrganize(tester);
-    expect(find.byType(TextFormField), findsNothing);
-    expect(find.byType(DropdownMenu<String>), findsNWidgets(3));
-    expect(find.textContaining('add a new'), findsNothing);
-    await tester.tap(find.text('Cancel'));
-    await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
 
     await _tapTransactionDetailEdit(tester);
     await tester.scrollUntilVisible(
@@ -882,28 +876,6 @@ void main() {
       findsOneWidget,
     );
 
-    await _tapTransactionDetailOverflowAction(tester, 'Archive transaction');
-    await tester.tap(find.text('Archive'));
-    await tester.pumpAndSettle();
-
-    final archivedAfterResult = await services<FinanceServices>()
-        .getTransaction(repository.values.values.single.id.value);
-    final archivedAfter =
-        (archivedAfterResult as ApplicationSuccess<TransactionDto>).value;
-    await tester.pumpWidget(
-      MaterialApp(
-        key: const ValueKey('archived-transaction-detail'),
-        home: TransactionDetailPage(
-          finance: services<FinanceServices>(),
-          transaction: archivedAfter,
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(
-      find.byKey(const ValueKey('transaction-detail-summary-card')),
-      findsOneWidget,
-    );
     final deleteButton = find.byKey(
       const ValueKey('transaction-detail-delete-button'),
     );
@@ -2549,106 +2521,6 @@ void main() {
     expect(find.text('tag-123456'), findsNothing);
   });
 
-  testWidgets('organizer assigns predefined merchant category and tag', (
-    tester,
-  ) async {
-    final finance = services<FinanceServices>();
-    await finance.saveMerchant(
-      Merchant(id: MerchantId('merchant-market'), name: 'Corner Market'),
-    );
-    await finance.saveCategory(
-      Category(
-        id: CategoryId('category-groceries'),
-        name: 'Groceries',
-        origin: CategoryOrigin.system,
-      ),
-    );
-    await finance.saveTag(Tag(id: TagId('tag-weekly'), name: 'Weekly'));
-    await finance.createTransaction(
-      CreateTransactionCommand(
-        id: 'select-master-data',
-        provenanceId: 'manual-select-master-data',
-        timing: KnownTransactionTime(DateTime.utc(2026, 8, 10)),
-        money: Money(
-          amount: DecimalValue.parse('24.50'),
-          currency: CurrencyCode('USD'),
-        ),
-        direction: TransactionDirection.expense,
-        description: 'Market purchase',
-      ),
-    );
-    final transactionResult = await finance.getTransaction(
-      'select-master-data',
-    );
-    final transaction =
-        (transactionResult as ApplicationSuccess<TransactionDto>).value;
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: TransactionDetailPage(finance: finance, transaction: transaction),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await _tapTransactionDetailOrganize(tester);
-
-    await _selectDropdownEntry(tester, 0, 'Corner Market');
-    await _selectDropdownEntry(tester, 1, 'Groceries');
-    await _selectDropdownEntry(tester, 2, 'Weekly');
-    await _submitOrganizationSheet(tester, 'Save organization');
-    await _scrollTransactionDetailToTop(tester);
-
-    expect(
-      find.byKey(const ValueKey('transaction-detail-summary-card')),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets('organizer removes an assigned tag and returns to detail', (
-    tester,
-  ) async {
-    final finance = services<FinanceServices>();
-    await finance.saveTag(Tag(id: TagId('tag-remove'), name: 'Remove me'));
-    await finance.createTransaction(
-      CreateTransactionCommand(
-        id: 'remove-tag',
-        provenanceId: 'manual-remove-tag',
-        timing: KnownTransactionTime(DateTime.utc(2026, 8, 10)),
-        money: Money(
-          amount: DecimalValue.parse('9.00'),
-          currency: CurrencyCode('USD'),
-        ),
-        direction: TransactionDirection.expense,
-        description: 'Tagged purchase',
-      ),
-    );
-    await finance.addTag('remove-tag', 'tag-remove');
-    final result = await finance.getTransaction('remove-tag');
-    final transaction = (result as ApplicationSuccess<TransactionDto>).value;
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: TransactionDetailPage(finance: finance, transaction: transaction),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await _tapTransactionDetailOrganize(tester);
-
-    expect(find.byType(InputChip), findsOneWidget);
-    final chipBounds = tester.getRect(find.byType(InputChip));
-    await tester.tapAt(Offset(chipBounds.right - 16, chipBounds.center.dy));
-    await tester.pumpAndSettle();
-    expect(find.byType(InputChip), findsNothing);
-    await _submitOrganizationSheet(tester, 'Save organization');
-    await _scrollTransactionDetailToTop(tester);
-
-    expect(
-      find.byKey(const ValueKey('transaction-detail-summary-card')),
-      findsOneWidget,
-    );
-    expect(find.text('Remove me'), findsNothing);
-    expect(repository.values['remove-tag']!.tagIds, isEmpty);
-  });
-
   testWidgets('editor presents the canonical transaction calendar date', (
     tester,
   ) async {
@@ -2687,7 +2559,7 @@ void main() {
     expect(find.text('2026-08-11'), findsNothing);
   });
 
-  testWidgets('detail and organization dialog use Simplified Chinese', (
+  testWidgets('transaction detail uses Simplified Chinese and hides extra actions', (
     tester,
   ) async {
     final finance = services<FinanceServices>();
@@ -2726,14 +2598,9 @@ void main() {
     expect(find.text('方向'), findsOneWidget);
     expect(find.text('支出'), findsOneWidget);
     expect(find.text('Transaction detail'), findsNothing);
-    await _tapTransactionDetailOrganize(tester, label: '整理交易');
-
-    expect(find.text('整理交易'), findsOneWidget);
-    expect(find.text('商户').last, findsOneWidget);
-    expect(find.text('分类').last, findsOneWidget);
-    expect(find.text('添加标签'), findsOneWidget);
-    expect(find.text('保存整理结果'), findsOneWidget);
-    expect(find.text('Organize transaction'), findsNothing);
+    expect(find.byType(PopupMenuButton<String>), findsNothing);
+    expect(find.text('整理交易'), findsNothing);
+    expect(find.text('分配付款来源'), findsNothing);
   });
 
   testWidgets('add editor saves and returns a typed saved result', (
@@ -3249,52 +3116,11 @@ final class MemoryUserPreferences implements UserPreferenceRepository {
   }
 }
 
-Future<void> _selectDropdownEntry(
-  WidgetTester tester,
-  int index,
-  String label,
-) async {
-  final menu = tester.widget<DropdownMenu<String>>(
-    find.byType(DropdownMenu<String>).at(index),
-  );
-  final entry = menu.dropdownMenuEntries.singleWhere(
-    (entry) => entry.label == label,
-  );
-  menu.onSelected!(entry.value);
-  await tester.pumpAndSettle();
-}
-
-Future<void> _submitOrganizationSheet(WidgetTester tester, String label) async {
-  final action = find.widgetWithText(FilledButton, label);
-  expect(action, findsOneWidget);
-  tester.widget<FilledButton>(action).onPressed!();
-  await tester.pumpAndSettle();
-}
-
 Future<void> _scrollTransactionDetailToTop(WidgetTester tester) async {
   final scrollable = _transactionDetailScrollable(tester);
   tester.state<ScrollableState>(scrollable).position.jumpTo(0);
   await tester.pumpAndSettle();
 }
-
-Future<void> _tapTransactionDetailOverflowAction(
-  WidgetTester tester,
-  String label,
-) async {
-  final menu = find.byType(PopupMenuButton<String>);
-  expect(menu, findsOneWidget);
-  await tester.tap(menu);
-  await tester.pumpAndSettle();
-  final action = find.text(label).last;
-  expect(action, findsOneWidget);
-  await tester.tap(action);
-  await tester.pumpAndSettle();
-}
-
-Future<void> _tapTransactionDetailOrganize(
-  WidgetTester tester, {
-  String label = 'Organize transaction',
-}) => _tapTransactionDetailOverflowAction(tester, label);
 
 Finder _transactionDetailScrollable(WidgetTester tester) {
   final detailList = find.byKey(const ValueKey('transaction-detail-list'));
