@@ -150,7 +150,7 @@ void main() {
         final shape =
             (card.shape ?? theme.cardTheme.shape)! as RoundedRectangleBorder;
         expect(shape.borderRadius, BorderRadius.circular(ButlerlyRadius.card));
-        expect(shape.side.color, colors.border);
+        expect(shape.side, BorderSide.none);
       }
     }
   });
