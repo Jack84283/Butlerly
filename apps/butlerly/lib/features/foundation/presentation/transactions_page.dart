@@ -2186,7 +2186,9 @@ class _TransactionTagsDetailRowState extends State<_TransactionTagsDetailRow> {
       return _DetailRow(
         icon: Icons.label_outline_rounded,
         label: context.l10n.text('tags'),
-        value: labels.isEmpty ? context.l10n.text('notSet') : labels.join(', '),
+        value: labels.isEmpty
+            ? context.l10n.text('notSet')
+            : labels.join(', '),
       );
     },
   );
