@@ -1785,7 +1785,6 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       ),
     ),
   );
-
 }
 
 class _EvidenceSection extends StatefulWidget {
