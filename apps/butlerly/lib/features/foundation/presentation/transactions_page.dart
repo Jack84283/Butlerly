@@ -1251,7 +1251,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   }
 }
 
-final Color _transactionCardIconColor(BuildContext context) {
+Color _transactionCardIconColor(BuildContext context) {
   final theme = Theme.of(context);
   final colors = theme.colorScheme;
   if (theme.brightness != Brightness.dark) return colors.primary;
