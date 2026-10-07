@@ -890,8 +890,14 @@ void main() {
       scrollable: _transactionDetailScrollable(tester),
     );
     await tester.pumpAndSettle();
-    expect(find.descendant(of: editButton, matching: find.text('Edit')), findsOneWidget);
-    expect(find.descendant(of: deleteButton, matching: find.text('Delete')), findsOneWidget);
+    expect(
+      find.descendant(of: editButton, matching: find.text('Edit')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: deleteButton, matching: find.text('Delete')),
+      findsOneWidget,
+    );
 
     await _tapTransactionDetailEdit(tester);
     await tester.scrollUntilVisible(
