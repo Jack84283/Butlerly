@@ -2600,7 +2600,7 @@ void main() {
     expect(find.text('Transaction detail'), findsNothing);
     expect(find.byType(PopupMenuButton<String>), findsNothing);
     expect(find.text('整理交易'), findsNothing);
-    expect(find.text('分配付款来源'), findsNothing);
+    expect(find.text('指定付款来源'), findsNothing);
   });
 
   testWidgets('add editor saves and returns a typed saved result', (
