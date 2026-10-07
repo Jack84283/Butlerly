@@ -1438,7 +1438,11 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   Future<void> _handleOverflowAction(String action) async {
     switch (action) {
       case 'organize':
-        final changed = await _organizeTransaction(context, finance, transaction);
+        final changed = await _organizeTransaction(
+          context,
+          finance,
+          transaction,
+        );
         if (changed == true && mounted) {
           final refreshed = await finance.getTransaction(transaction.id);
           if (!mounted) return;
@@ -1450,7 +1454,11 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
           }
         }
       case 'paymentSource':
-        final assigned = await _assignPaymentSource(context, finance, transaction);
+        final assigned = await _assignPaymentSource(
+          context,
+          finance,
+          transaction,
+        );
         if (assigned != null && mounted) {
           setState(() {
             transaction = assigned;
@@ -2253,15 +2261,11 @@ class _DetailItemGroup extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     clipBehavior: Clip.antiAlias,
     decoration: BoxDecoration(
-      border: Border.all(
-        color: Theme.of(context).colorScheme.outlineVariant,
-      ),
+      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
       borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
     ),
     child: Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: ButlerlySpacing.standard,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: ButlerlySpacing.standard),
       child: _DetailItemStack(children: children),
     ),
   );
