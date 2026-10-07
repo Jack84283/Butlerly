@@ -2180,8 +2180,7 @@ class _TransactionTagsDetailRowState extends State<_TransactionTagsDetailRow> {
       final data = snapshot.data ?? const TransactionMasterData();
       final labels = widget.transaction.tagIds
           .map(
-            (id) =>
-                data.tagName(id) ?? context.l10n.text('unavailableTag'),
+            (id) => data.tagName(id) ?? context.l10n.text('unavailableTag'),
           )
           .toList(growable: false);
       return _DetailRow(
