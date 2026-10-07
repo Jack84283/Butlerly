@@ -1435,6 +1435,38 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     }
   }
 
+  Future<void> _handleOverflowAction(String action) async {
+    switch (action) {
+      case 'organize':
+        final changed = await _organizeTransaction(context, finance, transaction);
+        if (changed == true && mounted) {
+          final refreshed = await finance.getTransaction(transaction.id);
+          if (!mounted) return;
+          if (refreshed case ApplicationSuccess<TransactionDto>(:final value)) {
+            setState(() {
+              transaction = value;
+              _changed = true;
+            });
+          }
+        }
+      case 'paymentSource':
+        final assigned = await _assignPaymentSource(context, finance, transaction);
+        if (assigned != null && mounted) {
+          setState(() {
+            transaction = assigned;
+            _changed = true;
+          });
+        }
+      case 'archive':
+        if (transaction.status == TransactionStatus.archived.name) {
+          await finance.restoreTransaction(transaction.id);
+          if (mounted) Navigator.of(context).pop(true);
+        } else {
+          await _archive(context);
+        }
+    }
+  }
+
   @override
   Widget build(BuildContext context) => PopScope<void>(
     canPop: false,
@@ -1444,7 +1476,33 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       }
     },
     child: Scaffold(
-      appBar: AppBar(title: Text(context.l10n.text('transactionDetail'))),
+      appBar: AppBar(
+        title: Text(context.l10n.text('transactionDetail')),
+        actions: [
+          PopupMenuButton<String>(
+            tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
+            onSelected: _handleOverflowAction,
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'organize',
+                child: Text(context.l10n.text('organizeTransaction')),
+              ),
+              PopupMenuItem(
+                value: 'paymentSource',
+                child: Text(context.l10n.text('assignPaymentSource')),
+              ),
+              PopupMenuItem(
+                value: 'archive',
+                child: Text(
+                  transaction.status == TransactionStatus.archived.name
+                      ? context.l10n.text('restoreTransaction')
+                      : context.l10n.text('archiveTransaction'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
       body: ButlerlyResponsiveBody(
         contentKey: const ValueKey('transaction-detail-content'),
         child: ListView(
@@ -1559,33 +1617,46 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 },
               ),
             ),
-            const SizedBox(height: ButlerlySpacing.standard),
-            ButlerlyCard(
-              key: const ValueKey('transaction-detail-classification-card'),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _TransactionDetailCardHeader(
-                    icon: Icons.credit_card_outlined,
-                    title: context.l10n.text('transactionDetail'),
-                  ),
-                  const SizedBox(height: ButlerlySpacing.compact),
-                  _TransactionMasterDataRows(
-                    key: ValueKey(
-                      'detail-${transaction.updatedAt.microsecondsSinceEpoch}-${transaction.tagIds.join(',')}',
+            if (transaction.merchantId != null ||
+                transaction.categoryId != null ||
+                transaction.subcategoryId != null ||
+                transaction.paymentSourceId != null) ...[
+              const SizedBox(height: ButlerlySpacing.standard),
+              ButlerlyCard(
+                key: const ValueKey('transaction-detail-classification-card'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _TransactionDetailCardHeader(
+                      icon: Icons.credit_card_outlined,
+                      title: context.l10n.text('transactionDetail'),
                     ),
-                    finance: finance,
-                    transaction: transaction,
-                    showTags: false,
-                  ),
-                  if (transaction.paymentSourceId != null)
-                    _PaymentSourceRow(
-                      finance: finance,
-                      paymentSourceId: transaction.paymentSourceId!,
+                    const SizedBox(height: ButlerlySpacing.compact),
+                    _DetailItemGroup(
+                      children: [
+                        if (transaction.merchantId != null ||
+                            transaction.categoryId != null ||
+                            transaction.subcategoryId != null)
+                          _TransactionMasterDataRows(
+                            key: ValueKey(
+                              'detail-${transaction.updatedAt.microsecondsSinceEpoch}-${transaction.tagIds.join(',')}',
+                            ),
+                            finance: finance,
+                            transaction: transaction,
+                            showTags: false,
+                            showDividers: true,
+                          ),
+                        if (transaction.paymentSourceId != null)
+                          _PaymentSourceRow(
+                            finance: finance,
+                            paymentSourceId: transaction.paymentSourceId!,
+                          ),
+                      ],
                     ),
-                ],
+                  ],
+                ),
               ),
-            ),
+            ],
             const SizedBox(height: ButlerlySpacing.standard),
             ButlerlyCard(
               key: const ValueKey('transaction-detail-amount-card'),
@@ -1597,40 +1668,37 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     title: context.l10n.text('amount'),
                   ),
                   const SizedBox(height: ButlerlySpacing.compact),
-                  _DetailRow(
-                    icon: Icons.payments_outlined,
-                    label: context.l10n.text('amount'),
-                    value: localizedTransactionAmount(
-                      context,
-                      transaction.amount,
-                    ),
-                  ),
-                  _DetailRow(
-                    icon: Icons.currency_exchange_outlined,
-                    label: context.l10n.text('currency'),
-                    value: transaction.currency,
-                  ),
-                  _DetailRow(
-                    icon: Icons.swap_vert_rounded,
-                    label: context.l10n.text('direction'),
-                    value: context.l10n.text(transaction.direction),
-                  ),
-                  if (transaction.normalizedMoney.isNotEmpty) ...[
-                    const SizedBox(height: ButlerlySpacing.compact),
-                    Text(
-                      context.l10n.text('referenceAmounts'),
-                      style: Theme.of(context).textTheme.labelLarge,
-                    ),
-                    ...transaction.normalizedMoney.map(
-                      (value) => _DetailRow(
-                        label: context.l10n.text('referenceCurrency', {
-                          'currency': value.currency,
-                        }),
-                        value:
-                            '${localizedTransactionAmount(context, value.amount)} ${value.currency}',
+                  _DetailItemGroup(
+                    children: [
+                      _DetailRow(
+                        icon: Icons.payments_outlined,
+                        label: context.l10n.text('amount'),
+                        value: localizedTransactionAmount(
+                          context,
+                          transaction.amount,
+                        ),
                       ),
-                    ),
-                  ],
+                      _DetailRow(
+                        icon: Icons.currency_exchange_outlined,
+                        label: context.l10n.text('currency'),
+                        value: transaction.currency,
+                      ),
+                      _DetailRow(
+                        icon: Icons.swap_vert_rounded,
+                        label: context.l10n.text('direction'),
+                        value: context.l10n.text(transaction.direction),
+                      ),
+                      ...transaction.normalizedMoney.map(
+                        (value) => _DetailRow(
+                          label: context.l10n.text('referenceCurrency', {
+                            'currency': value.currency,
+                          }),
+                          value:
+                              '${localizedTransactionAmount(context, value.amount)} ${value.currency}',
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -1645,10 +1713,14 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     title: context.l10n.text('date'),
                   ),
                   const SizedBox(height: ButlerlySpacing.compact),
-                  _DetailRow(
-                    icon: Icons.calendar_today_outlined,
-                    label: context.l10n.text('date'),
-                    value: _transactionDate(transaction, context),
+                  _DetailItemGroup(
+                    children: [
+                      _DetailRow(
+                        icon: Icons.calendar_today_outlined,
+                        label: context.l10n.text('date'),
+                        value: _transactionDate(transaction, context),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -1666,29 +1738,29 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                       title: context.l10n.text('notes'),
                     ),
                     const SizedBox(height: ButlerlySpacing.compact),
-                    if (transaction.notes?.trim().isNotEmpty == true)
-                      _DetailRow(
-                        icon: Icons.sticky_note_2_outlined,
-                        label: context.l10n.text('notes'),
-                        value: transaction.notes!,
-                      ),
-                    if (transaction.tagIds.isNotEmpty) ...[
-                      const SizedBox(height: ButlerlySpacing.compact),
-                      _TransactionMasterDataRows(
-                        key: ValueKey(
-                          'tags-${transaction.updatedAt.microsecondsSinceEpoch}-${transaction.tagIds.join(',')}',
-                        ),
-                        finance: finance,
-                        transaction: transaction,
-                        showClassification: false,
-                      ),
-                    ],
+                    _DetailItemGroup(
+                      children: [
+                        if (transaction.notes?.trim().isNotEmpty == true)
+                          _DetailRow(
+                            icon: Icons.sticky_note_2_outlined,
+                            label: context.l10n.text('notes'),
+                            value: transaction.notes!,
+                          ),
+                        if (transaction.tagIds.isNotEmpty)
+                          _TransactionMasterDataRows(
+                            key: ValueKey(
+                              'tags-${transaction.updatedAt.microsecondsSinceEpoch}-${transaction.tagIds.join(',')}',
+                            ),
+                            finance: finance,
+                            transaction: transaction,
+                            showClassification: false,
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ),
             ],
-            const SizedBox(height: ButlerlySpacing.standard),
-            _EvidenceSection(finance: finance, transactionId: transaction.id),
             const SizedBox(height: ButlerlySpacing.standard),
             ButlerlyCard(
               key: const ValueKey('transaction-detail-record-card'),
@@ -1700,114 +1772,70 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     title: context.l10n.text('status'),
                   ),
                   const SizedBox(height: ButlerlySpacing.compact),
-                  _DetailRow(
-                    icon: Icons.inventory_2_outlined,
-                    label: context.l10n.text('status'),
-                    value: context.l10n.text(transaction.status),
-                  ),
-                  _DetailRow(
-                    icon: Icons.fact_check_outlined,
-                    label: context.l10n.text('reviewState'),
-                    value: transaction.reviewState == 'needsReview'
-                        ? context.l10n.text('needsReview')
-                        : context.l10n.text('clear'),
-                  ),
-                  if (transaction.provenance.isNotEmpty) ...[
-                    const SizedBox(height: ButlerlySpacing.standard),
-                    Text(
-                      context.l10n.text('recordHistory'),
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
+                  _DetailItemGroup(
+                    children: [
+                      _DetailRow(
+                        icon: Icons.inventory_2_outlined,
+                        label: context.l10n.text('status'),
+                        value: context.l10n.text(transaction.status),
                       ),
-                    ),
-                    ...transaction.provenance.map(
-                      (value) => _DetailRow(
-                        icon: Icons.history_rounded,
-                        label: context.l10n.text('origin'),
-                        value: _provenanceLabel(context, value.sourceType),
+                      _DetailRow(
+                        icon: Icons.fact_check_outlined,
+                        label: context.l10n.text('reviewState'),
+                        value: transaction.reviewState == 'needsReview'
+                            ? context.l10n.text('needsReview')
+                            : context.l10n.text('clear'),
                       ),
-                    ),
-                  ],
+                      ...transaction.provenance.map(
+                        (value) => _DetailRow(
+                          icon: Icons.history_rounded,
+                          label: context.l10n.text('origin'),
+                          value: _provenanceLabel(context, value.sourceType),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
+            const SizedBox(height: ButlerlySpacing.standard),
+            _EvidenceSection(finance: finance, transactionId: transaction.id),
             const SizedBox(height: ButlerlySpacing.section),
-            OutlinedButton.icon(
-              key: const ValueKey('transaction-detail-edit-button'),
-              onPressed: _editTransaction,
-              icon: const Icon(Icons.edit_outlined),
-              label: Text(context.l10n.text('editTransaction')),
-            ),
-            const SizedBox(height: ButlerlySpacing.small),
-            OutlinedButton.icon(
-              key: const ValueKey('transaction-detail-organize-button'),
-              onPressed: () async {
-                final changed = await _organizeTransaction(
-                  context,
-                  finance,
-                  transaction,
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final stackActions =
+                    constraints.maxWidth < 360 ||
+                    MediaQuery.textScalerOf(context).scale(14) > 20;
+                final editButton = OutlinedButton.icon(
+                  key: const ValueKey('transaction-detail-edit-button'),
+                  onPressed: _editTransaction,
+                  icon: const Icon(Icons.edit_outlined),
+                  label: Text(context.l10n.text('editTransaction')),
                 );
-                if (changed == true && context.mounted) {
-                  final refreshed = await finance.getTransaction(
-                    transaction.id,
+                final deleteButton = ButlerlyDestructiveButton(
+                  key: const ValueKey('transaction-detail-delete-button'),
+                  onPressed: () => _delete(context),
+                  icon: const Icon(Icons.delete_forever_outlined),
+                  child: Text(context.l10n.text('deletePermanently')),
+                );
+                if (stackActions) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      editButton,
+                      const SizedBox(height: ButlerlySpacing.small),
+                      deleteButton,
+                    ],
                   );
-                  if (!context.mounted) return;
-                  if (refreshed case ApplicationSuccess<TransactionDto>(
-                    :final value,
-                  )) {
-                    setState(() {
-                      transaction = value;
-                      _changed = true;
-                    });
-                  }
                 }
-              },
-              icon: const Icon(Icons.sell_outlined),
-              label: Text(context.l10n.text('organizeTransaction')),
-            ),
-            const SizedBox(height: ButlerlySpacing.small),
-            OutlinedButton.icon(
-              onPressed: () async {
-                final assigned = await _assignPaymentSource(
-                  context,
-                  finance,
-                  transaction,
+                return Row(
+                  children: [
+                    Expanded(child: editButton),
+                    const SizedBox(width: ButlerlySpacing.small),
+                    Expanded(child: deleteButton),
+                  ],
                 );
-                if (assigned != null && context.mounted) {
-                  setState(() {
-                    transaction = assigned;
-                    _changed = true;
-                  });
-                }
               },
-              icon: const Icon(Icons.account_balance_wallet_outlined),
-              label: Text(context.l10n.text('assignPaymentSource')),
-            ),
-            const SizedBox(height: ButlerlySpacing.small),
-            OutlinedButton.icon(
-              onPressed: transaction.status == TransactionStatus.archived.name
-                  ? () async {
-                      await finance.restoreTransaction(transaction.id);
-                      if (context.mounted) Navigator.of(context).pop(true);
-                    }
-                  : () => _archive(context),
-              icon: Icon(
-                transaction.status == TransactionStatus.archived.name
-                    ? Icons.unarchive_outlined
-                    : Icons.archive_outlined,
-              ),
-              label: Text(
-                transaction.status == TransactionStatus.archived.name
-                    ? context.l10n.text('restoreTransaction')
-                    : context.l10n.text('archiveTransaction'),
-              ),
-            ),
-            const SizedBox(height: ButlerlySpacing.small),
-            ButlerlyDestructiveButton(
-              key: const ValueKey('transaction-detail-delete-button'),
-              onPressed: () => _delete(context),
-              icon: const Icon(Icons.delete_forever_outlined),
-              child: Text(context.l10n.text('deletePermanently')),
             ),
             const SizedBox(height: ButlerlySpacing.structural),
           ],
@@ -2050,6 +2078,7 @@ class _TransactionMasterDataRows extends StatefulWidget {
     required this.transaction,
     this.showClassification = true,
     this.showTags = true,
+    this.showDividers = false,
     super.key,
   });
 
@@ -2057,6 +2086,7 @@ class _TransactionMasterDataRows extends StatefulWidget {
   final TransactionDto transaction;
   final bool showClassification;
   final bool showTags;
+  final bool showDividers;
 
   @override
   State<_TransactionMasterDataRows> createState() =>
@@ -2098,35 +2128,36 @@ class _TransactionMasterDataRowsState
         );
       }
       final data = snapshot.data ?? const TransactionMasterData();
-      return Column(
-        children: [
-          if (widget.showClassification && transaction.merchantId != null)
-            _DetailRow(
-              icon: Icons.storefront_outlined,
-              label: context.l10n.text('merchant'),
-              value:
-                  data.merchantName(transaction.merchantId) ??
-                  context.l10n.text('unavailableMerchant'),
-            ),
-          if (widget.showClassification &&
-              (transaction.categoryId != null ||
-                  transaction.subcategoryId != null))
-            ..._categoryRows(
-              context,
-              data,
-              transaction.categoryId,
-              transaction.subcategoryId,
-            ),
-          if (widget.showTags && transaction.tagIds.isNotEmpty)
-            ButlerlyReadOnlyTagList(
-              tagIds: transaction.tagIds.map((id) => id),
-              masterData: data,
-              label: context.l10n.text('tags'),
-              unavailableLabel: context.l10n.text('unavailableTag'),
-              compact: true,
-            ),
-        ],
-      );
+      final rows = <Widget>[
+        if (widget.showClassification && transaction.merchantId != null)
+          _DetailRow(
+            icon: Icons.storefront_outlined,
+            label: context.l10n.text('merchant'),
+            value:
+                data.merchantName(transaction.merchantId) ??
+                context.l10n.text('unavailableMerchant'),
+          ),
+        if (widget.showClassification &&
+            (transaction.categoryId != null ||
+                transaction.subcategoryId != null))
+          ..._categoryRows(
+            context,
+            data,
+            transaction.categoryId,
+            transaction.subcategoryId,
+          ),
+        if (widget.showTags && transaction.tagIds.isNotEmpty)
+          ButlerlyReadOnlyTagList(
+            tagIds: transaction.tagIds.map((id) => id),
+            masterData: data,
+            label: context.l10n.text('tags'),
+            unavailableLabel: context.l10n.text('unavailableTag'),
+            compact: true,
+          ),
+      ];
+      return widget.showDividers
+          ? _DetailItemStack(children: rows)
+          : Column(children: rows);
     },
   );
 }
@@ -2208,6 +2239,50 @@ String _provenanceLabel(BuildContext context, String sourceType) =>
       'migration' => context.l10n.text('migration'),
       _ => context.l10n.text('recordOrigin'),
     };
+
+class _DetailItemGroup extends StatelessWidget {
+  const _DetailItemGroup({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    clipBehavior: Clip.antiAlias,
+    decoration: BoxDecoration(
+      border: Border.all(
+        color: Theme.of(context).colorScheme.outlineVariant,
+      ),
+      borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: ButlerlySpacing.standard,
+      ),
+      child: _DetailItemStack(children: children),
+    ),
+  );
+}
+
+class _DetailItemStack extends StatelessWidget {
+  const _DetailItemStack({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      for (var index = 0; index < children.length; index++) ...[
+        children[index],
+        if (index < children.length - 1)
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
+      ],
+    ],
+  );
+}
 
 class _TransactionDetailCardHeader extends StatelessWidget {
   const _TransactionDetailCardHeader({required this.icon, required this.title});
