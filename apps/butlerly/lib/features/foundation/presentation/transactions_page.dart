@@ -916,6 +916,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                     },
                                   );
                                   final currencyField = TextFormField(
+                                    key: const ValueKey(
+                                      'transaction-currency-field',
+                                    ),
                                     controller: _currency,
                                     textCapitalization:
                                         TextCapitalization.characters,
@@ -985,6 +988,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                               ),
                               const SizedBox(height: ButlerlySpacing.standard),
                               ButlerlyMerchantSelector(
+                                key: const ValueKey(
+                                  'transaction-merchant-selector',
+                                ),
                                 label: context.l10n.text('merchant'),
                                 clearLabel: context.l10n.text('clear'),
                                 merchants: data.merchants,
@@ -995,6 +1001,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                               ),
                               const SizedBox(height: ButlerlySpacing.standard),
                               ButlerlyCategorySelector(
+                                key: const ValueKey(
+                                  'transaction-category-selector',
+                                ),
                                 label: context.l10n.text('category'),
                                 clearLabel: context.l10n.text('clear'),
                                 categories: data.categories,
@@ -1011,6 +1020,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                               ),
                               const SizedBox(height: ButlerlySpacing.standard),
                               ButlerlySubcategorySelector(
+                                key: const ValueKey(
+                                  'transaction-subcategory-selector',
+                                ),
                                 label: context.l10n.text('subcategory'),
                                 clearLabel: context.l10n.text('clear'),
                                 categories: data.categories,
@@ -1028,6 +1040,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                               ),
                               const SizedBox(height: ButlerlySpacing.standard),
                               ButlerlyPaymentSourceSelector(
+                                key: const ValueKey(
+                                  'transaction-payment-source-selector',
+                                ),
                                 label: context.l10n.text('paymentSource'),
                                 clearLabel: context.l10n.text('clear'),
                                 sources: data.paymentSources,
