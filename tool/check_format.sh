@@ -7,7 +7,7 @@ if dart format --output=none --set-exit-if-changed "$@"; then
 fi
 
 # TEMPORARY diagnostic for the transaction details file.
-if [[ "$PWD" == */apps/butlerly ]]; then
+if [[ -f lib/features/foundation/presentation/transactions_page.dart ]]; then
   tmp_dir="$(mktemp -d)"
   trap 'rm -rf "$tmp_dir"' EXIT
   cp lib/features/foundation/presentation/transactions_page.dart "$tmp_dir/transactions_page.dart"
