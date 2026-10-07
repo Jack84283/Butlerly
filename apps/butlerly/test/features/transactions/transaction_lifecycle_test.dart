@@ -1663,7 +1663,7 @@ void main() {
     await tester.ensureVisible(find.byKey(const ValueKey('compact-section-2')));
     await tester.tap(find.byKey(const ValueKey('compact-section-2')));
     await tester.pumpAndSettle();
-    expect(find.byType(ButlerlyCard), findsNothing);
+    expect(find.byType(ButlerlyCard), findsOneWidget);
     expect(find.byType(ButlerlyRecordRow), findsOneWidget);
     expect(find.text('Needs a category'), findsOneWidget);
     expect(find.text('Resolve'), findsNothing);
@@ -1830,11 +1830,11 @@ void main() {
       const MaterialApp(home: Scaffold(body: ReviewPage())),
     );
     await tester.pumpAndSettle();
-    expect(find.byType(ButlerlyCard), findsNothing);
+    expect(find.byType(ButlerlyCard), findsOneWidget);
     expect(find.text('Category and subcategory are missing'), findsNWidgets(3));
     await tester.tap(find.byKey(const ValueKey('compact-section-2')));
     await tester.pumpAndSettle();
-    expect(find.byType(ButlerlyCard), findsNothing);
+    expect(find.byType(ButlerlyCard), findsOneWidget);
     expect(find.byType(ButlerlyRecordRow), findsNWidgets(3));
     expect(
       find.text('Receipt amount differs from transaction'),
