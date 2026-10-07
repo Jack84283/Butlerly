@@ -2589,7 +2589,10 @@ void main() {
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          home: TransactionDetailPage(finance: finance, transaction: transaction),
+          home: TransactionDetailPage(
+            finance: finance,
+            transaction: transaction,
+          ),
         ),
       );
       await tester.pumpAndSettle();
