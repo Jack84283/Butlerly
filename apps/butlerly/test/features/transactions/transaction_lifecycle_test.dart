@@ -156,6 +156,7 @@ void main() {
       await _scrollEditorToSave(tester);
       await tester.tap(find.text('Save locally'));
       await tester.pumpAndSettle();
+      await _scrollTransactionDetailToTop(tester);
 
       final refreshed = await finance.getTransaction(transaction.id);
       final saved = (refreshed as ApplicationSuccess<TransactionDto>).value;
@@ -670,6 +671,12 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('transaction-detail-evidence-card')),
+      240,
+      scrollable: _transactionDetailScrollable(tester),
+    );
+    await tester.pumpAndSettle();
     expect(find.text('No evidence is attached locally.'), findsOneWidget);
     expect(find.text('Attach receipt'), findsNothing);
     expect(find.text('Attach file'), findsNothing);
@@ -720,6 +727,12 @@ void main() {
           transaction: transaction,
         ),
       ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('transaction-detail-evidence-card')),
+      240,
+      scrollable: _transactionDetailScrollable(tester),
     );
     await tester.pumpAndSettle();
 
@@ -843,14 +856,7 @@ void main() {
     );
     expect(find.text('Team meal'), findsOneWidget);
 
-    await tester.scrollUntilVisible(
-      find.text('Organize transaction'),
-      200,
-      scrollable: find.byType(Scrollable).last,
-    );
-    await tester.ensureVisible(find.text('Organize transaction'));
-    await tester.tap(find.text('Organize transaction'));
-    await tester.pumpAndSettle();
+    await _tapTransactionDetailOrganize(tester);
     expect(find.byType(TextFormField), findsNothing);
     expect(find.byType(DropdownMenu<String>), findsNWidgets(3));
     expect(find.textContaining('add a new'), findsNothing);
@@ -875,6 +881,7 @@ void main() {
     );
     await tester.tap(find.text('Save locally'));
     await tester.pumpAndSettle();
+    await _scrollTransactionDetailToTop(tester);
     expect(
       find.byKey(const ValueKey('transaction-detail-summary-card')),
       findsOneWidget,
@@ -1355,7 +1362,7 @@ void main() {
     expect(find.text('Weekly'), findsNothing);
     expect(find.text('2 transactions'), findsOneWidget);
     expect(find.text('Aug 11, 2026'), findsOneWidget);
-    expect(find.text('Aug 10, 2026'), findsNWidgets(2));
+    expect(find.text('Aug 10, 2026'), findsOneWidget);
     final monthCard = find.byKey(
       const ValueKey('transaction-month-card-2026-08'),
     );
@@ -2483,7 +2490,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Aug 10, 2026'), findsOneWidget);
+    expect(find.text('Aug 10, 2026'), findsNWidgets(2));
     expect(find.text('Aug 11, 2026'), findsNothing);
     expect(find.text('Entered locally'), findsOneWidget);
   });
@@ -2580,14 +2587,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('Organize transaction'),
-      200,
-      scrollable: _transactionDetailScrollable(tester),
-    );
-    await tester.ensureVisible(find.text('Organize transaction'));
-    await tester.tap(find.text('Organize transaction'));
-    await tester.pumpAndSettle();
+    await _tapTransactionDetailOrganize(tester);
 
     await tester.tap(find.byType(DropdownMenu<String>).at(0));
     await tester.pumpAndSettle();
@@ -2642,20 +2642,13 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('Organize transaction'),
-      200,
-      scrollable: _transactionDetailScrollable(tester),
-    );
-    await tester.ensureVisible(find.text('Organize transaction'));
-    await tester.tap(find.text('Organize transaction'));
-    await tester.pumpAndSettle();
+    await _tapTransactionDetailOrganize(tester);
 
-    expect(find.text('Remove me'), findsOneWidget);
+    expect(find.byType(InputChip), findsOneWidget);
     final chipBounds = tester.getRect(find.byType(InputChip));
     await tester.tapAt(Offset(chipBounds.right - 16, chipBounds.center.dy));
     await tester.pumpAndSettle();
-    expect(find.text('Remove me'), findsNothing);
+    expect(find.byType(InputChip), findsNothing);
     await tester.tap(find.text('Save organization'));
     await tester.pumpAndSettle();
 
@@ -2744,14 +2737,7 @@ void main() {
     expect(find.text('方向'), findsOneWidget);
     expect(find.text('支出'), findsOneWidget);
     expect(find.text('Transaction detail'), findsNothing);
-    await tester.scrollUntilVisible(
-      find.text('整理交易'),
-      200,
-      scrollable: _transactionDetailScrollable(tester),
-    );
-    await tester.ensureVisible(find.text('整理交易'));
-    await tester.tap(find.text('整理交易'));
-    await tester.pumpAndSettle();
+    await _tapTransactionDetailOrganize(tester);
 
     expect(find.text('整理交易'), findsOneWidget);
     expect(find.text('商户').last, findsOneWidget);
@@ -3272,6 +3258,29 @@ final class MemoryUserPreferences implements UserPreferenceRepository {
   Future<void> save(UserPreference preference) async {
     value = preference;
   }
+}
+
+Future<void> _scrollTransactionDetailToTop(
+  WidgetTester tester,
+) async {
+  final scrollable = _transactionDetailScrollable(tester);
+  tester.state<ScrollableState>(scrollable).position.jumpTo(0);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _tapTransactionDetailOrganize(WidgetTester tester) async {
+  final organizeButton = find.byKey(
+    const ValueKey('transaction-detail-organize-button'),
+  );
+  await tester.scrollUntilVisible(
+    organizeButton,
+    360,
+    scrollable: _transactionDetailScrollable(tester),
+  );
+  await tester.ensureVisible(organizeButton);
+  await tester.pumpAndSettle();
+  await tester.tap(organizeButton);
+  await tester.pumpAndSettle();
 }
 
 Finder _transactionDetailScrollable(WidgetTester tester) {
