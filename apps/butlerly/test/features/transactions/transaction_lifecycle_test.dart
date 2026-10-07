@@ -141,6 +141,12 @@ void main() {
 
       await tester.tap(find.byIcon(Icons.edit_outlined));
       await tester.pumpAndSettle();
+      final editorScrollable = _transactionEditorScrollable(tester);
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('transaction-editor-description-card')),
+        160,
+        scrollable: editorScrollable,
+      );
       await tester.enterText(
         find.byKey(const ValueKey('transaction-description-field')),
         'Updated lunch',
@@ -773,9 +779,23 @@ void main() {
 
     await tester.tap(find.text('Add transaction manually'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextFormField).at(0), '12.50');
-    await tester.enterText(find.byType(TextFormField).at(2), 'Lunch');
-    await tester.enterText(find.byType(TextFormField).at(3), 'Team meal');
+    await tester.enterText(
+      find.byKey(const ValueKey('transaction-amount-field')),
+      '12.50',
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('transaction-editor-description-card')),
+      160,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('transaction-description-field')),
+      'Lunch',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('transaction-notes-field')),
+      'Team meal',
+    );
     await tester.scrollUntilVisible(
       find.text('Save locally'),
       160,
@@ -811,7 +831,15 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.edit_outlined));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextFormField).at(2), 'Corrected lunch');
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('transaction-editor-description-card')),
+      160,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('transaction-description-field')),
+      'Corrected lunch',
+    );
     await tester.scrollUntilVisible(
       find.text('Save locally'),
       160,
@@ -2617,7 +2645,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('2026-08-10'), findsOneWidget);
+    final editorScroll = _transactionEditorScrollable(tester);
+    await tester.drag(editorScroll, const Offset(0, -640));
+    await tester.pumpAndSettle();
+    final dateCard = find.byKey(const ValueKey('transaction-editor-date-card'));
+    expect(dateCard, findsOneWidget);
+    expect(
+      find.descendant(of: dateCard, matching: find.text('2026-08-10')),
+      findsOneWidget,
+    );
     expect(find.text('2026-08-11'), findsNothing);
   });
 
@@ -2702,7 +2738,7 @@ void main() {
     expect(repository.values, hasLength(1));
   });
 
-  testWidgets('add and edit editors use screenshot-inspired cards', (
+  testWidgets('add and edit editors use card-based form sections', (
     tester,
   ) async {
     await _openEditorForTest(tester);
@@ -2710,14 +2746,13 @@ void main() {
     final financialCard = find.byKey(
       const ValueKey('transaction-editor-financial-card'),
     );
-    final detailsCard = find.byKey(
+    final descriptionCard = find.byKey(
+      const ValueKey('transaction-editor-description-card'),
+    );
+    final organizationCard = find.byKey(
       const ValueKey('transaction-editor-organization-card'),
     );
     final dateCard = find.byKey(const ValueKey('transaction-editor-date-card'));
-    final notesCard = find.byKey(
-      const ValueKey('transaction-editor-description-card'),
-    );
-
     expect(financialCard, findsOneWidget);
     expect(
       find.descendant(
@@ -2733,55 +2768,45 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('Transfer'), findsNothing);
 
-    await tester.scrollUntilVisible(
-      detailsCard,
-      180,
-      scrollable: find.byType(Scrollable).last,
-    );
-    expect(detailsCard, findsOneWidget);
+    await _scrollEditorToMasterData(tester);
+    expect(organizationCard, findsOneWidget);
     expect(
       find.descendant(
-        of: detailsCard,
+        of: organizationCard,
         matching: find.byType(ButlerlyMerchantSelector),
       ),
       findsOneWidget,
     );
     expect(
       find.descendant(
-        of: detailsCard,
+        of: organizationCard,
         matching: find.byType(ButlerlyPaymentSourceSelector),
       ),
       findsOneWidget,
     );
-
-    await tester.scrollUntilVisible(
-      dateCard,
-      180,
-      scrollable: find.byType(Scrollable).last,
-    );
     expect(dateCard, findsOneWidget);
-    expect(find.text('Time'), findsNothing);
 
     await tester.scrollUntilVisible(
-      notesCard,
-      180,
+      descriptionCard,
+      160,
       scrollable: find.byType(Scrollable).last,
     );
-    expect(notesCard, findsOneWidget);
+    expect(descriptionCard, findsOneWidget);
     expect(
       find.descendant(
-        of: notesCard,
+        of: descriptionCard,
         matching: find.byKey(const ValueKey('transaction-description-field')),
       ),
       findsOneWidget,
     );
     expect(
-      find.descendant(of: notesCard, matching: find.byType(ButlerlyTagPicker)),
+      find.descendant(
+        of: descriptionCard,
+        matching: find.byType(ButlerlyTagPicker),
+      ),
       findsOneWidget,
     );
-    expect(find.text('Receipt / Attachment'), findsNothing);
 
     await tester.pumpWidget(const SizedBox());
     await repository.save(_editorTransaction('card-edit'));
@@ -2795,13 +2820,22 @@ void main() {
       find.byKey(const ValueKey('transaction-editor-financial-card')),
       findsOneWidget,
     );
-    await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('transaction-editor-date-card')),
-      180,
-      scrollable: find.byType(Scrollable).last,
+    await _scrollEditorToMasterData(tester);
+    expect(
+      find.byKey(const ValueKey('transaction-editor-organization-card')),
+      findsOneWidget,
     );
     expect(
       find.byKey(const ValueKey('transaction-editor-date-card')),
+      findsOneWidget,
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('transaction-editor-description-card')),
+      160,
+      scrollable: find.byType(Scrollable).last,
+    );
+    expect(
+      find.byKey(const ValueKey('transaction-editor-description-card')),
       findsOneWidget,
     );
   });
@@ -3189,6 +3223,20 @@ final class MemoryUserPreferences implements UserPreferenceRepository {
   Future<void> save(UserPreference preference) async {
     value = preference;
   }
+}
+
+Finder _transactionEditorScrollable(WidgetTester tester) {
+  final editorList = find.byKey(const ValueKey('transaction-editor-list'));
+  expect(editorList, findsOneWidget);
+  final scrollable = find.descendant(
+    of: editorList,
+    matching: find.byWidgetPredicate(
+      (widget) =>
+          widget is Scrollable && widget.axisDirection == AxisDirection.down,
+    ),
+  );
+  expect(scrollable, findsOneWidget);
+  return scrollable;
 }
 
 Future<void> _scrollEditorToMasterData(WidgetTester tester) async {

@@ -112,7 +112,11 @@ void main() {
   ) async {
     await seedMerchant(withHistory: true);
     await pumpApp(tester, TransactionEditorPage(finance: finance));
-    await tester.enterText(find.byType(TextFormField).at(2), 'SAFEWAY #5678');
+    await _scrollToDescription(tester);
+    await tester.enterText(
+      find.byKey(const ValueKey('transaction-description-field')),
+      'SAFEWAY #5678',
+    );
     await tester.pumpAndSettle();
     await _scrollToSelectors(tester);
 
@@ -138,7 +142,11 @@ void main() {
   ) async {
     await seedMerchant(withHistory: true);
     await pumpApp(tester, TransactionEditorPage(finance: finance));
-    await tester.enterText(find.byType(TextFormField).at(2), 'SAFEWAY #5678');
+    await _scrollToDescription(tester);
+    await tester.enterText(
+      find.byKey(const ValueKey('transaction-description-field')),
+      'SAFEWAY #5678',
+    );
     await tester.pumpAndSettle();
     await _scrollToSelectors(tester);
     _expectSelectorValue(tester, 'Food & Dining');
@@ -147,8 +155,9 @@ void main() {
     await _chooseDropdown(tester, 1, 'Travel');
     await _chooseDropdown(tester, 2, 'Transport');
     await _scrollToTop(tester);
+    await _scrollToDescription(tester);
     await tester.enterText(
-      find.byType(TextFormField).at(2),
+      find.byKey(const ValueKey('transaction-description-field')),
       'A different shop',
     );
     await tester.pumpAndSettle();
@@ -165,9 +174,20 @@ Future<void> _chooseDropdown(
   int index,
   String label,
 ) async {
-  final menu = tester.widget<DropdownMenu<String>>(
-    find.byType(DropdownMenu<String>).at(index),
+  final selectorKey = switch (index) {
+    0 => const ValueKey('transaction-merchant-selector'),
+    1 => const ValueKey('transaction-category-selector'),
+    2 => const ValueKey('transaction-subcategory-selector'),
+    _ => throw ArgumentError.value(index, 'index', 'Unknown selector index'),
+  };
+  final selector = find.byKey(selectorKey);
+  expect(selector, findsOneWidget);
+  final dropdown = find.descendant(
+    of: selector,
+    matching: find.byType(DropdownMenu<String>),
   );
+  expect(dropdown, findsOneWidget);
+  final menu = tester.widget<DropdownMenu<String>>(dropdown);
   final entry = menu.dropdownMenuEntries.singleWhere(
     (entry) => entry.label == label,
   );
@@ -175,9 +195,24 @@ Future<void> _chooseDropdown(
   await tester.pumpAndSettle();
 }
 
+Future<void> _scrollToDescription(WidgetTester tester) async {
+  await tester.scrollUntilVisible(
+    find.byKey(const ValueKey('transaction-editor-description-card')),
+    160,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await tester.pumpAndSettle();
+}
+
 Future<void> _scrollToSelectors(WidgetTester tester) async {
   final scrollable = find.byType(Scrollable).first;
-  await tester.drag(scrollable, const Offset(0, -600));
+  tester.state<ScrollableState>(scrollable).position.jumpTo(0);
+  await tester.pumpAndSettle();
+  await tester.scrollUntilVisible(
+    find.byKey(const ValueKey('transaction-editor-organization-card')),
+    160,
+    scrollable: scrollable,
+  );
   await tester.pumpAndSettle();
 }
 

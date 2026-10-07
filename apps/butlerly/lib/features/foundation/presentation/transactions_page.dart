@@ -879,7 +879,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              _TransactionEditorSectionHeader(
+                              _TransactionEditorCardHeader(
                                 icon: Icons.payments_outlined,
                                 title: context.l10n.text('amount'),
                               ),
@@ -895,14 +895,13 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                         const TextInputType.numberWithOptions(
                                           decimal: true,
                                         ),
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .headlineMedium
-                                        ?.copyWith(fontWeight: FontWeight.w600),
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.headlineMedium,
                                     decoration: InputDecoration(
                                       labelText: context.l10n.text('amount'),
                                       prefixIcon: const Icon(
-                                        Icons.attach_money_rounded,
+                                        Icons.payments_outlined,
                                       ),
                                     ),
                                     validator: (value) {
@@ -917,6 +916,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                     },
                                   );
                                   final currencyField = TextFormField(
+                                    key: const ValueKey(
+                                      'transaction-currency-field',
+                                    ),
                                     controller: _currency,
                                     textCapitalization:
                                         TextCapitalization.characters,
@@ -934,18 +936,12 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                       }
                                     },
                                   );
-                                  final stackFields =
-                                      constraints.maxWidth < 280 ||
-                                      MediaQuery.textScalerOf(
-                                            context,
-                                          ).scale(14) >
-                                          20;
-                                  if (stackFields) {
+                                  if (constraints.maxWidth < 280) {
                                     return Column(
                                       children: [
                                         amountField,
                                         const SizedBox(
-                                          height: ButlerlySpacing.compact,
+                                          height: ButlerlySpacing.standard,
                                         ),
                                         currencyField,
                                       ],
@@ -955,11 +951,14 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Expanded(flex: 2, child: amountField),
+                                      Expanded(child: amountField),
                                       const SizedBox(
                                         width: ButlerlySpacing.compact,
                                       ),
-                                      Expanded(child: currencyField),
+                                      SizedBox(
+                                        width: 112,
+                                        child: currencyField,
+                                      ),
                                     ],
                                   );
                                 },
@@ -983,12 +982,15 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              _TransactionEditorSectionHeader(
+                              _TransactionEditorCardHeader(
                                 icon: Icons.receipt_long_outlined,
-                                title: context.l10n.text('transactionDetails'),
+                                title: context.l10n.text('transactionDetail'),
                               ),
                               const SizedBox(height: ButlerlySpacing.standard),
                               ButlerlyMerchantSelector(
+                                key: const ValueKey(
+                                  'transaction-merchant-selector',
+                                ),
                                 label: context.l10n.text('merchant'),
                                 clearLabel: context.l10n.text('clear'),
                                 merchants: data.merchants,
@@ -997,8 +999,11 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                 onCreate: () => _createMerchant(data),
                                 createTooltip: context.l10n.text('merchant'),
                               ),
-                              const SizedBox(height: ButlerlySpacing.compact),
+                              const SizedBox(height: ButlerlySpacing.standard),
                               ButlerlyCategorySelector(
+                                key: const ValueKey(
+                                  'transaction-category-selector',
+                                ),
                                 label: context.l10n.text('category'),
                                 clearLabel: context.l10n.text('clear'),
                                 categories: data.categories,
@@ -1013,8 +1018,11 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                   _subcategoryId = null;
                                 }),
                               ),
-                              const SizedBox(height: ButlerlySpacing.compact),
+                              const SizedBox(height: ButlerlySpacing.standard),
                               ButlerlySubcategorySelector(
+                                key: const ValueKey(
+                                  'transaction-subcategory-selector',
+                                ),
                                 label: context.l10n.text('subcategory'),
                                 clearLabel: context.l10n.text('clear'),
                                 categories: data.categories,
@@ -1030,8 +1038,11 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                   _categoryId = selectedParentId;
                                 }),
                               ),
-                              const SizedBox(height: ButlerlySpacing.compact),
+                              const SizedBox(height: ButlerlySpacing.standard),
                               ButlerlyPaymentSourceSelector(
+                                key: const ValueKey(
+                                  'transaction-payment-source-selector',
+                                ),
                                 label: context.l10n.text('paymentSource'),
                                 clearLabel: context.l10n.text('clear'),
                                 sources: data.paymentSources,
@@ -1048,26 +1059,17 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              _TransactionEditorSectionHeader(
+                              _TransactionEditorCardHeader(
                                 icon: Icons.calendar_month_outlined,
                                 title: context.l10n.text('date'),
                               ),
                               const SizedBox(height: ButlerlySpacing.compact),
                               ListTile(
                                 contentPadding: EdgeInsets.zero,
-                                leading: const Icon(
-                                  Icons.calendar_today_outlined,
-                                ),
                                 title: Text(context.l10n.text('date')),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(_shortDate(_date)),
-                                    const SizedBox(
-                                      width: ButlerlySpacing.compact,
-                                    ),
-                                    const Icon(Icons.chevron_right_rounded),
-                                  ],
+                                subtitle: Text(_shortDate(_date)),
+                                trailing: const Icon(
+                                  Icons.calendar_today_outlined,
                                 ),
                                 onTap: () async {
                                   final selected = await showButlerlyDatePicker(
@@ -1098,9 +1100,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              _TransactionEditorSectionHeader(
+                              _TransactionEditorCardHeader(
                                 icon: Icons.notes_rounded,
-                                title: context.l10n.text('notesAndTags'),
+                                title: context.l10n.text('notes'),
                               ),
                               const SizedBox(height: ButlerlySpacing.standard),
                               TextFormField(
@@ -1112,12 +1114,13 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                   labelText: context.l10n.text(
                                     'descriptionOptional',
                                   ),
-                                  prefixIcon: const Icon(Icons.subject_rounded),
+                                  prefixIcon: const Icon(Icons.notes_rounded),
                                 ),
                                 maxLines: 2,
                               ),
-                              const SizedBox(height: ButlerlySpacing.compact),
+                              const SizedBox(height: ButlerlySpacing.standard),
                               TextFormField(
+                                key: const ValueKey('transaction-notes-field'),
                                 controller: _notes,
                                 decoration: InputDecoration(
                                   labelText: context.l10n.text('notesOptional'),
@@ -1248,44 +1251,30 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   }
 }
 
-class _TransactionEditorSectionHeader extends StatelessWidget {
-  const _TransactionEditorSectionHeader({
-    required this.icon,
-    required this.title,
-  });
+final class _TransactionEditorCardHeader extends StatelessWidget {
+  const _TransactionEditorCardHeader({required this.icon, required this.title});
 
   final IconData icon;
   final String title;
 
   @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: colors.primary.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-          ),
-          child: Icon(icon, size: 19, color: colors.primary),
+  Widget build(BuildContext context) => Row(
+    children: [
+      Icon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
+      const SizedBox(width: ButlerlySpacing.compact),
+      Expanded(
+        child: Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
-        const SizedBox(width: ButlerlySpacing.compact),
-        Expanded(
-          child: Text(
-            title,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-          ),
-        ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
 }
 
-final class _EditorMasterData {
+class _EditorMasterData {
   const _EditorMasterData({
     required this.merchants,
     required this.categories,
