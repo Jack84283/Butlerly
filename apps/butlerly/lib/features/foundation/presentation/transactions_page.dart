@@ -1444,27 +1444,76 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       }
     },
     child: Scaffold(
-      appBar: AppBar(
-        title: Text(context.l10n.text('transactionDetail')),
-        actions: [
-          IconButton(
-            tooltip: context.l10n.text('editTransaction'),
-            onPressed: _editTransaction,
-            icon: const Icon(Icons.edit_outlined),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: Text(context.l10n.text('transactionDetail'))),
       body: ButlerlyResponsiveBody(
         contentKey: const ValueKey('transaction-detail-content'),
         child: ListView(
+          key: const ValueKey('transaction-detail-list'),
           padding: const EdgeInsets.all(ButlerlySpacing.pagePadding),
           children: [
             ButlerlyCard(
               key: const ValueKey('transaction-detail-summary-card'),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final textScale = MediaQuery.textScalerOf(
+                    context,
+                  ).scale(14);
+                  final stackSummary =
+                      constraints.maxWidth < 320 || textScale > 20;
+                  final identity = Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        transaction.description ??
+                            context.l10n.text('untitledTransaction'),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: ButlerlySpacing.micro),
+                      Text(
+                        _transactionDate(transaction, context),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  );
+                  final amount = Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: double.infinity,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            localizedTransactionAmount(
+                              context,
+                              transaction.amount,
+                            ),
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+                      Text(
+                        transaction.currency,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  );
+                  final icon = Container(
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
@@ -1479,51 +1528,41 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                       Icons.receipt_long_outlined,
                       color: Theme.of(context).colorScheme.primary,
                     ),
-                  ),
-                  const SizedBox(width: ButlerlySpacing.standard),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  );
+                  if (stackSummary) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(
-                          transaction.description ??
-                              context.l10n.text('untitledTransaction'),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(fontWeight: FontWeight.w700),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            icon,
+                            const SizedBox(width: ButlerlySpacing.standard),
+                            Expanded(child: identity),
+                          ],
                         ),
-                        const SizedBox(height: ButlerlySpacing.micro),
-                        Text(
-                          _transactionDate(transaction, context),
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
+                        const SizedBox(height: ButlerlySpacing.standard),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 220),
+                            child: amount,
+                          ),
                         ),
                       ],
-                    ),
-                  ),
-                  const SizedBox(width: ButlerlySpacing.standard),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                    );
+                  }
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Text(
-                        localizedTransactionAmount(context, transaction.amount),
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(fontWeight: FontWeight.w700),
-                      ),
-                      Text(
-                        transaction.currency,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
+                      icon,
+                      const SizedBox(width: ButlerlySpacing.standard),
+                      Expanded(flex: 3, child: identity),
+                      const SizedBox(width: ButlerlySpacing.standard),
+                      Expanded(flex: 2, child: amount),
                     ],
-                  ),
-                ],
+                  );
+                },
               ),
             ),
             const SizedBox(height: ButlerlySpacing.standard),
