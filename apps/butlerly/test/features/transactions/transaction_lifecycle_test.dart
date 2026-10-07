@@ -882,10 +882,7 @@ void main() {
       findsOneWidget,
     );
 
-    await _tapTransactionDetailOverflowAction(
-      tester,
-      'Archive transaction',
-    );
+    await _tapTransactionDetailOverflowAction(tester, 'Archive transaction');
     await tester.tap(find.text('Archive'));
     await tester.pumpAndSettle();
 
