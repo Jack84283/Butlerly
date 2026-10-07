@@ -387,55 +387,63 @@ void main() {
     expect(action.bottom, lessThanOrEqualTo(size.height - 280 + 1));
   });
 
-  testWidgets('dark selection sheet makes choices visibly distinct', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: ThemeData.dark(useMaterial3: true),
-        home: Scaffold(
-          body: Builder(
-            builder: (context) => FilledButton(
-              key: const ValueKey('open-dark-selection'),
-              onPressed: () => showButlerlySelectionSheet<String>(
-                context: context,
-                title: 'Choose one',
-                selectedValue: 'two',
-                options: const [
-                  ButlerlySelectionOption(value: 'one', child: Text('One')),
-                  ButlerlySelectionOption(value: 'two', child: Text('Two')),
-                ],
+  testWidgets(
+    'selection sheet keeps the same structure in light and dark modes',
+    (tester) async {
+      Future<void> verify(ThemeData theme) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: theme,
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => FilledButton(
+                  key: const ValueKey('open-themed-selection'),
+                  onPressed: () => showButlerlySelectionSheet<String>(
+                    context: context,
+                    title: 'Choose one',
+                    selectedValue: 'two',
+                    options: const [
+                      ButlerlySelectionOption(value: 'one', child: Text('One')),
+                      ButlerlySelectionOption(value: 'two', child: Text('Two')),
+                    ],
+                  ),
+                  child: const Text('Open'),
+                ),
               ),
-              child: const Text('Open'),
             ),
           ),
-        ),
-      ),
-    );
+        );
 
-    await tester.tap(find.byKey(const ValueKey('open-dark-selection')));
-    await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('open-themed-selection')));
+        await tester.pumpAndSettle();
 
-    Finder choiceInk(String label) => find.descendant(
-      of: find.ancestor(
-        of: find.text(label),
-        matching: find.byType(ButlerlySheetChoiceTile),
-      ),
-      matching: find.byWidgetPredicate(
-        (widget) => widget is Ink && widget.decoration is BoxDecoration,
-      ),
-    );
-    final oneTile = tester.widget<Ink>(choiceInk('One'));
-    final twoTile = tester.widget<Ink>(choiceInk('Two'));
-    expect(oneTile.decoration, isA<BoxDecoration>());
-    expect(twoTile.decoration, isA<BoxDecoration>());
-    final oneDecoration = oneTile.decoration! as BoxDecoration;
-    final twoDecoration = twoTile.decoration! as BoxDecoration;
-    expect(oneDecoration.border, isNotNull);
-    expect(twoDecoration.border, isNotNull);
-    expect(oneDecoration.color, isNot(equals(twoDecoration.color)));
-    expect(find.byIcon(Icons.check_rounded), findsOneWidget);
-  });
+        Finder choiceInk(String label) => find.descendant(
+          of: find.ancestor(
+            of: find.text(label),
+            matching: find.byType(ButlerlySheetChoiceTile),
+          ),
+          matching: find.byWidgetPredicate(
+            (widget) => widget is Ink && widget.decoration is BoxDecoration,
+          ),
+        );
+        final oneTile = tester.widget<Ink>(choiceInk('One'));
+        final twoTile = tester.widget<Ink>(choiceInk('Two'));
+        final oneDecoration = oneTile.decoration! as BoxDecoration;
+        final twoDecoration = twoTile.decoration! as BoxDecoration;
+        expect(oneDecoration.border, isNotNull);
+        expect(twoDecoration.border, isNotNull);
+        expect(oneDecoration.borderRadius, twoDecoration.borderRadius);
+        expect(oneDecoration.color, isNot(equals(twoDecoration.color)));
+        expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+
+        Navigator.of(tester.element(find.byType(BottomSheet))).pop();
+        await tester.pumpAndSettle();
+      }
+
+      await verify(ThemeData.light(useMaterial3: true));
+      await verify(ThemeData.dark(useMaterial3: true));
+    },
+  );
 }
 
 Widget _testApp(Widget child) => MaterialApp(

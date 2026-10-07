@@ -8,7 +8,6 @@ import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
-import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_count_label.dart';
@@ -866,9 +865,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                       key: const ValueKey('transaction-editor-list'),
                       // Keep the final field clear of the persistent action.
                       padding: const EdgeInsets.fromLTRB(
-                        24,
-                        24,
-                        24,
+                        ButlerlySpacing.pagePadding,
+                        ButlerlySpacing.compact,
+                        ButlerlySpacing.pagePadding,
                         ButlerlySpacing.bottomActionSpacing,
                       ),
                       children: [
@@ -974,7 +973,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: ButlerlySpacing.standard),
+                        const SizedBox(height: ButlerlySpacing.cardGap),
                         ButlerlyCard(
                           key: const ValueKey(
                             'transaction-editor-organization-card',
@@ -1053,7 +1052,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: ButlerlySpacing.standard),
+                        const SizedBox(height: ButlerlySpacing.cardGap),
                         ButlerlyCard(
                           key: const ValueKey('transaction-editor-date-card'),
                           child: Column(
@@ -1068,8 +1067,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                 contentPadding: EdgeInsets.zero,
                                 title: Text(context.l10n.text('date')),
                                 subtitle: Text(_shortDate(_date)),
-                                trailing: const Icon(
+                                trailing: Icon(
                                   Icons.calendar_today_outlined,
+                                  color: _transactionCardIconColor(context),
                                 ),
                                 onTap: () async {
                                   final selected = await showButlerlyDatePicker(
@@ -1092,7 +1092,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: ButlerlySpacing.standard),
+                        const SizedBox(height: ButlerlySpacing.cardGap),
                         ButlerlyCard(
                           key: const ValueKey(
                             'transaction-editor-description-card',
@@ -1158,9 +1158,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                     top: false,
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(
-                        ButlerlySpacing.standard,
+                        ButlerlySpacing.pagePadding,
                         0,
-                        ButlerlySpacing.standard,
+                        ButlerlySpacing.pagePadding,
                         ButlerlySpacing.standard,
                       ),
                       child: SizedBox(
@@ -1251,7 +1251,10 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   }
 }
 
-final class _TransactionEditorCardHeader extends StatelessWidget {
+Color _transactionCardIconColor(BuildContext context) =>
+    Theme.of(context).colorScheme.primary;
+
+class _TransactionEditorCardHeader extends StatelessWidget {
   const _TransactionEditorCardHeader({required this.icon, required this.title});
 
   final IconData icon;
@@ -1260,7 +1263,7 @@ final class _TransactionEditorCardHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      Icon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
+      Icon(icon, size: 22, color: _transactionCardIconColor(context)),
       const SizedBox(width: ButlerlySpacing.compact),
       Expanded(
         child: Text(
@@ -1372,17 +1375,6 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     transaction = widget.transaction;
   }
 
-  Future<void> _archive(BuildContext context) async {
-    final confirmed = await _confirm(
-      context,
-      context.l10n.text('archiveTitle'),
-      context.l10n.text('archiveBody'),
-    );
-    if (confirmed != true || !context.mounted) return;
-    await finance.archiveTransaction(transaction.id);
-    if (context.mounted) Navigator.of(context).pop(true);
-  }
-
   Future<void> _delete(BuildContext context) async {
     final confirmed = await _confirm(
       context,
@@ -1414,6 +1406,28 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     );
   }
 
+  Future<void> _editTransaction() async {
+    final changed = await Navigator.of(context).push<TransactionEditorResult>(
+      MaterialPageRoute(
+        builder: (_) =>
+            TransactionEditorPage(finance: finance, existing: transaction),
+      ),
+    );
+    if ((changed is TransactionEditorSaved ||
+            changed is TransactionEditorUseExisting) &&
+        mounted) {
+      _changed = true;
+      final refreshed = await finance.getTransaction(transaction.id);
+      if (!mounted) return;
+      if (refreshed case ApplicationSuccess<TransactionDto>(:final value)) {
+        setState(() {
+          transaction = value;
+          _changed = true;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) => PopScope<void>(
     canPop: false,
@@ -1423,199 +1437,343 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       }
     },
     child: Scaffold(
-      appBar: AppBar(
-        title: Text(context.l10n.text('transactionDetail')),
-        actions: [
-          IconButton(
-            tooltip: context.l10n.text('editTransaction'),
-            onPressed: () async {
-              final changed = await Navigator.of(context)
-                  .push<TransactionEditorResult>(
-                    MaterialPageRoute(
-                      builder: (_) => TransactionEditorPage(
-                        finance: finance,
-                        existing: transaction,
-                      ),
-                    ),
-                  );
-              if ((changed is TransactionEditorSaved ||
-                      changed is TransactionEditorUseExisting) &&
-                  context.mounted) {
-                _changed = true;
-                final refreshed = await finance.getTransaction(transaction.id);
-                if (!context.mounted) return;
-                if (refreshed case ApplicationSuccess<TransactionDto>(
-                  :final value,
-                )) {
-                  setState(() {
-                    transaction = value;
-                    _changed = true;
-                  });
-                }
-              }
-            },
-            icon: const Icon(Icons.edit_outlined),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: Text(context.l10n.text('transactionDetail'))),
       body: ButlerlyResponsiveBody(
         contentKey: const ValueKey('transaction-detail-content'),
         child: ListView(
-          padding: const EdgeInsets.all(ButlerlySpacing.pagePadding),
+          key: const ValueKey('transaction-detail-list'),
+          padding: const EdgeInsets.fromLTRB(
+            ButlerlySpacing.pagePadding,
+            ButlerlySpacing.compact,
+            ButlerlySpacing.pagePadding,
+            ButlerlySpacing.pagePadding,
+          ),
           children: [
-            SizedBox(
-              width: double.infinity,
+            ButlerlyCard(
+              key: const ValueKey('transaction-detail-summary-card'),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final textScale = MediaQuery.textScalerOf(context).scale(14);
+                  final stackSummary =
+                      constraints.maxWidth < 320 || textScale > 20;
+                  final identity = Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        transaction.description ??
+                            context.l10n.text('untitledTransaction'),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: ButlerlySpacing.micro),
+                      Text(
+                        _transactionDate(transaction, context),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  );
+                  final amount = Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: double.infinity,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            localizedTransactionAmount(
+                              context,
+                              transaction.amount,
+                            ),
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+                      Text(
+                        transaction.currency,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  );
+                  final icon = Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.50),
+                      borderRadius: BorderRadius.circular(
+                        ButlerlyRadius.standard,
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.receipt_long_outlined,
+                      color: _transactionCardIconColor(context),
+                    ),
+                  );
+                  if (stackSummary) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            icon,
+                            const SizedBox(width: ButlerlySpacing.standard),
+                            Expanded(child: identity),
+                          ],
+                        ),
+                        const SizedBox(height: ButlerlySpacing.standard),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 220),
+                            child: amount,
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      icon,
+                      const SizedBox(width: ButlerlySpacing.standard),
+                      Expanded(flex: 3, child: identity),
+                      const SizedBox(width: ButlerlySpacing.standard),
+                      Expanded(flex: 2, child: amount),
+                    ],
+                  );
+                },
+              ),
+            ),
+            if (transaction.merchantId != null ||
+                transaction.categoryId != null ||
+                transaction.subcategoryId != null ||
+                transaction.paymentSourceId != null) ...[
+              const SizedBox(height: ButlerlySpacing.cardGap),
+              ButlerlyCard(
+                key: const ValueKey('transaction-detail-classification-card'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _TransactionDetailCardHeader(
+                      icon: Icons.credit_card_outlined,
+                      title: context.l10n.text('transactionDetail'),
+                    ),
+                    const SizedBox(height: ButlerlySpacing.compact),
+                    _DetailItemGroup(
+                      children: [
+                        if (transaction.merchantId != null ||
+                            transaction.categoryId != null ||
+                            transaction.subcategoryId != null)
+                          _TransactionMasterDataRows(
+                            key: ValueKey(
+                              'detail-${transaction.updatedAt.microsecondsSinceEpoch}-${transaction.tagIds.join(',')}',
+                            ),
+                            finance: finance,
+                            transaction: transaction,
+                            showTags: false,
+                            showDividers: true,
+                          ),
+                        if (transaction.paymentSourceId != null)
+                          _PaymentSourceRow(
+                            finance: finance,
+                            paymentSourceId: transaction.paymentSourceId!,
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: ButlerlySpacing.cardGap),
+            ButlerlyCard(
+              key: const ValueKey('transaction-detail-amount-card'),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    '${localizedTransactionAmount(context, transaction.amount)} ${transaction.currency}',
-                    textAlign: TextAlign.center,
-                    style: context.transactionDetailAmount,
+                  _TransactionDetailCardHeader(
+                    icon: Icons.payments_outlined,
+                    title: context.l10n.text('amount'),
                   ),
-                  const SizedBox(height: ButlerlySpacing.micro),
-                  Text(
-                    transaction.description ??
-                        context.l10n.text('untitledTransaction'),
-                    textAlign: TextAlign.center,
-                    style: context.transactionDetailDescription,
+                  const SizedBox(height: ButlerlySpacing.compact),
+                  _DetailItemGroup(
+                    children: [
+                      _DetailRow(
+                        icon: Icons.payments_outlined,
+                        label: context.l10n.text('amount'),
+                        value: localizedTransactionAmount(
+                          context,
+                          transaction.amount,
+                        ),
+                      ),
+                      _DetailRow(
+                        icon: Icons.currency_exchange_outlined,
+                        label: context.l10n.text('currency'),
+                        value: transaction.currency,
+                      ),
+                      _DetailRow(
+                        icon: Icons.swap_vert_rounded,
+                        label: context.l10n.text('direction'),
+                        value: context.l10n.text(transaction.direction),
+                      ),
+                      ...transaction.normalizedMoney.map(
+                        (value) => _DetailRow(
+                          label: context.l10n.text('referenceCurrency', {
+                            'currency': value.currency,
+                          }),
+                          value:
+                              '${localizedTransactionAmount(context, value.amount)} ${value.currency}',
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            if (transaction.normalizedMoney.isNotEmpty) ...[
-              const SizedBox(height: ButlerlySpacing.compact),
-              Text(
-                context.l10n.text('referenceAmounts'),
-                style: Theme.of(context).textTheme.labelLarge,
+            const SizedBox(height: ButlerlySpacing.cardGap),
+            ButlerlyCard(
+              key: const ValueKey('transaction-detail-date-card'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _TransactionDetailCardHeader(
+                    icon: Icons.calendar_month_outlined,
+                    title: context.l10n.text('date'),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.compact),
+                  _DetailItemGroup(
+                    children: [
+                      _DetailRow(
+                        icon: Icons.calendar_today_outlined,
+                        label: context.l10n.text('date'),
+                        value: _transactionDate(transaction, context),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              ...transaction.normalizedMoney.map(
-                (value) => _DetailRow(
-                  label: context.l10n.text('referenceCurrency', {
-                    'currency': value.currency,
-                  }),
-                  value:
-                      '${localizedTransactionAmount(context, value.amount)} ${value.currency}',
-                ),
-              ),
-            ],
-            const SizedBox(height: ButlerlySpacing.section),
-            _DetailRow(
-              label: context.l10n.text('direction'),
-              value: context.l10n.text(transaction.direction),
             ),
-            _DetailRow(
-              label: context.l10n.text('date'),
-              value: _transactionDate(transaction, context),
-            ),
-            _DetailRow(
-              label: context.l10n.text('status'),
-              value: context.l10n.text(transaction.status),
-            ),
-            _DetailRow(
-              label: context.l10n.text('reviewState'),
-              value: transaction.reviewState == 'needsReview'
-                  ? context.l10n.text('needsReview')
-                  : context.l10n.text('clear'),
-            ),
-            if (transaction.notes?.trim().isNotEmpty == true)
-              _DetailRow(
-                label: context.l10n.text('notes'),
-                value: transaction.notes!,
+            const SizedBox(height: ButlerlySpacing.cardGap),
+            ButlerlyCard(
+              key: const ValueKey('transaction-detail-notes-card'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _TransactionDetailCardHeader(
+                    icon: Icons.notes_rounded,
+                    title: context.l10n.text('notesAndTags'),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.compact),
+                  _DetailItemGroup(
+                    children: [
+                      _DetailRow(
+                        icon: Icons.sticky_note_2_outlined,
+                        label: context.l10n.text('notes'),
+                        value: transaction.notes?.trim().isNotEmpty == true
+                            ? transaction.notes!
+                            : context.l10n.text('notSet'),
+                      ),
+                      _TransactionTagsDetailRow(
+                        key: ValueKey(
+                          'tags-${transaction.updatedAt.microsecondsSinceEpoch}-${transaction.tagIds.join(',')}',
+                        ),
+                        finance: finance,
+                        transaction: transaction,
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            if (transaction.provenance.isNotEmpty) ...[
-              const SizedBox(height: ButlerlySpacing.standard),
-              Text(
-                context.l10n.text('recordHistory'),
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              ...transaction.provenance.map(
-                (value) => _DetailRow(
-                  label: context.l10n.text('origin'),
-                  value: _provenanceLabel(context, value.sourceType),
-                ),
-              ),
-            ],
-            const SizedBox(height: ButlerlySpacing.standard),
+            ),
+            const SizedBox(height: ButlerlySpacing.cardGap),
             _EvidenceSection(finance: finance, transactionId: transaction.id),
-            _TransactionMasterDataRows(
-              key: ValueKey(
-                '${transaction.updatedAt.microsecondsSinceEpoch}-${transaction.tagIds.join(',')}',
+            const SizedBox(height: ButlerlySpacing.cardGap),
+            ButlerlyCard(
+              key: const ValueKey('transaction-detail-record-card'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _TransactionDetailCardHeader(
+                    icon: Icons.info_outline_rounded,
+                    title: context.l10n.text('status'),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.compact),
+                  _DetailItemGroup(
+                    children: [
+                      _DetailRow(
+                        icon: Icons.inventory_2_outlined,
+                        label: context.l10n.text('status'),
+                        value: context.l10n.text(transaction.status),
+                      ),
+                      _DetailRow(
+                        icon: Icons.fact_check_outlined,
+                        label: context.l10n.text('reviewState'),
+                        value: transaction.reviewState == 'needsReview'
+                            ? context.l10n.text('needsReview')
+                            : context.l10n.text('clear'),
+                      ),
+                      ...transaction.provenance.map(
+                        (value) => _DetailRow(
+                          icon: Icons.history_rounded,
+                          label: context.l10n.text('origin'),
+                          value: _provenanceLabel(context, value.sourceType),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              finance: finance,
-              transaction: transaction,
             ),
-            if (transaction.paymentSourceId != null)
-              _PaymentSourceRow(
-                finance: finance,
-                paymentSourceId: transaction.paymentSourceId!,
-              ),
             const SizedBox(height: ButlerlySpacing.section),
-            OutlinedButton.icon(
-              onPressed: () async {
-                final changed = await _organizeTransaction(
-                  context,
-                  finance,
-                  transaction,
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final stackActions =
+                    constraints.maxWidth < 360 ||
+                    MediaQuery.textScalerOf(context).scale(14) > 20;
+                final editButton = OutlinedButton.icon(
+                  key: const ValueKey('transaction-detail-edit-button'),
+                  onPressed: _editTransaction,
+                  icon: const Icon(Icons.edit_outlined),
+                  label: Text(context.l10n.text('edit')),
                 );
-                if (changed == true && context.mounted) {
-                  final refreshed = await finance.getTransaction(
-                    transaction.id,
+                final deleteButton = ButlerlyDestructiveButton(
+                  key: const ValueKey('transaction-detail-delete-button'),
+                  onPressed: () => _delete(context),
+                  icon: const Icon(Icons.delete_forever_outlined),
+                  child: Text(context.l10n.text('delete')),
+                );
+                if (stackActions) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      editButton,
+                      const SizedBox(height: ButlerlySpacing.small),
+                      deleteButton,
+                    ],
                   );
-                  if (!context.mounted) return;
-                  if (refreshed case ApplicationSuccess<TransactionDto>(
-                    :final value,
-                  )) {
-                    setState(() {
-                      transaction = value;
-                      _changed = true;
-                    });
-                  }
                 }
-              },
-              icon: const Icon(Icons.sell_outlined),
-              label: Text(context.l10n.text('organizeTransaction')),
-            ),
-            const SizedBox(height: ButlerlySpacing.small),
-            OutlinedButton.icon(
-              onPressed: () async {
-                final assigned = await _assignPaymentSource(
-                  context,
-                  finance,
-                  transaction,
+                return Row(
+                  children: [
+                    Expanded(child: editButton),
+                    const SizedBox(width: ButlerlySpacing.small),
+                    Expanded(child: deleteButton),
+                  ],
                 );
-                if (assigned != null && context.mounted) {
-                  setState(() => transaction = assigned);
-                }
               },
-              icon: const Icon(Icons.account_balance_wallet_outlined),
-              label: Text(context.l10n.text('assignPaymentSource')),
             ),
-            const SizedBox(height: ButlerlySpacing.small),
-            OutlinedButton.icon(
-              onPressed: transaction.status == TransactionStatus.archived.name
-                  ? () async {
-                      await finance.restoreTransaction(transaction.id);
-                      if (context.mounted) Navigator.of(context).pop(true);
-                    }
-                  : () => _archive(context),
-              icon: Icon(
-                transaction.status == TransactionStatus.archived.name
-                    ? Icons.unarchive_outlined
-                    : Icons.archive_outlined,
-              ),
-              label: Text(
-                transaction.status == TransactionStatus.archived.name
-                    ? context.l10n.text('restoreTransaction')
-                    : context.l10n.text('archiveTransaction'),
-              ),
-            ),
-            const SizedBox(height: ButlerlySpacing.small),
-            ButlerlyDestructiveButton(
-              onPressed: () => _delete(context),
-              icon: const Icon(Icons.delete_forever_outlined),
-              child: Text(context.l10n.text('deletePermanently')),
-            ),
+            const SizedBox(height: ButlerlySpacing.structural),
           ],
         ),
       ),
@@ -1782,38 +1940,54 @@ class _EvidenceSectionState extends State<_EvidenceSection> {
       }
       final evidence = snapshot.data;
       if (evidence == null) return const SizedBox.shrink();
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            context.l10n.text('evidence'),
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          if (evidence.isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(context.l10n.text('noEvidence')),
-            )
-          else
-            ...evidence.map(
-              (value) => ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.attach_file_outlined),
-                title: value.mediaType.startsWith('image/')
-                    ? ButlerlySecondaryTextAction(
-                        onPressed: () => _preview(value),
-                        child: Text(context.l10n.text('viewImage')),
-                      )
-                    : Text(value.originalName),
-                onTap: () => _preview(value),
-                trailing: IconButton(
-                  tooltip: context.l10n.text('remove'),
-                  onPressed: () => _remove(value),
-                  icon: const Icon(Icons.delete_outline_rounded),
-                ),
-              ),
+      return ButlerlyCard(
+        key: const ValueKey('transaction-detail-evidence-card'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _TransactionDetailCardHeader(
+              icon: Icons.image_outlined,
+              title: context.l10n.text('evidence'),
             ),
-        ],
+            const SizedBox(height: ButlerlySpacing.compact),
+            if (evidence.isEmpty)
+              Text(
+                context.l10n.text('noEvidence'),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              )
+            else
+              _DetailItemGroup(
+                children: [
+                  ...evidence.map(
+                    (value) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        value.mediaType.startsWith('image/')
+                            ? Icons.image_outlined
+                            : Icons.attach_file_outlined,
+                      ),
+                      title: ButlerlySecondaryTextAction(
+                        onPressed: () => _preview(value),
+                        child: Text(
+                          value.mediaType.startsWith('image/')
+                              ? context.l10n.text('viewImage')
+                              : context.l10n.text('evidence'),
+                        ),
+                      ),
+                      onTap: () => _preview(value),
+                      trailing: IconButton(
+                        tooltip: context.l10n.text('remove'),
+                        onPressed: () => _remove(value),
+                        icon: const Icon(Icons.delete_outline_rounded),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
       );
     },
   );
@@ -1847,11 +2021,15 @@ class _TransactionMasterDataRows extends StatefulWidget {
   const _TransactionMasterDataRows({
     required this.finance,
     required this.transaction,
+    this.showTags = true,
+    this.showDividers = false,
     super.key,
   });
 
   final FinanceServices finance;
   final TransactionDto transaction;
+  final bool showTags;
+  final bool showDividers;
 
   @override
   State<_TransactionMasterDataRows> createState() =>
@@ -1893,33 +2071,34 @@ class _TransactionMasterDataRowsState
         );
       }
       final data = snapshot.data ?? const TransactionMasterData();
-      return Column(
-        children: [
-          if (transaction.merchantId != null)
-            _DetailRow(
-              label: context.l10n.text('merchant'),
-              value:
-                  data.merchantName(transaction.merchantId) ??
-                  context.l10n.text('unavailableMerchant'),
-            ),
-          if (transaction.categoryId != null ||
-              transaction.subcategoryId != null)
-            ..._categoryRows(
-              context,
-              data,
-              transaction.categoryId,
-              transaction.subcategoryId,
-            ),
-          if (transaction.tagIds.isNotEmpty)
-            ButlerlyReadOnlyTagList(
-              tagIds: transaction.tagIds.map((id) => id),
-              masterData: data,
-              label: context.l10n.text('tags'),
-              unavailableLabel: context.l10n.text('unavailableTag'),
-              compact: true,
-            ),
-        ],
-      );
+      final rows = <Widget>[
+        if (transaction.merchantId != null)
+          _DetailRow(
+            icon: Icons.storefront_outlined,
+            label: context.l10n.text('merchant'),
+            value:
+                data.merchantName(transaction.merchantId) ??
+                context.l10n.text('unavailableMerchant'),
+          ),
+        if (transaction.categoryId != null || transaction.subcategoryId != null)
+          ..._categoryRows(
+            context,
+            data,
+            transaction.categoryId,
+            transaction.subcategoryId,
+          ),
+        if (widget.showTags && transaction.tagIds.isNotEmpty)
+          ButlerlyReadOnlyTagList(
+            tagIds: transaction.tagIds.map((id) => id),
+            masterData: data,
+            label: context.l10n.text('tags'),
+            unavailableLabel: context.l10n.text('unavailableTag'),
+            compact: true,
+          ),
+      ];
+      return widget.showDividers
+          ? _DetailItemStack(children: rows)
+          : Column(children: rows);
     },
   );
 }
@@ -1939,6 +2118,7 @@ List<Widget> _categoryRows(
   return [
     if (effectiveCategoryId != null)
       _DetailRow(
+        icon: Icons.sell_outlined,
         label: context.l10n.text('category'),
         value:
             data.categoryName(effectiveCategoryId) ??
@@ -1946,12 +2126,73 @@ List<Widget> _categoryRows(
       ),
     if (effectiveSubcategoryId != null)
       _DetailRow(
+        icon: Icons.label_outline_rounded,
         label: context.l10n.text('subcategory'),
         value:
             data.categoryName(effectiveSubcategoryId) ??
             context.l10n.text('unavailableCategory'),
       ),
   ];
+}
+
+class _TransactionTagsDetailRow extends StatefulWidget {
+  const _TransactionTagsDetailRow({
+    required this.finance,
+    required this.transaction,
+    super.key,
+  });
+
+  final FinanceServices finance;
+  final TransactionDto transaction;
+
+  @override
+  State<_TransactionTagsDetailRow> createState() =>
+      _TransactionTagsDetailRowState();
+}
+
+class _TransactionTagsDetailRowState extends State<_TransactionTagsDetailRow> {
+  late Future<TransactionMasterData> _masterData;
+  String? _languageCode;
+
+  @override
+  void initState() {
+    super.initState();
+    _masterData = Future.value(const TransactionMasterData());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final languageCode = Localizations.localeOf(context).languageCode;
+    if (_languageCode == languageCode) return;
+    _languageCode = languageCode;
+    _masterData = TransactionMasterData.load(
+      widget.finance,
+      languageCode: languageCode,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<TransactionMasterData>(
+    future: _masterData,
+    builder: (context, snapshot) {
+      if (snapshot.connectionState != ConnectionState.done) {
+        return const Padding(
+          padding: EdgeInsets.symmetric(vertical: ButlerlySpacing.compact),
+          child: LinearProgressIndicator(),
+        );
+      }
+      final data = snapshot.data ?? const TransactionMasterData();
+      final labels = widget.transaction.tagIds
+          .map((id) => data.tagName(id) ?? context.l10n.text('unavailableTag'))
+          .toList(growable: false);
+      return _DetailRow(
+        icon: Icons.label_outline_rounded,
+        label: context.l10n.text('tags'),
+        value: labels.isEmpty ? context.l10n.text('notSet') : labels.join(', '),
+      );
+    },
+  );
 }
 
 class _PaymentSourceRow extends StatelessWidget {
@@ -1976,6 +2217,7 @@ class _PaymentSourceRow extends StatelessWidget {
           ?.where((value) => value.id.value == paymentSourceId)
           .firstOrNull;
       return _DetailRow(
+        icon: Icons.credit_card_outlined,
         label: context.l10n.text('paymentSource'),
         value: source == null
             ? context.l10n.text('unavailablePaymentSource')
@@ -1999,17 +2241,102 @@ String _provenanceLabel(BuildContext context, String sourceType) =>
       _ => context.l10n.text('recordOrigin'),
     };
 
+class _DetailItemGroup extends StatelessWidget {
+  const _DetailItemGroup({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    clipBehavior: Clip.antiAlias,
+    decoration: BoxDecoration(
+      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: ButlerlySpacing.standard),
+      child: _DetailItemStack(children: children),
+    ),
+  );
+}
+
+class _DetailItemStack extends StatelessWidget {
+  const _DetailItemStack({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      for (var index = 0; index < children.length; index++) ...[
+        children[index],
+        if (index < children.length - 1)
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
+      ],
+    ],
+  );
+}
+
+class _TransactionDetailCardHeader extends StatelessWidget {
+  const _TransactionDetailCardHeader({required this.icon, required this.title});
+
+  final IconData icon;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Icon(icon, size: 22, color: _transactionCardIconColor(context)),
+      const SizedBox(width: ButlerlySpacing.compact),
+      Expanded(
+        child: Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+      ),
+    ],
+  );
+}
+
 class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value});
+  const _DetailRow({required this.label, required this.value, this.icon});
+
   final String label;
   final String value;
+  final IconData? icon;
+
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8),
+    padding: const EdgeInsets.symmetric(vertical: ButlerlySpacing.compact),
     child: Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Expanded(child: Text(label)),
-        Text(value),
+        if (icon != null) ...[
+          Icon(icon, size: 20, color: Theme.of(context).colorScheme.onSurface),
+          const SizedBox(width: ButlerlySpacing.standard),
+        ],
+        Expanded(
+          child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+        ),
+        const SizedBox(width: ButlerlySpacing.standard),
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+            ),
+          ),
+        ),
       ],
     ),
   );
@@ -2042,230 +2369,6 @@ Future<bool?> _confirm(
     ],
   ),
 );
-
-Future<bool?> _organizeTransaction(
-  BuildContext context,
-  FinanceServices finance,
-  TransactionDto transaction,
-) async {
-  final masterDataResults = await Future.wait([
-    finance.listMerchants(),
-    finance.listCategories(),
-    finance.listTags(),
-  ]);
-  if (!context.mounted) return false;
-  final merchants = switch (masterDataResults[0]) {
-    ApplicationSuccess<List<Merchant>>(:final value) => value,
-    _ => const <Merchant>[],
-  };
-  final categories = switch (masterDataResults[1]) {
-    ApplicationSuccess<List<Category>>(:final value) => value,
-    _ => const <Category>[],
-  };
-  final tags = switch (masterDataResults[2]) {
-    ApplicationSuccess<List<Tag>>(:final value) => value,
-    _ => const <Tag>[],
-  };
-  final languageCode = Localizations.localeOf(context).languageCode;
-  final presentation = await TransactionMasterData.load(
-    finance,
-    languageCode: languageCode,
-  );
-  if (!context.mounted) return false;
-  String? merchantId = transaction.merchantId;
-  String? categoryId = transaction.categoryId;
-  String? subcategoryId = transaction.subcategoryId;
-  final selectedTagIds = transaction.tagIds.toSet();
-  final initialCategory = categories
-      .where((value) => value.id.value == categoryId)
-      .firstOrNull;
-  if (subcategoryId == null && initialCategory?.parentId != null) {
-    subcategoryId = categoryId;
-    categoryId = initialCategory!.parentId!.value;
-  } else if (subcategoryId != null) {
-    final initialSubcategory = categories
-        .where((value) => value.id.value == subcategoryId)
-        .firstOrNull;
-    if (initialSubcategory != null) {
-      final parentId = initialSubcategory.parentId?.value;
-      if (parentId == null) {
-        subcategoryId = null;
-      } else if (categoryId == null) {
-        categoryId = parentId;
-      } else if (parentId != categoryId) {
-        subcategoryId = null;
-      }
-    }
-  }
-  String? parentCategoryId = categoryId;
-  return showButlerlyBottomSheet<bool>(
-    context: context,
-    builder: (dialogContext) => StatefulBuilder(
-      builder: (dialogContext, setDialogState) => ButlerlySheet(
-        title: Text(dialogContext.l10n.text('organizeTransaction')),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ButlerlyMerchantSelector(
-              merchants: merchants,
-              value: merchantId,
-              label: dialogContext.l10n.text('merchant'),
-              clearLabel: dialogContext.l10n.text('clear'),
-              onChanged: (value) => setDialogState(() => merchantId = value),
-            ),
-            const SizedBox(height: ButlerlySpacing.small),
-            ButlerlyCategorySelector(
-              categories: categories,
-              masterData: presentation,
-              value: parentCategoryId,
-              label: dialogContext.l10n.text('category'),
-              clearLabel: dialogContext.l10n.text('clear'),
-              onChanged: (value) => setDialogState(() {
-                parentCategoryId = value;
-                categoryId = value;
-                subcategoryId = null;
-              }),
-            ),
-            const SizedBox(height: ButlerlySpacing.small),
-            ButlerlySubcategorySelector(
-              categories: categories,
-              masterData: presentation,
-              parentId: parentCategoryId,
-              value: subcategoryId,
-              label: dialogContext.l10n.text('subcategory'),
-              clearLabel: dialogContext.l10n.text('clear'),
-              onChanged: (value) => setDialogState(() => subcategoryId = value),
-            ),
-            const SizedBox(height: ButlerlySpacing.small),
-            ButlerlyTagPicker(
-              tags: tags,
-              masterData: presentation,
-              selected: selectedTagIds,
-              searchLabel: dialogContext.l10n.text('search'),
-              createLabel: dialogContext.l10n.text('addTag'),
-              onChanged: (value) => setDialogState(() {
-                selectedTagIds
-                  ..clear()
-                  ..addAll(value);
-              }),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text(dialogContext.l10n.text('cancel')),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final result = await finance.updateTransaction(
-                UpdateTransactionCommand(
-                  id: transaction.id,
-                  timing: transaction.occurredAt == null
-                      ? const UnknownTransactionTime(
-                          UnknownTransactionTimeReason.unknown,
-                        )
-                      : KnownTransactionTime(transaction.occurredAt!),
-                  money: Money(
-                    amount: DecimalValue.parse(transaction.amount),
-                    currency: CurrencyCode(transaction.currency),
-                  ),
-                  direction: TransactionDirection.values.byName(
-                    transaction.direction,
-                  ),
-                  transactionDate: transaction.transactionDate,
-                  timeZoneId: transaction.timeZoneId,
-                  description: transaction.description,
-                  notes: transaction.notes,
-                  externalReference: transaction.externalReference,
-                  paymentSourceId: transaction.paymentSourceId,
-                  merchantId: merchantId,
-                  categoryId: categoryId,
-                  subcategoryId: subcategoryId,
-                  tagIds: selectedTagIds.toList(growable: false),
-                  replaceMerchant: true,
-                  replaceCategory: true,
-                  replaceTags: true,
-                ),
-              );
-              if (!dialogContext.mounted) return;
-              if (result is ApplicationFailure) {
-                _organizationFailed(dialogContext);
-                return;
-              }
-              notifyTransactionChanged();
-              if (dialogContext.mounted) Navigator.pop(dialogContext, true);
-            },
-            child: Text(dialogContext.l10n.text('saveOrganization')),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-void _organizationFailed(BuildContext context) {
-  if (!context.mounted) return;
-  ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(SnackBar(content: Text(context.l10n.text('dataPreserved'))));
-}
-
-Future<TransactionDto?> _assignPaymentSource(
-  BuildContext context,
-  FinanceServices finance,
-  TransactionDto transaction,
-) async {
-  final result = await finance.listPaymentSources();
-  if (!context.mounted) return null;
-  if (result is! ApplicationSuccess<List<PaymentSource>>) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.l10n.text('paymentSourcesLoadError'))),
-    );
-    return null;
-  }
-  final sources = result.value
-      .where((value) => value.status == PaymentSourceStatus.active)
-      .toList(growable: false);
-  final sourceId = await showButlerlyBottomSheet<String?>(
-    context: context,
-    builder: (dialogContext) => ButlerlySheet(
-      title: Text(dialogContext.l10n.text('assignPaymentSource')),
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          ButlerlySheetChoiceTile(
-            selected: transaction.paymentSourceId == null,
-            onTap: () => Navigator.pop(dialogContext),
-            child: Text(dialogContext.l10n.text('noPaymentSource')),
-          ),
-          for (final value in sources) ...[
-            if (Theme.of(dialogContext).brightness == Brightness.dark)
-              const SizedBox(height: ButlerlySpacing.compact),
-            ButlerlySheetChoiceTile(
-              selected: transaction.paymentSourceId == value.id.value,
-              onTap: () => Navigator.pop(dialogContext, value.id.value),
-              child: Text(paymentSourceDisplayLabel(value)),
-            ),
-          ],
-        ],
-      ),
-    ),
-  );
-  if (!context.mounted) return null;
-  final assigned = await finance.assignPaymentSource(transaction.id, sourceId);
-  if (assigned is ApplicationSuccess<TransactionDto>) {
-    notifyTransactionChanged();
-    return assigned.value;
-  } else {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.text('paymentSourceAssignError'))),
-      );
-    }
-  }
-  return null;
-}
 
 String _transactionDate(TransactionDto value, BuildContext context) =>
     transactionDateLabel(
