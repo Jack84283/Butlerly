@@ -779,7 +779,7 @@ void main() {
     );
     expect(
       find.byKey(const ValueKey('transaction-detail-classification-card')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(
       find.byKey(const ValueKey('transaction-detail-amount-card')),
