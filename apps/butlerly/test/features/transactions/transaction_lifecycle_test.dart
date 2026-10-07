@@ -134,9 +134,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.byKey(const ValueKey('transaction-detail-summary-card')),
-        findsOneWidget,
-      );
+      find.byKey(const ValueKey('transaction-detail-summary-card')),
+      findsOneWidget,
+    );
       expect(find.text('Corner Cafe'), findsOneWidget);
       expect(find.text('Food'), findsOneWidget);
       expect(find.text('Dining'), findsOneWidget);
@@ -166,9 +166,9 @@ void main() {
       expect(saved.paymentSourceId, 'source-visa');
 
       expect(
-        find.byKey(const ValueKey('transaction-detail-summary-card')),
-        findsOneWidget,
-      );
+      find.byKey(const ValueKey('transaction-detail-summary-card')),
+      findsOneWidget,
+    );
       expect(find.text('Corner Cafe'), findsOneWidget);
       expect(find.text('Food'), findsOneWidget);
       expect(find.text('Dining'), findsOneWidget);
@@ -763,7 +763,10 @@ void main() {
     );
     expect(summaryCard, findsOneWidget);
     expect(
-      find.descendant(of: summaryCard, matching: find.text('Whole Foods Market')),
+      find.descendant(
+        of: summaryCard,
+        matching: find.text('Whole Foods Market'),
+      ),
       findsOneWidget,
     );
     expect(
@@ -836,9 +839,9 @@ void main() {
     await tester.tap(find.text('Lunch'));
     await tester.pumpAndSettle();
     expect(
-        find.byKey(const ValueKey('transaction-detail-summary-card')),
-        findsOneWidget,
-      );
+      find.byKey(const ValueKey('transaction-detail-summary-card')),
+      findsOneWidget,
+    );
     expect(find.text('Team meal'), findsOneWidget);
 
     await tester.scrollUntilVisible(
@@ -875,9 +878,9 @@ void main() {
     await tester.tap(find.text('Save locally'));
     await tester.pumpAndSettle();
     expect(
-        find.byKey(const ValueKey('transaction-detail-summary-card')),
-        findsOneWidget,
-      );
+      find.byKey(const ValueKey('transaction-detail-summary-card')),
+      findsOneWidget,
+    );
 
     await tester.scrollUntilVisible(
       find.text('Archive transaction'),
@@ -904,9 +907,9 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(
-        find.byKey(const ValueKey('transaction-detail-summary-card')),
-        findsOneWidget,
-      );
+      find.byKey(const ValueKey('transaction-detail-summary-card')),
+      findsOneWidget,
+    );
     for (var index = 0; index < 3; index++) {
       await tester.drag(find.byType(ListView), const Offset(0, -200));
       await tester.pumpAndSettle();
@@ -2601,9 +2604,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-        find.byKey(const ValueKey('transaction-detail-summary-card')),
-        findsOneWidget,
-      );
+      find.byKey(const ValueKey('transaction-detail-summary-card')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('organizer removes an assigned tag and returns to detail', (
@@ -2651,9 +2654,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-        find.byKey(const ValueKey('transaction-detail-summary-card')),
-        findsOneWidget,
-      );
+      find.byKey(const ValueKey('transaction-detail-summary-card')),
+      findsOneWidget,
+    );
     expect(find.text('Remove me'), findsNothing);
     expect(repository.values['remove-tag']!.tagIds, isEmpty);
   });
