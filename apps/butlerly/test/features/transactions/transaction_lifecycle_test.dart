@@ -142,8 +142,7 @@ void main() {
       expect(find.text('Dining'), findsOneWidget);
       expect(find.text('Visa'), findsOneWidget);
 
-      await tester.tap(find.byIcon(Icons.edit_outlined));
-      await tester.pumpAndSettle();
+      await _tapTransactionDetailEdit(tester);
       final editorScrollable = _transactionEditorScrollable(tester);
       await tester.scrollUntilVisible(
         find.byKey(const ValueKey('transaction-editor-description-card')),
@@ -859,8 +858,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
 
-    await tester.tap(find.byIcon(Icons.edit_outlined));
-    await tester.pumpAndSettle();
+    await _tapTransactionDetailEdit(tester);
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('transaction-editor-description-card')),
       160,
@@ -1357,7 +1355,7 @@ void main() {
     expect(find.text('Weekly'), findsNothing);
     expect(find.text('2 transactions'), findsOneWidget);
     expect(find.text('Aug 11, 2026'), findsOneWidget);
-    expect(find.text('Aug 10, 2026'), findsOneWidget);
+    expect(find.text('Aug 10, 2026'), findsNWidgets(2));
     final monthCard = find.byKey(
       const ValueKey('transaction-month-card-2026-08'),
     );
@@ -2530,6 +2528,12 @@ void main() {
 
     expect(find.text('Corner Market').evaluate().isNotEmpty, isTrue);
     expect(find.text('Groceries').evaluate().isNotEmpty, isTrue);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('transaction-detail-notes-card')),
+      200,
+      scrollable: _transactionDetailScrollable(tester),
+    );
+    await tester.pumpAndSettle();
     expect(find.text('Weekly').evaluate().isNotEmpty, isTrue);
     expect(find.text('merchant-123456'), findsNothing);
     expect(find.text('category-123456'), findsNothing);
@@ -2579,8 +2583,9 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('Organize transaction'),
       200,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: _transactionDetailScrollable(tester),
     );
+    await tester.ensureVisible(find.text('Organize transaction'));
     await tester.tap(find.text('Organize transaction'));
     await tester.pumpAndSettle();
 
@@ -2640,16 +2645,17 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('Organize transaction'),
       200,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: _transactionDetailScrollable(tester),
     );
+    await tester.ensureVisible(find.text('Organize transaction'));
     await tester.tap(find.text('Organize transaction'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Remove me'), findsNWidgets(2));
+    expect(find.text('Remove me'), findsOneWidget);
     final chipBounds = tester.getRect(find.byType(InputChip));
     await tester.tapAt(Offset(chipBounds.right - 16, chipBounds.center.dy));
     await tester.pumpAndSettle();
-    expect(find.text('Remove me').last, findsOneWidget);
+    expect(find.text('Remove me'), findsNothing);
     await tester.tap(find.text('Save organization'));
     await tester.pumpAndSettle();
 
@@ -2741,12 +2747,13 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('整理交易'),
       200,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: _transactionDetailScrollable(tester),
     );
+    await tester.ensureVisible(find.text('整理交易'));
     await tester.tap(find.text('整理交易'));
     await tester.pumpAndSettle();
 
-    expect(find.text('整理交易'), findsNWidgets(2));
+    expect(find.text('整理交易'), findsOneWidget);
     expect(find.text('商户').last, findsOneWidget);
     expect(find.text('分类').last, findsOneWidget);
     expect(find.text('添加标签'), findsOneWidget);
@@ -3265,6 +3272,34 @@ final class MemoryUserPreferences implements UserPreferenceRepository {
   Future<void> save(UserPreference preference) async {
     value = preference;
   }
+}
+
+Finder _transactionDetailScrollable(WidgetTester tester) {
+  final detailList = find.byKey(const ValueKey('transaction-detail-list'));
+  expect(detailList, findsOneWidget);
+  final scrollable = find.descendant(
+    of: detailList,
+    matching: find.byWidgetPredicate(
+      (widget) =>
+          widget is Scrollable && widget.axisDirection == AxisDirection.down,
+    ),
+  );
+  expect(scrollable, findsOneWidget);
+  return scrollable;
+}
+
+Future<void> _tapTransactionDetailEdit(WidgetTester tester) async {
+  final editButton = find.byKey(
+    const ValueKey('transaction-detail-edit-button'),
+  );
+  await tester.scrollUntilVisible(
+    editButton,
+    200,
+    scrollable: _transactionDetailScrollable(tester),
+  );
+  await tester.ensureVisible(editButton);
+  await tester.tap(editButton);
+  await tester.pumpAndSettle();
 }
 
 Finder _transactionEditorScrollable(WidgetTester tester) {
