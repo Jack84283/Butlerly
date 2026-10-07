@@ -725,7 +725,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('View image'), findsOneWidget);
-    expect(find.text('IMG_4837.jpg'), findsOneWidget);
+    expect(find.text('IMG_4837.jpg'), findsNothing);
     expect(find.text('image/jpeg'), findsNothing);
     expect(find.byType(ButlerlySecondaryTextAction), findsOneWidget);
     final tile = tester.widget<ListTile>(find.byType(ListTile));
@@ -784,6 +784,32 @@ void main() {
     expect(
       find.byKey(const ValueKey('transaction-detail-amount-card')),
       findsOneWidget,
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('transaction-detail-notes-card')),
+      200,
+      scrollable: _transactionDetailScrollable(tester),
+    );
+    await tester.pumpAndSettle();
+    final notesCard = find.byKey(
+      const ValueKey('transaction-detail-notes-card'),
+    );
+    expect(notesCard, findsOneWidget);
+    expect(
+      find.descendant(of: notesCard, matching: find.text('Notes & Tags')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: notesCard, matching: find.text('Notes')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: notesCard, matching: find.text('Tags')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: notesCard, matching: find.text('Not set')),
+      findsNWidgets(2),
     );
   });
 
@@ -852,6 +878,20 @@ void main() {
     expect(find.text('Archive transaction'), findsNothing);
     expect(find.text('Restore transaction'), findsNothing);
     expect(find.text('Team meal'), findsOneWidget);
+    final editButton = find.byKey(
+      const ValueKey('transaction-detail-edit-button'),
+    );
+    final deleteButton = find.byKey(
+      const ValueKey('transaction-detail-delete-button'),
+    );
+    await tester.scrollUntilVisible(
+      editButton,
+      200,
+      scrollable: _transactionDetailScrollable(tester),
+    );
+    await tester.pumpAndSettle();
+    expect(find.descendant(of: editButton, matching: find.text('Edit')), findsOneWidget);
+    expect(find.descendant(of: deleteButton, matching: find.text('Delete')), findsOneWidget);
 
     await _tapTransactionDetailEdit(tester);
     await tester.scrollUntilVisible(
@@ -876,9 +916,6 @@ void main() {
       findsOneWidget,
     );
 
-    final deleteButton = find.byKey(
-      const ValueKey('transaction-detail-delete-button'),
-    );
     await tester.scrollUntilVisible(
       deleteButton,
       200,
