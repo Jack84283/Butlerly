@@ -144,7 +144,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.byKey(const ValueKey('transaction-editor-description-card')),
         160,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: find.byType(Scrollable).last,
       );
       await tester.enterText(
         find.byKey(const ValueKey('transaction-description-field')),
@@ -2644,16 +2644,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('transaction-editor-date-card')),
-      160,
-      scrollable: find.byType(Scrollable).first,
+    final editorScroll = find.byType(Scrollable).last;
+    await tester.drag(editorScroll, const Offset(0, -640));
+    await tester.pumpAndSettle();
+    final dateCard = find.byKey(
+      const ValueKey('transaction-editor-date-card'),
     );
+    expect(dateCard, findsOneWidget);
     expect(
-      find.descendant(
-        of: find.byKey(const ValueKey('transaction-editor-date-card')),
-        matching: find.text('2026-08-10'),
-      ),
+      find.descendant(of: dateCard, matching: find.text('2026-08-10')),
       findsOneWidget,
     );
     expect(find.text('2026-08-11'), findsNothing);
