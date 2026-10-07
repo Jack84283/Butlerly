@@ -134,9 +134,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-      find.byKey(const ValueKey('transaction-detail-summary-card')),
-      findsOneWidget,
-    );
+        find.byKey(const ValueKey('transaction-detail-summary-card')),
+        findsOneWidget,
+      );
       expect(find.text('Corner Cafe'), findsOneWidget);
       expect(find.text('Food'), findsOneWidget);
       expect(find.text('Dining'), findsOneWidget);
@@ -166,9 +166,9 @@ void main() {
       expect(saved.paymentSourceId, 'source-visa');
 
       expect(
-      find.byKey(const ValueKey('transaction-detail-summary-card')),
-      findsOneWidget,
-    );
+        find.byKey(const ValueKey('transaction-detail-summary-card')),
+        findsOneWidget,
+      );
       expect(find.text('Corner Cafe'), findsOneWidget);
       expect(find.text('Food'), findsOneWidget);
       expect(find.text('Dining'), findsOneWidget);
