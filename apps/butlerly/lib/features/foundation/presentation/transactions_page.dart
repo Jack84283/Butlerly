@@ -1417,10 +1417,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   Future<void> _editTransaction() async {
     final changed = await Navigator.of(context).push<TransactionEditorResult>(
       MaterialPageRoute(
-        builder: (_) => TransactionEditorPage(
-          finance: finance,
-          existing: transaction,
-        ),
+        builder: (_) =>
+            TransactionEditorPage(finance: finance, existing: transaction),
       ),
     );
     if ((changed is TransactionEditorSaved ||
@@ -1521,9 +1519,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                       Text(
                         transaction.currency,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurfaceVariant,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -2180,10 +2176,7 @@ String _provenanceLabel(BuildContext context, String sourceType) =>
     };
 
 class _TransactionDetailCardHeader extends StatelessWidget {
-  const _TransactionDetailCardHeader({
-    required this.icon,
-    required this.title,
-  });
+  const _TransactionDetailCardHeader({required this.icon, required this.title});
 
   final IconData icon;
   final String title;
@@ -2206,11 +2199,7 @@ class _TransactionDetailCardHeader extends StatelessWidget {
 }
 
 class _DetailRow extends StatelessWidget {
-  const _DetailRow({
-    required this.label,
-    required this.value,
-    this.icon,
-  });
+  const _DetailRow({required this.label, required this.value, this.icon});
 
   final String label;
   final String value;
@@ -2227,19 +2216,16 @@ class _DetailRow extends StatelessWidget {
           const SizedBox(width: ButlerlySpacing.standard),
         ],
         Expanded(
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+          child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
         ),
         const SizedBox(width: ButlerlySpacing.standard),
         Flexible(
           child: Text(
             value,
             textAlign: TextAlign.end,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w500,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
           ),
         ),
       ],
