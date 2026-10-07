@@ -1740,6 +1740,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             ),
             const SizedBox(height: ButlerlySpacing.small),
             OutlinedButton.icon(
+              key: const ValueKey('transaction-detail-organize-button'),
               onPressed: () async {
                 final changed = await _organizeTransaction(
                   context,
