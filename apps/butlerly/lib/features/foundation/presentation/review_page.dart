@@ -533,7 +533,9 @@ class _ReviewPageState extends State<ReviewPage> {
                       source.id.value: source.name,
                   },
                   groupByFinancialDate: true,
-                  showDateInRows: true,
+                  collapsibleMonthSections: true,
+                  monthSectionsAsCards: true,
+                  dashboardRowStyle: true,
                   missingCategoryLabel: context.l10n.text('uncategorized'),
                   supportingContentBuilder: (context, transaction) => Text(
                     context.l10n.text(
@@ -653,7 +655,9 @@ class _ReviewPageState extends State<ReviewPage> {
                                     source.id.value: source.name,
                                 },
                                 groupByFinancialDate: true,
-                                showDateInRows: true,
+                                collapsibleMonthSections: true,
+                                monthSectionsAsCards: true,
+                                dashboardRowStyle: true,
                                 missingCategoryLabel: context.l10n.text(
                                   'uncategorized',
                                 ),
