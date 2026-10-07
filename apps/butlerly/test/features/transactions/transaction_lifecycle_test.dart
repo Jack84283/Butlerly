@@ -2559,9 +2559,9 @@ void main() {
     expect(find.text('2026-08-11'), findsNothing);
   });
 
-  testWidgets('transaction detail uses Simplified Chinese and hides extra actions', (
-    tester,
-  ) async {
+  testWidgets(
+    'transaction detail uses Simplified Chinese and hides extra actions',
+    (tester) async {
     final finance = services<FinanceServices>();
     await finance.createTransaction(
       CreateTransactionCommand(
@@ -2601,7 +2601,8 @@ void main() {
     expect(find.byType(PopupMenuButton<String>), findsNothing);
     expect(find.text('整理交易'), findsNothing);
     expect(find.text('指定付款来源'), findsNothing);
-  });
+    },
+  );
 
   testWidgets('add editor saves and returns a typed saved result', (
     tester,
