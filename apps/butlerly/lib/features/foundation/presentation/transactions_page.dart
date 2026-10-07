@@ -1455,9 +1455,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               key: const ValueKey('transaction-detail-summary-card'),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final textScale = MediaQuery.textScalerOf(
-                    context,
-                  ).scale(14);
+                  final textScale = MediaQuery.textScalerOf(context).scale(14);
                   final stackSummary =
                       constraints.maxWidth < 320 || textScale > 20;
                   final identity = Column(
@@ -1469,18 +1467,18 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                             context.l10n.text('untitledTransaction'),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: Theme.of(context).textTheme.titleLarge
+                            ?.copyWith(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: ButlerlySpacing.micro),
                       Text(
                         _transactionDate(transaction, context),
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurfaceVariant,
-                        ),
+                        style: Theme.of(context).textTheme.bodyMedium
+                            ?.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
                       ),
                     ],
                   );
@@ -1505,11 +1503,12 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                       ),
                       Text(
                         transaction.currency,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurfaceVariant,
-                        ),
+                        style: Theme.of(context).textTheme.bodyMedium
+                            ?.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
                       ),
                     ],
                   );
