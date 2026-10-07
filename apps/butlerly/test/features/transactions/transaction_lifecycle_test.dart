@@ -3230,7 +3230,10 @@ Finder _transactionEditorScrollable(WidgetTester tester) {
   expect(editorList, findsOneWidget);
   final scrollable = find.descendant(
     of: editorList,
-    matching: find.byType(Scrollable),
+    matching: find.byWidgetPredicate(
+      (widget) =>
+          widget is Scrollable && widget.axisDirection == AxisDirection.down,
+    ),
   );
   expect(scrollable, findsOneWidget);
   return scrollable;
