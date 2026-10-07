@@ -3264,10 +3264,7 @@ Future<void> _selectDropdownEntry(
   await tester.pumpAndSettle();
 }
 
-Future<void> _submitOrganizationSheet(
-  WidgetTester tester,
-  String label,
-) async {
+Future<void> _submitOrganizationSheet(WidgetTester tester, String label) async {
   final action = find.widgetWithText(FilledButton, label);
   expect(action, findsOneWidget);
   tester.widget<FilledButton>(action).onPressed!();
