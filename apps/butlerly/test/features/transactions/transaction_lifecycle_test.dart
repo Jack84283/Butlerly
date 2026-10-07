@@ -915,13 +915,20 @@ void main() {
       find.byKey(const ValueKey('transaction-detail-summary-card')),
       findsOneWidget,
     );
-    for (var index = 0; index < 3; index++) {
-      await tester.drag(find.byType(ListView), const Offset(0, -200));
-      await tester.pumpAndSettle();
-    }
-    await tester.tap(find.text('Delete permanently'));
+    final deleteButton = find.byKey(
+      const ValueKey('transaction-detail-delete-button'),
+    );
+    await tester.scrollUntilVisible(
+      deleteButton,
+      200,
+      scrollable: _transactionDetailScrollable(tester),
+    );
+    await tester.ensureVisible(deleteButton);
+    await tester.tap(deleteButton);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Delete permanently').last);
+    final confirmDelete = find.text('Delete permanently').last;
+    await tester.ensureVisible(confirmDelete);
+    await tester.tap(confirmDelete);
     await tester.pumpAndSettle();
 
     expect(repository.values, isEmpty);
@@ -2492,6 +2499,12 @@ void main() {
 
     expect(find.text('Aug 10, 2026'), findsNWidgets(2));
     expect(find.text('Aug 11, 2026'), findsNothing);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('transaction-detail-record-card')),
+      200,
+      scrollable: _transactionDetailScrollable(tester),
+    );
+    await tester.pumpAndSettle();
     expect(find.text('Entered locally'), findsOneWidget);
   });
 
@@ -2589,24 +2602,10 @@ void main() {
     await tester.pumpAndSettle();
     await _tapTransactionDetailOrganize(tester);
 
-    await tester.tap(find.byType(DropdownMenu<String>).at(0));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).last, 'Corner Market');
-    await tester.pumpAndSettle();
-    await tester.tap(find.byType(MenuItemButton).last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.byType(DropdownMenu<String>).at(1));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).last, 'Groceries');
-    await tester.pumpAndSettle();
-    await tester.tap(find.byType(MenuItemButton).last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.byType(DropdownMenu<String>).at(2));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byType(MenuItemButton).last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Save organization'));
-    await tester.pumpAndSettle();
+    await _selectDropdownEntry(tester, 0, 'Corner Market');
+    await _selectDropdownEntry(tester, 1, 'Groceries');
+    await _selectDropdownEntry(tester, 2, 'Weekly');
+    await _submitOrganizationSheet(tester, 'Save organization');
 
     expect(
       find.byKey(const ValueKey('transaction-detail-summary-card')),
@@ -2649,8 +2648,7 @@ void main() {
     await tester.tapAt(Offset(chipBounds.right - 16, chipBounds.center.dy));
     await tester.pumpAndSettle();
     expect(find.byType(InputChip), findsNothing);
-    await tester.tap(find.text('Save organization'));
-    await tester.pumpAndSettle();
+    await _submitOrganizationSheet(tester, 'Save organization');
 
     expect(
       find.byKey(const ValueKey('transaction-detail-summary-card')),
@@ -2739,7 +2737,7 @@ void main() {
     expect(find.text('Transaction detail'), findsNothing);
     await _tapTransactionDetailOrganize(tester);
 
-    expect(find.text('整理交易'), findsOneWidget);
+    expect(find.text('整理交易'), findsNWidgets(2));
     expect(find.text('商户').last, findsOneWidget);
     expect(find.text('分类').last, findsOneWidget);
     expect(find.text('添加标签'), findsOneWidget);
@@ -3258,6 +3256,31 @@ final class MemoryUserPreferences implements UserPreferenceRepository {
   Future<void> save(UserPreference preference) async {
     value = preference;
   }
+}
+
+Future<void> _selectDropdownEntry(
+  WidgetTester tester,
+  int index,
+  String label,
+) async {
+  final menu = tester.widget<DropdownMenu<String>>(
+    find.byType(DropdownMenu<String>).at(index),
+  );
+  final entry = menu.dropdownMenuEntries.singleWhere(
+    (entry) => entry.label == label,
+  );
+  menu.onSelected!(entry.value);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _submitOrganizationSheet(
+  WidgetTester tester,
+  String label,
+) async {
+  final action = find.widgetWithText(FilledButton, label);
+  expect(action, findsOneWidget);
+  tester.widget<FilledButton>(action).onPressed!();
+  await tester.pumpAndSettle();
 }
 
 Future<void> _scrollTransactionDetailToTop(WidgetTester tester) async {
