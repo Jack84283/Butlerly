@@ -1371,17 +1371,6 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     transaction = widget.transaction;
   }
 
-  Future<void> _archive(BuildContext context) async {
-    final confirmed = await _confirm(
-      context,
-      context.l10n.text('archiveTitle'),
-      context.l10n.text('archiveBody'),
-    );
-    if (confirmed != true || !context.mounted) return;
-    await finance.archiveTransaction(transaction.id);
-    if (context.mounted) Navigator.of(context).pop(true);
-  }
-
   Future<void> _delete(BuildContext context) async {
     final confirmed = await _confirm(
       context,
@@ -1435,46 +1424,6 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     }
   }
 
-  Future<void> _handleOverflowAction(String action) async {
-    switch (action) {
-      case 'organize':
-        final changed = await _organizeTransaction(
-          context,
-          finance,
-          transaction,
-        );
-        if (changed == true && mounted) {
-          final refreshed = await finance.getTransaction(transaction.id);
-          if (!mounted) return;
-          if (refreshed case ApplicationSuccess<TransactionDto>(:final value)) {
-            setState(() {
-              transaction = value;
-              _changed = true;
-            });
-          }
-        }
-      case 'paymentSource':
-        final assigned = await _assignPaymentSource(
-          context,
-          finance,
-          transaction,
-        );
-        if (assigned != null && mounted) {
-          setState(() {
-            transaction = assigned;
-            _changed = true;
-          });
-        }
-      case 'archive':
-        if (transaction.status == TransactionStatus.archived.name) {
-          await finance.restoreTransaction(transaction.id);
-          if (mounted) Navigator.of(context).pop(true);
-        } else {
-          await _archive(context);
-        }
-    }
-  }
-
   @override
   Widget build(BuildContext context) => PopScope<void>(
     canPop: false,
@@ -1484,33 +1433,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       }
     },
     child: Scaffold(
-      appBar: AppBar(
-        title: Text(context.l10n.text('transactionDetail')),
-        actions: [
-          PopupMenuButton<String>(
-            tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
-            onSelected: _handleOverflowAction,
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'organize',
-                child: Text(context.l10n.text('organizeTransaction')),
-              ),
-              PopupMenuItem(
-                value: 'paymentSource',
-                child: Text(context.l10n.text('assignPaymentSource')),
-              ),
-              PopupMenuItem(
-                value: 'archive',
-                child: Text(
-                  transaction.status == TransactionStatus.archived.name
-                      ? context.l10n.text('restoreTransaction')
-                      : context.l10n.text('archiveTransaction'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+      appBar: AppBar(title: Text(context.l10n.text('transactionDetail'))),
       body: ButlerlyResponsiveBody(
         contentKey: const ValueKey('transaction-detail-content'),
         child: ListView(
@@ -1770,6 +1693,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               ),
             ],
             const SizedBox(height: ButlerlySpacing.standard),
+            _EvidenceSection(finance: finance, transactionId: transaction.id),
+            const SizedBox(height: ButlerlySpacing.standard),
             ButlerlyCard(
               key: const ValueKey('transaction-detail-record-card'),
               child: Column(
@@ -1806,8 +1731,6 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 ],
               ),
             ),
-            const SizedBox(height: ButlerlySpacing.standard),
-            _EvidenceSection(finance: finance, transactionId: transaction.id),
             const SizedBox(height: ButlerlySpacing.section),
             LayoutBuilder(
               builder: (context, constraints) {
@@ -2377,230 +2300,6 @@ Future<bool?> _confirm(
     ],
   ),
 );
-
-Future<bool?> _organizeTransaction(
-  BuildContext context,
-  FinanceServices finance,
-  TransactionDto transaction,
-) async {
-  final masterDataResults = await Future.wait([
-    finance.listMerchants(),
-    finance.listCategories(),
-    finance.listTags(),
-  ]);
-  if (!context.mounted) return false;
-  final merchants = switch (masterDataResults[0]) {
-    ApplicationSuccess<List<Merchant>>(:final value) => value,
-    _ => const <Merchant>[],
-  };
-  final categories = switch (masterDataResults[1]) {
-    ApplicationSuccess<List<Category>>(:final value) => value,
-    _ => const <Category>[],
-  };
-  final tags = switch (masterDataResults[2]) {
-    ApplicationSuccess<List<Tag>>(:final value) => value,
-    _ => const <Tag>[],
-  };
-  final languageCode = Localizations.localeOf(context).languageCode;
-  final presentation = await TransactionMasterData.load(
-    finance,
-    languageCode: languageCode,
-  );
-  if (!context.mounted) return false;
-  String? merchantId = transaction.merchantId;
-  String? categoryId = transaction.categoryId;
-  String? subcategoryId = transaction.subcategoryId;
-  final selectedTagIds = transaction.tagIds.toSet();
-  final initialCategory = categories
-      .where((value) => value.id.value == categoryId)
-      .firstOrNull;
-  if (subcategoryId == null && initialCategory?.parentId != null) {
-    subcategoryId = categoryId;
-    categoryId = initialCategory!.parentId!.value;
-  } else if (subcategoryId != null) {
-    final initialSubcategory = categories
-        .where((value) => value.id.value == subcategoryId)
-        .firstOrNull;
-    if (initialSubcategory != null) {
-      final parentId = initialSubcategory.parentId?.value;
-      if (parentId == null) {
-        subcategoryId = null;
-      } else if (categoryId == null) {
-        categoryId = parentId;
-      } else if (parentId != categoryId) {
-        subcategoryId = null;
-      }
-    }
-  }
-  String? parentCategoryId = categoryId;
-  return showButlerlyBottomSheet<bool>(
-    context: context,
-    builder: (dialogContext) => StatefulBuilder(
-      builder: (dialogContext, setDialogState) => ButlerlySheet(
-        title: Text(dialogContext.l10n.text('organizeTransaction')),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ButlerlyMerchantSelector(
-              merchants: merchants,
-              value: merchantId,
-              label: dialogContext.l10n.text('merchant'),
-              clearLabel: dialogContext.l10n.text('clear'),
-              onChanged: (value) => setDialogState(() => merchantId = value),
-            ),
-            const SizedBox(height: ButlerlySpacing.small),
-            ButlerlyCategorySelector(
-              categories: categories,
-              masterData: presentation,
-              value: parentCategoryId,
-              label: dialogContext.l10n.text('category'),
-              clearLabel: dialogContext.l10n.text('clear'),
-              onChanged: (value) => setDialogState(() {
-                parentCategoryId = value;
-                categoryId = value;
-                subcategoryId = null;
-              }),
-            ),
-            const SizedBox(height: ButlerlySpacing.small),
-            ButlerlySubcategorySelector(
-              categories: categories,
-              masterData: presentation,
-              parentId: parentCategoryId,
-              value: subcategoryId,
-              label: dialogContext.l10n.text('subcategory'),
-              clearLabel: dialogContext.l10n.text('clear'),
-              onChanged: (value) => setDialogState(() => subcategoryId = value),
-            ),
-            const SizedBox(height: ButlerlySpacing.small),
-            ButlerlyTagPicker(
-              tags: tags,
-              masterData: presentation,
-              selected: selectedTagIds,
-              searchLabel: dialogContext.l10n.text('search'),
-              createLabel: dialogContext.l10n.text('addTag'),
-              onChanged: (value) => setDialogState(() {
-                selectedTagIds
-                  ..clear()
-                  ..addAll(value);
-              }),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text(dialogContext.l10n.text('cancel')),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final result = await finance.updateTransaction(
-                UpdateTransactionCommand(
-                  id: transaction.id,
-                  timing: transaction.occurredAt == null
-                      ? const UnknownTransactionTime(
-                          UnknownTransactionTimeReason.unknown,
-                        )
-                      : KnownTransactionTime(transaction.occurredAt!),
-                  money: Money(
-                    amount: DecimalValue.parse(transaction.amount),
-                    currency: CurrencyCode(transaction.currency),
-                  ),
-                  direction: TransactionDirection.values.byName(
-                    transaction.direction,
-                  ),
-                  transactionDate: transaction.transactionDate,
-                  timeZoneId: transaction.timeZoneId,
-                  description: transaction.description,
-                  notes: transaction.notes,
-                  externalReference: transaction.externalReference,
-                  paymentSourceId: transaction.paymentSourceId,
-                  merchantId: merchantId,
-                  categoryId: categoryId,
-                  subcategoryId: subcategoryId,
-                  tagIds: selectedTagIds.toList(growable: false),
-                  replaceMerchant: true,
-                  replaceCategory: true,
-                  replaceTags: true,
-                ),
-              );
-              if (!dialogContext.mounted) return;
-              if (result is ApplicationFailure) {
-                _organizationFailed(dialogContext);
-                return;
-              }
-              notifyTransactionChanged();
-              if (dialogContext.mounted) Navigator.pop(dialogContext, true);
-            },
-            child: Text(dialogContext.l10n.text('saveOrganization')),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-void _organizationFailed(BuildContext context) {
-  if (!context.mounted) return;
-  ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(SnackBar(content: Text(context.l10n.text('dataPreserved'))));
-}
-
-Future<TransactionDto?> _assignPaymentSource(
-  BuildContext context,
-  FinanceServices finance,
-  TransactionDto transaction,
-) async {
-  final result = await finance.listPaymentSources();
-  if (!context.mounted) return null;
-  if (result is! ApplicationSuccess<List<PaymentSource>>) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.l10n.text('paymentSourcesLoadError'))),
-    );
-    return null;
-  }
-  final sources = result.value
-      .where((value) => value.status == PaymentSourceStatus.active)
-      .toList(growable: false);
-  final sourceId = await showButlerlyBottomSheet<String?>(
-    context: context,
-    builder: (dialogContext) => ButlerlySheet(
-      title: Text(dialogContext.l10n.text('assignPaymentSource')),
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          ButlerlySheetChoiceTile(
-            selected: transaction.paymentSourceId == null,
-            onTap: () => Navigator.pop(dialogContext),
-            child: Text(dialogContext.l10n.text('noPaymentSource')),
-          ),
-          for (final value in sources) ...[
-            if (Theme.of(dialogContext).brightness == Brightness.dark)
-              const SizedBox(height: ButlerlySpacing.compact),
-            ButlerlySheetChoiceTile(
-              selected: transaction.paymentSourceId == value.id.value,
-              onTap: () => Navigator.pop(dialogContext, value.id.value),
-              child: Text(paymentSourceDisplayLabel(value)),
-            ),
-          ],
-        ],
-      ),
-    ),
-  );
-  if (!context.mounted) return null;
-  final assigned = await finance.assignPaymentSource(transaction.id, sourceId);
-  if (assigned is ApplicationSuccess<TransactionDto>) {
-    notifyTransactionChanged();
-    return assigned.value;
-  } else {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.text('paymentSourceAssignError'))),
-      );
-    }
-  }
-  return null;
-}
 
 String _transactionDate(TransactionDto value, BuildContext context) =>
     transactionDateLabel(
