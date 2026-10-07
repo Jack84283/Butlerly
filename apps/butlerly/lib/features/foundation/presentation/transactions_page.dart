@@ -1251,7 +1251,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
 }
 
 Color _transactionCardIconColor(BuildContext context) =>
-    Theme.of(context).colorScheme.primary.withValues(alpha: 0.25);
+    Theme.of(context).colorScheme.primary;
 
 class _TransactionEditorCardHeader extends StatelessWidget {
   const _TransactionEditorCardHeader({required this.icon, required this.title});
