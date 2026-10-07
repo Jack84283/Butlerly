@@ -866,7 +866,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                       // Keep the final field clear of the persistent action.
                       padding: const EdgeInsets.fromLTRB(
                         ButlerlySpacing.pagePadding,
-                        ButlerlySpacing.section,
+                        ButlerlySpacing.compact,
                         ButlerlySpacing.pagePadding,
                         ButlerlySpacing.bottomActionSpacing,
                       ),
@@ -1442,7 +1442,12 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
         contentKey: const ValueKey('transaction-detail-content'),
         child: ListView(
           key: const ValueKey('transaction-detail-list'),
-          padding: const EdgeInsets.all(ButlerlySpacing.pagePadding),
+          padding: const EdgeInsets.fromLTRB(
+            ButlerlySpacing.pagePadding,
+            ButlerlySpacing.compact,
+            ButlerlySpacing.pagePadding,
+            ButlerlySpacing.pagePadding,
+          ),
           children: [
             ButlerlyCard(
               key: const ValueKey('transaction-detail-summary-card'),
@@ -2016,7 +2021,6 @@ class _TransactionMasterDataRows extends StatefulWidget {
   const _TransactionMasterDataRows({
     required this.finance,
     required this.transaction,
-    this.showClassification = true,
     this.showTags = true,
     this.showDividers = false,
     super.key,
@@ -2024,7 +2028,6 @@ class _TransactionMasterDataRows extends StatefulWidget {
 
   final FinanceServices finance;
   final TransactionDto transaction;
-  final bool showClassification;
   final bool showTags;
   final bool showDividers;
 
@@ -2069,7 +2072,7 @@ class _TransactionMasterDataRowsState
       }
       final data = snapshot.data ?? const TransactionMasterData();
       final rows = <Widget>[
-        if (widget.showClassification && transaction.merchantId != null)
+        if (transaction.merchantId != null)
           _DetailRow(
             icon: Icons.storefront_outlined,
             label: context.l10n.text('merchant'),
