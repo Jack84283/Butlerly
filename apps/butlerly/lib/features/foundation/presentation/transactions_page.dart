@@ -865,9 +865,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                       key: const ValueKey('transaction-editor-list'),
                       // Keep the final field clear of the persistent action.
                       padding: const EdgeInsets.fromLTRB(
-                        24,
-                        24,
-                        24,
+                        ButlerlySpacing.pagePadding,
+                        ButlerlySpacing.section,
+                        ButlerlySpacing.pagePadding,
                         ButlerlySpacing.bottomActionSpacing,
                       ),
                       children: [
@@ -1158,9 +1158,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                     top: false,
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(
-                        ButlerlySpacing.standard,
+                        ButlerlySpacing.pagePadding,
                         0,
-                        ButlerlySpacing.standard,
+                        ButlerlySpacing.pagePadding,
                         ButlerlySpacing.standard,
                       ),
                       child: SizedBox(
@@ -1251,15 +1251,8 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   }
 }
 
-Color _transactionCardIconColor(BuildContext context) {
-  final theme = Theme.of(context);
-  final colors = theme.colorScheme;
-  if (theme.brightness != Brightness.dark) return colors.primary;
-  return Color.alphaBlend(
-    colors.primary.withValues(alpha: 0.65),
-    colors.onSurface,
-  );
-}
+Color _transactionCardIconColor(BuildContext context) =>
+    Theme.of(context).colorScheme.primary;
 
 class _TransactionEditorCardHeader extends StatelessWidget {
   const _TransactionEditorCardHeader({required this.icon, required this.title});
