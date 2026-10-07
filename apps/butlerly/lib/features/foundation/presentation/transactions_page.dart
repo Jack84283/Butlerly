@@ -1656,42 +1656,38 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 ],
               ),
             ),
-            if (transaction.notes?.trim().isNotEmpty == true ||
-                transaction.tagIds.isNotEmpty) ...[
-              const SizedBox(height: ButlerlySpacing.standard),
-              ButlerlyCard(
-                key: const ValueKey('transaction-detail-notes-card'),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _TransactionDetailCardHeader(
-                      icon: Icons.notes_rounded,
-                      title: context.l10n.text('notes'),
-                    ),
-                    const SizedBox(height: ButlerlySpacing.compact),
-                    _DetailItemGroup(
-                      children: [
-                        if (transaction.notes?.trim().isNotEmpty == true)
-                          _DetailRow(
-                            icon: Icons.sticky_note_2_outlined,
-                            label: context.l10n.text('notes'),
-                            value: transaction.notes!,
-                          ),
-                        if (transaction.tagIds.isNotEmpty)
-                          _TransactionMasterDataRows(
-                            key: ValueKey(
-                              'tags-${transaction.updatedAt.microsecondsSinceEpoch}-${transaction.tagIds.join(',')}',
-                            ),
-                            finance: finance,
-                            transaction: transaction,
-                            showClassification: false,
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
+            const SizedBox(height: ButlerlySpacing.standard),
+            ButlerlyCard(
+              key: const ValueKey('transaction-detail-notes-card'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _TransactionDetailCardHeader(
+                    icon: Icons.notes_rounded,
+                    title: context.l10n.text('notesAndTags'),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.compact),
+                  _DetailItemGroup(
+                    children: [
+                      _DetailRow(
+                        icon: Icons.sticky_note_2_outlined,
+                        label: context.l10n.text('notes'),
+                        value: transaction.notes?.trim().isNotEmpty == true
+                            ? transaction.notes!
+                            : context.l10n.text('notSet'),
+                      ),
+                      _TransactionTagsDetailRow(
+                        key: ValueKey(
+                          'tags-${transaction.updatedAt.microsecondsSinceEpoch}-${transaction.tagIds.join(',')}',
+                        ),
+                        finance: finance,
+                        transaction: transaction,
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
+            ),
             const SizedBox(height: ButlerlySpacing.standard),
             _EvidenceSection(finance: finance, transactionId: transaction.id),
             const SizedBox(height: ButlerlySpacing.standard),
@@ -1741,13 +1737,13 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   key: const ValueKey('transaction-detail-edit-button'),
                   onPressed: _editTransaction,
                   icon: const Icon(Icons.edit_outlined),
-                  label: Text(context.l10n.text('editTransaction')),
+                  label: Text(context.l10n.text('edit')),
                 );
                 final deleteButton = ButlerlyDestructiveButton(
                   key: const ValueKey('transaction-detail-delete-button'),
                   onPressed: () => _delete(context),
                   icon: const Icon(Icons.delete_forever_outlined),
-                  child: Text(context.l10n.text('deletePermanently')),
+                  child: Text(context.l10n.text('delete')),
                 );
                 if (stackActions) {
                   return Column(
@@ -1958,14 +1954,19 @@ class _EvidenceSectionState extends State<_EvidenceSection> {
                   ...evidence.map(
                     (value) => ListTile(
                       contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.attach_file_outlined),
-                      title: value.mediaType.startsWith('image/')
-                          ? ButlerlySecondaryTextAction(
-                              onPressed: () => _preview(value),
-                              child: Text(context.l10n.text('viewImage')),
-                            )
-                          : Text(value.originalName),
-                      subtitle: Text(value.originalName),
+                      leading: Icon(
+                        value.mediaType.startsWith('image/')
+                            ? Icons.image_outlined
+                            : Icons.attach_file_outlined,
+                      ),
+                      title: ButlerlySecondaryTextAction(
+                        onPressed: () => _preview(value),
+                        child: Text(
+                          value.mediaType.startsWith('image/')
+                              ? context.l10n.text('viewImage')
+                              : context.l10n.text('evidence'),
+                        ),
+                      ),
                       onTap: () => _preview(value),
                       trailing: IconButton(
                         tooltip: context.l10n.text('remove'),
@@ -2129,6 +2130,71 @@ List<Widget> _categoryRows(
   ];
 }
 
+class _TransactionTagsDetailRow extends StatefulWidget {
+  const _TransactionTagsDetailRow({
+    required this.finance,
+    required this.transaction,
+    super.key,
+  });
+
+  final FinanceServices finance;
+  final TransactionDto transaction;
+
+  @override
+  State<_TransactionTagsDetailRow> createState() =>
+      _TransactionTagsDetailRowState();
+}
+
+class _TransactionTagsDetailRowState extends State<_TransactionTagsDetailRow> {
+  late Future<TransactionMasterData> _masterData;
+  String? _languageCode;
+
+  @override
+  void initState() {
+    super.initState();
+    _masterData = Future.value(const TransactionMasterData());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final languageCode = Localizations.localeOf(context).languageCode;
+    if (_languageCode == languageCode) return;
+    _languageCode = languageCode;
+    _masterData = TransactionMasterData.load(
+      widget.finance,
+      languageCode: languageCode,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<TransactionMasterData>(
+    future: _masterData,
+    builder: (context, snapshot) {
+      if (snapshot.connectionState != ConnectionState.done) {
+        return const Padding(
+          padding: EdgeInsets.symmetric(vertical: ButlerlySpacing.compact),
+          child: LinearProgressIndicator(),
+        );
+      }
+      final data = snapshot.data ?? const TransactionMasterData();
+      final labels = widget.transaction.tagIds
+          .map(
+            (id) =>
+                data.tagName(id) ?? context.l10n.text('unavailableTag'),
+          )
+          .toList(growable: false);
+      return _DetailRow(
+        icon: Icons.label_outline_rounded,
+        label: context.l10n.text('tags'),
+        value: labels.isEmpty
+            ? context.l10n.text('notSet')
+            : labels.join(', '),
+      );
+    },
+  );
+}
+
 class _PaymentSourceRow extends StatelessWidget {
   const _PaymentSourceRow({
     required this.finance,
@@ -2259,13 +2325,16 @@ class _DetailRow extends StatelessWidget {
           child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
         ),
         const SizedBox(width: ButlerlySpacing.standard),
-        Flexible(
-          child: Text(
-            value,
-            textAlign: TextAlign.end,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+            ),
           ),
         ),
       ],
