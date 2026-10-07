@@ -2647,9 +2647,7 @@ void main() {
     final editorScroll = find.byType(Scrollable).last;
     await tester.drag(editorScroll, const Offset(0, -640));
     await tester.pumpAndSettle();
-    final dateCard = find.byKey(
-      const ValueKey('transaction-editor-date-card'),
-    );
+    final dateCard = find.byKey(const ValueKey('transaction-editor-date-card'));
     expect(dateCard, findsOneWidget);
     expect(
       find.descendant(of: dateCard, matching: find.text('2026-08-10')),
