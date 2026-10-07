@@ -1804,6 +1804,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             ),
             const SizedBox(height: ButlerlySpacing.small),
             ButlerlyDestructiveButton(
+              key: const ValueKey('transaction-detail-delete-button'),
               onPressed: () => _delete(context),
               icon: const Icon(Icons.delete_forever_outlined),
               child: Text(context.l10n.text('deletePermanently')),
