@@ -535,13 +535,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(
-        find.text('Organize transaction'),
-        200,
-        scrollable: find.byType(Scrollable).last,
-      );
-      await tester.tap(find.text('Organize transaction'));
-      await tester.pumpAndSettle();
+      await _tapTransactionDetailOrganize(tester);
 
       _expectEditorSelection(tester, 'Food organize mismatch');
       expect(
@@ -617,13 +611,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(
-        find.text('Organize transaction'),
-        200,
-        scrollable: find.byType(Scrollable).last,
-      );
-      await tester.tap(find.text('Organize transaction'));
-      await tester.pumpAndSettle();
+      await _tapTransactionDetailOrganize(tester);
 
       for (final selectedLabel in ['Archived Parent', 'Archived Child']) {
         expect(
@@ -854,6 +842,13 @@ void main() {
       find.byKey(const ValueKey('transaction-detail-summary-card')),
       findsOneWidget,
     );
+    expect(
+      find.byKey(const ValueKey('transaction-detail-edit-button')),
+      findsNothing,
+    );
+    expect(find.text('Organize transaction'), findsNothing);
+    expect(find.text('Assign payment source'), findsNothing);
+    expect(find.text('Archive transaction'), findsNothing);
     expect(find.text('Team meal'), findsOneWidget);
 
     await _tapTransactionDetailOrganize(tester);
@@ -887,13 +882,10 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.scrollUntilVisible(
-      find.text('Archive transaction'),
-      200,
-      scrollable: find.byType(Scrollable).last,
+    await _tapTransactionDetailOverflowAction(
+      tester,
+      'Archive transaction',
     );
-    await tester.tap(find.text('Archive transaction'));
-    await tester.pumpAndSettle();
     await tester.tap(find.text('Archive'));
     await tester.pumpAndSettle();
 
@@ -2606,6 +2598,7 @@ void main() {
     await _selectDropdownEntry(tester, 1, 'Groceries');
     await _selectDropdownEntry(tester, 2, 'Weekly');
     await _submitOrganizationSheet(tester, 'Save organization');
+    await _scrollTransactionDetailToTop(tester);
 
     expect(
       find.byKey(const ValueKey('transaction-detail-summary-card')),
@@ -2649,6 +2642,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(InputChip), findsNothing);
     await _submitOrganizationSheet(tester, 'Save organization');
+    await _scrollTransactionDetailToTop(tester);
 
     expect(
       find.byKey(const ValueKey('transaction-detail-summary-card')),
@@ -2735,9 +2729,9 @@ void main() {
     expect(find.text('方向'), findsOneWidget);
     expect(find.text('支出'), findsOneWidget);
     expect(find.text('Transaction detail'), findsNothing);
-    await _tapTransactionDetailOrganize(tester);
+    await _tapTransactionDetailOrganize(tester, label: '整理交易');
 
-    expect(find.text('整理交易'), findsNWidgets(2));
+    expect(find.text('整理交易'), findsOneWidget);
     expect(find.text('商户').last, findsOneWidget);
     expect(find.text('分类').last, findsOneWidget);
     expect(find.text('添加标签'), findsOneWidget);
@@ -3289,20 +3283,25 @@ Future<void> _scrollTransactionDetailToTop(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-Future<void> _tapTransactionDetailOrganize(WidgetTester tester) async {
-  final organizeButton = find.byKey(
-    const ValueKey('transaction-detail-organize-button'),
-  );
-  await tester.scrollUntilVisible(
-    organizeButton,
-    360,
-    scrollable: _transactionDetailScrollable(tester),
-  );
-  await tester.ensureVisible(organizeButton);
+Future<void> _tapTransactionDetailOverflowAction(
+  WidgetTester tester,
+  String label,
+) async {
+  final menu = find.byType(PopupMenuButton<String>);
+  expect(menu, findsOneWidget);
+  await tester.tap(menu);
   await tester.pumpAndSettle();
-  await tester.tap(organizeButton);
+  final action = find.text(label).last;
+  expect(action, findsOneWidget);
+  await tester.tap(action);
   await tester.pumpAndSettle();
 }
+
+Future<void> _tapTransactionDetailOrganize(
+  WidgetTester tester, {
+  String label = 'Organize transaction',
+}) =>
+    _tapTransactionDetailOverflowAction(tester, label);
 
 Finder _transactionDetailScrollable(WidgetTester tester) {
   final detailList = find.byKey(const ValueKey('transaction-detail-list'));
