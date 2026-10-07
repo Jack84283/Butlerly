@@ -141,10 +141,11 @@ void main() {
 
       await tester.tap(find.byIcon(Icons.edit_outlined));
       await tester.pumpAndSettle();
+      final editorScrollable = _transactionEditorScrollable(tester);
       await tester.scrollUntilVisible(
         find.byKey(const ValueKey('transaction-editor-description-card')),
         160,
-        scrollable: find.byType(Scrollable).last,
+        scrollable: editorScrollable,
       );
       await tester.enterText(
         find.byKey(const ValueKey('transaction-description-field')),
@@ -2644,7 +2645,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final editorScroll = find.byType(Scrollable).last;
+    final editorScroll = _transactionEditorScrollable(tester);
     await tester.drag(editorScroll, const Offset(0, -640));
     await tester.pumpAndSettle();
     final dateCard = find.byKey(const ValueKey('transaction-editor-date-card'));
@@ -3222,6 +3223,17 @@ final class MemoryUserPreferences implements UserPreferenceRepository {
   Future<void> save(UserPreference preference) async {
     value = preference;
   }
+}
+
+Finder _transactionEditorScrollable(WidgetTester tester) {
+  final editorList = find.byKey(const ValueKey('transaction-editor-list'));
+  expect(editorList, findsOneWidget);
+  final scrollable = find.descendant(
+    of: editorList,
+    matching: find.byType(Scrollable),
+  );
+  expect(scrollable, findsOneWidget);
+  return scrollable;
 }
 
 Future<void> _scrollEditorToMasterData(WidgetTester tester) async {
