@@ -440,8 +440,8 @@ void main() {
         await tester.pumpAndSettle();
       }
 
-        await verify(ThemeData.light(useMaterial3: true));
-        await verify(ThemeData.dark(useMaterial3: true));
+      await verify(ThemeData.light(useMaterial3: true));
+      await verify(ThemeData.dark(useMaterial3: true));
     },
   );
 }
