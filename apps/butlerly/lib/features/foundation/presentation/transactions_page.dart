@@ -2022,24 +2022,28 @@ class _EvidenceSectionState extends State<_EvidenceSection> {
                 ),
               )
             else
-              ...evidence.map(
-                (value) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.attach_file_outlined),
-                  title: value.mediaType.startsWith('image/')
-                      ? ButlerlySecondaryTextAction(
-                          onPressed: () => _preview(value),
-                          child: Text(context.l10n.text('viewImage')),
-                        )
-                      : Text(value.originalName),
-                  subtitle: Text(value.originalName),
-                  onTap: () => _preview(value),
-                  trailing: IconButton(
-                    tooltip: context.l10n.text('remove'),
-                    onPressed: () => _remove(value),
-                    icon: const Icon(Icons.delete_outline_rounded),
+              _DetailItemGroup(
+                children: [
+                  ...evidence.map(
+                    (value) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.attach_file_outlined),
+                      title: value.mediaType.startsWith('image/')
+                          ? ButlerlySecondaryTextAction(
+                              onPressed: () => _preview(value),
+                              child: Text(context.l10n.text('viewImage')),
+                            )
+                          : Text(value.originalName),
+                      subtitle: Text(value.originalName),
+                      onTap: () => _preview(value),
+                      trailing: IconButton(
+                        tooltip: context.l10n.text('remove'),
+                        onPressed: () => _remove(value),
+                        icon: const Icon(Icons.delete_outline_rounded),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
           ],
         ),
