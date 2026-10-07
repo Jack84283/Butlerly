@@ -3192,8 +3192,7 @@ Future<void> _tapTransactionDetailEdit(WidgetTester tester) async {
     200,
     scrollable: _transactionDetailScrollable(tester),
   );
-  await tester.ensureVisible(editButton);
-  await tester.tap(editButton);
+  tester.widget<OutlinedButton>(editButton).onPressed!();
   await tester.pumpAndSettle();
 }
 
