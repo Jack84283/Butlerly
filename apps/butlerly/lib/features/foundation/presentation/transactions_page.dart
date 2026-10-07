@@ -1414,6 +1414,30 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     );
   }
 
+  Future<void> _editTransaction() async {
+    final changed = await Navigator.of(context).push<TransactionEditorResult>(
+      MaterialPageRoute(
+        builder: (_) => TransactionEditorPage(
+          finance: finance,
+          existing: transaction,
+        ),
+      ),
+    );
+    if ((changed is TransactionEditorSaved ||
+            changed is TransactionEditorUseExisting) &&
+        mounted) {
+      _changed = true;
+      final refreshed = await finance.getTransaction(transaction.id);
+      if (!mounted) return;
+      if (refreshed case ApplicationSuccess<TransactionDto>(:final value)) {
+        setState(() {
+          transaction = value;
+          _changed = true;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) => PopScope<void>(
     canPop: false,
@@ -1428,32 +1452,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
         actions: [
           IconButton(
             tooltip: context.l10n.text('editTransaction'),
-            onPressed: () async {
-              final changed = await Navigator.of(context)
-                  .push<TransactionEditorResult>(
-                    MaterialPageRoute(
-                      builder: (_) => TransactionEditorPage(
-                        finance: finance,
-                        existing: transaction,
-                      ),
-                    ),
-                  );
-              if ((changed is TransactionEditorSaved ||
-                      changed is TransactionEditorUseExisting) &&
-                  context.mounted) {
-                _changed = true;
-                final refreshed = await finance.getTransaction(transaction.id);
-                if (!context.mounted) return;
-                if (refreshed case ApplicationSuccess<TransactionDto>(
-                  :final value,
-                )) {
-                  setState(() {
-                    transaction = value;
-                    _changed = true;
-                  });
-                }
-              }
-            },
+            onPressed: _editTransaction,
             icon: const Icon(Icons.edit_outlined),
           ),
         ],
@@ -1463,94 +1462,255 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
         child: ListView(
           padding: const EdgeInsets.all(ButlerlySpacing.pagePadding),
           children: [
-            SizedBox(
-              width: double.infinity,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+            ButlerlyCard(
+              key: const ValueKey('transaction-detail-summary-card'),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(
-                    '${localizedTransactionAmount(context, transaction.amount)} ${transaction.currency}',
-                    textAlign: TextAlign.center,
-                    style: context.transactionDetailAmount,
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(
+                        ButlerlyRadius.standard,
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.receipt_long_outlined,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                   ),
-                  const SizedBox(height: ButlerlySpacing.micro),
-                  Text(
-                    transaction.description ??
-                        context.l10n.text('untitledTransaction'),
-                    textAlign: TextAlign.center,
-                    style: context.transactionDetailDescription,
+                  const SizedBox(width: ButlerlySpacing.standard),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          transaction.description ??
+                              context.l10n.text('untitledTransaction'),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: ButlerlySpacing.micro),
+                        Text(
+                          _transactionDate(transaction, context),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: ButlerlySpacing.standard),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        localizedTransactionAmount(context, transaction.amount),
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      Text(
+                        transaction.currency,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            if (transaction.normalizedMoney.isNotEmpty) ...[
-              const SizedBox(height: ButlerlySpacing.compact),
-              Text(
-                context.l10n.text('referenceAmounts'),
-                style: Theme.of(context).textTheme.labelLarge,
+            const SizedBox(height: ButlerlySpacing.standard),
+            ButlerlyCard(
+              key: const ValueKey('transaction-detail-classification-card'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _TransactionDetailCardHeader(
+                    icon: Icons.credit_card_outlined,
+                    title: context.l10n.text('transactionDetail'),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.compact),
+                  _TransactionMasterDataRows(
+                    key: ValueKey(
+                      'detail-${transaction.updatedAt.microsecondsSinceEpoch}-${transaction.tagIds.join(',')}',
+                    ),
+                    finance: finance,
+                    transaction: transaction,
+                    showTags: false,
+                  ),
+                  if (transaction.paymentSourceId != null)
+                    _PaymentSourceRow(
+                      finance: finance,
+                      paymentSourceId: transaction.paymentSourceId!,
+                    ),
+                ],
               ),
-              ...transaction.normalizedMoney.map(
-                (value) => _DetailRow(
-                  label: context.l10n.text('referenceCurrency', {
-                    'currency': value.currency,
-                  }),
-                  value:
-                      '${localizedTransactionAmount(context, value.amount)} ${value.currency}',
-                ),
+            ),
+            const SizedBox(height: ButlerlySpacing.standard),
+            ButlerlyCard(
+              key: const ValueKey('transaction-detail-amount-card'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _TransactionDetailCardHeader(
+                    icon: Icons.payments_outlined,
+                    title: context.l10n.text('amount'),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.compact),
+                  _DetailRow(
+                    icon: Icons.payments_outlined,
+                    label: context.l10n.text('amount'),
+                    value: localizedTransactionAmount(
+                      context,
+                      transaction.amount,
+                    ),
+                  ),
+                  _DetailRow(
+                    icon: Icons.currency_exchange_outlined,
+                    label: context.l10n.text('currency'),
+                    value: transaction.currency,
+                  ),
+                  _DetailRow(
+                    icon: Icons.swap_vert_rounded,
+                    label: context.l10n.text('direction'),
+                    value: context.l10n.text(transaction.direction),
+                  ),
+                  if (transaction.normalizedMoney.isNotEmpty) ...[
+                    const SizedBox(height: ButlerlySpacing.compact),
+                    Text(
+                      context.l10n.text('referenceAmounts'),
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                    ...transaction.normalizedMoney.map(
+                      (value) => _DetailRow(
+                        label: context.l10n.text('referenceCurrency', {
+                          'currency': value.currency,
+                        }),
+                        value:
+                            '${localizedTransactionAmount(context, value.amount)} ${value.currency}',
+                      ),
+                    ),
+                  ],
+                ],
               ),
-            ],
-            const SizedBox(height: ButlerlySpacing.section),
-            _DetailRow(
-              label: context.l10n.text('direction'),
-              value: context.l10n.text(transaction.direction),
             ),
-            _DetailRow(
-              label: context.l10n.text('date'),
-              value: _transactionDate(transaction, context),
-            ),
-            _DetailRow(
-              label: context.l10n.text('status'),
-              value: context.l10n.text(transaction.status),
-            ),
-            _DetailRow(
-              label: context.l10n.text('reviewState'),
-              value: transaction.reviewState == 'needsReview'
-                  ? context.l10n.text('needsReview')
-                  : context.l10n.text('clear'),
-            ),
-            if (transaction.notes?.trim().isNotEmpty == true)
-              _DetailRow(
-                label: context.l10n.text('notes'),
-                value: transaction.notes!,
+            const SizedBox(height: ButlerlySpacing.standard),
+            ButlerlyCard(
+              key: const ValueKey('transaction-detail-date-card'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _TransactionDetailCardHeader(
+                    icon: Icons.calendar_month_outlined,
+                    title: context.l10n.text('date'),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.compact),
+                  _DetailRow(
+                    icon: Icons.calendar_today_outlined,
+                    label: context.l10n.text('date'),
+                    value: _transactionDate(transaction, context),
+                  ),
+                ],
               ),
-            if (transaction.provenance.isNotEmpty) ...[
+            ),
+            if (transaction.notes?.trim().isNotEmpty == true ||
+                transaction.tagIds.isNotEmpty) ...[
               const SizedBox(height: ButlerlySpacing.standard),
-              Text(
-                context.l10n.text('recordHistory'),
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              ...transaction.provenance.map(
-                (value) => _DetailRow(
-                  label: context.l10n.text('origin'),
-                  value: _provenanceLabel(context, value.sourceType),
+              ButlerlyCard(
+                key: const ValueKey('transaction-detail-notes-card'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _TransactionDetailCardHeader(
+                      icon: Icons.notes_rounded,
+                      title: context.l10n.text('notes'),
+                    ),
+                    const SizedBox(height: ButlerlySpacing.compact),
+                    if (transaction.notes?.trim().isNotEmpty == true)
+                      _DetailRow(
+                        icon: Icons.sticky_note_2_outlined,
+                        label: context.l10n.text('notes'),
+                        value: transaction.notes!,
+                      ),
+                    if (transaction.tagIds.isNotEmpty) ...[
+                      const SizedBox(height: ButlerlySpacing.compact),
+                      _TransactionMasterDataRows(
+                        key: ValueKey(
+                          'tags-${transaction.updatedAt.microsecondsSinceEpoch}-${transaction.tagIds.join(',')}',
+                        ),
+                        finance: finance,
+                        transaction: transaction,
+                        showClassification: false,
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ],
             const SizedBox(height: ButlerlySpacing.standard),
             _EvidenceSection(finance: finance, transactionId: transaction.id),
-            _TransactionMasterDataRows(
-              key: ValueKey(
-                '${transaction.updatedAt.microsecondsSinceEpoch}-${transaction.tagIds.join(',')}',
+            const SizedBox(height: ButlerlySpacing.standard),
+            ButlerlyCard(
+              key: const ValueKey('transaction-detail-record-card'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _TransactionDetailCardHeader(
+                    icon: Icons.info_outline_rounded,
+                    title: context.l10n.text('status'),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.compact),
+                  _DetailRow(
+                    icon: Icons.inventory_2_outlined,
+                    label: context.l10n.text('status'),
+                    value: context.l10n.text(transaction.status),
+                  ),
+                  _DetailRow(
+                    icon: Icons.fact_check_outlined,
+                    label: context.l10n.text('reviewState'),
+                    value: transaction.reviewState == 'needsReview'
+                        ? context.l10n.text('needsReview')
+                        : context.l10n.text('clear'),
+                  ),
+                  if (transaction.provenance.isNotEmpty) ...[
+                    const SizedBox(height: ButlerlySpacing.standard),
+                    Text(
+                      context.l10n.text('recordHistory'),
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    ...transaction.provenance.map(
+                      (value) => _DetailRow(
+                        icon: Icons.history_rounded,
+                        label: context.l10n.text('origin'),
+                        value: _provenanceLabel(context, value.sourceType),
+                      ),
+                    ),
+                  ],
+                ],
               ),
-              finance: finance,
-              transaction: transaction,
             ),
-            if (transaction.paymentSourceId != null)
-              _PaymentSourceRow(
-                finance: finance,
-                paymentSourceId: transaction.paymentSourceId!,
-              ),
             const SizedBox(height: ButlerlySpacing.section),
+            OutlinedButton.icon(
+              key: const ValueKey('transaction-detail-edit-button'),
+              onPressed: _editTransaction,
+              icon: const Icon(Icons.edit_outlined),
+              label: Text(context.l10n.text('editTransaction')),
+            ),
+            const SizedBox(height: ButlerlySpacing.small),
             OutlinedButton.icon(
               onPressed: () async {
                 final changed = await _organizeTransaction(
@@ -1585,7 +1745,10 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   transaction,
                 );
                 if (assigned != null && context.mounted) {
-                  setState(() => transaction = assigned);
+                  setState(() {
+                    transaction = assigned;
+                    _changed = true;
+                  });
                 }
               },
               icon: const Icon(Icons.account_balance_wallet_outlined),
@@ -1616,11 +1779,13 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               icon: const Icon(Icons.delete_forever_outlined),
               child: Text(context.l10n.text('deletePermanently')),
             ),
+            const SizedBox(height: ButlerlySpacing.structural),
           ],
         ),
       ),
     ),
   );
+
 }
 
 class _EvidenceSection extends StatefulWidget {
@@ -1782,38 +1947,45 @@ class _EvidenceSectionState extends State<_EvidenceSection> {
       }
       final evidence = snapshot.data;
       if (evidence == null) return const SizedBox.shrink();
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            context.l10n.text('evidence'),
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          if (evidence.isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(context.l10n.text('noEvidence')),
-            )
-          else
-            ...evidence.map(
-              (value) => ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.attach_file_outlined),
-                title: value.mediaType.startsWith('image/')
-                    ? ButlerlySecondaryTextAction(
-                        onPressed: () => _preview(value),
-                        child: Text(context.l10n.text('viewImage')),
-                      )
-                    : Text(value.originalName),
-                onTap: () => _preview(value),
-                trailing: IconButton(
-                  tooltip: context.l10n.text('remove'),
-                  onPressed: () => _remove(value),
-                  icon: const Icon(Icons.delete_outline_rounded),
+      return ButlerlyCard(
+        key: const ValueKey('transaction-detail-evidence-card'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _TransactionDetailCardHeader(
+              icon: Icons.image_outlined,
+              title: context.l10n.text('evidence'),
+            ),
+            const SizedBox(height: ButlerlySpacing.compact),
+            if (evidence.isEmpty)
+              Text(
+                context.l10n.text('noEvidence'),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              )
+            else
+              ...evidence.map(
+                (value) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.attach_file_outlined),
+                  title: value.mediaType.startsWith('image/')
+                      ? ButlerlySecondaryTextAction(
+                          onPressed: () => _preview(value),
+                          child: Text(context.l10n.text('viewImage')),
+                        )
+                      : Text(value.originalName),
+                  subtitle: Text(value.originalName),
+                  onTap: () => _preview(value),
+                  trailing: IconButton(
+                    tooltip: context.l10n.text('remove'),
+                    onPressed: () => _remove(value),
+                    icon: const Icon(Icons.delete_outline_rounded),
+                  ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       );
     },
   );
@@ -1847,11 +2019,15 @@ class _TransactionMasterDataRows extends StatefulWidget {
   const _TransactionMasterDataRows({
     required this.finance,
     required this.transaction,
+    this.showClassification = true,
+    this.showTags = true,
     super.key,
   });
 
   final FinanceServices finance;
   final TransactionDto transaction;
+  final bool showClassification;
+  final bool showTags;
 
   @override
   State<_TransactionMasterDataRows> createState() =>
@@ -1895,22 +2071,24 @@ class _TransactionMasterDataRowsState
       final data = snapshot.data ?? const TransactionMasterData();
       return Column(
         children: [
-          if (transaction.merchantId != null)
+          if (widget.showClassification && transaction.merchantId != null)
             _DetailRow(
+              icon: Icons.storefront_outlined,
               label: context.l10n.text('merchant'),
               value:
                   data.merchantName(transaction.merchantId) ??
                   context.l10n.text('unavailableMerchant'),
             ),
-          if (transaction.categoryId != null ||
-              transaction.subcategoryId != null)
+          if (widget.showClassification &&
+              (transaction.categoryId != null ||
+                  transaction.subcategoryId != null))
             ..._categoryRows(
               context,
               data,
               transaction.categoryId,
               transaction.subcategoryId,
             ),
-          if (transaction.tagIds.isNotEmpty)
+          if (widget.showTags && transaction.tagIds.isNotEmpty)
             ButlerlyReadOnlyTagList(
               tagIds: transaction.tagIds.map((id) => id),
               masterData: data,
@@ -1939,6 +2117,7 @@ List<Widget> _categoryRows(
   return [
     if (effectiveCategoryId != null)
       _DetailRow(
+        icon: Icons.sell_outlined,
         label: context.l10n.text('category'),
         value:
             data.categoryName(effectiveCategoryId) ??
@@ -1946,6 +2125,7 @@ List<Widget> _categoryRows(
       ),
     if (effectiveSubcategoryId != null)
       _DetailRow(
+        icon: Icons.label_outline_rounded,
         label: context.l10n.text('subcategory'),
         value:
             data.categoryName(effectiveSubcategoryId) ??
@@ -1976,6 +2156,7 @@ class _PaymentSourceRow extends StatelessWidget {
           ?.where((value) => value.id.value == paymentSourceId)
           .firstOrNull;
       return _DetailRow(
+        icon: Icons.credit_card_outlined,
         label: context.l10n.text('paymentSource'),
         value: source == null
             ? context.l10n.text('unavailablePaymentSource')
@@ -1999,17 +2180,69 @@ String _provenanceLabel(BuildContext context, String sourceType) =>
       _ => context.l10n.text('recordOrigin'),
     };
 
+class _TransactionDetailCardHeader extends StatelessWidget {
+  const _TransactionDetailCardHeader({
+    required this.icon,
+    required this.title,
+  });
+
+  final IconData icon;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Icon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
+      const SizedBox(width: ButlerlySpacing.compact),
+      Expanded(
+        child: Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+      ),
+    ],
+  );
+}
+
 class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value});
+  const _DetailRow({
+    required this.label,
+    required this.value,
+    this.icon,
+  });
+
   final String label;
   final String value;
+  final IconData? icon;
+
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8),
+    padding: const EdgeInsets.symmetric(vertical: ButlerlySpacing.compact),
     child: Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Expanded(child: Text(label)),
-        Text(value),
+        if (icon != null) ...[
+          Icon(icon, size: 20, color: Theme.of(context).colorScheme.onSurface),
+          const SizedBox(width: ButlerlySpacing.standard),
+        ],
+        Expanded(
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ),
+        const SizedBox(width: ButlerlySpacing.standard),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
       ],
     ),
   );
