@@ -35,7 +35,11 @@ validate_database() (
 
 validate_flutter_application() (
   cd apps/butlerly
-  format_check
+  if ! format_check; then
+    dart format .
+    git diff -- .
+    exit 1
+  fi
   flutter analyze
   flutter test
   flutter build web
