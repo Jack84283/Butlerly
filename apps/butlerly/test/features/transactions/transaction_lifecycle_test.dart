@@ -3260,9 +3260,7 @@ final class MemoryUserPreferences implements UserPreferenceRepository {
   }
 }
 
-Future<void> _scrollTransactionDetailToTop(
-  WidgetTester tester,
-) async {
+Future<void> _scrollTransactionDetailToTop(WidgetTester tester) async {
   final scrollable = _transactionDetailScrollable(tester);
   tester.state<ScrollableState>(scrollable).position.jumpTo(0);
   await tester.pumpAndSettle();
