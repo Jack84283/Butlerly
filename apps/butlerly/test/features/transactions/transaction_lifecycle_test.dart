@@ -3297,8 +3297,7 @@ Future<void> _tapTransactionDetailOverflowAction(
 Future<void> _tapTransactionDetailOrganize(
   WidgetTester tester, {
   String label = 'Organize transaction',
-}) =>
-    _tapTransactionDetailOverflowAction(tester, label);
+}) => _tapTransactionDetailOverflowAction(tester, label);
 
 Finder _transactionDetailScrollable(WidgetTester tester) {
   final detailList = find.byKey(const ValueKey('transaction-detail-list'));
