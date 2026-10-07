@@ -133,7 +133,10 @@ void main() {
       await tester.tap(find.text('Corner Cafe'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Transaction detail'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('transaction-detail-summary-card')),
+        findsOneWidget,
+      );
       expect(find.text('Corner Cafe'), findsOneWidget);
       expect(find.text('Food'), findsOneWidget);
       expect(find.text('Dining'), findsOneWidget);
@@ -162,7 +165,10 @@ void main() {
       expect(saved.subcategoryId, 'subcategory-dining');
       expect(saved.paymentSourceId, 'source-visa');
 
-      expect(find.text('Transaction detail'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('transaction-detail-summary-card')),
+        findsOneWidget,
+      );
       expect(find.text('Corner Cafe'), findsOneWidget);
       expect(find.text('Food'), findsOneWidget);
       expect(find.text('Dining'), findsOneWidget);
@@ -719,7 +725,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('View image'), findsOneWidget);
-    expect(find.text('IMG_4837.jpg'), findsNothing);
+    expect(find.text('IMG_4837.jpg'), findsOneWidget);
     expect(find.text('image/jpeg'), findsNothing);
     expect(find.byType(ButlerlySecondaryTextAction), findsOneWidget);
     final tile = tester.widget<ListTile>(find.byType(ListTile));
@@ -727,11 +733,11 @@ void main() {
     expect(evidenceRepository.items.single.originalName, 'IMG_4837.jpg');
   });
 
-  testWidgets('transaction detail centers the financial header', (
+  testWidgets('transaction detail uses the card-based hierarchy', (
     tester,
   ) async {
     final transaction = TransactionDto(
-      id: 'centered-header',
+      id: 'card-detail',
       amount: '128.45',
       currency: 'USD',
       direction: 'expense',
@@ -752,12 +758,30 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final amount = tester.widget<Text>(find.text('128.45 USD'));
-    final description = tester.widget<Text>(find.text('Whole Foods Market'));
-    expect(amount.textAlign, TextAlign.center);
-    expect(amount.style?.fontSize, 38);
-    expect(amount.style?.fontWeight, FontWeight.w500);
-    expect(description.textAlign, TextAlign.center);
+    final summaryCard = find.byKey(
+      const ValueKey('transaction-detail-summary-card'),
+    );
+    expect(summaryCard, findsOneWidget);
+    expect(
+      find.descendant(of: summaryCard, matching: find.text('Whole Foods Market')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: summaryCard, matching: find.text('128.45')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: summaryCard, matching: find.text('USD')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('transaction-detail-classification-card')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('transaction-detail-amount-card')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('creates, edits, archives, and permanently deletes locally', (
@@ -811,7 +835,10 @@ void main() {
     expect(repository.values.values.single.notes, 'Team meal');
     await tester.tap(find.text('Lunch'));
     await tester.pumpAndSettle();
-    expect(find.text('Transaction detail'), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('transaction-detail-summary-card')),
+        findsOneWidget,
+      );
     expect(find.text('Team meal'), findsOneWidget);
 
     await tester.scrollUntilVisible(
@@ -847,7 +874,10 @@ void main() {
     );
     await tester.tap(find.text('Save locally'));
     await tester.pumpAndSettle();
-    expect(find.text('Transaction detail'), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('transaction-detail-summary-card')),
+        findsOneWidget,
+      );
 
     await tester.scrollUntilVisible(
       find.text('Archive transaction'),
@@ -873,7 +903,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Transaction detail'), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('transaction-detail-summary-card')),
+        findsOneWidget,
+      );
     for (var index = 0; index < 3; index++) {
       await tester.drag(find.byType(ListView), const Offset(0, -200));
       await tester.pumpAndSettle();
@@ -2567,7 +2600,10 @@ void main() {
     await tester.tap(find.text('Save organization'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Transaction detail'), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('transaction-detail-summary-card')),
+        findsOneWidget,
+      );
   });
 
   testWidgets('organizer removes an assigned tag and returns to detail', (
@@ -2614,7 +2650,10 @@ void main() {
     await tester.tap(find.text('Save organization'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Transaction detail'), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('transaction-detail-summary-card')),
+        findsOneWidget,
+      );
     expect(find.text('Remove me'), findsNothing);
     expect(repository.values['remove-tag']!.tagIds, isEmpty);
   });
@@ -2692,7 +2731,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('交易详情'), findsOneWidget);
+    expect(find.text('交易详情'), findsWidgets);
     expect(find.text('方向'), findsOneWidget);
     expect(find.text('支出'), findsOneWidget);
     expect(find.text('Transaction detail'), findsNothing);
