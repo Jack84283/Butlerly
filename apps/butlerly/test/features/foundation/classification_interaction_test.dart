@@ -174,9 +174,20 @@ Future<void> _chooseDropdown(
   int index,
   String label,
 ) async {
-  final menu = tester.widget<DropdownMenu<String>>(
-    find.byType(DropdownMenu<String>).at(index),
+  final selectorKey = switch (index) {
+    0 => const ValueKey('transaction-merchant-selector'),
+    1 => const ValueKey('transaction-category-selector'),
+    2 => const ValueKey('transaction-subcategory-selector'),
+    _ => throw ArgumentError.value(index, 'index', 'Unknown selector index'),
+  };
+  final selector = find.byKey(selectorKey);
+  expect(selector, findsOneWidget);
+  final dropdown = find.descendant(
+    of: selector,
+    matching: find.byType(DropdownMenu<String>),
   );
+  expect(dropdown, findsOneWidget);
+  final menu = tester.widget<DropdownMenu<String>>(dropdown);
   final entry = menu.dropdownMenuEntries.singleWhere(
     (entry) => entry.label == label,
   );
