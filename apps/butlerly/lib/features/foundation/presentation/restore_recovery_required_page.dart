@@ -1,5 +1,6 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -138,14 +139,11 @@ class _RestoreRecoveryRequiredPageState
                         label: Text(context.l10n.backupText('recoverButlerly')),
                       ),
                     if (hasSafetyCopy) const SizedBox(height: 12),
-                    TextButton.icon(
+                    ButlerlyDestructiveButton(
                       onPressed: _busy ? null : _resetLocalData,
                       icon: const Icon(Icons.delete_forever_outlined),
-                      label: Text(
+                      child: Text(
                         context.l10n.backupText('eraseLocalRecoveryData'),
-                      ),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Theme.of(context).colorScheme.error,
                       ),
                     ),
                   ],

@@ -1,10 +1,46 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/tokens/butlerly_button.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('button styles use capsule geometry and theme-aware role surfaces', () {
+    for (final theme in [AppTheme.light, AppTheme.dark]) {
+      final colors = theme.extension<ButlerlySemanticColors>()!;
+      final expectedShape = RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(ButlerlyRadius.full),
+      );
+
+      expect(ButlerlyButtonTokens.radius, ButlerlyRadius.full);
+      expect(theme.filledButtonTheme.style?.shape?.resolve({}), expectedShape);
+      expect(theme.outlinedButtonTheme.style?.shape?.resolve({}), expectedShape);
+      expect(theme.textButtonTheme.style?.shape?.resolve({}), expectedShape);
+      expect(
+        theme.outlinedButtonTheme.style?.backgroundColor?.resolve({}),
+        colors.subtleSurface,
+      );
+      expect(
+        theme.outlinedButtonTheme.style?.foregroundColor?.resolve({}),
+        colors.primaryText,
+      );
+      expect(
+        theme.textButtonTheme.style?.backgroundColor?.resolve({}),
+        colors.elevatedSurface,
+      );
+      expect(
+        theme.textButtonTheme.style?.foregroundColor?.resolve({}),
+        colors.secondaryText,
+      );
+      expect(
+        theme.filledButtonTheme.style?.backgroundColor?.resolve({}),
+        theme.colorScheme.primary,
+      );
+    }
+  });
+
   test('supports all appearance and color-theme combinations', () {
     for (final colorTheme in ButlerlyColorTheme.values) {
       final light = AppTheme.lightFor(colorTheme);
