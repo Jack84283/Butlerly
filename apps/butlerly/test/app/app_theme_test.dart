@@ -16,7 +16,10 @@ void main() {
 
       expect(ButlerlyButtonTokens.radius, ButlerlyRadius.full);
       expect(theme.filledButtonTheme.style?.shape?.resolve({}), expectedShape);
-      expect(theme.outlinedButtonTheme.style?.shape?.resolve({}), expectedShape);
+      expect(
+        theme.outlinedButtonTheme.style?.shape?.resolve({}),
+        expectedShape,
+      );
       expect(theme.textButtonTheme.style?.shape?.resolve({}), expectedShape);
       expect(
         theme.outlinedButtonTheme.style?.backgroundColor?.resolve({}),
@@ -68,8 +71,7 @@ void main() {
         ...ButlerlyTypography.editorialFontFallback,
       ],
       isNot(contains('Georgia')),
-      reason:
-          'Georgia must not reappear as a fallback because its numerals are the reason Butlerly prefers Times New Roman.',
+      reason: 'Georgia must not reappear as a fallback because its numerals are the reason Butlerly prefers Times New Roman.',
     );
     for (final theme in [AppTheme.light, AppTheme.dark]) {
       expect(
@@ -173,15 +175,12 @@ void main() {
   );
 
   test('color themes produce distinct interactive palettes', () {
-    final red = AppTheme.lightFor(
-      ButlerlyColorTheme.butlerRed,
-    ).extension<ButlerlySemanticColors>()!;
-    final blue = AppTheme.lightFor(
-      ButlerlyColorTheme.skyBlue,
-    ).extension<ButlerlySemanticColors>()!;
-    final green = AppTheme.lightFor(
-      ButlerlyColorTheme.green,
-    ).extension<ButlerlySemanticColors>()!;
+    final red = AppTheme.lightFor(ButlerlyColorTheme.butlerRed)
+        .extension<ButlerlySemanticColors>()!;
+    final blue = AppTheme.lightFor(ButlerlyColorTheme.skyBlue)
+        .extension<ButlerlySemanticColors>()!;
+    final green = AppTheme.lightFor(ButlerlyColorTheme.green)
+        .extension<ButlerlySemanticColors>()!;
 
     expect(red.interactive, isNot(blue.interactive));
     expect(red.interactive, isNot(green.interactive));
