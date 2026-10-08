@@ -98,12 +98,16 @@ class InsightGroupVisualizations extends StatelessWidget {
       };
       final title = context.l10n.text(first.rule.nameKey);
       final child = externalTitle
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ButlerlySectionHeader(title: title),
-                ButlerlyCard(child: visualization),
-              ],
+          ? ButlerlyCard(
+              semanticLabel: title,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ButlerlyCardHeader(title: title),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  visualization,
+                ],
+              ),
             )
           : embedded
           ? Column(
