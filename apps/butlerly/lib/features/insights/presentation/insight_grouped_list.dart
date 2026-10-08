@@ -337,6 +337,10 @@ class _InsightItem extends StatelessWidget {
         ? null
         : context.l10n.text(escalation!.rule.nameKey);
     final showHeading = identity != null || showRuleCopy;
+    final tightIdentityToAmount =
+        insight.rule.grouping == RuleGrouping.category ||
+        insight.rule.grouping == RuleGrouping.subcategory ||
+        insight.rule.grouping == RuleGrouping.merchant;
 
     return Semantics(
       container: true,
@@ -402,7 +406,8 @@ class _InsightItem extends StatelessWidget {
                   ),
                 ],
                 if (current != null || baseline != null) ...[
-                  const SizedBox(height: ButlerlySpacing.small),
+                  if (!tightIdentityToAmount)
+                    const SizedBox(height: ButlerlySpacing.small),
                   Wrap(
                     spacing: ButlerlySpacing.small,
                     runSpacing: ButlerlySpacing.micro,
