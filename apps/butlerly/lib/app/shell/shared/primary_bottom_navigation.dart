@@ -227,7 +227,9 @@ class PrimaryBottomNavigation extends StatelessWidget {
                     width: double.infinity,
                     height: navigationHeight,
                     decoration: BoxDecoration(
-                      color: navigationColor,
+                      color: navigationColor.withValues(
+                        alpha: ButlerlyOpacity.primaryNavigationSurface,
+                      ),
                       borderRadius: BorderRadius.circular(ButlerlyRadius.pill),
                       border: Border.all(
                         width: ButlerlySize.dividerWidth,
