@@ -121,7 +121,11 @@ class InsightGroupVisualizations extends StatelessWidget {
           : ButlerlyVisualizationCard(title: title, child: visualization);
       widgets.add(
         Padding(
-          padding: const EdgeInsets.only(bottom: ButlerlySpacing.standard),
+          padding: EdgeInsets.only(
+            bottom: externalTitle
+                ? ButlerlySpacing.none
+                : ButlerlySpacing.standard,
+          ),
           child: child,
         ),
       );
