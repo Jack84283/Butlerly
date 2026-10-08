@@ -132,7 +132,7 @@ void main() {
     expect(find.byType(NavigationRail), findsNothing);
     expect(
       tester.getSize(find.byKey(const ValueKey('primary-medium-body-surface'))),
-      const Size(800, 752),
+      const Size(800, 744),
     );
     final content = find.byKey(const ValueKey('home-page-content'));
     expect(tester.getSize(content).width, ButlerlySize.pageContentMaxWidth);
