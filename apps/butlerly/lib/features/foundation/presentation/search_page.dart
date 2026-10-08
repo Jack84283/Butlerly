@@ -12,6 +12,7 @@ import 'package:butlerly/features/foundation/presentation/transaction_master_dat
 import 'package:butlerly/features/foundation/presentation/transaction_record_list.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
@@ -519,7 +520,23 @@ class _SearchPageState extends State<SearchPage>
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  TransactionCountText(count: values.length),
+                  Row(
+                    children: [
+                      TransactionCountText(count: values.length),
+                      const Spacer(),
+                      Flexible(
+                        child: Text(
+                          _searchResultTotalAmount(context, values),
+                          textAlign: TextAlign.end,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: ButlerlySpacing.compact),
                   TransactionRecordList(
                     transactions: values,
@@ -540,6 +557,34 @@ class _SearchPageState extends State<SearchPage>
       ],
     );
   }
+}
+
+
+String _searchResultTotalAmount(
+  BuildContext context,
+  List<TransactionDto> transactions,
+) {
+  final totals = <String, List<DecimalValue>>{};
+  for (final transaction in transactions) {
+    final currency = transaction.currency.trim().toUpperCase();
+    if (currency.isEmpty) continue;
+    final amount = DecimalValue.parse(
+      transaction.amount.replaceFirst(RegExp(r'^[+-]'), ''),
+    );
+    totals.putIfAbsent(currency, () => []).add(amount);
+  }
+
+  final entries = totals.entries.toList(growable: false)
+    ..sort((a, b) => a.key.compareTo(b.key));
+  return entries
+      .map(
+        (entry) => localizedCompactMoney(
+          context,
+          DecimalValue.sum(entry.value).toString(),
+          entry.key,
+        ),
+      )
+      .join(' · ');
 }
 
 class _LockedSearchCriteria extends StatelessWidget {
