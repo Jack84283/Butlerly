@@ -49,19 +49,20 @@ void main() {
   test('dark secondary text meets contrast on raised surfaces', () {
     final theme = AppTheme.dark;
     final colors = theme.extension<ButlerlySemanticColors>()!;
-    final buttonText = theme.textButtonTheme.style?.foregroundColor
-        ?.resolve({});
+    final buttonStyle = theme.textButtonTheme.style!;
+    final buttonText = buttonStyle.foregroundColor!.resolve({})!;
+    final bodySmallText = theme.textTheme.bodySmall!.color!;
 
     expect(
       _contrast(colors.primaryText, colors.cardSurface),
       greaterThanOrEqualTo(4.5),
     );
     expect(
-      _contrast(buttonText!, colors.elevatedSurface),
+      _contrast(buttonText, colors.elevatedSurface),
       greaterThanOrEqualTo(4.5),
     );
     expect(
-      _contrast(theme.textTheme.bodySmall!.color!, colors.cardSurface),
+      _contrast(bodySmallText, colors.cardSurface),
       greaterThanOrEqualTo(4.5),
     );
   });
