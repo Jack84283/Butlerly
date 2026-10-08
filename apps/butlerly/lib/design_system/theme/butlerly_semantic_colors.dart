@@ -81,16 +81,16 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
   );
 
   static const light = ButlerlySemanticColors(
-    background: Color(0xFFF7F5F1),
-    surface: Color(0xFFFFFFFF),
-    dashboardSurface: Color(0xFFFFFFFF),
-    elevatedSurface: Color(0xFFFCFAF7),
-    subtleSurface: Color(0xFFF1EEE8),
+    background: Color(0xFFFBECFD),
+    surface: Color(0xFFF2F3F5),
+    dashboardSurface: Color(0xFFE9ECF0),
+    elevatedSurface: Color(0xFFE1E5EB),
+    subtleSurface: Color(0xFFF2F3F5),
     primaryText: Color(0xFF19181A),
     secondaryText: Color(0xFF68635E),
     tertiaryText: Color(0xFF8A847D),
-    cardDivider: Color(0xFFD9D4CE),
-    border: Color(0xFFE2DDD7),
+    cardDivider: Color(0xFFD8DDE6),
+    border: Color(0xFFD8DDE6),
     brand: Color(0xFF7A1E3A),
     brandStrong: Color(0xFF541127),
     interactive: Color(0xFF7A1E3A),
