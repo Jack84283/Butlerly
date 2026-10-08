@@ -379,7 +379,7 @@ class ButlerlyCompactSelector extends StatelessWidget {
     this.buttonKey,
     this.alignVisualEnd = false,
     this.denseSurface = false,
-    this.destructive = false,
+    this.transparent = false,
     super.key,
   });
 
@@ -389,7 +389,7 @@ class ButlerlyCompactSelector extends StatelessWidget {
   final Key? buttonKey;
   final bool alignVisualEnd;
   final bool denseSurface;
-  final bool destructive;
+  final bool transparent;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -403,8 +403,8 @@ class ButlerlyCompactSelector extends StatelessWidget {
         key: buttonKey,
         onPressed: onPressed,
         style: TextButton.styleFrom(
-          foregroundColor: destructive
-              ? context.colors.error
+          foregroundColor: transparent
+              ? context.colors.secondaryText
               : context.colors.primaryText,
           minimumSize: const Size(0, ButlerlySize.minimumTarget),
           padding: EdgeInsets.zero,
@@ -418,16 +418,10 @@ class ButlerlyCompactSelector extends StatelessWidget {
                 : Alignment.topCenter,
             child: Ink(
               decoration: BoxDecoration(
-                color: destructive
-                    ? context.colors.error.withValues(
-                        alpha: Theme.of(context).brightness == Brightness.dark
-                            ? 0.14
-                            : 0.05,
-                      )
+                color: transparent
+                    ? Colors.transparent
                     : context.colors.subtleSurface,
-                border: destructive
-                    ? null
-                    : Border.all(color: context.colors.border),
+                border: Border.all(color: context.colors.border),
                 borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
               ),
               child: Padding(
