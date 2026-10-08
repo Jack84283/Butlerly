@@ -41,7 +41,7 @@ void main() {
     final darkBodySmallColor = darkTheme.textTheme.bodySmall!.color!;
     final darkHintColor = darkTheme.inputDecorationTheme.hintStyle!.color!;
 
-    expect(darkBodySmallColor, darkColors.tertiaryText);
+    expect(darkBodySmallColor, darkColors.primaryText);
     expect(darkHintColor, darkColors.tertiaryText);
     expect(
       _contrastRatio(darkBodySmallColor, darkColors.background),
@@ -51,6 +51,36 @@ void main() {
       _contrastRatio(darkBodySmallColor, darkColors.subtleSurface),
       greaterThanOrEqualTo(ButlerlyAccessibility.minimumContrastRatio),
     );
+    expect(
+      _contrastRatio(darkBodySmallColor, darkColors.dashboardSurface),
+      greaterThanOrEqualTo(ButlerlyAccessibility.minimumContrastRatio),
+    );
+  });
+
+  test('dark theme uses the navy and gray surface palette', () {
+    final colors = AppTheme.dark.extension<ButlerlySemanticColors>()!;
+
+    expect(colors.background, const Color(0xFF030405));
+    expect(colors.subtleSurface, const Color(0xFF030405));
+    expect(colors.surface, const Color(0xFF383838));
+    expect(colors.dashboardSurface, const Color(0xFF141516));
+    expect(colors.elevatedSurface, const Color(0xFF383838));
+    expect(colors.secondaryText, const Color(0xFFF8F8F8));
+    expect(colors.primaryText, const Color(0xFFFFFFFF));
+  });
+
+  test('light theme uses the cool gray surface palette', () {
+    final colors = AppTheme.light.extension<ButlerlySemanticColors>()!;
+
+    expect(colors.background, const Color(0xFFF2F3F9));
+    expect(colors.surface, const Color(0xFFF8F8F8));
+    expect(colors.subtleSurface, const Color(0xFFF8F8F8));
+    expect(colors.dashboardSurface, const Color(0xFFFDFDFD));
+    expect(colors.elevatedSurface, const Color(0xFFF8F8F8));
+    expect(colors.cardDivider, const Color(0xFFE1E5EB));
+    expect(colors.border, const Color(0xFFE1E5EB));
+    expect(colors.primaryText, const Color(0xFF000000));
+    expect(colors.secondaryText, const Color(0xFF383838));
   });
 
   test('editorial placeholder keeps cross-platform serif fallbacks', () {

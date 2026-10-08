@@ -34,7 +34,7 @@ abstract final class AppTheme {
       secondaryText: colors.secondaryText,
       bodySmallText: brightness == Brightness.light
           ? colors.secondaryText
-          : colors.tertiaryText,
+          : colors.primaryText,
     );
 
     final scheme = ColorScheme(
@@ -204,7 +204,9 @@ abstract final class AppTheme {
             vertical: ButlerlyButtonTokens.verticalPadding,
           ),
           backgroundColor: colors.elevatedSurface,
-          foregroundColor: colors.secondaryText,
+          foregroundColor: brightness == Brightness.dark
+              ? colors.primaryText
+              : colors.secondaryText,
           disabledBackgroundColor: colors.tertiaryText.withValues(
             alpha: brightness == Brightness.dark ? 0.24 : 0.16,
           ),

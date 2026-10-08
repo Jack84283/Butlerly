@@ -101,6 +101,7 @@ void main() {
 
     expect(bodyRect.bottom, closeTo(navigationRect.top, 0.01));
     expect(navigationMaterial.color, Colors.transparent);
+    expect(pillDecoration.color!.a, ButlerlyOpacity.primaryNavigationSurface);
     expect(pillRect.top, closeTo(navigationRect.top + 8, 0.01));
     expect(pillRect.width, lessThan(navigationRect.width));
     expect(pillRect.width, closeTo(navigationRect.width - 32, 0.01));
@@ -117,7 +118,10 @@ void main() {
     expect(ButlerlySize.navigationBarHeight, 48);
     expect(
       pillDecoration.color,
-      AppTheme.light.extension<ButlerlySemanticColors>()!.elevatedSurface,
+      AppTheme.light
+          .extension<ButlerlySemanticColors>()!
+          .elevatedSurface
+          .withValues(alpha: ButlerlyOpacity.primaryNavigationSurface),
     );
     expect(
       pillDecoration.borderRadius,

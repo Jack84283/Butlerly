@@ -21,31 +21,32 @@ void main() {
   });
 
   test('theme surfaces use the quiet-premium palette', () {
-    expect(AppTheme.dark.scaffoldBackgroundColor, const Color(0xFF0A0A0D));
-    expect(AppTheme.dark.cardTheme.color, const Color(0xFF17171C));
+    expect(AppTheme.dark.scaffoldBackgroundColor, const Color(0xFF030405));
+    expect(AppTheme.dark.cardTheme.color, const Color(0xFF141516));
     expect(
       AppTheme.dark.colorScheme.surfaceContainerHighest,
-      const Color(0xFF17171C),
+      const Color(0xFF383838),
     );
-    expect(AppTheme.dark.textTheme.bodyMedium?.color, const Color(0xFFB8B2AA));
-    expect(AppTheme.light.textTheme.bodyMedium?.color, const Color(0xFF68635E));
-    expect(AppTheme.light.textTheme.bodySmall?.color, const Color(0xFF68635E));
-    expect(AppTheme.light.cardTheme.color, const Color(0xFFFFFFFF));
+    expect(AppTheme.dark.textTheme.bodyMedium?.color, const Color(0xFFF8F8F8));
+    expect(AppTheme.light.textTheme.bodyMedium?.color, const Color(0xFF383838));
+    expect(AppTheme.light.textTheme.bodySmall?.color, const Color(0xFF383838));
+    expect(AppTheme.light.scaffoldBackgroundColor, const Color(0xFFF2F3F9));
+    expect(AppTheme.light.cardTheme.color, const Color(0xFFFDFDFD));
     expect(
       AppTheme.light.extension<ButlerlySemanticColors>()?.dashboardSurface,
-      const Color(0xFFFFFFFF),
+      const Color(0xFFFDFDFD),
     );
     expect(
       AppTheme.dark.extension<ButlerlySemanticColors>()?.dashboardSurface,
-      const Color(0xFF17171C),
+      const Color(0xFF141516),
     );
     expect(
       AppTheme.light.extension<ButlerlySemanticColors>()?.cardDivider,
-      const Color(0xFFD9D4CE),
+      const Color(0xFFE1E5EB),
     );
     expect(
       AppTheme.dark.extension<ButlerlySemanticColors>()?.cardDivider,
-      const Color(0xFF25252B),
+      const Color(0xFF383838),
     );
   });
 

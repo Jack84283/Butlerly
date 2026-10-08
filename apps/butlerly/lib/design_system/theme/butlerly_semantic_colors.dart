@@ -57,19 +57,19 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
   /// Quiet-premium neutral foundation. Brand palettes only replace the accent
   /// roles so financial semantic colors remain stable and meaningful.
   static const dark = ButlerlySemanticColors(
-    background: Color(0xFF0A0A0D),
-    surface: Color(0xFF111114),
-    dashboardSurface: Color(0xFF17171C),
-    elevatedSurface: Color(0xFF17171C),
-    subtleSurface: Color(0xFF0F1013),
-    primaryText: Color(0xFFF4F1EC),
-    secondaryText: Color(0xFFB8B2AA),
-    tertiaryText: Color(0xFF817C75),
-    cardDivider: Color(0xFF25252B),
-    border: Color(0xFF2F2F36),
+    background: Color(0xFF030405),
+    surface: Color(0xFF383838),
+    dashboardSurface: Color(0xFF141516),
+    elevatedSurface: Color(0xFF383838),
+    subtleSurface: Color(0xFF030405),
+    primaryText: Color(0xFFFFFFFF),
+    secondaryText: Color(0xFFF8F8F8),
+    tertiaryText: Color(0xFFF8F8F8),
+    cardDivider: Color(0xFF383838),
+    border: Color(0xFF838383),
     brand: Color(0xFF7A1E3A),
     brandStrong: Color(0xFF541127),
-    interactive: Color(0xFFC76F8B),
+    interactive: Color(0xFFFFFFFF),
     controlPrimary: Color(0xFF541127),
     interactiveStrong: Color(0xFF9A3655),
     success: Color(0xFF4DBA7A),
@@ -77,20 +77,20 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
     error: Color(0xFFE16C72),
     info: Color(0xFF6DA7D8),
     selection: Color(0xFF24141A),
-    review: Color(0xFFC76F8B),
+    review: Color(0xFFFFFFFF),
   );
 
   static const light = ButlerlySemanticColors(
-    background: Color(0xFFF7F5F1),
-    surface: Color(0xFFFFFFFF),
-    dashboardSurface: Color(0xFFFFFFFF),
-    elevatedSurface: Color(0xFFFCFAF7),
-    subtleSurface: Color(0xFFF1EEE8),
-    primaryText: Color(0xFF19181A),
-    secondaryText: Color(0xFF68635E),
-    tertiaryText: Color(0xFF8A847D),
-    cardDivider: Color(0xFFD9D4CE),
-    border: Color(0xFFE2DDD7),
+    background: Color(0xFFF2F3F9),
+    surface: Color(0xFFF8F8F8),
+    dashboardSurface: Color(0xFFFDFDFD),
+    elevatedSurface: Color(0xFFF8F8F8),
+    subtleSurface: Color(0xFFF8F8F8),
+    primaryText: Color(0xFF000000),
+    secondaryText: Color(0xFF383838),
+    tertiaryText: Color(0xFF383838),
+    cardDivider: Color(0xFFE1E5EB),
+    border: Color(0xFFE1E5EB),
     brand: Color(0xFF7A1E3A),
     brandStrong: Color(0xFF541127),
     interactive: Color(0xFF7A1E3A),
@@ -131,7 +131,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
             ? const Color(0xFF111F2B)
             : const Color(0xFFE2EAF1),
         review: brightness == Brightness.dark
-            ? const Color(0xFF7DB7E8)
+            ? const Color(0xFFA9D5FF)
             : const Color(0xFF284E70),
       ),
       ButlerlyColorTheme.green => base.copyWith(
@@ -154,7 +154,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
             ? const Color(0xFF10251F)
             : const Color(0xFFE1EEE9),
         review: brightness == Brightness.dark
-            ? const Color(0xFF66C7A0)
+            ? const Color(0xFFA0E8C8)
             : const Color(0xFF1D5B4B),
       ),
     };
