@@ -2197,13 +2197,15 @@ class _HomeRecentActivity extends StatelessWidget {
               ButlerlySpacing.micro,
               ButlerlySpacing.none,
               ButlerlySpacing.micro,
-              ButlerlySpacing.micro,
+              ButlerlySpacing.none,
             ),
-            child: ButlerlyCard(
-              key: const ValueKey('home-recent-transactions-inner-card'),
-              color: context.colors.subtleSurface,
-              padding: const EdgeInsets.all(ButlerlySpacing.compact),
-              child: ButlerlyTransactionList(
+            child: Transform.translate(
+              offset: const Offset(0, -ButlerlySpacing.micro),
+              child: ButlerlyCard(
+                key: const ValueKey('home-recent-transactions-inner-card'),
+                color: context.colors.subtleSurface,
+                padding: const EdgeInsets.all(ButlerlySpacing.micro),
+                child: ButlerlyTransactionList(
                 children: [
                   for (var index = 0; index < transactions.length; index++)
                     TransactionRow(
@@ -2221,7 +2223,8 @@ class _HomeRecentActivity extends StatelessWidget {
                       variant: ButlerlyTransactionRowVariant.dashboard,
                       onTap: () => onTap(transactions[index]),
                     ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
