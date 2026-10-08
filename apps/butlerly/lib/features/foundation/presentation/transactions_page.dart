@@ -508,6 +508,33 @@ class _TransactionsPageState extends State<TransactionsPage> {
 String _transactionFilterDate(DateTime value) =>
     '${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 
+String _transactionsTotalAmount(
+  BuildContext context,
+  List<TransactionDto> transactions,
+) {
+  final totals = <String, List<DecimalValue>>{};
+  for (final transaction in transactions) {
+    final currency = transaction.currency.trim().toUpperCase();
+    if (currency.isEmpty) continue;
+    final amount = DecimalValue.parse(
+      transaction.amount.replaceFirst(RegExp(r'^[+-]'), ''),
+    );
+    totals.putIfAbsent(currency, () => []).add(amount);
+  }
+
+  final entries = totals.entries.toList(growable: false)
+    ..sort((a, b) => a.key.compareTo(b.key));
+  return entries
+      .map(
+        (entry) => localizedCompactMoney(
+          context,
+          DecimalValue.sum(entry.value).toString(),
+          entry.key,
+        ),
+      )
+      .join(' · ');
+}
+
 final class _TransactionsData {
   const _TransactionsData(
     this.transactions, {
