@@ -10,7 +10,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('flat footer keeps all primary destinations vertically aligned', (
+  testWidgets('compact footer floats its destinations in a centered pill', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -80,35 +80,51 @@ void main() {
     final navigationRect = tester.getRect(
       find.byKey(const ValueKey('primary-compact-navigation')),
     );
-    final baseRect = tester.getRect(
-      find.byKey(const ValueKey('primary-navigation-base')),
-    );
+    final pill = find.byKey(const ValueKey('primary-navigation-pill'));
+    final pillRect = tester.getRect(pill);
     final navigationContentRect = tester.getRect(
       find.byKey(const ValueKey('primary-navigation-content')),
     );
+    final navigationMaterial = tester.widget<Material>(
+      find.byKey(const ValueKey('primary-compact-navigation')),
+    );
+    final pillContainer = tester.widget<Container>(pill);
+    final pillDecoration = pillContainer.decoration! as BoxDecoration;
 
     expect(bodyRect.bottom, closeTo(navigationRect.top, 0.01));
-    expect(baseRect.top, closeTo(navigationRect.top, 0.01));
-    expect(baseRect.bottom, closeTo(navigationRect.bottom, 0.01));
-    expect(navigationContentRect.top, closeTo(navigationRect.top, 0.01));
+    expect(navigationMaterial.color, Colors.transparent);
+    expect(pillRect.top, closeTo(navigationRect.top + 8, 0.01));
+    expect(pillRect.width, lessThan(navigationRect.width));
+    expect(pillRect.width, closeTo(navigationRect.width - 32, 0.01));
+    expect(pillRect.center.dx, closeTo(navigationRect.center.dx, 0.01));
+    expect(navigationContentRect.center, pillRect.center);
+    expect(pillRect.height, closeTo(ButlerlySize.navigationBarHeight, 0.01));
     expect(
       navigationContentRect.height,
-      closeTo(ButlerlySize.navigationBarHeight, 0.01),
+      closeTo(
+        ButlerlySize.navigationBarHeight - 2 * ButlerlySize.dividerWidth,
+        0.01,
+      ),
     );
-    expect(ButlerlySize.navigationBarHeight, 48);
+    expect(ButlerlySize.navigationBarHeight, 72);
     expect(
-      find.byKey(const ValueKey('primary-navigation-add-arch')),
-      findsNothing,
+      pillDecoration.borderRadius,
+      BorderRadius.circular(ButlerlyRadius.pill),
     );
+    expect(find.byKey(const ValueKey('primary-navigation-base')), findsNothing);
     final addButton = find.byKey(
       const ValueKey('primary-navigation-add-button'),
     );
     expect(addButton, findsOneWidget);
+    final addDecoration =
+        tester.widget<Container>(addButton).decoration! as BoxDecoration;
+    expect(addDecoration.shape, BoxShape.circle);
+    expect(addDecoration.color, AppTheme.light.colorScheme.primary);
     expect(
-      find.descendant(of: addButton, matching: find.byType(Container)),
-      findsNothing,
+      tester.getSize(addButton),
+      Size.square(ButlerlySize.primaryNavigationAddIconSize),
     );
-    expect(find.text('Add'), findsOneWidget);
+    expect(find.text('Add'), findsNothing);
 
     await tester.tap(find.text('Txns'));
     expect(selectedBranch, 1);
@@ -127,9 +143,9 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
 
       const cases = [
-        (Locale('en'), ['Home', 'Txns', 'Add', 'Tools', 'More']),
-        (Locale('es'), ['Ini.', 'Tr.', 'Añ.', 'Her.', 'Más']),
-        (Locale('zh'), ['首页', '交易', '添加', '工具', '更多']),
+        (Locale('en'), [(0, 'Home'), (1, 'Txns'), (3, 'Tools'), (4, 'More')]),
+        (Locale('es'), [(0, 'Ini.'), (1, 'Tr.'), (3, 'Her.'), (4, 'Más')]),
+        (Locale('zh'), [(0, '首页'), (1, '交易'), (3, '工具'), (4, '更多')]),
       ];
       for (final (locale, visibleLabels) in cases) {
         for (final scale in [1.0, 2.5]) {
@@ -187,10 +203,10 @@ void main() {
           await tester.pumpAndSettle();
 
           expect(tester.takeException(), isNull);
-          for (var index = 0; index < visibleLabels.length; index++) {
-            expect(find.text(visibleLabels[index]), findsOneWidget);
+          for (final (branchIndex, visibleLabel) in visibleLabels) {
+            expect(find.text(visibleLabel), findsOneWidget);
             final labelSlot = find.byKey(
-              ValueKey('primary-navigation-label-$index'),
+              ValueKey('primary-navigation-label-$branchIndex'),
             );
             final paragraph =
                 tester.renderObject(
