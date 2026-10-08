@@ -229,7 +229,10 @@ void main() {
 
     final apply = find.byKey(const ValueKey('apply-search-filters'));
     final clear = find.byKey(const ValueKey('clear-search-filters'));
-    expect(find.ancestor(of: clear, matching: find.byType(OutlinedButton)), findsOneWidget);
+    expect(
+      find.ancestor(of: clear, matching: find.byType(OutlinedButton)),
+      findsOneWidget,
+    );
 
     final applyRect = tester.getRect(apply);
     final clearRect = tester.getRect(clear);
