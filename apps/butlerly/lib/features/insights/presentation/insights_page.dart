@@ -414,7 +414,6 @@ class _InsightsContent extends StatelessWidget {
             title: context.l10n.text('dataQualityLimitations'),
           ),
           ButlerlyCard(
-            color: Theme.of(context).scaffoldBackgroundColor,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: evaluation.limitations
@@ -520,7 +519,6 @@ class _PeriodSummaryCard extends StatelessWidget {
     ];
 
     return ButlerlyCard(
-      color: Theme.of(context).scaffoldBackgroundColor,
       semanticLabel: context.l10n.text('periodSummary'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
