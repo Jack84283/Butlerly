@@ -764,6 +764,7 @@ class _HomeHeader extends StatelessWidget {
           onPressed: onMonthTap,
           alignVisualEnd: true,
           denseSurface: true,
+          transparent: true,
         );
         final availableWidth = constraints.maxWidth;
         final stackedTopRow =
@@ -1370,6 +1371,7 @@ class _SpendingTrend extends StatelessWidget {
           : () => onRangeChanged!(rangeCount),
       alignVisualEnd: true,
       denseSurface: true,
+      transparent: true,
     );
     final largeText = MediaQuery.textScalerOf(context).scale(14) > 20;
     return ButlerlyCard(
