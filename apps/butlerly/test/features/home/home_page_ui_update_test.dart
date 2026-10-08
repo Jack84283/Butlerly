@@ -90,10 +90,7 @@ void main() {
       );
       final monthDecoration =
           tester.widget<Ink>(monthSurface).decoration! as BoxDecoration;
-      expect(
-        monthDecoration.color,
-        Colors.transparent,
-      );
+      expect(monthDecoration.color, Colors.transparent);
       expect(monthDecoration.border, isNotNull);
       final monthButton = tester.widget<TextButton>(
         find.byKey(const Key('home-month-selector')),
