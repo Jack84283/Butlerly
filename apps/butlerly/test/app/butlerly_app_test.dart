@@ -21,23 +21,24 @@ void main() {
   });
 
   test('theme surfaces use the quiet-premium palette', () {
-    expect(AppTheme.dark.scaffoldBackgroundColor, const Color(0xFF000000));
-    expect(AppTheme.dark.cardTheme.color, const Color(0xFF383838));
+    expect(AppTheme.dark.scaffoldBackgroundColor, const Color(0xFF030405));
+    expect(AppTheme.dark.cardTheme.color, const Color(0xFF141516));
     expect(
       AppTheme.dark.colorScheme.surfaceContainerHighest,
-      const Color(0xFF383838),
+      const Color(0xFF141516),
     );
     expect(AppTheme.dark.textTheme.bodyMedium?.color, const Color(0xFFF8F8F8));
     expect(AppTheme.light.textTheme.bodyMedium?.color, const Color(0xFF383838));
     expect(AppTheme.light.textTheme.bodySmall?.color, const Color(0xFF383838));
-    expect(AppTheme.light.cardTheme.color, const Color(0xFFF8F8F8));
+    expect(AppTheme.light.scaffoldBackgroundColor, const Color(0xFFF2F3F9));
+    expect(AppTheme.light.cardTheme.color, const Color(0xFFFDFDFD));
     expect(
       AppTheme.light.extension<ButlerlySemanticColors>()?.dashboardSurface,
-      const Color(0xFFF8F8F8),
+      const Color(0xFFFDFDFD),
     );
     expect(
       AppTheme.dark.extension<ButlerlySemanticColors>()?.dashboardSurface,
-      const Color(0xFF383838),
+      const Color(0xFF141516),
     );
     expect(
       AppTheme.light.extension<ButlerlySemanticColors>()?.cardDivider,
