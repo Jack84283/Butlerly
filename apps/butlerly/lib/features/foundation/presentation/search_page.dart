@@ -523,15 +523,20 @@ class _SearchPageState extends State<SearchPage>
                   Row(
                     children: [
                       TransactionCountText(count: values.length),
-                      const Spacer(),
-                      Flexible(
-                        child: Text(
-                          _searchResultTotalAmount(context, values),
-                          textAlign: TextAlign.end,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(
+                      const SizedBox(width: ButlerlySpacing.compact),
+                      Expanded(
+                        child: Align(
+                          alignment: AlignmentDirectional.centerEnd,
+                          child: Text(
+                            _searchResultTotalAmount(context, values),
+                            textAlign: TextAlign.end,
+                            style: Theme.of(
                               context,
-                            ).colorScheme.onSurfaceVariant,
+                            ).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
                           ),
                         ),
                       ),
