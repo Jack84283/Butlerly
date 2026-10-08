@@ -157,6 +157,7 @@ class TransactionRecordList extends StatelessWidget {
       childrenPadding: const EdgeInsets.only(bottom: ButlerlySpacing.standard),
       shape: const Border(),
       collapsedShape: const Border(),
+      controlAffinity: ListTileControlAffinity.leading,
       title: Row(
         children: [
           Expanded(
