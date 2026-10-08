@@ -100,7 +100,7 @@ class InsightGroupedList extends StatelessWidget {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
+      children: _withGroupedInsightCardSpacing([
         for (final group in order)
           if (grouped[group] case final items? when items.isNotEmpty)
             ButlerlyCard(
@@ -151,10 +151,17 @@ class InsightGroupedList extends StatelessWidget {
                 ],
               ),
             ),
-      ],
+      ]),
     );
   }
 }
+
+List<Widget> _withGroupedInsightCardSpacing(List<Widget> children) => [
+  for (var index = 0; index < children.length; index++) ...[
+    if (index > 0) const SizedBox(height: ButlerlySpacing.cardGap),
+    children[index],
+  ],
+];
 
 final class _PresentedInsight {
   const _PresentedInsight({required this.primary, this.escalation});
