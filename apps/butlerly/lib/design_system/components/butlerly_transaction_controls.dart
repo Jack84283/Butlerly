@@ -688,21 +688,90 @@ class ButlerlyDirectionSelector extends StatelessWidget {
   final String incomeLabel;
 
   @override
-  Widget build(BuildContext context) => SegmentedButton<TransactionDirection>(
-    showSelectedIcon: false,
-    segments: [
-      ButtonSegment(
-        value: TransactionDirection.expense,
-        label: Text(expenseLabel),
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      key: const ValueKey('transaction-direction-switch'),
+      padding: const EdgeInsets.all(ButlerlySpacing.micro),
+      decoration: BoxDecoration(
+        color: colors.subtleSurface,
+        borderRadius: BorderRadius.circular(ButlerlyRadius.full),
       ),
-      ButtonSegment(
-        value: TransactionDirection.income,
-        label: Text(incomeLabel),
+      child: Row(
+        children: [
+          Expanded(
+            child: _TransactionDirectionSwitchOption(
+              key: const ValueKey('transaction-direction-expense'),
+              label: expenseLabel,
+              selected: value == TransactionDirection.expense,
+              onTap: () => onChanged(TransactionDirection.expense),
+            ),
+          ),
+          Expanded(
+            child: _TransactionDirectionSwitchOption(
+              key: const ValueKey('transaction-direction-income'),
+              label: incomeLabel,
+              selected: value == TransactionDirection.income,
+              onTap: () => onChanged(TransactionDirection.income),
+            ),
+          ),
+        ],
       ),
-    ],
-    selected: {value},
-    onSelectionChanged: (selection) => onChanged(selection.single),
-  );
+    );
+  }
+}
+
+class _TransactionDirectionSwitchOption extends StatelessWidget {
+  const _TransactionDirectionSwitchOption({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    super.key,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(ButlerlyRadius.full),
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOut,
+            constraints: const BoxConstraints(
+              minHeight: ButlerlySize.minimumTarget,
+            ),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: selected ? colors.controlPrimary : Colors.transparent,
+              borderRadius: BorderRadius.circular(ButlerlyRadius.full),
+            ),
+            padding: const EdgeInsets.symmetric(
+              horizontal: ButlerlySpacing.standard,
+              vertical: ButlerlySpacing.compact,
+            ),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: selected ? Colors.white : colors.primaryText,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class ButlerlyStatusFilter extends StatelessWidget {
