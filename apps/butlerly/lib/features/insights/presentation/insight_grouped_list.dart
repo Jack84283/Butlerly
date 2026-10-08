@@ -573,14 +573,19 @@ bool _groupOwnsRuleCopy(
   InsightPresentationGroup group,
   List<_PresentedInsight> items,
 ) {
+  if (items.isEmpty) return false;
+
+  if (group == InsightPresentationGroup.category ||
+      group == InsightPresentationGroup.subcategory) {
+    return true;
+  }
+
   final structural = switch (group) {
-    InsightPresentationGroup.category ||
-    InsightPresentationGroup.subcategory ||
     InsightPresentationGroup.merchant ||
     InsightPresentationGroup.largePurchase => true,
     _ => false,
   };
-  if (!structural || items.isEmpty) return false;
+  if (!structural) return false;
   final first = items.first.primary.rule;
   return items.every(
     (item) =>
