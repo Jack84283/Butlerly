@@ -763,6 +763,7 @@ class _HomeHeader extends StatelessWidget {
           semanticLabel: selectorMonthLabel,
           onPressed: onMonthTap,
           alignVisualEnd: true,
+          showBackground: false,
         );
         final availableWidth = constraints.maxWidth;
         final stackedTopRow =
@@ -2194,10 +2195,10 @@ class _HomeRecentActivity extends StatelessWidget {
         else
           Padding(
             padding: const EdgeInsets.fromLTRB(
-              ButlerlySpacing.micro,
+              ButlerlySpacing.compact,
               ButlerlySpacing.none,
+              ButlerlySpacing.compact,
               ButlerlySpacing.micro,
-              ButlerlySpacing.none,
             ),
             child: Transform.translate(
               offset: const Offset(0, -ButlerlySpacing.micro),
