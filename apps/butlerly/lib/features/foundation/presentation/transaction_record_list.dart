@@ -224,8 +224,7 @@ class TransactionRecordList extends StatelessWidget {
       totals.putIfAbsent(currency, () => []).add(amount);
     }
 
-    final totalLabel = totals.entries
-        .toList(growable: false)
+    final totalLabel = totals.entries.toList(growable: false)
       ..sort((a, b) => a.key.compareTo(b.key));
     final formattedTotals = totalLabel
         .map(
@@ -371,12 +370,8 @@ class TransactionRecordList extends StatelessWidget {
   }
 }
 
-
 final class _MonthCardSummary {
-  const _MonthCardSummary({
-    required this.countLabel,
-    required this.totalLabel,
-  });
+  const _MonthCardSummary({required this.countLabel, required this.totalLabel});
 
   final String countLabel;
   final String totalLabel;
