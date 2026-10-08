@@ -1574,9 +1574,9 @@ class _HomeTrendPlot extends StatelessWidget {
                       Expanded(
                         child: ExcludeSemantics(
                           child: Text(
-                            DateFormat.MMM(locale)
-                                .format(point.month)
-                                .toUpperCase(),
+                            DateFormat.MMM(
+                              locale,
+                            ).format(point.month).toUpperCase(),
                             key: ValueKey(
                               'home-spending-trend-label-${point.month.year}-${point.month.month}',
                             ),
@@ -2740,8 +2740,9 @@ class _HomeMonthPickerState extends State<_HomeMonthPicker> {
         ),
         itemBuilder: (context, index) {
           final candidate = DateTime(_year, index + 1, 1);
-          final future = _monthStart(candidate)
-              .isAfter(_monthStart(widget.currentMonth));
+          final future = _monthStart(
+            candidate,
+          ).isAfter(_monthStart(widget.currentMonth));
           final selected = _sameMonth(candidate, widget.selectedMonth);
           final label = DateFormat.MMM(locale).format(candidate);
           final availableDarkStyle = darkMode && !future;
