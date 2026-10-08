@@ -13,6 +13,44 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('transparent icon button is unfilled and tappable in both themes', (
+    tester,
+  ) async {
+    for (final theme in [AppTheme.light, AppTheme.dark]) {
+      var presses = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: Scaffold(
+            body: Center(
+              child: ButlerlyTransparentIconButton(
+                buttonKey: const Key('transparent-ellipsis'),
+                icon: Icons.more_horiz_rounded,
+                semanticLabel: 'More options',
+                onPressed: () => presses++,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final finder = find.byKey(const Key('transparent-ellipsis'));
+      final button = tester.widget<TextButton>(finder);
+      expect(button.style?.backgroundColor?.resolve({}), Colors.transparent);
+      expect(
+        button.style?.backgroundColor?.resolve({WidgetState.disabled}),
+        Colors.transparent,
+      );
+      expect(button.style?.side?.resolve({}), BorderSide.none);
+      expect(tester.getSize(finder), const Size(44, 44));
+      expect(find.byTooltip('More options'), findsOneWidget);
+
+      await tester.tap(finder);
+      await tester.pump();
+      expect(presses, 1);
+    }
+  });
+
   testWidgets(
     'shared select field clears stale text when canonical value becomes null',
     (tester) async {
