@@ -240,28 +240,38 @@ class _ButlerlyTransactionFilterSheetState
           onChanged: (value) => setState(() => _includeUndated = value),
         ),
         const SizedBox(height: ButlerlySpacing.section),
-        FilledButton(
-          key: const ValueKey('apply-search-filters'),
-          onPressed: () {
-            widget.onApply(
-              ButlerlyTransactionFilterValue(
-                currency: _currency,
-                direction: _direction,
-                status: _status,
-                categoryId: _categoryId,
-                paymentSourceId: _paymentSourceId,
-                needsReview: _needsReview,
-                includeUndated: _includeUndated,
-                from: _from,
-                to: _to,
+        Row(
+          children: [
+            Expanded(
+              child: FilledButton(
+                key: const ValueKey('apply-search-filters'),
+                onPressed: () {
+                  widget.onApply(
+                    ButlerlyTransactionFilterValue(
+                      currency: _currency,
+                      direction: _direction,
+                      status: _status,
+                      categoryId: _categoryId,
+                      paymentSourceId: _paymentSourceId,
+                      needsReview: _needsReview,
+                      includeUndated: _includeUndated,
+                      from: _from,
+                      to: _to,
+                    ),
+                  );
+                },
+                child: Text(context.l10n.text('applyFilters')),
               ),
-            );
-          },
-          child: Text(context.l10n.text('applyFilters')),
-        ),
-        TextButton(
-          onPressed: widget.onClear,
-          child: Text(context.l10n.text('clearFilters')),
+            ),
+            const SizedBox(width: ButlerlySpacing.compact),
+            Expanded(
+              child: OutlinedButton(
+                key: const ValueKey('clear-search-filters'),
+                onPressed: widget.onClear,
+                child: Text(context.l10n.text('clearFilters')),
+              ),
+            ),
+          ],
         ),
       ],
     ),
