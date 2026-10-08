@@ -221,6 +221,7 @@ abstract final class ButlerlySize {
 }
 
 abstract final class ButlerlyOpacity {
+  static const primaryNavigationSurface = 0.25;
   static const primaryNavigationBorder = 0.55;
 }
 
