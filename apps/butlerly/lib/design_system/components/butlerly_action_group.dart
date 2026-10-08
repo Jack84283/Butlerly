@@ -26,12 +26,7 @@ class ButlerlyActionGroup extends StatelessWidget {
   static const double _dividerInset = ButlerlySpacing.standard;
 
   @override
-  Widget build(BuildContext context) => Material(
-    color: context.colors.subtleSurface,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-      side: BorderSide(color: context.colors.border),
-    ),
+  Widget build(BuildContext context) => Card(
     clipBehavior: Clip.antiAlias,
     child: Column(
       children: [
