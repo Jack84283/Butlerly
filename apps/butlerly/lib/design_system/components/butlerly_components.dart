@@ -379,6 +379,7 @@ class ButlerlyCompactSelector extends StatelessWidget {
     this.buttonKey,
     this.alignVisualEnd = false,
     this.denseSurface = false,
+    this.showBackground = true,
     super.key,
   });
 
@@ -388,6 +389,7 @@ class ButlerlyCompactSelector extends StatelessWidget {
   final Key? buttonKey;
   final bool alignVisualEnd;
   final bool denseSurface;
+  final bool showBackground;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -414,7 +416,9 @@ class ButlerlyCompactSelector extends StatelessWidget {
                 : Alignment.topCenter,
             child: Ink(
               decoration: BoxDecoration(
-                color: context.colors.subtleSurface,
+                color: showBackground
+                    ? context.colors.subtleSurface
+                    : Colors.transparent,
                 border: Border.all(color: context.colors.border),
                 borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
               ),
