@@ -154,7 +154,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
             ? const Color(0xFF10251F)
             : const Color(0xFFE1EEE9),
         review: brightness == Brightness.dark
-            ? const Color(0xFF66C7A0)
+            ? const Color(0xFFA0E8C8)
             : const Color(0xFF1D5B4B),
       ),
     };
