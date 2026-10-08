@@ -442,12 +442,12 @@ class _InsightItem extends StatelessWidget {
                   ),
                 ],
                 if (onViewTransactions != null) ...[
-                  const SizedBox(height: ButlerlySpacing.small),
+                  const SizedBox(height: ButlerlySpacing.micro),
                   TextButton.icon(
                     onPressed: onViewTransactions,
                     style: TextButton.styleFrom(
                       padding: EdgeInsets.zero,
-                      minimumSize: const Size(0, 44),
+                      minimumSize: const Size(0, 32),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                     iconAlignment: IconAlignment.end,
