@@ -558,6 +558,14 @@ void main() {
         trendButton.style?.foregroundColor?.resolve({}),
         monthButton.style?.foregroundColor?.resolve({}),
       );
+      expect(
+        monthButton.style?.backgroundColor?.resolve({}),
+        Colors.transparent,
+      );
+      expect(
+        trendButton.style?.backgroundColor?.resolve({}),
+        Colors.transparent,
+      );
       expect(tester.getSize(monthSurface).height, lessThan(44));
       expect(tester.getSize(trendSurface).height, lessThan(44));
       expect(
