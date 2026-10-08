@@ -2193,11 +2193,16 @@ class _HomeRecentActivity extends StatelessWidget {
           const _HomeEmptyTransactions()
         else
           Padding(
-            padding: const EdgeInsets.all(ButlerlySpacing.standard),
+            padding: const EdgeInsets.fromLTRB(
+              ButlerlySpacing.micro,
+              ButlerlySpacing.none,
+              ButlerlySpacing.micro,
+              ButlerlySpacing.micro,
+            ),
             child: ButlerlyCard(
               key: const ValueKey('home-recent-transactions-inner-card'),
               color: context.colors.subtleSurface,
-              padding: EdgeInsets.zero,
+              padding: const EdgeInsets.all(ButlerlySpacing.compact),
               child: ButlerlyTransactionList(
                 children: [
                   for (var index = 0; index < transactions.length; index++)
