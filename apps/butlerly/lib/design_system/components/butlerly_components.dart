@@ -806,7 +806,7 @@ class ButlerlyDestructiveButton extends StatelessWidget {
     final darkMode = Theme.of(context).brightness == Brightness.dark;
     final style = FilledButton.styleFrom(
       backgroundColor: colors.error.withValues(
-        alpha: darkMode ? 0.22 : 0.12,
+        alpha: darkMode ? 0.14 : 0.05,
       ),
       foregroundColor: colors.error,
       disabledBackgroundColor: colors.error.withValues(alpha: 0.08),

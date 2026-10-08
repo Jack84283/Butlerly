@@ -644,7 +644,7 @@ void main() {
       final colors = theme.extension<ButlerlySemanticColors>()!;
       final button = tester.widget<FilledButton>(find.byType(FilledButton));
       final style = button.style!;
-      final alpha = theme.brightness == Brightness.dark ? 0.22 : 0.12;
+      final alpha = theme.brightness == Brightness.dark ? 0.14 : 0.05;
       expect(
         style.backgroundColor?.resolve({}),
         colors.error.withValues(alpha: alpha),
