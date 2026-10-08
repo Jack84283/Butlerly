@@ -388,7 +388,6 @@ class _InsightsContent extends StatelessWidget {
         onChanged: onPeriodChanged,
       ),
       children: [
-        ButlerlySectionHeader(title: context.l10n.text('periodSummary')),
         _PeriodSummaryCard(summary: evaluation.summary),
         if (summaryPieResults.isNotEmpty)
           InsightGroupVisualizations(
@@ -409,14 +408,17 @@ class _InsightsContent extends StatelessWidget {
               return '${localizedDecimal(context, amount.toString())}${currency.isEmpty ? '' : ' $currency'}';
             },
           ),
-        if (evaluation.limitations.isNotEmpty) ...[
-          ButlerlySectionHeader(
-            title: context.l10n.text('dataQualityLimitations'),
-          ),
+        if (evaluation.limitations.isNotEmpty)
           ButlerlyCard(
+            semanticLabel: context.l10n.text('dataQualityLimitations'),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: evaluation.limitations
+              children: [
+                ButlerlyCardHeader(
+                  title: context.l10n.text('dataQualityLimitations'),
+                ),
+                const SizedBox(height: ButlerlySpacing.standard),
+                ...evaluation.limitations
                   .fold<Map<String, DataQualityIssue>>(
                     {},
                     (issues, issue) =>
@@ -432,9 +434,9 @@ class _InsightsContent extends StatelessWidget {
                     ),
                   )
                   .toList(growable: false),
+              ],
             ),
           ),
-        ],
         if (activeFindings.isNotEmpty)
           InsightGroupedList(
             results: activeFindings,
@@ -523,6 +525,8 @@ class _PeriodSummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          ButlerlyCardHeader(title: context.l10n.text('periodSummary')),
+          const SizedBox(height: ButlerlySpacing.standard),
           ...values.where((value) => value.value != null),
           if (!summary.comparisonAvailable)
             Text(
