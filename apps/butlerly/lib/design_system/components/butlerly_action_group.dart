@@ -1,3 +1,4 @@
+import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter/material.dart';
@@ -17,7 +18,7 @@ class ButlerlyActionItem {
   final VoidCallback onTap;
 }
 
-/// Groups related actions on a subtle surface with consistent dividers.
+/// Groups related actions on the standard Butlerly card surface with consistent dividers.
 class ButlerlyActionGroup extends StatelessWidget {
   const ButlerlyActionGroup({required this.actions, super.key});
 
@@ -26,13 +27,8 @@ class ButlerlyActionGroup extends StatelessWidget {
   static const double _dividerInset = ButlerlySpacing.standard;
 
   @override
-  Widget build(BuildContext context) => Material(
-    color: context.colors.subtleSurface,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-      side: BorderSide(color: context.colors.border),
-    ),
-    clipBehavior: Clip.antiAlias,
+  Widget build(BuildContext context) => ButlerlyCard(
+    padding: EdgeInsets.zero,
     child: Column(
       children: [
         for (var index = 0; index < actions.length; index++) ...[

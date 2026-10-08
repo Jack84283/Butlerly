@@ -5,7 +5,9 @@ import 'package:butlerly/features/foundation/presentation/transaction_date_label
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_row.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -145,6 +147,7 @@ class TransactionRecordList extends StatelessWidget {
       entry.value.first,
       locale: locale,
     );
+    final summary = _monthCardSummary(context, entry.value);
     final tile = ExpansionTile(
       key: ValueKey('transaction-month-${entry.key}'),
       initiallyExpanded: initiallyExpanded,
@@ -154,14 +157,38 @@ class TransactionRecordList extends StatelessWidget {
       childrenPadding: const EdgeInsets.only(bottom: ButlerlySpacing.standard),
       shape: const Border(),
       collapsedShape: const Border(),
+      controlAffinity: ListTileControlAffinity.leading,
       title: Row(
         children: [
           Expanded(
             child: Text(label, style: Theme.of(context).textTheme.titleMedium),
           ),
-          Text(
-            '${entry.value.length}',
-            style: Theme.of(context).textTheme.bodySmall,
+          const SizedBox(width: ButlerlySpacing.compact),
+          Flexible(
+            child: Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    summary.countLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: ButlerlySpacing.micro),
+                  Text(
+                    summary.totalLabel,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                ],
+              ),
+            ),
           ),
           const SizedBox(width: ButlerlySpacing.compact),
         ],
@@ -180,6 +207,41 @@ class TransactionRecordList extends StatelessWidget {
       padding: EdgeInsets.zero,
       semanticLabel: label,
       child: tile,
+    );
+  }
+
+  _MonthCardSummary _monthCardSummary(
+    BuildContext context,
+    List<TransactionDto> transactions,
+  ) {
+    final totals = <String, List<DecimalValue>>{};
+    for (final transaction in transactions) {
+      final currency = transaction.currency.trim().toUpperCase();
+      if (currency.isEmpty) continue;
+      final amount = DecimalValue.parse(
+        transaction.amount.replaceFirst(RegExp(r'^[+-]'), ''),
+      );
+      totals.putIfAbsent(currency, () => []).add(amount);
+    }
+
+    final totalLabel = totals.entries.toList(growable: false)
+      ..sort((a, b) => a.key.compareTo(b.key));
+    final formattedTotals = totalLabel
+        .map(
+          (entry) => localizedCompactMoney(
+            context,
+            DecimalValue.sum(entry.value).toString(),
+            entry.key,
+          ),
+        )
+        .join(' · ');
+    final count = transactions.length;
+    return _MonthCardSummary(
+      countLabel: context.l10n.text(
+        count == 1 ? 'oneTransaction' : 'manyTransactions',
+        {'count': '$count'},
+      ),
+      totalLabel: formattedTotals,
     );
   }
 
@@ -306,4 +368,11 @@ class TransactionRecordList extends StatelessWidget {
     final utc = occurredAt.toUtc();
     return DateTime(utc.year, utc.month);
   }
+}
+
+final class _MonthCardSummary {
+  const _MonthCardSummary({required this.countLabel, required this.totalLabel});
+
+  final String countLabel;
+  final String totalLabel;
 }

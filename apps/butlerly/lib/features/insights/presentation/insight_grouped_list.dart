@@ -100,30 +100,28 @@ class InsightGroupedList extends StatelessWidget {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
+      children: _withGroupedInsightCardSpacing([
         for (final group in order)
-          if (grouped[group] case final items? when items.isNotEmpty) ...[
-            ButlerlySectionHeader(title: _groupTitle(context, group, items)),
-            if (_groupSubtitle(context, group, items) case final subtitle?) ...[
-              const SizedBox(height: ButlerlySpacing.micro),
-              Text(
-                subtitle,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: ButlerlySpacing.small),
-            ],
-            if (groupedVisualizations[group] case final chartResults?
-                when chartResults.isNotEmpty)
-              InsightGroupVisualizations(
-                results: chartResults,
-                masterData: masterData,
-              ),
+          if (grouped[group] case final items? when items.isNotEmpty)
             ButlerlyCard(
-              color: Theme.of(context).scaffoldBackgroundColor,
+              semanticLabel: _groupTitle(context, group, items),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  ButlerlyCardHeader(
+                    title: _groupTitle(context, group, items),
+                    subtitle: _groupSubtitle(context, group, items),
+                  ),
+                  if (groupedVisualizations[group] case final chartResults?
+                      when chartResults.isNotEmpty) ...[
+                    const SizedBox(height: ButlerlySpacing.standard),
+                    InsightGroupVisualizations(
+                      results: chartResults,
+                      masterData: masterData,
+                      embedded: true,
+                    ),
+                  ],
+                  const SizedBox(height: ButlerlySpacing.standard),
                   for (var index = 0; index < items.length; index++) ...[
                     Builder(
                       builder: (context) {
@@ -153,11 +151,17 @@ class InsightGroupedList extends StatelessWidget {
                 ],
               ),
             ),
-          ],
-      ],
+      ]),
     );
   }
 }
+
+List<Widget> _withGroupedInsightCardSpacing(List<Widget> children) => [
+  for (var index = 0; index < children.length; index++) ...[
+    if (index > 0) const SizedBox(height: ButlerlySpacing.cardGap),
+    children[index],
+  ],
+];
 
 final class _PresentedInsight {
   const _PresentedInsight({required this.primary, this.escalation});
@@ -333,6 +337,10 @@ class _InsightItem extends StatelessWidget {
         ? null
         : context.l10n.text(escalation!.rule.nameKey);
     final showHeading = identity != null || showRuleCopy;
+    final tightIdentityToAmount =
+        insight.rule.grouping == RuleGrouping.category ||
+        insight.rule.grouping == RuleGrouping.subcategory ||
+        insight.rule.grouping == RuleGrouping.merchant;
 
     return Semantics(
       container: true,
@@ -398,7 +406,8 @@ class _InsightItem extends StatelessWidget {
                   ),
                 ],
                 if (current != null || baseline != null) ...[
-                  const SizedBox(height: ButlerlySpacing.small),
+                  if (!tightIdentityToAmount)
+                    const SizedBox(height: ButlerlySpacing.small),
                   Wrap(
                     spacing: ButlerlySpacing.small,
                     runSpacing: ButlerlySpacing.micro,
@@ -433,12 +442,12 @@ class _InsightItem extends StatelessWidget {
                   ),
                 ],
                 if (onViewTransactions != null) ...[
-                  const SizedBox(height: ButlerlySpacing.small),
+                  const SizedBox(height: ButlerlySpacing.micro),
                   TextButton.icon(
                     onPressed: onViewTransactions,
                     style: TextButton.styleFrom(
                       padding: EdgeInsets.zero,
-                      minimumSize: const Size(0, 44),
+                      minimumSize: const Size(0, 32),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                     iconAlignment: IconAlignment.end,
@@ -569,14 +578,19 @@ bool _groupOwnsRuleCopy(
   InsightPresentationGroup group,
   List<_PresentedInsight> items,
 ) {
+  if (items.isEmpty) return false;
+
+  if (group == InsightPresentationGroup.category ||
+      group == InsightPresentationGroup.subcategory) {
+    return true;
+  }
+
   final structural = switch (group) {
-    InsightPresentationGroup.category ||
-    InsightPresentationGroup.subcategory ||
     InsightPresentationGroup.merchant ||
     InsightPresentationGroup.largePurchase => true,
     _ => false,
   };
-  if (!structural || items.isEmpty) return false;
+  if (!structural) return false;
   final first = items.first.primary.rule;
   return items.every(
     (item) =>

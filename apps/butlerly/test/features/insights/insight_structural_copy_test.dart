@@ -48,7 +48,7 @@ void main() {
     expect(find.text('Travel'), findsOneWidget);
   });
 
-  testWidgets('mixed structural rules retain their own rule meaning', (
+  testWidgets('category card owns movement copy for mixed category findings', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -74,9 +74,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Categories'), findsOneWidget);
+    expect(find.text('Categories'), findsNothing);
     expect(find.text('Category movement'), findsOneWidget);
-    expect(find.text('Spending concentration'), findsOneWidget);
+    expect(find.text('Spending concentration'), findsNothing);
     expect(find.text('Food & Dining'), findsOneWidget);
     expect(find.text('Travel'), findsOneWidget);
   });

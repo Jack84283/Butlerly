@@ -42,7 +42,7 @@ void main() {
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await tester.pumpAndSettle();
 
-    expect(find.byType(ButlerlyCard), findsNothing);
+    expect(find.byType(ButlerlyCard), findsNWidgets(2));
     expect(find.byType(Divider), findsNWidgets(3));
     expect(find.text('Add transaction manually'), findsOneWidget);
     expect(find.text('Enter transaction details yourself'), findsOneWidget);

@@ -1008,7 +1008,7 @@ void main() {
 
     expect(find.text('Lunch'), findsAtLeastNWidgets(1));
     expect(find.text('Bus'), findsNothing);
-    expect(find.text('1 transaction'), findsOneWidget);
+    expect(find.text('1 transaction'), findsNWidgets(2));
   });
 
   testWidgets('Search can apply the undated transaction filter', (
@@ -1150,12 +1150,12 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.search);
     await tester.pumpAndSettle();
     expect(find.text('Keyboard Search Match'), findsAtLeastNWidgets(1));
-    expect(find.text('1 transaction'), findsOneWidget);
+    expect(find.text('1 transaction'), findsNWidgets(2));
 
     await tester.tap(find.byIcon(Icons.close_rounded));
     await tester.pumpAndSettle();
     expect(find.text('Keyboard Search Match'), findsAtLeastNWidgets(1));
-    expect(find.text('1 transaction'), findsOneWidget);
+    expect(find.text('1 transaction'), findsNWidgets(2));
     expect(find.byIcon(Icons.close_rounded), findsNothing);
   });
 
@@ -1371,7 +1371,8 @@ void main() {
     expect(find.text('Organized row'), findsNothing);
     expect(find.text('Groceries'), findsOneWidget);
     expect(find.text('Weekly'), findsNothing);
-    expect(find.text('2 transactions'), findsOneWidget);
+    expect(find.text('2 transactions'), findsNWidgets(2));
+    expect(find.text('\$43.00'), findsNWidgets(2));
     expect(find.text('Aug 11, 2026'), findsOneWidget);
     expect(find.text('Aug 10, 2026'), findsOneWidget);
     final monthCard = find.byKey(
@@ -1384,6 +1385,14 @@ void main() {
     );
     expect(
       find.descendant(of: monthCard, matching: find.byType(ExpansionTile)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: monthCard, matching: find.text('2 transactions')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: monthCard, matching: find.text('\$43.00')),
       findsOneWidget,
     );
     expect(find.byType(ButlerlyRecordRow), findsNWidgets(2));

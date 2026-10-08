@@ -387,8 +387,7 @@ class _InsightsContent extends StatelessWidget {
         value: period,
         onChanged: onPeriodChanged,
       ),
-      children: [
-        ButlerlySectionHeader(title: context.l10n.text('periodSummary')),
+      children: _withInsightCardSpacing([
         _PeriodSummaryCard(summary: evaluation.summary),
         if (summaryPieResults.isNotEmpty)
           InsightGroupVisualizations(
@@ -409,33 +408,34 @@ class _InsightsContent extends StatelessWidget {
               return '${localizedDecimal(context, amount.toString())}${currency.isEmpty ? '' : ' $currency'}';
             },
           ),
-        if (evaluation.limitations.isNotEmpty) ...[
-          ButlerlySectionHeader(
-            title: context.l10n.text('dataQualityLimitations'),
-          ),
+        if (evaluation.limitations.isNotEmpty)
           ButlerlyCard(
-            color: Theme.of(context).scaffoldBackgroundColor,
+            semanticLabel: context.l10n.text('dataQualityLimitations'),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: evaluation.limitations
-                  .fold<Map<String, DataQualityIssue>>(
-                    {},
-                    (issues, issue) =>
-                        issues..putIfAbsent(issue.code, () => issue),
-                  )
-                  .values
-                  .map(
-                    (issue) => Padding(
-                      padding: const EdgeInsets.only(
-                        bottom: ButlerlySpacing.micro,
+              children: [
+                ButlerlyCardHeader(
+                  title: context.l10n.text('dataQualityLimitations'),
+                ),
+                const SizedBox(height: ButlerlySpacing.standard),
+                ...evaluation.limitations
+                    .fold<Map<String, DataQualityIssue>>(
+                      {},
+                      (issues, issue) =>
+                          issues..putIfAbsent(issue.code, () => issue),
+                    )
+                    .values
+                    .map(
+                      (issue) => Padding(
+                        padding: const EdgeInsets.only(
+                          bottom: ButlerlySpacing.micro,
+                        ),
+                        child: Text(_qualityIssueText(context, issue.code)),
                       ),
-                      child: Text(_qualityIssueText(context, issue.code)),
                     ),
-                  )
-                  .toList(growable: false),
+              ],
             ),
           ),
-        ],
         if (activeFindings.isNotEmpty)
           InsightGroupedList(
             results: activeFindings,
@@ -456,10 +456,17 @@ class _InsightsContent extends StatelessWidget {
             title: context.l10n.text('insightsNothingNoteworthy'),
             message: context.l10n.text('insightsNothingNoteworthyBody'),
           ),
-      ],
+      ]),
     );
   }
 }
+
+List<Widget> _withInsightCardSpacing(List<Widget> children) => [
+  for (var index = 0; index < children.length; index++) ...[
+    if (index > 0) const SizedBox(height: ButlerlySpacing.cardGap),
+    children[index],
+  ],
+];
 
 class _PeriodSummaryCard extends StatelessWidget {
   const _PeriodSummaryCard({required this.summary});
@@ -520,11 +527,12 @@ class _PeriodSummaryCard extends StatelessWidget {
     ];
 
     return ButlerlyCard(
-      color: Theme.of(context).scaffoldBackgroundColor,
       semanticLabel: context.l10n.text('periodSummary'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          ButlerlyCardHeader(title: context.l10n.text('periodSummary')),
+          const SizedBox(height: ButlerlySpacing.standard),
           ...values.where((value) => value.value != null),
           if (!summary.comparisonAvailable)
             Text(
