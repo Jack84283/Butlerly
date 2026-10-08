@@ -432,8 +432,7 @@ class _InsightsContent extends StatelessWidget {
                         ),
                         child: Text(_qualityIssueText(context, issue.code)),
                       ),
-                    )
-                    .toList(growable: false),
+                    ),
               ],
             ),
           ),
