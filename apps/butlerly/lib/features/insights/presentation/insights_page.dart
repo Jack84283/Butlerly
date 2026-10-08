@@ -387,7 +387,7 @@ class _InsightsContent extends StatelessWidget {
         value: period,
         onChanged: onPeriodChanged,
       ),
-      children: [
+      children: _withInsightCardSpacing([
         _PeriodSummaryCard(summary: evaluation.summary),
         if (summaryPieResults.isNotEmpty)
           InsightGroupVisualizations(
@@ -457,10 +457,17 @@ class _InsightsContent extends StatelessWidget {
             title: context.l10n.text('insightsNothingNoteworthy'),
             message: context.l10n.text('insightsNothingNoteworthyBody'),
           ),
-      ],
+      ]),
     );
   }
 }
+
+List<Widget> _withInsightCardSpacing(List<Widget> children) => [
+  for (var index = 0; index < children.length; index++) ...[
+    if (index > 0) const SizedBox(height: ButlerlySpacing.cardGap),
+    children[index],
+  ],
+];
 
 class _PeriodSummaryCard extends StatelessWidget {
   const _PeriodSummaryCard({required this.summary});
