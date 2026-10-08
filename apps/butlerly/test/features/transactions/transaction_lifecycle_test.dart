@@ -1371,7 +1371,8 @@ void main() {
     expect(find.text('Organized row'), findsNothing);
     expect(find.text('Groceries'), findsOneWidget);
     expect(find.text('Weekly'), findsNothing);
-    expect(find.text('2 transactions'), findsOneWidget);
+    expect(find.text('2 transactions'), findsNWidgets(2));
+    expect(find.text('\$43.00'), findsNWidgets(2));
     expect(find.text('Aug 11, 2026'), findsOneWidget);
     expect(find.text('Aug 10, 2026'), findsOneWidget);
     final monthCard = find.byKey(
