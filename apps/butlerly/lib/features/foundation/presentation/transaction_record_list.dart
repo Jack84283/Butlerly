@@ -164,26 +164,29 @@ class TransactionRecordList extends StatelessWidget {
           ),
           const SizedBox(width: ButlerlySpacing.compact),
           Flexible(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  summary.countLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.end,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: ButlerlySpacing.micro),
-                Text(
-                  summary.totalLabel,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.end,
-                  style: Theme.of(context).textTheme.labelLarge,
-                ),
-              ],
+            child: Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    summary.countLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: ButlerlySpacing.micro),
+                  Text(
+                    summary.totalLabel,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(width: ButlerlySpacing.compact),
