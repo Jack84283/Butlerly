@@ -35,13 +35,36 @@ void main() {
       );
       expect(
         theme.textButtonTheme.style?.foregroundColor?.resolve({}),
-        colors.secondaryText,
+        theme.brightness == Brightness.dark
+            ? colors.primaryText
+            : colors.secondaryText,
       );
       expect(
         theme.filledButtonTheme.style?.backgroundColor?.resolve({}),
         theme.colorScheme.primary,
       );
     }
+  });
+
+
+  test('dark secondary text meets contrast on raised surfaces', () {
+    final theme = AppTheme.dark;
+    final colors = theme.extension<ButlerlySemanticColors>()!;
+    final buttonText = theme.textButtonTheme.style?.foregroundColor
+        ?.resolve({});
+
+    expect(
+      _contrast(colors.primaryText, colors.cardSurface),
+      greaterThanOrEqualTo(4.5),
+    );
+    expect(
+      _contrast(buttonText!, colors.elevatedSurface),
+      greaterThanOrEqualTo(4.5),
+    );
+    expect(
+      _contrast(theme.textTheme.bodySmall!.color!, colors.cardSurface),
+      greaterThanOrEqualTo(4.5),
+    );
   });
 
   test('supports all appearance and color-theme combinations', () {
