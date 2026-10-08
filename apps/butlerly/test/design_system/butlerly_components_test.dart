@@ -632,6 +632,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: theme,
+          themeAnimationDuration: Duration.zero,
           home: Scaffold(
             body: ButlerlyDestructiveButton(
               onPressed: () {},
