@@ -97,10 +97,14 @@ void main() {
     expect(pillRect.width, lessThan(navigationRect.width));
     expect(pillRect.width, closeTo(navigationRect.width - 32, 0.01));
     expect(pillRect.center.dx, closeTo(navigationRect.center.dx, 0.01));
-    expect(navigationContentRect, pillRect);
+    expect(navigationContentRect.center, pillRect.center);
+    expect(pillRect.height, closeTo(ButlerlySize.navigationBarHeight, 0.01));
     expect(
       navigationContentRect.height,
-      closeTo(ButlerlySize.navigationBarHeight, 0.01),
+      closeTo(
+        ButlerlySize.navigationBarHeight - 2 * ButlerlySize.dividerWidth,
+        0.01,
+      ),
     );
     expect(ButlerlySize.navigationBarHeight, 72);
     expect(
