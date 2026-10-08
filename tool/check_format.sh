@@ -8,16 +8,10 @@ fi
 
 # TEMPORARY diagnostic for the transaction details file.
 if [[ "$PWD" == */apps/butlerly ]]; then
-  tmp_dir="$(mktemp -d "$PWD/.format-diff.XXXXXX")"
+  tmp_dir="$(mktemp -d)"
   trap 'rm -rf "$tmp_dir"' EXIT
-  for file in \
-    lib/features/foundation/presentation/transactions_page.dart \
-    lib/features/foundation/presentation/search_page.dart \
-    lib/features/insights/presentation/insights_page.dart; do
-    name="$(basename "$file")"
-    cp "$file" "$tmp_dir/$name"
-    dart format "$tmp_dir/$name" >/dev/null
-    diff -u "$file" "$tmp_dir/$name" || true
-  done
+  cp lib/features/foundation/presentation/transactions_page.dart "$tmp_dir/transactions_page.dart"
+  dart format "$tmp_dir/transactions_page.dart" >/dev/null
+  diff -u lib/features/foundation/presentation/transactions_page.dart "$tmp_dir/transactions_page.dart" || true
 fi
 exit 1
