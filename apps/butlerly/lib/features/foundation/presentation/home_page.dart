@@ -763,7 +763,7 @@ class _HomeHeader extends StatelessWidget {
           semanticLabel: selectorMonthLabel,
           onPressed: onMonthTap,
           alignVisualEnd: true,
-          transparent: true,
+          denseSurface: true,
         );
         final availableWidth = constraints.maxWidth;
         final stackedTopRow =
