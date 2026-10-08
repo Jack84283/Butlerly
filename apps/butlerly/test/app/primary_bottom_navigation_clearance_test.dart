@@ -103,11 +103,11 @@ void main() {
       closeTo(ButlerlySize.navigationBarHeight, 0.01),
     );
     expect(ButlerlySize.navigationBarHeight, 72);
-    expect(pillDecoration.borderRadius, BorderRadius.circular(ButlerlyRadius.pill));
     expect(
-      find.byKey(const ValueKey('primary-navigation-base')),
-      findsNothing,
+      pillDecoration.borderRadius,
+      BorderRadius.circular(ButlerlyRadius.pill),
     );
+    expect(find.byKey(const ValueKey('primary-navigation-base')), findsNothing);
     final addButton = find.byKey(
       const ValueKey('primary-navigation-add-button'),
     );
@@ -199,14 +199,9 @@ void main() {
             final labelSlot = find.byKey(
               ValueKey('primary-navigation-label-$branchIndex'),
             );
-            final paragraph =
-                tester.renderObject(
-                      find.descendant(
-                        of: labelSlot,
-                        matching: find.byType(Text),
-                      ),
-                    )
-                    as RenderParagraph;
+            final paragraph = tester.renderObject(
+              find.descendant(of: labelSlot, matching: find.byType(Text)),
+            ) as RenderParagraph;
             final label = tester.widget<Text>(
               find.descendant(of: labelSlot, matching: find.byType(Text)),
             );
@@ -248,3 +243,4 @@ void main() {
     },
   );
 }
+
