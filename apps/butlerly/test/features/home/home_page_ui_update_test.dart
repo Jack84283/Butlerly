@@ -92,7 +92,7 @@ void main() {
           tester.widget<Ink>(monthSurface).decoration! as BoxDecoration;
       expect(
         monthDecoration.color,
-        AppTheme.light.extension<ButlerlySemanticColors>()!.subtleSurface,
+        Colors.transparent,
       );
       expect(monthDecoration.border, isNotNull);
       final monthButton = tester.widget<TextButton>(
@@ -100,7 +100,7 @@ void main() {
       );
       expect(
         monthButton.style?.foregroundColor?.resolve({}),
-        AppTheme.light.extension<ButlerlySemanticColors>()!.primaryText,
+        AppTheme.light.extension<ButlerlySemanticColors>()!.secondaryText,
       );
       expect(
         tester.getTopRight(monthSurface).dx,
@@ -542,6 +542,22 @@ void main() {
       );
       expect(monthSurface, findsOneWidget);
       expect(trendSurface, findsOneWidget);
+      final monthDecoration =
+          tester.widget<Ink>(monthSurface).decoration! as BoxDecoration;
+      final trendDecoration =
+          tester.widget<Ink>(trendSurface).decoration! as BoxDecoration;
+      expect(monthDecoration.color, Colors.transparent);
+      expect(trendDecoration.color, Colors.transparent);
+      final monthButton = tester.widget<TextButton>(monthSelector);
+      final trendButton = tester.widget<TextButton>(trendSelector);
+      expect(
+        monthButton.style?.foregroundColor?.resolve({}),
+        AppTheme.light.extension<ButlerlySemanticColors>()!.secondaryText,
+      );
+      expect(
+        trendButton.style?.foregroundColor?.resolve({}),
+        monthButton.style?.foregroundColor?.resolve({}),
+      );
       expect(tester.getSize(monthSurface).height, lessThan(44));
       expect(tester.getSize(trendSurface).height, lessThan(44));
       expect(
