@@ -60,7 +60,6 @@ class _ToolPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ButlerlyCard(
-    color: context.colors.subtleSurface,
     onTap: () => context.push(tool.route),
     semanticLabel: '${tool.title}, ${tool.description}',
     child: ConstrainedBox(
