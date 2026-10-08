@@ -136,7 +136,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
                     width: ButlerlySize.primaryNavigationAddIconSize,
                     height: ButlerlySize.primaryNavigationAddIconSize,
                     decoration: BoxDecoration(
-                      color: context.colors.interactive,
+                      color: Theme.of(context).colorScheme.primary,
                       shape: BoxShape.circle,
                     ),
                     alignment: Alignment.center,
