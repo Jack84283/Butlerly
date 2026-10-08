@@ -388,6 +388,16 @@ void main() {
       expect(glyph, findsOneWidget);
       expect(tester.getSize(action).width, greaterThanOrEqualTo(44));
       expect(tester.getSize(action).height, greaterThanOrEqualTo(44));
+      final actionButton = tester.widget<TextButton>(action);
+      expect(
+        actionButton.style?.backgroundColor?.resolve({}),
+        Colors.transparent,
+      );
+      expect(
+        actionButton.style?.backgroundColor?.resolve({WidgetState.disabled}),
+        Colors.transparent,
+      );
+      expect(actionButton.style?.side?.resolve({}), BorderSide.none);
       final titleParagraph = tester.renderObject<RenderParagraph>(title);
       final titleLine = titleParagraph
           .getBoxesForSelection(
