@@ -84,12 +84,12 @@ class _InsightsPageState extends State<InsightsPage> {
         ? services<FinanceServices>()
         : null;
     if (finance == null) return;
-    TransactionMasterDataProvider(
-      finance,
-    ).load(languageCode: languageCode).then((snapshot) {
-      if (!mounted || _loadedLanguageCode != languageCode) return;
-      setState(() => _presentation = snapshot.presentation);
-    });
+    TransactionMasterDataProvider(finance)
+        .load(languageCode: languageCode)
+        .then((snapshot) {
+          if (!mounted || _loadedLanguageCode != languageCode) return;
+          setState(() => _presentation = snapshot.presentation);
+        });
   }
 
   Future<ApplicationResult<InsightsEvaluation>> _load(
@@ -419,21 +419,21 @@ class _InsightsContent extends StatelessWidget {
                 ),
                 const SizedBox(height: ButlerlySpacing.standard),
                 ...evaluation.limitations
-                  .fold<Map<String, DataQualityIssue>>(
-                    {},
-                    (issues, issue) =>
-                        issues..putIfAbsent(issue.code, () => issue),
-                  )
-                  .values
-                  .map(
-                    (issue) => Padding(
-                      padding: const EdgeInsets.only(
-                        bottom: ButlerlySpacing.micro,
+                    .fold<Map<String, DataQualityIssue>>(
+                      {},
+                      (issues, issue) =>
+                          issues..putIfAbsent(issue.code, () => issue),
+                    )
+                    .values
+                    .map(
+                      (issue) => Padding(
+                        padding: const EdgeInsets.only(
+                          bottom: ButlerlySpacing.micro,
+                        ),
+                        child: Text(_qualityIssueText(context, issue.code)),
                       ),
-                      child: Text(_qualityIssueText(context, issue.code)),
-                    ),
-                  )
-                  .toList(growable: false),
+                    )
+                    .toList(growable: false),
               ],
             ),
           ),
