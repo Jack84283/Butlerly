@@ -60,13 +60,13 @@ void main() {
   test('dark theme uses the navy and gray surface palette', () {
     final colors = AppTheme.dark.extension<ButlerlySemanticColors>()!;
 
-    expect(colors.background, const Color(0xFF0B162A));
-    expect(colors.subtleSurface, const Color(0xFF0B162A));
-    expect(colors.surface, const Color(0xFF2A2D40));
-    expect(colors.dashboardSurface, const Color(0xFF4A4959));
-    expect(colors.elevatedSurface, const Color(0xFF4A4959));
-    expect(colors.secondaryText, const Color(0xFF83828A));
-    expect(colors.primaryText, const Color(0xFFBCBCBC));
+    expect(colors.background, const Color(0xFF000000));
+    expect(colors.subtleSurface, const Color(0xFF000000));
+    expect(colors.surface, const Color(0xFF383838));
+    expect(colors.dashboardSurface, const Color(0xFF383838));
+    expect(colors.elevatedSurface, const Color(0xFF383838));
+    expect(colors.secondaryText, const Color(0xFFF8F8F8));
+    expect(colors.primaryText, const Color(0xFFFFFFFF));
   });
 
   test('light theme uses the cool gray surface palette', () {
