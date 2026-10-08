@@ -198,9 +198,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final navigationColor =
-        Theme.of(context).navigationBarTheme.backgroundColor ??
-        context.colors.surface;
+    final navigationColor = context.colors.elevatedSurface;
     final bottomInset = MediaQuery.paddingOf(context).bottom;
 
     return Material(
