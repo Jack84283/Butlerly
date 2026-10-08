@@ -148,10 +148,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
                       height:
                           ButlerlySize.primaryNavigationAddIconSize -
                           ButlerlySize.navigationLabelGap,
-                      child: Align(
-                        alignment: Alignment.center,
-                        child: icon,
-                      ),
+                      child: Align(alignment: Alignment.center, child: icon),
                     ),
                     const SizedBox(height: ButlerlySize.navigationLabelGap),
                     SizedBox(
@@ -214,8 +211,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
             constraints.maxWidth,
           );
           return SizedBox(
-            height:
-                navigationHeight + ButlerlySpacing.compact + bottomInset,
+            height: navigationHeight + ButlerlySpacing.compact + bottomInset,
             child: Align(
               alignment: Alignment.topCenter,
               child: Padding(
@@ -232,9 +228,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
                     height: navigationHeight,
                     decoration: BoxDecoration(
                       color: navigationColor,
-                      borderRadius: BorderRadius.circular(
-                        ButlerlyRadius.pill,
-                      ),
+                      borderRadius: BorderRadius.circular(ButlerlyRadius.pill),
                       border: Border.all(
                         width: ButlerlySize.dividerWidth,
                         color: context.colors.cardDivider.withValues(
@@ -268,3 +262,4 @@ class PrimaryBottomNavigation extends StatelessWidget {
     );
   }
 }
+
