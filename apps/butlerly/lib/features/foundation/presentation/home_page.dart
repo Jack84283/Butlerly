@@ -2206,23 +2206,23 @@ class _HomeRecentActivity extends StatelessWidget {
                 color: context.colors.subtleSurface,
                 padding: const EdgeInsets.all(ButlerlySpacing.micro),
                 child: ButlerlyTransactionList(
-                children: [
-                  for (var index = 0; index < transactions.length; index++)
-                    TransactionRow(
-                      key: ValueKey(
-                        'home-recent-transaction-${transactions[index].id}',
+                  children: [
+                    for (var index = 0; index < transactions.length; index++)
+                      TransactionRow(
+                        key: ValueKey(
+                          'home-recent-transaction-${transactions[index].id}',
+                        ),
+                        transaction: transactions[index],
+                        masterData: masterData,
+                        missingCategoryLabel: context.l10n.text('uncategorized'),
+                        showDate: true,
+                        showCategoryPill: true,
+                        compactMoney: true,
+                        compactSpacing: index == 0,
+                        showNavigationIndicator: false,
+                        variant: ButlerlyTransactionRowVariant.dashboard,
+                        onTap: () => onTap(transactions[index]),
                       ),
-                      transaction: transactions[index],
-                      masterData: masterData,
-                      missingCategoryLabel: context.l10n.text('uncategorized'),
-                      showDate: true,
-                      showCategoryPill: true,
-                      compactMoney: true,
-                      compactSpacing: index == 0,
-                      showNavigationIndicator: false,
-                      variant: ButlerlyTransactionRowVariant.dashboard,
-                      onTap: () => onTap(transactions[index]),
-                    ),
                   ],
                 ),
               ),
