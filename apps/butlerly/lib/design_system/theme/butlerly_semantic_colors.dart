@@ -90,7 +90,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
     secondaryText: Color(0xFF383838),
     tertiaryText: Color(0xFF383838),
     cardDivider: Color(0xFFE1E5EB),
-    border: Color(0xFF838383),
+    border: Color(0xFFE1E5EB),
     brand: Color(0xFF7A1E3A),
     brandStrong: Color(0xFF541127),
     interactive: Color(0xFF7A1E3A),
