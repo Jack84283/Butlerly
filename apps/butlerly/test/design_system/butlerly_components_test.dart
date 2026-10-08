@@ -13,9 +13,9 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('transparent icon button is unfilled and tappable in both themes', (
-    tester,
-  ) async {
+  testWidgets(
+    'transparent icon button is unfilled and tappable in both themes',
+    (tester) async {
     for (final theme in [AppTheme.light, AppTheme.dark]) {
       var presses = 0;
       await tester.pumpWidget(
