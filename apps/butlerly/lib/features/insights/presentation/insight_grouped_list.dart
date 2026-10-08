@@ -102,27 +102,26 @@ class InsightGroupedList extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (final group in order)
-          if (grouped[group] case final items? when items.isNotEmpty) ...[
-            ButlerlySectionHeader(title: _groupTitle(context, group, items)),
-            if (_groupSubtitle(context, group, items) case final subtitle?) ...[
-              const SizedBox(height: ButlerlySpacing.micro),
-              Text(
-                subtitle,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: ButlerlySpacing.small),
-            ],
-            if (groupedVisualizations[group] case final chartResults?
-                when chartResults.isNotEmpty)
-              InsightGroupVisualizations(
-                results: chartResults,
-                masterData: masterData,
-              ),
+          if (grouped[group] case final items? when items.isNotEmpty)
             ButlerlyCard(
+              semanticLabel: _groupTitle(context, group, items),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  ButlerlyCardHeader(
+                    title: _groupTitle(context, group, items),
+                    subtitle: _groupSubtitle(context, group, items),
+                  ),
+                  if (groupedVisualizations[group] case final chartResults?
+                      when chartResults.isNotEmpty) ...[
+                    const SizedBox(height: ButlerlySpacing.standard),
+                    InsightGroupVisualizations(
+                      results: chartResults,
+                      masterData: masterData,
+                      embedded: true,
+                    ),
+                  ],
+                  const SizedBox(height: ButlerlySpacing.standard),
                   for (var index = 0; index < items.length; index++) ...[
                     Builder(
                       builder: (context) {
@@ -152,7 +151,6 @@ class InsightGroupedList extends StatelessWidget {
                 ],
               ),
             ),
-          ],
       ],
     );
   }
