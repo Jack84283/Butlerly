@@ -1008,7 +1008,7 @@ void main() {
 
     expect(find.text('Lunch'), findsAtLeastNWidgets(1));
     expect(find.text('Bus'), findsNothing);
-    expect(find.text('1 transaction'), findsOneWidget);
+    expect(find.text('1 transaction'), findsNWidgets(2));
   });
 
   testWidgets('Search can apply the undated transaction filter', (
@@ -1150,12 +1150,12 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.search);
     await tester.pumpAndSettle();
     expect(find.text('Keyboard Search Match'), findsAtLeastNWidgets(1));
-    expect(find.text('1 transaction'), findsOneWidget);
+    expect(find.text('1 transaction'), findsNWidgets(2));
 
     await tester.tap(find.byIcon(Icons.close_rounded));
     await tester.pumpAndSettle();
     expect(find.text('Keyboard Search Match'), findsAtLeastNWidgets(1));
-    expect(find.text('1 transaction'), findsOneWidget);
+    expect(find.text('1 transaction'), findsNWidgets(2));
     expect(find.byIcon(Icons.close_rounded), findsNothing);
   });
 
