@@ -77,7 +77,7 @@ void main() {
     expect(colors.subtleSurface, const Color(0xFFF8F8F8));
     expect(colors.dashboardSurface, const Color(0xFFFDFDFD));
     expect(colors.elevatedSurface, const Color(0xFFF8F8F8));
-    expect(colors.cardDivider, const Color(0xFF838383));
+    expect(colors.cardDivider, const Color(0xFFE1E5EB));
     expect(colors.primaryText, const Color(0xFF000000));
     expect(colors.secondaryText, const Color(0xFF383838));
   });
