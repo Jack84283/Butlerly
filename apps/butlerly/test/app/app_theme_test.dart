@@ -46,7 +46,6 @@ void main() {
     }
   });
 
-
   test('dark secondary text meets contrast on raised surfaces', () {
     final theme = AppTheme.dark;
     final colors = theme.extension<ButlerlySemanticColors>()!;
