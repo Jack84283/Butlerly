@@ -60,10 +60,10 @@ void main() {
   test('dark theme uses the navy and gray surface palette', () {
     final colors = AppTheme.dark.extension<ButlerlySemanticColors>()!;
 
-    expect(colors.background, const Color(0xFF000000));
-    expect(colors.subtleSurface, const Color(0xFF000000));
+    expect(colors.background, const Color(0xFF030405));
+    expect(colors.subtleSurface, const Color(0xFF030405));
     expect(colors.surface, const Color(0xFF383838));
-    expect(colors.dashboardSurface, const Color(0xFF383838));
+    expect(colors.dashboardSurface, const Color(0xFF141516));
     expect(colors.elevatedSurface, const Color(0xFF383838));
     expect(colors.secondaryText, const Color(0xFFF8F8F8));
     expect(colors.primaryText, const Color(0xFFFFFFFF));
@@ -72,10 +72,10 @@ void main() {
   test('light theme uses the cool gray surface palette', () {
     final colors = AppTheme.light.extension<ButlerlySemanticColors>()!;
 
-    expect(colors.background, const Color(0xFFFFFFFF));
+    expect(colors.background, const Color(0xFFF2F3F9));
     expect(colors.surface, const Color(0xFFF8F8F8));
     expect(colors.subtleSurface, const Color(0xFFF8F8F8));
-    expect(colors.dashboardSurface, const Color(0xFFF8F8F8));
+    expect(colors.dashboardSurface, const Color(0xFFFDFDFD));
     expect(colors.elevatedSurface, const Color(0xFFF8F8F8));
     expect(colors.cardDivider, const Color(0xFF838383));
     expect(colors.primaryText, const Color(0xFF000000));
