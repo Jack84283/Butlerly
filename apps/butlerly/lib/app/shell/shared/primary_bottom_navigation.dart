@@ -86,6 +86,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
     double labelSlotHeight,
   ) {
     final selected = currentIndex == branchIndex;
+    final isAddAction = branchIndex == 2;
     final visibleLabel = compactNavigationLabel(
       context,
       destination,
@@ -103,19 +104,22 @@ class PrimaryBottomNavigation extends StatelessWidget {
         : destination.icon;
     final icon = IconTheme(
       data: IconThemeData(
-        size: ButlerlySize.standardIcon,
-        color: selected
+        size: isAddAction
+            ? ButlerlySize.primaryNavigationAddGlyphSize
+            : ButlerlySize.standardIcon,
+        color: isAddAction
+            ? Theme.of(context).colorScheme.onPrimary
+            : selected
             ? context.colors.interactive
             : context.colors.secondaryText,
       ),
       child: baseIcon,
     );
-    final displayedIcon = icon;
     return Semantics(
       button: true,
       selected: selected,
       onTap: () => onSelected(branchIndex),
-      label: branchIndex == 2
+      label: isAddAction
           ? context.l10n.text('addTransactionAction')
           : destination.label,
       excludeSemantics: true,
@@ -123,33 +127,47 @@ class PrimaryBottomNavigation extends StatelessWidget {
         onTap: () => onSelected(branchIndex),
         child: SizedBox(
           height: double.infinity,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
-                key: branchIndex == 2
-                    ? const ValueKey('primary-navigation-add-button')
-                    : null,
-                height:
-                    ButlerlySize.primaryNavigationAddIconSize -
-                    ButlerlySize.navigationLabelGap,
-                child: Align(alignment: Alignment.center, child: displayedIcon),
-              ),
-              const SizedBox(height: ButlerlySize.navigationLabelGap),
-              SizedBox(
-                key: ValueKey('primary-navigation-label-$branchIndex'),
-                width: double.infinity,
-                height: labelSlotHeight,
-                child: Text(
-                  visibleLabel,
-                  softWrap: true,
-                  overflow: TextOverflow.visible,
-                  textAlign: TextAlign.center,
-                  style: labelStyle,
+          child: isAddAction
+              ? Center(
+                  child: Container(
+                    key: const ValueKey('primary-navigation-add-button'),
+                    width: ButlerlySize.primaryNavigationAddIconSize,
+                    height: ButlerlySize.primaryNavigationAddIconSize,
+                    decoration: BoxDecoration(
+                      color: context.colors.interactive,
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: icon,
+                  ),
+                )
+              : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      height:
+                          ButlerlySize.primaryNavigationAddIconSize -
+                          ButlerlySize.navigationLabelGap,
+                      child: Align(
+                        alignment: Alignment.center,
+                        child: icon,
+                      ),
+                    ),
+                    const SizedBox(height: ButlerlySize.navigationLabelGap),
+                    SizedBox(
+                      key: ValueKey('primary-navigation-label-$branchIndex'),
+                      width: double.infinity,
+                      height: labelSlotHeight,
+                      child: Text(
+                        visibleLabel,
+                        softWrap: true,
+                        overflow: TextOverflow.visible,
+                        textAlign: TextAlign.center,
+                        style: labelStyle,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -173,7 +191,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
               branchIndex,
             ),
       ],
-      addLabel: compactNavigationLabel(context, destinations[2]!, 2),
+      addLabel: null,
       labelStyle: labelStyle,
       textDirection: Directionality.of(context),
     );
@@ -183,11 +201,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
   Widget build(BuildContext context) {
     final navigationColor =
         Theme.of(context).navigationBarTheme.backgroundColor ??
-        context.colors.background;
-    final divider = BorderSide(
-      width: ButlerlySize.dividerWidth,
-      color: context.colors.cardDivider,
-    );
+        context.colors.surface;
     final bottomInset = MediaQuery.paddingOf(context).bottom;
 
     return Material(
@@ -200,27 +214,37 @@ class PrimaryBottomNavigation extends StatelessWidget {
             constraints.maxWidth,
           );
           return SizedBox(
-            height: navigationHeight + bottomInset,
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: DecoratedBox(
-                    key: const ValueKey('primary-navigation-base'),
+            height:
+                navigationHeight + ButlerlySpacing.compact + bottomInset,
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Padding(
+                padding: const EdgeInsets.only(
+                  top: ButlerlySpacing.compact,
+                  left: ButlerlySpacing.standard,
+                  right: ButlerlySpacing.standard,
+                ),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 390),
+                  child: Container(
+                    key: const ValueKey('primary-navigation-pill'),
+                    width: double.infinity,
+                    height: navigationHeight,
                     decoration: BoxDecoration(
                       color: navigationColor,
-                      border: Border(top: divider),
+                      borderRadius: BorderRadius.circular(
+                        ButlerlyRadius.pill,
+                      ),
+                      border: Border.all(
+                        width: ButlerlySize.dividerWidth,
+                        color: context.colors.cardDivider.withValues(
+                          alpha: ButlerlyOpacity.primaryNavigationBorder,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top: 0,
-                  height: navigationHeight,
-                  child: SizedBox(
-                    key: const ValueKey('primary-navigation-content'),
-                    height: navigationHeight,
+                    clipBehavior: Clip.antiAlias,
                     child: Row(
+                      key: const ValueKey('primary-navigation-content'),
                       children: [
                         for (final branchIndex in visualBranchIndexes)
                           Expanded(
@@ -236,7 +260,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
           );
         },
