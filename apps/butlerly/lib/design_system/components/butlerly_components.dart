@@ -366,6 +366,65 @@ class ButlerlyCardHeader extends StatelessWidget {
   );
 }
 
+/// Icon-only action without a filled surface or border in either theme.
+///
+/// Explicitly overrides the app-wide filled TextButton theme while preserving
+/// the standard 44px touch target and accessible button semantics.
+class ButlerlyTransparentIconButton extends StatelessWidget {
+  const ButlerlyTransparentIconButton({
+    required this.icon,
+    required this.semanticLabel,
+    this.onPressed,
+    this.buttonKey,
+    this.iconSize = 22,
+    this.alignment = Alignment.center,
+    super.key,
+  });
+
+  final IconData icon;
+  final String semanticLabel;
+  final VoidCallback? onPressed;
+  final Key? buttonKey;
+  final double iconSize;
+  final AlignmentGeometry alignment;
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+    message: semanticLabel,
+    child: Semantics(
+      button: true,
+      enabled: onPressed != null,
+      label: semanticLabel,
+      child: TextButton(
+        key: buttonKey,
+        onPressed: onPressed,
+        style: TextButton.styleFrom(
+          foregroundColor: context.colors.secondaryText,
+          disabledForegroundColor: context.colors.tertiaryText,
+          backgroundColor: Colors.transparent,
+          disabledBackgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          side: BorderSide.none,
+          alignment: alignment,
+          fixedSize: const Size.square(ButlerlySize.minimumTarget),
+          minimumSize: const Size.square(ButlerlySize.minimumTarget),
+          padding: EdgeInsets.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        child: SizedBox.square(
+          dimension: ButlerlySize.minimumTarget,
+          child: Align(
+            alignment: alignment,
+            child: Icon(icon, size: iconSize),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 /// Shared compact bordered selector used by dashboard controls.
 ///
 /// The selector keeps its visual treatment independent of the field's meaning

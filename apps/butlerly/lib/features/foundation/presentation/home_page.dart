@@ -497,30 +497,12 @@ Widget _homeEllipsisAction({
   required Key key,
   required String semanticLabel,
   required VoidCallback? onPressed,
-}) => Tooltip(
-  message: semanticLabel,
-  child: Semantics(
-    button: true,
-    label: semanticLabel,
-    child: TextButton(
-      key: key,
-      onPressed: onPressed,
-      style: TextButton.styleFrom(
-        alignment: Alignment.topCenter,
-        fixedSize: const Size(44, 44),
-        minimumSize: const Size(44, 44),
-        padding: EdgeInsets.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
-      child: SizedBox.square(
-        dimension: ButlerlySize.minimumTarget,
-        child: const Align(
-          alignment: Alignment.topCenter,
-          child: Icon(Icons.more_horiz_rounded, size: 22),
-        ),
-      ),
-    ),
-  ),
+}) => ButlerlyTransparentIconButton(
+  buttonKey: key,
+  icon: Icons.more_horiz_rounded,
+  semanticLabel: semanticLabel,
+  onPressed: onPressed,
+  alignment: Alignment.topCenter,
 );
 
 double _homeHeaderExtent(
