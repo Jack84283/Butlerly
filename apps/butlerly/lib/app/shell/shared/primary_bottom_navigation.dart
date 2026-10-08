@@ -43,7 +43,9 @@ double compactNavigationHeightForLabels({
   }
 
   final requiredHeight =
-      ButlerlySize.primaryNavigationAddIconSize + maximumLabelHeight;
+      ButlerlySize.primaryNavigationAddIconSize +
+      maximumLabelHeight +
+      2 * ButlerlySize.dividerWidth;
 
   return requiredHeight < ButlerlySize.navigationBarHeight
       ? ButlerlySize.navigationBarHeight
@@ -247,7 +249,8 @@ class PrimaryBottomNavigation extends StatelessWidget {
                               destinations[branchIndex]!,
                               branchIndex,
                               navigationHeight -
-                                  ButlerlySize.primaryNavigationAddIconSize,
+                                  ButlerlySize.primaryNavigationAddIconSize -
+                                  2 * ButlerlySize.dividerWidth,
                             ),
                           ),
                       ],
