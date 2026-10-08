@@ -119,6 +119,7 @@ void main() {
     final addDecoration =
         tester.widget<Container>(addButton).decoration! as BoxDecoration;
     expect(addDecoration.shape, BoxShape.circle);
+    expect(addDecoration.color, AppTheme.light.colorScheme.primary);
     expect(
       tester.getSize(addButton),
       Size.square(ButlerlySize.primaryNavigationAddIconSize),
