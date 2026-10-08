@@ -1322,7 +1322,7 @@ void main() {
       expect(
         tester.getTopLeft(find.text('Home Market')).dy -
             tester.getBottomRight(headerAction).dy,
-        closeTo(ButlerlySpacing.small, 0.01),
+        closeTo(ButlerlySpacing.compact, 0.01),
         reason: 'Keep the 44 px trailing action target clear of the title',
       );
     },
