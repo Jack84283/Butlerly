@@ -115,6 +115,10 @@ void main() {
     final addDecoration =
         tester.widget<Container>(addButton).decoration! as BoxDecoration;
     expect(addDecoration.shape, BoxShape.circle);
+    expect(
+      tester.getSize(addButton),
+      Size.square(ButlerlySize.primaryNavigationAddIconSize),
+    );
     expect(find.text('Add'), findsNothing);
 
     await tester.tap(find.text('Txns'));
