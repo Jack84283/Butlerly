@@ -406,6 +406,8 @@ class ButlerlyCompactSelector extends StatelessWidget {
           foregroundColor: transparent
               ? context.colors.secondaryText
               : context.colors.primaryText,
+          backgroundColor: transparent ? Colors.transparent : null,
+          disabledBackgroundColor: transparent ? Colors.transparent : null,
           minimumSize: const Size(0, ButlerlySize.minimumTarget),
           padding: EdgeInsets.zero,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
