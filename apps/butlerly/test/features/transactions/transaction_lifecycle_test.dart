@@ -1386,6 +1386,14 @@ void main() {
       find.descendant(of: monthCard, matching: find.byType(ExpansionTile)),
       findsOneWidget,
     );
+    expect(
+      find.descendant(of: monthCard, matching: find.text('2 transactions')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: monthCard, matching: find.text('\$43.00')),
+      findsOneWidget,
+    );
     expect(find.byType(ButlerlyRecordRow), findsNWidgets(2));
     final rows = tester.widgetList<ButlerlyRecordRow>(
       find.byType(ButlerlyRecordRow),
