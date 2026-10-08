@@ -87,14 +87,19 @@ void main() {
         of: find.byKey(const Key('home-month-selector')),
         matching: find.byType(Ink),
       );
-      final monthDecoration = tester.widget<Ink>(monthSurface).decoration;
+      final monthDecoration =
+          tester.widget<Ink>(monthSurface).decoration! as BoxDecoration;
       expect(
-        monthDecoration,
-        isA<BoxDecoration>(),
+        monthDecoration.color,
+        AppTheme.light.colorScheme.error.withValues(alpha: 0.05),
+      );
+      expect(monthDecoration.border, isNull);
+      final monthButton = tester.widget<TextButton>(
+        find.byKey(const Key('home-month-selector')),
       );
       expect(
-        (monthDecoration! as BoxDecoration).color,
-        Colors.transparent,
+        monthButton.style?.foregroundColor?.resolve({}),
+        AppTheme.light.colorScheme.error,
       );
       expect(
         tester.getTopRight(monthSurface).dx,
