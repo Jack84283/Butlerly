@@ -41,7 +41,7 @@ void main() {
     final darkBodySmallColor = darkTheme.textTheme.bodySmall!.color!;
     final darkHintColor = darkTheme.inputDecorationTheme.hintStyle!.color!;
 
-    expect(darkBodySmallColor, darkColors.tertiaryText);
+    expect(darkBodySmallColor, darkColors.primaryText);
     expect(darkHintColor, darkColors.tertiaryText);
     expect(
       _contrastRatio(darkBodySmallColor, darkColors.background),
@@ -49,6 +49,10 @@ void main() {
     );
     expect(
       _contrastRatio(darkBodySmallColor, darkColors.subtleSurface),
+      greaterThanOrEqualTo(ButlerlyAccessibility.minimumContrastRatio),
+    );
+    expect(
+      _contrastRatio(darkBodySmallColor, darkColors.dashboardSurface),
       greaterThanOrEqualTo(ButlerlyAccessibility.minimumContrastRatio),
     );
   });
