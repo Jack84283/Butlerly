@@ -42,7 +42,7 @@ void main() {
     );
     expect(
       AppTheme.light.extension<ButlerlySemanticColors>()?.cardDivider,
-      const Color(0xFF838383),
+      const Color(0xFFE1E5EB),
     );
     expect(
       AppTheme.dark.extension<ButlerlySemanticColors>()?.cardDivider,
