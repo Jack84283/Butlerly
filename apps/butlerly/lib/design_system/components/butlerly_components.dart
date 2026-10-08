@@ -623,10 +623,8 @@ class ButlerlyStatusChip extends StatelessWidget {
             ],
             Text(
               label,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w600,
-              ),
+              style: Theme.of(context).textTheme.labelLarge
+                  ?.copyWith(color: color, fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -813,9 +811,7 @@ class ButlerlyDestructiveButton extends StatelessWidget {
     final colors = context.colors;
     final darkMode = Theme.of(context).brightness == Brightness.dark;
     final style = FilledButton.styleFrom(
-      backgroundColor: colors.error.withValues(
-        alpha: darkMode ? 0.14 : 0.05,
-      ),
+      backgroundColor: colors.error.withValues(alpha: darkMode ? 0.14 : 0.05),
       foregroundColor: colors.error,
       disabledBackgroundColor: colors.error.withValues(alpha: 0.08),
       disabledForegroundColor: colors.tertiaryText,
@@ -1629,9 +1625,8 @@ class ButlerlyEmptyState extends StatelessWidget {
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: context.colors.secondaryText,
-                ),
+                style: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(color: context.colors.secondaryText),
               ),
               if (actionLabel != null) ...[
                 const SizedBox(height: ButlerlySpacing.section),
