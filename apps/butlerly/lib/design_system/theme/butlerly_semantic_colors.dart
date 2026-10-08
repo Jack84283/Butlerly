@@ -69,7 +69,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
     border: Color(0xFF4A4959),
     brand: Color(0xFF7A1E3A),
     brandStrong: Color(0xFF541127),
-    interactive: Color(0xFFC76F8B),
+    interactive: Color(0xFFBCBCBC),
     controlPrimary: Color(0xFF541127),
     interactiveStrong: Color(0xFF9A3655),
     success: Color(0xFF4DBA7A),
@@ -77,7 +77,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
     error: Color(0xFFE16C72),
     info: Color(0xFF6DA7D8),
     selection: Color(0xFF24141A),
-    review: Color(0xFFC76F8B),
+    review: Color(0xFFBCBCBC),
   );
 
   static const light = ButlerlySemanticColors(
