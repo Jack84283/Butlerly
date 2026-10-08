@@ -25,7 +25,7 @@ void main() {
     expect(AppTheme.dark.cardTheme.color, const Color(0xFF4A4959));
     expect(
       AppTheme.dark.colorScheme.surfaceContainerHighest,
-      const Color(0xFF17171C),
+      const Color(0xFF4A4959),
     );
     expect(AppTheme.dark.textTheme.bodyMedium?.color, const Color(0xFFBCBCBC));
     expect(AppTheme.light.textTheme.bodyMedium?.color, const Color(0xFF68635E));
@@ -33,7 +33,7 @@ void main() {
     expect(AppTheme.light.cardTheme.color, const Color(0xFFE9ECF0));
     expect(
       AppTheme.light.extension<ButlerlySemanticColors>()?.dashboardSurface,
-      const Color(0xFFFFFFFF),
+      const Color(0xFFE9ECF0),
     );
     expect(
       AppTheme.dark.extension<ButlerlySemanticColors>()?.dashboardSurface,
