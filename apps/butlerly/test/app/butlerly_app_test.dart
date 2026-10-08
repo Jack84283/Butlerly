@@ -27,7 +27,7 @@ void main() {
       AppTheme.dark.colorScheme.surfaceContainerHighest,
       const Color(0xFF4A4959),
     );
-    expect(AppTheme.dark.textTheme.bodyMedium?.color, const Color(0xFFBCBCBC));
+    expect(AppTheme.dark.textTheme.bodyMedium?.color, const Color(0xFF83828A));
     expect(AppTheme.light.textTheme.bodyMedium?.color, const Color(0xFF68635E));
     expect(AppTheme.light.textTheme.bodySmall?.color, const Color(0xFF68635E));
     expect(AppTheme.light.cardTheme.color, const Color(0xFFE9ECF0));
