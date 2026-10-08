@@ -459,17 +459,20 @@ class _TransactionsPageState extends State<TransactionsPage> {
                     Row(
                       children: [
                         TransactionCountText(count: visible.length),
-                        const Spacer(),
-                        Flexible(
-                          child: Text(
-                            _transactionsTotalAmount(context, visible),
-                            textAlign: TextAlign.end,
-                            style: Theme.of(
-                              context,
-                            ).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(
+                        const SizedBox(width: ButlerlySpacing.compact),
+                        Expanded(
+                          child: Align(
+                            alignment: AlignmentDirectional.centerEnd,
+                            child: Text(
+                              _transactionsTotalAmount(context, visible),
+                              textAlign: TextAlign.end,
+                              style: Theme.of(
                                 context,
-                              ).colorScheme.onSurfaceVariant,
+                              ).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
                             ),
                           ),
                         ),
