@@ -65,6 +65,19 @@ void main() {
     expect(colors.primaryText, const Color(0xFFBCBCBC));
   });
 
+  test('light theme uses the cool gray surface palette', () {
+    final colors = AppTheme.light.extension<ButlerlySemanticColors>()!;
+
+    expect(colors.background, const Color(0xFFFBECFD));
+    expect(colors.surface, const Color(0xFFF2F3F5));
+    expect(colors.subtleSurface, const Color(0xFFF2F3F5));
+    expect(colors.dashboardSurface, const Color(0xFFE9ECF0));
+    expect(colors.elevatedSurface, const Color(0xFFE1E5EB));
+    expect(colors.cardDivider, const Color(0xFFD8DDE6));
+    expect(colors.primaryText, const Color(0xFF19181A));
+    expect(colors.secondaryText, const Color(0xFF68635E));
+  });
+
   test('editorial placeholder keeps cross-platform serif fallbacks', () {
     expect(ButlerlyTypography.editorialFontFamily, 'Times New Roman');
     expect(
