@@ -456,7 +456,25 @@ class _TransactionsPageState extends State<TransactionsPage> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    TransactionCountText(count: visible.length),
+                    Row(
+                      children: [
+                        TransactionCountText(count: visible.length),
+                        const Spacer(),
+                        Flexible(
+                          child: Text(
+                            _transactionsTotalAmount(context, visible),
+                            textAlign: TextAlign.end,
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: ButlerlySpacing.compact),
                     TransactionRecordList(
                       transactions: visible,
