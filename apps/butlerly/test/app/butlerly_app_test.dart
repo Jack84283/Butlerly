@@ -37,7 +37,7 @@ void main() {
     );
     expect(
       AppTheme.dark.extension<ButlerlySemanticColors>()?.dashboardSurface,
-      const Color(0xFF17171C),
+      const Color(0xFF4A4959),
     );
     expect(
       AppTheme.light.extension<ButlerlySemanticColors>()?.cardDivider,
