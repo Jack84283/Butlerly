@@ -1,5 +1,6 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -89,14 +90,17 @@ void main() {
       );
       final monthDecoration =
           tester.widget<Ink>(monthSurface).decoration! as BoxDecoration;
-      expect(monthDecoration.color, Colors.transparent);
+      expect(
+        monthDecoration.color,
+        AppTheme.light.extension<ButlerlySemanticColors>()!.subtleSurface,
+      );
       expect(monthDecoration.border, isNotNull);
       final monthButton = tester.widget<TextButton>(
         find.byKey(const Key('home-month-selector')),
       );
       expect(
         monthButton.style?.foregroundColor?.resolve({}),
-        AppTheme.light.textButtonTheme.style?.foregroundColor?.resolve({}),
+        AppTheme.light.extension<ButlerlySemanticColors>()!.primaryText,
       );
       expect(
         tester.getTopRight(monthSurface).dx,
@@ -542,7 +546,7 @@ void main() {
       expect(tester.getSize(trendSurface).height, lessThan(44));
       expect(
         tester.getSize(trendSurface).height,
-        lessThan(tester.getSize(monthSurface).height),
+        closeTo(tester.getSize(monthSurface).height, 0.1),
       );
 
       final headerTitle = find.descendant(
