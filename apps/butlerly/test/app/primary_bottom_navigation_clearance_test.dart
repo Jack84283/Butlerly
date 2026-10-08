@@ -203,9 +203,14 @@ void main() {
             final labelSlot = find.byKey(
               ValueKey('primary-navigation-label-$branchIndex'),
             );
-            final paragraph = tester.renderObject(
-              find.descendant(of: labelSlot, matching: find.byType(Text)),
-            ) as RenderParagraph;
+            final paragraph =
+                tester.renderObject(
+                      find.descendant(
+                        of: labelSlot,
+                        matching: find.byType(Text),
+                      ),
+                    )
+                    as RenderParagraph;
             final label = tester.widget<Text>(
               find.descendant(of: labelSlot, matching: find.byType(Text)),
             );
