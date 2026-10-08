@@ -65,7 +65,7 @@ void main() {
     );
   });
 
-  test('compact navigation stays at 64px at normal text scale', () {
+  test('compact navigation stays at 48px at normal text scale', () {
     final labelStyle = ButlerlyTypography.navigationLabel(
       AppTheme.light.textTheme.labelSmall!,
       color: Colors.black,
@@ -81,8 +81,8 @@ void main() {
       labelStyle: labelStyle,
       textDirection: TextDirection.ltr,
     );
-    expect(ButlerlySize.navigationBarHeight, 64);
-    expect(ButlerlySize.primaryNavigationAddIconSize, 40);
+    expect(ButlerlySize.navigationBarHeight, 48);
+    expect(ButlerlySize.primaryNavigationAddIconSize, 32);
     expect(height, ButlerlySize.navigationBarHeight);
   });
 

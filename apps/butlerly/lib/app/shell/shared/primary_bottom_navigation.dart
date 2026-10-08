@@ -149,7 +149,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
                     SizedBox(
                       height:
                           ButlerlySize.primaryNavigationAddIconSize -
-                          ButlerlySize.navigationLabelGap,
+                          2 * ButlerlySize.navigationLabelGap,
                       child: Align(alignment: Alignment.center, child: icon),
                     ),
                     const SizedBox(height: ButlerlySize.navigationLabelGap),
@@ -247,8 +247,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
                               destinations[branchIndex]!,
                               branchIndex,
                               navigationHeight -
-                                  ButlerlySize.primaryNavigationAddIconSize -
-                                  2 * ButlerlySize.dividerWidth,
+                                  ButlerlySize.primaryNavigationAddIconSize,
                             ),
                           ),
                       ],
