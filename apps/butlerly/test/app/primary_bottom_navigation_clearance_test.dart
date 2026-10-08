@@ -2,6 +2,7 @@ import 'dart:ui' show SemanticsAction, Tristate;
 
 import 'package:butlerly/app/shell/compact/compact_primary_shell.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,13 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('pill surface uses a distinct elevated color in both themes', () {
+    for (final theme in [AppTheme.light, AppTheme.dark]) {
+      final colors = theme.extension<ButlerlySemanticColors>()!;
+      expect(colors.elevatedSurface, isNot(colors.background));
+    }
+  });
+
   testWidgets('compact footer floats its destinations in a centered pill', (
     tester,
   ) async {
@@ -106,7 +114,11 @@ void main() {
         0.01,
       ),
     );
-    expect(ButlerlySize.navigationBarHeight, 72);
+    expect(ButlerlySize.navigationBarHeight, 64);
+    expect(
+      pillDecoration.color,
+      AppTheme.light.extension<ButlerlySemanticColors>()!.elevatedSurface,
+    );
     expect(
       pillDecoration.borderRadius,
       BorderRadius.circular(ButlerlyRadius.pill),
