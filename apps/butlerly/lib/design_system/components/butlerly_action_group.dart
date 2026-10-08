@@ -17,7 +17,7 @@ class ButlerlyActionItem {
   final VoidCallback onTap;
 }
 
-/// Groups related actions on a subtle surface with consistent dividers.
+/// Groups related actions on the standard Butlerly card surface with consistent dividers.
 class ButlerlyActionGroup extends StatelessWidget {
   const ButlerlyActionGroup({required this.actions, super.key});
 
