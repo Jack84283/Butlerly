@@ -1,3 +1,4 @@
+import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter/material.dart';
@@ -26,8 +27,8 @@ class ButlerlyActionGroup extends StatelessWidget {
   static const double _dividerInset = ButlerlySpacing.standard;
 
   @override
-  Widget build(BuildContext context) => Card(
-    clipBehavior: Clip.antiAlias,
+  Widget build(BuildContext context) => ButlerlyCard(
+    padding: EdgeInsets.zero,
     child: Column(
       children: [
         for (var index = 0; index < actions.length; index++) ...[
