@@ -121,7 +121,6 @@ class InsightGroupedList extends StatelessWidget {
                 masterData: masterData,
               ),
             ButlerlyCard(
-              color: Theme.of(context).scaffoldBackgroundColor,
               child: Column(
                 children: [
                   for (var index = 0; index < items.length; index++) ...[
