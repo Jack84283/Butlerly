@@ -763,6 +763,8 @@ class _HomeHeader extends StatelessWidget {
           semanticLabel: selectorMonthLabel,
           onPressed: onMonthTap,
           alignVisualEnd: true,
+          denseSurface: true,
+          transparent: true,
         );
         final availableWidth = constraints.maxWidth;
         final stackedTopRow =
@@ -1369,6 +1371,7 @@ class _SpendingTrend extends StatelessWidget {
           : () => onRangeChanged!(rangeCount),
       alignVisualEnd: true,
       denseSurface: true,
+      transparent: true,
     );
     final largeText = MediaQuery.textScalerOf(context).scale(14) > 20;
     return ButlerlyCard(
@@ -2192,25 +2195,43 @@ class _HomeRecentActivity extends StatelessWidget {
         else if (transactions.isEmpty)
           const _HomeEmptyTransactions()
         else
-          ButlerlyTransactionList(
-            children: [
-              for (var index = 0; index < transactions.length; index++)
-                TransactionRow(
-                  key: ValueKey(
-                    'home-recent-transaction-${transactions[index].id}',
-                  ),
-                  transaction: transactions[index],
-                  masterData: masterData,
-                  missingCategoryLabel: context.l10n.text('uncategorized'),
-                  showDate: true,
-                  showCategoryPill: true,
-                  compactMoney: true,
-                  compactSpacing: index == 0,
-                  showNavigationIndicator: false,
-                  variant: ButlerlyTransactionRowVariant.dashboard,
-                  onTap: () => onTap(transactions[index]),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              ButlerlySpacing.compact,
+              ButlerlySpacing.none,
+              ButlerlySpacing.compact,
+              ButlerlySpacing.micro,
+            ),
+            child: Transform.translate(
+              offset: const Offset(0, -ButlerlySpacing.micro),
+              child: ButlerlyCard(
+                key: const ValueKey('home-recent-transactions-inner-card'),
+                color: context.colors.subtleSurface,
+                padding: const EdgeInsets.all(ButlerlySpacing.micro),
+                child: ButlerlyTransactionList(
+                  children: [
+                    for (var index = 0; index < transactions.length; index++)
+                      TransactionRow(
+                        key: ValueKey(
+                          'home-recent-transaction-${transactions[index].id}',
+                        ),
+                        transaction: transactions[index],
+                        masterData: masterData,
+                        missingCategoryLabel: context.l10n.text(
+                          'uncategorized',
+                        ),
+                        showDate: true,
+                        showCategoryPill: true,
+                        compactMoney: true,
+                        compactSpacing: index == 0,
+                        showNavigationIndicator: false,
+                        variant: ButlerlyTransactionRowVariant.dashboard,
+                        onTap: () => onTap(transactions[index]),
+                      ),
+                  ],
                 ),
-            ],
+              ),
+            ),
           ),
       ],
     ),

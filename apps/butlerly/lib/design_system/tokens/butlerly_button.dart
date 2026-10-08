@@ -11,5 +11,5 @@ abstract final class ButlerlyButtonTokens {
   static const compactMinimumHeight = ButlerlySize.minimumTarget;
   static const compactHorizontalPadding = ButlerlySpacing.small;
   static const compactVerticalPadding = ButlerlySpacing.compact;
-  static const radius = ButlerlyRadius.standard;
+  static const radius = ButlerlyRadius.full;
 }

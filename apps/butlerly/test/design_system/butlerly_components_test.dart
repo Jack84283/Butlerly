@@ -628,27 +628,29 @@ void main() {
   testWidgets('destructive action uses the centralized error treatment', (
     tester,
   ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.light,
-        home: Scaffold(
-          body: ButlerlyDestructiveButton(
-            onPressed: () {},
-            child: const Text('Delete'),
+    for (final theme in [AppTheme.light, AppTheme.dark]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          themeAnimationDuration: Duration.zero,
+          home: Scaffold(
+            body: ButlerlyDestructiveButton(
+              onPressed: () {},
+              child: const Text('Delete'),
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    final button = tester.widget<FilledButton>(find.byType(FilledButton));
-    final style = button.style!;
-    expect(
-      style.backgroundColor?.resolve({}),
-      AppTheme.light.colorScheme.error,
-    );
-    expect(
-      style.foregroundColor?.resolve({}),
-      AppTheme.light.colorScheme.onError,
-    );
+      final colors = theme.extension<ButlerlySemanticColors>()!;
+      final button = tester.widget<FilledButton>(find.byType(FilledButton));
+      final style = button.style!;
+      final alpha = theme.brightness == Brightness.dark ? 0.14 : 0.05;
+      expect(
+        style.backgroundColor?.resolve({}),
+        colors.error.withValues(alpha: alpha),
+      );
+      expect(style.foregroundColor?.resolve({}), colors.error);
+    }
   });
 }

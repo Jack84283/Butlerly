@@ -832,6 +832,10 @@ void main() {
 
     await tester.tap(find.text('Add transaction manually'));
     await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('transaction-direction-income')),
+    );
+    await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const ValueKey('transaction-amount-field')),
       '12.50',
@@ -861,6 +865,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Lunch'), findsOneWidget);
+    expect(
+      repository.values.values.single.direction,
+      TransactionDirection.income,
+    );
     expect(repository.values.values.single.notes, 'Team meal');
     await tester.tap(find.text('Lunch'));
     await tester.pumpAndSettle();
@@ -1314,7 +1322,8 @@ void main() {
       expect(
         tester.getTopLeft(find.text('Home Market')).dy -
             tester.getBottomRight(headerAction).dy,
-        closeTo(ButlerlySpacing.micro, 0.01),
+        closeTo(ButlerlySpacing.compact, 0.01),
+        reason: 'Keep the 44 px trailing action target clear of the title',
       );
     },
   );

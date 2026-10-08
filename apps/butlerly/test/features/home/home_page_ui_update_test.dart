@@ -1,5 +1,6 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -86,6 +87,17 @@ void main() {
       final monthSurface = find.descendant(
         of: find.byKey(const Key('home-month-selector')),
         matching: find.byType(Ink),
+      );
+      final monthDecoration =
+          tester.widget<Ink>(monthSurface).decoration! as BoxDecoration;
+      expect(monthDecoration.color, Colors.transparent);
+      expect(monthDecoration.border, isNotNull);
+      final monthButton = tester.widget<TextButton>(
+        find.byKey(const Key('home-month-selector')),
+      );
+      expect(
+        monthButton.style?.foregroundColor?.resolve({}),
+        AppTheme.light.extension<ButlerlySemanticColors>()!.secondaryText,
       );
       expect(
         tester.getTopRight(monthSurface).dx,
@@ -527,11 +539,35 @@ void main() {
       );
       expect(monthSurface, findsOneWidget);
       expect(trendSurface, findsOneWidget);
+      final monthDecoration =
+          tester.widget<Ink>(monthSurface).decoration! as BoxDecoration;
+      final trendDecoration =
+          tester.widget<Ink>(trendSurface).decoration! as BoxDecoration;
+      expect(monthDecoration.color, Colors.transparent);
+      expect(trendDecoration.color, Colors.transparent);
+      final monthButton = tester.widget<TextButton>(monthSelector);
+      final trendButton = tester.widget<TextButton>(trendSelector);
+      expect(
+        monthButton.style?.foregroundColor?.resolve({}),
+        AppTheme.light.extension<ButlerlySemanticColors>()!.secondaryText,
+      );
+      expect(
+        trendButton.style?.foregroundColor?.resolve({}),
+        monthButton.style?.foregroundColor?.resolve({}),
+      );
+      expect(
+        monthButton.style?.backgroundColor?.resolve({}),
+        Colors.transparent,
+      );
+      expect(
+        trendButton.style?.backgroundColor?.resolve({}),
+        Colors.transparent,
+      );
       expect(tester.getSize(monthSurface).height, lessThan(44));
       expect(tester.getSize(trendSurface).height, lessThan(44));
       expect(
         tester.getSize(trendSurface).height,
-        lessThan(tester.getSize(monthSurface).height),
+        closeTo(tester.getSize(monthSurface).height, 0.1),
       );
 
       final headerTitle = find.descendant(

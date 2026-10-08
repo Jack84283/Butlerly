@@ -379,6 +379,7 @@ class ButlerlyCompactSelector extends StatelessWidget {
     this.buttonKey,
     this.alignVisualEnd = false,
     this.denseSurface = false,
+    this.transparent = false,
     super.key,
   });
 
@@ -388,6 +389,7 @@ class ButlerlyCompactSelector extends StatelessWidget {
   final Key? buttonKey;
   final bool alignVisualEnd;
   final bool denseSurface;
+  final bool transparent;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -401,7 +403,11 @@ class ButlerlyCompactSelector extends StatelessWidget {
         key: buttonKey,
         onPressed: onPressed,
         style: TextButton.styleFrom(
-          foregroundColor: context.colors.primaryText,
+          foregroundColor: transparent
+              ? context.colors.secondaryText
+              : context.colors.primaryText,
+          backgroundColor: transparent ? Colors.transparent : null,
+          disabledBackgroundColor: transparent ? Colors.transparent : null,
           minimumSize: const Size(0, ButlerlySize.minimumTarget),
           padding: EdgeInsets.zero,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -414,7 +420,9 @@ class ButlerlyCompactSelector extends StatelessWidget {
                 : Alignment.topCenter,
             child: Ink(
               decoration: BoxDecoration(
-                color: context.colors.subtleSurface,
+                color: transparent
+                    ? Colors.transparent
+                    : context.colors.subtleSurface,
                 border: Border.all(color: context.colors.border),
                 borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
               ),
@@ -803,13 +811,12 @@ class ButlerlyDestructiveButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final darkMode = Theme.of(context).brightness == Brightness.dark;
     final style = FilledButton.styleFrom(
-      backgroundColor: colors.error,
-      foregroundColor: Theme.of(context).colorScheme.onError,
-      disabledBackgroundColor: colors.error.withValues(alpha: 0.35),
-      disabledForegroundColor: Theme.of(
-        context,
-      ).colorScheme.onError.withValues(alpha: 0.7),
+      backgroundColor: colors.error.withValues(alpha: darkMode ? 0.14 : 0.05),
+      foregroundColor: colors.error,
+      disabledBackgroundColor: colors.error.withValues(alpha: 0.08),
+      disabledForegroundColor: colors.tertiaryText,
     );
     return icon == null
         ? FilledButton(onPressed: onPressed, style: style, child: child)

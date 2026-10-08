@@ -1,3 +1,4 @@
+import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter/material.dart';
 
@@ -320,16 +321,15 @@ Future<bool?> showButlerlyConfirmationSheet({
         onPressed: () => Navigator.pop(sheetContext, false),
         child: Text(cancelLabel),
       ),
-      FilledButton(
-        style: destructive
-            ? FilledButton.styleFrom(
-                backgroundColor: Theme.of(sheetContext).colorScheme.error,
-                foregroundColor: Theme.of(sheetContext).colorScheme.onError,
-              )
-            : null,
-        onPressed: () => Navigator.pop(sheetContext, true),
-        child: Text(confirmLabel),
-      ),
+      destructive
+          ? ButlerlyDestructiveButton(
+              onPressed: () => Navigator.pop(sheetContext, true),
+              child: Text(confirmLabel),
+            )
+          : FilledButton(
+              onPressed: () => Navigator.pop(sheetContext, true),
+              child: Text(confirmLabel),
+            ),
     ],
   ),
 );

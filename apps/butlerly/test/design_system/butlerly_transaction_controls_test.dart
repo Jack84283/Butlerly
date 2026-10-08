@@ -203,6 +203,41 @@ void main() {
     },
   );
 
+  testWidgets('filter sheet shows Apply and secondary Clear side by side', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      ButlerlyTransactionFilterSheet(
+        value: const ButlerlyTransactionFilterValue(),
+        currencies: Future.value(const <String>[]),
+        masterData: Future.value(
+          const TransactionMasterDataSnapshot(
+            presentation: TransactionMasterData(),
+            merchants: [],
+            categories: [],
+            tags: [],
+            paymentSources: [],
+          ),
+        ),
+        formatDate: (value) => value.toIso8601String(),
+        onApply: (_) {},
+        onClear: () {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final apply = find.byKey(const ValueKey('apply-search-filters'));
+    final clear = find.byKey(const ValueKey('clear-search-filters'));
+    expect(clear, findsOneWidget);
+    expect(tester.widget(clear), isA<OutlinedButton>());
+
+    final applyRect = tester.getRect(apply);
+    final clearRect = tester.getRect(clear);
+    expect(applyRect.center.dy, closeTo(clearRect.center.dy, 1));
+    expect(applyRect.right, lessThan(clearRect.left));
+  });
+
   testWidgets('read-only tags localize, wrap, and expose overflow accessibly', (
     tester,
   ) async {

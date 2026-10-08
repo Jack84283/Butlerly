@@ -66,6 +66,9 @@ abstract final class AppTheme {
     final standardShape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
     );
+    final buttonShape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(ButlerlyButtonTokens.radius),
+    );
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
@@ -150,13 +153,17 @@ abstract final class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
+          backgroundColor: scheme.primary,
+          foregroundColor: scheme.onPrimary,
+          disabledBackgroundColor: colors.tertiaryText.withValues(
+            alpha: brightness == Brightness.dark ? 0.24 : 0.16,
+          ),
+          disabledForegroundColor: colors.tertiaryText,
           padding: const EdgeInsets.symmetric(
             horizontal: ButlerlyButtonTokens.horizontalPadding,
             vertical: ButlerlyButtonTokens.verticalPadding,
           ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(ButlerlyButtonTokens.radius),
-          ),
+          shape: buttonShape,
           minimumSize: const Size(
             ButlerlyButtonTokens.compactHeight,
             ButlerlyButtonTokens.height,
@@ -175,10 +182,14 @@ abstract final class AppTheme {
             horizontal: ButlerlyButtonTokens.horizontalPadding,
             vertical: ButlerlyButtonTokens.verticalPadding,
           ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(ButlerlyButtonTokens.radius),
+          shape: buttonShape,
+          backgroundColor: colors.subtleSurface,
+          foregroundColor: colors.primaryText,
+          disabledBackgroundColor: colors.tertiaryText.withValues(
+            alpha: brightness == Brightness.dark ? 0.24 : 0.16,
           ),
-          side: BorderSide(color: colors.border),
+          disabledForegroundColor: colors.tertiaryText,
+          side: BorderSide.none,
           textStyle: textTheme.labelLarge,
         ),
       ),
@@ -192,9 +203,13 @@ abstract final class AppTheme {
             horizontal: ButlerlyButtonTokens.horizontalPadding,
             vertical: ButlerlyButtonTokens.verticalPadding,
           ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(ButlerlyButtonTokens.radius),
+          backgroundColor: colors.elevatedSurface,
+          foregroundColor: colors.secondaryText,
+          disabledBackgroundColor: colors.tertiaryText.withValues(
+            alpha: brightness == Brightness.dark ? 0.24 : 0.16,
           ),
+          disabledForegroundColor: colors.tertiaryText,
+          shape: buttonShape,
           textStyle: textTheme.labelLarge,
         ),
       ),
