@@ -954,10 +954,18 @@ class ButlerlyCategoryBadge extends StatelessWidget {
       badgeBackground,
       context.colors.cardSurface,
     );
-    final foreground =
-        _contrastRatio(categoryColor, compositedBackground) >= 4.5
-        ? categoryColor
-        : context.colors.primaryText;
+    final foreground = [
+      categoryColor,
+      context.colors.primaryText,
+      Colors.white,
+      Colors.black,
+    ].reduce(
+      (best, candidate) =>
+          _contrastRatio(candidate, compositedBackground) >
+              _contrastRatio(best, compositedBackground)
+          ? candidate
+          : best,
+    );
     return DecoratedBox(
       decoration: BoxDecoration(
         color: badgeBackground,
