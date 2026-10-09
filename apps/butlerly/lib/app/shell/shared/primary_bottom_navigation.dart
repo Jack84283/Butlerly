@@ -1,4 +1,5 @@
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/theme/butlerly_surface_gradients.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -220,6 +221,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
                       color: navigationColor.withValues(
                         alpha: ButlerlyOpacity.primaryNavigationSurface,
                       ),
+                      gradient: ButlerlySurfaceGradients.elevated(context),
                       borderRadius: BorderRadius.circular(ButlerlyRadius.pill),
                       border: Border.all(
                         width: ButlerlySize.dividerWidth,
