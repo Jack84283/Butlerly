@@ -129,11 +129,7 @@ class InsightGroupedList extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        for (
-                          var index = 0;
-                          index < items.length;
-                          index++
-                        ) ...[
+                        for (var index = 0; index < items.length; index++) ...[
                           Builder(
                             builder: (context) {
                               final item = items[index];
@@ -148,14 +144,10 @@ class InsightGroupedList extends StatelessWidget {
                                 escalation: escalation,
                                 drillDownInsight: drillDownInsight,
                                 masterData: masterData,
-                                showRuleCopy: !_groupOwnsRuleCopy(
-                                  group,
-                                  items,
-                                ),
+                                showRuleCopy: !_groupOwnsRuleCopy(group, items),
                                 onViewTransactions:
                                     canViewTransactions(drillDownInsight)
-                                    ? () =>
-                                          onViewTransactions(drillDownInsight)
+                                    ? () => onViewTransactions(drillDownInsight)
                                     : null,
                               );
                             },
@@ -368,139 +360,152 @@ class _InsightItem extends StatelessWidget {
         ButlerlyTransactionItemTokens.bottomPadding,
       ),
       child: Semantics(
-      container: true,
-      explicitChildNodes: true,
-      label: [ruleName, ?identity, ?escalationName].join(': '),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _IdentityIcon(insight: insight, masterData: masterData),
-          const SizedBox(width: ButlerlySpacing.small),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (showHeading)
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          identity ?? ruleName,
-                          style: Theme.of(context).textTheme.titleMedium,
+        container: true,
+        explicitChildNodes: true,
+        label: [ruleName, ?identity, ?escalationName].join(': '),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _IdentityIcon(insight: insight, masterData: masterData),
+            const SizedBox(width: ButlerlySpacing.small),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (showHeading)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            identity ?? ruleName,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
                         ),
-                      ),
-                      Icon(semantic.icon, color: semantic.color, size: 18),
-                    ],
-                  )
-                else
-                  Align(
-                    alignment: AlignmentDirectional.centerEnd,
-                    child: Icon(semantic.icon, color: semantic.color, size: 18),
-                  ),
-                if (showRuleCopy && identity != null) ...[
-                  const SizedBox(height: ButlerlySpacing.micro),
-                  Text(ruleName, style: Theme.of(context).textTheme.bodyMedium),
-                ],
-                if (showRuleCopy) ...[
-                  const SizedBox(height: ButlerlySpacing.micro),
-                  Text(context.l10n.text(insight.rule.descriptionKey)),
-                ],
-                if (escalationName != null) ...[
-                  const SizedBox(height: ButlerlySpacing.micro),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.warning_amber_rounded,
-                        size: 16,
+                        Icon(semantic.icon, color: semantic.color, size: 18),
+                      ],
+                    )
+                  else
+                    Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: Icon(
+                        semantic.icon,
                         color: semantic.color,
+                        size: 18,
                       ),
-                      const SizedBox(width: ButlerlySpacing.micro),
-                      Flexible(
-                        child: Text(
-                          escalationName,
-                          style: Theme.of(context).textTheme.labelMedium
-                              ?.copyWith(
-                                color: semantic.color,
-                                fontWeight: FontWeight.w600,
+                    ),
+                  if (showRuleCopy && identity != null) ...[
+                    const SizedBox(height: ButlerlySpacing.micro),
+                    Text(
+                      ruleName,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                  if (showRuleCopy) ...[
+                    const SizedBox(height: ButlerlySpacing.micro),
+                    Text(context.l10n.text(insight.rule.descriptionKey)),
+                  ],
+                  if (escalationName != null) ...[
+                    const SizedBox(height: ButlerlySpacing.micro),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          size: 16,
+                          color: semantic.color,
+                        ),
+                        const SizedBox(width: ButlerlySpacing.micro),
+                        Flexible(
+                          child: Text(
+                            escalationName,
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(
+                                  color: semantic.color,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (current != null || baseline != null) ...[
+                    if (!tightIdentityToAmount)
+                      const SizedBox(height: ButlerlySpacing.small),
+                    Wrap(
+                      spacing: ButlerlySpacing.small,
+                      runSpacing: ButlerlySpacing.micro,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (baseline != null)
+                          Text(
+                            baseline,
+                            style: Theme.of(context).textTheme.bodyLarge,
+                          ),
+                        if (baseline != null && current != null)
+                          Text(
+                            '→',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        if (current != null)
+                          Text(
+                            current,
+                            style: Theme.of(context).textTheme.bodyLarge,
+                          ),
+                      ],
+                    ),
+                  ],
+                  if (difference != null || percent != null) ...[
+                    const SizedBox(height: ButlerlySpacing.micro),
+                    Text(
+                      [
+                        direction,
+                        difference,
+                        percent,
+                      ].whereType<String>().join(' · '),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: semantic.color),
+                    ),
+                  ],
+                  if (onViewTransactions != null) ...[
+                    const SizedBox(height: ButlerlySpacing.micro),
+                    TextButton.icon(
+                      onPressed: onViewTransactions,
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        minimumSize: const Size(0, 32),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      iconAlignment: IconAlignment.end,
+                      icon: const Icon(Icons.chevron_right),
+                      label: Text(
+                        drillDownInsight.evidence.isEmpty
+                            ? context.l10n.text('viewTransactions')
+                            : context.l10n.text(
+                                drillDownInsight.evidence.length == 1
+                                    ? 'viewOneSupportingTransaction'
+                                    : 'viewManySupportingTransactions',
+                                {
+                                  'count':
+                                      '${drillDownInsight.evidence.length}',
+                                },
                               ),
-                        ),
                       ),
-                    ],
-                  ),
-                ],
-                if (current != null || baseline != null) ...[
-                  if (!tightIdentityToAmount)
+                    ),
+                  ] else if (drillDownInsight.evidence.isNotEmpty) ...[
                     const SizedBox(height: ButlerlySpacing.small),
-                  Wrap(
-                    spacing: ButlerlySpacing.small,
-                    runSpacing: ButlerlySpacing.micro,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      if (baseline != null)
-                        Text(
-                          baseline,
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      if (baseline != null && current != null)
-                        Text('→', style: Theme.of(context).textTheme.bodySmall),
-                      if (current != null)
-                        Text(
-                          current,
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                    ],
-                  ),
-                ],
-                if (difference != null || percent != null) ...[
-                  const SizedBox(height: ButlerlySpacing.micro),
-                  Text(
-                    [
-                      direction,
-                      difference,
-                      percent,
-                    ].whereType<String>().join(' · '),
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(color: semantic.color),
-                  ),
-                ],
-                if (onViewTransactions != null) ...[
-                  const SizedBox(height: ButlerlySpacing.micro),
-                  TextButton.icon(
-                    onPressed: onViewTransactions,
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      minimumSize: const Size(0, 32),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    Text(
+                      context.l10n.text('supportingTransactions', {
+                        'count': '${drillDownInsight.evidence.length}',
+                      }),
                     ),
-                    iconAlignment: IconAlignment.end,
-                    icon: const Icon(Icons.chevron_right),
-                    label: Text(
-                      drillDownInsight.evidence.isEmpty
-                          ? context.l10n.text('viewTransactions')
-                          : context.l10n.text(
-                              drillDownInsight.evidence.length == 1
-                                  ? 'viewOneSupportingTransaction'
-                                  : 'viewManySupportingTransactions',
-                              {'count': '${drillDownInsight.evidence.length}'},
-                            ),
-                    ),
-                  ),
-                ] else if (drillDownInsight.evidence.isNotEmpty) ...[
-                  const SizedBox(height: ButlerlySpacing.small),
-                  Text(
-                    context.l10n.text('supportingTransactions', {
-                      'count': '${drillDownInsight.evidence.length}',
-                    }),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
