@@ -20,34 +20,25 @@ void main() {
     expect(AppLocalizations.missingKeysFor('zh'), isEmpty);
   });
 
-  test('theme surfaces use the quiet-premium palette', () {
-    expect(AppTheme.dark.scaffoldBackgroundColor, const Color(0xFF030405));
-    expect(AppTheme.dark.cardTheme.color, const Color(0xFF141516));
-    expect(
-      AppTheme.dark.colorScheme.surfaceContainerHighest,
-      const Color(0xFF383838),
-    );
-    expect(AppTheme.dark.textTheme.bodyMedium?.color, const Color(0xFFF8F8F8));
-    expect(AppTheme.light.textTheme.bodyMedium?.color, const Color(0xFF383838));
-    expect(AppTheme.light.textTheme.bodySmall?.color, const Color(0xFF383838));
-    expect(AppTheme.light.scaffoldBackgroundColor, const Color(0xFFF2F3F9));
-    expect(AppTheme.light.cardTheme.color, const Color(0xFFFDFDFD));
-    expect(
-      AppTheme.light.extension<ButlerlySemanticColors>()?.dashboardSurface,
-      const Color(0xFFFDFDFD),
-    );
-    expect(
-      AppTheme.dark.extension<ButlerlySemanticColors>()?.dashboardSurface,
-      const Color(0xFF141516),
-    );
-    expect(
-      AppTheme.light.extension<ButlerlySemanticColors>()?.cardDivider,
-      const Color(0xFFE1E5EB),
-    );
-    expect(
-      AppTheme.dark.extension<ButlerlySemanticColors>()?.cardDivider,
-      const Color(0xFF383838),
-    );
+  test('theme surfaces use the approved solid color palettes', () {
+    final dark = AppTheme.dark;
+    final light = AppTheme.light;
+    final darkColors = dark.extension<ButlerlySemanticColors>()!;
+    final lightColors = light.extension<ButlerlySemanticColors>()!;
+
+    expect(dark.scaffoldBackgroundColor, darkColors.background);
+    expect(dark.cardTheme.color, darkColors.cardSurface);
+    expect(dark.colorScheme.surfaceContainerHighest, darkColors.elevatedSurface);
+    expect(dark.textTheme.bodyMedium?.color, darkColors.secondaryText);
+    expect(dark.textTheme.bodySmall?.color, darkColors.secondaryText);
+    expect(light.textTheme.bodyMedium?.color, lightColors.secondaryText);
+    expect(light.textTheme.bodySmall?.color, lightColors.secondaryText);
+    expect(light.scaffoldBackgroundColor, lightColors.background);
+    expect(light.cardTheme.color, lightColors.cardSurface);
+    expect(lightColors.dashboardSurface, const Color(0xFFEEF1F5));
+    expect(darkColors.dashboardSurface, const Color(0xFF141516));
+    expect(lightColors.cardDivider, const Color(0xFFD8DDE6));
+    expect(darkColors.cardDivider, const Color(0xFF2A2E34));
   });
 
   test('button themes use centralized Butlerly geometry', () {
