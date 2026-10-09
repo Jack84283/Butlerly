@@ -605,7 +605,7 @@ class _SectionHeader extends StatelessWidget {
   final String title;
   @override
   Widget build(BuildContext context) => ButlerlyCard(
-    padding: const EdgeInsets.symmetric(
+    padding: EdgeInsets.symmetric(
       horizontal: ButlerlySpacing.standard,
       vertical: ButlerlySpacing.compact,
     ),
