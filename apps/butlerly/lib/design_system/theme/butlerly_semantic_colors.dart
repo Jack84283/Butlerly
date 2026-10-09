@@ -10,6 +10,9 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
     required this.dashboardSurface,
     required this.elevatedSurface,
     required this.subtleSurface,
+    required this.overlaySurface,
+    required this.sheetSurface,
+    required this.footerSurface,
     required this.primaryText,
     required this.secondaryText,
     required this.tertiaryText,
@@ -38,6 +41,11 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
 
   final Color elevatedSurface;
   final Color subtleSurface;
+
+  /// Dedicated colors for dialogs, sheets and the floating navigation pill.
+  final Color overlaySurface;
+  final Color sheetSurface;
+  final Color footerSurface;
   final Color primaryText;
   final Color secondaryText;
   final Color tertiaryText;
@@ -63,16 +71,19 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
   /// Quiet-premium neutral foundation. Brand palettes only replace the accent
   /// roles so financial semantic colors remain stable and meaningful.
   static const dark = ButlerlySemanticColors(
-    background: Color(0xFF030405),
-    surface: Color(0xFF282B30),
-    dashboardSurface: Color(0xFF141516),
-    elevatedSurface: Color(0xFF2F3339),
-    subtleSurface: Color(0xFF030405),
+    background: Color(0xFF0B162A),
+    surface: Color(0xFF1F2534),
+    dashboardSurface: Color(0xFF1A2336),
+    elevatedSurface: Color(0xFF2A2D40),
+    subtleSurface: Color(0xFF0B162A),
+    overlaySurface: Color(0xFF1F2534),
+    sheetSurface: Color(0xFF121A2B),
+    footerSurface: Color(0xFF121A2B),
     primaryText: Color(0xFFF6F7F8),
     secondaryText: Color(0xFFB9BDC7),
     tertiaryText: Color(0xFF8D939E),
-    cardDivider: Color(0xFF2A2E34),
-    border: Color(0xFF626974),
+    cardDivider: Color(0xFF383C44),
+    border: Color(0xFF383C44),
     brand: Color(0xFF7A1E3A),
     brandStrong: Color(0xFF541127),
     interactive: Color(0xFFF6F7F8),
@@ -88,16 +99,19 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
   );
 
   static const light = ButlerlySemanticColors(
-    background: Color(0xFFE6E9EF),
-    surface: Color(0xFFC8CED8),
-    dashboardSurface: Color(0xFFD6DBE3),
-    elevatedSurface: Color(0xFFBCC4CF),
-    subtleSurface: Color(0xFFC8CED8),
+    background: Color(0xFFF6F7F8),
+    surface: Color(0xFFF0F2F5),
+    dashboardSurface: Color(0xFFFFFFFF),
+    elevatedSurface: Color(0xFFF0F2F5),
+    subtleSurface: Color(0xFFF2F3F5),
+    overlaySurface: Color(0xFFFFFFFF),
+    sheetSurface: Color(0xFFF2F3F5),
+    footerSurface: Color(0xFFF2F3F5),
     primaryText: Color(0xFF14171D),
     secondaryText: Color(0xFF4B5563),
     tertiaryText: Color(0xFF6B7280),
-    cardDivider: Color(0xFFAEB6C2),
-    border: Color(0xFFAEB6C2),
+    cardDivider: Color(0xFFD8DDE6),
+    border: Color(0xFFD8DDE6),
     brand: Color(0xFF7A1E3A),
     brandStrong: Color(0xFF541127),
     interactive: Color(0xFF7A1E3A),
@@ -181,6 +195,9 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
     Color? dashboardSurface,
     Color? elevatedSurface,
     Color? subtleSurface,
+    Color? overlaySurface,
+    Color? sheetSurface,
+    Color? footerSurface,
     Color? primaryText,
     Color? secondaryText,
     Color? tertiaryText,
@@ -204,6 +221,9 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
     dashboardSurface: dashboardSurface ?? this.dashboardSurface,
     elevatedSurface: elevatedSurface ?? this.elevatedSurface,
     subtleSurface: subtleSurface ?? this.subtleSurface,
+    overlaySurface: overlaySurface ?? this.overlaySurface,
+    sheetSurface: sheetSurface ?? this.sheetSurface,
+    footerSurface: footerSurface ?? this.footerSurface,
     primaryText: primaryText ?? this.primaryText,
     secondaryText: secondaryText ?? this.secondaryText,
     tertiaryText: tertiaryText ?? this.tertiaryText,
@@ -240,6 +260,9 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
       )!,
       elevatedSurface: Color.lerp(elevatedSurface, other.elevatedSurface, t)!,
       subtleSurface: Color.lerp(subtleSurface, other.subtleSurface, t)!,
+      overlaySurface: Color.lerp(overlaySurface, other.overlaySurface, t)!,
+      sheetSurface: Color.lerp(sheetSurface, other.sheetSurface, t)!,
+      footerSurface: Color.lerp(footerSurface, other.footerSurface, t)!,
       primaryText: Color.lerp(primaryText, other.primaryText, t)!,
       secondaryText: Color.lerp(secondaryText, other.secondaryText, t)!,
       tertiaryText: Color.lerp(tertiaryText, other.tertiaryText, t)!,

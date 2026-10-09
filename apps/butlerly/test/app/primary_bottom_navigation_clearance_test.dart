@@ -3,7 +3,6 @@ import 'dart:ui' show SemanticsAction, Tristate;
 import 'package:butlerly/app/shell/compact/compact_primary_shell.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
-import 'package:butlerly/design_system/theme/butlerly_surface_gradients.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -171,7 +170,7 @@ void main() {
         closeTo(ButlerlySpacing.primaryNavigationIconDrop, 0.01),
       );
     }
-    expect(pillDecoration.gradient, ButlerlySurfaceGradients.lightElevated);
+    expect(pillDecoration.gradient, isNull);
     expect(pillRect.height, closeTo(ButlerlySize.navigationBarHeight, 0.01));
     expect(
       navigationContentRect.height,
@@ -185,7 +184,7 @@ void main() {
       pillDecoration.color,
       AppTheme.light
           .extension<ButlerlySemanticColors>()!
-          .elevatedSurface
+          .footerSurface
           .withValues(alpha: ButlerlyOpacity.primaryNavigationSurface),
     );
     expect(

@@ -57,28 +57,28 @@ void main() {
     );
   });
 
-  test('dark theme uses the refined near-black surface palette', () {
+  test('dark theme uses the approved navy surface palette', () {
     final colors = AppTheme.dark.extension<ButlerlySemanticColors>()!;
 
-    expect(colors.background, const Color(0xFF030405));
-    expect(colors.subtleSurface, const Color(0xFF030405));
-    expect(colors.surface, const Color(0xFF282B30));
-    expect(colors.dashboardSurface, const Color(0xFF141516));
-    expect(colors.elevatedSurface, const Color(0xFF2F3339));
+    expect(colors.background, const Color(0xFF0B162A));
+    expect(colors.subtleSurface, const Color(0xFF0B162A));
+    expect(colors.surface, const Color(0xFF1F2534));
+    expect(colors.dashboardSurface, const Color(0xFF1A2336));
+    expect(colors.elevatedSurface, const Color(0xFF2A2D40));
     expect(colors.secondaryText, const Color(0xFFB9BDC7));
     expect(colors.primaryText, const Color(0xFFF6F7F8));
   });
 
-  test('light theme uses the approved darker gray-blue palette', () {
+  test('light theme uses the approved off-white surface palette', () {
     final colors = AppTheme.light.extension<ButlerlySemanticColors>()!;
 
-    expect(colors.background, const Color(0xFFE6E9EF));
-    expect(colors.surface, const Color(0xFFC8CED8));
-    expect(colors.subtleSurface, const Color(0xFFC8CED8));
-    expect(colors.dashboardSurface, const Color(0xFFD6DBE3));
-    expect(colors.elevatedSurface, const Color(0xFFBCC4CF));
-    expect(colors.cardDivider, const Color(0xFFAEB6C2));
-    expect(colors.border, const Color(0xFFAEB6C2));
+    expect(colors.background, const Color(0xFFF6F7F8));
+    expect(colors.surface, const Color(0xFFF0F2F5));
+    expect(colors.subtleSurface, const Color(0xFFF2F3F5));
+    expect(colors.dashboardSurface, const Color(0xFFFFFFFF));
+    expect(colors.elevatedSurface, const Color(0xFFF0F2F5));
+    expect(colors.cardDivider, const Color(0xFFD8DDE6));
+    expect(colors.border, const Color(0xFFD8DDE6));
     expect(colors.primaryText, const Color(0xFF14171D));
     expect(colors.secondaryText, const Color(0xFF4B5563));
   });
