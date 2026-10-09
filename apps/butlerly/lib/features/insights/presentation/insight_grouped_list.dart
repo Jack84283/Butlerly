@@ -124,9 +124,7 @@ class InsightGroupedList extends StatelessWidget {
                     ),
                   ],
                   const SizedBox(height: ButlerlySpacing.standard),
-                  Padding(
-                    padding: EdgeInsets.zero,
-                    child: ButlerlyTransactionInnerCard(
+                  ButlerlyTransactionInnerCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -167,7 +165,6 @@ class InsightGroupedList extends StatelessWidget {
                         ],
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
