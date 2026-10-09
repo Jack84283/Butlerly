@@ -1112,7 +1112,10 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                               const SizedBox(height: ButlerlySpacing.compact),
                               ListTile(
                                 contentPadding: EdgeInsets.zero,
-                                title: Text(context.l10n.text('date')),
+                                title: Text(
+                                  MaterialLocalizations.of(context).formatFullDate(_date),
+                                  textAlign: TextAlign.start,
+                                ),
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
