@@ -375,7 +375,9 @@ class _ReviewPageState extends State<ReviewPage> {
                       Navigator.of(detailContext).pop();
                       _openTransaction(item);
                     },
-                    dismissLabel: context.l10n.text('dismiss'),
+                    dismissLabel: item.reason == ReviewIssueReason.merchantNeedsReview.name
+                        ? null
+                        : context.l10n.text('dismiss'),
                     onDismiss: () async {
                       final closed = await _close(item, dismiss: true);
                       if (closed && detailContext.mounted) {
@@ -734,7 +736,7 @@ class _ReviewTransactionCard extends StatefulWidget {
   final String primaryLabel;
   final VoidCallback onPrimary;
   final String editLabel;
-  final String dismissLabel;
+  final String? dismissLabel;
   final VoidCallback onEdit;
   final VoidCallback onDismiss;
 
