@@ -684,8 +684,10 @@ class ButlerlyStatusChip extends StatelessWidget {
             ],
             Text(
               label,
-              style: Theme.of(context).textTheme.labelLarge
-                  ?.copyWith(color: color, fontWeight: FontWeight.w600),
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -1693,8 +1695,9 @@ class ButlerlyEmptyState extends StatelessWidget {
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium
-                    ?.copyWith(color: context.colors.secondaryText),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: context.colors.secondaryText,
+                ),
               ),
               if (actionLabel != null) ...[
                 const SizedBox(height: ButlerlySpacing.section),

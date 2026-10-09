@@ -417,8 +417,9 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
   void _message(String value) {
     if (mounted) {
       setState(() => _busy = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(value)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(value)));
     }
   }
 
@@ -569,9 +570,9 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
     final l10n = context.l10n;
     final name = TextEditingController(text: widget.statement.institution);
     final lastFour = TextEditingController(
-      text: RegExp(r'(\d{4})$')
-          .firstMatch(widget.statement.maskedAccountIdentifier ?? '')
-          ?.group(1),
+      text: RegExp(
+        r'(\d{4})$',
+      ).firstMatch(widget.statement.maskedAccountIdentifier ?? '')?.group(1),
     );
     var type = PaymentSourceType.account;
     final create = await showButlerlyBottomSheet<bool>(
@@ -1104,11 +1105,9 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
     if (status == StatementRowStatus.saved) {
       final strict = await widget.service.duplicates(row);
       if (!mounted) return;
-      if (strict
-          case ApplicationSuccess<DuplicateTransactionCheckResult>(
-            value: final duplicate,
-          )
-          when duplicate.requiresConfirmation) {
+      if (strict case ApplicationSuccess<DuplicateTransactionCheckResult>(
+        value: final duplicate,
+      ) when duplicate.requiresConfirmation) {
         final proposed = TransactionDto(
           id: '__statement-proposed__',
           amount: row.amount!,
@@ -1156,11 +1155,9 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
       }
       final matches = await widget.service.likelyMatches(row, _sourceId!);
       if (!mounted) return;
-      if (matches
-          case ApplicationSuccess<List<ReconciliationMatchCandidate>>(
-            value: final values,
-          )
-          when values.isNotEmpty) {
+      if (matches case ApplicationSuccess<List<ReconciliationMatchCandidate>>(
+        value: final values,
+      ) when values.isNotEmpty) {
         final finance = services.isRegistered<FinanceServices>()
             ? services<FinanceServices>()
             : null;

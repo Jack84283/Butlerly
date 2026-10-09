@@ -159,8 +159,9 @@ class _TransactionsPageState extends State<TransactionsPage> {
         paymentSources: [],
       );
     }
-    return TransactionMasterDataProvider(finance)
-        .load(languageCode: languageCode);
+    return TransactionMasterDataProvider(
+      finance,
+    ).load(languageCode: languageCode);
   }
 
   Future<Map<String, String>> _paymentSourceNames(
@@ -467,9 +468,9 @@ class _TransactionsPageState extends State<TransactionsPage> {
                               textAlign: TextAlign.end,
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
                                   ),
                             ),
                           ),
@@ -643,8 +644,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   }
 
   Future<_EditorMasterData> _loadMasterData(String languageCode) async {
-    final snapshot = await TransactionMasterDataProvider(widget.finance)
-        .load(languageCode: languageCode);
+    final snapshot = await TransactionMasterDataProvider(
+      widget.finance,
+    ).load(languageCode: languageCode);
     final data = _EditorMasterData.fromSnapshot(snapshot);
     _normalizeClassification(data);
     return data;
@@ -769,11 +771,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
       ),
     );
     if (!mounted) return;
-    if (duplicate
-        case ApplicationSuccess<DuplicateTransactionCheckResult>(
-          value: final check,
-        )
-        when check.requiresConfirmation) {
+    if (duplicate case ApplicationSuccess<DuplicateTransactionCheckResult>(
+      value: final check,
+    ) when check.requiresConfirmation) {
       final editorData = await _masterData;
       if (!mounted) return;
       final decision =
@@ -796,8 +796,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
       if (decision.decision == ButlerlyDuplicateDecision.useExisting) {
         final selectedId = decision.selectedTransactionId;
         if (selectedId != null) {
-          Navigator.of(context)
-              .pop(TransactionEditorResult.useExisting(selectedId));
+          Navigator.of(
+            context,
+          ).pop(TransactionEditorResult.useExisting(selectedId));
         }
         return;
       }
@@ -940,9 +941,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                         const TextInputType.numberWithOptions(
                                           decimal: true,
                                         ),
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .headlineMedium,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.headlineMedium,
                                     decoration: InputDecoration(
                                       labelText: context.l10n.text('amount'),
                                       prefixIcon: const Icon(
@@ -1116,8 +1117,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(
-                                      MaterialLocalizations.of(context)
-                                          .formatMediumDate(_date),
+                                      MaterialLocalizations.of(
+                                        context,
+                                      ).formatMediumDate(_date),
                                     ),
                                     const SizedBox(
                                       width: ButlerlySpacing.small,
@@ -1325,8 +1327,9 @@ class _TransactionEditorCardHeader extends StatelessWidget {
       Expanded(
         child: Text(
           title,
-          style: Theme.of(context).textTheme.titleMedium
-              ?.copyWith(fontWeight: FontWeight.w700),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
       ),
     ],
@@ -1531,8 +1534,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                             context.l10n.text('untitledTransaction'),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleLarge
-                            ?.copyWith(fontWeight: FontWeight.w700),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       const SizedBox(height: ButlerlySpacing.micro),
                       Text(
@@ -1574,8 +1578,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary
-                          .withValues(alpha: 0.50),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.50),
                       borderRadius: BorderRadius.circular(
                         ButlerlyRadius.standard,
                       ),
@@ -2359,8 +2364,9 @@ class _TransactionDetailCardHeader extends StatelessWidget {
       Expanded(
         child: Text(
           title,
-          style: Theme.of(context).textTheme.titleMedium
-              ?.copyWith(fontWeight: FontWeight.w700),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
       ),
     ],
@@ -2394,8 +2400,9 @@ class _DetailRow extends StatelessWidget {
             child: Text(
               value,
               textAlign: TextAlign.end,
-              style: Theme.of(context).textTheme.bodyMedium
-                  ?.copyWith(fontWeight: FontWeight.w500),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
             ),
           ),
         ),

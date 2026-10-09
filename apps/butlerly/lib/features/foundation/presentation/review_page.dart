@@ -142,8 +142,9 @@ class _ReviewPageState extends State<ReviewPage> {
         paymentSources: [],
       );
     }
-    return TransactionMasterDataProvider(finance)
-        .load(languageCode: languageCode);
+    return TransactionMasterDataProvider(
+      finance,
+    ).load(languageCode: languageCode);
   }
 
   Future<List<_ReviewEntry>> _load() async {
@@ -547,8 +548,9 @@ class _ReviewPageState extends State<ReviewPage> {
                           ? 'classificationMissing'
                           : 'categoryMissing',
                     ),
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: context.colors.secondaryText),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: context.colors.secondaryText,
+                    ),
                   ),
                   onTap: _openUncategorized,
                   navigates: true,

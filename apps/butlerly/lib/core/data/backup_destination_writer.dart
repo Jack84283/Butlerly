@@ -4,10 +4,8 @@ import 'dart:io';
 import 'package:butlerly_database/butlerly_database.dart' show sha256FileRange;
 import 'package:path/path.dart' as path;
 
-typedef BackupFileCopy = Future<File> Function(
-  File source,
-  String destinationPath,
-);
+typedef BackupFileCopy =
+    Future<File> Function(File source, String destinationPath);
 
 final class BackupPublicationRecovery {
   const BackupPublicationRecovery({

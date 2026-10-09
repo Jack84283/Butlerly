@@ -18,8 +18,9 @@ class TransactionCountText extends StatelessWidget {
     label: transactionCountLabel(context, count),
     child: Text(
       transactionCountLabel(context, count),
-      style: Theme.of(context).textTheme.bodySmall
-          ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
     ),
   );
 }

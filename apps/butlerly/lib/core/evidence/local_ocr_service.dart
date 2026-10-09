@@ -296,9 +296,9 @@ abstract final class CardTextParser {
         : ReceiptExtractor.extract(text, observations).cardLast4;
     final lastFour =
         structured ??
-        RegExp(r'(?<!\d)\d{4}[\s-]*\d{4}[\s-]*\d{4}[\s-]*(\d{4})(?!\d)')
-            .firstMatch(text)
-            ?.group(1) ??
+        RegExp(
+          r'(?<!\d)\d{4}[\s-]*\d{4}[\s-]*\d{4}[\s-]*(\d{4})(?!\d)',
+        ).firstMatch(text)?.group(1) ??
         RegExp(
           r'(?:ending|last\s*4|card|visa|mastercard|amex|discover|x{2,}|\*{2,})'
           r'[^\d]{0,12}(\d{4})(?!\d)',
@@ -461,8 +461,9 @@ abstract final class ReceiptExtractor {
       ).hasMatch(value)) {
         continue;
       }
-      if (RegExp(r'(@|https?://|\b\d{3}[-.) ]\d{3}[-. ]\d{4}\b)')
-          .hasMatch(value)) {
+      if (RegExp(
+        r'(@|https?://|\b\d{3}[-.) ]\d{3}[-. ]\d{4}\b)',
+      ).hasMatch(value)) {
         continue;
       }
       final alpha = RegExp(r'[A-Za-z]').allMatches(value).length;

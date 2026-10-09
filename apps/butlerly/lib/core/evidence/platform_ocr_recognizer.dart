@@ -55,14 +55,12 @@ final class PlatformOcrRecognizer implements OcrRecognizer {
     }
     Map<Object?, Object?>? payload;
     try {
-      payload = await _channel.invokeMapMethod<Object?, Object?>(
-        'recognizeText',
-        {
-          'path': request.source.path,
-          if (request.source.kind == OcrSourceKind.pdf)
-            'sourceKind': request.source.kind.name,
-        },
-      );
+      payload = await _channel
+          .invokeMapMethod<Object?, Object?>('recognizeText', {
+            'path': request.source.path,
+            if (request.source.kind == OcrSourceKind.pdf)
+              'sourceKind': request.source.kind.name,
+          });
     } on PlatformException catch (error) {
       throw _exception(error);
     } on MissingPluginException {
