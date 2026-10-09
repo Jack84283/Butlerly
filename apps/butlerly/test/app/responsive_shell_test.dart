@@ -121,9 +121,9 @@ void main() {
     );
   });
 
-  testWidgets('Medium overlays floating switch buttons on full-height content', (
-    tester,
-  ) async {
+  testWidgets(
+    'Medium overlays floating switch buttons on full-height content',
+    (tester) async {
     const size = Size(800, 800);
     await _pumpAt(tester, size);
 
