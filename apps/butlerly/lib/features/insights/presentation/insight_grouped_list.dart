@@ -446,7 +446,7 @@ class _InsightItem extends StatelessWidget {
                   TextButton.icon(
                     onPressed: onViewTransactions,
                     style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
                       minimumSize: const Size(0, 32),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
