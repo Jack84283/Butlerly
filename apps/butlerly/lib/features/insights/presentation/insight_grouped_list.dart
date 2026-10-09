@@ -3,6 +3,7 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/insights/presentation/insight_group_visualization.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -359,7 +360,14 @@ class _InsightItem extends StatelessWidget {
         insight.rule.grouping == RuleGrouping.subcategory ||
         insight.rule.grouping == RuleGrouping.merchant;
 
-    return Semantics(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        ButlerlyTransactionItemTokens.horizontalInset,
+        ButlerlyTransactionItemTokens.topPadding,
+        ButlerlyTransactionItemTokens.horizontalInset,
+        ButlerlyTransactionItemTokens.bottomPadding,
+      ),
+      child: Semantics(
       container: true,
       explicitChildNodes: true,
       label: [ruleName, ?identity, ?escalationName].join(': '),
@@ -492,6 +500,7 @@ class _InsightItem extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }
