@@ -88,7 +88,6 @@ class PrimaryBottomNavigation extends StatelessWidget {
     double labelSlotHeight,
   ) {
     final selected = currentIndex == branchIndex;
-    final isAddAction = branchIndex == 2;
     final visibleLabel = compactNavigationLabel(
       context,
       destination,
@@ -113,14 +112,8 @@ class PrimaryBottomNavigation extends StatelessWidget {
         : context.colors.secondaryText;
     final icon = IconTheme(
       data: IconThemeData(
-        size: isAddAction
-            ? ButlerlySize.primaryNavigationAddGlyphSize
-            : ButlerlySize.standardIcon,
-        color: isAddAction
-            ? Theme.of(context).colorScheme.onPrimary
-            : selected
-            ? selectedIconColor
-            : inactiveIconColor,
+        size: ButlerlySize.standardIcon,
+        color: selected ? selectedIconColor : inactiveIconColor,
       ),
       child: baseIcon,
     );
@@ -128,7 +121,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
       button: true,
       selected: selected,
       onTap: () => onSelected(branchIndex),
-      label: isAddAction
+      label: branchIndex == 2
           ? context.l10n.text('addTransactionAction')
           : destination.label,
       excludeSemantics: true,
@@ -136,44 +129,40 @@ class PrimaryBottomNavigation extends StatelessWidget {
         onTap: () => onSelected(branchIndex),
         child: SizedBox(
           height: double.infinity,
-          child: isAddAction
-              ? Center(
-                  child: Container(
-                    key: const ValueKey('primary-navigation-add-button'),
-                    width: ButlerlySize.primaryNavigationAddIconSize,
-                    height: ButlerlySize.primaryNavigationAddIconSize,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary,
-                      shape: BoxShape.circle,
-                    ),
-                    alignment: Alignment.center,
-                    child: icon,
-                  ),
-                )
-              : Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      height:
-                          ButlerlySize.primaryNavigationAddIconSize -
-                          2 * ButlerlySize.navigationLabelGap,
-                      child: Align(alignment: Alignment.center, child: icon),
-                    ),
-                    const SizedBox(height: ButlerlySize.navigationLabelGap),
-                    SizedBox(
-                      key: ValueKey('primary-navigation-label-$branchIndex'),
-                      width: double.infinity,
-                      height: labelSlotHeight,
-                      child: Text(
-                        visibleLabel,
-                        softWrap: true,
-                        overflow: TextOverflow.visible,
-                        textAlign: TextAlign.center,
-                        style: labelStyle,
-                      ),
-                    ),
-                  ],
+          child: Container(
+            key: selected
+                ? ValueKey('primary-navigation-switch-selected-$branchIndex')
+                : null,
+            margin: const EdgeInsets.all(ButlerlySpacing.micro),
+            decoration: BoxDecoration(
+              color: selected ? context.colors.selection : Colors.transparent,
+              borderRadius: BorderRadius.circular(ButlerlyRadius.pill),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  height:
+                      ButlerlySize.primaryNavigationAddIconSize -
+                      2 * ButlerlySize.navigationLabelGap,
+                  child: Align(alignment: Alignment.center, child: icon),
                 ),
+                const SizedBox(height: ButlerlySize.navigationLabelGap),
+                SizedBox(
+                  key: ValueKey('primary-navigation-label-$branchIndex'),
+                  width: double.infinity,
+                  height: labelSlotHeight,
+                  child: Text(
+                    visibleLabel,
+                    softWrap: true,
+                    overflow: TextOverflow.visible,
+                    textAlign: TextAlign.center,
+                    style: labelStyle,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
