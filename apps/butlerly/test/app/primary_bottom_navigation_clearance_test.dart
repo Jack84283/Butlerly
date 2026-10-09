@@ -108,15 +108,13 @@ void main() {
     expect(pillRect.width, closeTo(navigationRect.width - 32, 0.01));
     expect(pillRect.center.dx, closeTo(navigationRect.center.dx, 0.01));
     expect(navigationContentRect.center, pillRect.center);
+    final lightColors = AppTheme.light.extension<ButlerlySemanticColors>()!;
     final selectedSwitch = tester.widget<Container>(
       find.byKey(const ValueKey('primary-navigation-switch-selected-0')),
     );
     final selectedSwitchDecoration =
         selectedSwitch.decoration! as BoxDecoration;
-    expect(
-      selectedSwitchDecoration.color,
-      lightColors.selection,
-    );
+    expect(selectedSwitchDecoration.color, lightColors.selection);
     final selectedIconTheme = tester.widget<IconTheme>(
       find
           .ancestor(
@@ -133,7 +131,6 @@ void main() {
           )
           .first,
     );
-    final lightColors = AppTheme.light.extension<ButlerlySemanticColors>()!;
     expect(selectedIconTheme.data.color, lightColors.interactive);
     expect(inactiveIconTheme.data.color, lightColors.secondaryText);
     expect(pillRect.height, closeTo(ButlerlySize.navigationBarHeight, 0.01));
