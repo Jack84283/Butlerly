@@ -541,7 +541,7 @@ class _ReviewPageState extends State<ReviewPage> {
                   groupByFinancialDate: true,
                   collapsibleMonthSections: true,
                   monthSectionsAsCards: true,
-                  innerCardInset: 12,
+                  innerCardInset: ButlerlySpacing.compact,
                   dashboardRowStyle: true,
                   missingCategoryLabel: context.l10n.text('uncategorized'),
                   supportingContentBuilder: (context, transaction) => Text(
@@ -664,7 +664,7 @@ class _ReviewPageState extends State<ReviewPage> {
                                 groupByFinancialDate: true,
                                 collapsibleMonthSections: true,
                                 monthSectionsAsCards: true,
-                                innerCardInset: 12,
+                                innerCardInset: ButlerlySpacing.compact,
                                 dashboardRowStyle: true,
                                 missingCategoryLabel: context.l10n.text(
                                   'uncategorized',
@@ -796,7 +796,7 @@ class _ReviewTransactionCardState extends State<_ReviewTransactionCard> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(ButlerlySpacing.compact),
                       child: ButlerlyTransactionInnerCard(
                         child: TransactionRow(
                           transaction: transaction,
@@ -926,7 +926,7 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
       child: ButlerlyCard(
         padding: EdgeInsets.zero,
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(ButlerlySpacing.compact),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
