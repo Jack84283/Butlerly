@@ -45,6 +45,23 @@ void main() {
     );
   });
 
+  test('selected footer icons have one accessible color in both modes', () {
+    for (final theme in ButlerlyColorTheme.values) {
+      final light = AppTheme.lightFor(theme).extension<ButlerlySemanticColors>()!;
+      final dark = AppTheme.darkFor(theme).extension<ButlerlySemanticColors>()!;
+
+      expect(light.navigationSelectedIcon, dark.navigationSelectedIcon);
+      expect(
+        _contrast(light.navigationSelectedIcon, light.elevatedSurface),
+        greaterThanOrEqualTo(3),
+      );
+      expect(
+        _contrast(dark.navigationSelectedIcon, dark.elevatedSurface),
+        greaterThanOrEqualTo(3),
+      );
+    }
+  });
+
   testWidgets('light and dark cards use solid surfaces', (tester) async {
     Widget card() => const Scaffold(
       body: Center(child: ButlerlyCard(child: Text('Sample card'))),
@@ -65,4 +82,12 @@ void main() {
       expect(tester.takeException(), isNull);
     }
   });
+}
+
+double _contrast(Color first, Color second) {
+  final a = first.computeLuminance();
+  final b = second.computeLuminance();
+  final light = a > b ? a : b;
+  final dark = a > b ? b : a;
+  return (light + 0.05) / (dark + 0.05);
 }
