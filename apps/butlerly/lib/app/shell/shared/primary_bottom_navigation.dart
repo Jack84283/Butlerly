@@ -201,7 +201,11 @@ class PrimaryBottomNavigation extends StatelessWidget {
             constraints.maxWidth,
           );
           return SizedBox(
-            height: navigationHeight + ButlerlySpacing.compact + bottomInset,
+            height:
+                navigationHeight +
+                ButlerlySpacing.compact +
+                bottomInset +
+                ButlerlySpacing.primaryNavigationBottomLift,
             child: Align(
               alignment: Alignment.topCenter,
               child: Padding(
