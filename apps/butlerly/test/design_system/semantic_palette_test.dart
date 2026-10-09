@@ -18,19 +18,31 @@ void main() {
     expect(colors.border, const Color(0xFF626974));
   });
 
-  test('light mode uses the softer solid semantic palette', () {
+  test('light mode uses the four-level solid tonal palette', () {
     final colors = AppTheme.light.extension<ButlerlySemanticColors>()!;
     expect(colors.background, const Color(0xFFF2F3F9));
-    expect(colors.cardSurface, const Color(0xFFF4F6F9));
-    expect(colors.surface, const Color(0xFFEEF1F5));
-    expect(colors.subtleSurface, const Color(0xFFEEF1F5));
-    expect(colors.elevatedSurface, const Color(0xFFECEFF3));
+    expect(colors.cardSurface, const Color(0xFFEEF1F5));
+    expect(colors.surface, const Color(0xFFE7EBF1));
+    expect(colors.subtleSurface, const Color(0xFFE7EBF1));
+    expect(colors.elevatedSurface, const Color(0xFFE0E5EC));
     expect(colors.primaryText, const Color(0xFF17191F));
     expect(colors.secondaryText, const Color(0xFF383838));
     expect(colors.tertiaryText, const Color(0xFF787E89));
-    expect(colors.cardDivider, const Color(0xFFE1E5EB));
-    expect(colors.border, const Color(0xFFE1E5EB));
+    expect(colors.cardDivider, const Color(0xFFD8DDE6));
+    expect(colors.border, const Color(0xFFD8DDE6));
     expect(colors.brand, const Color(0xFF7A1E3A));
+    expect(
+      colors.background.computeLuminance(),
+      greaterThan(colors.cardSurface.computeLuminance()),
+    );
+    expect(
+      colors.cardSurface.computeLuminance(),
+      greaterThan(colors.surface.computeLuminance()),
+    );
+    expect(
+      colors.surface.computeLuminance(),
+      greaterThan(colors.elevatedSurface.computeLuminance()),
+    );
   });
 
   testWidgets('light and dark cards use solid surfaces', (tester) async {
