@@ -12,8 +12,7 @@ if [[ "$PWD" == */apps/butlerly ]]; then
   trap 'rm -rf "$tmp_dir"' EXIT
   for file in \
     lib/features/foundation/presentation/transactions_page.dart \
-    lib/design_system/theme/butlerly_surface_gradients.dart \
-    test/design_system/semantic_palette_gradient_test.dart; do
+    test/design_system/semantic_palette_test.dart; do
     cp "$file" "$tmp_dir/$(basename "$file")"
     dart format "$tmp_dir/$(basename "$file")" >/dev/null
     diff -u "$file" "$tmp_dir/$(basename "$file")" || true
