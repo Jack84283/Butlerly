@@ -5,6 +5,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -2186,10 +2187,8 @@ class _HomeRecentActivity extends StatelessWidget {
             ),
             child: Transform.translate(
               offset: const Offset(0, -ButlerlySpacing.micro),
-              child: ButlerlyCard(
+              child: ButlerlyTransactionInnerCard(
                 key: const ValueKey('home-recent-transactions-inner-card'),
-                color: context.colors.subtleSurface,
-                padding: const EdgeInsets.all(ButlerlySpacing.micro),
                 child: ButlerlyTransactionList(
                   children: [
                     for (var index = 0; index < transactions.length; index++)

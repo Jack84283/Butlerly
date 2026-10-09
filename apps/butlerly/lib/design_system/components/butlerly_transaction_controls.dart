@@ -234,6 +234,8 @@ class _ButlerlyTransactionFilterSheetState
         const SizedBox(height: ButlerlySpacing.standard),
         SwitchListTile.adaptive(
           key: const ValueKey('search-undated-filter'),
+          activeThumbColor: Theme.of(context).colorScheme.onPrimary,
+          activeTrackColor: Theme.of(context).colorScheme.primary,
           contentPadding: EdgeInsets.zero,
           title: Text(context.l10n.text('undatedTransactions')),
           value: _includeUndated,
@@ -892,6 +894,8 @@ class ButlerlyReviewFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SwitchListTile.adaptive(
+    activeThumbColor: Theme.of(context).colorScheme.onPrimary,
+    activeTrackColor: Theme.of(context).colorScheme.primary,
     contentPadding: EdgeInsets.zero,
     title: Text(label),
     value: value == true,

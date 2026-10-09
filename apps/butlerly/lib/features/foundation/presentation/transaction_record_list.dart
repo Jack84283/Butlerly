@@ -1,4 +1,5 @@
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
@@ -28,6 +29,7 @@ class TransactionRecordList extends StatelessWidget {
     this.groupByFinancialDate = false,
     this.collapsibleMonthSections = false,
     this.monthSectionsAsCards = false,
+    this.innerCardInset = ButlerlySpacing.compact,
     this.dashboardRowStyle = false,
     this.wrapInCard = false,
     this.showDateInRows = false,
@@ -47,6 +49,7 @@ class TransactionRecordList extends StatelessWidget {
   final bool groupByFinancialDate;
   final bool collapsibleMonthSections;
   final bool monthSectionsAsCards;
+  final double innerCardInset;
   final bool dashboardRowStyle;
   final bool wrapInCard;
   final bool showDateInRows;
@@ -194,9 +197,24 @@ class TransactionRecordList extends StatelessWidget {
         ],
       ),
       children: [
-        ButlerlyTransactionList(
-          children: [for (final transaction in entry.value) rows[transaction]!],
-        ),
+        if (monthSectionsAsCards)
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: innerCardInset),
+            child: ButlerlyTransactionInnerCard(
+              key: ValueKey('transaction-month-inner-card-${entry.key}'),
+              child: ButlerlyTransactionList(
+                children: [
+                  for (final transaction in entry.value) rows[transaction]!,
+                ],
+              ),
+            ),
+          )
+        else
+          ButlerlyTransactionList(
+            children: [
+              for (final transaction in entry.value) rows[transaction]!,
+            ],
+          ),
       ],
     );
     if (!monthSectionsAsCards) {

@@ -2,6 +2,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_activity.dart';
@@ -498,9 +499,8 @@ class _AnalysisContent extends StatelessWidget {
         value: period,
         onChanged: onPeriodChanged,
       ),
-      children: [
+      children: _withAnalysisCardSpacing([
         AnalysisSummary(model: model),
-        _SectionHeader(title: context.l10n.text('spending')),
         AnalysisSpendingBreakdown(
           model: model,
           masterData: masterData,
@@ -515,7 +515,6 @@ class _AnalysisContent extends StatelessWidget {
               ? () => _openSearch(context, analysisContext!.period)
               : null,
         ),
-        _SectionHeader(title: context.l10n.text('financialCalendar')),
         calendar == null
             ? AnalysisActivitySummary(metric: model.transactionCount)
             : AnalysisActivity(
@@ -530,18 +529,23 @@ class _AnalysisContent extends StatelessWidget {
                 masterData: masterData,
               ),
         if (model.insight != null) ...[
-          _SectionHeader(title: context.l10n.text('insights')),
           AnalysisInsightPreview(
             finding: model.insight!,
             onTap: () => _openInsights(context),
           ),
         ] else if (model.insightUnavailable) ...[
-          _SectionHeader(title: context.l10n.text('insights')),
-          ButlerlyCard(child: Text(context.l10n.text('insightsUnavailable'))),
+          ButlerlyCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ButlerlyCardHeader(title: context.l10n.text('insights')),
+                Text(context.l10n.text('insightsUnavailable')),
+              ],
+            ),
+          ),
         ],
-        _SectionHeader(title: context.l10n.text('dataQuality')),
         AnalysisDataQuality(model: model),
-      ],
+      ]),
     );
   }
 
@@ -600,9 +604,10 @@ class _AnalysisContent extends StatelessWidget {
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title});
-  final String title;
-  @override
-  Widget build(BuildContext context) => ButlerlySectionHeader(title: title);
-}
+/// Match the consistent card-to-card separation used on the Home page.
+List<Widget> _withAnalysisCardSpacing(List<Widget> cards) => [
+  for (var index = 0; index < cards.length; index++) ...[
+    if (index > 0) const SizedBox(height: ButlerlySpacing.cardGap),
+    cards[index],
+  ],
+];

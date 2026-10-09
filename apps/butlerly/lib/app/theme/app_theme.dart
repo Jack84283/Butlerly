@@ -163,7 +163,7 @@ abstract final class AppTheme {
           ),
           shape: buttonShape,
           minimumSize: const Size(
-            ButlerlyButtonTokens.compactHeight,
+            ButlerlyButtonTokens.minimumWidth,
             ButlerlyButtonTokens.height,
           ),
           elevation: 0,
@@ -173,7 +173,7 @@ abstract final class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(
-            ButlerlyButtonTokens.compactHeight,
+            ButlerlyButtonTokens.minimumWidth,
             ButlerlyButtonTokens.height,
           ),
           padding: const EdgeInsets.symmetric(
@@ -196,7 +196,7 @@ abstract final class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           minimumSize: const Size(
-            ButlerlyButtonTokens.compactHeight,
+            ButlerlyButtonTokens.minimumWidth,
             ButlerlyButtonTokens.height,
           ),
           padding: const EdgeInsets.symmetric(
@@ -217,7 +217,7 @@ abstract final class AppTheme {
       ),
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(
-          minimumSize: const Size.square(ButlerlySize.minimumTarget),
+          minimumSize: const Size.square(ButlerlyButtonTokens.minimumWidth),
           iconSize: ButlerlyButtonTokens.iconSize,
           padding: const EdgeInsets.all(ButlerlySpacing.compact),
           foregroundColor: colors.primaryText,

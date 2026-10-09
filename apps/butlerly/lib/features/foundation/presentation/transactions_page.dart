@@ -1112,11 +1112,20 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                               const SizedBox(height: ButlerlySpacing.compact),
                               ListTile(
                                 contentPadding: EdgeInsets.zero,
-                                title: Text(context.l10n.text('date')),
-                                subtitle: Text(_shortDate(_date)),
-                                trailing: Icon(
-                                  Icons.calendar_today_outlined,
-                                  color: _transactionCardIconColor(context),
+                                title: Text(
+                                  MaterialLocalizations.of(
+                                    context,
+                                  ).formatFullDate(_date),
+                                  textAlign: TextAlign.start,
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.calendar_today_outlined,
+                                      color: _transactionCardIconColor(context),
+                                    ),
+                                  ],
                                 ),
                                 onTap: () async {
                                   final selected = await showButlerlyDatePicker(
@@ -1484,7 +1493,17 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       }
     },
     child: Scaffold(
-      appBar: AppBar(title: Text(context.l10n.text('transactionDetail'))),
+      appBar: AppBar(
+        title: Text(context.l10n.text('transactionDetail')),
+        actions: [
+          IconButton(
+            key: const ValueKey('transaction-detail-edit-action'),
+            tooltip: context.l10n.text('edit'),
+            onPressed: _editTransaction,
+            icon: const Icon(Icons.edit_outlined),
+          ),
+        ],
+      ),
       body: ButlerlyResponsiveBody(
         contentKey: const ValueKey('transaction-detail-content'),
         child: ListView(

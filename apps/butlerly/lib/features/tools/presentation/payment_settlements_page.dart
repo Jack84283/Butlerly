@@ -3,6 +3,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_action_group.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
@@ -152,22 +153,27 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
           subtitle: context.l10n.text('paymentSettlementsSubtitle'),
           onRefresh: _refresh,
           actions: [
-            IconButton.filled(
-              key: const ValueKey('payment-settlements-add'),
-              tooltip: context.l10n.text('addPaymentSettlement'),
-              onPressed: data.activeCardSources.isEmpty
-                  ? null
-                  : () => _createSettlement(data),
-              icon: const Icon(Icons.add_rounded),
-              style: IconButton.styleFrom(
-                backgroundColor: context.colors.interactive,
-                foregroundColor:
-                    context.colors.interactive.computeLuminance() > 0.5
-                    ? context.colors.background
-                    : Colors.white,
-                shape: const CircleBorder(),
-                minimumSize: const Size.square(ButlerlySize.minimumTarget),
-                maximumSize: const Size.square(ButlerlySize.minimumTarget),
+            Padding(
+              padding: const EdgeInsetsDirectional.only(
+                end: ButlerlySpacing.headerActionTrailing,
+              ),
+              child: IconButton.filled(
+                key: const ValueKey('payment-settlements-add'),
+                tooltip: context.l10n.text('addPaymentSettlement'),
+                onPressed: data.activeCardSources.isEmpty
+                    ? null
+                    : () => _createSettlement(data),
+                icon: const Icon(Icons.add_rounded),
+                style: IconButton.styleFrom(
+                  backgroundColor: context.colors.interactive,
+                  foregroundColor:
+                      context.colors.interactive.computeLuminance() > 0.5
+                      ? context.colors.background
+                      : Colors.white,
+                  shape: const CircleBorder(),
+                  minimumSize: const Size.square(ButlerlySize.minimumTarget),
+                  maximumSize: const Size.square(ButlerlySize.minimumTarget),
+                ),
               ),
             ),
           ],
@@ -464,17 +470,21 @@ class _PaymentSettlementDetailPageState
                   message: context.l10n.text('noActivityInPeriod'),
                 )
               else
-                for (final transaction in detail.transactions) ...[
-                  TransactionRow(
-                    transaction: transaction,
-                    masterData: _masterData,
-                    paymentSourceNames: widget.sourceNames,
-                    showDate: true,
-                    showNavigationIndicator: true,
-                    onTap: () => _openTransaction(transaction),
+                ButlerlyTransactionInnerCard(
+                  child: ButlerlyTransactionList(
+                    children: [
+                      for (final transaction in detail.transactions)
+                        TransactionRow(
+                          transaction: transaction,
+                          masterData: _masterData,
+                          paymentSourceNames: widget.sourceNames,
+                          showDate: true,
+                          showNavigationIndicator: true,
+                          onTap: () => _openTransaction(transaction),
+                        ),
+                    ],
                   ),
-                  const Divider(height: ButlerlySpacing.section),
-                ],
+                ),
               const SizedBox(height: ButlerlySpacing.structural),
             ],
           ),

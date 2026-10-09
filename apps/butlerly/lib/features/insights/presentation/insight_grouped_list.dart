@@ -1,7 +1,9 @@
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/insights/presentation/insight_group_visualization.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -105,6 +107,7 @@ class InsightGroupedList extends StatelessWidget {
           if (grouped[group] case final items? when items.isNotEmpty)
             ButlerlyCard(
               semanticLabel: _groupTitle(context, group, items),
+              padding: const EdgeInsets.all(ButlerlySpacing.compact),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -122,32 +125,36 @@ class InsightGroupedList extends StatelessWidget {
                     ),
                   ],
                   const SizedBox(height: ButlerlySpacing.standard),
-                  for (var index = 0; index < items.length; index++) ...[
-                    Builder(
-                      builder: (context) {
-                        final item = items[index];
-                        final escalation = item.escalation;
-                        final drillDownInsight =
-                            escalation != null &&
-                                canViewTransactions(escalation)
-                            ? escalation
-                            : item.primary;
-                        return _InsightItem(
-                          insight: item.primary,
-                          escalation: escalation,
-                          drillDownInsight: drillDownInsight,
-                          masterData: masterData,
-                          showRuleCopy: !_groupOwnsRuleCopy(group, items),
-                          onViewTransactions:
-                              canViewTransactions(drillDownInsight)
-                              ? () => onViewTransactions(drillDownInsight)
-                              : null,
-                        );
-                      },
+                  ButlerlyTransactionInnerCard(
+                    child: ButlerlyTransactionList(
+                      children: [
+                        for (var index = 0; index < items.length; index++) ...[
+                          Builder(
+                            builder: (context) {
+                              final item = items[index];
+                              final escalation = item.escalation;
+                              final drillDownInsight =
+                                  escalation != null &&
+                                      canViewTransactions(escalation)
+                                  ? escalation
+                                  : item.primary;
+                              return _InsightItem(
+                                insight: item.primary,
+                                escalation: escalation,
+                                drillDownInsight: drillDownInsight,
+                                masterData: masterData,
+                                showRuleCopy: !_groupOwnsRuleCopy(group, items),
+                                onViewTransactions:
+                                    canViewTransactions(drillDownInsight)
+                                    ? () => onViewTransactions(drillDownInsight)
+                                    : null,
+                              );
+                            },
+                          ),
+                        ],
+                      ],
                     ),
-                    if (index != items.length - 1)
-                      const Divider(height: ButlerlySpacing.section),
-                  ],
+                  ),
                 ],
               ),
             ),
@@ -342,139 +349,160 @@ class _InsightItem extends StatelessWidget {
         insight.rule.grouping == RuleGrouping.subcategory ||
         insight.rule.grouping == RuleGrouping.merchant;
 
-    return Semantics(
-      container: true,
-      explicitChildNodes: true,
-      label: [ruleName, ?identity, ?escalationName].join(': '),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _IdentityIcon(insight: insight, masterData: masterData),
-          const SizedBox(width: ButlerlySpacing.small),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (showHeading)
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          identity ?? ruleName,
-                          style: Theme.of(context).textTheme.titleMedium,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        ButlerlyTransactionItemTokens.horizontalInset,
+        ButlerlyTransactionItemTokens.topPadding,
+        ButlerlyTransactionItemTokens.horizontalInset,
+        ButlerlyTransactionItemTokens.bottomPadding,
+      ),
+      child: Semantics(
+        container: true,
+        explicitChildNodes: true,
+        label: [ruleName, ?identity, ?escalationName].join(': '),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _IdentityIcon(insight: insight, masterData: masterData),
+            const SizedBox(width: ButlerlySpacing.small),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (showHeading)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            identity ?? ruleName,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
                         ),
-                      ),
-                      Icon(semantic.icon, color: semantic.color, size: 18),
-                    ],
-                  )
-                else
-                  Align(
-                    alignment: AlignmentDirectional.centerEnd,
-                    child: Icon(semantic.icon, color: semantic.color, size: 18),
-                  ),
-                if (showRuleCopy && identity != null) ...[
-                  const SizedBox(height: ButlerlySpacing.micro),
-                  Text(ruleName, style: Theme.of(context).textTheme.bodyMedium),
-                ],
-                if (showRuleCopy) ...[
-                  const SizedBox(height: ButlerlySpacing.micro),
-                  Text(context.l10n.text(insight.rule.descriptionKey)),
-                ],
-                if (escalationName != null) ...[
-                  const SizedBox(height: ButlerlySpacing.micro),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.warning_amber_rounded,
-                        size: 16,
+                        Icon(semantic.icon, color: semantic.color, size: 18),
+                      ],
+                    )
+                  else
+                    Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: Icon(
+                        semantic.icon,
                         color: semantic.color,
+                        size: 18,
                       ),
-                      const SizedBox(width: ButlerlySpacing.micro),
-                      Flexible(
-                        child: Text(
-                          escalationName,
-                          style: Theme.of(context).textTheme.labelMedium
-                              ?.copyWith(
-                                color: semantic.color,
-                                fontWeight: FontWeight.w600,
+                    ),
+                  if (showRuleCopy && identity != null) ...[
+                    const SizedBox(height: ButlerlySpacing.micro),
+                    Text(
+                      ruleName,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                  if (showRuleCopy) ...[
+                    const SizedBox(height: ButlerlySpacing.micro),
+                    Text(context.l10n.text(insight.rule.descriptionKey)),
+                  ],
+                  if (escalationName != null) ...[
+                    const SizedBox(height: ButlerlySpacing.micro),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          size: 16,
+                          color: semantic.color,
+                        ),
+                        const SizedBox(width: ButlerlySpacing.micro),
+                        Flexible(
+                          child: Text(
+                            escalationName,
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(
+                                  color: semantic.color,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (current != null || baseline != null) ...[
+                    if (!tightIdentityToAmount)
+                      const SizedBox(height: ButlerlySpacing.small),
+                    Wrap(
+                      spacing: ButlerlySpacing.small,
+                      runSpacing: ButlerlySpacing.micro,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (baseline != null)
+                          Text(
+                            baseline,
+                            style: Theme.of(context).textTheme.bodyLarge,
+                          ),
+                        if (baseline != null && current != null)
+                          Text(
+                            '→',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        if (current != null)
+                          Text(
+                            current,
+                            style: Theme.of(context).textTheme.bodyLarge,
+                          ),
+                      ],
+                    ),
+                  ],
+                  if (difference != null || percent != null) ...[
+                    const SizedBox(height: ButlerlySpacing.micro),
+                    Text(
+                      [
+                        direction,
+                        difference,
+                        percent,
+                      ].whereType<String>().join(' · '),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: semantic.color),
+                    ),
+                  ],
+                  if (onViewTransactions != null) ...[
+                    const SizedBox(height: ButlerlySpacing.micro),
+                    TextButton.icon(
+                      onPressed: onViewTransactions,
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        minimumSize: const Size(0, 32),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      iconAlignment: IconAlignment.end,
+                      icon: const Icon(Icons.chevron_right),
+                      label: Text(
+                        drillDownInsight.evidence.isEmpty
+                            ? context.l10n.text('viewTransactions')
+                            : context.l10n.text(
+                                drillDownInsight.evidence.length == 1
+                                    ? 'viewOneSupportingTransaction'
+                                    : 'viewManySupportingTransactions',
+                                {
+                                  'count':
+                                      '${drillDownInsight.evidence.length}',
+                                },
                               ),
-                        ),
                       ),
-                    ],
-                  ),
-                ],
-                if (current != null || baseline != null) ...[
-                  if (!tightIdentityToAmount)
+                    ),
+                  ] else if (drillDownInsight.evidence.isNotEmpty) ...[
                     const SizedBox(height: ButlerlySpacing.small),
-                  Wrap(
-                    spacing: ButlerlySpacing.small,
-                    runSpacing: ButlerlySpacing.micro,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      if (baseline != null)
-                        Text(
-                          baseline,
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      if (baseline != null && current != null)
-                        Text('→', style: Theme.of(context).textTheme.bodySmall),
-                      if (current != null)
-                        Text(
-                          current,
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                    ],
-                  ),
-                ],
-                if (difference != null || percent != null) ...[
-                  const SizedBox(height: ButlerlySpacing.micro),
-                  Text(
-                    [
-                      direction,
-                      difference,
-                      percent,
-                    ].whereType<String>().join(' · '),
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(color: semantic.color),
-                  ),
-                ],
-                if (onViewTransactions != null) ...[
-                  const SizedBox(height: ButlerlySpacing.micro),
-                  TextButton.icon(
-                    onPressed: onViewTransactions,
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(0, 32),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    Text(
+                      context.l10n.text('supportingTransactions', {
+                        'count': '${drillDownInsight.evidence.length}',
+                      }),
                     ),
-                    iconAlignment: IconAlignment.end,
-                    icon: const Icon(Icons.chevron_right),
-                    label: Text(
-                      drillDownInsight.evidence.isEmpty
-                          ? context.l10n.text('viewTransactions')
-                          : context.l10n.text(
-                              drillDownInsight.evidence.length == 1
-                                  ? 'viewOneSupportingTransaction'
-                                  : 'viewManySupportingTransactions',
-                              {'count': '${drillDownInsight.evidence.length}'},
-                            ),
-                    ),
-                  ),
-                ] else if (drillDownInsight.evidence.isNotEmpty) ...[
-                  const SizedBox(height: ButlerlySpacing.small),
-                  Text(
-                    context.l10n.text('supportingTransactions', {
-                      'count': '${drillDownInsight.evidence.length}',
-                    }),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
