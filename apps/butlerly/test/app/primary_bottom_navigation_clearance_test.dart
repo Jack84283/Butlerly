@@ -3,6 +3,7 @@ import 'dart:ui' show SemanticsAction, Tristate;
 import 'package:butlerly/app/shell/compact/compact_primary_shell.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/theme/butlerly_surface_gradients.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -131,6 +132,7 @@ void main() {
     );
     expect(selectedIconTheme.data.color, lightColors.interactive);
     expect(inactiveIconTheme.data.color, lightColors.secondaryText);
+    expect(pillDecoration.gradient, ButlerlySurfaceGradients.lightElevated);
     expect(pillRect.height, closeTo(ButlerlySize.navigationBarHeight, 0.01));
     expect(
       navigationContentRect.height,
@@ -233,13 +235,12 @@ void main() {
           .first,
     );
     final darkColors = AppTheme.dark.extension<ButlerlySemanticColors>()!;
-    final selectedAccent = Color.lerp(
-      darkColors.interactiveStrong,
-      Colors.white,
-      0.55,
+    expect(selectedIconTheme.data.color, darkColors.interactive);
+    expect(inactiveIconTheme.data.color, darkColors.tertiaryText);
+    final pill = tester.widget<Container>(
+      find.byKey(const ValueKey('primary-navigation-pill')),
     );
-    expect(selectedIconTheme.data.color, selectedAccent);
-    expect(inactiveIconTheme.data.color, darkColors.border);
+    expect((pill.decoration! as BoxDecoration).gradient, isNull);
     expect(tester.takeException(), isNull);
   });
 
