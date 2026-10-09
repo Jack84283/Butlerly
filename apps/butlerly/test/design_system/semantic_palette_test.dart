@@ -47,10 +47,15 @@ void main() {
 
   test('selected footer icons have one accessible color in both modes', () {
     for (final theme in ButlerlyColorTheme.values) {
-      final light = AppTheme.lightFor(theme).extension<ButlerlySemanticColors>()!;
-      final dark = AppTheme.darkFor(theme).extension<ButlerlySemanticColors>()!;
+      final lightTheme = AppTheme.lightFor(theme);
+      final darkTheme = AppTheme.darkFor(theme);
+      final light = lightTheme.extension<ButlerlySemanticColors>()!;
+      final dark = darkTheme.extension<ButlerlySemanticColors>()!;
 
       expect(light.navigationSelectedIcon, dark.navigationSelectedIcon);
+      if (theme == ButlerlyColorTheme.butlerRed) {
+        expect(light.navigationSelectedIcon, const Color(0xFFBD6384));
+      }
       expect(
         _contrast(light.navigationSelectedIcon, light.elevatedSurface),
         greaterThanOrEqualTo(3),
