@@ -88,20 +88,20 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
   );
 
   static const light = ButlerlySemanticColors(
-    background: Color(0xFFF2F3F9),
-    surface: Color(0xFFE7EBF1),
-    dashboardSurface: Color(0xFFEEF1F5),
-    elevatedSurface: Color(0xFFE0E5EC),
-    subtleSurface: Color(0xFFE7EBF1),
-    primaryText: Color(0xFF17191F),
-    secondaryText: Color(0xFF383838),
-    tertiaryText: Color(0xFF787E89),
-    cardDivider: Color(0xFFD8DDE6),
-    border: Color(0xFFD8DDE6),
+    background: Color(0xFFE6E9EF),
+    surface: Color(0xFFC8CED8),
+    dashboardSurface: Color(0xFFD6DBE3),
+    elevatedSurface: Color(0xFFBCC4CF),
+    subtleSurface: Color(0xFFC8CED8),
+    primaryText: Color(0xFF14171D),
+    secondaryText: Color(0xFF4B5563),
+    tertiaryText: Color(0xFF6B7280),
+    cardDivider: Color(0xFFAEB6C2),
+    border: Color(0xFFAEB6C2),
     brand: Color(0xFF7A1E3A),
     brandStrong: Color(0xFF541127),
     interactive: Color(0xFF7A1E3A),
-    navigationSelectedIcon: Color(0xFFBD6384),
+    navigationSelectedIcon: Color(0xFF7A1E3A),
     controlPrimary: Color(0xFF541127),
     interactiveStrong: Color(0xFF64162F),
     success: Color(0xFF287A52),
@@ -129,7 +129,9 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
         interactive: brightness == Brightness.dark
             ? const Color(0xFF7DB7E8)
             : const Color(0xFF315B82),
-        navigationSelectedIcon: const Color(0xFF6686A3),
+        navigationSelectedIcon: brightness == Brightness.dark
+            ? const Color(0xFF6686A3)
+            : const Color(0xFF315B82),
         controlPrimary: brightness == Brightness.dark
             ? const Color(0xFF1E3E5C)
             : const Color(0xFF234563),
@@ -153,7 +155,9 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
         interactive: brightness == Brightness.dark
             ? const Color(0xFF66C7A0)
             : const Color(0xFF246B57),
-        navigationSelectedIcon: const Color(0xFF618B7C),
+        navigationSelectedIcon: brightness == Brightness.dark
+            ? const Color(0xFF618B7C)
+            : const Color(0xFF246B57),
         controlPrimary: brightness == Brightness.dark
             ? const Color(0xFF16483B)
             : const Color(0xFF16483B),
