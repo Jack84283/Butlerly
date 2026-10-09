@@ -32,9 +32,7 @@ abstract final class AppTheme {
       base.textTheme,
       primaryText: colors.primaryText,
       secondaryText: colors.secondaryText,
-      bodySmallText: brightness == Brightness.light
-          ? colors.secondaryText
-          : colors.primaryText,
+      bodySmallText: colors.secondaryText,
     );
 
     final scheme = ColorScheme(
@@ -252,7 +250,7 @@ abstract final class AppTheme {
             textTheme.labelSmall!,
             color: states.contains(WidgetState.selected)
                 ? colors.interactive
-                : colors.secondaryText,
+                : colors.tertiaryText,
             selected: states.contains(WidgetState.selected),
           ),
         ),
@@ -260,7 +258,7 @@ abstract final class AppTheme {
           (states) => IconThemeData(
             color: states.contains(WidgetState.selected)
                 ? colors.interactive
-                : colors.secondaryText,
+                : colors.tertiaryText,
           ),
         ),
       ),
@@ -268,7 +266,7 @@ abstract final class AppTheme {
         backgroundColor: colors.background,
         indicatorColor: colors.selection,
         selectedIconTheme: IconThemeData(color: colors.interactive),
-        unselectedIconTheme: IconThemeData(color: colors.secondaryText),
+        unselectedIconTheme: IconThemeData(color: colors.tertiaryText),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
