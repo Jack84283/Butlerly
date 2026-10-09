@@ -1681,7 +1681,7 @@ void main() {
     await tester.ensureVisible(find.byKey(const ValueKey('compact-section-2')));
     await tester.tap(find.byKey(const ValueKey('compact-section-2')));
     await tester.pumpAndSettle();
-    expect(find.byType(ButlerlyCard), findsOneWidget);
+    expect(find.byType(ButlerlyCard), findsNWidgets(2));
     expect(find.byType(ButlerlyRecordRow), findsOneWidget);
     expect(find.text('Needs a category'), findsOneWidget);
     expect(find.text('Resolve'), findsNothing);
@@ -1848,11 +1848,11 @@ void main() {
       const MaterialApp(home: Scaffold(body: ReviewPage())),
     );
     await tester.pumpAndSettle();
-    expect(find.byType(ButlerlyCard), findsOneWidget);
+    expect(find.byType(ButlerlyCard), findsNWidgets(2));
     expect(find.text('Category and subcategory are missing'), findsNWidgets(3));
     await tester.tap(find.byKey(const ValueKey('compact-section-2')));
     await tester.pumpAndSettle();
-    expect(find.byType(ButlerlyCard), findsOneWidget);
+    expect(find.byType(ButlerlyCard), findsNWidgets(2));
     expect(find.byType(ButlerlyRecordRow), findsNWidgets(3));
     expect(
       find.text('Receipt amount differs from transaction'),
@@ -2614,7 +2614,7 @@ void main() {
     final dateCard = find.byKey(const ValueKey('transaction-editor-date-card'));
     expect(dateCard, findsOneWidget);
     expect(
-      find.descendant(of: dateCard, matching: find.text('2026-08-10')),
+      find.descendant(of: dateCard, matching: find.text('Aug 10, 2026')),
       findsOneWidget,
     );
     expect(find.text('2026-08-11'), findsNothing);
