@@ -821,10 +821,15 @@ class _ReviewTransactionCardState extends State<_ReviewTransactionCard> {
                                 onPressed: widget.onEdit,
                                 child: Text(widget.editLabel),
                               ),
-                              TextButton(
-                                onPressed: widget.onDismiss,
-                                child: Text(widget.dismissLabel),
-                              ),
+                              if (widget.dismissLabel != null)
+
+                                TextButton(
+
+                                  onPressed: widget.onDismiss,
+
+                                  child: Text(widget.dismissLabel!),
+
+                                ),
                             ],
                           ),
                         ],
@@ -949,7 +954,8 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        ButlerlyTransactionList(
+                        ButlerlyTransactionInnerCard(
+                          child: ButlerlyTransactionList(
                           children: [
                             for (final transaction in transactions)
                               TransactionRow(
@@ -985,9 +991,10 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                                 ),
                               ),
                           ],
-                        ),
-                      ],
-                    ),
+                         ),
+                         ),
+                       ],
+                     ),
                   );
                 },
               ),
