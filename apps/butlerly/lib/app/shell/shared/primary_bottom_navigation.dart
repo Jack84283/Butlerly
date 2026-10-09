@@ -24,16 +24,6 @@ double compactNavigationHeightForLabels({
     return painter.height;
   }
 
-  final scaledLabelFontSize = textScaler.scale(
-    ButlerlyTypography.navigationLabelFontSize,
-  );
-  final normalScale =
-      scaledLabelFontSize <= ButlerlyTypography.navigationLabelFontSize + 0.01;
-
-  if (normalScale) {
-    return ButlerlySize.navigationBarHeight;
-  }
-
   var maximumLabelHeight = addLabel == null ? 0.0 : labelHeight(addLabel);
   for (final label in standardLabels) {
     final height = labelHeight(label);
@@ -170,9 +160,17 @@ class PrimaryBottomNavigation extends StatelessWidget {
       color: context.colors.secondaryText,
       selected: true,
     );
+    // Measure labels against the actual pill content width. At narrow widths,
+    // the inset, border and destination margins can force another text line.
+    final pillAvailableWidth = availableWidth - 2 * ButlerlySpacing.standard;
+    final pillWidth = pillAvailableWidth > 390 ? 390.0 : pillAvailableWidth;
+    final itemWidth =
+        (pillWidth - 2 * ButlerlySize.dividerWidth) /
+            visualBranchIndexes.length -
+        2 * ButlerlySpacing.micro;
     return compactNavigationHeightForLabels(
       textScaler: MediaQuery.textScalerOf(context),
-      itemWidth: availableWidth / visualBranchIndexes.length,
+      itemWidth: itemWidth,
       standardLabels: [
         for (final branchIndex in visualBranchIndexes)
           if (branchIndex != 2)
