@@ -153,6 +153,23 @@ void main() {
     );
     expect(selectedIconTheme.data.color, lightColors.navigationSelectedIcon);
     expect(inactiveIconTheme.data.color, lightColors.secondaryText);
+    // Only the icon paint is lowered; the label and pill geometry stay put.
+    for (final (index, iconData) in const [
+      (0, Icons.home),
+      (1, Icons.receipt_long_outlined),
+      (2, Icons.add_rounded),
+    ]) {
+      final iconCenter = tester.getCenter(find.byIcon(iconData)).dy;
+      final slotCenter = tester
+          .getCenter(
+            find.byKey(ValueKey('primary-navigation-icon-slot-$index')),
+          )
+          .dy;
+      expect(
+        iconCenter - slotCenter,
+        closeTo(ButlerlySpacing.primaryNavigationIconDrop, 0.01),
+      );
+    }
     expect(pillDecoration.gradient, isNull);
     expect(pillRect.height, closeTo(ButlerlySize.navigationBarHeight, 0.01));
     expect(
