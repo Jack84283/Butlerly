@@ -1010,8 +1010,10 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                 },
               ),
               const SizedBox(height: ButlerlySpacing.cardGap),
-              ButlerlyButtonBar(
-                alignment: ButlerlyButtonBarAlignment.end,
+              SizedBox(
+                width: double.infinity,
+                child: ButlerlyButtonBar(
+                  alignment: ButlerlyButtonBarAlignment.end,
                 density: ButlerlyButtonBarDensity.standard,
                 spacing: ButlerlyButtonBarSpacing.none,
                 children: [
@@ -1040,7 +1042,8 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                       child: Text(context.l10n.text('consolidateUseOne')),
                     ),
                   ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
