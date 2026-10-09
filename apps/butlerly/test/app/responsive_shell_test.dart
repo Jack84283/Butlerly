@@ -133,7 +133,9 @@ void main() {
       final bodySurface = find.byKey(
         const ValueKey('primary-medium-body-surface'),
       );
-      final navigation = find.byKey(const ValueKey('primary-medium-navigation'));
+      final navigation = find.byKey(
+        const ValueKey('primary-medium-navigation'),
+      );
       expect(tester.getSize(bodySurface), size);
       expect(
         tester.getRect(bodySurface).bottom,
