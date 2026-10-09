@@ -25,29 +25,29 @@ void main() {
   test(
     'light mode matches the approved off-white background specification',
     () {
-    final colors = AppTheme.light.extension<ButlerlySemanticColors>()!;
-    expect(colors.background, const Color(0xFFF6F7F8));
-    expect(colors.cardSurface, const Color(0xFFFFFFFF));
-    expect(colors.surface, const Color(0xFFF0F2F5));
-    expect(colors.elevatedSurface, const Color(0xFFF0F2F5));
-    expect(colors.subtleSurface, const Color(0xFFF2F3F5));
-    expect(colors.overlaySurface, const Color(0xFFFFFFFF));
-    expect(colors.sheetSurface, const Color(0xFFF2F3F5));
-    expect(colors.footerSurface, const Color(0xFFF2F3F5));
-    expect(colors.primaryText, const Color(0xFF14171D));
-    expect(colors.secondaryText, const Color(0xFF4B5563));
-    expect(colors.tertiaryText, const Color(0xFF6B7280));
-    expect(colors.cardDivider, const Color(0xFFD8DDE6));
-    expect(colors.border, const Color(0xFFD8DDE6));
-    expect(colors.brand, const Color(0xFF7A1E3A));
-    expect(
-      colors.cardSurface.computeLuminance(),
-      greaterThan(colors.background.computeLuminance()),
-    );
-    expect(
-      colors.background.computeLuminance(),
-      greaterThan(colors.elevatedSurface.computeLuminance()),
-    );
+      final colors = AppTheme.light.extension<ButlerlySemanticColors>()!;
+      expect(colors.background, const Color(0xFFF6F7F8));
+      expect(colors.cardSurface, const Color(0xFFFFFFFF));
+      expect(colors.surface, const Color(0xFFF0F2F5));
+      expect(colors.elevatedSurface, const Color(0xFFF0F2F5));
+      expect(colors.subtleSurface, const Color(0xFFF2F3F5));
+      expect(colors.overlaySurface, const Color(0xFFFFFFFF));
+      expect(colors.sheetSurface, const Color(0xFFF2F3F5));
+      expect(colors.footerSurface, const Color(0xFFF2F3F5));
+      expect(colors.primaryText, const Color(0xFF14171D));
+      expect(colors.secondaryText, const Color(0xFF4B5563));
+      expect(colors.tertiaryText, const Color(0xFF6B7280));
+      expect(colors.cardDivider, const Color(0xFFD8DDE6));
+      expect(colors.border, const Color(0xFFD8DDE6));
+      expect(colors.brand, const Color(0xFF7A1E3A));
+      expect(
+        colors.cardSurface.computeLuminance(),
+        greaterThan(colors.background.computeLuminance()),
+      );
+      expect(
+        colors.background.computeLuminance(),
+        greaterThan(colors.elevatedSurface.computeLuminance()),
+      );
     },
   );
 
