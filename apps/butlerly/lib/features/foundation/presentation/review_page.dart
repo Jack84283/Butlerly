@@ -790,6 +790,7 @@ class _ReviewTransactionCardState extends State<_ReviewTransactionCard> {
               return ButlerlyCard(
                 padding: EdgeInsets.zero,
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     ButlerlyTransactionInnerCard(
                       child: TransactionRow(
