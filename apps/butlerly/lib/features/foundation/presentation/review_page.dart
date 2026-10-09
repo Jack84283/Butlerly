@@ -963,7 +963,7 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Padding(
-                          padding: const EdgeInsets.all(12),
+                          padding: EdgeInsets.zero,
                           child: ButlerlyTransactionInnerCard(
                             child: ButlerlyTransactionList(
                               children: [
