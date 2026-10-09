@@ -2,6 +2,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_activity.dart';
@@ -498,7 +499,7 @@ class _AnalysisContent extends StatelessWidget {
         value: period,
         onChanged: onPeriodChanged,
       ),
-      children: [
+      children: _withAnalysisCardSpacing([
         AnalysisSummary(model: model),
         AnalysisSpendingBreakdown(
           model: model,
@@ -544,7 +545,7 @@ class _AnalysisContent extends StatelessWidget {
           ),
         ],
         AnalysisDataQuality(model: model),
-      ],
+      ]),
     );
   }
 
@@ -602,3 +603,11 @@ class _AnalysisContent extends StatelessWidget {
     );
   }
 }
+
+/// Match the consistent card-to-card separation used on the Home page.
+List<Widget> _withAnalysisCardSpacing(List<Widget> cards) => [
+  for (var index = 0; index < cards.length; index++) ...[
+    if (index > 0) const SizedBox(height: ButlerlySpacing.cardGap),
+    cards[index],
+  ],
+];
