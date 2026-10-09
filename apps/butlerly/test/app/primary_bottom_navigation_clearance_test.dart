@@ -104,6 +104,28 @@ void main() {
     expect(navigationMaterial.color, Colors.transparent);
     expect(pillDecoration.color!.a, ButlerlyOpacity.primaryNavigationSurface);
     expect(pillRect.top, closeTo(navigationRect.top + 8, 0.01));
+    // The floating pill is lifted 12px above the device safe-area inset,
+    // without changing its 56px height or consuming a footer area.
+    final bottomInset = MediaQuery.paddingOf(tester.element(pill)).bottom;
+    expect(
+      pillRect.bottom,
+      closeTo(
+        navigationRect.bottom -
+            bottomInset -
+            ButlerlySpacing.primaryNavigationBottomLift,
+        0.01,
+      ),
+    );
+    expect(
+      navigationRect.height,
+      closeTo(
+        ButlerlySize.navigationBarHeight +
+            ButlerlySpacing.compact +
+            bottomInset +
+            ButlerlySpacing.primaryNavigationBottomLift,
+        0.01,
+      ),
+    );
     expect(pillRect.width, lessThan(navigationRect.width));
     expect(pillRect.width, closeTo(navigationRect.width - 32, 0.01));
     expect(pillRect.center.dx, closeTo(navigationRect.center.dx, 0.01));
