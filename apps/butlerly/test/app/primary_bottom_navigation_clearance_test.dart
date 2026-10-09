@@ -129,7 +129,7 @@ void main() {
           )
           .first,
     );
-    expect(selectedIconTheme.data.color, lightColors.interactive);
+    expect(selectedIconTheme.data.color, lightColors.navigationSelectedIcon);
     expect(inactiveIconTheme.data.color, lightColors.secondaryText);
     expect(pillDecoration.gradient, isNull);
     expect(pillRect.height, closeTo(ButlerlySize.navigationBarHeight, 0.01));
@@ -234,7 +234,7 @@ void main() {
           .first,
     );
     final darkColors = AppTheme.dark.extension<ButlerlySemanticColors>()!;
-    expect(selectedIconTheme.data.color, darkColors.interactive);
+    expect(selectedIconTheme.data.color, darkColors.navigationSelectedIcon);
     expect(inactiveIconTheme.data.color, darkColors.tertiaryText);
     final pill = tester.widget<Container>(
       find.byKey(const ValueKey('primary-navigation-pill')),
