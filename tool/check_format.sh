@@ -6,16 +6,24 @@ if dart format --output=none --set-exit-if-changed "$@"; then
   exit 0
 fi
 
-# Diagnose app formatting drift in CI without changing the checkout.
+# Diagnose formatting drift using probes alongside the source files, keeping
+# their package language version and formatter configuration unchanged.
 if [[ "$PWD" == */apps/butlerly ]]; then
-  tmp_dir="$(mktemp -d)"
-  trap 'rm -rf "$tmp_dir"' EXIT
+  probes=()
+  cleanup() {
+    for probe in "${probes[@]}"; do
+      rm -f "$probe"
+    done
+  }
+  trap cleanup EXIT
   for file in \
     lib/features/foundation/presentation/transactions_page.dart \
     test/design_system/semantic_palette_test.dart; do
-    cp "$file" "$tmp_dir/$(basename "$file")"
-    dart format "$tmp_dir/$(basename "$file")" >/dev/null
-    diff -u "$file" "$tmp_dir/$(basename "$file")" || true
+    probe="${file%.dart}_ci_format_probe.dart"
+    cp "$file" "$probe"
+    probes+=("$probe")
+    dart format "$probe" >/dev/null
+    diff -u "$file" "$probe" || true
   done
 fi
 exit 1
