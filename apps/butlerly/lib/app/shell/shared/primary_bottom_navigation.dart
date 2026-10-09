@@ -133,7 +133,9 @@ class PrimaryBottomNavigation extends StatelessWidget {
             key: selected
                 ? ValueKey('primary-navigation-switch-selected-$branchIndex')
                 : null,
-            margin: const EdgeInsets.all(ButlerlySpacing.micro),
+            margin: const EdgeInsets.symmetric(
+              horizontal: ButlerlySpacing.micro,
+            ),
             decoration: BoxDecoration(
               color: selected ? context.colors.selection : Colors.transparent,
               borderRadius: BorderRadius.circular(ButlerlyRadius.pill),
@@ -245,8 +247,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
                               destinations[branchIndex]!,
                               branchIndex,
                               navigationHeight -
-                                  ButlerlySize.primaryNavigationAddIconSize -
-                                  2 * ButlerlySpacing.micro,
+                                  ButlerlySize.primaryNavigationAddIconSize,
                             ),
                           ),
                       ],
