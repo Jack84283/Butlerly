@@ -3,6 +3,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_compact_section_selector.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
+import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
@@ -792,7 +793,9 @@ class _ReviewTransactionCardState extends State<_ReviewTransactionCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    ButlerlyTransactionInnerCard(
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: ButlerlyTransactionInnerCard(
                       child: TransactionRow(
                         transaction: transaction,
                         masterData:
@@ -804,6 +807,7 @@ class _ReviewTransactionCardState extends State<_ReviewTransactionCard> {
                         },
                         showDate: true,
                         onTap: widget.onEdit,
+                      ),
                       ),
                     ),
                     Padding(
@@ -955,7 +959,9 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        ButlerlyTransactionInnerCard(
+                        Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: ButlerlyTransactionInnerCard(
                           child: ButlerlyTransactionList(
                             children: [
                               for (final transaction in transactions)
@@ -1005,12 +1011,14 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                 spacing: ButlerlyButtonBarSpacing.none,
                 children: [
                   OutlinedButton(
+                    style: OutlinedButton.styleFrom(minimumSize: const Size(ButlerlyButtonTokens.standardWidth, ButlerlyButtonTokens.height)),
                     onPressed: widget.onKeepBoth,
                     child: Text(context.l10n.text('keepBoth')),
                   ),
                   Tooltip(
                     message: context.l10n.text('consolidateUseOneHint'),
                     child: FilledButton(
+                      style: FilledButton.styleFrom(minimumSize: const Size(ButlerlyButtonTokens.standardWidth, ButlerlyButtonTokens.height)),
                       onPressed: _selectedTransactionId == null
                           ? null
                           : () => widget.onConsolidate(_selectedTransactionId!),
