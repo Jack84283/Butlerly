@@ -501,7 +501,6 @@ class _AnalysisContent extends StatelessWidget {
       ),
       children: [
         AnalysisSummary(model: model),
-        _SectionHeader(title: context.l10n.text('spending')),
         AnalysisSpendingBreakdown(
           model: model,
           masterData: masterData,
@@ -516,7 +515,6 @@ class _AnalysisContent extends StatelessWidget {
               ? () => _openSearch(context, analysisContext!.period)
               : null,
         ),
-        _SectionHeader(title: context.l10n.text('financialCalendar')),
         calendar == null
             ? AnalysisActivitySummary(metric: model.transactionCount)
             : AnalysisActivity(
@@ -531,16 +529,22 @@ class _AnalysisContent extends StatelessWidget {
                 masterData: masterData,
               ),
         if (model.insight != null) ...[
-          _SectionHeader(title: context.l10n.text('insights')),
           AnalysisInsightPreview(
             finding: model.insight!,
             onTap: () => _openInsights(context),
           ),
         ] else if (model.insightUnavailable) ...[
           _SectionHeader(title: context.l10n.text('insights')),
-          ButlerlyCard(child: Text(context.l10n.text('insightsUnavailable'))),
+          ButlerlyCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ButlerlyCardHeader(title: context.l10n.text('insights')),
+                Text(context.l10n.text('insightsUnavailable')),
+              ],
+            ),
+          ),
         ],
-        _SectionHeader(title: context.l10n.text('dataQuality')),
         AnalysisDataQuality(model: model),
       ],
     );
@@ -601,15 +605,3 @@ class _AnalysisContent extends StatelessWidget {
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title});
-  final String title;
-  @override
-  Widget build(BuildContext context) => ButlerlyCard(
-    padding: EdgeInsets.symmetric(
-      horizontal: ButlerlySpacing.standard,
-      vertical: ButlerlySpacing.compact,
-    ),
-    child: ButlerlySectionHeader(title: title),
-  );
-}
