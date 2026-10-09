@@ -81,10 +81,9 @@ void main() {
       final colors = theme.extension<ButlerlySemanticColors>()!;
       expect(widget.color ?? theme.cardTheme.color, colors.cardSurface);
       final ink = tester.widget<Ink>(
-        find.descendant(
-          of: find.byType(Card).first,
-          matching: find.byType(Ink),
-        ).first,
+        find
+            .descendant(of: find.byType(Card).first, matching: find.byType(Ink))
+            .first,
       );
       final gradient = (ink.decoration as BoxDecoration?)?.gradient;
       expect(
