@@ -1014,34 +1014,34 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                 width: double.infinity,
                 child: ButlerlyButtonBar(
                   alignment: ButlerlyButtonBarAlignment.end,
-                density: ButlerlyButtonBarDensity.standard,
-                spacing: ButlerlyButtonBarSpacing.none,
-                children: [
-                  OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(
-                        ButlerlyButtonTokens.standardWidth,
-                        ButlerlyButtonTokens.height,
-                      ),
-                    ),
-                    onPressed: widget.onKeepBoth,
-                    child: Text(context.l10n.text('keepBoth')),
-                  ),
-                  Tooltip(
-                    message: context.l10n.text('consolidateUseOneHint'),
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
+                  density: ButlerlyButtonBarDensity.standard,
+                  spacing: ButlerlyButtonBarSpacing.none,
+                  children: [
+                    OutlinedButton(
+                      style: OutlinedButton.styleFrom(
                         minimumSize: const Size(
                           ButlerlyButtonTokens.standardWidth,
                           ButlerlyButtonTokens.height,
                         ),
                       ),
-                      onPressed: _selectedTransactionId == null
-                          ? null
-                          : () => widget.onConsolidate(_selectedTransactionId!),
-                      child: Text(context.l10n.text('consolidateUseOne')),
+                      onPressed: widget.onKeepBoth,
+                      child: Text(context.l10n.text('keepBoth')),
                     ),
-                  ),
+                    Tooltip(
+                      message: context.l10n.text('consolidateUseOneHint'),
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(
+                            ButlerlyButtonTokens.standardWidth,
+                            ButlerlyButtonTokens.height,
+                          ),
+                        ),
+                        onPressed: _selectedTransactionId == null
+                            ? null
+                            : () => widget.onConsolidate(_selectedTransactionId!),
+                        child: Text(context.l10n.text('consolidateUseOne')),
+                      ),
+                    ),
                   ],
                 ),
               ),
