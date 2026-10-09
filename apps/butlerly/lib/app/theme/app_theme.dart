@@ -181,7 +181,9 @@ abstract final class AppTheme {
             vertical: ButlerlyButtonTokens.verticalPadding,
           ),
           shape: buttonShape,
-          backgroundColor: colors.subtleSurface,
+          backgroundColor: brightness == Brightness.dark
+              ? colors.elevatedSurface
+              : colors.subtleSurface,
           foregroundColor: colors.primaryText,
           disabledBackgroundColor: colors.tertiaryText.withValues(
             alpha: brightness == Brightness.dark ? 0.24 : 0.16,
@@ -223,7 +225,7 @@ abstract final class AppTheme {
         ),
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: colors.elevatedSurface,
+        backgroundColor: colors.overlaySurface,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(ButlerlyRadius.large),
@@ -231,8 +233,8 @@ abstract final class AppTheme {
         ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: colors.elevatedSurface,
-        modalBackgroundColor: colors.elevatedSurface,
+        backgroundColor: colors.sheetSurface,
+        modalBackgroundColor: colors.sheetSurface,
         surfaceTintColor: Colors.transparent,
         showDragHandle: true,
         shape: const RoundedRectangleBorder(
@@ -270,7 +272,7 @@ abstract final class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: colors.elevatedSurface,
+        backgroundColor: colors.overlaySurface,
         contentTextStyle: textTheme.bodyMedium?.copyWith(
           color: colors.primaryText,
         ),
