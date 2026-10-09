@@ -104,7 +104,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
         ? (destination.selectedIcon ?? destination.icon)
         : destination.icon;
     final isDarkTheme = Theme.of(context).brightness == Brightness.dark;
-    final selectedIconColor = context.colors.interactive;
+    final selectedIconColor = context.colors.navigationSelectedIcon;
     final inactiveIconColor = isDarkTheme
         ? context.colors.tertiaryText
         : context.colors.secondaryText;
