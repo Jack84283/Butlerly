@@ -1,5 +1,4 @@
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
-import 'package:butlerly/design_system/theme/butlerly_surface_gradients.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter/material.dart';
 
@@ -17,12 +16,7 @@ class ButlerlyContentCanvas extends StatelessWidget {
   Widget build(BuildContext context) => ColoredBox(
     key: canvasKey,
     color: context.colors.subtleSurface,
-    child: DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: ButlerlySurfaceGradients.page(context),
-      ),
-      child: child,
-    ),
+    child: child,
   );
 }
 
@@ -52,16 +46,11 @@ class ButlerlyContentSurface extends StatelessWidget {
         child: Material(
           key: surfaceKey,
           color: context.colors.background,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: ButlerlySurfaceGradients.page(context),
-            ),
-            child: SizedBox(
-              key: contentKey,
-              width: double.infinity,
-              height: double.infinity,
-              child: child,
-            ),
+          child: SizedBox(
+            key: contentKey,
+            width: double.infinity,
+            height: double.infinity,
+            child: child,
           ),
         ),
       ),
@@ -98,10 +87,7 @@ class ButlerlySliverContentSurface extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: horizontalInset),
         sliver: DecoratedSliver(
           key: surfaceKey,
-          decoration: BoxDecoration(
-            color: context.colors.background,
-            gradient: ButlerlySurfaceGradients.page(context),
-          ),
+          decoration: BoxDecoration(color: context.colors.background),
           sliver: sliver,
         ),
       );
