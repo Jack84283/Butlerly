@@ -1,4 +1,5 @@
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/theme/butlerly_surface_gradients.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -104,11 +105,9 @@ class PrimaryBottomNavigation extends StatelessWidget {
         ? (destination.selectedIcon ?? destination.icon)
         : destination.icon;
     final isDarkTheme = Theme.of(context).brightness == Brightness.dark;
-    final selectedIconColor = isDarkTheme
-        ? Color.lerp(context.colors.interactiveStrong, Colors.white, 0.55)!
-        : context.colors.interactive;
+    final selectedIconColor = context.colors.interactive;
     final inactiveIconColor = isDarkTheme
-        ? context.colors.border
+        ? context.colors.tertiaryText
         : context.colors.secondaryText;
     final icon = IconTheme(
       data: IconThemeData(
@@ -224,6 +223,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
                       color: navigationColor.withValues(
                         alpha: ButlerlyOpacity.primaryNavigationSurface,
                       ),
+                      gradient: ButlerlySurfaceGradients.elevated(context),
                       borderRadius: BorderRadius.circular(ButlerlyRadius.pill),
                       border: Border.all(
                         width: ButlerlySize.dividerWidth,
