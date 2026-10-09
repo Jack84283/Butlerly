@@ -1113,7 +1113,14 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                               ListTile(
                                 contentPadding: EdgeInsets.zero,
                                 title: Text(context.l10n.text('date')),
-                                subtitle: Text(_shortDate(_date)),
+                                trailing: Row(
+                                   mainAxisSize: MainAxisSize.min,
+                                   children: [
+                                     Text(MaterialLocalizations.of(context).formatMediumDate(_date)),
+                                     const SizedBox(width: ButlerlySpacing.small),
+                                     Icon(Icons.calendar_today_outlined, color: _transactionCardIconColor(context)),
+                                   ],
+                                 ),
                                 trailing: Icon(
                                   Icons.calendar_today_outlined,
                                   color: _transactionCardIconColor(context),
@@ -1484,7 +1491,17 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       }
     },
     child: Scaffold(
-      appBar: AppBar(title: Text(context.l10n.text('transactionDetail'))),
+      appBar: AppBar(
+        title: Text(context.l10n.text('transactionDetail')),
+        actions: [
+          IconButton(
+            key: const ValueKey('transaction-detail-edit-action'),
+            tooltip: context.l10n.text('edit'),
+            onPressed: _editTransaction,
+            icon: const Icon(Icons.edit_outlined),
+          ),
+        ],
+      ),
       body: ButlerlyResponsiveBody(
         contentKey: const ValueKey('transaction-detail-content'),
         child: ListView(
