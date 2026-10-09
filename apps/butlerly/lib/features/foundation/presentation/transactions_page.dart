@@ -1121,10 +1121,6 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                      Icon(Icons.calendar_today_outlined, color: _transactionCardIconColor(context)),
                                    ],
                                  ),
-                                trailing: Icon(
-                                  Icons.calendar_today_outlined,
-                                  color: _transactionCardIconColor(context),
-                                ),
                                 onTap: () async {
                                   final selected = await showButlerlyDatePicker(
                                     context: context,
