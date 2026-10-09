@@ -69,18 +69,18 @@ void main() {
     expect(colors.primaryText, const Color(0xFFF6F7F8));
   });
 
-  test('light theme uses the four-level solid gray surface palette', () {
+  test('light theme uses the approved darker gray-blue palette', () {
     final colors = AppTheme.light.extension<ButlerlySemanticColors>()!;
 
-    expect(colors.background, const Color(0xFFF2F3F9));
-    expect(colors.surface, const Color(0xFFE7EBF1));
-    expect(colors.subtleSurface, const Color(0xFFE7EBF1));
-    expect(colors.dashboardSurface, const Color(0xFFEEF1F5));
-    expect(colors.elevatedSurface, const Color(0xFFE0E5EC));
-    expect(colors.cardDivider, const Color(0xFFD8DDE6));
-    expect(colors.border, const Color(0xFFD8DDE6));
-    expect(colors.primaryText, const Color(0xFF17191F));
-    expect(colors.secondaryText, const Color(0xFF383838));
+    expect(colors.background, const Color(0xFFE6E9EF));
+    expect(colors.surface, const Color(0xFFC8CED8));
+    expect(colors.subtleSurface, const Color(0xFFC8CED8));
+    expect(colors.dashboardSurface, const Color(0xFFD6DBE3));
+    expect(colors.elevatedSurface, const Color(0xFFBCC4CF));
+    expect(colors.cardDivider, const Color(0xFFAEB6C2));
+    expect(colors.border, const Color(0xFFAEB6C2));
+    expect(colors.primaryText, const Color(0xFF14171D));
+    expect(colors.secondaryText, const Color(0xFF4B5563));
   });
 
   test('editorial placeholder keeps cross-platform serif fallbacks', () {
