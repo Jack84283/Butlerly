@@ -121,7 +121,7 @@ void main() {
     );
   });
 
-  testWidgets('Medium keeps bottom navigation and centers readable content', (
+  testWidgets('Medium overlays floating switch buttons on full-height content', (
     tester,
   ) async {
     const size = Size(800, 800);
@@ -130,9 +130,18 @@ void main() {
     expect(find.byType(MediumPrimaryShell), findsOneWidget);
     expect(find.byType(CompactPrimaryShell), findsNothing);
     expect(find.byType(NavigationRail), findsNothing);
+    final bodySurface = find.byKey(
+      const ValueKey('primary-medium-body-surface'),
+    );
+    final navigation = find.byKey(const ValueKey('primary-medium-navigation'));
+    expect(tester.getSize(bodySurface), size);
     expect(
-      tester.getSize(find.byKey(const ValueKey('primary-medium-body-surface'))),
-      const Size(800, 744),
+      tester.getRect(bodySurface).bottom,
+      closeTo(tester.getRect(navigation).bottom, 0.01),
+    );
+    expect(
+      tester.getRect(navigation).top,
+      lessThan(tester.getRect(bodySurface).bottom),
     );
     final content = find.byKey(const ValueKey('home-page-content'));
     expect(tester.getSize(content).width, ButlerlySize.pageContentMaxWidth);
@@ -146,7 +155,6 @@ void main() {
           .width,
       size.width,
     );
-    final navigation = find.byKey(const ValueKey('primary-medium-navigation'));
     expect(
       find.descendant(of: navigation, matching: find.byType(InkWell)),
       findsNWidgets(5),
