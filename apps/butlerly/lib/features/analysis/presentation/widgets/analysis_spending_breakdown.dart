@@ -26,7 +26,7 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (model.categories.isEmpty) {
-      return ButlerlyCard(child: Text(context.l10n.text('noSpendingInPeriod')));
+      return ButlerlyCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [ButlerlyCardHeader(title: context.l10n.text('spending')), Text(context.l10n.text('noSpendingInPeriod'))]));
     }
 
     final chartValues = model.categories.take(5).toList(growable: false);
