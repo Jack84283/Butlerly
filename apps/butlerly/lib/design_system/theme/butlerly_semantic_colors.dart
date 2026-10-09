@@ -48,7 +48,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
   final Color interactive;
 
   /// Selected footer icon accent shared by light and dark mode.
-  /// Keep this independent of text colors so icons remain visible on both pills.
+  /// Independent of text colors for contrast on both navigation surfaces.
   final Color navigationSelectedIcon;
 
   final Color controlPrimary;
@@ -208,7 +208,8 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
     brand: brand ?? this.brand,
     brandStrong: brandStrong ?? this.brandStrong,
     interactive: interactive ?? this.interactive,
-    navigationSelectedIcon: navigationSelectedIcon ?? this.navigationSelectedIcon,
+    navigationSelectedIcon:
+        navigationSelectedIcon ?? this.navigationSelectedIcon,
     controlPrimary: controlPrimary ?? this.controlPrimary,
     interactiveStrong: interactiveStrong ?? this.interactiveStrong,
     success: success ?? this.success,
