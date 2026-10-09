@@ -604,5 +604,11 @@ class _SectionHeader extends StatelessWidget {
   const _SectionHeader({required this.title});
   final String title;
   @override
-  Widget build(BuildContext context) => ButlerlySectionHeader(title: title);
+  Widget build(BuildContext context) => ButlerlyCard(
+    padding: const EdgeInsets.symmetric(
+      horizontal: ButlerlySpacing.standard,
+      vertical: ButlerlySpacing.compact,
+    ),
+    child: ButlerlySectionHeader(title: title),
+  );
 }
