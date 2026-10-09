@@ -492,6 +492,9 @@ class ButlerlyCompactSelector extends StatelessWidget {
                 color: transparent
                     ? Colors.transparent
                     : context.colors.subtleSurface,
+                gradient: transparent
+                    ? null
+                    : ButlerlySurfaceGradients.surface(context),
                 border: Border.all(color: context.colors.border),
                 borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
               ),
