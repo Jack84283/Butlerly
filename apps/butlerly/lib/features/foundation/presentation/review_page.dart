@@ -789,7 +789,8 @@ class _ReviewTransactionCardState extends State<_ReviewTransactionCard> {
                 padding: EdgeInsets.zero,
                 child: Column(
                   children: [
-                    TransactionRow(
+                    ButlerlyTransactionInnerCard(
+                      child: TransactionRow(
                       transaction: transaction,
                       masterData:
                           data?.presentation ?? const TransactionMasterData(),
@@ -800,6 +801,7 @@ class _ReviewTransactionCardState extends State<_ReviewTransactionCard> {
                       },
                       showDate: true,
                       onTap: widget.onEdit,
+                    ),
                     ),
                     Padding(
                       padding: const EdgeInsets.all(ButlerlySpacing.standard),
