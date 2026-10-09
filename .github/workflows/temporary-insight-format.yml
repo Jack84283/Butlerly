@@ -1,0 +1,28 @@
+name: Temporary Insights formatting
+on:
+  push:
+    branches: [codex/transaction-inner-card-shared]
+    paths: [.github/workflows/temporary-insight-format.yml]
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/transaction-inner-card-shared
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.1'
+      - run: cd apps/butlerly && flutter pub get
+      - run: cd apps/butlerly && dart format lib/features/insights/presentation/insight_grouped_list.dart
+      - run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if ! git diff --quiet; then
+            git add apps/butlerly/lib/features/insights/presentation/insight_grouped_list.dart
+            git commit -m 'Format Insights content padding'
+            git push origin HEAD:codex/transaction-inner-card-shared
+          fi
