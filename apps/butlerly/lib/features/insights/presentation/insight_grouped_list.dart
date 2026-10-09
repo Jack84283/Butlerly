@@ -106,7 +106,7 @@ class InsightGroupedList extends StatelessWidget {
           if (grouped[group] case final items? when items.isNotEmpty)
             ButlerlyCard(
               semanticLabel: _groupTitle(context, group, items),
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(ButlerlySpacing.compact),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
