@@ -40,7 +40,7 @@ void main() {
         ],
         home: CompactPrimaryShell(
           body: Align(
-            alignment: Alignment.bottomCenter,
+            alignment: Alignment.topCenter,
             child: TextButton(
               key: const ValueKey('bottom-page-action'),
               onPressed: () => tapped = true,
@@ -99,7 +99,8 @@ void main() {
     final pillContainer = tester.widget<Container>(pill);
     final pillDecoration = pillContainer.decoration! as BoxDecoration;
 
-    expect(bodyRect.bottom, closeTo(navigationRect.top, 0.01));
+    expect(bodyRect.bottom, closeTo(navigationRect.bottom, 0.01));
+    expect(bodyRect.bottom, greaterThan(navigationRect.top));
     expect(navigationMaterial.color, Colors.transparent);
     expect(pillDecoration.color!.a, ButlerlyOpacity.primaryNavigationSurface);
     expect(pillRect.top, closeTo(navigationRect.top + 8, 0.01));
@@ -107,6 +108,30 @@ void main() {
     expect(pillRect.width, closeTo(navigationRect.width - 32, 0.01));
     expect(pillRect.center.dx, closeTo(navigationRect.center.dx, 0.01));
     expect(navigationContentRect.center, pillRect.center);
+    final lightColors = AppTheme.light.extension<ButlerlySemanticColors>()!;
+    final selectedSwitch = tester.widget<Container>(
+      find.byKey(const ValueKey('primary-navigation-switch-selected-0')),
+    );
+    expect(selectedSwitch.decoration, isNull);
+    final selectedIconTheme = tester.widget<IconTheme>(
+      find
+          .ancestor(
+            of: find.byIcon(Icons.home),
+            matching: find.byType(IconTheme),
+          )
+          .first,
+    );
+    final inactiveIconTheme = tester.widget<IconTheme>(
+      find
+          .ancestor(
+            of: find.byIcon(Icons.receipt_long_outlined),
+            matching: find.byType(IconTheme),
+          )
+          .first,
+    );
+    expect(selectedIconTheme.data.color, lightColors.navigationSelectedIcon);
+    expect(inactiveIconTheme.data.color, lightColors.secondaryText);
+    expect(pillDecoration.gradient, isNull);
     expect(pillRect.height, closeTo(ButlerlySize.navigationBarHeight, 0.01));
     expect(
       navigationContentRect.height,
@@ -115,7 +140,7 @@ void main() {
         0.01,
       ),
     );
-    expect(ButlerlySize.navigationBarHeight, 48);
+    expect(ButlerlySize.navigationBarHeight, 56);
     expect(
       pillDecoration.color,
       AppTheme.light
@@ -128,19 +153,11 @@ void main() {
       BorderRadius.circular(ButlerlyRadius.pill),
     );
     expect(find.byKey(const ValueKey('primary-navigation-base')), findsNothing);
-    final addButton = find.byKey(
-      const ValueKey('primary-navigation-add-button'),
-    );
-    expect(addButton, findsOneWidget);
-    final addDecoration =
-        tester.widget<Container>(addButton).decoration! as BoxDecoration;
-    expect(addDecoration.shape, BoxShape.circle);
-    expect(addDecoration.color, AppTheme.light.colorScheme.primary);
     expect(
-      tester.getSize(addButton),
-      Size.square(ButlerlySize.primaryNavigationAddIconSize),
+      find.byKey(const ValueKey('primary-navigation-add-button')),
+      findsNothing,
     );
-    expect(find.text('Add'), findsNothing);
+    expect(find.text('Add'), findsOneWidget);
 
     await tester.tap(find.text('Txns'));
     expect(selectedBranch, 1);
@@ -149,6 +166,82 @@ void main() {
     expect(tapped, isTrue);
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+  testWidgets('dark navigation highlights the selected destination', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: CompactPrimaryShell(
+          body: const SizedBox.shrink(),
+          destinations: const <int, NavigationDestination>{
+            0: NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home),
+              label: 'Home',
+            ),
+            1: NavigationDestination(
+              icon: Icon(Icons.receipt_long_outlined),
+              selectedIcon: Icon(Icons.receipt_long),
+              label: 'Transactions',
+            ),
+            2: NavigationDestination(
+              icon: Icon(Icons.add_rounded),
+              selectedIcon: Icon(Icons.add_rounded),
+              label: 'Add',
+            ),
+            3: NavigationDestination(
+              icon: Icon(Icons.bar_chart_rounded),
+              selectedIcon: Icon(Icons.bar_chart_rounded),
+              label: 'Tools',
+            ),
+            4: NavigationDestination(
+              icon: Icon(Icons.more_horiz_rounded),
+              selectedIcon: Icon(Icons.more_horiz_rounded),
+              label: 'More',
+            ),
+          },
+          visualBranchIndexes: const [0, 1, 2, 3, 4],
+          currentIndex: 0,
+          onSelected: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final selectedIconTheme = tester.widget<IconTheme>(
+      find
+          .ancestor(
+            of: find.byIcon(Icons.home),
+            matching: find.byType(IconTheme),
+          )
+          .first,
+    );
+    final inactiveIconTheme = tester.widget<IconTheme>(
+      find
+          .ancestor(
+            of: find.byIcon(Icons.receipt_long_outlined),
+            matching: find.byType(IconTheme),
+          )
+          .first,
+    );
+    final darkColors = AppTheme.dark.extension<ButlerlySemanticColors>()!;
+    expect(selectedIconTheme.data.color, darkColors.navigationSelectedIcon);
+    expect(inactiveIconTheme.data.color, darkColors.tertiaryText);
+    final pill = tester.widget<Container>(
+      find.byKey(const ValueKey('primary-navigation-pill')),
+    );
+    expect((pill.decoration! as BoxDecoration).gradient, isNull);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'compact navigation labels wrap without clipping across locales and text scales',

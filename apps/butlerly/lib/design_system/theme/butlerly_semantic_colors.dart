@@ -18,6 +18,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
     required this.brand,
     required this.brandStrong,
     required this.interactive,
+    this.navigationSelectedIcon = const Color(0xFFBD6384),
     required this.controlPrimary,
     required this.interactiveStrong,
     required this.success,
@@ -45,6 +46,11 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
   final Color brand;
   final Color brandStrong;
   final Color interactive;
+
+  /// Selected footer icon accent shared by light and dark mode.
+  /// Independent of text colors for contrast on both navigation surfaces.
+  final Color navigationSelectedIcon;
+
   final Color controlPrimary;
   final Color interactiveStrong;
   final Color success;
@@ -58,19 +64,20 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
   /// roles so financial semantic colors remain stable and meaningful.
   static const dark = ButlerlySemanticColors(
     background: Color(0xFF030405),
-    surface: Color(0xFF383838),
+    surface: Color(0xFF282B30),
     dashboardSurface: Color(0xFF141516),
-    elevatedSurface: Color(0xFF383838),
+    elevatedSurface: Color(0xFF2F3339),
     subtleSurface: Color(0xFF030405),
-    primaryText: Color(0xFFFFFFFF),
-    secondaryText: Color(0xFFF8F8F8),
-    tertiaryText: Color(0xFFF8F8F8),
-    cardDivider: Color(0xFF383838),
-    border: Color(0xFF838383),
+    primaryText: Color(0xFFF6F7F8),
+    secondaryText: Color(0xFFB9BDC7),
+    tertiaryText: Color(0xFF8D939E),
+    cardDivider: Color(0xFF2A2E34),
+    border: Color(0xFF626974),
     brand: Color(0xFF7A1E3A),
     brandStrong: Color(0xFF541127),
-    interactive: Color(0xFFFFFFFF),
-    controlPrimary: Color(0xFF541127),
+    interactive: Color(0xFFF6F7F8),
+    navigationSelectedIcon: Color(0xFFBD6384),
+    controlPrimary: Color(0xFF7A1E3A),
     interactiveStrong: Color(0xFF9A3655),
     success: Color(0xFF4DBA7A),
     warning: Color(0xFFD4A85B),
@@ -82,18 +89,19 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
 
   static const light = ButlerlySemanticColors(
     background: Color(0xFFF2F3F9),
-    surface: Color(0xFFF8F8F8),
-    dashboardSurface: Color(0xFFFDFDFD),
-    elevatedSurface: Color(0xFFF8F8F8),
-    subtleSurface: Color(0xFFF8F8F8),
-    primaryText: Color(0xFF000000),
+    surface: Color(0xFFE7EBF1),
+    dashboardSurface: Color(0xFFEEF1F5),
+    elevatedSurface: Color(0xFFE0E5EC),
+    subtleSurface: Color(0xFFE7EBF1),
+    primaryText: Color(0xFF17191F),
     secondaryText: Color(0xFF383838),
-    tertiaryText: Color(0xFF383838),
-    cardDivider: Color(0xFFE1E5EB),
-    border: Color(0xFFE1E5EB),
+    tertiaryText: Color(0xFF787E89),
+    cardDivider: Color(0xFFD8DDE6),
+    border: Color(0xFFD8DDE6),
     brand: Color(0xFF7A1E3A),
     brandStrong: Color(0xFF541127),
     interactive: Color(0xFF7A1E3A),
+    navigationSelectedIcon: Color(0xFFBD6384),
     controlPrimary: Color(0xFF541127),
     interactiveStrong: Color(0xFF64162F),
     success: Color(0xFF287A52),
@@ -121,6 +129,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
         interactive: brightness == Brightness.dark
             ? const Color(0xFF7DB7E8)
             : const Color(0xFF315B82),
+        navigationSelectedIcon: const Color(0xFF6686A3),
         controlPrimary: brightness == Brightness.dark
             ? const Color(0xFF1E3E5C)
             : const Color(0xFF234563),
@@ -144,6 +153,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
         interactive: brightness == Brightness.dark
             ? const Color(0xFF66C7A0)
             : const Color(0xFF246B57),
+        navigationSelectedIcon: const Color(0xFF618B7C),
         controlPrimary: brightness == Brightness.dark
             ? const Color(0xFF16483B)
             : const Color(0xFF16483B),
@@ -175,6 +185,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
     Color? brand,
     Color? brandStrong,
     Color? interactive,
+    Color? navigationSelectedIcon,
     Color? controlPrimary,
     Color? interactiveStrong,
     Color? success,
@@ -197,6 +208,8 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
     brand: brand ?? this.brand,
     brandStrong: brandStrong ?? this.brandStrong,
     interactive: interactive ?? this.interactive,
+    navigationSelectedIcon:
+        navigationSelectedIcon ?? this.navigationSelectedIcon,
     controlPrimary: controlPrimary ?? this.controlPrimary,
     interactiveStrong: interactiveStrong ?? this.interactiveStrong,
     success: success ?? this.success,
@@ -231,6 +244,11 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
       brand: Color.lerp(brand, other.brand, t)!,
       brandStrong: Color.lerp(brandStrong, other.brandStrong, t)!,
       interactive: Color.lerp(interactive, other.interactive, t)!,
+      navigationSelectedIcon: Color.lerp(
+        navigationSelectedIcon,
+        other.navigationSelectedIcon,
+        t,
+      )!,
       controlPrimary: Color.lerp(controlPrimary, other.controlPrimary, t)!,
       interactiveStrong: Color.lerp(
         interactiveStrong,

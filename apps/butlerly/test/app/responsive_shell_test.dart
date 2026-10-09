@@ -113,7 +113,7 @@ void main() {
     expect(find.byType(NavigationRail), findsNothing);
     expect(
       tester.getSize(find.byKey(const ValueKey('primary-compact-navigation'))),
-      const Size(390, 56),
+      const Size(390, 64),
     );
     expect(
       tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
@@ -121,50 +121,61 @@ void main() {
     );
   });
 
-  testWidgets('Medium keeps bottom navigation and centers readable content', (
-    tester,
-  ) async {
-    const size = Size(800, 800);
-    await _pumpAt(tester, size);
+  testWidgets(
+    'Medium overlays floating switch buttons on full-height content',
+    (tester) async {
+      const size = Size(800, 800);
+      await _pumpAt(tester, size);
 
-    expect(find.byType(MediumPrimaryShell), findsOneWidget);
-    expect(find.byType(CompactPrimaryShell), findsNothing);
-    expect(find.byType(NavigationRail), findsNothing);
-    expect(
-      tester.getSize(find.byKey(const ValueKey('primary-medium-body-surface'))),
-      const Size(800, 744),
-    );
-    final content = find.byKey(const ValueKey('home-page-content'));
-    expect(tester.getSize(content).width, ButlerlySize.pageContentMaxWidth);
-    expect(
-      tester.getRect(content).left,
-      closeTo((size.width - ButlerlySize.pageContentMaxWidth) / 2, 0.01),
-    );
-    expect(
-      tester
-          .getSize(find.byKey(const ValueKey('primary-medium-navigation')))
-          .width,
-      size.width,
-    );
-    final navigation = find.byKey(const ValueKey('primary-medium-navigation'));
-    expect(
-      find.descendant(of: navigation, matching: find.byType(InkWell)),
-      findsNWidgets(5),
-    );
-    for (final label in const ['Home', 'Txns', 'Tools', 'More']) {
+      expect(find.byType(MediumPrimaryShell), findsOneWidget);
+      expect(find.byType(CompactPrimaryShell), findsNothing);
+      expect(find.byType(NavigationRail), findsNothing);
+      final bodySurface = find.byKey(
+        const ValueKey('primary-medium-body-surface'),
+      );
+      final navigation = find.byKey(
+        const ValueKey('primary-medium-navigation'),
+      );
+      expect(tester.getSize(bodySurface), size);
       expect(
-        find.descendant(of: navigation, matching: find.text(label)),
+        tester.getRect(bodySurface).bottom,
+        closeTo(tester.getRect(navigation).bottom, 0.01),
+      );
+      expect(
+        tester.getRect(navigation).top,
+        lessThan(tester.getRect(bodySurface).bottom),
+      );
+      final content = find.byKey(const ValueKey('home-page-content'));
+      expect(tester.getSize(content).width, ButlerlySize.pageContentMaxWidth);
+      expect(
+        tester.getRect(content).left,
+        closeTo((size.width - ButlerlySize.pageContentMaxWidth) / 2, 0.01),
+      );
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('primary-medium-navigation')))
+            .width,
+        size.width,
+      );
+      expect(
+        find.descendant(of: navigation, matching: find.byType(InkWell)),
+        findsNWidgets(5),
+      );
+      for (final label in const ['Home', 'Txns', 'Tools', 'More']) {
+        expect(
+          find.descendant(of: navigation, matching: find.text(label)),
+          findsOneWidget,
+        );
+      }
+      expect(
+        find.descendant(
+          of: navigation,
+          matching: find.bySemanticsLabel('Add transaction'),
+        ),
         findsOneWidget,
       );
-    }
-    expect(
-      find.descendant(
-        of: navigation,
-        matching: find.bySemanticsLabel('Add transaction'),
-      ),
-      findsOneWidget,
-    );
-  });
+    },
+  );
 
   testWidgets('Wide uses the left navigation shell', (tester) async {
     const size = Size(1200, 800);

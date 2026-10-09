@@ -27,20 +27,28 @@ class BottomNavigationPrimaryShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    body: SafeArea(
-      bottom: false,
-      child: ColoredBox(
-        key: bodySurfaceKey,
-        color: context.colors.subtleSurface,
-        child: body,
-      ),
-    ),
-    bottomNavigationBar: PrimaryBottomNavigation(
-      navigationKey: navigationKey,
-      destinations: destinations,
-      visualBranchIndexes: visualBranchIndexes,
-      currentIndex: currentIndex,
-      onSelected: onSelected,
+    body: Stack(
+      fit: StackFit.expand,
+      children: [
+        SafeArea(
+          bottom: false,
+          child: ColoredBox(
+            key: bodySurfaceKey,
+            color: context.colors.subtleSurface,
+            child: body,
+          ),
+        ),
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: PrimaryBottomNavigation(
+            navigationKey: navigationKey,
+            destinations: destinations,
+            visualBranchIndexes: visualBranchIndexes,
+            currentIndex: currentIndex,
+            onSelected: onSelected,
+          ),
+        ),
+      ],
     ),
   );
 }

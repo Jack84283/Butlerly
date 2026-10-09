@@ -41,7 +41,7 @@ void main() {
     final darkBodySmallColor = darkTheme.textTheme.bodySmall!.color!;
     final darkHintColor = darkTheme.inputDecorationTheme.hintStyle!.color!;
 
-    expect(darkBodySmallColor, darkColors.primaryText);
+    expect(darkBodySmallColor, darkColors.secondaryText);
     expect(darkHintColor, darkColors.tertiaryText);
     expect(
       _contrastRatio(darkBodySmallColor, darkColors.background),
@@ -57,29 +57,29 @@ void main() {
     );
   });
 
-  test('dark theme uses the navy and gray surface palette', () {
+  test('dark theme uses the refined near-black surface palette', () {
     final colors = AppTheme.dark.extension<ButlerlySemanticColors>()!;
 
     expect(colors.background, const Color(0xFF030405));
     expect(colors.subtleSurface, const Color(0xFF030405));
-    expect(colors.surface, const Color(0xFF383838));
+    expect(colors.surface, const Color(0xFF282B30));
     expect(colors.dashboardSurface, const Color(0xFF141516));
-    expect(colors.elevatedSurface, const Color(0xFF383838));
-    expect(colors.secondaryText, const Color(0xFFF8F8F8));
-    expect(colors.primaryText, const Color(0xFFFFFFFF));
+    expect(colors.elevatedSurface, const Color(0xFF2F3339));
+    expect(colors.secondaryText, const Color(0xFFB9BDC7));
+    expect(colors.primaryText, const Color(0xFFF6F7F8));
   });
 
-  test('light theme uses the cool gray surface palette', () {
+  test('light theme uses the four-level solid gray surface palette', () {
     final colors = AppTheme.light.extension<ButlerlySemanticColors>()!;
 
     expect(colors.background, const Color(0xFFF2F3F9));
-    expect(colors.surface, const Color(0xFFF8F8F8));
-    expect(colors.subtleSurface, const Color(0xFFF8F8F8));
-    expect(colors.dashboardSurface, const Color(0xFFFDFDFD));
-    expect(colors.elevatedSurface, const Color(0xFFF8F8F8));
-    expect(colors.cardDivider, const Color(0xFFE1E5EB));
-    expect(colors.border, const Color(0xFFE1E5EB));
-    expect(colors.primaryText, const Color(0xFF000000));
+    expect(colors.surface, const Color(0xFFE7EBF1));
+    expect(colors.subtleSurface, const Color(0xFFE7EBF1));
+    expect(colors.dashboardSurface, const Color(0xFFEEF1F5));
+    expect(colors.elevatedSurface, const Color(0xFFE0E5EC));
+    expect(colors.cardDivider, const Color(0xFFD8DDE6));
+    expect(colors.border, const Color(0xFFD8DDE6));
+    expect(colors.primaryText, const Color(0xFF17191F));
     expect(colors.secondaryText, const Color(0xFF383838));
   });
 
@@ -95,7 +95,7 @@ void main() {
     );
   });
 
-  test('compact navigation stays at 48px at normal text scale', () {
+  test('compact navigation stays at 56px at normal text scale', () {
     final labelStyle = ButlerlyTypography.navigationLabel(
       AppTheme.light.textTheme.labelSmall!,
       color: Colors.black,
@@ -111,7 +111,7 @@ void main() {
       labelStyle: labelStyle,
       textDirection: TextDirection.ltr,
     );
-    expect(ButlerlySize.navigationBarHeight, 48);
+    expect(ButlerlySize.navigationBarHeight, 56);
     expect(ButlerlySize.primaryNavigationAddIconSize, 32);
     expect(height, ButlerlySize.navigationBarHeight);
   });

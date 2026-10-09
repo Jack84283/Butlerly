@@ -6,12 +6,24 @@ if dart format --output=none --set-exit-if-changed "$@"; then
   exit 0
 fi
 
-# TEMPORARY diagnostic for the transaction details file.
+# Diagnose formatting drift using probes alongside the source files, keeping
+# their package language version and formatter configuration unchanged.
 if [[ "$PWD" == */apps/butlerly ]]; then
-  tmp_dir="$(mktemp -d)"
-  trap 'rm -rf "$tmp_dir"' EXIT
-  cp lib/features/foundation/presentation/transactions_page.dart "$tmp_dir/transactions_page.dart"
-  dart format "$tmp_dir/transactions_page.dart" >/dev/null
-  diff -u lib/features/foundation/presentation/transactions_page.dart "$tmp_dir/transactions_page.dart" || true
+  probes=()
+  cleanup() {
+    for probe in "${probes[@]}"; do
+      rm -f "$probe"
+    done
+  }
+  trap cleanup EXIT
+  for file in \
+    lib/features/foundation/presentation/transactions_page.dart \
+    test/design_system/semantic_palette_test.dart; do
+    probe="${file%.dart}_ci_format_probe.dart"
+    cp "$file" "$probe"
+    probes+=("$probe")
+    dart format "$probe" >/dev/null
+    diff -u "$file" "$probe" || true
+  done
 fi
 exit 1

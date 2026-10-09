@@ -24,16 +24,6 @@ double compactNavigationHeightForLabels({
     return painter.height;
   }
 
-  final scaledLabelFontSize = textScaler.scale(
-    ButlerlyTypography.navigationLabelFontSize,
-  );
-  final normalScale =
-      scaledLabelFontSize <= ButlerlyTypography.navigationLabelFontSize + 0.01;
-
-  if (normalScale) {
-    return ButlerlySize.navigationBarHeight;
-  }
-
   var maximumLabelHeight = addLabel == null ? 0.0 : labelHeight(addLabel);
   for (final label in standardLabels) {
     final height = labelHeight(label);
@@ -88,7 +78,6 @@ class PrimaryBottomNavigation extends StatelessWidget {
     double labelSlotHeight,
   ) {
     final selected = currentIndex == branchIndex;
-    final isAddAction = branchIndex == 2;
     final visibleLabel = compactNavigationLabel(
       context,
       destination,
@@ -104,16 +93,15 @@ class PrimaryBottomNavigation extends StatelessWidget {
     final baseIcon = selected
         ? (destination.selectedIcon ?? destination.icon)
         : destination.icon;
+    final isDarkTheme = Theme.of(context).brightness == Brightness.dark;
+    final selectedIconColor = context.colors.navigationSelectedIcon;
+    final inactiveIconColor = isDarkTheme
+        ? context.colors.tertiaryText
+        : context.colors.secondaryText;
     final icon = IconTheme(
       data: IconThemeData(
-        size: isAddAction
-            ? ButlerlySize.primaryNavigationAddGlyphSize
-            : ButlerlySize.standardIcon,
-        color: isAddAction
-            ? Theme.of(context).colorScheme.onPrimary
-            : selected
-            ? context.colors.interactive
-            : context.colors.secondaryText,
+        size: ButlerlySize.standardIcon,
+        color: selected ? selectedIconColor : inactiveIconColor,
       ),
       child: baseIcon,
     );
@@ -121,7 +109,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
       button: true,
       selected: selected,
       onTap: () => onSelected(branchIndex),
-      label: isAddAction
+      label: branchIndex == 2
           ? context.l10n.text('addTransactionAction')
           : destination.label,
       excludeSemantics: true,
@@ -129,44 +117,38 @@ class PrimaryBottomNavigation extends StatelessWidget {
         onTap: () => onSelected(branchIndex),
         child: SizedBox(
           height: double.infinity,
-          child: isAddAction
-              ? Center(
-                  child: Container(
-                    key: const ValueKey('primary-navigation-add-button'),
-                    width: ButlerlySize.primaryNavigationAddIconSize,
-                    height: ButlerlySize.primaryNavigationAddIconSize,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary,
-                      shape: BoxShape.circle,
-                    ),
-                    alignment: Alignment.center,
-                    child: icon,
-                  ),
-                )
-              : Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      height:
-                          ButlerlySize.primaryNavigationAddIconSize -
-                          2 * ButlerlySize.navigationLabelGap,
-                      child: Align(alignment: Alignment.center, child: icon),
-                    ),
-                    const SizedBox(height: ButlerlySize.navigationLabelGap),
-                    SizedBox(
-                      key: ValueKey('primary-navigation-label-$branchIndex'),
-                      width: double.infinity,
-                      height: labelSlotHeight,
-                      child: Text(
-                        visibleLabel,
-                        softWrap: true,
-                        overflow: TextOverflow.visible,
-                        textAlign: TextAlign.center,
-                        style: labelStyle,
-                      ),
-                    ),
-                  ],
+          child: Container(
+            key: selected
+                ? ValueKey('primary-navigation-switch-selected-$branchIndex')
+                : null,
+            margin: const EdgeInsets.symmetric(
+              horizontal: ButlerlySpacing.micro,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  height:
+                      ButlerlySize.primaryNavigationAddIconSize -
+                      2 * ButlerlySize.navigationLabelGap,
+                  child: Align(alignment: Alignment.center, child: icon),
                 ),
+                const SizedBox(height: ButlerlySize.navigationLabelGap),
+                SizedBox(
+                  key: ValueKey('primary-navigation-label-$branchIndex'),
+                  width: double.infinity,
+                  height: labelSlotHeight,
+                  child: Text(
+                    visibleLabel,
+                    softWrap: true,
+                    overflow: TextOverflow.visible,
+                    textAlign: TextAlign.center,
+                    style: labelStyle,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -178,9 +160,17 @@ class PrimaryBottomNavigation extends StatelessWidget {
       color: context.colors.secondaryText,
       selected: true,
     );
+    // Measure labels against the actual pill content width. At narrow widths,
+    // the inset, border and destination margins can force another text line.
+    final pillAvailableWidth = availableWidth - 2 * ButlerlySpacing.standard;
+    final pillWidth = pillAvailableWidth > 390 ? 390.0 : pillAvailableWidth;
+    final itemWidth =
+        (pillWidth - 2 * ButlerlySize.dividerWidth) /
+            visualBranchIndexes.length -
+        2 * ButlerlySpacing.micro;
     return compactNavigationHeightForLabels(
       textScaler: MediaQuery.textScalerOf(context),
-      itemWidth: availableWidth / visualBranchIndexes.length,
+      itemWidth: itemWidth,
       standardLabels: [
         for (final branchIndex in visualBranchIndexes)
           if (branchIndex != 2)
