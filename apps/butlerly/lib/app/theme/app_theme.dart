@@ -181,7 +181,9 @@ abstract final class AppTheme {
             vertical: ButlerlyButtonTokens.verticalPadding,
           ),
           shape: buttonShape,
-          backgroundColor: colors.subtleSurface,
+          backgroundColor: brightness == Brightness.dark
+              ? colors.elevatedSurface
+              : colors.subtleSurface,
           foregroundColor: colors.primaryText,
           disabledBackgroundColor: colors.tertiaryText.withValues(
             alpha: brightness == Brightness.dark ? 0.24 : 0.16,
