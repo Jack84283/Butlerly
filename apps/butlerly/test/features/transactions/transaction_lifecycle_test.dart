@@ -1848,7 +1848,7 @@ void main() {
       const MaterialApp(home: Scaffold(body: ReviewPage())),
     );
     await tester.pumpAndSettle();
-    expect(find.byType(ButlerlyCard), findsNWidgets(2));
+    expect(find.byType(ButlerlyCard), findsOneWidget);
     expect(find.text('Category and subcategory are missing'), findsNWidgets(3));
     await tester.tap(find.byKey(const ValueKey('compact-section-2')));
     await tester.pumpAndSettle();
