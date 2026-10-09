@@ -20,7 +20,7 @@ void main() {
     expect(AppLocalizations.missingKeysFor('zh'), isEmpty);
   });
 
-  test('theme surfaces use the approved solid color palettes', () {
+  test('theme surfaces use the approved reference color palettes', () {
     final dark = AppTheme.dark;
     final light = AppTheme.light;
     final darkColors = dark.extension<ButlerlySemanticColors>()!;
@@ -38,9 +38,9 @@ void main() {
     expect(light.textTheme.bodySmall?.color, lightColors.secondaryText);
     expect(light.scaffoldBackgroundColor, lightColors.background);
     expect(light.cardTheme.color, lightColors.cardSurface);
-    expect(lightColors.dashboardSurface, const Color(0xFFEEF1F5));
+    expect(lightColors.dashboardSurface, const Color(0xFFD6DBE3));
     expect(darkColors.dashboardSurface, const Color(0xFF141516));
-    expect(lightColors.cardDivider, const Color(0xFFD8DDE6));
+    expect(lightColors.cardDivider, const Color(0xFFAEB6C2));
     expect(darkColors.cardDivider, const Color(0xFF2A2E34));
   });
 
