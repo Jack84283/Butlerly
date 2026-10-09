@@ -245,7 +245,8 @@ class PrimaryBottomNavigation extends StatelessWidget {
                               destinations[branchIndex]!,
                               branchIndex,
                               navigationHeight -
-                                  ButlerlySize.primaryNavigationAddIconSize,
+                                  ButlerlySize.primaryNavigationAddIconSize -
+                                  2 * ButlerlySpacing.micro,
                             ),
                           ),
                       ],
