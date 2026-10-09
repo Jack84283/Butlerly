@@ -155,6 +155,10 @@ class InsightGroupedList extends StatelessWidget {
                     if (index != items.length - 1)
                       const Divider(height: ButlerlySpacing.section),
                   ],
+                         ],
+                       ),
+                     ),
+                   ),
                 ],
               ),
             ),
