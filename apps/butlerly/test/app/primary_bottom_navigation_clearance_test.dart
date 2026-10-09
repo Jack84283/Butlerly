@@ -141,7 +141,7 @@ void main() {
         0.01,
       ),
     );
-    expect(ButlerlySize.navigationBarHeight, 48);
+    expect(ButlerlySize.navigationBarHeight, 56);
     expect(
       pillDecoration.color,
       AppTheme.light
