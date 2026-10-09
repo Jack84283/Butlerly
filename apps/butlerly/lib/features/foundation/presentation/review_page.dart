@@ -1038,7 +1038,8 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                         ),
                         onPressed: _selectedTransactionId == null
                             ? null
-                            : () => widget.onConsolidate(_selectedTransactionId!),
+                            : () =>
+                                  widget.onConsolidate(_selectedTransactionId!),
                         child: Text(context.l10n.text('consolidateUseOne')),
                       ),
                     ),
