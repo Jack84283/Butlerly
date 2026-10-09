@@ -534,7 +534,6 @@ class _AnalysisContent extends StatelessWidget {
             onTap: () => _openInsights(context),
           ),
         ] else if (model.insightUnavailable) ...[
-          _SectionHeader(title: context.l10n.text('insights')),
           ButlerlyCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
