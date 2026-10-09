@@ -153,7 +153,11 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
           subtitle: context.l10n.text('paymentSettlementsSubtitle'),
           onRefresh: _refresh,
           actions: [
-            IconButton.filled(
+            Padding(
+              padding: const EdgeInsetsDirectional.only(
+                end: ButlerlySpacing.headerActionTrailing,
+              ),
+              child: IconButton.filled(
               key: const ValueKey('payment-settlements-add'),
               tooltip: context.l10n.text('addPaymentSettlement'),
               onPressed: data.activeCardSources.isEmpty
@@ -170,6 +174,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                 minimumSize: const Size.square(ButlerlySize.minimumTarget),
                 maximumSize: const Size.square(ButlerlySize.minimumTarget),
               ),
+            ),
             ),
           ],
           children: [
