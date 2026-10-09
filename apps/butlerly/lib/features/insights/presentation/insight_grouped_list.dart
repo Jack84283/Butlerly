@@ -1,5 +1,6 @@
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -122,7 +123,13 @@ class InsightGroupedList extends StatelessWidget {
                     ),
                   ],
                   const SizedBox(height: ButlerlySpacing.standard),
-                  for (var index = 0; index < items.length; index++) ...[
+                  Padding(
+                     padding: const EdgeInsets.symmetric(horizontal: 12),
+                     child: ButlerlyTransactionInnerCard(
+                       child: Column(
+                         crossAxisAlignment: CrossAxisAlignment.stretch,
+                         children: [
+                   for (var index = 0; index < items.length; index++) ...[
                     Builder(
                       builder: (context) {
                         final item = items[index];
