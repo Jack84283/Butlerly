@@ -14,10 +14,16 @@ class AnalysisActivitySummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ButlerlyCard(
-    child: Text(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ButlerlyCardHeader(title: context.l10n.text('financialCalendar')),
+        Text(
       metric == null
           ? context.l10n.text('noActivityInPeriod')
           : '${double.tryParse(metric!.value.toString())?.round() ?? 0} ${context.l10n.text('transactions')}',
+        ),
+      ],
     ),
   );
 }
@@ -69,6 +75,8 @@ class AnalysisActivity extends StatelessWidget {
       return ButlerlyCard(
         child: Column(
           children: [
+            Align(alignment: Alignment.centerLeft, child: ButlerlyCardHeader(title: context.l10n.text('financialCalendar'))),
+            const SizedBox(height: ButlerlySpacing.compact),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
