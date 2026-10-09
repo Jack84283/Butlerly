@@ -136,10 +136,6 @@ class PrimaryBottomNavigation extends StatelessWidget {
             margin: const EdgeInsets.symmetric(
               horizontal: ButlerlySpacing.micro,
             ),
-            decoration: BoxDecoration(
-              color: selected ? context.colors.selection : Colors.transparent,
-              borderRadius: BorderRadius.circular(ButlerlyRadius.pill),
-            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
