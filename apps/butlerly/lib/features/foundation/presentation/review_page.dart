@@ -1011,7 +1011,7 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
               ),
               const SizedBox(height: ButlerlySpacing.cardGap),
               ButlerlyButtonBar(
-                alignment: ButlerlyButtonBarAlignment.start,
+                alignment: ButlerlyButtonBarAlignment.end,
                 density: ButlerlyButtonBarDensity.standard,
                 spacing: ButlerlyButtonBarSpacing.none,
                 children: [
