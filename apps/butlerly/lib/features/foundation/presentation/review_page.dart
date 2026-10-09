@@ -999,6 +999,7 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                                 ),
                             ],
                           ),
+                          ),
                         ),
                       ],
                     ),
