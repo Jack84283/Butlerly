@@ -16,13 +16,13 @@ class AnalysisInsightPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ButlerlyCard(
     semanticLabel: context.l10n.text('notable'),
-    child: ListTile(
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [ButlerlyCardHeader(title: context.l10n.text('insights')), ListTile(
       onTap: onTap,
       contentPadding: EdgeInsets.zero,
       leading: Icon(Icons.info_outline, color: context.colors.info),
       title: Text(context.l10n.text('notable')),
       subtitle: Text(context.l10n.text(finding.rule.nameKey)),
       trailing: const Icon(Icons.chevron_right),
-    ),
+    )]),
   );
 }
