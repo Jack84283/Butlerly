@@ -39,11 +39,13 @@ class AnalysisDataQuality extends StatelessWidget {
         children: [
           ButlerlyCardHeader(title: context.l10n.text('dataQuality')),
           const SizedBox(height: ButlerlySpacing.compact),
-          Row(children: [
-          Icon(icon, color: color),
-          const SizedBox(width: ButlerlySpacing.small),
-          Expanded(child: Text(status)),
-          ]),
+          Row(
+            children: [
+              Icon(icon, color: color),
+              const SizedBox(width: ButlerlySpacing.small),
+              Expanded(child: Text(status)),
+            ],
+          ),
         ],
       ),
     );

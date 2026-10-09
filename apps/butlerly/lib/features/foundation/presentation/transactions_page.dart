@@ -1113,7 +1113,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                               ListTile(
                                 contentPadding: EdgeInsets.zero,
                                 title: Text(
-                                  MaterialLocalizations.of(context).formatFullDate(_date),
+                                  MaterialLocalizations.of(
+                                    context,
+                                  ).formatFullDate(_date),
                                   textAlign: TextAlign.start,
                                 ),
                                 trailing: Row(

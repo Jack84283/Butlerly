@@ -124,41 +124,49 @@ class InsightGroupedList extends StatelessWidget {
                   ],
                   const SizedBox(height: ButlerlySpacing.standard),
                   Padding(
-                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                     child: ButlerlyTransactionInnerCard(
-                       child: Column(
-                         crossAxisAlignment: CrossAxisAlignment.stretch,
-                         children: [
-                   for (var index = 0; index < items.length; index++) ...[
-                    Builder(
-                      builder: (context) {
-                        final item = items[index];
-                        final escalation = item.escalation;
-                        final drillDownInsight =
-                            escalation != null &&
-                                canViewTransactions(escalation)
-                            ? escalation
-                            : item.primary;
-                        return _InsightItem(
-                          insight: item.primary,
-                          escalation: escalation,
-                          drillDownInsight: drillDownInsight,
-                          masterData: masterData,
-                          showRuleCopy: !_groupOwnsRuleCopy(group, items),
-                          onViewTransactions:
-                              canViewTransactions(drillDownInsight)
-                              ? () => onViewTransactions(drillDownInsight)
-                              : null,
-                        );
-                      },
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: ButlerlyTransactionInnerCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (
+                            var index = 0;
+                            index < items.length;
+                            index++
+                          ) ...[
+                            Builder(
+                              builder: (context) {
+                                final item = items[index];
+                                final escalation = item.escalation;
+                                final drillDownInsight =
+                                    escalation != null &&
+                                        canViewTransactions(escalation)
+                                    ? escalation
+                                    : item.primary;
+                                return _InsightItem(
+                                  insight: item.primary,
+                                  escalation: escalation,
+                                  drillDownInsight: drillDownInsight,
+                                  masterData: masterData,
+                                  showRuleCopy: !_groupOwnsRuleCopy(
+                                    group,
+                                    items,
+                                  ),
+                                  onViewTransactions:
+                                      canViewTransactions(drillDownInsight)
+                                      ? () =>
+                                            onViewTransactions(drillDownInsight)
+                                      : null,
+                                );
+                              },
+                            ),
+                            if (index != items.length - 1)
+                              const Divider(height: ButlerlySpacing.section),
+                          ],
+                        ],
+                      ),
                     ),
-                    if (index != items.length - 1)
-                      const Divider(height: ButlerlySpacing.section),
-                  ],
-                         ],
-                       ),
-                     ),
-                   ),
+                  ),
                 ],
               ),
             ),

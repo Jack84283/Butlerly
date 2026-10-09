@@ -2614,7 +2614,10 @@ void main() {
     final dateCard = find.byKey(const ValueKey('transaction-editor-date-card'));
     expect(dateCard, findsOneWidget);
     expect(
-      find.descendant(of: dateCard, matching: find.text('Monday, August 10, 2026')),
+      find.descendant(
+        of: dateCard,
+        matching: find.text('Monday, August 10, 2026'),
+      ),
       findsOneWidget,
     );
     expect(find.text('2026-08-11'), findsNothing);

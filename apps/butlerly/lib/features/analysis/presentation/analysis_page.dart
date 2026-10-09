@@ -603,4 +603,3 @@ class _AnalysisContent extends StatelessWidget {
     );
   }
 }
-

@@ -796,18 +796,19 @@ class _ReviewTransactionCardState extends State<_ReviewTransactionCard> {
                     Padding(
                       padding: const EdgeInsets.all(12),
                       child: ButlerlyTransactionInnerCard(
-                      child: TransactionRow(
-                        transaction: transaction,
-                        masterData:
-                            data?.presentation ?? const TransactionMasterData(),
-                        paymentSourceNames: {
-                          for (final source
-                              in data?.paymentSources ?? <PaymentSource>[])
-                            source.id.value: source.name,
-                        },
-                        showDate: true,
-                        onTap: widget.onEdit,
-                      ),
+                        child: TransactionRow(
+                          transaction: transaction,
+                          masterData:
+                              data?.presentation ??
+                              const TransactionMasterData(),
+                          paymentSourceNames: {
+                            for (final source
+                                in data?.paymentSources ?? <PaymentSource>[])
+                              source.id.value: source.name,
+                          },
+                          showDate: true,
+                          onTap: widget.onEdit,
+                        ),
                       ),
                     ),
                     Padding(
@@ -962,43 +963,43 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                         Padding(
                           padding: const EdgeInsets.all(12),
                           child: ButlerlyTransactionInnerCard(
-                          child: ButlerlyTransactionList(
-                            children: [
-                              for (final transaction in transactions)
-                                TransactionRow(
-                                  transaction: transaction,
-                                  masterData:
-                                      masterData?.presentation ??
-                                      const TransactionMasterData(),
-                                  paymentSourceNames: {
-                                    for (final source
-                                        in masterData?.paymentSources ??
-                                            <PaymentSource>[])
-                                      source.id.value: source.name,
-                                  },
-                                  showDate: true,
-                                  supportingContent:
-                                      transaction.provenance.isEmpty
-                                      ? null
-                                      : Text(
-                                          _transactionEvidenceLabel(
-                                            context,
-                                            transaction,
+                            child: ButlerlyTransactionList(
+                              children: [
+                                for (final transaction in transactions)
+                                  TransactionRow(
+                                    transaction: transaction,
+                                    masterData:
+                                        masterData?.presentation ??
+                                        const TransactionMasterData(),
+                                    paymentSourceNames: {
+                                      for (final source
+                                          in masterData?.paymentSources ??
+                                              <PaymentSource>[])
+                                        source.id.value: source.name,
+                                    },
+                                    showDate: true,
+                                    supportingContent:
+                                        transaction.provenance.isEmpty
+                                        ? null
+                                        : Text(
+                                            _transactionEvidenceLabel(
+                                              context,
+                                              transaction,
+                                            ),
+                                            style:
+                                                context.transactionItemMetadata,
                                           ),
-                                          style:
-                                              context.transactionItemMetadata,
-                                        ),
-                                  selectionControl:
-                                      ButlerlyTransactionSelectionControl<
-                                        TransactionId
-                                      >(value: TransactionId(transaction.id)),
-                                  onTap: () => setState(
-                                    () => _selectedTransactionId =
-                                        TransactionId(transaction.id),
+                                    selectionControl:
+                                        ButlerlyTransactionSelectionControl<
+                                          TransactionId
+                                        >(value: TransactionId(transaction.id)),
+                                    onTap: () => setState(
+                                      () => _selectedTransactionId =
+                                          TransactionId(transaction.id),
+                                    ),
                                   ),
-                                ),
-                            ],
-                          ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -1012,14 +1013,24 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                 spacing: ButlerlyButtonBarSpacing.none,
                 children: [
                   OutlinedButton(
-                    style: OutlinedButton.styleFrom(minimumSize: const Size(ButlerlyButtonTokens.standardWidth, ButlerlyButtonTokens.height)),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(
+                        ButlerlyButtonTokens.standardWidth,
+                        ButlerlyButtonTokens.height,
+                      ),
+                    ),
                     onPressed: widget.onKeepBoth,
                     child: Text(context.l10n.text('keepBoth')),
                   ),
                   Tooltip(
                     message: context.l10n.text('consolidateUseOneHint'),
                     child: FilledButton(
-                      style: FilledButton.styleFrom(minimumSize: const Size(ButlerlyButtonTokens.standardWidth, ButlerlyButtonTokens.height)),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(
+                          ButlerlyButtonTokens.standardWidth,
+                          ButlerlyButtonTokens.height,
+                        ),
+                      ),
                       onPressed: _selectedTransactionId == null
                           ? null
                           : () => widget.onConsolidate(_selectedTransactionId!),
