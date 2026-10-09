@@ -30,6 +30,7 @@ abstract final class ButlerlySpacing {
   static const sectionSpacing = section;
   static const compactActionSpacing = compact;
   static const bottomActionSpacing = section;
+  static const primaryNavigationBottomLift = 12.0;
   static const pinnedControlTopGap = compact;
   static const periodSelectorGap = standard;
   static const pinnedPageHeaderBottomGap = nanoSmall;
