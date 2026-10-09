@@ -822,14 +822,10 @@ class _ReviewTransactionCardState extends State<_ReviewTransactionCard> {
                                 child: Text(widget.editLabel),
                               ),
                               if (widget.dismissLabel != null)
-
-                                TextButton(
-
-                                  onPressed: widget.onDismiss,
-
-                                  child: Text(widget.dismissLabel!),
-
-                                ),
+                                 TextButton(
+                                   onPressed: widget.onDismiss,
+                                   child: Text(widget.dismissLabel!),
+                                 ),
                             ],
                           ),
                         ],
