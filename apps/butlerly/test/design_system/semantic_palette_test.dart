@@ -1,6 +1,7 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/theme/butlerly_surface_gradients.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -18,18 +19,18 @@ void main() {
     expect(colors.border, const Color(0xFF626974));
   });
 
-  test('light mode uses the four-level solid tonal palette', () {
+  test('light mode matches the approved darker gray-blue palette', () {
     final colors = AppTheme.light.extension<ButlerlySemanticColors>()!;
-    expect(colors.background, const Color(0xFFF2F3F9));
-    expect(colors.cardSurface, const Color(0xFFEEF1F5));
-    expect(colors.surface, const Color(0xFFE7EBF1));
-    expect(colors.subtleSurface, const Color(0xFFE7EBF1));
-    expect(colors.elevatedSurface, const Color(0xFFE0E5EC));
-    expect(colors.primaryText, const Color(0xFF17191F));
-    expect(colors.secondaryText, const Color(0xFF383838));
-    expect(colors.tertiaryText, const Color(0xFF787E89));
-    expect(colors.cardDivider, const Color(0xFFD8DDE6));
-    expect(colors.border, const Color(0xFFD8DDE6));
+    expect(colors.background, const Color(0xFFE6E9EF));
+    expect(colors.cardSurface, const Color(0xFFD6DBE3));
+    expect(colors.surface, const Color(0xFFC8CED8));
+    expect(colors.subtleSurface, const Color(0xFFC8CED8));
+    expect(colors.elevatedSurface, const Color(0xFFBCC4CF));
+    expect(colors.primaryText, const Color(0xFF14171D));
+    expect(colors.secondaryText, const Color(0xFF4B5563));
+    expect(colors.tertiaryText, const Color(0xFF6B7280));
+    expect(colors.cardDivider, const Color(0xFFAEB6C2));
+    expect(colors.border, const Color(0xFFAEB6C2));
     expect(colors.brand, const Color(0xFF7A1E3A));
     expect(
       colors.background.computeLuminance(),
@@ -45,16 +46,16 @@ void main() {
     );
   });
 
-  test('selected footer icons have one accessible color in both modes', () {
+  test('footer icon accents have accessible contrast in both modes', () {
     for (final theme in ButlerlyColorTheme.values) {
       final lightTheme = AppTheme.lightFor(theme);
       final darkTheme = AppTheme.darkFor(theme);
       final light = lightTheme.extension<ButlerlySemanticColors>()!;
       final dark = darkTheme.extension<ButlerlySemanticColors>()!;
 
-      expect(light.navigationSelectedIcon, dark.navigationSelectedIcon);
       if (theme == ButlerlyColorTheme.butlerRed) {
-        expect(light.navigationSelectedIcon, const Color(0xFFBD6384));
+        expect(light.navigationSelectedIcon, const Color(0xFF7A1E3A));
+        expect(dark.navigationSelectedIcon, const Color(0xFFBD6384));
       }
       expect(
         _contrast(light.navigationSelectedIcon, light.elevatedSurface),
@@ -67,22 +68,30 @@ void main() {
     }
   });
 
-  testWidgets('light and dark cards use solid surfaces', (tester) async {
+  testWidgets('light cards use gradients and dark cards remain flat', (
+    tester,
+  ) async {
     Widget card() => const Scaffold(
       body: Center(child: ButlerlyCard(child: Text('Sample card'))),
     );
 
     for (final theme in [AppTheme.light, AppTheme.dark]) {
       await tester.pumpWidget(MaterialApp(theme: theme, home: card()));
+      await tester.pumpAndSettle();
       final widget = tester.widget<Card>(find.byType(Card).first);
       final colors = theme.extension<ButlerlySemanticColors>()!;
       expect(widget.color ?? theme.cardTheme.color, colors.cardSurface);
+      final ink = tester.widget<Ink>(
+        find
+            .descendant(of: find.byType(Card).first, matching: find.byType(Ink))
+            .first,
+      );
+      final gradient = (ink.decoration as BoxDecoration?)?.gradient;
       expect(
-        find.descendant(
-          of: find.byType(Card).first,
-          matching: find.byType(Ink),
-        ),
-        findsNothing,
+        gradient,
+        theme.brightness == Brightness.light
+            ? ButlerlySurfaceGradients.lightCard
+            : null,
       );
       expect(tester.takeException(), isNull);
     }

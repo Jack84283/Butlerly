@@ -1,5 +1,6 @@
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/theme/butlerly_surface_gradients.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/tools/presentation/tools_navigation.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -93,7 +94,12 @@ class _WidePrimaryShellState extends State<WidePrimaryShell> {
               child: ColoredBox(
                 key: const ValueKey('primary-wide-body-surface'),
                 color: context.colors.subtleSurface,
-                child: widget.body,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: ButlerlySurfaceGradients.page(context),
+                  ),
+                  child: widget.body,
+                ),
               ),
             ),
           ),
@@ -148,6 +154,7 @@ class _WidePrimaryNavigation extends StatelessWidget {
         : ButlerlySize.wideNavigationCollapsedWidth,
     decoration: BoxDecoration(
       color: context.colors.surface,
+      gradient: ButlerlySurfaceGradients.surface(context),
       border: Border(right: BorderSide(color: context.colors.cardDivider)),
     ),
     child: SafeArea(
