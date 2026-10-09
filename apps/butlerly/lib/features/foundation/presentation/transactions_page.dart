@@ -1116,14 +1116,6 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Text(
-                                      MaterialLocalizations.of(
-                                        context,
-                                      ).formatMediumDate(_date),
-                                    ),
-                                    const SizedBox(
-                                      width: ButlerlySpacing.small,
-                                    ),
                                     Icon(
                                       Icons.calendar_today_outlined,
                                       color: _transactionCardIconColor(context),
