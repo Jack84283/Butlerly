@@ -23,7 +23,9 @@ void main() {
       expect(theme.textButtonTheme.style?.shape?.resolve({}), expectedShape);
       expect(
         theme.outlinedButtonTheme.style?.backgroundColor?.resolve({}),
-        colors.subtleSurface,
+        theme.brightness == Brightness.dark
+            ? colors.elevatedSurface
+            : colors.subtleSurface,
       );
       expect(
         theme.outlinedButtonTheme.style?.foregroundColor?.resolve({}),
