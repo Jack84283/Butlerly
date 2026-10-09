@@ -113,7 +113,7 @@ void main() {
     expect(find.byType(NavigationRail), findsNothing);
     expect(
       tester.getSize(find.byKey(const ValueKey('primary-compact-navigation'))),
-      const Size(390, 56),
+      const Size(390, 64),
     );
     expect(
       tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
