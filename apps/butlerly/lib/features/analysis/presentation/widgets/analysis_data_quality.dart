@@ -34,11 +34,16 @@ class AnalysisDataQuality extends StatelessWidget {
         : (Icons.check_circle_outline, context.colors.success);
     return ButlerlyCard(
       semanticLabel: '${context.l10n.text('dataQuality')}: $status',
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          ButlerlyCardHeader(title: context.l10n.text('dataQuality')),
+          const SizedBox(height: ButlerlySpacing.compact),
+          Row(children: [
           Icon(icon, color: color),
           const SizedBox(width: ButlerlySpacing.small),
           Expanded(child: Text(status)),
+          ]),
         ],
       ),
     );
