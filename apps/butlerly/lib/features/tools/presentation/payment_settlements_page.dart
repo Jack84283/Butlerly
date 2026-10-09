@@ -465,17 +465,21 @@ class _PaymentSettlementDetailPageState
                   message: context.l10n.text('noActivityInPeriod'),
                 )
               else
-                for (final transaction in detail.transactions) ...[
-                  TransactionRow(
-                    transaction: transaction,
-                    masterData: _masterData,
-                    paymentSourceNames: widget.sourceNames,
-                    showDate: true,
-                    showNavigationIndicator: true,
-                    onTap: () => _openTransaction(transaction),
+                ButlerlyTransactionInnerCard(
+                  child: ButlerlyTransactionList(
+                    children: [
+                      for (final transaction in detail.transactions)
+                        TransactionRow(
+                          transaction: transaction,
+                          masterData: _masterData,
+                          paymentSourceNames: widget.sourceNames,
+                          showDate: true,
+                          showNavigationIndicator: true,
+                          onTap: () => _openTransaction(transaction),
+                        ),
+                    ],
                   ),
-                  const Divider(height: ButlerlySpacing.section),
-                ],
+                ),
               const SizedBox(height: ButlerlySpacing.structural),
             ],
           ),
