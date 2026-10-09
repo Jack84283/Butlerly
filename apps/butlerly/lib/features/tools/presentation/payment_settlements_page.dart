@@ -117,9 +117,8 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -158,23 +157,23 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                 end: ButlerlySpacing.headerActionTrailing,
               ),
               child: IconButton.filled(
-              key: const ValueKey('payment-settlements-add'),
-              tooltip: context.l10n.text('addPaymentSettlement'),
-              onPressed: data.activeCardSources.isEmpty
-                  ? null
-                  : () => _createSettlement(data),
-              icon: const Icon(Icons.add_rounded),
-              style: IconButton.styleFrom(
-                backgroundColor: context.colors.interactive,
-                foregroundColor:
-                    context.colors.interactive.computeLuminance() > 0.5
-                    ? context.colors.background
-                    : Colors.white,
-                shape: const CircleBorder(),
-                minimumSize: const Size.square(ButlerlySize.minimumTarget),
-                maximumSize: const Size.square(ButlerlySize.minimumTarget),
+                key: const ValueKey('payment-settlements-add'),
+                tooltip: context.l10n.text('addPaymentSettlement'),
+                onPressed: data.activeCardSources.isEmpty
+                    ? null
+                    : () => _createSettlement(data),
+                icon: const Icon(Icons.add_rounded),
+                style: IconButton.styleFrom(
+                  backgroundColor: context.colors.interactive,
+                  foregroundColor:
+                      context.colors.interactive.computeLuminance() > 0.5
+                      ? context.colors.background
+                      : Colors.white,
+                  shape: const CircleBorder(),
+                  minimumSize: const Size.square(ButlerlySize.minimumTarget),
+                  maximumSize: const Size.square(ButlerlySize.minimumTarget),
+                ),
               ),
-            ),
             ),
           ],
           children: [
@@ -403,9 +402,8 @@ class _PaymentSettlementDetailPageState
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override

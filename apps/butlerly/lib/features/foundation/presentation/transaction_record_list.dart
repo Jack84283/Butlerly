@@ -211,7 +211,9 @@ class TransactionRecordList extends StatelessWidget {
           )
         else
           ButlerlyTransactionList(
-            children: [for (final transaction in entry.value) rows[transaction]!],
+            children: [
+              for (final transaction in entry.value) rows[transaction]!,
+            ],
           ),
       ],
     );

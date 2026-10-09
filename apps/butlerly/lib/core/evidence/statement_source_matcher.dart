@@ -6,9 +6,9 @@ PaymentSource? confidentlyMatchStatementSource({
   required String? institution,
   required Iterable<PaymentSource> sources,
 }) {
-  final lastFour = RegExp(
-    r'(\d{4})$',
-  ).firstMatch(maskedAccountIdentifier ?? '')?.group(1);
+  final lastFour = RegExp(r'(\d{4})$')
+      .firstMatch(maskedAccountIdentifier ?? '')
+      ?.group(1);
   if (lastFour == null) return null;
   final normalizedInstitution = institution?.trim().toLowerCase();
   final identifierMatches = sources

@@ -142,9 +142,8 @@ class _ReviewPageState extends State<ReviewPage> {
         paymentSources: [],
       );
     }
-    return TransactionMasterDataProvider(
-      finance,
-    ).load(languageCode: languageCode);
+    return TransactionMasterDataProvider(finance)
+        .load(languageCode: languageCode);
   }
 
   Future<List<_ReviewEntry>> _load() async {
@@ -376,7 +375,9 @@ class _ReviewPageState extends State<ReviewPage> {
                       Navigator.of(detailContext).pop();
                       _openTransaction(item);
                     },
-                    dismissLabel: item.reason == ReviewIssueReason.merchantNeedsReview.name
+                    dismissLabel:
+                        item.reason ==
+                            ReviewIssueReason.merchantNeedsReview.name
                         ? null
                         : context.l10n.text('dismiss'),
                     onDismiss: () async {
@@ -546,9 +547,8 @@ class _ReviewPageState extends State<ReviewPage> {
                           ? 'classificationMissing'
                           : 'categoryMissing',
                     ),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: context.colors.secondaryText,
-                    ),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: context.colors.secondaryText),
                   ),
                   onTap: _openUncategorized,
                   navigates: true,
@@ -791,17 +791,17 @@ class _ReviewTransactionCardState extends State<_ReviewTransactionCard> {
                   children: [
                     ButlerlyTransactionInnerCard(
                       child: TransactionRow(
-                      transaction: transaction,
-                      masterData:
-                          data?.presentation ?? const TransactionMasterData(),
-                      paymentSourceNames: {
-                        for (final source
-                            in data?.paymentSources ?? <PaymentSource>[])
-                          source.id.value: source.name,
-                      },
-                      showDate: true,
-                      onTap: widget.onEdit,
-                    ),
+                        transaction: transaction,
+                        masterData:
+                            data?.presentation ?? const TransactionMasterData(),
+                        paymentSourceNames: {
+                          for (final source
+                              in data?.paymentSources ?? <PaymentSource>[])
+                            source.id.value: source.name,
+                        },
+                        showDate: true,
+                        onTap: widget.onEdit,
+                      ),
                     ),
                     Padding(
                       padding: const EdgeInsets.all(ButlerlySpacing.standard),
@@ -824,10 +824,10 @@ class _ReviewTransactionCardState extends State<_ReviewTransactionCard> {
                                 child: Text(widget.editLabel),
                               ),
                               if (widget.dismissLabel != null)
-                                 TextButton(
-                                   onPressed: widget.onDismiss,
-                                   child: Text(widget.dismissLabel!),
-                                 ),
+                                TextButton(
+                                  onPressed: widget.onDismiss,
+                                  child: Text(widget.dismissLabel!),
+                                ),
                             ],
                           ),
                         ],
@@ -954,45 +954,45 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                       children: [
                         ButlerlyTransactionInnerCard(
                           child: ButlerlyTransactionList(
-                          children: [
-                            for (final transaction in transactions)
-                              TransactionRow(
-                                transaction: transaction,
-                                masterData:
-                                    masterData?.presentation ??
-                                    const TransactionMasterData(),
-                                paymentSourceNames: {
-                                  for (final source
-                                      in masterData?.paymentSources ??
-                                          <PaymentSource>[])
-                                    source.id.value: source.name,
-                                },
-                                showDate: true,
-                                supportingContent:
-                                    transaction.provenance.isEmpty
-                                    ? null
-                                    : Text(
-                                        _transactionEvidenceLabel(
-                                          context,
-                                          transaction,
+                            children: [
+                              for (final transaction in transactions)
+                                TransactionRow(
+                                  transaction: transaction,
+                                  masterData:
+                                      masterData?.presentation ??
+                                      const TransactionMasterData(),
+                                  paymentSourceNames: {
+                                    for (final source
+                                        in masterData?.paymentSources ??
+                                            <PaymentSource>[])
+                                      source.id.value: source.name,
+                                  },
+                                  showDate: true,
+                                  supportingContent:
+                                      transaction.provenance.isEmpty
+                                      ? null
+                                      : Text(
+                                          _transactionEvidenceLabel(
+                                            context,
+                                            transaction,
+                                          ),
+                                          style:
+                                              context.transactionItemMetadata,
                                         ),
-                                        style: context.transactionItemMetadata,
-                                      ),
-                                selectionControl:
-                                    ButlerlyTransactionSelectionControl<
-                                      TransactionId
-                                    >(value: TransactionId(transaction.id)),
-                                onTap: () => setState(
-                                  () => _selectedTransactionId = TransactionId(
-                                    transaction.id,
+                                  selectionControl:
+                                      ButlerlyTransactionSelectionControl<
+                                        TransactionId
+                                      >(value: TransactionId(transaction.id)),
+                                  onTap: () => setState(
+                                    () => _selectedTransactionId =
+                                        TransactionId(transaction.id),
                                   ),
                                 ),
-                              ),
-                          ],
-                         ),
-                         ),
-                       ],
-                     ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   );
                 },
               ),

@@ -244,9 +244,9 @@ class _RulesPageState extends State<RulesPage> {
     return values.join(' · ');
   }
 
-  void _showMessage(String message) => ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(SnackBar(content: Text(message)));
+  void _showMessage(String message) =>
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
 
   @override
   Widget build(BuildContext context) => FutureBuilder<_RuleData>(
