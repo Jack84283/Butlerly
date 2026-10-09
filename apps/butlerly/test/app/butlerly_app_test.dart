@@ -28,7 +28,10 @@ void main() {
 
     expect(dark.scaffoldBackgroundColor, darkColors.background);
     expect(dark.cardTheme.color, darkColors.cardSurface);
-    expect(dark.colorScheme.surfaceContainerHighest, darkColors.elevatedSurface);
+    expect(
+      dark.colorScheme.surfaceContainerHighest,
+      darkColors.elevatedSurface,
+    );
     expect(dark.textTheme.bodyMedium?.color, darkColors.secondaryText);
     expect(dark.textTheme.bodySmall?.color, darkColors.secondaryText);
     expect(light.textTheme.bodyMedium?.color, lightColors.secondaryText);
