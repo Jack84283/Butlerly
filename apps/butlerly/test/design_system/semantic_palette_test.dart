@@ -77,6 +77,7 @@ void main() {
 
     for (final theme in [AppTheme.light, AppTheme.dark]) {
       await tester.pumpWidget(MaterialApp(theme: theme, home: card()));
+      await tester.pumpAndSettle();
       final widget = tester.widget<Card>(find.byType(Card).first);
       final colors = theme.extension<ButlerlySemanticColors>()!;
       expect(widget.color ?? theme.cardTheme.color, colors.cardSurface);
