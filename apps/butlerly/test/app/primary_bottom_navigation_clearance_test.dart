@@ -105,6 +105,28 @@ void main() {
     expect(navigationMaterial.color, Colors.transparent);
     expect(pillDecoration.color!.a, ButlerlyOpacity.primaryNavigationSurface);
     expect(pillRect.top, closeTo(navigationRect.top + 8, 0.01));
+    // The floating pill is lifted 12px above the device safe-area inset,
+    // without changing its 56px height or consuming a footer area.
+    final bottomInset = MediaQuery.paddingOf(tester.element(pill)).bottom;
+    expect(
+      pillRect.bottom,
+      closeTo(
+        navigationRect.bottom -
+            bottomInset -
+            ButlerlySpacing.primaryNavigationBottomLift,
+        0.01,
+      ),
+    );
+    expect(
+      navigationRect.height,
+      closeTo(
+        ButlerlySize.navigationBarHeight +
+            ButlerlySpacing.compact +
+            bottomInset +
+            ButlerlySpacing.primaryNavigationBottomLift,
+        0.01,
+      ),
+    );
     expect(pillRect.width, lessThan(navigationRect.width));
     expect(pillRect.width, closeTo(navigationRect.width - 32, 0.01));
     expect(pillRect.center.dx, closeTo(navigationRect.center.dx, 0.01));
@@ -132,6 +154,23 @@ void main() {
     );
     expect(selectedIconTheme.data.color, lightColors.navigationSelectedIcon);
     expect(inactiveIconTheme.data.color, lightColors.secondaryText);
+    // Only the icon paint is lowered; the label and pill geometry stay put.
+    for (final (index, iconData) in const [
+      (0, Icons.home),
+      (1, Icons.receipt_long_outlined),
+      (2, Icons.add_rounded),
+    ]) {
+      final iconCenter = tester.getCenter(find.byIcon(iconData)).dy;
+      final slotCenter = tester
+          .getCenter(
+            find.byKey(ValueKey('primary-navigation-icon-slot-$index')),
+          )
+          .dy;
+      expect(
+        iconCenter - slotCenter,
+        closeTo(ButlerlySpacing.primaryNavigationIconDrop, 0.01),
+      );
+    }
     expect(pillDecoration.gradient, ButlerlySurfaceGradients.lightElevated);
     expect(pillRect.height, closeTo(ButlerlySize.navigationBarHeight, 0.01));
     expect(
