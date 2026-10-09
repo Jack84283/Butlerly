@@ -2,7 +2,6 @@ import 'package:butlerly/design_system/category/butlerly_category_identity.dart'
 import 'package:butlerly/design_system/components/butlerly_category_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_content_surface.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
-import 'package:butlerly/design_system/theme/butlerly_surface_gradients.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -277,13 +276,6 @@ class ButlerlyCard extends StatelessWidget {
       child: Card(
         color: color,
         child: Ink(
-          decoration:
-              color == null && Theme.of(context).brightness == Brightness.light
-              ? BoxDecoration(
-                  gradient: ButlerlySurfaceGradients.lightCard,
-                  borderRadius: BorderRadius.circular(radius),
-                )
-              : null,
           child: InkWell(
             borderRadius: BorderRadius.circular(radius),
             onTap: onTap,
@@ -492,9 +484,6 @@ class ButlerlyCompactSelector extends StatelessWidget {
                 color: transparent
                     ? Colors.transparent
                     : context.colors.subtleSurface,
-                gradient: transparent
-                    ? null
-                    : ButlerlySurfaceGradients.surface(context),
                 border: Border.all(color: context.colors.border),
                 borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
               ),
