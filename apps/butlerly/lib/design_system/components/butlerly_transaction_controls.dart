@@ -894,6 +894,8 @@ class ButlerlyReviewFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SwitchListTile.adaptive(
+    activeThumbColor: Theme.of(context).colorScheme.onPrimary,
+    activeTrackColor: Theme.of(context).colorScheme.primary,
     contentPadding: EdgeInsets.zero,
     title: Text(label),
     value: value == true,
