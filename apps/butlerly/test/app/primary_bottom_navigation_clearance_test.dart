@@ -40,7 +40,7 @@ void main() {
         ],
         home: CompactPrimaryShell(
           body: Align(
-            alignment: Alignment.bottomCenter,
+            alignment: Alignment.topCenter,
             child: TextButton(
               key: const ValueKey('bottom-page-action'),
               onPressed: () => tapped = true,
@@ -99,7 +99,8 @@ void main() {
     final pillContainer = tester.widget<Container>(pill);
     final pillDecoration = pillContainer.decoration! as BoxDecoration;
 
-    expect(bodyRect.bottom, closeTo(navigationRect.top, 0.01));
+    expect(bodyRect.bottom, closeTo(navigationRect.bottom, 0.01));
+    expect(bodyRect.bottom, greaterThan(navigationRect.top));
     expect(navigationMaterial.color, Colors.transparent);
     expect(pillDecoration.color!.a, ButlerlyOpacity.primaryNavigationSurface);
     expect(pillRect.top, closeTo(navigationRect.top + 8, 0.01));
@@ -107,6 +108,15 @@ void main() {
     expect(pillRect.width, closeTo(navigationRect.width - 32, 0.01));
     expect(pillRect.center.dx, closeTo(navigationRect.center.dx, 0.01));
     expect(navigationContentRect.center, pillRect.center);
+    final selectedSwitch = tester.widget<Container>(
+      find.byKey(const ValueKey('primary-navigation-switch-selected-0')),
+    );
+    final selectedSwitchDecoration =
+        selectedSwitch.decoration! as BoxDecoration;
+    expect(
+      selectedSwitchDecoration.color,
+      lightColors.selection,
+    );
     final selectedIconTheme = tester.widget<IconTheme>(
       find
           .ancestor(
@@ -147,19 +157,11 @@ void main() {
       BorderRadius.circular(ButlerlyRadius.pill),
     );
     expect(find.byKey(const ValueKey('primary-navigation-base')), findsNothing);
-    final addButton = find.byKey(
-      const ValueKey('primary-navigation-add-button'),
-    );
-    expect(addButton, findsOneWidget);
-    final addDecoration =
-        tester.widget<Container>(addButton).decoration! as BoxDecoration;
-    expect(addDecoration.shape, BoxShape.circle);
-    expect(addDecoration.color, AppTheme.light.colorScheme.primary);
     expect(
-      tester.getSize(addButton),
-      Size.square(ButlerlySize.primaryNavigationAddIconSize),
+      find.byKey(const ValueKey('primary-navigation-add-button')),
+      findsNothing,
     );
-    expect(find.text('Add'), findsNothing);
+    expect(find.text('Add'), findsOneWidget);
 
     await tester.tap(find.text('Txns'));
     expect(selectedBranch, 1);
