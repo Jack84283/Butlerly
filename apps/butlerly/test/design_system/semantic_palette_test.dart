@@ -22,7 +22,9 @@ void main() {
     expect(colors.border, const Color(0xFF383C44));
   });
 
-  test('light mode matches the approved off-white background specification', () {
+  test(
+    'light mode matches the approved off-white background specification',
+    () {
     final colors = AppTheme.light.extension<ButlerlySemanticColors>()!;
     expect(colors.background, const Color(0xFFF6F7F8));
     expect(colors.cardSurface, const Color(0xFFFFFFFF));
@@ -46,7 +48,8 @@ void main() {
       colors.background.computeLuminance(),
       greaterThan(colors.elevatedSurface.computeLuminance()),
     );
-  });
+    },
+  );
 
   test('dialogs, sheets, snackbars and pages use the dedicated colors', () {
     for (final theme in [AppTheme.light, AppTheme.dark]) {
