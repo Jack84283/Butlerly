@@ -169,6 +169,83 @@ void main() {
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
+  testWidgets('dark navigation highlights the selected destination', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: CompactPrimaryShell(
+          body: const SizedBox.shrink(),
+          destinations: const <int, NavigationDestination>{
+            0: NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home),
+              label: 'Home',
+            ),
+            1: NavigationDestination(
+              icon: Icon(Icons.receipt_long_outlined),
+              selectedIcon: Icon(Icons.receipt_long),
+              label: 'Transactions',
+            ),
+            2: NavigationDestination(
+              icon: Icon(Icons.add_rounded),
+              selectedIcon: Icon(Icons.add_rounded),
+              label: 'Add',
+            ),
+            3: NavigationDestination(
+              icon: Icon(Icons.bar_chart_rounded),
+              selectedIcon: Icon(Icons.bar_chart_rounded),
+              label: 'Tools',
+            ),
+            4: NavigationDestination(
+              icon: Icon(Icons.more_horiz_rounded),
+              selectedIcon: Icon(Icons.more_horiz_rounded),
+              label: 'More',
+            ),
+          },
+          visualBranchIndexes: const [0, 1, 2, 3, 4],
+          currentIndex: 0,
+          onSelected: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final selectedIconTheme = tester.widget<IconTheme>(
+      find
+          .ancestor(
+            of: find.byIcon(Icons.home),
+            matching: find.byType(IconTheme),
+          )
+          .first,
+    );
+    final inactiveIconTheme = tester.widget<IconTheme>(
+      find
+          .ancestor(
+            of: find.byIcon(Icons.receipt_long_outlined),
+            matching: find.byType(IconTheme),
+          )
+          .first,
+    );
+    final darkColors = AppTheme.dark.extension<ButlerlySemanticColors>()!;
+    final selectedAccent = Color.lerp(
+      darkColors.interactiveStrong,
+      Colors.white,
+      0.55,
+    );
+    expect(selectedIconTheme.data.color, selectedAccent);
+    expect(inactiveIconTheme.data.color, darkColors.border);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'compact navigation labels wrap without clipping across locales and text scales',
     (tester) async {
