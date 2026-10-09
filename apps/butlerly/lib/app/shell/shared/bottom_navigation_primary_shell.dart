@@ -1,5 +1,6 @@
 import 'package:butlerly/app/shell/shared/primary_bottom_navigation.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/theme/butlerly_surface_gradients.dart';
 import 'package:flutter/material.dart';
 
 /// Shared shell implementation for the width-driven Compact and Medium
@@ -35,7 +36,12 @@ class BottomNavigationPrimaryShell extends StatelessWidget {
           child: ColoredBox(
             key: bodySurfaceKey,
             color: context.colors.subtleSurface,
-            child: body,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: ButlerlySurfaceGradients.page(context),
+              ),
+              child: body,
+            ),
           ),
         ),
         Align(
