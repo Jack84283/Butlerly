@@ -154,7 +154,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
             : const Color(0xFF16483B),
         interactive: brightness == Brightness.dark
             ? const Color(0xFF66C7A0)
-            : const Color(0xFF246B57),
+            : const Color(0xFF1D5B4B),
         navigationSelectedIcon: brightness == Brightness.dark
             ? const Color(0xFF618B7C)
             : const Color(0xFF246B57),
