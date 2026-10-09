@@ -1,0 +1,34 @@
+name: Temporary branch Dart formatter
+on:
+  push:
+    branches:
+      - codex/transaction-inner-card-shared
+    paths:
+      - .github/workflows/temporary-branch-dart-format.yml
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/transaction-inner-card-shared
+          persist-credentials: true
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.1'
+      - name: Apply Dart formatter
+        run: |
+          cd apps/butlerly
+          dart format lib
+      - name: Commit formatting
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if ! git diff --quiet; then
+            git add apps/butlerly/lib
+            git commit -m 'Apply Dart formatter to UI polish changes'
+            git push origin HEAD:codex/transaction-inner-card-shared
+          fi
