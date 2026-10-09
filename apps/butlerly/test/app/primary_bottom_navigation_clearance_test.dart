@@ -112,9 +112,7 @@ void main() {
     final selectedSwitch = tester.widget<Container>(
       find.byKey(const ValueKey('primary-navigation-switch-selected-0')),
     );
-    final selectedSwitchDecoration =
-        selectedSwitch.decoration! as BoxDecoration;
-    expect(selectedSwitchDecoration.color, lightColors.selection);
+    expect(selectedSwitch.decoration, isNull);
     final selectedIconTheme = tester.widget<IconTheme>(
       find
           .ancestor(
