@@ -802,7 +802,17 @@ void main() {
       final date2 = '${parts[0]}-${parts[1].toString().padLeft(2, '0')}-02';
       final firstDay = find.byKey(ValueKey('analysis-calendar-$date1'));
       await tester.ensureVisible(firstDay);
-      expect(tester.getSize(firstDay).height, ButlerlySize.minimumTarget);
+      expect(tester.getSize(firstDay).height, 40);
+      final weekdayRow = find.byKey(
+        const ValueKey('analysis-calendar-weekday-labels'),
+      );
+      final datesGrid = find.byKey(
+        const ValueKey('analysis-calendar-days-grid'),
+      );
+      expect(
+        tester.getTopLeft(datesGrid).dy - tester.getBottomLeft(weekdayRow).dy,
+        closeTo(0, 1),
+      );
       await tester.tap(find.byKey(ValueKey('analysis-calendar-$date1')));
       await tester.pumpAndSettle();
       expect(find.text('No transactions yet'), findsOneWidget);
@@ -815,7 +825,21 @@ void main() {
       final displayedDate = MaterialLocalizations.of(
         tester.element(find.text('Groceries')),
       ).formatFullDate(DateTime.parse(date2));
-      expect(find.textContaining(displayedDate), findsOneWidget);
+      final displayedDateLabel = find.byKey(
+        const ValueKey('analysis-selected-day-date'),
+      );
+      final summaryLabel = find.byKey(
+        const ValueKey('analysis-selected-day-summary'),
+      );
+      expect(tester.widget<Text>(displayedDateLabel).data, displayedDate);
+      expect(
+        tester.widget<Text>(summaryLabel).data,
+        contains('4 transactions'),
+      );
+      expect(
+        tester.getTopLeft(summaryLabel).dy,
+        greaterThanOrEqualTo(tester.getBottomLeft(displayedDateLabel).dy),
+      );
       final innerCard = find.byType(ButlerlyTransactionInnerCard);
       expect(innerCard, findsOneWidget);
       final outerRect = tester.getRect(

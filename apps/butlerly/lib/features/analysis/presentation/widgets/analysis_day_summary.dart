@@ -46,8 +46,20 @@ class AnalysisDaySummary extends StatelessWidget {
               padding: const EdgeInsets.symmetric(
                 horizontal: ButlerlySpacing.standard,
               ),
-              child: Text(
-                '${MaterialLocalizations.of(context).formatFullDate(DateTime.parse(date))} · ${localizedCount(context, value.value.length.toString())} ${context.l10n.text('transactions')}${expense == null ? '' : ' · ${analysisMoneyValue(context, expense!)} ${context.l10n.text('spent')}'}',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    MaterialLocalizations.of(
+                      context,
+                    ).formatFullDate(DateTime.parse(date)),
+                    key: const ValueKey('analysis-selected-day-date'),
+                  ),
+                  Text(
+                    '${localizedCount(context, value.value.length.toString())} ${context.l10n.text('transactions')}${expense == null ? '' : ' · ${analysisMoneyValue(context, expense!)} ${context.l10n.text('spent')}'}',
+                    key: const ValueKey('analysis-selected-day-summary'),
+                  ),
+                ],
               ),
             ),
             if (value.value.isEmpty)

@@ -125,6 +125,7 @@ class AnalysisActivity extends StatelessWidget {
                   ),
                   const SizedBox(height: ButlerlySpacing.micro),
                   Row(
+                    key: const ValueKey('analysis-calendar-weekday-labels'),
                     children: [
                       for (var weekday = 0; weekday < 7; weekday++)
                         Expanded(
@@ -140,13 +141,15 @@ class AnalysisActivity extends StatelessWidget {
                     ],
                   ),
                   GridView.builder(
+                    key: const ValueKey('analysis-calendar-days-grid'),
                     shrinkWrap: true,
+                    padding: EdgeInsets.zero,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: leading + calendar.days.length,
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 7,
-                          mainAxisExtent: ButlerlySize.minimumTarget,
+                          mainAxisExtent: 40,
                           mainAxisSpacing: ButlerlySpacing.micro,
                           crossAxisSpacing: ButlerlySpacing.micro,
                         ),
