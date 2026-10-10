@@ -813,6 +813,18 @@ void main() {
         tester.getTopLeft(datesGrid).dy - tester.getBottomLeft(weekdayRow).dy,
         closeTo(0, 1),
       );
+      final weekdayLabel = find.descendant(
+        of: weekdayRow,
+        matching: find.byType(Text),
+      ).first;
+      final dateLabel = find.descendant(
+        of: firstDay,
+        matching: find.byType(Text),
+      ).first;
+      final visibleWeekdayGap =
+          tester.getTopLeft(dateLabel).dy -
+          tester.getBottomLeft(weekdayLabel).dy;
+      expect(visibleWeekdayGap, inInclusiveRange(0, 8));
       await tester.tap(find.byKey(ValueKey('analysis-calendar-$date1')));
       await tester.pumpAndSettle();
       expect(find.text('No transactions yet'), findsOneWidget);

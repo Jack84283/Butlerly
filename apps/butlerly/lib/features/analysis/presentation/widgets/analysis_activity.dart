@@ -130,11 +130,17 @@ class AnalysisActivity extends StatelessWidget {
                       for (var weekday = 0; weekday < 7; weekday++)
                         Expanded(
                           child: Center(
-                            child: Text(
-                              materialLocalizations
-                                  .narrowWeekdays[(firstDayOfWeek + weekday) %
-                                  7],
-                              style: Theme.of(context).textTheme.labelSmall,
+                            child: Transform.translate(
+                              offset: const Offset(
+                                0,
+                                ButlerlySpacing.microSmall,
+                              ),
+                              child: Text(
+                                materialLocalizations.narrowWeekdays[
+                                    (firstDayOfWeek + weekday) % 7
+                                ],
+                                style: Theme.of(context).textTheme.labelSmall,
+                              ),
                             ),
                           ),
                         ),
