@@ -834,7 +834,7 @@ void main() {
       expect(tester.widget<Text>(displayedDateLabel).data, displayedDate);
       expect(
         tester.widget<Text>(summaryLabel).data,
-        contains('4 transactions'),
+        contains('4 Transactions'),
       );
       expect(
         tester.getTopLeft(summaryLabel).dy,
