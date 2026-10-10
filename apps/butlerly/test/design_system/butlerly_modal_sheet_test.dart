@@ -7,9 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('Cancel has an outline only in dark mode; other text buttons stay borderless', (
-    tester,
-  ) async {
+  testWidgets(
+    'Cancel has an outline only in dark mode; other text buttons stay borderless',
+    (tester) async {
     for (final theme in [AppTheme.light, AppTheme.dark]) {
       var tapCount = 0;
       await tester.pumpWidget(
@@ -54,8 +54,8 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('cancel-action')));
       await tester.pump();
       expect(tapCount, 1);
-    }
-  });
+    },
+  );
 
   test('production presentation code has no direct popup APIs', () {
     final offenders = <String>[];
