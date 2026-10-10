@@ -46,10 +46,7 @@ void main() {
         theme.textButtonTheme.style?.foregroundColor?.resolve({}),
         palette.tertiaryText,
       );
-      expect(
-        theme.textButtonTheme.style?.side?.resolve({}),
-        BorderSide.none,
-      );
+      expect(theme.textButtonTheme.style?.side?.resolve({}), BorderSide.none);
       expect(
         theme.filledButtonTheme.style?.backgroundColor?.resolve({}),
         palette.primaryFill,
