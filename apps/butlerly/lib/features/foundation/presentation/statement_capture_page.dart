@@ -1386,7 +1386,8 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                                           row.amount != null &&
                                           row.currency != null &&
                                           row.direction != null
-                                      ? () => _act(row, StatementRowStatus.saved)
+                                      ? () =>
+                                            _act(row, StatementRowStatus.saved)
                                       : null,
                                   icon: Icons.save_outlined,
                                   child: Text(context.l10n.text('save')),

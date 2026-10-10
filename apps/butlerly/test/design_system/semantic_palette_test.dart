@@ -51,24 +51,27 @@ void main() {
     },
   );
 
-  test('light text actions have no fill while secondary buttons stay filled', () {
-    for (final palette in ButlerlyColorTheme.values) {
-      final theme = AppTheme.lightFor(palette);
-      final colors = theme.extension<ButlerlySemanticColors>()!;
-      expect(
-        theme.textButtonTheme.style?.backgroundColor?.resolve({}),
-        Colors.transparent,
-      );
-      expect(
-        theme.outlinedButtonTheme.style?.backgroundColor?.resolve({}),
-        colors.subtleSurface,
-      );
-      expect(
-        theme.filledButtonTheme.style?.backgroundColor?.resolve({}),
-        theme.colorScheme.primary,
-      );
-    }
-  });
+  test(
+    'light text actions have no fill while secondary buttons stay filled',
+    () {
+      for (final palette in ButlerlyColorTheme.values) {
+        final theme = AppTheme.lightFor(palette);
+        final colors = theme.extension<ButlerlySemanticColors>()!;
+        expect(
+          theme.textButtonTheme.style?.backgroundColor?.resolve({}),
+          Colors.transparent,
+        );
+        expect(
+          theme.outlinedButtonTheme.style?.backgroundColor?.resolve({}),
+          colors.subtleSurface,
+        );
+        expect(
+          theme.filledButtonTheme.style?.backgroundColor?.resolve({}),
+          theme.colorScheme.primary,
+        );
+      }
+    },
+  );
 
   test('dialogs, sheets, snackbars and pages use the dedicated colors', () {
     for (final theme in [AppTheme.light, AppTheme.dark]) {
