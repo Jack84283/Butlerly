@@ -811,7 +811,7 @@ void main() {
       );
       expect(
         tester.getTopLeft(datesGrid).dy - tester.getBottomLeft(weekdayRow).dy,
-        closeTo(0, 1),
+        closeTo(ButlerlySpacing.micro, 1),
       );
       final weekdayLabel = find
           .descendant(of: weekdayRow, matching: find.byType(Text))
@@ -822,7 +822,7 @@ void main() {
       final visibleWeekdayGap =
           tester.getTopLeft(dateLabel).dy -
           tester.getBottomLeft(weekdayLabel).dy;
-      expect(visibleWeekdayGap, inInclusiveRange(0, 8));
+      expect(visibleWeekdayGap, inInclusiveRange(4, 12));
       await tester.tap(find.byKey(ValueKey('analysis-calendar-$date1')));
       await tester.pumpAndSettle();
       expect(find.text('No transactions yet'), findsOneWidget);
@@ -843,8 +843,23 @@ void main() {
       );
       expect(tester.widget<Text>(displayedDateLabel).data, displayedDate);
       expect(
-        tester.widget<Text>(summaryLabel).data,
-        contains('4 Transactions'),
+        find.descendant(
+          of: summaryLabel,
+          matching: find.text('4 Transactions'),
+        ),
+        findsOneWidget,
+      );
+      final amountLabel = find.byKey(
+        const ValueKey('analysis-selected-day-amount'),
+      );
+      expect(tester.widget<Text>(amountLabel).data, r'$48.00');
+      expect(
+        tester.getTopLeft(find.text('4 Transactions')).dx,
+        lessThan(tester.getTopLeft(amountLabel).dx),
+      );
+      expect(
+        tester.getTopLeft(amountLabel).dy,
+        closeTo(tester.getTopLeft(find.text('4 Transactions')).dy, 1),
       );
       expect(
         tester.getTopLeft(summaryLabel).dy,

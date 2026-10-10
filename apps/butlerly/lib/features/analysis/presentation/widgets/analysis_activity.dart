@@ -146,6 +146,7 @@ class AnalysisActivity extends StatelessWidget {
                         ),
                     ],
                   ),
+                  const SizedBox(height: ButlerlySpacing.micro),
                   GridView.builder(
                     key: const ValueKey('analysis-calendar-days-grid'),
                     shrinkWrap: true,

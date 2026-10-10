@@ -1,6 +1,6 @@
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
-import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_count_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_record_list.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -55,9 +55,28 @@ class AnalysisDaySummary extends StatelessWidget {
                     ).formatFullDate(DateTime.parse(date)),
                     key: const ValueKey('analysis-selected-day-date'),
                   ),
-                  Text(
-                    '${localizedCount(context, value.value.length.toString())} ${context.l10n.text('transactions')}${expense == null ? '' : ' · ${analysisMoneyValue(context, expense!)} ${context.l10n.text('spent')}'}',
+                  Row(
                     key: const ValueKey('analysis-selected-day-summary'),
+                    children: [
+                      TransactionCountText(count: value.value.length),
+                      const SizedBox(width: ButlerlySpacing.compact),
+                      Expanded(
+                        child: Align(
+                          alignment: AlignmentDirectional.centerEnd,
+                          child: Text(
+                            _selectedDayTotalAmount(context, value.value),
+                            key: const ValueKey('analysis-selected-day-amount'),
+                            textAlign: TextAlign.end,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -92,4 +111,31 @@ class AnalysisDaySummary extends StatelessWidget {
       );
     },
   );
+}
+
+String _selectedDayTotalAmount(
+  BuildContext context,
+  List<TransactionDto> transactions,
+) {
+  final totals = <String, List<DecimalValue>>{};
+  for (final transaction in transactions) {
+    final currency = transaction.currency.trim().toUpperCase();
+    if (currency.isEmpty) continue;
+    final amount = DecimalValue.parse(
+      transaction.amount.replaceFirst(RegExp(r'^[+-]'), ''),
+    );
+    totals.putIfAbsent(currency, () => []).add(amount);
+  }
+
+  final entries = totals.entries.toList(growable: false)
+    ..sort((a, b) => a.key.compareTo(b.key));
+  return entries
+      .map(
+        (entry) => localizedCompactMoney(
+          context,
+          DecimalValue.sum(entry.value).toString(),
+          entry.key,
+        ),
+      )
+      .join(' · ');
 }
