@@ -1,4 +1,5 @@
 import 'package:butlerly/app/theme/app_theme.dart';
+import 'package:butlerly/design_system/theme/butlerly_button_palette.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -10,6 +11,10 @@ void main() {
   test('button styles use capsule geometry and theme-aware role surfaces', () {
     for (final theme in [AppTheme.light, AppTheme.dark]) {
       final colors = theme.extension<ButlerlySemanticColors>()!;
+      final palette = ButlerlyButtonPalette.resolve(
+        colors: colors,
+        brightness: theme.brightness,
+      );
       final expectedShape = RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(ButlerlyRadius.full),
       );
@@ -23,27 +28,28 @@ void main() {
       expect(theme.textButtonTheme.style?.shape?.resolve({}), expectedShape);
       expect(
         theme.outlinedButtonTheme.style?.backgroundColor?.resolve({}),
-        theme.brightness == Brightness.dark
-            ? colors.elevatedSurface
-            : colors.subtleSurface,
+        palette.secondaryFill,
       );
       expect(
         theme.outlinedButtonTheme.style?.foregroundColor?.resolve({}),
-        colors.primaryText,
+        palette.secondaryText,
+      );
+      expect(
+        theme.outlinedButtonTheme.style?.side?.resolve({}),
+        BorderSide(color: palette.secondaryBorder),
       );
       expect(
         theme.textButtonTheme.style?.backgroundColor?.resolve({}),
-        colors.elevatedSurface,
+        palette.tertiaryFill,
       );
       expect(
         theme.textButtonTheme.style?.foregroundColor?.resolve({}),
-        theme.brightness == Brightness.dark
-            ? colors.primaryText
-            : colors.secondaryText,
+        palette.tertiaryText,
       );
+      expect(theme.textButtonTheme.style?.side?.resolve({}), BorderSide.none);
       expect(
         theme.filledButtonTheme.style?.backgroundColor?.resolve({}),
-        theme.colorScheme.primary,
+        palette.primaryFill,
       );
     }
   });
@@ -60,7 +66,7 @@ void main() {
       greaterThanOrEqualTo(4.5),
     );
     expect(
-      _contrast(buttonText, colors.elevatedSurface),
+      _contrast(buttonText, colors.cardSurface),
       greaterThanOrEqualTo(4.5),
     );
     expect(

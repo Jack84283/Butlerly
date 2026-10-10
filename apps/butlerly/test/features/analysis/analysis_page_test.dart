@@ -1,12 +1,16 @@
 import 'dart:async';
 
+import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_custom_period_sheet.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_period_selector.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_skeleton.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_count_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -28,7 +32,9 @@ void main() {
     Future<TransactionMasterData> Function()? loadMasterData,
     ValueChanged<String>? onNavigationRequested,
     ValueChanged<TransactionDto>? onTransactionRequested,
+    ThemeData? theme,
   }) => MaterialApp(
+    theme: theme,
     localizationsDelegates: const [
       AppLocalizations.delegate,
       GlobalMaterialLocalizations.delegate,
@@ -787,6 +793,7 @@ void main() {
           ),
           onTransactionRequested: (transaction) =>
               selectedTransaction = transaction,
+          theme: AppTheme.light,
         ),
       );
       await tester.pumpAndSettle();
@@ -794,9 +801,29 @@ void main() {
       final parts = initial.split('-').map(int.parse).toList();
       final date1 = '${parts[0]}-${parts[1].toString().padLeft(2, '0')}-01';
       final date2 = '${parts[0]}-${parts[1].toString().padLeft(2, '0')}-02';
-      await tester.ensureVisible(
-        find.byKey(ValueKey('analysis-calendar-$date1')),
+      final firstDay = find.byKey(ValueKey('analysis-calendar-$date1'));
+      await tester.ensureVisible(firstDay);
+      expect(tester.getSize(firstDay).height, 40);
+      final weekdayRow = find.byKey(
+        const ValueKey('analysis-calendar-weekday-labels'),
       );
+      final datesGrid = find.byKey(
+        const ValueKey('analysis-calendar-days-grid'),
+      );
+      expect(
+        tester.getTopLeft(datesGrid).dy - tester.getBottomLeft(weekdayRow).dy,
+        closeTo(ButlerlySpacing.small, 1),
+      );
+      final weekdayLabel = find
+          .descendant(of: weekdayRow, matching: find.byType(Text))
+          .first;
+      final dateLabel = find
+          .descendant(of: firstDay, matching: find.byType(Text))
+          .first;
+      final visibleWeekdayGap =
+          tester.getTopLeft(dateLabel).dy -
+          tester.getBottomLeft(weekdayLabel).dy;
+      expect(visibleWeekdayGap, greaterThanOrEqualTo(ButlerlySpacing.small));
       await tester.tap(find.byKey(ValueKey('analysis-calendar-$date1')));
       await tester.pumpAndSettle();
       expect(find.text('No transactions yet'), findsOneWidget);
@@ -806,7 +833,61 @@ void main() {
       await tester.tap(find.byKey(ValueKey('analysis-calendar-$date2')));
       await tester.pumpAndSettle();
       expect(find.text('Groceries'), findsOneWidget);
-      expect(find.byType(ButlerlyRecordRow), findsNWidgets(4));
+      final displayedDate = MaterialLocalizations.of(
+        tester.element(find.text('Groceries')),
+      ).formatFullDate(DateTime.parse(date2));
+      final displayedDateLabel = find.byKey(
+        const ValueKey('analysis-selected-day-date'),
+      );
+      final summaryLabel = find.byKey(
+        const ValueKey('analysis-selected-day-summary'),
+      );
+      expect(tester.widget<Text>(displayedDateLabel).data, displayedDate);
+      expect(
+        tester.getTopLeft(displayedDateLabel).dy -
+            tester.getBottomLeft(datesGrid).dy,
+        closeTo(ButlerlySpacing.small, 1),
+      );
+      final countLabel = find.descendant(
+        of: summaryLabel,
+        matching: find.byType(TransactionCountText),
+      );
+      expect(countLabel, findsOneWidget);
+      expect(tester.widget<TransactionCountText>(countLabel).count, 4);
+      final amountLabel = find.byKey(
+        const ValueKey('analysis-selected-day-amount'),
+      );
+      expect(tester.widget<Text>(amountLabel).data, r'$48.00');
+      expect(
+        tester.getTopLeft(countLabel).dx,
+        lessThan(tester.getTopLeft(amountLabel).dx),
+      );
+      expect(
+        tester.getTopLeft(amountLabel).dy,
+        closeTo(tester.getTopLeft(countLabel).dy, 1),
+      );
+      expect(
+        tester.getTopLeft(summaryLabel).dy,
+        greaterThanOrEqualTo(tester.getBottomLeft(displayedDateLabel).dy),
+      );
+      final innerCard = find.byType(ButlerlyTransactionInnerCard);
+      expect(innerCard, findsOneWidget);
+      final outerRect = tester.getRect(
+        find.byKey(const ValueKey('analysis-financial-calendar-card')),
+      );
+      final innerRect = tester.getRect(innerCard);
+      expect(innerRect.left - outerRect.left, ButlerlySpacing.small);
+      expect(outerRect.right - innerRect.right, ButlerlySpacing.small);
+      final recordRows = tester.widgetList<ButlerlyRecordRow>(
+        find.byType(ButlerlyRecordRow),
+      );
+      expect(recordRows, hasLength(4));
+      expect(
+        recordRows.every(
+          (row) => row.variant == ButlerlyTransactionRowVariant.dashboard,
+        ),
+        isTrue,
+      );
       // The row is the primary drill-down control; the former View
       // transactions link is intentionally absent.
       await tester.tap(find.text('Item 4'));

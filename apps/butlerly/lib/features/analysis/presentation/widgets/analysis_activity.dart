@@ -73,114 +73,147 @@ class AnalysisActivity extends StatelessWidget {
       final leading = (first.weekday % 7 - firstDayOfWeek + 7) % 7;
       final todayDate = _financialDate(DateTime.now(), calendar.timeZoneId);
       return ButlerlyCard(
+        key: const ValueKey('analysis-financial-calendar-card'),
+        padding: EdgeInsets.zero,
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: ButlerlyCardHeader(
-                title: context.l10n.text('financialCalendar'),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                ButlerlySpacing.standard,
+                ButlerlySpacing.standard,
+                ButlerlySpacing.standard,
+                ButlerlySpacing.none,
               ),
-            ),
-            const SizedBox(height: ButlerlySpacing.compact),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  tooltip: context.l10n.text('previousMonth'),
-                  onPressed: canPreviousMonth
-                      ? () => onMonthChanged(calendar.year, calendar.month - 1)
-                      : null,
-                  icon: const Icon(Icons.chevron_left),
-                ),
-                Text(
-                  materialLocalizations.formatMonthYear(first),
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                IconButton(
-                  tooltip: context.l10n.text('nextMonth'),
-                  onPressed: canNextMonth
-                      ? () => onMonthChanged(calendar.year, calendar.month + 1)
-                      : null,
-                  icon: const Icon(Icons.chevron_right),
-                ),
-              ],
-            ),
-            const SizedBox(height: ButlerlySpacing.small),
-            Row(
-              children: [
-                for (var weekday = 0; weekday < 7; weekday++)
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        materialLocalizations.narrowWeekdays[(firstDayOfWeek +
-                                weekday) %
-                            7],
-                        style: Theme.of(context).textTheme.labelSmall,
-                      ),
+              child: Column(
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: ButlerlyCardHeader(
+                      title: context.l10n.text('financialCalendar'),
                     ),
                   ),
-              ],
-            ),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: leading + calendar.days.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 7,
-                mainAxisSpacing: 4,
-                crossAxisSpacing: 4,
-              ),
-              itemBuilder: (context, index) {
-                if (index < leading) return const SizedBox.shrink();
-                final day = calendar.days[index - leading];
-                final selected = day.financialDate == selectedDate;
-                final isToday = day.financialDate == todayDate;
-                return Semantics(
-                  label:
-                      '${day.financialDate}, ${day.transactionCount} ${context.l10n.text('transactions')}${isToday ? ', ${context.l10n.text('today')}' : ''}',
-                  selected: selected,
-                  button: true,
-                  child: InkWell(
-                    key: ValueKey('analysis-calendar-${day.financialDate}'),
-                    onTap: () => onSelectDate(day.financialDate),
-                    child: Container(
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: day.transactionCount == 0
-                            ? null
-                            : context.colors.selection,
-                        border: selected
-                            ? Border.all(
-                                color: context.colors.interactive,
-                                width: 2,
+                  const SizedBox(height: ButlerlySpacing.micro),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        tooltip: context.l10n.text('previousMonth'),
+                        onPressed: canPreviousMonth
+                            ? () => onMonthChanged(
+                                calendar.year,
+                                calendar.month - 1,
                               )
                             : null,
-                        borderRadius: BorderRadius.circular(
-                          ButlerlyRadius.small,
-                        ),
+                        icon: const Icon(Icons.chevron_left),
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(day.financialDate.substring(8)),
-                          if (day.transactionCount > 0)
-                            Icon(
-                              Icons.circle,
-                              size: 5,
-                              semanticLabel: context.l10n.text('activity'),
-                              color: context.colors.interactive,
-                            ),
-                          if (isToday)
-                            Text(
-                              context.l10n.text('today'),
+                      Text(
+                        materialLocalizations.formatMonthYear(first),
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      IconButton(
+                        tooltip: context.l10n.text('nextMonth'),
+                        onPressed: canNextMonth
+                            ? () => onMonthChanged(
+                                calendar.year,
+                                calendar.month + 1,
+                              )
+                            : null,
+                        icon: const Icon(Icons.chevron_right),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: ButlerlySpacing.micro),
+                  Row(
+                    key: const ValueKey('analysis-calendar-weekday-labels'),
+                    children: [
+                      for (var weekday = 0; weekday < 7; weekday++)
+                        Expanded(
+                          child: Center(
+                            child: Text(
+                              materialLocalizations
+                                  .narrowWeekdays[(firstDayOfWeek + weekday) %
+                                  7],
                               style: Theme.of(context).textTheme.labelSmall,
                             ),
-                        ],
-                      ),
-                    ),
+                          ),
+                        ),
+                    ],
                   ),
-                );
-              },
+                  const SizedBox(height: ButlerlySpacing.small),
+                  GridView.builder(
+                    key: const ValueKey('analysis-calendar-days-grid'),
+                    shrinkWrap: true,
+                    padding: EdgeInsets.zero,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: leading + calendar.days.length,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 7,
+                          mainAxisExtent: 40,
+                          mainAxisSpacing: ButlerlySpacing.micro,
+                          crossAxisSpacing: ButlerlySpacing.micro,
+                        ),
+                    itemBuilder: (context, index) {
+                      if (index < leading) return const SizedBox.shrink();
+                      final day = calendar.days[index - leading];
+                      final selected = day.financialDate == selectedDate;
+                      final isToday = day.financialDate == todayDate;
+                      return Semantics(
+                        label:
+                            '${day.financialDate}, ${day.transactionCount} ${context.l10n.text('transactions')}${isToday ? ', ${context.l10n.text('today')}' : ''}',
+                        selected: selected,
+                        button: true,
+                        child: InkWell(
+                          key: ValueKey(
+                            'analysis-calendar-${day.financialDate}',
+                          ),
+                          onTap: () => onSelectDate(day.financialDate),
+                          child: Container(
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: day.transactionCount == 0
+                                  ? null
+                                  : context.colors.selection,
+                              border: selected
+                                  ? Border.all(
+                                      color: context.colors.interactive,
+                                      width: 2,
+                                    )
+                                  : null,
+                              borderRadius: BorderRadius.circular(
+                                ButlerlyRadius.small,
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(day.financialDate.substring(8)),
+                                if (day.transactionCount > 0)
+                                  Icon(
+                                    Icons.circle,
+                                    size: 5,
+                                    semanticLabel: context.l10n.text(
+                                      'activity',
+                                    ),
+                                    color: context.colors.interactive,
+                                  ),
+                                if (isToday)
+                                  Text(
+                                    context.l10n.text('today'),
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.labelSmall,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
             if (selectedDate != null)
               AnalysisDaySummary(
@@ -193,6 +226,7 @@ class AnalysisActivity extends StatelessWidget {
                 onTransactionTap: onTransactionTap,
                 masterData: masterData,
               ),
+            const SizedBox(height: ButlerlySpacing.standard),
           ],
         ),
       );

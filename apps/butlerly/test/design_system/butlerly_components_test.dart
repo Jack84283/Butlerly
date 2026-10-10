@@ -1,6 +1,7 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_action_group.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/theme/butlerly_button_palette.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
@@ -21,6 +22,7 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             theme: theme,
+            themeAnimationDuration: Duration.zero,
             home: Scaffold(
               body: Center(
                 child: ButlerlyTransparentIconButton(
@@ -89,6 +91,51 @@ void main() {
 
       expect(value, isNull);
       expect(editable().controller.text, isEmpty);
+    },
+  );
+
+  testWidgets(
+    'dropdown choices have no outlines or divider lines in either mode',
+    (tester) async {
+      for (final theme in [AppTheme.light, AppTheme.dark]) {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: theme,
+            themeAnimationDuration: Duration.zero,
+            home: Scaffold(
+              body: ButlerlySelectField<String>(
+                label: 'Category',
+                value: 'food',
+                entries: const [
+                  DropdownMenuEntry(value: 'food', label: 'Food'),
+                  DropdownMenuEntry(value: 'travel', label: 'Travel'),
+                ],
+                onChanged: (_) {},
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final dropdown = tester.widget<DropdownMenu<String>>(
+          find.byType(DropdownMenu<String>),
+        );
+        expect(dropdown.menuStyle?.side?.resolve({}), BorderSide.none);
+        expect(
+          dropdown.menuStyle?.shape?.resolve({}),
+          const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(
+              Radius.circular(ButlerlyRadius.card),
+            ),
+          ),
+        );
+        for (final option in dropdown.dropdownMenuEntries) {
+          expect(option.style?.side?.resolve({}), BorderSide.none);
+        }
+        await tester.tap(find.byType(DropdownMenu<String>));
+        await tester.pumpAndSettle();
+        expect(find.text('Travel'), findsWidgets);
+        expect(find.byType(Divider), findsNothing);
+      }
     },
   );
 
@@ -572,9 +619,15 @@ void main() {
       ButlerlySize.compactActionIconSize,
     );
     expect(find.byType(OutlinedButton), findsOneWidget);
+    final button = tester.widget<OutlinedButton>(find.byType(OutlinedButton));
+    final palette = ButlerlyButtonPalette.resolve(
+      colors: AppTheme.light.extension<ButlerlySemanticColors>()!,
+      brightness: Brightness.light,
+    );
+    expect(button.style?.backgroundColor?.resolve({}), palette.compactFill);
     expect(
-      tester.widget<OutlinedButton>(find.byType(OutlinedButton)).style,
-      isNull,
+      button.style?.side?.resolve({}),
+      BorderSide(color: palette.compactBorder),
     );
   });
 
@@ -683,12 +736,16 @@ void main() {
       final colors = theme.extension<ButlerlySemanticColors>()!;
       final button = tester.widget<FilledButton>(find.byType(FilledButton));
       final style = button.style!;
-      final alpha = theme.brightness == Brightness.dark ? 0.14 : 0.05;
-      expect(
-        style.backgroundColor?.resolve({}),
-        colors.error.withValues(alpha: alpha),
+      final palette = ButlerlyButtonPalette.resolve(
+        colors: colors,
+        brightness: theme.brightness,
       );
+      expect(style.backgroundColor?.resolve({}), palette.destructiveFill);
       expect(style.foregroundColor?.resolve({}), colors.error);
+      expect(
+        style.side?.resolve({}),
+        BorderSide(color: palette.destructiveBorder),
+      );
     }
   });
 }

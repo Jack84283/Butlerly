@@ -822,23 +822,26 @@ class _ReviewTransactionCardState extends State<_ReviewTransactionCard> {
                           const SizedBox(height: ButlerlySpacing.small),
                           Text(widget.recommendation),
                           const SizedBox(height: ButlerlySpacing.standard),
-                          ButlerlyButtonBar(
-                            spacing: ButlerlyButtonBarSpacing.none,
-                            children: [
-                              FilledButton(
-                                onPressed: widget.onPrimary,
-                                child: Text(widget.primaryLabel),
-                              ),
-                              OutlinedButton(
-                                onPressed: widget.onEdit,
-                                child: Text(widget.editLabel),
-                              ),
-                              if (widget.dismissLabel != null)
-                                TextButton(
-                                  onPressed: widget.onDismiss,
-                                  child: Text(widget.dismissLabel!),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: ButlerlyButtonBar(
+                              spacing: ButlerlyButtonBarSpacing.none,
+                              children: [
+                                FilledButton(
+                                  onPressed: widget.onPrimary,
+                                  child: Text(widget.primaryLabel),
                                 ),
-                            ],
+                                OutlinedButton(
+                                  onPressed: widget.onEdit,
+                                  child: Text(widget.editLabel),
+                                ),
+                                if (widget.dismissLabel != null)
+                                  TextButton(
+                                    onPressed: widget.onDismiss,
+                                    child: Text(widget.dismissLabel!),
+                                  ),
+                              ],
+                            ),
                           ),
                         ],
                       ),

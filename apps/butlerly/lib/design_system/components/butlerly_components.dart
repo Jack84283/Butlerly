@@ -1,6 +1,7 @@
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_category_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_content_surface.dart';
+import 'package:butlerly/design_system/theme/butlerly_button_palette.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
@@ -370,8 +371,8 @@ class ButlerlyCardHeader extends StatelessWidget {
 
 /// Icon-only action without a filled surface or border in either theme.
 ///
-/// Explicitly overrides the app-wide filled TextButton theme while preserving
-/// the standard 44px touch target and accessible button semantics.
+/// Explicitly overrides the app-wide bordered text button theme while
+/// preserving the standard 44px accessible touch target.
 class ButlerlyTransparentIconButton extends StatelessWidget {
   const ButlerlyTransparentIconButton({
     required this.icon,
@@ -467,9 +468,10 @@ class ButlerlyCompactSelector extends StatelessWidget {
           foregroundColor: transparent
               ? context.colors.secondaryText
               : context.colors.primaryText,
-          backgroundColor: transparent ? Colors.transparent : null,
-          disabledBackgroundColor: transparent ? Colors.transparent : null,
+          backgroundColor: Colors.transparent,
+          disabledBackgroundColor: Colors.transparent,
           minimumSize: const Size(0, ButlerlySize.minimumTarget),
+          side: BorderSide.none,
           padding: EdgeInsets.zero,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
@@ -729,11 +731,22 @@ class ButlerlyCompactActionButton extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => OutlinedButton.icon(
-    onPressed: onPressed,
-    icon: Icon(icon, size: ButlerlySize.compactActionIconSize),
-    label: child,
-  );
+  Widget build(BuildContext context) {
+    final palette = ButlerlyButtonPalette.resolve(
+      colors: context.colors,
+      brightness: Theme.of(context).brightness,
+    );
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        backgroundColor: palette.compactFill,
+        foregroundColor: palette.compactText,
+        side: BorderSide(color: palette.compactBorder),
+      ),
+      icon: Icon(icon, size: ButlerlySize.compactActionIconSize),
+      label: child,
+    );
+  }
 }
 
 /// Lightweight secondary text action for presentation-only affordances.
@@ -753,6 +766,8 @@ class ButlerlySecondaryTextAction extends StatelessWidget {
     style: Theme.of(context).textButtonTheme.style?.copyWith(
       alignment: Alignment.centerLeft,
       foregroundColor: WidgetStatePropertyAll(context.colors.secondaryText),
+      backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
+      side: const WidgetStatePropertyAll(BorderSide.none),
     ),
     child: child,
   );
@@ -872,10 +887,14 @@ class ButlerlyDestructiveButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final darkMode = Theme.of(context).brightness == Brightness.dark;
+    final palette = ButlerlyButtonPalette.resolve(
+      colors: colors,
+      brightness: Theme.of(context).brightness,
+    );
     final style = FilledButton.styleFrom(
-      backgroundColor: colors.error.withValues(alpha: darkMode ? 0.14 : 0.05),
-      foregroundColor: colors.error,
+      backgroundColor: palette.destructiveFill,
+      foregroundColor: palette.destructiveText,
+      side: BorderSide(color: palette.destructiveBorder),
       disabledBackgroundColor: colors.error.withValues(alpha: 0.08),
       disabledForegroundColor: colors.tertiaryText,
     );
@@ -1640,11 +1659,41 @@ class _ButlerlySelectFieldState<T> extends State<ButlerlySelectField<T>> {
         maximumSize: WidgetStatePropertyAll(
           Size(constraints.maxWidth, double.infinity),
         ),
-        backgroundColor: WidgetStatePropertyAll(
-          Theme.of(context).colorScheme.surface,
+        backgroundColor: WidgetStatePropertyAll(context.colors.cardSurface),
+        surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+        side: const WidgetStatePropertyAll(BorderSide.none),
+        shape: const WidgetStatePropertyAll(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(
+              Radius.circular(ButlerlyRadius.card),
+            ),
+          ),
+        ),
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(vertical: ButlerlySpacing.micro),
         ),
       ),
-      dropdownMenuEntries: widget.entries,
+      dropdownMenuEntries: [
+        for (final entry in widget.entries)
+          DropdownMenuEntry<T>(
+            value: entry.value,
+            label: entry.label,
+            labelWidget: entry.labelWidget,
+            leadingIcon: entry.leadingIcon,
+            trailingIcon: entry.trailingIcon,
+            enabled: entry.enabled,
+            style: (entry.style ?? const ButtonStyle()).copyWith(
+              side: const WidgetStatePropertyAll(BorderSide.none),
+              shape: const WidgetStatePropertyAll(
+                RoundedRectangleBorder(
+                  borderRadius: BorderRadius.all(
+                    Radius.circular(ButlerlyRadius.standard),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
       onSelected: widget.onChanged,
     ),
   );

@@ -1,5 +1,6 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/theme/butlerly_button_palette.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -50,6 +51,31 @@ void main() {
       );
     },
   );
+
+  test('light text and secondary actions use distinct contrasted surfaces', () {
+    for (final palette in ButlerlyColorTheme.values) {
+      final theme = AppTheme.lightFor(palette);
+      final colors = theme.extension<ButlerlySemanticColors>()!;
+      final buttons = ButlerlyButtonPalette.resolve(
+        colors: colors,
+        brightness: theme.brightness,
+      );
+      expect(
+        theme.textButtonTheme.style?.backgroundColor?.resolve({}),
+        buttons.tertiaryFill,
+      );
+      expect(
+        theme.outlinedButtonTheme.style?.backgroundColor?.resolve({}),
+        buttons.secondaryFill,
+      );
+      expect(buttons.tertiaryFill, isNot(buttons.secondaryFill));
+      expect(theme.textButtonTheme.style?.side?.resolve({}), BorderSide.none);
+      expect(
+        theme.filledButtonTheme.style?.backgroundColor?.resolve({}),
+        theme.colorScheme.primary,
+      );
+    }
+  });
 
   test('dialogs, sheets, snackbars and pages use the dedicated colors', () {
     for (final theme in [AppTheme.light, AppTheme.dark]) {
