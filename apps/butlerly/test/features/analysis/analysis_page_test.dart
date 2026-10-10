@@ -10,6 +10,7 @@ import 'package:butlerly/features/analysis/presentation/widgets/analysis_custom_
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_period_selector.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_skeleton.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_count_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -842,24 +843,23 @@ void main() {
         const ValueKey('analysis-selected-day-summary'),
       );
       expect(tester.widget<Text>(displayedDateLabel).data, displayedDate);
-      expect(
-        find.descendant(
-          of: summaryLabel,
-          matching: find.text('4 Transactions'),
-        ),
-        findsOneWidget,
+      final countLabel = find.descendant(
+        of: summaryLabel,
+        matching: find.byType(TransactionCountText),
       );
+      expect(countLabel, findsOneWidget);
+      expect(tester.widget<TransactionCountText>(countLabel).count, 4);
       final amountLabel = find.byKey(
         const ValueKey('analysis-selected-day-amount'),
       );
       expect(tester.widget<Text>(amountLabel).data, r'$48.00');
       expect(
-        tester.getTopLeft(find.text('4 Transactions')).dx,
+        tester.getTopLeft(countLabel).dx,
         lessThan(tester.getTopLeft(amountLabel).dx),
       );
       expect(
         tester.getTopLeft(amountLabel).dy,
-        closeTo(tester.getTopLeft(find.text('4 Transactions')).dy, 1),
+        closeTo(tester.getTopLeft(countLabel).dy, 1),
       );
       expect(
         tester.getTopLeft(summaryLabel).dy,
