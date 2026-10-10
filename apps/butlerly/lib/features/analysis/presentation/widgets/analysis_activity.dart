@@ -136,9 +136,9 @@ class AnalysisActivity extends StatelessWidget {
                                 ButlerlySpacing.microSmall,
                               ),
                               child: Text(
-                                materialLocalizations.narrowWeekdays[
-                                    (firstDayOfWeek + weekday) % 7
-                                ],
+                                materialLocalizations
+                                    .narrowWeekdays[(firstDayOfWeek + weekday) %
+                                    7],
                                 style: Theme.of(context).textTheme.labelSmall,
                               ),
                             ),

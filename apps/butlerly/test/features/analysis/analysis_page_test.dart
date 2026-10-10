@@ -813,14 +813,12 @@ void main() {
         tester.getTopLeft(datesGrid).dy - tester.getBottomLeft(weekdayRow).dy,
         closeTo(0, 1),
       );
-      final weekdayLabel = find.descendant(
-        of: weekdayRow,
-        matching: find.byType(Text),
-      ).first;
-      final dateLabel = find.descendant(
-        of: firstDay,
-        matching: find.byType(Text),
-      ).first;
+      final weekdayLabel = find
+          .descendant(of: weekdayRow, matching: find.byType(Text))
+          .first;
+      final dateLabel = find
+          .descendant(of: firstDay, matching: find.byType(Text))
+          .first;
       final visibleWeekdayGap =
           tester.getTopLeft(dateLabel).dy -
           tester.getBottomLeft(weekdayLabel).dy;
