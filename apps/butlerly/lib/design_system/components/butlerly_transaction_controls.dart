@@ -365,7 +365,7 @@ class _ButlerlyDuplicateTransactionConfirmationState
       ],
     ),
     actions: [
-      TextButton(
+      ButlerlyCancelButton(
         onPressed: () => _choose(ButlerlyDuplicateDecision.cancel),
         child: Text(context.l10n.text('cancel')),
       ),

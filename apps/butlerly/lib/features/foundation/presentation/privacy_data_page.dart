@@ -217,7 +217,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
               ],
             ),
             actions: [
-              TextButton(
+              ButlerlyCancelButton(
                 onPressed: () => Navigator.pop(sheetContext),
                 child: Text(context.l10n.text('cancel')),
               ),
@@ -284,7 +284,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
             ],
           ),
           actions: [
-            TextButton(
+            ButlerlyCancelButton(
               onPressed: () => Navigator.pop(sheetContext),
               child: Text(context.l10n.text('cancel')),
             ),
@@ -352,7 +352,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
             title: Text(context.l10n.backupText('restoreTitle')),
             content: Text('$summary\n${created.toString()}\n\n$body'),
             actions: [
-              TextButton(
+              ButlerlyCancelButton(
                 onPressed: () => Navigator.pop(context),
                 child: Text(context.l10n.text('cancel')),
               ),
@@ -377,7 +377,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           title: Text(context.l10n.backupText('replaceTitle')),
           content: Text(context.l10n.backupText('replaceBody')),
           actions: [
-            TextButton(
+            ButlerlyCancelButton(
               autofocus: true,
               onPressed: () => Navigator.pop(context, false),
               child: Text(context.l10n.text('cancel')),
@@ -431,7 +431,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         title: Text(context.l10n.text('eraseAllTitle')),
         content: Text(context.l10n.text('eraseAllBody')),
         actions: [
-          TextButton(
+          ButlerlyCancelButton(
             autofocus: true,
             onPressed: () => Navigator.pop(context, false),
             child: Text(context.l10n.text('cancel')),

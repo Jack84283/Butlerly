@@ -2,6 +2,37 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter/material.dart';
 
+/// A Cancel action that is outlined only in dark mode.
+///
+/// Other text actions remain borderless, including dropdown choices.
+class ButlerlyCancelButton extends StatelessWidget {
+  const ButlerlyCancelButton({
+    required this.onPressed,
+    required this.child,
+    this.autofocus = false,
+    super.key,
+  });
+
+  final VoidCallback? onPressed;
+  final Widget child;
+  final bool autofocus;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final side = theme.brightness == Brightness.dark
+        ? theme.outlinedButtonTheme.style?.side?.resolve({}) ??
+              BorderSide(color: theme.colorScheme.outline)
+        : BorderSide.none;
+    return TextButton(
+      onPressed: onPressed,
+      autofocus: autofocus,
+      style: TextButton.styleFrom(side: side),
+      child: child,
+    );
+  }
+}
+
 class ButlerlySheet extends StatelessWidget {
   const ButlerlySheet({
     required this.title,
@@ -260,7 +291,7 @@ Future<DateTime?> showButlerlyDatePicker({
           onDateChanged: (value) => setSheetState(() => selected = value),
         ),
         actions: [
-          TextButton(
+          ButlerlyCancelButton(
             onPressed: () => Navigator.pop(sheetContext),
             child: Text(cancelLabel),
           ),
@@ -318,7 +349,7 @@ Future<bool?> showButlerlyConfirmationSheet({
     title: Text(title),
     content: Text(message),
     actions: [
-      TextButton(
+      ButlerlyCancelButton(
         onPressed: () => Navigator.pop(sheetContext, false),
         child: Text(cancelLabel),
       ),

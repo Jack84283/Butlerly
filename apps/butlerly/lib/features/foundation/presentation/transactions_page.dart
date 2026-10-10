@@ -1393,7 +1393,7 @@ class _PromptSheetState extends State<_PromptSheet> {
     title: Text(widget.title),
     content: TextField(controller: _controller, autofocus: true),
     actions: [
-      TextButton(
+      ButlerlyCancelButton(
         onPressed: () => Navigator.pop(context),
         child: Text(context.l10n.text('cancel')),
       ),
@@ -1897,7 +1897,7 @@ class _EvidenceSectionState extends State<_EvidenceSection> {
         title: Text(context.l10n.text('removeEvidenceTitle')),
         content: Text(context.l10n.text('removeEvidenceBody')),
         actions: [
-          TextButton(
+          ButlerlyCancelButton(
             autofocus: true,
             onPressed: () => Navigator.pop(context, false),
             child: Text(context.l10n.text('cancel')),
@@ -2416,7 +2416,7 @@ Future<bool?> _confirm(
     title: Text(title),
     content: Text(message),
     actions: [
-      TextButton(
+      ButlerlyCancelButton(
         onPressed: () => Navigator.pop(context, false),
         child: Text(context.l10n.text('cancel')),
       ),

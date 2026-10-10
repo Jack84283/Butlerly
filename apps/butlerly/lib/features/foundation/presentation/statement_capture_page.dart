@@ -391,7 +391,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
         title: Text(l10n.text('deleteStatement')),
         content: Text(l10n.text('deleteStatementBody')),
         actions: [
-          TextButton(
+          ButlerlyCancelButton(
             onPressed: () => Navigator.pop(sheetContext, false),
             child: Text(l10n.text('cancel')),
           ),
@@ -614,7 +614,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
             ],
           ),
           actions: [
-            TextButton(
+            ButlerlyCancelButton(
               onPressed: () => Navigator.pop(context, false),
               child: Text(context.l10n.text('cancel')),
             ),
@@ -676,7 +676,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
         title: Text(l10n.text('abandonStatementImportTitle')),
         content: Text(l10n.text('abandonStatementImportBody')),
         actions: [
-          TextButton(
+          ButlerlyCancelButton(
             onPressed: () => Navigator.pop(context, false),
             child: Text(l10n.text('cancel')),
           ),
@@ -744,7 +744,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
           ].join('\n'),
         ),
         actions: [
-          TextButton(
+          ButlerlyCancelButton(
             onPressed: () => Navigator.pop(context, false),
             child: Text(context.l10n.text('cancel')),
           ),
@@ -827,7 +827,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
           ),
         ),
         actions: [
-          TextButton(
+          ButlerlyCancelButton(
             onPressed: () => Navigator.pop(context),
             child: Text(context.l10n.text('cancel')),
           ),
@@ -1020,7 +1020,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
             ),
           ),
           actions: [
-            TextButton(
+            ButlerlyCancelButton(
               onPressed: () => Navigator.pop(context, false),
               child: Text(context.l10n.text('cancel')),
             ),
@@ -1211,7 +1211,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                     ),
                     child: Text(context.l10n.text('createSeparately')),
                   ),
-                  TextButton(
+                  ButlerlyCancelButton(
                     onPressed: () => Navigator.pop(
                       context,
                       const CancelStatementReconciliation(),
