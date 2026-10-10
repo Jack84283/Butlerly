@@ -213,7 +213,7 @@ abstract final class AppTheme {
           ),
           disabledForegroundColor: colors.tertiaryText,
           shape: buttonShape,
-          side: BorderSide(color: buttons.tertiaryBorder),
+          side: BorderSide.none,
           textStyle: textTheme.labelLarge,
         ),
       ),

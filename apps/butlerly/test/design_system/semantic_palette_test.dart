@@ -69,7 +69,10 @@ void main() {
         buttons.secondaryFill,
       );
       expect(buttons.tertiaryFill, isNot(buttons.secondaryFill));
-      expect(buttons.secondaryBorder, isNot(buttons.tertiaryBorder));
+      expect(
+        theme.textButtonTheme.style?.side?.resolve({}),
+        BorderSide.none,
+      );
       expect(
         theme.filledButtonTheme.style?.backgroundColor?.resolve({}),
         theme.colorScheme.primary,

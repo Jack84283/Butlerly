@@ -13,7 +13,6 @@ final class ButlerlyButtonPalette {
     required this.secondaryBorder,
     required this.secondaryText,
     required this.tertiaryFill,
-    required this.tertiaryBorder,
     required this.tertiaryText,
     required this.destructiveFill,
     required this.destructiveBorder,
@@ -32,7 +31,6 @@ final class ButlerlyButtonPalette {
   final Color secondaryBorder;
   final Color secondaryText;
   final Color tertiaryFill;
-  final Color tertiaryBorder;
   final Color tertiaryText;
   final Color destructiveFill;
   final Color destructiveBorder;
@@ -61,9 +59,6 @@ final class ButlerlyButtonPalette {
           );
     final secondaryBorder = dark ? const Color(0xFF8993A8) : colors.brand;
     final tertiaryFill = dark ? Colors.transparent : const Color(0xFFE9EDF3);
-    final tertiaryBorder = dark
-        ? const Color(0xFF8993A8)
-        : const Color(0xFFAAB6C8);
     final destructiveFill = Color.alphaBlend(
       colors.error.withValues(alpha: dark ? 0.2 : 0.09),
       dark ? colors.elevatedSurface : colors.cardSurface,
@@ -75,7 +70,6 @@ final class ButlerlyButtonPalette {
       secondaryBorder: secondaryBorder,
       secondaryText: dark ? colors.primaryText : colors.brand,
       tertiaryFill: tertiaryFill,
-      tertiaryBorder: tertiaryBorder,
       tertiaryText: dark ? colors.primaryText : colors.secondaryText,
       destructiveFill: destructiveFill,
       destructiveBorder: colors.error,
