@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
@@ -30,7 +31,9 @@ void main() {
     Future<TransactionMasterData> Function()? loadMasterData,
     ValueChanged<String>? onNavigationRequested,
     ValueChanged<TransactionDto>? onTransactionRequested,
+    ThemeData? theme,
   }) => MaterialApp(
+    theme: theme,
     localizationsDelegates: const [
       AppLocalizations.delegate,
       GlobalMaterialLocalizations.delegate,
@@ -789,6 +792,7 @@ void main() {
           ),
           onTransactionRequested: (transaction) =>
               selectedTransaction = transaction,
+          theme: AppTheme.light,
         ),
       );
       await tester.pumpAndSettle();

@@ -100,7 +100,10 @@ class AnalysisActivity extends StatelessWidget {
                       IconButton(
                         tooltip: context.l10n.text('previousMonth'),
                         onPressed: canPreviousMonth
-                            ? () => onMonthChanged(calendar.year, calendar.month - 1)
+                            ? () => onMonthChanged(
+                                calendar.year,
+                                calendar.month - 1,
+                              )
                             : null,
                         icon: const Icon(Icons.chevron_left),
                       ),
@@ -111,7 +114,10 @@ class AnalysisActivity extends StatelessWidget {
                       IconButton(
                         tooltip: context.l10n.text('nextMonth'),
                         onPressed: canNextMonth
-                            ? () => onMonthChanged(calendar.year, calendar.month + 1)
+                            ? () => onMonthChanged(
+                                calendar.year,
+                                calendar.month + 1,
+                              )
                             : null,
                         icon: const Icon(Icons.chevron_right),
                       ),
@@ -124,8 +130,8 @@ class AnalysisActivity extends StatelessWidget {
                         Expanded(
                           child: Center(
                             child: Text(
-                              materialLocalizations.narrowWeekdays[(firstDayOfWeek +
-                                      weekday) %
+                              materialLocalizations
+                                  .narrowWeekdays[(firstDayOfWeek + weekday) %
                                   7],
                               style: Theme.of(context).textTheme.labelSmall,
                             ),
@@ -137,12 +143,13 @@ class AnalysisActivity extends StatelessWidget {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: leading + calendar.days.length,
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 7,
-                      mainAxisExtent: ButlerlySize.minimumTarget,
-                      mainAxisSpacing: ButlerlySpacing.micro,
-                      crossAxisSpacing: ButlerlySpacing.micro,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 7,
+                          mainAxisExtent: ButlerlySize.minimumTarget,
+                          mainAxisSpacing: ButlerlySpacing.micro,
+                          crossAxisSpacing: ButlerlySpacing.micro,
+                        ),
                     itemBuilder: (context, index) {
                       if (index < leading) return const SizedBox.shrink();
                       final day = calendar.days[index - leading];
@@ -154,7 +161,9 @@ class AnalysisActivity extends StatelessWidget {
                         selected: selected,
                         button: true,
                         child: InkWell(
-                          key: ValueKey('analysis-calendar-${day.financialDate}'),
+                          key: ValueKey(
+                            'analysis-calendar-${day.financialDate}',
+                          ),
                           onTap: () => onSelectDate(day.financialDate),
                           child: Container(
                             alignment: Alignment.center,
@@ -180,13 +189,17 @@ class AnalysisActivity extends StatelessWidget {
                                   Icon(
                                     Icons.circle,
                                     size: 5,
-                                    semanticLabel: context.l10n.text('activity'),
+                                    semanticLabel: context.l10n.text(
+                                      'activity',
+                                    ),
                                     color: context.colors.interactive,
                                   ),
                                 if (isToday)
                                   Text(
                                     context.l10n.text('today'),
-                                    style: Theme.of(context).textTheme.labelSmall,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.labelSmall,
                                   ),
                               ],
                             ),
