@@ -1,0 +1,20 @@
+name: Temporary Weekday Dart Format Inspection
+on:
+  push:
+    branches:
+      - codex/oct10-ui-consistency
+    paths:
+      - .github/workflows/oct10-weekday-format-inspect.yml
+permissions:
+  contents: read
+jobs:
+  inspect-weekday-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-toolchain
+      - run: ./tool/setup.sh
+      - name: Inspect pinned Dart formatter output
+        run: |
+          dart format apps/butlerly/lib/features/analysis/presentation/widgets/analysis_activity.dart apps/butlerly/test/features/analysis/analysis_page_test.dart
+          git diff -- apps/butlerly/lib/features/analysis/presentation/widgets/analysis_activity.dart apps/butlerly/test/features/analysis/analysis_page_test.dart
