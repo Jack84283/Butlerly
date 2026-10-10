@@ -42,10 +42,7 @@ void main() {
       selectedButton.style?.foregroundColor?.resolve({}),
       AppTheme.light.colorScheme.onPrimaryContainer,
     );
-    expect(
-      selectedButton.style?.side?.resolve({}),
-      BorderSide.none,
-    );
+    expect(selectedButton.style?.side?.resolve({}), BorderSide.none);
     final first = tester.getRect(find.text('All'));
     final last = tester.getRect(find.text('Archived'));
     final selectorCenter = tester.getCenter(
