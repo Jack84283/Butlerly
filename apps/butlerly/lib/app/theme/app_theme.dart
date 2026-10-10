@@ -1,3 +1,4 @@
+import 'package:butlerly/design_system/theme/butlerly_button_palette.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -35,9 +36,13 @@ abstract final class AppTheme {
       bodySmallText: colors.secondaryText,
     );
 
+    final buttons = ButlerlyButtonPalette.resolve(
+      colors: colors,
+      brightness: brightness,
+    );
     final scheme = ColorScheme(
       brightness: brightness,
-      primary: colors.controlPrimary,
+      primary: buttons.primaryFill,
       onPrimary: Colors.white,
       primaryContainer: colors.selection,
       onPrimaryContainer: colors.primaryText,
@@ -181,15 +186,13 @@ abstract final class AppTheme {
             vertical: ButlerlyButtonTokens.verticalPadding,
           ),
           shape: buttonShape,
-          backgroundColor: brightness == Brightness.dark
-              ? colors.elevatedSurface
-              : colors.subtleSurface,
-          foregroundColor: colors.primaryText,
+          backgroundColor: buttons.secondaryFill,
+          foregroundColor: buttons.secondaryText,
           disabledBackgroundColor: colors.tertiaryText.withValues(
             alpha: brightness == Brightness.dark ? 0.24 : 0.16,
           ),
           disabledForegroundColor: colors.tertiaryText,
-          side: BorderSide.none,
+          side: BorderSide(color: buttons.secondaryBorder),
           textStyle: textTheme.labelLarge,
         ),
       ),
@@ -203,17 +206,14 @@ abstract final class AppTheme {
             horizontal: ButlerlyButtonTokens.horizontalPadding,
             vertical: ButlerlyButtonTokens.verticalPadding,
           ),
-          backgroundColor: brightness == Brightness.light
-              ? Colors.transparent
-              : colors.elevatedSurface,
-          foregroundColor: brightness == Brightness.dark
-              ? colors.primaryText
-              : colors.secondaryText,
+          backgroundColor: buttons.tertiaryFill,
+          foregroundColor: buttons.tertiaryText,
           disabledBackgroundColor: colors.tertiaryText.withValues(
             alpha: brightness == Brightness.dark ? 0.24 : 0.16,
           ),
           disabledForegroundColor: colors.tertiaryText,
           shape: buttonShape,
+          side: BorderSide(color: buttons.tertiaryBorder),
           textStyle: textTheme.labelLarge,
         ),
       ),
@@ -281,9 +281,10 @@ abstract final class AppTheme {
         shape: standardShape,
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: colors.subtleSurface,
+        backgroundColor: buttons.chipFill,
         selectedColor: colors.selection,
-        side: BorderSide(color: colors.border),
+        side: BorderSide(color: buttons.chipBorder),
+        labelStyle: textTheme.labelLarge?.copyWith(color: colors.primaryText),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(ButlerlyRadius.full),
         ),

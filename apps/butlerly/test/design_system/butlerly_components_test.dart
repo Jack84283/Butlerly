@@ -1,6 +1,7 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_action_group.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/theme/butlerly_button_palette.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
@@ -41,7 +42,14 @@ void main() {
           button.style?.backgroundColor?.resolve({WidgetState.disabled}),
           Colors.transparent,
         );
-        expect(button.style?.side?.resolve({}), BorderSide.none);
+        final palette = ButlerlyButtonPalette.resolve(
+          colors: theme.extension<ButlerlySemanticColors>()!,
+          brightness: theme.brightness,
+        );
+        expect(
+          button.style?.side?.resolve({}),
+          BorderSide(color: palette.iconBorder),
+        );
         expect(tester.getSize(finder), const Size(44, 44));
         expect(find.byTooltip('More options'), findsOneWidget);
 
@@ -572,10 +580,15 @@ void main() {
       ButlerlySize.compactActionIconSize,
     );
     expect(find.byType(OutlinedButton), findsOneWidget);
-    expect(
-      tester.widget<OutlinedButton>(find.byType(OutlinedButton)).style,
-      isNull,
+    final button = tester.widget<OutlinedButton>(
+      find.byType(OutlinedButton),
     );
+    final palette = ButlerlyButtonPalette.resolve(
+      colors: AppTheme.light.extension<ButlerlySemanticColors>()!,
+      brightness: Brightness.light,
+    );
+    expect(button.style?.backgroundColor?.resolve({}), palette.compactFill);
+    expect(button.style?.side?.resolve({}), BorderSide(color: palette.compactBorder));
   });
 
   testWidgets('secondary text action aligns its label to the leading edge', (
@@ -683,12 +696,19 @@ void main() {
       final colors = theme.extension<ButlerlySemanticColors>()!;
       final button = tester.widget<FilledButton>(find.byType(FilledButton));
       final style = button.style!;
-      final alpha = theme.brightness == Brightness.dark ? 0.14 : 0.05;
+      final palette = ButlerlyButtonPalette.resolve(
+        colors: colors,
+        brightness: theme.brightness,
+      );
       expect(
         style.backgroundColor?.resolve({}),
-        colors.error.withValues(alpha: alpha),
+        palette.destructiveFill,
       );
       expect(style.foregroundColor?.resolve({}), colors.error);
+      expect(
+        style.side?.resolve({}),
+        BorderSide(color: palette.destructiveBorder),
+      );
     }
   });
 }

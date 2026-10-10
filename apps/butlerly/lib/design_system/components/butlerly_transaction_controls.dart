@@ -1,5 +1,6 @@
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/theme/butlerly_button_palette.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
@@ -705,11 +706,16 @@ class ButlerlyDirectionSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final palette = ButlerlyButtonPalette.resolve(
+      colors: colors,
+      brightness: Theme.of(context).brightness,
+    );
     return Container(
       key: const ValueKey('transaction-direction-switch'),
       padding: const EdgeInsets.all(ButlerlySpacing.micro),
       decoration: BoxDecoration(
-        color: colors.subtleSurface,
+        color: palette.segmentFill,
+        border: Border.all(color: palette.segmentBorder),
         borderRadius: BorderRadius.circular(ButlerlyRadius.full),
       ),
       child: Row(
@@ -767,7 +773,12 @@ class _TransactionDirectionSwitchOption extends StatelessWidget {
             ),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: selected ? colors.controlPrimary : Colors.transparent,
+              color: selected
+                  ? ButlerlyButtonPalette.resolve(
+                      colors: colors,
+                      brightness: Theme.of(context).brightness,
+                    ).primaryFill
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(ButlerlyRadius.full),
             ),
             padding: const EdgeInsets.symmetric(
