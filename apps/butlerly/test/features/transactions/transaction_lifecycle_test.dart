@@ -727,8 +727,9 @@ void main() {
     expect(find.text('View image'), findsOneWidget);
     expect(find.text('IMG_4837.jpg'), findsNothing);
     expect(find.text('image/jpeg'), findsNothing);
-    expect(find.byType(ButlerlySecondaryTextAction), findsOneWidget);
+    expect(find.byType(ButlerlySecondaryTextAction), findsNothing);
     final tile = tester.widget<ListTile>(find.byType(ListTile));
+    expect(tile.title, isA<Text>());
     expect(tile.onTap, isNotNull);
     expect(evidenceRepository.items.single.originalName, 'IMG_4837.jpg');
   });

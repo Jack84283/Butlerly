@@ -33,7 +33,9 @@ void main() {
       );
       expect(
         theme.textButtonTheme.style?.backgroundColor?.resolve({}),
-        colors.elevatedSurface,
+        theme.brightness == Brightness.dark
+            ? colors.elevatedSurface
+            : Colors.transparent,
       );
       expect(
         theme.textButtonTheme.style?.foregroundColor?.resolve({}),
