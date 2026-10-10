@@ -823,10 +823,7 @@ void main() {
       final visibleWeekdayGap =
           tester.getTopLeft(dateLabel).dy -
           tester.getBottomLeft(weekdayLabel).dy;
-      expect(
-        visibleWeekdayGap,
-        greaterThanOrEqualTo(ButlerlySpacing.small),
-      );
+      expect(visibleWeekdayGap, greaterThanOrEqualTo(ButlerlySpacing.small));
       await tester.tap(find.byKey(ValueKey('analysis-calendar-$date1')));
       await tester.pumpAndSettle();
       expect(find.text('No transactions yet'), findsOneWidget);
