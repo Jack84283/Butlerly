@@ -34,7 +34,7 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-  
+
         final cancel = tester.widget<TextButton>(
           find.descendant(
             of: find.byKey(const ValueKey('cancel-action')),
@@ -45,12 +45,12 @@ void main() {
             ? theme.outlinedButtonTheme.style?.side?.resolve({})
             : BorderSide.none;
         expect(cancel.style?.side?.resolve({}), expectedSide);
-  
+
         final regular = tester.widget<TextButton>(
           find.widgetWithText(TextButton, 'Other text action'),
         );
         expect(regular.style?.side?.resolve({}), isNull);
-  
+
         await tester.tap(find.byKey(const ValueKey('cancel-action')));
         await tester.pump();
         expect(tapCount, 1);
