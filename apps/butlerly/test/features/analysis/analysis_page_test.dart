@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_custom_period_sheet.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_period_selector.dart';
@@ -806,6 +807,11 @@ void main() {
       await tester.tap(find.byKey(ValueKey('analysis-calendar-$date2')));
       await tester.pumpAndSettle();
       expect(find.text('Groceries'), findsOneWidget);
+      final displayedDate = MaterialLocalizations.of(
+        tester.element(find.text('Groceries')),
+      ).formatFullDate(DateTime.parse(date2));
+      expect(find.textContaining(displayedDate), findsOneWidget);
+      expect(find.byType(ButlerlyTransactionInnerCard), findsOneWidget);
       expect(find.byType(ButlerlyRecordRow), findsNWidgets(4));
       // The row is the primary drill-down control; the former View
       // transactions link is intentionally absent.

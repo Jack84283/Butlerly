@@ -1,4 +1,5 @@
 import 'package:butlerly/app/theme/app_theme.dart';
+import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -231,6 +232,7 @@ void main() {
     final clear = find.byKey(const ValueKey('clear-search-filters'));
     expect(clear, findsOneWidget);
     expect(tester.widget(clear), isA<OutlinedButton>());
+    expect(find.byType(ButlerlyCard), findsOneWidget);
 
     final applyRect = tester.getRect(apply);
     final clearRect = tester.getRect(clear);
