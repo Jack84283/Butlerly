@@ -25,7 +25,6 @@ final class ButlerlyButtonPalette {
     required this.chipBorder,
     required this.segmentFill,
     required this.segmentBorder,
-    required this.iconBorder,
   });
 
   final Color primaryFill;
@@ -45,7 +44,6 @@ final class ButlerlyButtonPalette {
   final Color chipBorder;
   final Color segmentFill;
   final Color segmentBorder;
-  final Color iconBorder;
 
   static ButlerlyButtonPalette resolve({
     required ButlerlySemanticColors colors,
@@ -94,7 +92,6 @@ final class ButlerlyButtonPalette {
       chipBorder: dark ? const Color(0xFF8993A8) : const Color(0xFFBAC4D2),
       segmentFill: dark ? secondaryFill : colors.subtleSurface,
       segmentBorder: dark ? const Color(0xFF8993A8) : colors.border,
-      iconBorder: tertiaryBorder,
     );
   }
 }

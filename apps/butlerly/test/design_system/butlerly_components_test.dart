@@ -43,14 +43,7 @@ void main() {
           button.style?.backgroundColor?.resolve({WidgetState.disabled}),
           Colors.transparent,
         );
-        final palette = ButlerlyButtonPalette.resolve(
-          colors: theme.extension<ButlerlySemanticColors>()!,
-          brightness: theme.brightness,
-        );
-        expect(
-          button.style?.side?.resolve({}),
-          BorderSide(color: palette.iconBorder),
-        );
+        expect(button.style?.side?.resolve({}), BorderSide.none);
         expect(tester.getSize(finder), const Size(44, 44));
         expect(find.byTooltip('More options'), findsOneWidget);
 
@@ -100,6 +93,50 @@ void main() {
       expect(editable().controller.text, isEmpty);
     },
   );
+
+  testWidgets('dropdown choices have no outlines or divider lines in either mode', (
+    tester,
+  ) async {
+    for (final theme in [AppTheme.light, AppTheme.dark]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          themeAnimationDuration: Duration.zero,
+          home: Scaffold(
+            body: ButlerlySelectField<String>(
+              label: 'Category',
+              value: 'food',
+              entries: const [
+                DropdownMenuEntry(value: 'food', label: 'Food'),
+                DropdownMenuEntry(value: 'travel', label: 'Travel'),
+              ],
+              onChanged: (_) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final dropdown = tester.widget<DropdownMenu<String>>(
+        find.byType(DropdownMenu<String>),
+      );
+      expect(dropdown.menuStyle?.side?.resolve({}), BorderSide.none);
+      expect(
+        dropdown.menuStyle?.shape?.resolve({}),
+        const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(
+            Radius.circular(ButlerlyRadius.card),
+          ),
+        ),
+      );
+      for (final option in dropdown.dropdownMenuEntries) {
+        expect(option.style?.side?.resolve({}), BorderSide.none);
+      }
+      await tester.tap(find.byType(DropdownMenu<String>));
+      await tester.pumpAndSettle();
+      expect(find.text('Travel'), findsWidgets);
+      expect(find.byType(Divider), findsNothing);
+    }
+  });
 
   testWidgets('data-entry pages use semantic theme backgrounds and surfaces', (
     tester,

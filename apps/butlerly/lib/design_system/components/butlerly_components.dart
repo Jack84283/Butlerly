@@ -1,7 +1,6 @@
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_category_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_content_surface.dart';
-import 'package:butlerly/design_system/theme/butlerly_button_palette.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
@@ -369,10 +368,10 @@ class ButlerlyCardHeader extends StatelessWidget {
   );
 }
 
-/// Icon-only action with transparent fill and a visible outline in both themes.
+/// Icon-only action without a filled surface or border in either theme.
 ///
-/// Explicitly keeps the icon surface transparent while providing a visible
-/// outline and the standard 44px accessible touch target.
+/// Explicitly overrides the app-wide bordered text button theme while
+/// preserving the standard 44px accessible touch target.
 class ButlerlyTransparentIconButton extends StatelessWidget {
   const ButlerlyTransparentIconButton({
     required this.icon,
@@ -409,12 +408,7 @@ class ButlerlyTransparentIconButton extends StatelessWidget {
           shadowColor: Colors.transparent,
           surfaceTintColor: Colors.transparent,
           elevation: 0,
-          side: BorderSide(
-            color: ButlerlyButtonPalette.resolve(
-              colors: context.colors,
-              brightness: Theme.of(context).brightness,
-            ).iconBorder,
-          ),
+          side: BorderSide.none,
           alignment: alignment,
           fixedSize: const Size.square(ButlerlySize.minimumTarget),
           minimumSize: const Size.square(ButlerlySize.minimumTarget),
@@ -1665,8 +1659,40 @@ class _ButlerlySelectFieldState<T> extends State<ButlerlySelectField<T>> {
           Size(constraints.maxWidth, double.infinity),
         ),
         backgroundColor: WidgetStatePropertyAll(context.colors.cardSurface),
+        surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+        side: const WidgetStatePropertyAll(BorderSide.none),
+        shape: const WidgetStatePropertyAll(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(
+              Radius.circular(ButlerlyRadius.card),
+            ),
+          ),
+        ),
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(vertical: ButlerlySpacing.micro),
+        ),
       ),
-      dropdownMenuEntries: widget.entries,
+      dropdownMenuEntries: [
+        for (final entry in widget.entries)
+          DropdownMenuEntry<T>(
+            value: entry.value,
+            label: entry.label,
+            labelWidget: entry.labelWidget,
+            leadingIcon: entry.leadingIcon,
+            trailingIcon: entry.trailingIcon,
+            enabled: entry.enabled,
+            style: (entry.style ?? const ButtonStyle()).copyWith(
+              side: const WidgetStatePropertyAll(BorderSide.none),
+              shape: const WidgetStatePropertyAll(
+                RoundedRectangleBorder(
+                  borderRadius: BorderRadius.all(
+                    Radius.circular(ButlerlyRadius.standard),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
       onSelected: widget.onChanged,
     ),
   );

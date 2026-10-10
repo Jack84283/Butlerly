@@ -1,6 +1,5 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
-import 'package:butlerly/design_system/theme/butlerly_button_palette.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
@@ -398,16 +397,7 @@ void main() {
         actionButton.style?.backgroundColor?.resolve({WidgetState.disabled}),
         Colors.transparent,
       );
-      final theme = Theme.of(tester.element(action));
-      final colors = theme.extension<ButlerlySemanticColors>()!;
-      final buttons = ButlerlyButtonPalette.resolve(
-        colors: colors,
-        brightness: theme.brightness,
-      );
-      expect(
-        actionButton.style?.side?.resolve({}),
-        BorderSide(color: buttons.iconBorder),
-      );
+      expect(actionButton.style?.side?.resolve({}), BorderSide.none);
       final titleParagraph = tester.renderObject<RenderParagraph>(title);
       final titleLine = titleParagraph
           .getBoxesForSelection(
