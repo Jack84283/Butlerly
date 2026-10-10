@@ -1307,8 +1307,9 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
               setState(() => _sourceId = value);
             },
           ),
+          const SizedBox(height: ButlerlySpacing.standard),
           Align(
-            alignment: Alignment.centerLeft,
+            alignment: Alignment.centerRight,
             child: TextButton.icon(
               onPressed: _createSource,
               icon: const Icon(Icons.add_card_outlined),
@@ -1364,49 +1365,52 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                           row.status == StatementRowStatus.unresolved ||
                           row.status == StatementRowStatus.deferred ||
                           row.status == StatementRowStatus.skipped)
-                        ButlerlyButtonBar(
-                          alignment: ButlerlyButtonBarAlignment.start,
-                          density: ButlerlyButtonBarDensity.compact,
-                          spacing: ButlerlyButtonBarSpacing.none,
-                          children: [
-                            if (row.status != StatementRowStatus.skipped)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: ButlerlyButtonBar(
+                            alignment: ButlerlyButtonBarAlignment.end,
+                            density: ButlerlyButtonBarDensity.compact,
+                            spacing: ButlerlyButtonBarSpacing.none,
+                            children: [
+                              if (row.status != StatementRowStatus.skipped)
+                                ButlerlyCompactActionButton(
+                                  onPressed: () => _edit(row),
+                                  icon: Icons.edit_outlined,
+                                  child: Text(context.l10n.text('edit')),
+                                ),
+                              if (row.status != StatementRowStatus.skipped)
+                                ButlerlyCompactActionButton(
+                                  onPressed:
+                                      _sourceId != null &&
+                                          row.transactionDate != null &&
+                                          row.amount != null &&
+                                          row.currency != null &&
+                                          row.direction != null
+                                      ? () => _act(row, StatementRowStatus.saved)
+                                      : null,
+                                  icon: Icons.save_outlined,
+                                  child: Text(context.l10n.text('save')),
+                                ),
+                              if (row.status != StatementRowStatus.skipped)
+                                ButlerlyCompactActionButton(
+                                  onPressed: () =>
+                                      _act(row, StatementRowStatus.deferred),
+                                  icon: Icons.schedule_outlined,
+                                  child: Text(context.l10n.text('later')),
+                                ),
                               ButlerlyCompactActionButton(
-                                onPressed: () => _edit(row),
-                                icon: Icons.edit_outlined,
-                                child: Text(context.l10n.text('edit')),
+                                onPressed: () => _toggleSkipRestore(row),
+                                icon: row.status == StatementRowStatus.skipped
+                                    ? Icons.restore_outlined
+                                    : Icons.skip_next_outlined,
+                                child: Text(
+                                  row.status == StatementRowStatus.skipped
+                                      ? context.l10n.text('restore')
+                                      : context.l10n.text('skip'),
+                                ),
                               ),
-                            if (row.status != StatementRowStatus.skipped)
-                              ButlerlyCompactActionButton(
-                                onPressed:
-                                    _sourceId != null &&
-                                        row.transactionDate != null &&
-                                        row.amount != null &&
-                                        row.currency != null &&
-                                        row.direction != null
-                                    ? () => _act(row, StatementRowStatus.saved)
-                                    : null,
-                                icon: Icons.save_outlined,
-                                child: Text(context.l10n.text('save')),
-                              ),
-                            if (row.status != StatementRowStatus.skipped)
-                              ButlerlyCompactActionButton(
-                                onPressed: () =>
-                                    _act(row, StatementRowStatus.deferred),
-                                icon: Icons.schedule_outlined,
-                                child: Text(context.l10n.text('later')),
-                              ),
-                            ButlerlyCompactActionButton(
-                              onPressed: () => _toggleSkipRestore(row),
-                              icon: row.status == StatementRowStatus.skipped
-                                  ? Icons.restore_outlined
-                                  : Icons.skip_next_outlined,
-                              child: Text(
-                                row.status == StatementRowStatus.skipped
-                                    ? context.l10n.text('restore')
-                                    : context.l10n.text('skip'),
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                     ],
                   ),

@@ -1,3 +1,4 @@
+import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -37,21 +38,25 @@ class AnalysisDaySummary extends StatelessWidget {
         );
       }
       return Padding(
-        padding: const EdgeInsets.only(top: ButlerlySpacing.small),
+        padding: const EdgeInsets.only(top: ButlerlySpacing.micro),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '$date · ${localizedCount(context, value.value.length.toString())} ${context.l10n.text('transactions')}${expense == null ? '' : ' · ${analysisMoneyValue(context, expense!)} ${context.l10n.text('spent')}'}',
+              '${MaterialLocalizations.of(context).formatFullDate(DateTime.parse(date))} · ${localizedCount(context, value.value.length.toString())} ${context.l10n.text('transactions')}${expense == null ? '' : ' · ${analysisMoneyValue(context, expense!)} ${context.l10n.text('spent')}'}',
             ),
             if (value.value.isEmpty) Text(context.l10n.text('noTransactions')),
-            if (value.value.isNotEmpty)
-              TransactionRecordList(
-                transactions: value.value,
-                masterData: masterData ?? const TransactionMasterData(),
-                onTap: onTransactionTap,
-                navigates: true,
+            if (value.value.isNotEmpty) ...[
+              const SizedBox(height: ButlerlySpacing.compact),
+              ButlerlyTransactionInnerCard(
+                child: TransactionRecordList(
+                  transactions: value.value,
+                  masterData: masterData ?? const TransactionMasterData(),
+                  onTap: onTransactionTap,
+                  navigates: true,
+                ),
               ),
+            ],
           ],
         ),
       );

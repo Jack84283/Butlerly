@@ -162,120 +162,122 @@ class _ButlerlyTransactionFilterSheetState
   @override
   Widget build(BuildContext context) => ButlerlySheet(
     title: Text(context.l10n.text('filters')),
-    content: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const SizedBox(height: ButlerlySpacing.compact),
-        FutureBuilder<List<String>>(
-          future: widget.currencies,
-          builder: (context, snapshot) => ButlerlyCurrencyFilter(
-            currencies: snapshot.data ?? const [],
-            value: _currency,
-            label: context.l10n.text('currency'),
-            anyLabel: context.l10n.text('anyCurrency'),
-            onChanged: (value) => setState(() => _currency = value),
-          ),
-        ),
-        const SizedBox(height: ButlerlySpacing.standard),
-        ButlerlyDirectionFilter(
-          value: _direction,
-          label: context.l10n.text('direction'),
-          anyLabel: context.l10n.text('anyDirection'),
-          onChanged: (value) => setState(() => _direction = value),
-        ),
-        const SizedBox(height: ButlerlySpacing.standard),
-        ButlerlyStatusFilter(
-          value: _status,
-          label: context.l10n.text('status'),
-          anyLabel: context.l10n.text('all'),
-          onChanged: (value) => setState(() => _status = value),
-        ),
-        const SizedBox(height: ButlerlySpacing.standard),
-        ButlerlyDateRangeFilter(
-          from: _from,
-          to: _to,
-          fromLabel: context.l10n.text('fromDate'),
-          toLabel: context.l10n.text('toDate'),
-          formatDate: widget.formatDate,
-          onFromChanged: (value) => setState(() => _from = value),
-          onToChanged: (value) => setState(() => _to = value),
-        ),
-        const SizedBox(height: ButlerlySpacing.standard),
-        FutureBuilder<TransactionMasterDataSnapshot>(
-          future: widget.masterData,
-          builder: (context, snapshot) => ButlerlyCategoryFilter(
-            key: const ValueKey('search-category-filter'),
-            categories: snapshot.data?.categories ?? const [],
-            masterData:
-                snapshot.data?.presentation ?? const TransactionMasterData(),
-            value: _categoryId,
-            label: context.l10n.text('anyCategory'),
-            anyLabel: context.l10n.text('anyCategory'),
-            onChanged: (value) => setState(() => _categoryId = value),
-          ),
-        ),
-        const SizedBox(height: ButlerlySpacing.standard),
-        FutureBuilder<TransactionMasterDataSnapshot>(
-          future: widget.masterData,
-          builder: (context, snapshot) => ButlerlyPaymentSourceFilter(
-            sources: snapshot.data?.paymentSources ?? const [],
-            value: _paymentSourceId,
-            label: context.l10n.text('anyPaymentSource'),
-            anyLabel: context.l10n.text('anyPaymentSource'),
-            onChanged: (value) => setState(() => _paymentSourceId = value),
-          ),
-        ),
-        const SizedBox(height: ButlerlySpacing.standard),
-        ButlerlyReviewFilter(
-          value: _needsReview,
-          label: context.l10n.text('needsReview'),
-          onChanged: (value) => setState(() => _needsReview = value),
-        ),
-        const SizedBox(height: ButlerlySpacing.standard),
-        SwitchListTile.adaptive(
-          key: const ValueKey('search-undated-filter'),
-          activeThumbColor: Theme.of(context).colorScheme.onPrimary,
-          activeTrackColor: Theme.of(context).colorScheme.primary,
-          contentPadding: EdgeInsets.zero,
-          title: Text(context.l10n.text('undatedTransactions')),
-          value: _includeUndated,
-          onChanged: (value) => setState(() => _includeUndated = value),
-        ),
-        const SizedBox(height: ButlerlySpacing.section),
-        Row(
-          children: [
-            Expanded(
-              child: FilledButton(
-                key: const ValueKey('apply-search-filters'),
-                onPressed: () {
-                  widget.onApply(
-                    ButlerlyTransactionFilterValue(
-                      currency: _currency,
-                      direction: _direction,
-                      status: _status,
-                      categoryId: _categoryId,
-                      paymentSourceId: _paymentSourceId,
-                      needsReview: _needsReview,
-                      includeUndated: _includeUndated,
-                      from: _from,
-                      to: _to,
-                    ),
-                  );
-                },
-                child: Text(context.l10n.text('applyFilters')),
-              ),
+    content: ButlerlyCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: ButlerlySpacing.compact),
+          FutureBuilder<List<String>>(
+            future: widget.currencies,
+            builder: (context, snapshot) => ButlerlyCurrencyFilter(
+              currencies: snapshot.data ?? const [],
+              value: _currency,
+              label: context.l10n.text('currency'),
+              anyLabel: context.l10n.text('anyCurrency'),
+              onChanged: (value) => setState(() => _currency = value),
             ),
-            const SizedBox(width: ButlerlySpacing.compact),
-            Expanded(
-              child: OutlinedButton(
-                key: const ValueKey('clear-search-filters'),
-                onPressed: widget.onClear,
-                child: Text(context.l10n.text('clearFilters')),
-              ),
+          ),
+          const SizedBox(height: ButlerlySpacing.standard),
+          ButlerlyDirectionFilter(
+            value: _direction,
+            label: context.l10n.text('direction'),
+            anyLabel: context.l10n.text('anyDirection'),
+            onChanged: (value) => setState(() => _direction = value),
+          ),
+          const SizedBox(height: ButlerlySpacing.standard),
+          ButlerlyStatusFilter(
+            value: _status,
+            label: context.l10n.text('status'),
+            anyLabel: context.l10n.text('all'),
+            onChanged: (value) => setState(() => _status = value),
+          ),
+          const SizedBox(height: ButlerlySpacing.standard),
+          ButlerlyDateRangeFilter(
+            from: _from,
+            to: _to,
+            fromLabel: context.l10n.text('fromDate'),
+            toLabel: context.l10n.text('toDate'),
+            formatDate: widget.formatDate,
+            onFromChanged: (value) => setState(() => _from = value),
+            onToChanged: (value) => setState(() => _to = value),
+          ),
+          const SizedBox(height: ButlerlySpacing.standard),
+          FutureBuilder<TransactionMasterDataSnapshot>(
+            future: widget.masterData,
+            builder: (context, snapshot) => ButlerlyCategoryFilter(
+              key: const ValueKey('search-category-filter'),
+              categories: snapshot.data?.categories ?? const [],
+              masterData:
+                  snapshot.data?.presentation ?? const TransactionMasterData(),
+              value: _categoryId,
+              label: context.l10n.text('anyCategory'),
+              anyLabel: context.l10n.text('anyCategory'),
+              onChanged: (value) => setState(() => _categoryId = value),
             ),
-          ],
-        ),
-      ],
+          ),
+          const SizedBox(height: ButlerlySpacing.standard),
+          FutureBuilder<TransactionMasterDataSnapshot>(
+            future: widget.masterData,
+            builder: (context, snapshot) => ButlerlyPaymentSourceFilter(
+              sources: snapshot.data?.paymentSources ?? const [],
+              value: _paymentSourceId,
+              label: context.l10n.text('anyPaymentSource'),
+              anyLabel: context.l10n.text('anyPaymentSource'),
+              onChanged: (value) => setState(() => _paymentSourceId = value),
+            ),
+          ),
+          const SizedBox(height: ButlerlySpacing.standard),
+          ButlerlyReviewFilter(
+            value: _needsReview,
+            label: context.l10n.text('needsReview'),
+            onChanged: (value) => setState(() => _needsReview = value),
+          ),
+          const SizedBox(height: ButlerlySpacing.standard),
+          SwitchListTile.adaptive(
+            key: const ValueKey('search-undated-filter'),
+            activeThumbColor: Theme.of(context).colorScheme.onPrimary,
+            activeTrackColor: Theme.of(context).colorScheme.primary,
+            contentPadding: EdgeInsets.zero,
+            title: Text(context.l10n.text('undatedTransactions')),
+            value: _includeUndated,
+            onChanged: (value) => setState(() => _includeUndated = value),
+          ),
+          const SizedBox(height: ButlerlySpacing.section),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton(
+                  key: const ValueKey('apply-search-filters'),
+                  onPressed: () {
+                    widget.onApply(
+                      ButlerlyTransactionFilterValue(
+                        currency: _currency,
+                        direction: _direction,
+                        status: _status,
+                        categoryId: _categoryId,
+                        paymentSourceId: _paymentSourceId,
+                        needsReview: _needsReview,
+                        includeUndated: _includeUndated,
+                        from: _from,
+                        to: _to,
+                      ),
+                    );
+                  },
+                  child: Text(context.l10n.text('applyFilters')),
+                ),
+              ),
+              const SizedBox(width: ButlerlySpacing.compact),
+              Expanded(
+                child: OutlinedButton(
+                  key: const ValueKey('clear-search-filters'),
+                  onPressed: widget.onClear,
+                  child: Text(context.l10n.text('clearFilters')),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     ),
     actions: const [],
   );

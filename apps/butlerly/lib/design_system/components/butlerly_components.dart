@@ -1640,9 +1640,7 @@ class _ButlerlySelectFieldState<T> extends State<ButlerlySelectField<T>> {
         maximumSize: WidgetStatePropertyAll(
           Size(constraints.maxWidth, double.infinity),
         ),
-        backgroundColor: WidgetStatePropertyAll(
-          Theme.of(context).colorScheme.surface,
-        ),
+        backgroundColor: WidgetStatePropertyAll(context.colors.cardSurface),
       ),
       dropdownMenuEntries: widget.entries,
       onSelected: widget.onChanged,

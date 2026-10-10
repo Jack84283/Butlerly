@@ -2034,13 +2034,10 @@ class _EvidenceSectionState extends State<_EvidenceSection> {
                             ? Icons.image_outlined
                             : Icons.attach_file_outlined,
                       ),
-                      title: ButlerlySecondaryTextAction(
-                        onPressed: () => _preview(value),
-                        child: Text(
-                          value.mediaType.startsWith('image/')
-                              ? context.l10n.text('viewImage')
-                              : context.l10n.text('evidence'),
-                        ),
+                      title: Text(
+                        value.mediaType.startsWith('image/')
+                            ? context.l10n.text('viewImage')
+                            : context.l10n.text('evidence'),
                       ),
                       onTap: () => _preview(value),
                       trailing: IconButton(
