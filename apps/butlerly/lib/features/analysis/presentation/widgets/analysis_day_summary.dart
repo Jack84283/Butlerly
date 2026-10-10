@@ -42,18 +42,36 @@ class AnalysisDaySummary extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '${MaterialLocalizations.of(context).formatFullDate(DateTime.parse(date))} · ${localizedCount(context, value.value.length.toString())} ${context.l10n.text('transactions')}${expense == null ? '' : ' · ${analysisMoneyValue(context, expense!)} ${context.l10n.text('spent')}'}',
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: ButlerlySpacing.standard,
+              ),
+              child: Text(
+                '${MaterialLocalizations.of(context).formatFullDate(DateTime.parse(date))} · ${localizedCount(context, value.value.length.toString())} ${context.l10n.text('transactions')}${expense == null ? '' : ' · ${analysisMoneyValue(context, expense!)} ${context.l10n.text('spent')}'}',
+              ),
             ),
-            if (value.value.isEmpty) Text(context.l10n.text('noTransactions')),
+            if (value.value.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: ButlerlySpacing.standard,
+                ),
+                child: Text(context.l10n.text('noTransactions')),
+              ),
             if (value.value.isNotEmpty) ...[
-              const SizedBox(height: ButlerlySpacing.compact),
-              ButlerlyTransactionInnerCard(
-                child: TransactionRecordList(
-                  transactions: value.value,
-                  masterData: masterData ?? const TransactionMasterData(),
-                  onTap: onTransactionTap,
-                  navigates: true,
+              const SizedBox(height: ButlerlySpacing.micro),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: ButlerlySpacing.small,
+                ),
+                child: ButlerlyTransactionInnerCard(
+                  child: TransactionRecordList(
+                    transactions: value.value,
+                    masterData: masterData ?? const TransactionMasterData(),
+                    onTap: onTransactionTap,
+                    dashboardRowStyle: true,
+                    showDateInRows: true,
+                    missingCategoryLabel: context.l10n.text('uncategorized'),
+                  ),
                 ),
               ),
             ],

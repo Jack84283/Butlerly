@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_custom_period_sheet.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_period_selector.dart';
@@ -795,9 +796,9 @@ void main() {
       final parts = initial.split('-').map(int.parse).toList();
       final date1 = '${parts[0]}-${parts[1].toString().padLeft(2, '0')}-01';
       final date2 = '${parts[0]}-${parts[1].toString().padLeft(2, '0')}-02';
-      await tester.ensureVisible(
-        find.byKey(ValueKey('analysis-calendar-$date1')),
-      );
+      final firstDay = find.byKey(ValueKey('analysis-calendar-$date1'));
+      await tester.ensureVisible(firstDay);
+      expect(tester.getSize(firstDay).height, ButlerlySize.minimumTarget);
       await tester.tap(find.byKey(ValueKey('analysis-calendar-$date1')));
       await tester.pumpAndSettle();
       expect(find.text('No transactions yet'), findsOneWidget);
@@ -811,8 +812,24 @@ void main() {
         tester.element(find.text('Groceries')),
       ).formatFullDate(DateTime.parse(date2));
       expect(find.textContaining(displayedDate), findsOneWidget);
-      expect(find.byType(ButlerlyTransactionInnerCard), findsOneWidget);
-      expect(find.byType(ButlerlyRecordRow), findsNWidgets(4));
+      final innerCard = find.byType(ButlerlyTransactionInnerCard);
+      expect(innerCard, findsOneWidget);
+      final outerRect = tester.getRect(
+        find.byKey(const ValueKey('analysis-financial-calendar-card')),
+      );
+      final innerRect = tester.getRect(innerCard);
+      expect(innerRect.left - outerRect.left, ButlerlySpacing.small);
+      expect(outerRect.right - innerRect.right, ButlerlySpacing.small);
+      final recordRows = tester.widgetList<ButlerlyRecordRow>(
+        find.byType(ButlerlyRecordRow),
+      );
+      expect(recordRows, hasLength(4));
+      expect(
+        recordRows.every(
+          (row) => row.variant == ButlerlyTransactionRowVariant.dashboard,
+        ),
+        isTrue,
+      );
       // The row is the primary drill-down control; the former View
       // transactions link is intentionally absent.
       await tester.tap(find.text('Item 4'));
