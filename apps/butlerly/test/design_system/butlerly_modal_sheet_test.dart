@@ -10,50 +10,51 @@ void main() {
   testWidgets(
     'Cancel has an outline only in dark mode; other text buttons stay borderless',
     (tester) async {
-    for (final theme in [AppTheme.light, AppTheme.dark]) {
-      var tapCount = 0;
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: theme,
-          themeAnimationDuration: Duration.zero,
-          home: Scaffold(
-            body: Column(
-              children: [
-                ButlerlyCancelButton(
-                  key: const ValueKey('cancel-action'),
-                  onPressed: () => tapCount++,
-                  child: const Text('Cancel'),
-                ),
-                TextButton(
-                  onPressed: () {},
-                  child: const Text('Other text action'),
-                ),
-              ],
+      for (final theme in [AppTheme.light, AppTheme.dark]) {
+        var tapCount = 0;
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: theme,
+            themeAnimationDuration: Duration.zero,
+            home: Scaffold(
+              body: Column(
+                children: [
+                  ButlerlyCancelButton(
+                    key: const ValueKey('cancel-action'),
+                    onPressed: () => tapCount++,
+                    child: const Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () {},
+                    child: const Text('Other text action'),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      final cancel = tester.widget<TextButton>(
-        find.descendant(
-          of: find.byKey(const ValueKey('cancel-action')),
-          matching: find.byType(TextButton),
-        ),
-      );
-      final expectedSide = theme.brightness == Brightness.dark
-          ? theme.outlinedButtonTheme.style?.side?.resolve({})
-          : BorderSide.none;
-      expect(cancel.style?.side?.resolve({}), expectedSide);
-
-      final regular = tester.widget<TextButton>(
-        find.widgetWithText(TextButton, 'Other text action'),
-      );
-      expect(regular.style?.side?.resolve({}), isNull);
-
-      await tester.tap(find.byKey(const ValueKey('cancel-action')));
-      await tester.pump();
-      expect(tapCount, 1);
+        );
+        await tester.pumpAndSettle();
+  
+        final cancel = tester.widget<TextButton>(
+          find.descendant(
+            of: find.byKey(const ValueKey('cancel-action')),
+            matching: find.byType(TextButton),
+          ),
+        );
+        final expectedSide = theme.brightness == Brightness.dark
+            ? theme.outlinedButtonTheme.style?.side?.resolve({})
+            : BorderSide.none;
+        expect(cancel.style?.side?.resolve({}), expectedSide);
+  
+        final regular = tester.widget<TextButton>(
+          find.widgetWithText(TextButton, 'Other text action'),
+        );
+        expect(regular.style?.side?.resolve({}), isNull);
+  
+        await tester.tap(find.byKey(const ValueKey('cancel-action')));
+        await tester.pump();
+        expect(tapCount, 1);
+      }
     },
   );
 
