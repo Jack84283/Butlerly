@@ -455,8 +455,8 @@ void main() {
         final twoTile = tester.widget<Ink>(choiceInk('Two'));
         final oneDecoration = oneTile.decoration! as BoxDecoration;
         final twoDecoration = twoTile.decoration! as BoxDecoration;
-        expect(oneDecoration.border, isNotNull);
-        expect(twoDecoration.border, isNotNull);
+        expect(oneDecoration.border, isNull);
+        expect(twoDecoration.border, isNull);
         expect(oneDecoration.borderRadius, twoDecoration.borderRadius);
         expect(oneDecoration.color, isNot(equals(twoDecoration.color)));
         expect(find.byIcon(Icons.check_rounded), findsOneWidget);
