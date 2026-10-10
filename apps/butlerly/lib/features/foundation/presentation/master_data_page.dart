@@ -280,7 +280,7 @@ class _MasterDataPageState extends State<MasterDataPage> {
           onSubmitted: (_) => Navigator.pop(context, controller.text.trim()),
         ),
         actions: [
-          TextButton(
+          ButlerlyCancelButton(
             onPressed: () => Navigator.pop(context),
             child: Text(context.l10n.text('cancel')),
           ),
@@ -684,7 +684,7 @@ class _MerchantEditorSheetState extends State<_MerchantEditorSheet> {
       ],
     ),
     actions: [
-      TextButton(
+      ButlerlyCancelButton(
         onPressed: () => Navigator.pop(context),
         child: Text(context.l10n.text('cancel')),
       ),

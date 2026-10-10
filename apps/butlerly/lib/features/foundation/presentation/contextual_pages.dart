@@ -455,7 +455,7 @@ class _SinglePaymentSheetState extends State<_SinglePaymentSheet> {
       ),
     ),
     actions: [
-      TextButton(
+      ButlerlyCancelButton(
         onPressed: () => Navigator.pop(context),
         child: Text(context.l10n.text('cancel')),
       ),
@@ -616,7 +616,7 @@ class _StatementPreviewSheetState extends State<_StatementPreviewSheet> {
       ],
     ),
     actions: [
-      TextButton(
+      ButlerlyCancelButton(
         onPressed: () => Navigator.pop(context),
         child: Text(context.l10n.text('cancel')),
       ),

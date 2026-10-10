@@ -86,7 +86,7 @@ class _AnalysisCustomPeriodSheetState extends State<AnalysisCustomPeriodSheet> {
       ],
     ),
     actions: [
-      TextButton(
+      ButlerlyCancelButton(
         key: const ValueKey('analysis-custom-period-cancel'),
         onPressed: () => Navigator.pop(context),
         child: Text(context.l10n.text('cancel')),
