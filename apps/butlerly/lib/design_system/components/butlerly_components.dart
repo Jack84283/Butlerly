@@ -369,7 +369,7 @@ class ButlerlyCardHeader extends StatelessWidget {
   );
 }
 
-/// Icon-only action without a filled surface or border in either theme.
+/// Icon-only action with transparent fill and a visible outline in both themes.
 ///
 /// Explicitly keeps the icon surface transparent while providing a visible
 /// outline and the standard 44px accessible touch target.
@@ -473,8 +473,8 @@ class ButlerlyCompactSelector extends StatelessWidget {
           foregroundColor: transparent
               ? context.colors.secondaryText
               : context.colors.primaryText,
-          backgroundColor: transparent ? Colors.transparent : null,
-          disabledBackgroundColor: transparent ? Colors.transparent : null,
+          backgroundColor: Colors.transparent,
+          disabledBackgroundColor: Colors.transparent,
           minimumSize: const Size(0, ButlerlySize.minimumTarget),
           side: BorderSide.none,
           padding: EdgeInsets.zero,

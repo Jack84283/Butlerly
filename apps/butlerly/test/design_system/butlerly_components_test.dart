@@ -580,15 +580,16 @@ void main() {
       ButlerlySize.compactActionIconSize,
     );
     expect(find.byType(OutlinedButton), findsOneWidget);
-    final button = tester.widget<OutlinedButton>(
-      find.byType(OutlinedButton),
-    );
+    final button = tester.widget<OutlinedButton>(find.byType(OutlinedButton));
     final palette = ButlerlyButtonPalette.resolve(
       colors: AppTheme.light.extension<ButlerlySemanticColors>()!,
       brightness: Brightness.light,
     );
     expect(button.style?.backgroundColor?.resolve({}), palette.compactFill);
-    expect(button.style?.side?.resolve({}), BorderSide(color: palette.compactBorder));
+    expect(
+      button.style?.side?.resolve({}),
+      BorderSide(color: palette.compactBorder),
+    );
   });
 
   testWidgets('secondary text action aligns its label to the leading edge', (
@@ -700,10 +701,7 @@ void main() {
         colors: colors,
         brightness: theme.brightness,
       );
-      expect(
-        style.backgroundColor?.resolve({}),
-        palette.destructiveFill,
-      );
+      expect(style.backgroundColor?.resolve({}), palette.destructiveFill);
       expect(style.foregroundColor?.resolve({}), colors.error);
       expect(
         style.side?.resolve({}),

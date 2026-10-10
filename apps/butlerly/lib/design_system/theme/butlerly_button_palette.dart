@@ -61,12 +61,8 @@ final class ButlerlyButtonPalette {
             colors.brand.withValues(alpha: 0.09),
             colors.cardSurface,
           );
-    final secondaryBorder = dark
-        ? const Color(0xFF8993A8)
-        : colors.brand;
-    final tertiaryFill = dark
-        ? Colors.transparent
-        : const Color(0xFFE9EDF3);
+    final secondaryBorder = dark ? const Color(0xFF8993A8) : colors.brand;
+    final tertiaryFill = dark ? Colors.transparent : const Color(0xFFE9EDF3);
     final tertiaryBorder = dark
         ? const Color(0xFF8993A8)
         : const Color(0xFFAAB6C8);
@@ -95,13 +91,9 @@ final class ButlerlyButtonPalette {
       compactBorder: dark ? primaryFill : colors.brand,
       compactText: dark ? Colors.white : colors.brand,
       chipFill: dark ? secondaryFill : const Color(0xFFE9EDF3),
-      chipBorder: dark
-          ? const Color(0xFF8993A8)
-          : const Color(0xFFBAC4D2),
+      chipBorder: dark ? const Color(0xFF8993A8) : const Color(0xFFBAC4D2),
       segmentFill: dark ? secondaryFill : colors.subtleSurface,
-      segmentBorder: dark
-          ? const Color(0xFF8993A8)
-          : colors.border,
+      segmentBorder: dark ? const Color(0xFF8993A8) : colors.border,
       iconBorder: tertiaryBorder,
     );
   }
