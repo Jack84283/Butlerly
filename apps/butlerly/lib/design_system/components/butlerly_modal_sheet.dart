@@ -227,7 +227,7 @@ Future<T?> openButlerlyAnchoredMenu<T>({
   items: [
     for (final entry in entries)
       if (entry.isDivider)
-        const PopupMenuItem<T>(
+        PopupMenuItem<T>(
           enabled: false,
           height: ButlerlySpacing.compact,
           padding: EdgeInsets.zero,
