@@ -1,0 +1,20 @@
+name: Temporary October UI formatter inspection
+on:
+  push:
+    branches:
+      - codex/oct10-ui-consistency
+    paths:
+      - .github/workflows/oct10-format-inspect.yml
+permissions:
+  contents: read
+jobs:
+  inspect-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-toolchain
+      - run: ./tool/setup.sh
+      - name: Show exact Dart formatter corrections
+        run: |
+          dart format apps/butlerly/lib/features/foundation/presentation/statement_capture_page.dart
+          git diff -- apps/butlerly/lib/features/foundation/presentation/statement_capture_page.dart
