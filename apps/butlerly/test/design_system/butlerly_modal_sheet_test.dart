@@ -212,6 +212,31 @@ void main() {
     }
   });
 
+  testWidgets('selection options use flat surfaces in both brightness modes', (
+    tester,
+  ) async {
+    for (final theme in [ThemeData.light(), ThemeData.dark()]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          themeAnimationDuration: Duration.zero,
+          home: Scaffold(
+            body: ButlerlySheetChoiceTile(
+              selected: true,
+              onTap: () {},
+              child: const Text('Selected item'),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final ink = tester.widget<Ink>(find.byType(Ink).first);
+      final decoration = ink.decoration! as BoxDecoration;
+      expect(decoration.border, isNull);
+      expect(decoration.color, theme.colorScheme.primaryContainer);
+    }
+  });
+
   testWidgets('selection and confirmation sheets share outer geometry', (
     tester,
   ) async {
@@ -430,8 +455,8 @@ void main() {
         final twoTile = tester.widget<Ink>(choiceInk('Two'));
         final oneDecoration = oneTile.decoration! as BoxDecoration;
         final twoDecoration = twoTile.decoration! as BoxDecoration;
-        expect(oneDecoration.border, isNotNull);
-        expect(twoDecoration.border, isNotNull);
+        expect(oneDecoration.border, isNull);
+        expect(twoDecoration.border, isNull);
         expect(oneDecoration.borderRadius, twoDecoration.borderRadius);
         expect(oneDecoration.color, isNot(equals(twoDecoration.color)));
         expect(find.byIcon(Icons.check_rounded), findsOneWidget);

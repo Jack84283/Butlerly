@@ -36,12 +36,13 @@ void main() {
     );
     expect(
       selectedButton.style?.backgroundColor?.resolve({}),
-      Colors.transparent,
+      AppTheme.light.colorScheme.primaryContainer,
     );
     expect(
       selectedButton.style?.foregroundColor?.resolve({}),
-      AppTheme.light.colorScheme.primary,
+      AppTheme.light.colorScheme.onPrimaryContainer,
     );
+    expect(selectedButton.style?.side?.resolve({}), BorderSide.none);
     final first = tester.getRect(find.text('All'));
     final last = tester.getRect(find.text('Archived'));
     final selectorCenter = tester.getCenter(
