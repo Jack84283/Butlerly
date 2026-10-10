@@ -184,7 +184,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
             ),
           ),
           actions: [
-            TextButton(
+            ButlerlyCancelButton(
               onPressed: () => Navigator.pop(context, false),
               child: Text(context.l10n.text('cancel')),
             ),

@@ -1010,7 +1010,7 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
         ),
       ),
       actions: [
-        TextButton(
+        ButlerlyCancelButton(
           onPressed: () => Navigator.pop(context),
           child: Text(context.l10n.text('cancel')),
         ),
