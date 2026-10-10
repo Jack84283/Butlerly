@@ -843,6 +843,11 @@ void main() {
         const ValueKey('analysis-selected-day-summary'),
       );
       expect(tester.widget<Text>(displayedDateLabel).data, displayedDate);
+      expect(
+        tester.getTopLeft(displayedDateLabel).dy -
+            tester.getBottomLeft(datesGrid).dy,
+        closeTo(ButlerlySpacing.small, 1),
+      );
       final countLabel = find.descendant(
         of: summaryLabel,
         matching: find.byType(TransactionCountText),

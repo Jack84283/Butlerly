@@ -38,7 +38,7 @@ class AnalysisDaySummary extends StatelessWidget {
         );
       }
       return Padding(
-        padding: const EdgeInsets.only(top: ButlerlySpacing.micro),
+        padding: const EdgeInsets.only(top: ButlerlySpacing.small),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
