@@ -75,10 +75,6 @@ class ButlerlySheetChoiceTile extends StatelessWidget {
           ? colors.primaryContainer
           : colors.surfaceContainerHighest,
       borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-      border: Border.all(
-        color: selected ? colors.primary : colors.outlineVariant,
-        width: selected ? 1.25 : 1,
-      ),
     );
     return Semantics(
       button: true,
@@ -231,7 +227,12 @@ Future<T?> openButlerlyAnchoredMenu<T>({
   items: [
     for (final entry in entries)
       if (entry.isDivider)
-        const PopupMenuDivider()
+        const PopupMenuItem<T>(
+          enabled: false,
+          height: ButlerlySpacing.compact,
+          padding: EdgeInsets.zero,
+          child: SizedBox.shrink(),
+        )
       else
         PopupMenuItem<T>(value: entry.value, child: Text(entry.label)),
   ],

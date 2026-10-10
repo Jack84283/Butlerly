@@ -112,9 +112,12 @@ class _ButlerlyCompactSectionSelectorState
                                   horizontal: ButlerlySpacing.small,
                                 ),
                                 foregroundColor: index == widget.selectedIndex
-                                    ? colors.primary
+                                    ? colors.onPrimaryContainer
                                     : colors.onSurface,
-                                backgroundColor: Colors.transparent,
+                                backgroundColor: index == widget.selectedIndex
+                                    ? colors.primaryContainer
+                                    : Colors.transparent,
+                                side: BorderSide.none,
                                 shape: const StadiumBorder(),
                               ),
                               onPressed: () => widget.onSelected(index),

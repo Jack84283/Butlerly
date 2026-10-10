@@ -867,32 +867,53 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
                 ),
               )
             else
-              DropdownButtonFormField<String>(
+              FormField<String>(
                 initialValue: _paymentSourceId,
-                decoration: InputDecoration(
-                  labelText: context.l10n.text('paymentSource'),
-                ),
-                items: [
-                  for (final item in widget.sources)
-                    DropdownMenuItem(
-                      value: item.id.value,
-                      child: Text(paymentSourceDisplayLabel(item)),
-                    ),
-                ],
                 validator: (value) => value == null
                     ? context.l10n.text('choosePaymentSourceToContinue')
                     : null,
-                onChanged: (value) {
-                  setState(() {
-                    _paymentSourceId = value;
-                    final selected = widget.sources
-                        .where((item) => item.id.value == value)
-                        .firstOrNull;
-                    if (selected?.currency?.trim().isNotEmpty == true) {
-                      _currency.text = selected!.currency!.toUpperCase();
-                    }
-                  });
-                },
+                builder: (field) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ButlerlySelectField<String>(
+                      label: context.l10n.text('paymentSource'),
+                      value: field.value,
+                      entries: [
+                        for (final item in widget.sources)
+                          DropdownMenuEntry(
+                            value: item.id.value,
+                            label: paymentSourceDisplayLabel(item),
+                          ),
+                      ],
+                      onChanged: (value) {
+                        field.didChange(value);
+                        setState(() {
+                          _paymentSourceId = value;
+                          final selected = widget.sources
+                              .where((item) => item.id.value == value)
+                              .firstOrNull;
+                          if (selected?.currency?.trim().isNotEmpty == true) {
+                            _currency.text = selected!.currency!.toUpperCase();
+                          }
+                        });
+                      },
+                    ),
+                    if (field.hasError)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          top: ButlerlySpacing.micro,
+                          left: ButlerlySpacing.standard,
+                        ),
+                        child: Text(
+                          field.errorText!,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             const SizedBox(height: ButlerlySpacing.standard),
             TextFormField(

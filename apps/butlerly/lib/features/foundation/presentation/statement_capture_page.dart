@@ -590,19 +590,16 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                 ),
               ),
               const SizedBox(height: ButlerlySpacing.small),
-              DropdownButtonFormField<PaymentSourceType>(
-                initialValue: type,
-                decoration: InputDecoration(
-                  labelText: context.l10n.text('type'),
-                ),
-                items: PaymentSourceType.values
-                    .map(
-                      (value) => DropdownMenuItem(
-                        value: value,
-                        child: Text(_paymentSourceTypeLabel(context, value)),
-                      ),
-                    )
-                    .toList(),
+              ButlerlySelectField<PaymentSourceType>(
+                label: context.l10n.text('type'),
+                value: type,
+                entries: [
+                  for (final value in PaymentSourceType.values)
+                    DropdownMenuEntry(
+                      value: value,
+                      label: _paymentSourceTypeLabel(context, value),
+                    ),
+                ],
                 onChanged: (value) =>
                     setDialogState(() => type = value ?? type),
               ),
