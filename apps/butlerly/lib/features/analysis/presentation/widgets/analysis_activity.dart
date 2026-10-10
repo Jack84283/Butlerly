@@ -130,23 +130,17 @@ class AnalysisActivity extends StatelessWidget {
                       for (var weekday = 0; weekday < 7; weekday++)
                         Expanded(
                           child: Center(
-                            child: Transform.translate(
-                              offset: const Offset(
-                                0,
-                                ButlerlySpacing.microSmall,
-                              ),
-                              child: Text(
-                                materialLocalizations
-                                    .narrowWeekdays[(firstDayOfWeek + weekday) %
-                                    7],
-                                style: Theme.of(context).textTheme.labelSmall,
-                              ),
+                            child: Text(
+                              materialLocalizations
+                                  .narrowWeekdays[(firstDayOfWeek + weekday) %
+                                  7],
+                              style: Theme.of(context).textTheme.labelSmall,
                             ),
                           ),
                         ),
                     ],
                   ),
-                  const SizedBox(height: ButlerlySpacing.micro),
+                  const SizedBox(height: ButlerlySpacing.small),
                   GridView.builder(
                     key: const ValueKey('analysis-calendar-days-grid'),
                     shrinkWrap: true,
