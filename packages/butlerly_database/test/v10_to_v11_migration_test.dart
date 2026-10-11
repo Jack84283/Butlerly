@@ -4,6 +4,8 @@ import 'package:butlerly_database/butlerly_database.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:test/test.dart';
 
+import 'support/deployment_sql.dart';
+
 void main() {
   setUpAll(sqfliteFfiInit);
 
@@ -37,9 +39,7 @@ void main() {
                 !statement.startsWith('CREATE TRIGGER transaction_rules_'),
           )
           .join(';${String.fromCharCode(10)}');
-      final migration = await File(
-        'database/migrations/v10_to_v11.sql',
-      ).readAsString();
+      final migration = await migrationSqlForVersion(1643);
 
       try {
         final legacy = ButlerlyDatabase(

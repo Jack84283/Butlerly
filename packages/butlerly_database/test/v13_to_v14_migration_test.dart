@@ -5,6 +5,8 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:test/test.dart';
 
+import 'support/deployment_sql.dart';
+
 void main() {
   setUpAll(sqfliteFfiInit);
 
@@ -26,9 +28,7 @@ void main() {
       await old.open();
       await old.close();
 
-      final migration = await File(
-        'database/migrations/v13_to_v14.sql',
-      ).readAsString();
+      final migration = await migrationSqlForVersion(931);
       final upgraded = ButlerlyDatabase(
         factory: databaseFactoryFfi,
         path: databasePath,

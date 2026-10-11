@@ -5,6 +5,8 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:test/test.dart';
 
+import 'support/deployment_sql.dart';
+
 void main() {
   late ButlerlyDatabase database;
 
@@ -108,24 +110,12 @@ void main() {
     final directory = await Directory.systemTemp.createTemp('butlerly-db-');
     final path = '${directory.path}/legacy.db';
     final current = await File('database/schema/v1.sql').readAsString();
-    final migration = await File(
-      'database/migrations/v1_to_v2.sql',
-    ).readAsString();
-    final resultsMigration = await File(
-      'database/migrations/v2_to_v3.sql',
-    ).readAsString();
-    final merchantMigration = await File(
-      'database/migrations/v3_to_v4.sql',
-    ).readAsString();
-    final classificationMigration = await File(
-      'database/migrations/v4_to_v5.sql',
-    ).readAsString();
-    final statementSubcategoryMigration = await File(
-      'database/migrations/v5_to_v6.sql',
-    ).readAsString();
-    final analysisPeriodTypeMigration = await File(
-      'database/migrations/v6_to_v7.sql',
-    ).readAsString();
+    final migration = await migrationSqlForVersion(3513);
+    final resultsMigration = await migrationSqlForVersion(3618);
+    final merchantMigration = await migrationSqlForVersion(3724);
+    final classificationMigration = await migrationSqlForVersion(3836);
+    final statementSubcategoryMigration = await migrationSqlForVersion(3954);
+    final analysisPeriodTypeMigration = await migrationSqlForVersion(4070);
     final legacy = current
         .replaceFirst(
           ",\n      period_type TEXT NOT NULL DEFAULT 'selected_period'",

@@ -4,6 +4,8 @@ import 'package:butlerly_database/butlerly_database.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:test/test.dart';
 
+import 'support/deployment_sql.dart';
+
 void main() {
   setUpAll(sqfliteFfiInit);
 
@@ -18,9 +20,7 @@ void main() {
       for (final statement in splitSqlStatements(baseline)) {
         await database.execute(statement);
       }
-      final hardening = await File(
-        'database/migrations/v8_backup_restore_hardening.sql',
-      ).readAsString();
+      final hardening = await baselineHardeningSql();
       for (final statement in splitSqlStatements(hardening)) {
         await database.execute(statement);
       }
