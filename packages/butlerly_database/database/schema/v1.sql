@@ -108,6 +108,7 @@ CREATE TABLE duplicate_candidate_groups (
       direction TEXT NOT NULL,
       status TEXT NOT NULL,
       selected_transaction_id TEXT REFERENCES transactions(id),
+      statement_rows TEXT NOT NULL DEFAULT '[]',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );

@@ -125,11 +125,14 @@ final class LocalBackupSnapshotWriter {
     tables['reconciliation_links'] = reconciliationLinks;
     recordCount += reconciliationLinks.length;
 
-    // Unresolved duplicate groups are generated from active transactions.
-    // Keep only user-resolved groups and their membership evidence.
+    // Transaction-only unresolved groups are generated from active
+    // transactions. Statement-row candidates are durable review work and must
+    // survive backup/restore even while unresolved.
     final duplicateGroups = await source.query(
       'duplicate_candidate_groups',
-      where: "status != 'unresolved'",
+      where:
+          "status != 'unresolved' OR "
+          "(statement_rows IS NOT NULL AND statement_rows != '[]')",
     );
     tables['duplicate_candidate_groups'] = duplicateGroups;
     recordCount += duplicateGroups.length;

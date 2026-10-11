@@ -440,6 +440,36 @@ void main() {
         'transaction_date': '2026-01-01',
       });
     }
+    await database.connection.insert('provenances', {
+      'id': 'statement-provenance',
+      'source_type': ProvenanceSourceType.import.name,
+      'captured_at': DateTime.utc(2026, 1, 1).toIso8601String(),
+    });
+    await database.connection.insert('evidence_items', {
+      'id': 'statement-evidence',
+      'type': EvidenceType.document.name,
+      'original_name': 'statement.csv',
+      'media_type': 'text/csv',
+      'provenance_id': 'statement-provenance',
+      'created_at': DateTime.utc(2026, 1, 1).toIso8601String(),
+    });
+    await database.connection.insert('financial_statements', {
+      'id': 'statement-1',
+      'evidence_id': 'statement-evidence',
+      'status': StatementStatus.ready.name,
+      'created_at': DateTime.utc(2026, 1, 1).toIso8601String(),
+      'updated_at': DateTime.utc(2026, 1, 1).toIso8601String(),
+    });
+    await database.connection.insert('statement_rows', {
+      'id': 'row-1',
+      'statement_id': 'statement-1',
+      'position': 0,
+      'original_text': 'Merchant 25 USD',
+      'row_kind': 'transaction',
+      'status': StatementRowStatus.pending.name,
+      'created_at': DateTime.utc(2026, 1, 1).toIso8601String(),
+      'updated_at': DateTime.utc(2026, 1, 1).toIso8601String(),
+    });
     final repository = SqliteDuplicateCandidateGroupRepository(database);
     final now = DateTime.utc(2026, 1, 1);
     final group = DuplicateCandidateGroup(
@@ -453,6 +483,12 @@ void main() {
       ),
       status: DuplicateCandidateGroupStatus.unresolved,
       selectedTransactionId: TransactionId('tx-a'),
+      statementRows: const [
+        DuplicateCandidateStatementRow(
+          statementId: 'statement-1',
+          rowId: 'row-1',
+        ),
+      ],
       createdAt: now,
       updatedAt: now,
     );
@@ -462,6 +498,7 @@ void main() {
     expect(loaded.duplicateKey.amount, DecimalValue.parse('25'));
     expect(loaded.duplicateKey.currency, 'USD');
     expect(loaded.selectedTransactionId?.value, 'tx-a');
+    expect(loaded.statementRows.single.canonical, 'statement-1:row-1');
     final matches = await repository.findActiveDuplicateGroups();
     expect(matches, hasLength(1));
     expect(matches.single.transactionIds.map((id) => id.value), [

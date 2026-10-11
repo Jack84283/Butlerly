@@ -1,15 +1,22 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
+import '../analysis/invalidation.dart';
+import '../result/application_result.dart';
 import '../use_cases/duplicate_review_use_cases.dart';
 
 /// Keeps possible-duplicate review metadata current after any transaction
 /// mutation without copying duplicate identity rules into each use case.
 final class DuplicateReviewingTransactionRepository
     implements TransactionRepository, ReviewTransactionRepository {
-  const DuplicateReviewingTransactionRepository(this.delegate, this.refresh);
+  const DuplicateReviewingTransactionRepository(
+    this.delegate,
+    this.refresh, {
+    this.invalidateAnalysis,
+  });
 
   final TransactionRepository delegate;
   final RefreshDuplicateGroupForTransaction refresh;
+  final InvalidateAnalysis? invalidateAnalysis;
 
   @override
   Future<void> save(Transaction transaction) async {
@@ -56,6 +63,22 @@ final class DuplicateReviewingTransactionRepository
       await refresh(previous: previous, current: current);
     } on Object {
       // Persistence failures are surfaced by the explicit rescan operation.
+    }
+    final invalidation = invalidateAnalysis;
+    if (invalidation == null) return;
+    final result = await invalidation(
+      current == null
+          ? AnalysisInvalidationReason.transactionDeleted
+          : previous == null
+          ? AnalysisInvalidationReason.transactionCreated
+          : AnalysisInvalidationReason.transactionChanged,
+      current?.updatedAt ?? previous?.updatedAt ?? DateTime.now().toUtc(),
+    );
+    if (result is ApplicationFailure<void>) {
+      throw const RepositoryException(
+        RepositoryFailureCode.unavailable,
+        'invalidate analysis after transaction mutation',
+      );
     }
   }
 }

@@ -165,6 +165,131 @@ void main() {
     },
   );
 
+  test('reopens groups with malformed statement duplicate evidence', () async {
+    final first = duplicateTransaction(now, id: 'malformed-statement-a');
+    final second = duplicateTransaction(now, id: 'malformed-statement-b');
+    await transactions.save(first);
+    await transactions.save(second);
+    const groupId = 'duplicate:malformed-statement-evidence';
+    await database.connection.insert('duplicate_candidate_groups', {
+      'id': groupId,
+      'transaction_date': '2026-08-09',
+      'amount_coefficient': '25',
+      'amount_scale': 0,
+      'currency': 'USD',
+      'direction': 'expense',
+      'status': DuplicateCandidateGroupStatus.keepBoth.name,
+      'selected_transaction_id': null,
+      'statement_rows': '[{"statementId":',
+      'created_at': now.toIso8601String(),
+      'updated_at': now.toIso8601String(),
+    });
+    for (final id in [first.id, second.id]) {
+      await database.connection.insert(
+        'duplicate_candidate_group_transactions',
+        {'group_id': groupId, 'transaction_id': id.value},
+      );
+    }
+
+    final restored = (await SqliteDuplicateCandidateGroupRepository(
+      database,
+    ).list()).single;
+    expect(restored.status, DuplicateCandidateGroupStatus.unresolved);
+    expect(
+      restored.integrityIssue?.code,
+      'malformedStatementDuplicateEvidence',
+    );
+    expect(restored.transactionIds, [first.id, second.id]);
+  });
+
+  test(
+    'reconstructs dangling statement evidence as repairable metadata',
+    () async {
+      final first = duplicateTransaction(now, id: 'dangling-statement-a');
+      final second = duplicateTransaction(now, id: 'dangling-statement-b');
+      await transactions.save(first);
+      await transactions.save(second);
+      const groupId = 'duplicate:dangling-statement-evidence';
+      await database.connection.insert('duplicate_candidate_groups', {
+        'id': groupId,
+        'transaction_date': '2026-08-09',
+        'amount_coefficient': '25',
+        'amount_scale': 0,
+        'currency': 'USD',
+        'direction': 'expense',
+        'status': DuplicateCandidateGroupStatus.keepBoth.name,
+        'selected_transaction_id': null,
+        'statement_rows':
+            '[{"statementId":"deleted-statement","rowId":"deleted-row"}]',
+        'created_at': now.toIso8601String(),
+        'updated_at': now.toIso8601String(),
+      });
+      for (final id in [first.id, second.id]) {
+        await database.connection.insert(
+          'duplicate_candidate_group_transactions',
+          {'group_id': groupId, 'transaction_id': id.value},
+        );
+      }
+
+      final repository = SqliteDuplicateCandidateGroupRepository(database);
+      final restored = (await repository.list()).single;
+      expect(
+        restored.integrityIssue?.code,
+        'malformedStatementDuplicateEvidence',
+      );
+      expect(restored.status, DuplicateCandidateGroupStatus.unresolved);
+
+      final repaired = await RepairDuplicateCandidateGroup(
+        repository,
+        const SystemApplicationClock(),
+      )(groupId);
+      expect(repaired, isA<ApplicationSuccess<void>>());
+      expect(await repository.list(), isEmpty);
+      expect(await transactions.findById(first.id), isNotNull);
+      expect(await transactions.findById(second.id), isNotNull);
+    },
+  );
+
+  test(
+    'reopens a resolved duplicate group when a member key changes',
+    () async {
+      final first = duplicateTransaction(now, id: 'stale-key-a');
+      final second = duplicateTransaction(now, id: 'stale-key-b');
+      await transactions.save(first);
+      await transactions.save(second);
+      final repository = SqliteDuplicateCandidateGroupRepository(database);
+      final key = DuplicateTransactionKey(
+        transactionDate: '2026-08-09',
+        amount: DecimalValue.parse('25'),
+        currency: 'USD',
+        direction: TransactionDirection.expense.name,
+      );
+      await repository.save(
+        DuplicateCandidateGroup(
+          id: 'duplicate:stale-key',
+          transactionIds: [first.id, second.id],
+          duplicateKey: key,
+          status: DuplicateCandidateGroupStatus.consolidated,
+          selectedTransactionId: first.id,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await database.connection.update(
+        'transactions',
+        {'amount_coefficient': '30'},
+        where: 'id = ?',
+        whereArgs: [second.id.value],
+      );
+
+      final restored = (await repository.list()).single;
+      expect(restored.status, DuplicateCandidateGroupStatus.unresolved);
+      expect(restored.selectedTransactionId, isNull);
+      expect(restored.integrityIssue?.code, 'staleDuplicateGroup');
+      expect(restored.transactionIds, [first.id, second.id]);
+    },
+  );
+
   test('recalculation preserves acknowledged and dismissed findings', () async {
     final repository = SqliteAnalysisFindingRepository(database);
     final rule = AnalysisRuleDefinition(

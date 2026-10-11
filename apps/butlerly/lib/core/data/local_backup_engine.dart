@@ -1145,12 +1145,16 @@ final class LocalBackupManager {
     await tx.rawDelete(
       'DELETE FROM duplicate_candidate_group_transactions '
       'WHERE group_id IN ('
-      "SELECT id FROM duplicate_candidate_groups WHERE status = 'unresolved'"
+      "SELECT id FROM duplicate_candidate_groups "
+      "WHERE status = 'unresolved' AND "
+      "(statement_rows IS NULL OR statement_rows = '[]')"
       ')',
     );
     await tx.delete(
       'duplicate_candidate_groups',
-      where: "status = 'unresolved'",
+      where:
+          "status = 'unresolved' AND "
+          "(statement_rows IS NULL OR statement_rows = '[]')",
     );
     await tx.delete(
       'entity_tombstones',

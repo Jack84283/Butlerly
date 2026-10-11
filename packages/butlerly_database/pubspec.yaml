@@ -19,6 +19,7 @@ flutter:
     - database/migrations/v10_to_v11.sql
     - database/migrations/v11_to_v12.sql
     - database/migrations/v12_to_v13.sql
+    - database/migrations/v13_to_v14.sql
     - database/seed/catalog.sql
 
 environment:

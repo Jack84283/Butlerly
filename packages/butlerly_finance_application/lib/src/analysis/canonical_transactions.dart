@@ -19,7 +19,7 @@ final class CanonicalTransactionSelection {
 ///
 /// * active and archived records are historical economic records;
 /// * receipt-side records linked to a payment are not counted;
-/// * Keep Both counts every member;
+/// * Keep Both counts every member while the saved key remains valid;
 /// * Consolidated counts the selected member;
 /// * unresolved groups count one deterministic representative and expose an
 ///   explainable quality issue until the user decides.
@@ -114,24 +114,17 @@ CanonicalTransactionSelection selectCanonicalTransactions({
       (value) => !_matchesDuplicateKey(value, group.duplicateKey),
     );
     if (hasStaleFacts) {
-      // Keep Both is an explicit instruction to preserve every present
-      // member.  A later edit makes the saved duplicate facts stale, but it
-      // must not silently turn that instruction into a consolidated result.
-      // Preserve the full present membership and expose the stale decision so
-      // the user can refresh it deliberately.
-      if (group.status == DuplicateCandidateGroupStatus.keepBoth) {
-        selectedIds.addAll(members.map((value) => value.id));
-      } else {
-        selectedIds.add(members.first.id);
-      }
+      // A later edit invalidates every saved decision, including Keep Both.
+      // Until the user repairs the relationship, use one deterministic
+      // representative so the stale metadata cannot double-count history.
+      selectedIds.add(members.first.id);
       issuesByTransaction
           .putIfAbsent(members.first.id, () => [])
           .add(
             DataQualityIssue(
               code: 'staleDuplicateGroup',
-              detail: group.status == DuplicateCandidateGroupStatus.keepBoth
-                  ? 'A saved Keep Both decision no longer matches current transaction facts; all present members remain counted until the decision is refreshed.'
-                  : 'A saved duplicate decision no longer matches current transaction facts; a stable representative is counted until the decision is refreshed.',
+              detail:
+                  'A saved duplicate decision no longer matches current transaction facts; a stable representative is counted until the decision is refreshed.',
               transactionId: members.first.id,
             ),
           );
@@ -196,6 +189,12 @@ CanonicalTransactionSelection selectCanonicalTransactions({
 
   for (final group in duplicateGroups) {
     if (processedGroups.contains(group.id)) continue;
+    // A pending statement row is not a canonical transaction yet. It remains
+    // visible in Review through the statement reference and must not create a
+    // global historical-data issue before the user explicitly resolves it.
+    if (group.hasStatementCandidates && group.transactionIds.isEmpty) {
+      continue;
+    }
     final hasHistoricalMember = group.transactionIds.any(
       historicalById.containsKey,
     );

@@ -282,6 +282,74 @@ class _ReviewPageState extends State<ReviewPage> {
     _refresh();
   }
 
+  Future<void> _resolveStatementDuplicate(
+    StatementRow row,
+    _StatementDuplicateResolution resolution,
+    TransactionId? selectedTransactionId,
+  ) async {
+    final service = _finance?.statementServices;
+    if (service == null) return;
+    final ApplicationResult<dynamic> result;
+    switch (resolution) {
+      case _StatementDuplicateResolution.link:
+        if (selectedTransactionId == null) return;
+        result = await service.link(row, selectedTransactionId.value);
+      case _StatementDuplicateResolution.create:
+        var paymentSourceId = row.paymentSourceId;
+        if (paymentSourceId == null) {
+          final source = await service.paymentSourceId(row.statementId);
+          paymentSourceId = source is ApplicationSuccess<String?>
+              ? source.value
+              : null;
+        }
+        if (paymentSourceId == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  context.l10n.text('statementPaymentSourceRequired'),
+                ),
+              ),
+            );
+          }
+          return;
+        }
+        result = await service.save(row, paymentSourceId, allowCreateNew: true);
+      case _StatementDuplicateResolution.defer:
+        result = await service.setDisposition(row, StatementRowStatus.deferred);
+      case _StatementDuplicateResolution.skip:
+        result = await service.setDisposition(row, StatementRowStatus.skipped);
+    }
+    if (!mounted) return;
+    if (result is ApplicationFailure) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.text('dataPreserved'))),
+      );
+      return;
+    }
+    if (resolution != _StatementDuplicateResolution.defer &&
+        resolution != _StatementDuplicateResolution.skip) {
+      notifyTransactionChanged();
+    }
+    await _refresh();
+  }
+
+  Future<void> _repairStatementDuplicateGroup(
+    DuplicateCandidateGroup group,
+  ) async {
+    final repair = _finance?.repairDuplicateCandidateGroup;
+    if (repair == null) return;
+    final result = await repair(group.id);
+    if (!mounted) return;
+    if (result is ApplicationFailure) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.text('dataPreserved'))),
+      );
+      return;
+    }
+    await _refresh();
+  }
+
   Future<bool> _close(ReviewItemDto item, {required bool dismiss}) async {
     final finance = _finance;
     if (finance == null) return false;
@@ -483,20 +551,29 @@ class _ReviewPageState extends State<ReviewPage> {
               return Column(
                 children: [
                   for (final group in groups)
-                    _DuplicateGroupCard(
-                      group: group,
-                      finance: _finance!,
-                      masterData: _masterData,
-                      onKeepBoth: () => _resolveDuplicate(
-                        group,
-                        DuplicateCandidateGroupStatus.keepBoth,
+                    if (group.hasStatementCandidates)
+                      _StatementDuplicateGroupCard(
+                        group: group,
+                        finance: _finance!,
+                        masterData: _masterData,
+                        onResolve: _resolveStatementDuplicate,
+                        onRepair: _repairStatementDuplicateGroup,
+                      )
+                    else
+                      _DuplicateGroupCard(
+                        group: group,
+                        finance: _finance!,
+                        masterData: _masterData,
+                        onKeepBoth: () => _resolveDuplicate(
+                          group,
+                          DuplicateCandidateGroupStatus.keepBoth,
+                        ),
+                        onConsolidate: (id) => _resolveDuplicate(
+                          group,
+                          DuplicateCandidateGroupStatus.consolidated,
+                          selectedTransactionId: id,
+                        ),
                       ),
-                      onConsolidate: (id) => _resolveDuplicate(
-                        group,
-                        DuplicateCandidateGroupStatus.consolidated,
-                        selectedTransactionId: id,
-                      ),
-                    ),
                 ],
               );
             },
@@ -869,6 +946,293 @@ const _reviewTabs = [
 ];
 
 int _tabIndex(_ReviewView view) => _reviewTabs.indexOf(view);
+
+enum _StatementDuplicateResolution { link, create, defer, skip }
+
+class _StatementDuplicateGroupCard extends StatefulWidget {
+  const _StatementDuplicateGroupCard({
+    required this.group,
+    required this.finance,
+    required this.masterData,
+    required this.onResolve,
+    required this.onRepair,
+  });
+
+  final DuplicateCandidateGroup group;
+  final FinanceServices finance;
+  final Future<TransactionMasterDataSnapshot> masterData;
+  final Future<void> Function(
+    StatementRow row,
+    _StatementDuplicateResolution resolution,
+    TransactionId? selectedTransactionId,
+  )
+  onResolve;
+  final Future<void> Function(DuplicateCandidateGroup group) onRepair;
+
+  @override
+  State<_StatementDuplicateGroupCard> createState() =>
+      _StatementDuplicateGroupCardState();
+}
+
+class _StatementDuplicateGroupCardState
+    extends State<_StatementDuplicateGroupCard> {
+  TransactionId? _selectedTransactionId;
+  late Future<
+    (List<TransactionDto>, List<StatementRow>, TransactionMasterDataSnapshot)
+  >
+  _data;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedTransactionId = widget.group.transactionIds
+        .map((value) => value)
+        .firstOrNull;
+    _data = _loadData();
+  }
+
+  @override
+  void didUpdateWidget(covariant _StatementDuplicateGroupCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.group.id != widget.group.id ||
+        oldWidget.group.statementRows != widget.group.statementRows ||
+        oldWidget.group.transactionIds != widget.group.transactionIds) {
+      _selectedTransactionId = widget.group.transactionIds.firstOrNull;
+      _data = _loadData();
+    } else if (oldWidget.masterData != widget.masterData) {
+      _data = _loadData();
+    }
+  }
+
+  Future<List<TransactionDto>> _loadTransactions() => Future.wait(
+    widget.group.transactionIds.map(
+      (id) async => switch (await widget.finance.getTransaction(id.value)) {
+        ApplicationSuccess<TransactionDto>(:final value) => value,
+        ApplicationFailure<TransactionDto>() => throw StateError(
+          'Transaction unavailable',
+        ),
+      },
+    ),
+  );
+
+  Future<List<StatementRow>> _loadStatementRows() async {
+    final service = widget.finance.statementServices;
+    if (service == null && widget.group.statementRows.isNotEmpty) {
+      throw StateError('Statement evidence unavailable');
+    }
+    if (service == null) return const [];
+    final rows = <StatementRow>[];
+    for (final reference in widget.group.statementRows) {
+      final result = await service.rows(reference.statementId);
+      if (result is! ApplicationSuccess<List<StatementRow>>) {
+        throw StateError('Statement evidence unavailable');
+      }
+      final row = result.value
+          .where((value) => value.id == reference.rowId)
+          .firstOrNull;
+      if (row == null) throw StateError('Statement evidence unavailable');
+      rows.add(row);
+    }
+    return rows;
+  }
+
+  Future<
+    (List<TransactionDto>, List<StatementRow>, TransactionMasterDataSnapshot)
+  >
+  _loadData() async => (
+    await _loadTransactions(),
+    await _loadStatementRows(),
+    await widget.masterData,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: ButlerlySpacing.small),
+      child: ButlerlyCard(
+        padding: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.all(ButlerlySpacing.compact),
+          child:
+              FutureBuilder<
+                (
+                  List<TransactionDto>,
+                  List<StatementRow>,
+                  TransactionMasterDataSnapshot,
+                )
+              >(
+                future: _data,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState != ConnectionState.done) {
+                    return const ButlerlyLoadingState();
+                  }
+                  if (snapshot.hasError || snapshot.data == null) {
+                    return _repairState(context);
+                  }
+                  final data = snapshot.requireData;
+                  final transactions = data.$1;
+                  final rows = data.$2;
+                  final masterData = data.$3;
+                  if (rows.isEmpty &&
+                      widget.group.integrityIssue?.code ==
+                          'malformedStatementDuplicateEvidence') {
+                    return _repairState(context);
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            color: Colors.amber.shade800,
+                          ),
+                          const SizedBox(width: ButlerlySpacing.small),
+                          Expanded(
+                            child: Text(
+                              context.l10n.text('possibleDuplicateGroup'),
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: ButlerlySpacing.small),
+                      Text(_duplicateKeyLabel(context)),
+                      for (final row in rows) ...[
+                        const SizedBox(height: ButlerlySpacing.small),
+                        _statementEvidence(context, row),
+                        const SizedBox(height: ButlerlySpacing.compact),
+                        ButlerlyButtonBar(
+                          alignment: ButlerlyButtonBarAlignment.end,
+                          density: ButlerlyButtonBarDensity.standard,
+                          spacing: ButlerlyButtonBarSpacing.none,
+                          children: [
+                            TextButton(
+                              onPressed: () => widget.onResolve(
+                                row,
+                                _StatementDuplicateResolution.skip,
+                                _selectedTransactionId,
+                              ),
+                              child: Text(context.l10n.text('skip')),
+                            ),
+                            TextButton(
+                              onPressed: () => widget.onResolve(
+                                row,
+                                _StatementDuplicateResolution.defer,
+                                _selectedTransactionId,
+                              ),
+                              child: Text(context.l10n.text('reviewLater')),
+                            ),
+                            OutlinedButton(
+                              onPressed: () => widget.onResolve(
+                                row,
+                                _StatementDuplicateResolution.create,
+                                _selectedTransactionId,
+                              ),
+                              child: Text(
+                                context.l10n.text('statementCreateNew'),
+                              ),
+                            ),
+                            if (_selectedTransactionId != null)
+                              FilledButton(
+                                onPressed: () => widget.onResolve(
+                                  row,
+                                  _StatementDuplicateResolution.link,
+                                  _selectedTransactionId,
+                                ),
+                                child: Text(context.l10n.text('statementLink')),
+                              ),
+                          ],
+                        ),
+                      ],
+                      if (transactions.isNotEmpty) ...[
+                        const SizedBox(height: ButlerlySpacing.small),
+                        Text(
+                          context.l10n.text('existingTransactionFound'),
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        RadioGroup<TransactionId>(
+                          groupValue: _selectedTransactionId,
+                          onChanged: (id) =>
+                              setState(() => _selectedTransactionId = id),
+                          child: ButlerlyTransactionList(
+                            children: [
+                              for (final transaction in transactions)
+                                TransactionRow(
+                                  transaction: transaction,
+                                  masterData: masterData.presentation,
+                                  paymentSourceNames: {
+                                    for (final source
+                                        in masterData.paymentSources)
+                                      source.id.value: source.name,
+                                  },
+                                  showDate: true,
+                                  supportingContent:
+                                      transaction.provenance.isEmpty
+                                      ? null
+                                      : Text(
+                                          _transactionEvidenceLabel(
+                                            context,
+                                            transaction,
+                                          ),
+                                          style:
+                                              context.transactionItemMetadata,
+                                        ),
+                                  selectionControl:
+                                      ButlerlyTransactionSelectionControl<
+                                        TransactionId
+                                      >(value: TransactionId(transaction.id)),
+                                  onTap: () => setState(
+                                    () => _selectedTransactionId =
+                                        TransactionId(transaction.id),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  );
+                },
+              ),
+        ),
+      ),
+    );
+  }
+
+  Widget _statementEvidence(BuildContext context, StatementRow row) =>
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(ButlerlySpacing.small),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(ButlerlyRadius.small),
+        ),
+        child: Text(
+          [
+            if (row.description?.trim().isNotEmpty == true) row.description!,
+            row.originalText,
+            if (row.amount != null && row.currency != null)
+              '${row.amount} ${row.currency}',
+          ].join('\n'),
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      );
+
+  String _duplicateKeyLabel(BuildContext context) =>
+      '${widget.group.duplicateKey.transactionDate} · '
+      '${widget.group.duplicateKey.amount} '
+      '${widget.group.duplicateKey.currency} · '
+      '${_directionLabel(context, widget.group.duplicateKey.direction)}';
+
+  Widget _repairState(BuildContext context) => ButlerlyErrorState(
+    title: context.l10n.text('possibleDuplicateGroup'),
+    message: context.l10n.text('duplicateEvidenceRepairBody'),
+    preserved: context.l10n.text('dataPreserved'),
+    actionLabel: context.l10n.text('repairDuplicateEvidence'),
+    onAction: () => widget.onRepair(widget.group),
+  );
+}
 
 class _DuplicateGroupCard extends StatefulWidget {
   const _DuplicateGroupCard({

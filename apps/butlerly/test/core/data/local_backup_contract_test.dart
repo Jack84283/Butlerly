@@ -29,8 +29,42 @@ void main() {
     expect((manifest['backupId']! as String), isNotEmpty);
     expect(manifest['appVersion'], '1.0.0');
     expect(manifest['appBuild'], '1');
-    expect(manifest['schemaVersion'], 12);
+    expect(manifest['schemaVersion'], 13);
   });
+
+  test(
+    'new builds restore schema 12 backups without statement duplicate evidence',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction('tx-schema-12-a');
+      await fixture.insertTransaction('tx-schema-12-b');
+      await _insertDuplicateGroup(
+        fixture,
+        id: 'duplicate-schema-12',
+        status: 'keepBoth',
+        now: DateTime.utc(2026, 9, 1).toIso8601String(),
+        statementRows: '[{"statementId":"statement-12","rowId":"row-12"}]',
+        transactionIds: ['tx-schema-12-a', 'tx-schema-12-b'],
+      );
+      final backup = File(
+        path.join(fixture.root.path, 'schema-12.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(backup);
+      await _downgradeBackupToV12(backup);
+
+      await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+
+      expect(await _ids(fixture, 'transactions'), contains('tx-schema-12-a'));
+      final groups = await fixture.database.database.query(
+        'duplicate_candidate_groups',
+        columns: ['statement_rows'],
+        where: 'id = ?',
+        whereArgs: ['duplicate-schema-12'],
+      );
+      expect(groups.single['statement_rows'], anyOf(isNull, '[]'));
+    },
+  );
 
   test('new builds restore schema 11 backups without newer tables', () async {
     final fixture = await _Fixture.create();
@@ -211,6 +245,13 @@ void main() {
       );
       await _insertDuplicateGroup(
         fixture,
+        id: 'duplicate-statement-candidate',
+        status: 'unresolved',
+        now: now,
+        statementRows: '[{"statementId":"statement-1","rowId":"row-1"}]',
+      );
+      await _insertDuplicateGroup(
+        fixture,
         id: 'duplicate-decided',
         status: 'keepBoth',
         now: now,
@@ -266,6 +307,10 @@ void main() {
         isNot(contains('duplicate-open')),
       );
       expect(
+        await _ids(fixture, 'duplicate_candidate_groups'),
+        contains('duplicate-statement-candidate'),
+      );
+      expect(
         await _ids(fixture, 'recurring_pattern_decisions'),
         contains('recurring-decision-backup'),
       );
@@ -296,6 +341,8 @@ Future<void> _insertDuplicateGroup(
   required String id,
   required String status,
   required String now,
+  String? statementRows,
+  List<String> transactionIds = const ['tx-a', 'tx-b'],
 }) async {
   await fixture.database.database.insert('duplicate_candidate_groups', {
     'id': id,
@@ -305,17 +352,20 @@ Future<void> _insertDuplicateGroup(
     'currency': 'USD',
     'direction': 'expense',
     'status': status,
+    ...?(statementRows == null ? null : {'statement_rows': statementRows}),
     'created_at': now,
     'updated_at': now,
   });
   await fixture.database.database.insert(
     'duplicate_candidate_group_transactions',
-    {'group_id': id, 'transaction_id': 'tx-a'},
+    {'group_id': id, 'transaction_id': transactionIds.first},
   );
-  await fixture.database.database.insert(
-    'duplicate_candidate_group_transactions',
-    {'group_id': id, 'transaction_id': 'tx-b'},
-  );
+  for (final transactionId in transactionIds.skip(1)) {
+    await fixture.database.database.insert(
+      'duplicate_candidate_group_transactions',
+      {'group_id': id, 'transaction_id': transactionId},
+    );
+  }
 }
 
 Future<List<String>> _ids(_Fixture fixture, String table) async {
@@ -352,6 +402,34 @@ Future<void> _downgradeBackupToV11(File backup) async {
   final tables = (metadata['tables']! as Map).cast<String, Object?>();
   manifest['schemaVersion'] = 11;
   tables.remove('recurring_pattern_decisions');
+  final encoded = utf8.encode(jsonEncode(metadata));
+  await backup.writeAsBytes([
+    ...magic,
+    ...int64Bytes(encoded.length),
+    ...ascii.encode(sha256Bytes(encoded)),
+    ...encoded,
+    ...bytes.sublist(metadataEnd),
+  ], flush: true);
+}
+
+Future<void> _downgradeBackupToV12(File backup) async {
+  final bytes = await backup.readAsBytes();
+  final magic = utf8.encode('BUTLERLYBACKUP2');
+  final metadataLength = int64FromBytes(
+    bytes.sublist(magic.length, magic.length + 8),
+  );
+  final metadataStart = magic.length + 8 + 64;
+  final metadataEnd = metadataStart + metadataLength;
+  final metadata =
+      (jsonDecode(utf8.decode(bytes.sublist(metadataStart, metadataEnd)))
+          as Map<String, Object?>);
+  final manifest = (metadata['manifest']! as Map).cast<String, Object?>();
+  final tables = (metadata['tables']! as Map).cast<String, Object?>();
+  manifest['schemaVersion'] = 12;
+  final groups = (tables['duplicate_candidate_groups'] as List?) ?? const [];
+  for (final value in groups) {
+    if (value is Map) value.remove('statement_rows');
+  }
   final encoded = utf8.encode(jsonEncode(metadata));
   await backup.writeAsBytes([
     ...magic,

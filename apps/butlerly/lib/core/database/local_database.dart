@@ -92,6 +92,9 @@ class LocalDatabase {
     final migrationV12ToV13 = await rootBundle.loadString(
       'packages/butlerly_database/database/migrations/v12_to_v13.sql',
     );
+    final migrationV13ToV14 = await rootBundle.loadString(
+      'packages/butlerly_database/database/migrations/v13_to_v14.sql',
+    );
     final catalogSql = await rootBundle.loadString(
       'packages/butlerly_database/database/seed/catalog.sql',
     );
@@ -114,6 +117,7 @@ class LocalDatabase {
         11: migrationV10ToV11,
         12: migrationV11ToV12,
         13: migrationV12ToV13,
+        14: migrationV13ToV14,
       },
     );
     await _database!.open();

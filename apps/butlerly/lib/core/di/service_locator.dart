@@ -76,6 +76,20 @@ void configureDependencies({
     final duplicateGroups = SqliteDuplicateCandidateGroupRepository(
       database.persistenceDatabase,
     );
+    final analysisRules = SqliteAnalysisRuleRepository(
+      database.persistenceDatabase,
+    );
+    final analysisFindings = SqliteAnalysisFindingRepository(
+      database.persistenceDatabase,
+    );
+    final analysisResults = SqliteAnalysisRuleResultRepository(
+      database.persistenceDatabase,
+    );
+    final invalidateAnalysis = InvalidateAnalysis(
+      analysisFindings,
+      results: analysisResults,
+      rules: analysisRules,
+    );
     final duplicateRefresh = RefreshDuplicateGroupForTransaction(
       duplicateGroups,
       const SystemApplicationClock(),
@@ -86,6 +100,7 @@ void configureDependencies({
     final transactions = DuplicateReviewingTransactionRepository(
       rawTransactions,
       duplicateRefresh,
+      invalidateAnalysis: invalidateAnalysis,
     );
     final statements = SqliteStatementRepository(database.persistenceDatabase);
     final finance = FinanceServices(
@@ -111,13 +126,9 @@ void configureDependencies({
       reconciliationWorkflow: SqliteReconciliationWorkflowRepository(
         database.persistenceDatabase,
       ),
-      analysisRules: SqliteAnalysisRuleRepository(database.persistenceDatabase),
-      analysisFindings: SqliteAnalysisFindingRepository(
-        database.persistenceDatabase,
-      ),
-      analysisResults: SqliteAnalysisRuleResultRepository(
-        database.persistenceDatabase,
-      ),
+      analysisRules: analysisRules,
+      analysisFindings: analysisFindings,
+      analysisResults: analysisResults,
       statements: statements,
       duplicateGroups: duplicateGroups,
       recurringPatternDecisions: SqliteRecurringPatternDecisionRepository(
@@ -140,6 +151,7 @@ void configureDependencies({
       transactionRules: SqliteTransactionRuleRepository(
         database.persistenceDatabase,
       ),
+      analysisInvalidation: invalidateAnalysis,
     );
     services
       ..registerSingleton<FinanceServices>(finance)

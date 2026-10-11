@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:sqflite_common/sqlite_api.dart';
 
@@ -147,6 +149,10 @@ final class SqliteDuplicateCandidateGroupRepository
     'direction': group.duplicateKey.direction,
     'status': group.status.name,
     'selected_transaction_id': group.selectedTransactionId?.value,
+    'statement_rows': jsonEncode([
+      for (final row in group.statementRows)
+        {'statementId': row.statementId, 'rowId': row.rowId},
+    ]),
     'created_at': group.createdAt.toIso8601String(),
     'updated_at': group.updatedAt.toIso8601String(),
   };
@@ -168,23 +174,42 @@ final class SqliteDuplicateCandidateGroupRepository
       currency: row['currency']! as String,
       direction: row['direction']! as String,
     );
+    final statementRows = _statementRows(row['statement_rows']);
+    final statementRowsIssue = await _statementRowsIssue(row['statement_rows']);
     final membership = await _completeMembership(
       duplicateKey,
       links
           .map((link) => TransactionId(link['transaction_id']! as String))
           .toList(growable: false),
+      statementRows,
     );
+    final storedStatus = DuplicateCandidateGroupStatus.values.byName(
+      row['status']! as String,
+    );
+    final stale =
+        storedStatus != DuplicateCandidateGroupStatus.unresolved &&
+        await _hasStaleTransactionFacts(duplicateKey, membership.ids);
+    final integrityIssue = stale
+        ? const DuplicateCandidateGroupIntegrityIssue(
+            code: 'staleDuplicateGroup',
+            detail:
+                'A saved duplicate decision no longer matches one or more transaction facts; it was reopened for repair.',
+          )
+        : statementRowsIssue ?? membership.issue;
+    final needsRepair = stale || statementRowsIssue != null;
     return DuplicateCandidateGroup(
       id: row['id']! as String,
       transactionIds: membership.ids,
       duplicateKey: duplicateKey,
-      status: DuplicateCandidateGroupStatus.values.byName(
-        row['status']! as String,
-      ),
-      selectedTransactionId: row['selected_transaction_id'] == null
+      status: needsRepair
+          ? DuplicateCandidateGroupStatus.unresolved
+          : storedStatus,
+      selectedTransactionId:
+          needsRepair || row['selected_transaction_id'] == null
           ? null
           : TransactionId(row['selected_transaction_id']! as String),
-      integrityIssue: membership.issue,
+      statementRows: statementRows,
+      integrityIssue: integrityIssue,
       createdAt: DateTime.parse(row['created_at']! as String),
       updatedAt: DateTime.parse(row['updated_at']! as String),
     );
@@ -215,6 +240,8 @@ final class SqliteDuplicateCandidateGroupRepository
 
     final key =
         _tryKey(row) ?? await _firstLinkedTransactionKey(transactionIds);
+    final statementRows = _statementRows(row['statement_rows']);
+    final statementRowsIssue = await _statementRowsIssue(row['statement_rows']);
     final membership = key == null
         ? (
             ids: List<TransactionId>.unmodifiable(transactionIds),
@@ -224,7 +251,7 @@ final class SqliteDuplicateCandidateGroupRepository
                   'A saved duplicate decision could not be reconstructed; a stable representative is used until the decision is repaired.',
             ),
           )
-        : await _completeMembership(key, transactionIds);
+        : await _completeMembership(key, transactionIds, statementRows);
     return DuplicateCandidateGroup(
       id: row['id'] as String? ?? 'malformed-duplicate-group',
       transactionIds: membership.ids,
@@ -238,7 +265,9 @@ final class SqliteDuplicateCandidateGroupRepository
           ),
       status: DuplicateCandidateGroupStatus.unresolved,
       selectedTransactionId: null,
+      statementRows: statementRows,
       integrityIssue:
+          statementRowsIssue ??
           membership.issue ??
           const DuplicateCandidateGroupIntegrityIssue(
             code: 'malformedDuplicateGroup',
@@ -260,13 +289,17 @@ final class SqliteDuplicateCandidateGroupRepository
   _completeMembership(
     DuplicateTransactionKey key,
     List<TransactionId> linkedIds,
+    List<DuplicateCandidateStatementRow> statementRows,
   ) async {
     final matchingIds = await _findHistoricalTransactionIdsForKey(key);
     final linked = linkedIds.toSet();
     final missing = matchingIds.where((id) => !linked.contains(id)).toList();
     final ids = <TransactionId>{...linkedIds, ...matchingIds}.toList()
       ..sort((left, right) => left.value.compareTo(right.value));
-    final issue = ids.length < 2 || linkedIds.isEmpty || missing.isNotEmpty
+    final issue =
+        (ids.length < 2 && statementRows.isEmpty) ||
+            (linkedIds.isEmpty && statementRows.isEmpty) ||
+            missing.isNotEmpty
         ? const DuplicateCandidateGroupIntegrityIssue(
             code: 'incompleteDuplicateGroup',
             detail:
@@ -275,6 +308,99 @@ final class SqliteDuplicateCandidateGroupRepository
         : null;
     return (ids: List<TransactionId>.unmodifiable(ids), issue: issue);
   }
+
+  Future<bool> _hasStaleTransactionFacts(
+    DuplicateTransactionKey key,
+    List<TransactionId> ids,
+  ) async {
+    for (final id in ids) {
+      final rows = await database.connection.query(
+        'transactions',
+        columns: [
+          'transaction_date',
+          'amount_coefficient',
+          'amount_scale',
+          'currency',
+          'direction',
+        ],
+        where: 'id = ?',
+        whereArgs: [id.value],
+        limit: 1,
+      );
+      if (rows.isEmpty) continue;
+      final value = _tryKey(rows.single);
+      if (value == null || value != key) return true;
+    }
+    return false;
+  }
+
+  List<DuplicateCandidateStatementRow> _statementRows(Object? value) {
+    if (value is! String || value.trim().isEmpty) return const [];
+    try {
+      final decoded = jsonDecode(value);
+      if (decoded is! List) return const [];
+      return decoded
+          .whereType<Map>()
+          .map((entry) {
+            final statementId = entry['statementId'];
+            final rowId = entry['rowId'];
+            if (statementId is! String ||
+                statementId.isEmpty ||
+                rowId is! String ||
+                rowId.isEmpty) {
+              return null;
+            }
+            return DuplicateCandidateStatementRow(
+              statementId: statementId,
+              rowId: rowId,
+            );
+          })
+          .whereType<DuplicateCandidateStatementRow>()
+          .toList(growable: false);
+    } on Object {
+      return const [];
+    }
+  }
+
+  Future<DuplicateCandidateGroupIntegrityIssue?> _statementRowsIssue(
+    Object? value,
+  ) async {
+    if (value is! String || value.trim().isEmpty) return null;
+    try {
+      final decoded = jsonDecode(value);
+      if (decoded is! List) return _malformedStatementRowsIssue;
+      for (final entry in decoded) {
+        if (entry is! Map) return _malformedStatementRowsIssue;
+        final statementId = entry['statementId'];
+        final rowId = entry['rowId'];
+        if (statementId is! String ||
+            statementId.isEmpty ||
+            rowId is! String ||
+            rowId.isEmpty) {
+          return _malformedStatementRowsIssue;
+        }
+      }
+      for (final reference in _statementRows(value)) {
+        final rows = await database.connection.query(
+          'statement_rows',
+          columns: ['id'],
+          where: 'id = ? AND statement_id = ?',
+          whereArgs: [reference.rowId, reference.statementId],
+          limit: 1,
+        );
+        if (rows.isEmpty) return _malformedStatementRowsIssue;
+      }
+      return null;
+    } on Object {
+      return _malformedStatementRowsIssue;
+    }
+  }
+
+  static const _malformedStatementRowsIssue = DuplicateCandidateGroupIntegrityIssue(
+    code: 'malformedStatementDuplicateEvidence',
+    detail:
+        'Statement duplicate evidence could not be reconstructed; the duplicate decision was reopened for repair.',
+  );
 
   Future<List<TransactionId>> _findHistoricalTransactionIdsForKey(
     DuplicateTransactionKey key,

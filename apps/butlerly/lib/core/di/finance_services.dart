@@ -36,6 +36,7 @@ final class FinanceServices {
     MerchantNormalizationPatternRepository? merchantNormalizationPatterns,
     MerchantMatchingConfigurationRepository? merchantMatchingConfiguration,
     TransactionRuleRepository? transactionRules,
+    InvalidateAnalysis? analysisInvalidation,
   }) : listTransactions = ListTransactions(
          transactions,
          preferences: preferences,
@@ -243,12 +244,14 @@ final class FinanceServices {
            : ScanExistingTransactionsForDuplicates(
                duplicateGroups,
                const SystemApplicationClock(),
+               invalidateAnalysis: analysisInvalidation,
              ),
        rebuildDuplicateGroupsAfterRestore = duplicateGroups == null
            ? null
            : RebuildDuplicateGroupsAfterRestore(
                duplicateGroups,
                const SystemApplicationClock(),
+               invalidateAnalysis: analysisInvalidation,
              ),
        listDuplicateCandidateGroups = duplicateGroups == null
            ? null
@@ -258,12 +261,37 @@ final class FinanceServices {
                  transactions,
                  preferences: preferences,
                ),
+               statements: statements,
              ),
        resolveDuplicateCandidateGroup = duplicateGroups == null
            ? null
            : ResolveDuplicateCandidateGroup(
                duplicateGroups,
                const SystemApplicationClock(),
+               invalidateAnalysis:
+                   analysisInvalidation ??
+                   (analysisFindings == null
+                       ? null
+                       : InvalidateAnalysis(
+                           analysisFindings,
+                           results: analysisResults,
+                           rules: analysisRules,
+                         )),
+             ),
+       repairDuplicateCandidateGroup = duplicateGroups == null
+           ? null
+           : RepairDuplicateCandidateGroup(
+               duplicateGroups,
+               const SystemApplicationClock(),
+               invalidateAnalysis:
+                   analysisInvalidation ??
+                   (analysisFindings == null
+                       ? null
+                       : InvalidateAnalysis(
+                           analysisFindings,
+                           results: analysisResults,
+                           rules: analysisRules,
+                         )),
              ),
        evaluateTransactionNormalization = EvaluateTransactionNormalization(
          transactions,
@@ -352,6 +380,7 @@ final class FinanceServices {
                const SystemApplicationClock(),
                evidence: evidence,
                merchants: merchants,
+               invalidateAnalysis: analysisInvalidation,
                applyRules: transactionRules == null
                    ? null
                    : ApplyTransactionRules(
@@ -545,6 +574,7 @@ final class FinanceServices {
   final RebuildDuplicateGroupsAfterRestore? rebuildDuplicateGroupsAfterRestore;
   final ListDuplicateCandidateGroups? listDuplicateCandidateGroups;
   final ResolveDuplicateCandidateGroup? resolveDuplicateCandidateGroup;
+  final RepairDuplicateCandidateGroup? repairDuplicateCandidateGroup;
   final InstallBuiltInRules? installBuiltInRules;
   final CalculateAnalysisOverview? calculateAnalysisOverview;
   late final CalculateMonthlySpendingTrend? calculateMonthlySpendingTrend;

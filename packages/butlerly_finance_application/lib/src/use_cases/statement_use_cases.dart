@@ -1,5 +1,6 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
+import '../analysis/invalidation.dart';
 import '../dto/transaction_dto.dart';
 import '../result/application_result.dart';
 import 'classification_use_cases.dart';
@@ -74,6 +75,7 @@ final class StatementServices {
     this.evidence,
     this.applyRules,
     this.merchants,
+    this.invalidateAnalysis,
     required this.duplicateGroups,
     required this.duplicateChecker,
     this.classifier,
@@ -87,6 +89,7 @@ final class StatementServices {
   final EvidenceRepository? evidence;
   final ApplyTransactionRules? applyRules;
   final MerchantRepository? merchants;
+  final InvalidateAnalysis? invalidateAnalysis;
   final DuplicateCandidateGroupRepository duplicateGroups;
   final DuplicateTransactionChecker duplicateChecker;
   final ProposeTransactionClassification? classifier;
@@ -176,6 +179,7 @@ final class StatementServices {
     var failed = 0;
     final duplicateRowIds = <String>{};
     final duplicateMetadataRowIds = <String>{};
+    final duplicateCandidateIdsByRow = <String, List<String>>{};
     final exceptionReasons = <String, String>{};
     final sameBatchDuplicateRows = _sameBatchDuplicateRowIds(rows);
     final persistedRows = {
@@ -194,12 +198,39 @@ final class StatementServices {
       }
       final transactionId = _transactionIdForRow(row);
       final persisted = persistedRows[row.id];
+      final committed =
+          persisted?.status == StatementRowStatus.saved ||
+          persisted?.status == StatementRowStatus.linked ||
+          row.status == StatementRowStatus.saved ||
+          row.status == StatementRowStatus.linked;
+      if (persisted?.status == StatementRowStatus.deferred ||
+          persisted?.status == StatementRowStatus.skipped) {
+        // A retry must not reopen an explicit review decision. The metadata
+        // repair below removes the row from any pending duplicate group while
+        // preserving the user's disposition and retained candidate evidence.
+        duplicateMetadataRowIds.add(row.id);
+        continue;
+      }
+      if (!committed &&
+          persisted?.status == StatementRowStatus.unresolved &&
+          persisted?.reviewReason == 'statementDuplicateCandidate') {
+        final candidateIds = await _candidateTransactionIdsForRow(row);
+        if (candidateIds.isNotEmpty) {
+          // A pending statement duplicate may retain the existing candidate ID
+          // as evidence, but it is not linked until the user explicitly chooses
+          // Link, Skip/Defer, or Create New.
+          possibleDuplicates++;
+          duplicateRowIds.add(row.id);
+          duplicateCandidateIdsByRow[row.id] = candidateIds;
+          exceptionReasons[row.id] = 'statementDuplicateCandidate';
+          continue;
+        }
+      }
       final existingTransactionId =
-          persisted?.transactionId ??
-          ((row.status == StatementRowStatus.saved ||
-                  row.status == StatementRowStatus.linked)
-              ? row.transactionId
-              : null) ??
+          (persisted?.reviewReason == 'statementDuplicateCandidate'
+              ? transactionId
+              : persisted?.transactionId) ??
+          (committed ? row.transactionId : null) ??
           transactionId;
       final existing = await transactions.findById(
         TransactionId(existingTransactionId),
@@ -230,6 +261,9 @@ final class StatementServices {
         // to create a separate transaction from the row review flow.
         possibleDuplicates++;
         duplicateRowIds.add(row.id);
+        duplicateCandidateIdsByRow[row.id] = duplicate.candidates
+            .map((candidate) => candidate.transaction.id)
+            .toList(growable: false);
         exceptionReasons[row.id] = 'statementDuplicateCandidate';
         continue;
       }
@@ -264,6 +298,7 @@ final class StatementServices {
       }
     }
     await workflow.saveRowTransactions(prepared);
+    if (prepared.isNotEmpty) await _invalidateAnalysis();
     for (final entry in exceptionReasons.entries) {
       final row = rows.where((value) => value.id == entry.key).firstOrNull;
       if (row == null) continue;
@@ -281,7 +316,38 @@ final class StatementServices {
         continue;
       }
       try {
-        await _repairDuplicateReview(row);
+        final repairRow = duplicateMetadataRowIds.contains(row.id)
+            ? persistedRows[row.id] ?? row
+            : row;
+        final pendingRows = duplicateRowIds
+            .map((id) => rows.where((value) => value.id == id).firstOrNull)
+            .whereType<StatementRow>()
+            .where(
+              (value) =>
+                  value.amount != null &&
+                  value.currency != null &&
+                  value.transactionDate != null &&
+                  value.direction != null &&
+                  repairRow.amount != null &&
+                  repairRow.currency != null &&
+                  repairRow.transactionDate != null &&
+                  repairRow.direction != null &&
+                  _duplicateKeyForRow(value) == _duplicateKeyForRow(repairRow),
+            )
+            .map(
+              (value) => DuplicateCandidateStatementRow(
+                statementId: value.statementId,
+                rowId: value.id,
+              ),
+            )
+            .toList(growable: false);
+        await _repairDuplicateReview(
+          repairRow,
+          candidateTransactionIds: duplicateCandidateIdsByRow[repairRow.id],
+          pendingStatementRows: duplicateRowIds.contains(row.id)
+              ? pendingRows
+              : const [],
+        );
       } on Object {
         // Valid rows have already been committed. Return their summary and
         // expose this metadata failure instead of hiding committed work in an
@@ -344,9 +410,19 @@ final class StatementServices {
   reviewExceptions() =>
       runApplication('list statement review exceptions', () async {
         final result = <StatementReviewException>[];
+        final duplicateReferences = {
+          for (final group in await duplicateGroups.list())
+            for (final reference in group.statementRows) reference.canonical,
+        };
         for (final statement in await statements.listStatements()) {
           for (final row in await statements.listRows(statement.id)) {
-            if (row.status != StatementRowStatus.unresolved) continue;
+            if (row.status != StatementRowStatus.unresolved ||
+                (row.reviewReason == 'statementDuplicateCandidate' &&
+                    duplicateReferences.contains(
+                      '${row.statementId}:${row.id}',
+                    ))) {
+              continue;
+            }
             result.add(
               StatementReviewException(
                 statementId: statement.id,
@@ -363,6 +439,18 @@ final class StatementServices {
 
   Future<ApplicationResult<List<StatementRow>>> rows(String id) =>
       runApplication('list statement rows', () => statements.listRows(id));
+
+  Future<ApplicationResult<String?>> paymentSourceId(String statementId) =>
+      runApplication('read statement payment source', () async {
+        final statement = await statements.findStatement(statementId);
+        if (statement == null) {
+          throw const RepositoryException(
+            RepositoryFailureCode.notFound,
+            'read statement payment source',
+          );
+        }
+        return statement.paymentSourceId;
+      });
 
   Future<ApplicationResult<void>> addRows(List<StatementRow> rows) =>
       runApplication('add statement rows', () => statements.saveRows(rows));
@@ -407,6 +495,7 @@ final class StatementServices {
             : await evidenceRepository.findById(
                 EvidenceId(statement.evidenceId),
               );
+        await _removeStatementDuplicateReferences(id);
         await statements.removeStatement(id);
         return ownedEvidence;
       });
@@ -424,7 +513,7 @@ final class StatementServices {
   Future<ApplicationResult<void>> setDisposition(
     StatementRow row,
     StatementRowStatus status,
-  ) => runApplication('update statement row', () {
+  ) => runApplication('update statement row', () async {
     final previous =
         status == StatementRowStatus.skipped &&
             row.status != StatementRowStatus.skipped
@@ -432,17 +521,50 @@ final class StatementServices {
         : row.status == StatementRowStatus.skipped
         ? row.statusBeforeSkip
         : null;
-    return statements.updateRow(
-      _copy(
-        row,
-        status: status,
-        statusBeforeSkip: previous,
-        clearStatusBeforeSkip:
-            row.status == StatementRowStatus.skipped &&
-            status != StatementRowStatus.skipped,
-        updatedAt: clock.now(),
-      ),
+    final updated = _copy(
+      row,
+      status: status,
+      statusBeforeSkip: previous,
+      clearStatusBeforeSkip:
+          row.status == StatementRowStatus.skipped &&
+          status != StatementRowStatus.skipped,
+      clearTransactionId:
+          status == StatementRowStatus.deferred ||
+          status == StatementRowStatus.skipped,
+      updatedAt: clock.now(),
     );
+    await statements.updateRow(updated);
+    final hasDuplicateFacts =
+        updated.amount != null &&
+        updated.currency != null &&
+        updated.transactionDate != null &&
+        updated.direction != null;
+    if (status == StatementRowStatus.unresolved) {
+      if (hasDuplicateFacts) {
+        final activeIds = await duplicateGroups.findActiveTransactionIdsForKey(
+          _duplicateKeyForRow(updated),
+        );
+        if (activeIds.isNotEmpty) {
+          await _repairDuplicateReview(
+            updated,
+            pendingStatementRows: [
+              DuplicateCandidateStatementRow(
+                statementId: updated.statementId,
+                rowId: updated.id,
+              ),
+            ],
+          );
+        }
+      }
+    } else if (hasDuplicateFacts) {
+      await _repairDuplicateReview(updated);
+      await _invalidateAnalysis();
+    } else {
+      await _invalidateAnalysis();
+    }
+    if (status == StatementRowStatus.unresolved) {
+      await _invalidateAnalysis();
+    }
   });
 
   Future<ApplicationResult<void>> toggleSkipRestore(StatementRow row) {
@@ -452,8 +574,55 @@ final class StatementServices {
     return setDisposition(row, target);
   }
 
-  Future<ApplicationResult<void>> correct(StatementRow row) =>
-      runApplication('correct statement row', () => statements.updateRow(row));
+  Future<ApplicationResult<void>> correct(StatementRow row) => runApplication(
+    'correct statement row',
+    () async {
+      final previous = (await statements.listRows(
+        row.statementId,
+      )).where((value) => value.id == row.id).firstOrNull;
+      await statements.updateRow(row);
+      if (previous == null) {
+        return;
+      }
+      final previousHasDuplicateFacts =
+          previous.amount != null &&
+          previous.currency != null &&
+          previous.transactionDate != null &&
+          previous.direction != null;
+      final currentHasDuplicateFacts =
+          row.amount != null &&
+          row.currency != null &&
+          row.transactionDate != null &&
+          row.direction != null;
+      final previousKey = previousHasDuplicateFacts
+          ? _duplicateKeyForRow(previous)
+          : null;
+      final currentKey = currentHasDuplicateFacts
+          ? _duplicateKeyForRow(row)
+          : null;
+      if (previousKey == currentKey) return;
+      if (previousKey != null) {
+        await _repairDuplicateReview(previous, removeStatementReference: true);
+      }
+      if (currentKey != null && row.status == StatementRowStatus.unresolved) {
+        final activeIds = await duplicateGroups.findActiveTransactionIdsForKey(
+          currentKey,
+        );
+        if (activeIds.isNotEmpty) {
+          await _repairDuplicateReview(
+            row,
+            pendingStatementRows: [
+              DuplicateCandidateStatementRow(
+                statementId: row.statementId,
+                rowId: row.id,
+              ),
+            ],
+          );
+        }
+      }
+      await _invalidateAnalysis();
+    },
+  );
 
   Future<ApplicationResult<List<ReconciliationMatchCandidate>>> likelyMatches(
     StatementRow row,
@@ -498,28 +667,32 @@ final class StatementServices {
         'link statement row: statement',
       );
     }
-    await workflow.linkRow(
-      _copy(
-        row,
-        status: StatementRowStatus.linked,
-        transactionId: transactionId,
-        dispositionReason: 'linkExisting',
-        updatedAt: clock.now(),
-      ),
-    );
-    final evidenceRepository = evidence;
-    if (evidenceRepository != null) {
-      await evidenceRepository.link(
-        AttachmentLink(
-          id: AttachmentLinkId(
-            'statement-attachment-${statement.id}-$transactionId',
-          ),
-          transactionId: TransactionId(transactionId),
-          evidenceId: EvidenceId(statement.evidenceId),
-          createdAt: clock.now(),
-        ),
+    final persisted = (await statements.listRows(
+      row.statementId,
+    )).where((value) => value.id == row.id).firstOrNull;
+    final alreadyLinked =
+        persisted?.status == StatementRowStatus.linked &&
+        persisted?.transactionId == transactionId;
+    if (persisted?.status == StatementRowStatus.linked && !alreadyLinked) {
+      throw const DomainValidationException(
+        code: DomainErrorCode.invalidState,
+        field: 'transactionId',
+        message: 'The statement row is already linked to another transaction.',
       );
     }
+    final linked = alreadyLinked
+        ? persisted!
+        : _copy(
+            row,
+            status: StatementRowStatus.linked,
+            transactionId: transactionId,
+            dispositionReason: 'linkExisting',
+            updatedAt: clock.now(),
+          );
+    if (!alreadyLinked) await workflow.linkRow(linked);
+    await _invalidateAnalysis();
+    await _linkStatementEvidence(statement, transactionId);
+    await _repairDuplicateReview(linked);
   });
 
   Future<ApplicationResult<TransactionDto>> save(
@@ -527,13 +700,30 @@ final class StatementServices {
     String paymentSourceId, {
     bool allowCreateNew = false,
   }) => runApplication('save statement row', () async {
+    final statement = await statements.findStatement(row.statementId);
+    if (statement == null) {
+      throw const RepositoryException(
+        RepositoryFailureCode.notFound,
+        'save statement row: statement',
+      );
+    }
     if ((row.status == StatementRowStatus.saved ||
             row.status == StatementRowStatus.linked) &&
         row.transactionId != null) {
       final existing = await transactions.findById(
         TransactionId(row.transactionId!),
       );
-      if (existing != null) return TransactionDto.fromDomain(existing);
+      if (existing != null) {
+        await _invalidateAnalysis();
+        await _linkStatementEvidence(statement, existing.id.value);
+        await _repairDuplicateReview(
+          row,
+          resolvedStatus: allowCreateNew
+              ? DuplicateCandidateGroupStatus.keepBoth
+              : null,
+        );
+        return TransactionDto.fromDomain(existing);
+      }
     }
     final prepared = await _prepareTransaction(
       row,
@@ -543,15 +733,21 @@ final class StatementServices {
     final transaction = prepared.value;
     final now = transaction.updatedAt;
     final transactionId = transaction.id.value;
-    await workflow.saveRowTransaction(
-      _copy(
-        row,
-        status: StatementRowStatus.saved,
-        transactionId: transactionId,
-        dispositionReason: 'createNew',
-        updatedAt: now,
-      ),
-      transaction,
+    final savedRow = _copy(
+      row,
+      status: StatementRowStatus.saved,
+      transactionId: transactionId,
+      dispositionReason: 'createNew',
+      updatedAt: now,
+    );
+    await workflow.saveRowTransaction(savedRow, transaction);
+    await _invalidateAnalysis();
+    await _linkStatementEvidence(statement, transactionId);
+    await _repairDuplicateReview(
+      savedRow,
+      resolvedStatus: allowCreateNew
+          ? DuplicateCandidateGroupStatus.keepBoth
+          : null,
     );
     final dto = TransactionDto.fromDomain(transaction);
     return TransactionDto(
@@ -581,6 +777,24 @@ final class StatementServices {
       classificationProposal: prepared.proposal,
     );
   });
+
+  Future<void> _linkStatementEvidence(
+    FinancialStatement statement,
+    String transactionId,
+  ) async {
+    final evidenceRepository = evidence;
+    if (evidenceRepository == null) return;
+    await evidenceRepository.link(
+      AttachmentLink(
+        id: AttachmentLinkId(
+          'statement-attachment-${statement.id}-$transactionId',
+        ),
+        transactionId: TransactionId(transactionId),
+        evidenceId: EvidenceId(statement.evidenceId),
+        createdAt: clock.now(),
+      ),
+    );
+  }
 
   Future<_PreparedStatementTransaction> _prepareTransaction(
     StatementRow row,
@@ -697,7 +911,13 @@ final class StatementServices {
     return _PreparedStatementTransaction(value: resolved, proposal: proposal);
   }
 
-  Future<bool> _repairDuplicateReview(StatementRow row) async {
+  Future<bool> _repairDuplicateReview(
+    StatementRow row, {
+    Iterable<String>? candidateTransactionIds,
+    Iterable<DuplicateCandidateStatementRow> pendingStatementRows = const [],
+    DuplicateCandidateGroupStatus? resolvedStatus,
+    bool removeStatementReference = false,
+  }) async {
     final key = _duplicateKeyForRow(row);
     final id = 'duplicate:${key.canonical}';
     final existing = (await duplicateGroups.list())
@@ -708,18 +928,32 @@ final class StatementServices {
     final transactionIds = <TransactionId>{
       ...?existing?.transactionIds,
       ...activeTransactionIds,
+      ...?candidateTransactionIds?.map(TransactionId.new),
     }.toList()..sort((left, right) => left.value.compareTo(right.value));
-    if (transactionIds.length < 2) {
+    final persistedStatementRows = existing?.statementRows ?? const [];
+    final statementRowsById = <String, DuplicateCandidateStatementRow>{};
+    for (final value in [...persistedStatementRows, ...pendingStatementRows]) {
+      if (value.statementId == row.statementId && value.rowId == row.id) {
+        final keep =
+            !removeStatementReference &&
+            (row.status == StatementRowStatus.unresolved ||
+                pendingStatementRows.isNotEmpty);
+        if (!keep) continue;
+      }
+      statementRowsById[value.canonical] = value;
+    }
+    final statementRows = statementRowsById.values.toList(growable: false);
+    if (transactionIds.length < 2 && statementRows.isEmpty) {
       if (existing?.isUnresolved ?? false) await duplicateGroups.remove(id);
       return false;
     }
     final membershipUnchanged =
         existing != null &&
-        existing.transactionIds.length == transactionIds.length &&
-        List.generate(
-          transactionIds.length,
-          (index) => existing.transactionIds[index] == transactionIds[index],
-        ).every((value) => value);
+        _sameTransactionIds(existing.transactionIds, transactionIds) &&
+        _sameStatementRows(existing.statementRows, statementRows);
+    final decision = resolvedStatus != null && statementRows.isEmpty
+        ? resolvedStatus
+        : null;
     final now = clock.now();
     await duplicateGroups.save(
       DuplicateCandidateGroup(
@@ -728,14 +962,92 @@ final class StatementServices {
         duplicateKey: key,
         status: membershipUnchanged
             ? existing.status
-            : DuplicateCandidateGroupStatus.unresolved,
+            : decision ?? DuplicateCandidateGroupStatus.unresolved,
         selectedTransactionId: membershipUnchanged
             ? existing.selectedTransactionId
             : null,
+        statementRows: statementRows,
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
       ),
     );
+    return true;
+  }
+
+  Future<List<String>> _candidateTransactionIdsForRow(StatementRow row) async {
+    final reference = '${row.statementId}:${row.id}';
+    for (final group in await duplicateGroups.list()) {
+      if (group.statementRows.any((value) => value.canonical == reference)) {
+        return group.transactionIds.map((value) => value.value).toList();
+      }
+    }
+    return const [];
+  }
+
+  Future<void> _invalidateAnalysis() async {
+    final invalidation = invalidateAnalysis;
+    if (invalidation == null) return;
+    final result = await invalidation(
+      AnalysisInvalidationReason.duplicateDecisionChanged,
+      clock.now(),
+    );
+    if (result is ApplicationFailure<void>) {
+      throw const RepositoryException(
+        RepositoryFailureCode.unavailable,
+        'invalidate analysis after statement duplicate decision',
+      );
+    }
+  }
+
+  Future<void> _removeStatementDuplicateReferences(String statementId) async {
+    for (final group in await duplicateGroups.list()) {
+      final remaining = group.statementRows
+          .where((row) => row.statementId != statementId)
+          .toList(growable: false);
+      if (remaining.length == group.statementRows.length) continue;
+      if (remaining.isEmpty && group.transactionIds.length < 2) {
+        await duplicateGroups.remove(group.id);
+        continue;
+      }
+      await duplicateGroups.save(
+        DuplicateCandidateGroup(
+          id: group.id,
+          transactionIds: group.transactionIds,
+          duplicateKey: group.duplicateKey,
+          status: group.status,
+          selectedTransactionId: group.selectedTransactionId,
+          statementRows: remaining,
+          integrityIssue: group.integrityIssue,
+          createdAt: group.createdAt,
+          updatedAt: clock.now(),
+        ),
+      );
+    }
+  }
+
+  static bool _sameTransactionIds(
+    List<TransactionId> left,
+    List<TransactionId> right,
+  ) {
+    if (left.length != right.length) return false;
+    final a = left.map((value) => value.value).toList()..sort();
+    final b = right.map((value) => value.value).toList()..sort();
+    for (var index = 0; index < a.length; index++) {
+      if (a[index] != b[index]) return false;
+    }
+    return true;
+  }
+
+  static bool _sameStatementRows(
+    List<DuplicateCandidateStatementRow> left,
+    List<DuplicateCandidateStatementRow> right,
+  ) {
+    final a = left.map((value) => value.canonical).toList()..sort();
+    final b = right.map((value) => value.canonical).toList()..sort();
+    if (a.length != b.length) return false;
+    for (var index = 0; index < a.length; index++) {
+      if (a[index] != b[index]) return false;
+    }
     return true;
   }
 
@@ -760,7 +1072,7 @@ final class StatementServices {
           10,
         ),
         amount: DecimalValue.parse(row.amount!),
-        currency: row.currency!,
+        currency: row.currency!.trim().toUpperCase(),
         direction: _directionForRow(row).name,
       );
 
@@ -790,6 +1102,7 @@ final class StatementServices {
     String? dispositionReason,
     StatementRowStatus? statusBeforeSkip,
     bool clearStatusBeforeSkip = false,
+    bool clearTransactionId = false,
     required DateTime updatedAt,
   }) => StatementRow(
     id: row.id,
@@ -806,7 +1119,9 @@ final class StatementServices {
     confidence: row.confidence,
     sourceContext: row.sourceContext,
     status: status,
-    transactionId: transactionId ?? row.transactionId,
+    transactionId: clearTransactionId
+        ? null
+        : transactionId ?? row.transactionId,
     merchantId: row.merchantId,
     categoryId: row.categoryId,
     subcategoryId: row.subcategoryId,

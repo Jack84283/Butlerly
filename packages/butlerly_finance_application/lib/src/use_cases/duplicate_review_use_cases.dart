@@ -3,14 +3,37 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import '../commands/transaction_commands.dart';
 import '../dto/review_period_scope.dart';
 import '../dto/transaction_dto.dart';
+import '../analysis/invalidation.dart';
 import '../result/application_result.dart';
 import 'transaction_use_cases.dart';
 
+Future<void> _invalidateDuplicateAnalysis(
+  InvalidateAnalysis? invalidateAnalysis,
+  ApplicationClock clock,
+) async {
+  if (invalidateAnalysis == null) return;
+  final result = await invalidateAnalysis(
+    AnalysisInvalidationReason.duplicateDecisionChanged,
+    clock.now(),
+  );
+  if (result is ApplicationFailure<void>) {
+    throw const RepositoryException(
+      RepositoryFailureCode.unavailable,
+      'invalidate analysis after duplicate review rebuild',
+    );
+  }
+}
+
 final class ScanExistingTransactionsForDuplicates {
-  const ScanExistingTransactionsForDuplicates(this.groups, this.clock);
+  const ScanExistingTransactionsForDuplicates(
+    this.groups,
+    this.clock, {
+    this.invalidateAnalysis,
+  });
 
   final DuplicateCandidateGroupRepository groups;
   final ApplicationClock clock;
+  final InvalidateAnalysis? invalidateAnalysis;
 
   Future<ApplicationResult<List<DuplicateCandidateGroup>>> call() =>
       runApplication('scan existing transactions for duplicates', () async {
@@ -40,6 +63,7 @@ final class ScanExistingTransactionsForDuplicates {
             selectedTransactionId: membershipUnchanged
                 ? previous.selectedTransactionId
                 : null,
+            statementRows: previous?.statementRows ?? const [],
             createdAt: previous?.createdAt ?? clock.now(),
             updatedAt: clock.now(),
           );
@@ -49,10 +73,13 @@ final class ScanExistingTransactionsForDuplicates {
         // Resolved groups remain as history, while stale unresolved groups are
         // removed so Review reflects only currently matching transactions.
         for (final group in existing) {
-          if (!activeIds.contains(group.id) && group.isUnresolved) {
+          if (!activeIds.contains(group.id) &&
+              group.isUnresolved &&
+              !group.hasStatementCandidates) {
             await groups.remove(group.id);
           }
         }
+        await _invalidateDuplicateAnalysis(invalidateAnalysis, clock);
         return result;
       });
 
@@ -64,10 +91,15 @@ final class ScanExistingTransactionsForDuplicates {
 /// Rebuilds derived duplicate-review state after restore without reopening
 /// restored user decisions when the duplicate membership is unchanged.
 final class RebuildDuplicateGroupsAfterRestore {
-  const RebuildDuplicateGroupsAfterRestore(this.groups, this.clock);
+  const RebuildDuplicateGroupsAfterRestore(
+    this.groups,
+    this.clock, {
+    this.invalidateAnalysis,
+  });
 
   final DuplicateCandidateGroupRepository groups;
   final ApplicationClock clock;
+  final InvalidateAnalysis? invalidateAnalysis;
 
   Future<ApplicationResult<List<DuplicateCandidateGroup>>> call() =>
       runApplication('rebuild duplicate groups after restore', () async {
@@ -98,6 +130,7 @@ final class RebuildDuplicateGroupsAfterRestore {
             selectedTransactionId: membershipUnchanged
                 ? previous.selectedTransactionId
                 : null,
+            statementRows: previous?.statementRows ?? const [],
             createdAt: previous?.createdAt ?? clock.now(),
             updatedAt: clock.now(),
           );
@@ -106,10 +139,13 @@ final class RebuildDuplicateGroupsAfterRestore {
         }
 
         for (final group in existing) {
-          if (!activeIds.contains(group.id) && group.isUnresolved) {
+          if (!activeIds.contains(group.id) &&
+              group.isUnresolved &&
+              !group.hasStatementCandidates) {
             await groups.remove(group.id);
           }
         }
+        await _invalidateDuplicateAnalysis(invalidateAnalysis, clock);
         return result;
       });
 }
@@ -139,12 +175,15 @@ final class RefreshDuplicateGroupForTransaction {
 
     final existing = await groups.list();
     final existingById = {for (final group in existing) group.id: group};
+    final duplicateKeyChanged =
+        previousKey != null && currentKey != null && previousKey != currentKey;
     for (final key in keys.values) {
       await _refreshKey(
         key,
         existingById,
         preserveHistoricalMembership:
             current == null || current.status == TransactionStatus.archived,
+        duplicateKeyChanged: duplicateKeyChanged && key == previousKey,
       );
     }
   });
@@ -153,6 +192,7 @@ final class RefreshDuplicateGroupForTransaction {
     DuplicateTransactionKey key,
     Map<String, DuplicateCandidateGroup> existingById, {
     required bool preserveHistoricalMembership,
+    required bool duplicateKeyChanged,
   }) async {
     final groupId = 'duplicate:${key.canonical}';
     final previous = existingById[groupId];
@@ -160,6 +200,21 @@ final class RefreshDuplicateGroupForTransaction {
       ..sort((left, right) => left.value.compareTo(right.value));
 
     if (transactionIds.length < 2) {
+      if (previous != null && duplicateKeyChanged) {
+        await groups.save(
+          DuplicateCandidateGroup(
+            id: previous.id,
+            transactionIds: previous.transactionIds,
+            duplicateKey: previous.duplicateKey,
+            status: DuplicateCandidateGroupStatus.unresolved,
+            statementRows: previous.statementRows,
+            createdAt: previous.createdAt,
+            updatedAt: clock.now(),
+          ),
+        );
+        return;
+      }
+      if (previous?.hasStatementCandidates ?? false) return;
       if (preserveHistoricalMembership) return;
       if (previous != null && previous.isUnresolved) {
         await groups.remove(groupId);
@@ -183,6 +238,7 @@ final class RefreshDuplicateGroupForTransaction {
       selectedTransactionId: membershipUnchanged
           ? previous.selectedTransactionId
           : null,
+      statementRows: previous?.statementRows ?? const [],
       createdAt: previous?.createdAt ?? clock.now(),
       updatedAt: clock.now(),
     );
@@ -208,10 +264,15 @@ bool _sameIds(List<TransactionId> left, List<TransactionId> right) {
 }
 
 final class ListDuplicateCandidateGroups {
-  const ListDuplicateCandidateGroups(this.repository, {this.transactions});
+  const ListDuplicateCandidateGroups(
+    this.repository, {
+    this.transactions,
+    this.statements,
+  });
 
   final DuplicateCandidateGroupRepository repository;
   final ListTransactions? transactions;
+  final StatementRepository? statements;
 
   Future<ApplicationResult<List<DuplicateCandidateGroup>>> call({
     ReviewPeriodScope scope = const ReviewPeriodScope.unscoped(),
@@ -220,6 +281,7 @@ final class ListDuplicateCandidateGroups {
         .where((group) => group.isUnresolved || group.integrityIssue != null)
         .toList(growable: false);
     final eligibleIds = await _eligibleTransactionIds(scope);
+    final eligibleStatementRows = await _eligibleStatementRows(scope);
     final activeIdsByGroup = eligibleIds == null && transactions != null
         ? {
             for (final group in groups)
@@ -232,6 +294,11 @@ final class ListDuplicateCandidateGroups {
         .where(
           (group) =>
               group.integrityIssue != null ||
+              group.hasStatementCandidates &&
+                  (eligibleStatementRows == null ||
+                      group.statementRows.any(
+                        (row) => eligibleStatementRows.contains(row.canonical),
+                      )) ||
               (eligibleIds == null && transactions == null
                   ? group.transactionIds.length > 1
                   : group.transactionIds
@@ -246,6 +313,11 @@ final class ListDuplicateCandidateGroups {
         .where(
           (group) =>
               group.integrityIssue != null ||
+              (group.hasStatementCandidates &&
+                  (eligibleStatementRows == null ||
+                      group.statementRows.any(
+                        (row) => eligibleStatementRows.contains(row.canonical),
+                      ))) ||
               eligibleIds == null ||
               group.transactionIds.any(eligibleIds.contains),
         )
@@ -289,13 +361,38 @@ final class ListDuplicateCandidateGroups {
         ),
     };
   }
+
+  Future<Set<String>?> _eligibleStatementRows(ReviewPeriodScope scope) async {
+    if (!scope.isScoped) return null;
+    final repository = statements;
+    if (repository == null) return <String>{};
+    final period = scope.period!;
+    final values = <String>{};
+    for (final statement in await repository.listStatements()) {
+      for (final row in await repository.listRows(statement.id)) {
+        final date = row.transactionDate;
+        if (date == null) continue;
+        final day = date.toIso8601String().substring(0, 10);
+        if (day.compareTo(period.startDate) >= 0 &&
+            day.compareTo(period.endDate) <= 0) {
+          values.add('${row.statementId}:${row.id}');
+        }
+      }
+    }
+    return values;
+  }
 }
 
 final class ResolveDuplicateCandidateGroup {
-  const ResolveDuplicateCandidateGroup(this.repository, this.clock);
+  const ResolveDuplicateCandidateGroup(
+    this.repository,
+    this.clock, {
+    this.invalidateAnalysis,
+  });
 
   final DuplicateCandidateGroupRepository repository;
   final ApplicationClock clock;
+  final InvalidateAnalysis? invalidateAnalysis;
 
   Future<ApplicationResult<void>> call(
     String id,
@@ -311,6 +408,14 @@ final class ResolveDuplicateCandidateGroup {
       }
     }
     if (group == null) return;
+    if (group.hasStatementCandidates) {
+      throw const DomainValidationException(
+        code: DomainErrorCode.invalidState,
+        field: 'statementRows',
+        message:
+            'Statement duplicate candidates require an explicit row decision.',
+      );
+    }
     // Consolidation is currently a non-destructive review decision only. The
     // application has no safe financial-record merge operation, so resolving
     // this state must never delete, overwrite, archive, or mutate a transaction.
@@ -330,9 +435,69 @@ final class ResolveDuplicateCandidateGroup {
         duplicateKey: group.duplicateKey,
         status: status,
         selectedTransactionId: selectedTransactionId,
+        statementRows: group.statementRows,
         createdAt: group.createdAt,
         updatedAt: clock.now(),
       ),
     );
+    final invalidation = invalidateAnalysis;
+    if (invalidation != null) {
+      final result = await invalidation.call(
+        AnalysisInvalidationReason.duplicateDecisionChanged,
+        clock.now(),
+      );
+      if (result is ApplicationFailure<void>) {
+        throw const RepositoryException(
+          RepositoryFailureCode.unavailable,
+          'invalidate analysis after duplicate decision',
+        );
+      }
+    }
   });
+}
+
+/// Clears only unreconstructable derived duplicate metadata so the source
+/// statement row can return to ordinary review without changing financial
+/// records or source evidence.
+final class RepairDuplicateCandidateGroup {
+  const RepairDuplicateCandidateGroup(
+    this.repository,
+    this.clock, {
+    this.invalidateAnalysis,
+  });
+
+  final DuplicateCandidateGroupRepository repository;
+  final ApplicationClock clock;
+  final InvalidateAnalysis? invalidateAnalysis;
+
+  Future<ApplicationResult<void>> call(String id) => runApplication(
+    'repair possible duplicate group',
+    () async {
+      final group = (await repository.list())
+          .where((value) => value.id == id)
+          .firstOrNull;
+      if (group == null) return;
+      if (group.integrityIssue?.code != 'malformedStatementDuplicateEvidence') {
+        throw const DomainValidationException(
+          code: DomainErrorCode.invalidState,
+          field: 'integrityIssue',
+          message: 'This duplicate group does not require evidence repair.',
+        );
+      }
+      await repository.remove(id);
+      final invalidation = invalidateAnalysis;
+      if (invalidation != null) {
+        final result = await invalidation(
+          AnalysisInvalidationReason.duplicateDecisionChanged,
+          clock.now(),
+        );
+        if (result is ApplicationFailure<void>) {
+          throw const RepositoryException(
+            RepositoryFailureCode.unavailable,
+            'invalidate analysis after duplicate evidence repair',
+          );
+        }
+      }
+    },
+  );
 }

@@ -33,6 +33,7 @@ void main() {
   late MemoryTransactionRepository repository;
   late MemoryEvidence evidenceRepository;
   late MemoryDuplicateGroups duplicateGroups;
+  late MemoryStatements statementRepository;
   late MemoryPaymentSources paymentSources;
   late MemoryMerchants merchants;
   late MemoryCategories categories;
@@ -47,6 +48,7 @@ void main() {
     repository = MemoryTransactionRepository();
     evidenceRepository = MemoryEvidence();
     duplicateGroups = MemoryDuplicateGroups(repository);
+    statementRepository = MemoryStatements(repository);
     paymentSources = MemoryPaymentSources();
     merchants = MemoryMerchants();
     categories = MemoryCategories();
@@ -69,6 +71,7 @@ void main() {
         evidenceRepository,
         MemoryUserPreferences(),
         duplicateGroups: duplicateGroups,
+        statements: statementRepository,
         merchantAliases: merchantAliases,
         merchantNormalizationPatterns: merchantPatterns,
         merchantMatchingConfiguration: merchantMatchingConfiguration,
@@ -2160,6 +2163,98 @@ void main() {
   );
 
   testWidgets(
+    'statement duplicate candidates are visible in Possible Duplicates and link explicitly',
+    (tester) async {
+      final existing = _editorTransaction('statement-review-existing');
+      await repository.save(existing);
+      final now = existing.createdAt;
+      final statement = FinancialStatement(
+        id: 'statement-review',
+        evidenceId: 'statement-review-evidence',
+        status: StatementStatus.ready,
+        createdAt: now,
+        updatedAt: now,
+      );
+      final row = StatementRow(
+        id: 'statement-review-row',
+        statementId: statement.id,
+        position: 0,
+        originalText: 'Existing merchant 25 USD',
+        transactionDate: DateTime.parse(existing.transactionDate!),
+        description: 'Existing merchant',
+        amount: '25.00',
+        currency: 'USD',
+        direction: TransactionDirection.expense.name,
+        status: StatementRowStatus.unresolved,
+        reviewReason: 'statementDuplicateCandidate',
+        createdAt: now,
+        updatedAt: now,
+      );
+      await statementRepository.saveStatementWithRows(statement, [row]);
+      final duplicateKey = DuplicateTransactionKey(
+        transactionDate: existing.transactionDate!,
+        amount: existing.money.amount,
+        currency: 'USD',
+        direction: TransactionDirection.expense.name,
+      );
+      await duplicateGroups.save(
+        DuplicateCandidateGroup(
+          id: 'duplicate:${duplicateKey.canonical}',
+          transactionIds: [existing.id],
+          duplicateKey: duplicateKey,
+          status: DuplicateCandidateGroupStatus.unresolved,
+          statementRows: [
+            DuplicateCandidateStatementRow(
+              statementId: statement.id,
+              rowId: row.id,
+            ),
+          ],
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: const Scaffold(body: ReviewPage(showPossibleDuplicates: true)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Existing merchant 25 USD'), findsOneWidget);
+      expect(find.text('Link'), findsOneWidget);
+      expect(find.text('Create New'), findsOneWidget);
+      await tester.tap(find.text('Create New'));
+      await tester.pump();
+      expect(
+        find.text('Assign a payment source before creating a new transaction.'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Link'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('No possible duplicates found'), findsOneWidget);
+      expect(
+        (await statementRepository.listRows(statement.id)).single.status,
+        StatementRowStatus.linked,
+      );
+      expect(
+        (await statementRepository.listRows(statement.id)).single.transactionId,
+        existing.id.value,
+      );
+      expect(repository.values, hasLength(1));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'Possible Duplicates consolidate choice records metadata without mutating records',
     (tester) async {
       final first = _editorTransaction('consolidate-a');
@@ -3082,6 +3177,96 @@ void main() {
       expect(repository.values['edit-multi-c'], same(c));
     },
   );
+
+  testWidgets('statement duplicate evidence failures remain actionable', (
+    tester,
+  ) async {
+    final existing = _editorTransaction('statement-evidence-existing');
+    await repository.save(existing);
+    final now = DateTime.utc(2026, 9, 1);
+    await duplicateGroups.save(
+      DuplicateCandidateGroup(
+        id: 'duplicate:2026-09-01|25|USD|expense',
+        transactionIds: [existing.id],
+        duplicateKey: DuplicateTransactionKey(
+          transactionDate: '2026-09-01',
+          amount: DecimalValue.parse('25'),
+          currency: 'USD',
+          direction: TransactionDirection.expense.name,
+        ),
+        status: DuplicateCandidateGroupStatus.unresolved,
+        integrityIssue: const DuplicateCandidateGroupIntegrityIssue(
+          code: 'malformedStatementDuplicateEvidence',
+          detail: 'statement evidence is unavailable',
+        ),
+        statementRows: const [
+          DuplicateCandidateStatementRow(
+            statementId: 'missing-statement',
+            rowId: 'missing-row',
+          ),
+        ],
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: ReviewPage(showPossibleDuplicates: true)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Repair duplicate review'), findsOneWidget);
+    expect(
+      find.textContaining('Your existing local data was not changed.'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Repair duplicate review'));
+    await tester.pumpAndSettle();
+    expect(find.text('No possible duplicates found'), findsOneWidget);
+    expect(await duplicateGroups.list(), isEmpty);
+  });
+
+  testWidgets('malformed statement duplicate evidence can be repaired', (
+    tester,
+  ) async {
+    final existing = _editorTransaction('statement-repair-existing');
+    await repository.save(existing);
+    final now = existing.createdAt;
+    await duplicateGroups.save(
+      DuplicateCandidateGroup(
+        id: 'duplicate:malformed-statement-review',
+        transactionIds: [existing.id],
+        duplicateKey: DuplicateTransactionKey(
+          transactionDate: existing.transactionDate!,
+          amount: existing.money.amount,
+          currency: existing.money.currency.value,
+          direction: existing.direction.name,
+        ),
+        status: DuplicateCandidateGroupStatus.unresolved,
+        integrityIssue: const DuplicateCandidateGroupIntegrityIssue(
+          code: 'malformedStatementDuplicateEvidence',
+          detail: 'invalid persisted statement evidence',
+        ),
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: ReviewPage(showPossibleDuplicates: true)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Repair duplicate review'), findsOneWidget);
+    await tester.tap(find.text('Repair duplicate review'));
+    await tester.pumpAndSettle();
+    expect(find.text('No possible duplicates found'), findsOneWidget);
+    expect(await duplicateGroups.list(), isEmpty);
+  });
 }
 
 Future<void> _openEditorForTest(
@@ -3394,6 +3579,107 @@ final class MemoryDuplicateGroups implements DuplicateCandidateGroupRepository {
   Future<void> remove(String id) async {
     groups.removeWhere((group) => group.id == id);
   }
+}
+
+final class MemoryStatements
+    implements StatementRepository, StatementWorkflowRepository {
+  MemoryStatements(this.transactions);
+
+  final MemoryTransactionRepository transactions;
+  final statements = <String, FinancialStatement>{};
+  final rows = <String, StatementRow>{};
+
+  @override
+  Future<void> saveStatement(FinancialStatement statement) async {
+    statements[statement.id] = statement;
+  }
+
+  @override
+  Future<void> saveRows(List<StatementRow> values) async {
+    for (final row in values) {
+      rows[row.id] = row;
+    }
+  }
+
+  @override
+  Future<void> saveStatementWithRows(
+    FinancialStatement statement,
+    List<StatementRow> values,
+  ) async {
+    await saveStatement(statement);
+    await saveRows(values);
+  }
+
+  @override
+  Future<FinancialStatement?> findStatement(String id) async => statements[id];
+
+  @override
+  Future<List<FinancialStatement>> listStatements({
+    bool includeArchived = false,
+  }) async => statements.values
+      .where(
+        (statement) =>
+            includeArchived || statement.status != StatementStatus.archived,
+      )
+      .toList();
+
+  @override
+  Future<List<StatementRow>> listRows(String statementId) async =>
+      rows.values.where((row) => row.statementId == statementId).toList()
+        ..sort((left, right) => left.position.compareTo(right.position));
+
+  @override
+  Future<void> assignPaymentSource(
+    String statementId,
+    String paymentSourceId,
+    DateTime updatedAt,
+  ) async {
+    final statement = statements[statementId];
+    if (statement == null) return;
+    statements[statementId] = FinancialStatement(
+      id: statement.id,
+      evidenceId: statement.evidenceId,
+      paymentSourceId: paymentSourceId,
+      originalFilename: statement.originalFilename,
+      rawTextReference: statement.rawTextReference,
+      status: StatementStatus.ready,
+      createdAt: statement.createdAt,
+      updatedAt: updatedAt,
+    );
+  }
+
+  @override
+  Future<void> updateRow(StatementRow row) async {
+    rows[row.id] = row;
+  }
+
+  @override
+  Future<bool> canDeleteStatement(String id) async => true;
+
+  @override
+  Future<void> removeStatement(String id) async {
+    statements.remove(id);
+    rows.removeWhere((_, row) => row.statementId == id);
+  }
+
+  @override
+  Future<void> saveRowTransactions(List<StatementRowTransaction> values) async {
+    for (final value in values) {
+      await saveRowTransaction(value.row, value.transaction);
+    }
+  }
+
+  @override
+  Future<void> saveRowTransaction(
+    StatementRow row,
+    Transaction transaction,
+  ) async {
+    await transactions.save(transaction);
+    await updateRow(row);
+  }
+
+  @override
+  Future<void> linkRow(StatementRow row) => updateRow(row);
 }
 
 final class MemoryMerchants implements MerchantRepository {

@@ -335,7 +335,7 @@ void main() {
     },
   );
 
-  test('stale Keep Both decisions continue counting every present member', () {
+  test('stale Keep Both decisions count one representative until repaired', () {
     final original = _transaction('original', '2026-01-01');
     final edited = _transaction('edited', '2026-02-01');
     final selected = selectCanonicalTransactions(
@@ -357,10 +357,7 @@ void main() {
       ],
     );
 
-    expect(
-      selected.transactions.map((value) => value.id.value),
-      unorderedEquals(['original', 'edited']),
-    );
+    expect(selected.transactions.map((value) => value.id.value), ['edited']);
     expect(selected.qualityIssues.single.code, 'staleDuplicateGroup');
   });
 
