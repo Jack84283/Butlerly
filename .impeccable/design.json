@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedAt": "2026-10-10",
-  "authority": "Generated tooling context for the current implementation; DESIGN.md and the Flutter design tokens are authoritative.",
+  "authority": "Generated tooling context only; DESIGN.md is authoritative and Flutter design tokens are implementation evidence.",
   "title": "Design System: Butlerly",
   "extensions": {
     "colorMeta": {
@@ -111,7 +111,7 @@
       "refersTo": "navigation",
       "description": "Labeled five-destination navigation with visible selected state and width-aware presentation.",
       "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item is-selected\" href=\"#home\">Home</a><a class=\"ds-nav-item\" href=\"#transactions\">Transactions</a><a class=\"ds-nav-item\" href=\"#add\">Add</a><a class=\"ds-nav-item\" href=\"#tools\">Tools</a><a class=\"ds-nav-item\" href=\"#more\">More</a></nav>",
-      "css": ".ds-nav { display: flex; min-height: 56px; background: #F6F7F8; border-top: 1px solid #D8DDE6; } .ds-nav-item { flex: 1; display: grid; place-items: center; color: #6B7280; font: 400 10.5px/1.2 system-ui, sans-serif; text-decoration: none; } .ds-nav-item.is-selected { color: #7A1E3A; font-weight: 600; } .ds-nav-item:focus-visible { outline: 2px solid #C76F8B; outline-offset: -2px; }"
+      "css": ".ds-nav { display: flex; min-height: 56px; background: #F2F3F5; border-top: 1px solid #D8DDE6; } .ds-nav-item { flex: 1; display: grid; place-items: center; color: #6B7280; font: 400 10.5px/1.2 system-ui, sans-serif; text-decoration: none; } .ds-nav-item.is-selected { color: #7A1E3A; font-weight: 600; } .ds-nav-item:focus-visible { outline: 2px solid #C76F8B; outline-offset: -2px; }"
     },
     {
       "name": "Bottom Sheet",

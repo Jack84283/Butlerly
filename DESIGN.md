@@ -99,7 +99,7 @@ components:
     padding: "16px"
     height: "48px"
   navigation:
-    backgroundColor: "semantic background"
+    backgroundColor: "semantic footerSurface"
     textColor: "{colors.ink-light}"
     typography: "{typography.label}"
     height: "56px"
@@ -247,7 +247,7 @@ Controls use a compact 6px radius for compact icon controls and a full pill for 
 
 ## Implementation token authority (October 2026)
 
-For current UI implementation, use `apps/butlerly/lib/design_system/theme/butlerly_semantic_colors.dart` for light/dark color roles, `apps/butlerly/lib/design_system/tokens/butlerly_tokens.dart` and `butlerly_button.dart` for radius/spacing/navigation/button geometry, `apps/butlerly/lib/design_system/tokens/butlerly_typography.dart` for type roles, and shared components under `apps/butlerly/lib/design_system/components/`. These code tokens and this document form the current design authority. Historical visual references and retired redesign targets are not active requirements.
+For current UI implementation, use `apps/butlerly/lib/design_system/theme/butlerly_semantic_colors.dart` for light/dark color roles, `apps/butlerly/lib/design_system/tokens/butlerly_tokens.dart` and `butlerly_button.dart` for radius/spacing/navigation/button geometry, `apps/butlerly/lib/design_system/tokens/butlerly_typography.dart` for type roles, and shared components under `apps/butlerly/lib/design_system/components/`. `DESIGN.md` is the current design authority; these code tokens and widgets are implementation evidence that must remain aligned with it. Historical visual references and retired redesign targets are not active requirements.
 
 Current defaults include light background `#F6F7F8`, light card `#FFFFFF`, dark background `#0B162A`, dark dashboard card `#1A2336`, 16px card radius, 12px page gutter, pill-shaped shared buttons, and 56px minimum navigation bar height (navigation can grow to accommodate localized labels). Accent themes may replace brand roles while financial semantic colors remain stable.
 
@@ -261,4 +261,6 @@ The following statements describe the current shipped direction. Runtime code, s
 - **Navigation:** compact and medium layouts expose Home, Transactions, Add, Tools, and More. Wide layouts use the same destinations in a 248px expanded or 72px collapsed rail. Add remains a first-class capture action; Review, Analysis, Insights, payment settlements, master data, and rules are reached through Tools or contextual routes.
 - **Bottom sheets:** use the shared sheet container with 18px top corners, safe-area-aware padding, semantic surfaces, and explicit escape paths. Selection and filter sheets should use shared controls rather than feature-local variants.
 - **Typography:** use the editorial serif roles for high-level interpretation and financial emphasis, and platform sans-serif roles for functional controls, labels, dense rows, and operational copy. Financial amounts use tabular figures.
+- **Interaction details:** preserve localized full dates in Add/Edit Transaction, the textual image-view action in Transaction Detail, and right-aligned Review decisions, import restoration actions, and Create New Payment Source actions.
+- **Page composition:** keep Analysis headings inside their cards and preserve the shared content spacing across Home, Review, Insights, and Analysis.
 - **Responsive and accessible behavior:** preserve compact `<600px`, medium `600–1023px`, and wide `>=1024px` modes; keep a 44px minimum touch target, prefer 48px for primary controls, and verify light, dark, localized, and large-text states.
