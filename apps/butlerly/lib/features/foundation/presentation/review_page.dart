@@ -1295,15 +1295,28 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
       (await _loadTransactions(), await widget.masterData);
 
   bool get _needsMetadataRepair => switch (widget.group.integrityIssue?.code) {
-    'incompleteDuplicateGroup' || 'malformedDuplicateGroup' => true,
+    'incompleteDuplicateGroup' ||
+    'malformedDuplicateGroup' ||
+    'staleDuplicateGroup' => true,
     _ => false,
   };
 
+  bool get _needsStaleRelationshipRepair =>
+      widget.group.integrityIssue?.code == 'staleDuplicateGroup';
+
   Widget _repairState(BuildContext context) => ButlerlyErrorState(
     title: context.l10n.text('possibleDuplicateGroup'),
-    message: context.l10n.text('duplicateGroupRepairBody'),
+    message: context.l10n.text(
+      _needsStaleRelationshipRepair
+          ? 'staleDuplicateGroupRepairBody'
+          : 'duplicateGroupRepairBody',
+    ),
     preserved: context.l10n.text('dataPreserved'),
-    actionLabel: context.l10n.text('repairDuplicateGroup'),
+    actionLabel: context.l10n.text(
+      _needsStaleRelationshipRepair
+          ? 'repairStaleDuplicateGroup'
+          : 'repairDuplicateGroup',
+    ),
     onAction: () => widget.onRepair(widget.group),
   );
 

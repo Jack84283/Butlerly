@@ -443,6 +443,14 @@ final class ResolveDuplicateCandidateGroup {
             'Statement duplicate candidates require an explicit row decision.',
       );
     }
+    if (group.integrityIssue?.code == 'staleDuplicateGroup') {
+      throw const DomainValidationException(
+        code: DomainErrorCode.invalidState,
+        field: 'integrityIssue',
+        message:
+            'Stale duplicate relationships require repair before a new decision can be saved.',
+      );
+    }
     // Consolidation is currently a non-destructive review decision only. The
     // application has no safe financial-record merge operation, so resolving
     // this state must never delete, overwrite, archive, or mutate a transaction.
@@ -483,9 +491,9 @@ final class ResolveDuplicateCandidateGroup {
   });
 }
 
-/// Clears only unreconstructable derived duplicate metadata so the source
-/// statement row can return to ordinary review without changing financial
-/// records or source evidence.
+/// Clears only derived duplicate metadata that is no longer safe to resolve
+/// as a current relationship. Stale relationships are retired without
+/// changing financial records or source evidence.
 final class RepairDuplicateCandidateGroup {
   const RepairDuplicateCandidateGroup(
     this.repository,
@@ -506,7 +514,8 @@ final class RepairDuplicateCandidateGroup {
       if (group == null) return;
       if (group.integrityIssue?.code != 'malformedStatementDuplicateEvidence' &&
           group.integrityIssue?.code != 'incompleteDuplicateGroup' &&
-          group.integrityIssue?.code != 'malformedDuplicateGroup') {
+          group.integrityIssue?.code != 'malformedDuplicateGroup' &&
+          group.integrityIssue?.code != 'staleDuplicateGroup') {
         throw const DomainValidationException(
           code: DomainErrorCode.invalidState,
           field: 'integrityIssue',

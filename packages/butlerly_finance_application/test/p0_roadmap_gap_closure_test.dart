@@ -457,6 +457,180 @@ void main() {
   );
 
   test(
+    'canonical selection is independent of transaction and group ordering',
+    () {
+      final original = _transaction('a-original', '2026-01-01', amount: '25');
+      final edited = _transaction('b-edited', '2026-01-01', amount: '30');
+      final currentMatch = _transaction(
+        'c-current-match',
+        '2026-01-01',
+        amount: '30',
+      );
+      final stale = DuplicateCandidateGroup(
+        id: 'stale-history',
+        transactionIds: [original.id, edited.id],
+        duplicateKey: DuplicateTransactionKey(
+          transactionDate: '2026-01-01',
+          amount: DecimalValue.parse('25'),
+          currency: 'USD',
+          direction: 'expense',
+        ),
+        status: DuplicateCandidateGroupStatus.consolidated,
+        selectedTransactionId: original.id,
+        createdAt: DateTime.utc(2026, 1, 2),
+        updatedAt: DateTime.utc(2026, 1, 2),
+      );
+      final current = DuplicateCandidateGroup(
+        id: 'current-review',
+        transactionIds: [edited.id, currentMatch.id],
+        duplicateKey: DuplicateTransactionKey(
+          transactionDate: '2026-01-01',
+          amount: DecimalValue.parse('30'),
+          currency: 'USD',
+          direction: 'expense',
+        ),
+        status: DuplicateCandidateGroupStatus.unresolved,
+        createdAt: DateTime.utc(2026, 1, 2),
+        updatedAt: DateTime.utc(2026, 1, 2),
+      );
+
+      final results = <String>[];
+      for (final source in [
+        [original, edited, currentMatch],
+        [currentMatch, original, edited],
+        [edited, currentMatch, original],
+      ]) {
+        for (final groups in [
+          [stale, current],
+          [current, stale],
+        ]) {
+          final selected = selectCanonicalTransactions(
+            source: source,
+            duplicateGroups: groups,
+          );
+          results.add(
+            '${selected.transactions.map((value) => value.id.value).join(',')}|'
+            '${selected.transactions.map((value) => value.money.amount).join(',')}',
+          );
+          expect(selected.transactions.map((value) => value.id.value), [
+            'a-original',
+            'b-edited',
+          ]);
+          expect(
+            selected.transactions
+                .map((value) => value.money.amount)
+                .reduce((left, right) => left.add(right)),
+            DecimalValue.parse('55'),
+          );
+          expect(
+            selected.qualityIssues,
+            contains(
+              predicate<DataQualityIssue>(
+                (issue) => issue.code == 'staleDuplicateGroup',
+              ),
+            ),
+          );
+          expect(
+            selected.qualityIssues,
+            contains(
+              predicate<DataQualityIssue>(
+                (issue) => issue.code == 'unresolvedDuplicate',
+              ),
+            ),
+          );
+        }
+      }
+      expect(results.toSet(), hasLength(1));
+    },
+  );
+
+  test('canonical selection preserves receipt reconciliation exclusions', () {
+    final receipt = _transaction('receipt', '2026-01-01');
+    final payment = _transaction('payment', '2026-01-01');
+    final selected = selectCanonicalTransactions(
+      source: [payment, receipt],
+      links: [
+        ReconciliationLink(
+          id: 'link-receipt-payment',
+          candidateId: 'candidate-receipt-payment',
+          receiptTransactionId: receipt.id,
+          paymentTransactionId: payment.id,
+          createdAt: DateTime.utc(2026, 1, 2),
+        ),
+      ],
+      duplicateGroups: [
+        DuplicateCandidateGroup(
+          id: 'duplicate:receipt-payment',
+          transactionIds: [receipt.id, payment.id],
+          duplicateKey: DuplicateTransactionKey(
+            transactionDate: '2026-01-01',
+            amount: DecimalValue.parse('10'),
+            currency: 'USD',
+            direction: 'expense',
+          ),
+          status: DuplicateCandidateGroupStatus.keepBoth,
+          createdAt: DateTime.utc(2026, 1, 2),
+          updatedAt: DateTime.utc(2026, 1, 2),
+        ),
+      ],
+    );
+
+    expect(selected.transactions.map((value) => value.id), [payment.id]);
+  });
+
+  test('receipt-only overlap does not merge independent payment groups', () {
+    final receipt = _transaction('receipt-overlap', '2026-01-01');
+    final firstPayment = _transaction('payment-first', '2026-01-01');
+    final secondPayment = _transaction('payment-second', '2026-01-01');
+    final selected = selectCanonicalTransactions(
+      source: [secondPayment, receipt, firstPayment],
+      links: [
+        ReconciliationLink(
+          id: 'link-receipt-overlap',
+          candidateId: 'candidate-receipt-overlap',
+          receiptTransactionId: receipt.id,
+          paymentTransactionId: firstPayment.id,
+          createdAt: DateTime.utc(2026, 1, 2),
+        ),
+      ],
+      duplicateGroups: [
+        DuplicateCandidateGroup(
+          id: 'duplicate:receipt-first',
+          transactionIds: [receipt.id, firstPayment.id],
+          duplicateKey: DuplicateTransactionKey(
+            transactionDate: '2026-01-01',
+            amount: DecimalValue.parse('10'),
+            currency: 'USD',
+            direction: 'expense',
+          ),
+          status: DuplicateCandidateGroupStatus.keepBoth,
+          createdAt: DateTime.utc(2026, 1, 2),
+          updatedAt: DateTime.utc(2026, 1, 2),
+        ),
+        DuplicateCandidateGroup(
+          id: 'duplicate:receipt-second',
+          transactionIds: [receipt.id, secondPayment.id],
+          duplicateKey: DuplicateTransactionKey(
+            transactionDate: '2026-01-01',
+            amount: DecimalValue.parse('10'),
+            currency: 'USD',
+            direction: 'expense',
+          ),
+          status: DuplicateCandidateGroupStatus.consolidated,
+          selectedTransactionId: secondPayment.id,
+          createdAt: DateTime.utc(2026, 1, 2),
+          updatedAt: DateTime.utc(2026, 1, 2),
+        ),
+      ],
+    );
+
+    expect(selected.transactions.map((value) => value.id), [
+      firstPayment.id,
+      secondPayment.id,
+    ]);
+  });
+
+  test(
     'editing an archived duplicate member still invalidates its decision',
     () {
       final original = _transaction('archived-original', '2026-01-01');

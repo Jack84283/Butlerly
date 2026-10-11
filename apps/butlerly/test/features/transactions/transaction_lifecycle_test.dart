@@ -2308,6 +2308,57 @@ void main() {
     },
   );
 
+  testWidgets(
+    'Possible Duplicates can permanently repair a stale relationship',
+    (tester) async {
+      final first = _editorTransaction('stale-review-a');
+      final second = _editorTransaction('stale-review-b');
+      await repository.save(first);
+      await repository.save(second);
+      await duplicateGroups.save(
+        DuplicateCandidateGroup(
+          id: 'duplicate:stale-review',
+          transactionIds: [first.id, second.id],
+          duplicateKey: DuplicateTransactionKey(
+            transactionDate: first.transactionDate!,
+            amount: first.money.amount,
+            currency: first.money.currency.value,
+            direction: first.direction.name,
+          ),
+          status: DuplicateCandidateGroupStatus.unresolved,
+          integrityIssue: const DuplicateCandidateGroupIntegrityIssue(
+            code: 'staleDuplicateGroup',
+            detail: 'The saved relationship no longer matches current facts.',
+          ),
+          createdAt: first.createdAt,
+          updatedAt: first.updatedAt,
+        ),
+      );
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(body: ReviewPage(showPossibleDuplicates: true)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Clear stale duplicate relationship'), findsOneWidget);
+      expect(
+        find.textContaining(
+          'Your transactions and source evidence stay unchanged.',
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Clear stale duplicate relationship'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('No possible duplicates found'), findsOneWidget);
+      expect(duplicateGroups.groups, isEmpty);
+      expect(repository.values, containsPair(first.id.value, first));
+      expect(repository.values, containsPair(second.id.value, second));
+    },
+  );
+
   testWidgets('loading Possible Duplicates does not run a historical scan', (
     tester,
   ) async {

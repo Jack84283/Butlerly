@@ -357,6 +357,89 @@ void main() {
     },
   );
 
+  test(
+    'repairs a stale group durably without removing a separate valid group',
+    () async {
+      final first = duplicateTransaction(now, id: 'repair-stale-a');
+      final second = duplicateTransaction(now, id: 'repair-stale-b');
+      final validFirst = duplicateTransaction(now, id: 'repair-valid-a');
+      final validSecond = duplicateTransaction(now, id: 'repair-valid-b');
+      await transactions.save(first);
+      await transactions.save(second);
+      await transactions.save(validFirst);
+      await transactions.save(validSecond);
+      await database.connection.update(
+        'transactions',
+        {'transaction_date': '2026-08-10', 'amount_coefficient': '40'},
+        where: 'id IN (?, ?)',
+        whereArgs: [validFirst.id.value, validSecond.id.value],
+      );
+
+      final repository = SqliteDuplicateCandidateGroupRepository(database);
+      final staleKey = DuplicateTransactionKey(
+        transactionDate: '2026-08-09',
+        amount: DecimalValue.parse('25'),
+        currency: 'USD',
+        direction: TransactionDirection.expense.name,
+      );
+      final validKey = DuplicateTransactionKey(
+        transactionDate: '2026-08-10',
+        amount: DecimalValue.parse('40'),
+        currency: 'USD',
+        direction: TransactionDirection.expense.name,
+      );
+      await repository.save(
+        DuplicateCandidateGroup(
+          id: 'duplicate:repair-stale',
+          transactionIds: [first.id, second.id],
+          duplicateKey: staleKey,
+          status: DuplicateCandidateGroupStatus.consolidated,
+          selectedTransactionId: first.id,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await repository.save(
+        DuplicateCandidateGroup(
+          id: 'duplicate:repair-valid',
+          transactionIds: [validFirst.id, validSecond.id],
+          duplicateKey: validKey,
+          status: DuplicateCandidateGroupStatus.consolidated,
+          selectedTransactionId: validFirst.id,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await database.connection.update(
+        'transactions',
+        {'amount_coefficient': '30'},
+        where: 'id = ?',
+        whereArgs: [second.id.value],
+      );
+
+      final stale = (await repository.list()).singleWhere(
+        (group) => group.id == 'duplicate:repair-stale',
+      );
+      expect(stale.integrityIssue?.code, 'staleDuplicateGroup');
+      final repaired = await RepairDuplicateCandidateGroup(
+        repository,
+        const SystemApplicationClock(),
+      )(stale.id);
+      expect(repaired, isA<ApplicationSuccess<void>>());
+
+      final restored = await repository.list();
+      expect(restored.map((group) => group.id), ['duplicate:repair-valid']);
+      expect(
+        restored.single.status,
+        DuplicateCandidateGroupStatus.consolidated,
+      );
+      expect(await transactions.findById(first.id), isNotNull);
+      expect(await transactions.findById(second.id), isNotNull);
+      expect(await transactions.findById(validFirst.id), isNotNull);
+      expect(await transactions.findById(validSecond.id), isNotNull);
+    },
+  );
+
   test('reopens a resolved group when an archived member is edited', () async {
     final first = duplicateTransaction(now, id: 'archived-edit-a');
     final second = duplicateTransaction(now, id: 'archived-edit-b');

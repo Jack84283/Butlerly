@@ -182,6 +182,76 @@ void main() {
   });
 
   test(
+    'repairs stale duplicate metadata without changing transactions',
+    () async {
+      final group = DuplicateCandidateGroup(
+        id: 'stale-transaction-group',
+        transactionIds: [TransactionId('edited-transaction')],
+        duplicateKey: DuplicateTransactionKey(
+          transactionDate: '2026-09-01',
+          amount: DecimalValue.parse('25'),
+          currency: 'USD',
+          direction: 'expense',
+        ),
+        status: DuplicateCandidateGroupStatus.unresolved,
+        integrityIssue: const DuplicateCandidateGroupIntegrityIssue(
+          code: 'staleDuplicateGroup',
+          detail: 'The saved relationship no longer matches current facts.',
+        ),
+        createdAt: DateTime.utc(2026, 9, 1),
+        updatedAt: DateTime.utc(2026, 9, 1),
+      );
+      final repository = _Groups(const [], [group]);
+      final invalidation = _InvalidationResults();
+
+      final result = await RepairDuplicateCandidateGroup(
+        repository,
+        _Clock(DateTime.utc(2026, 9, 2)),
+        invalidateAnalysis: InvalidateAnalysis(
+          _InvalidationFindings(),
+          results: invalidation,
+        ),
+      )(group.id);
+
+      expect(result, isA<ApplicationSuccess<void>>());
+      expect(repository.groups, isEmpty);
+      expect(invalidation.markStaleCalls, 1);
+    },
+  );
+
+  test('stale groups cannot receive an ordinary duplicate decision', () async {
+    final group = DuplicateCandidateGroup(
+      id: 'stale-decision-group',
+      transactionIds: [TransactionId('a'), TransactionId('b')],
+      duplicateKey: DuplicateTransactionKey(
+        transactionDate: '2026-09-01',
+        amount: DecimalValue.parse('25'),
+        currency: 'USD',
+        direction: 'expense',
+      ),
+      status: DuplicateCandidateGroupStatus.unresolved,
+      integrityIssue: const DuplicateCandidateGroupIntegrityIssue(
+        code: 'staleDuplicateGroup',
+        detail: 'The saved relationship no longer matches current facts.',
+      ),
+      createdAt: DateTime.utc(2026, 9, 1),
+      updatedAt: DateTime.utc(2026, 9, 1),
+    );
+    final repository = _Groups(const [], [group]);
+
+    final result = await ResolveDuplicateCandidateGroup(
+      repository,
+      _Clock(DateTime.utc(2026, 9, 2)),
+    )(group.id, DuplicateCandidateGroupStatus.keepBoth);
+
+    expect(result, isA<ApplicationFailure<void>>());
+    expect(
+      repository.groups.single.integrityIssue?.code,
+      'staleDuplicateGroup',
+    );
+  });
+
+  test(
     'explicit scan preserves consolidated groups with unchanged membership',
     () async {
       final repository = _Groups([_match('a', '25'), _match('b', '25')]);

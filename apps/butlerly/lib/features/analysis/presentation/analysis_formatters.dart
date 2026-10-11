@@ -90,10 +90,13 @@ String analysisDimension(
   TransactionMasterData? masterData,
 ) {
   final raw = analysisRawDimension(metric);
-  if (metric.rule.grouping == RuleGrouping.category ||
-      metric.rule.grouping == RuleGrouping.subcategory) {
+  if (metric.rule.grouping == RuleGrouping.category) {
     return masterData?.categoryName(raw) ??
         context.l10n.text('unavailableCategory');
+  }
+  if (metric.rule.grouping == RuleGrouping.subcategory) {
+    return masterData?.subcategoryName(raw) ??
+        context.l10n.text('unavailableSubcategory');
   }
   if (metric.rule.grouping == RuleGrouping.merchant) {
     return masterData?.merchantName(raw) ??

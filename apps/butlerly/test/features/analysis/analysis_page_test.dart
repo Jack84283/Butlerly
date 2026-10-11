@@ -668,6 +668,64 @@ void main() {
     expect(requestedNavigation, isNot(contains('to=')));
   });
 
+  testWidgets('subcategory rows use the subcategory unavailable label', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1000, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-08-01',
+        endDate: '2026-08-31',
+        timeZoneId: 'America/Los_Angeles',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+    );
+    final rule = AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R022'),
+      version: RuleVersion('1.0.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.metric,
+      nameKey: 'analysis.rule.r022.name',
+      descriptionKey: 'analysis.rule.r022.description',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
+      grouping: RuleGrouping.subcategory,
+      surface: AnalysisSurface.spending,
+      baseline: RuleBaseline.none,
+      condition: const RuleCondition(operator: 'none'),
+      severity: RuleSeverity.info,
+      definitionHash: RuleDefinitionHash('a' * 64),
+    );
+    final metric = AnalysisMetric(
+      id: 'missing-subcategory-result',
+      rule: rule,
+      context: context,
+      value: DecimalValue.parse('100'),
+      dimension: 'subcategory-missing:value',
+      currency: CurrencyCode('USD'),
+      calculatedAt: DateTime.utc(2026, 8, 31),
+    );
+
+    await tester.pumpWidget(
+      app(
+        () async => ApplicationSuccess([
+          RuleExecutionResult(rule: rule, metric: metric),
+        ]),
+        loadMasterData: () async => const TransactionMasterData(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Unavailable subcategory'), findsOneWidget);
+    expect(find.text('Unavailable category'), findsNothing);
+  });
+
   testWidgets('View all categories appears only when more than five exist', (
     tester,
   ) async {

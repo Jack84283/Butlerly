@@ -66,6 +66,9 @@ class AppLocalizations {
       'repairDuplicateGroup': 'Repair duplicate group',
       'duplicateGroupRepairBody':
           'This saved duplicate group no longer has a complete set of members. Clear its derived review metadata so the remaining transactions can be reviewed safely.',
+      'repairStaleDuplicateGroup': 'Clear stale duplicate relationship',
+      'staleDuplicateGroupRepairBody':
+          'This duplicate relationship no longer matches the current transaction details. Clear the obsolete relationship so it will not be applied again. Your transactions and source evidence stay unchanged.',
       'statementNeedsReview': 'Needs review',
       'statementInProgress': 'In progress',
       'statementFailed': 'Failed',
@@ -902,6 +905,9 @@ class AppLocalizations {
       'duplicateEvidenceRepairBody': '已保存的账单匹配不完整。清除派生审核信息，并将来源行返回审核。',
       'repairDuplicateGroup': '修复重复交易组',
       'duplicateGroupRepairBody': '已保存的重复交易组成员不完整。清除派生审核信息，以便安全审核剩余交易。',
+      'repairStaleDuplicateGroup': '清除过时的重复关系',
+      'staleDuplicateGroupRepairBody':
+          '此重复关系已与当前交易详情不匹配。清除过时关系后，系统不会再次应用它。您的交易和来源证据不会改变。',
       'statementNeedsReview': '待审核',
       'statementFailed': '失败',
       'statementSkipped': '已跳过',
@@ -1631,6 +1637,9 @@ class AppLocalizations {
       'repairDuplicateGroup': 'Reparar grupo duplicado',
       'duplicateGroupRepairBody':
           'Este grupo de duplicados guardado ya no tiene todos sus miembros. Borra sus datos derivados para revisar las transacciones restantes de forma segura.',
+      'repairStaleDuplicateGroup': 'Borrar relación de duplicado obsoleta',
+      'staleDuplicateGroupRepairBody':
+          'Esta relación de duplicado ya no coincide con los detalles actuales de la transacción. Borra la relación obsoleta para que no se vuelva a aplicar. Tus transacciones y pruebas de origen no cambian.',
       'statementNeedsReview': 'Requieren revisión',
       'statementFailed': 'Fallidas',
       'statementSkipped': 'Omitidas',

@@ -41,119 +41,122 @@ CanonicalTransactionSelection selectCanonicalTransactions({
           value.status == TransactionStatus.archived)
         value.id: value,
   };
-  final eligible = source
-      .where(
-        (value) =>
-            (value.status == TransactionStatus.active ||
-                value.status == TransactionStatus.archived) &&
-            !receiptIds.contains(value.id),
-      )
-      .toList(growable: false);
+  final eligible =
+      source
+          .where(
+            (value) =>
+                (value.status == TransactionStatus.active ||
+                    value.status == TransactionStatus.archived) &&
+                !receiptIds.contains(value.id),
+          )
+          .toList()
+        ..sort((left, right) => left.id.value.compareTo(right.id.value));
   final byId = {for (final value in eligible) value.id: value};
-  final groupByTransaction = <TransactionId, DuplicateCandidateGroup>{};
-  for (final group in [
-    ...duplicateGroups,
-  ]..sort((left, right) => left.id.compareTo(right.id))) {
-    for (final id in group.transactionIds) {
-      groupByTransaction.putIfAbsent(id, () => group);
-    }
-  }
 
   final selectedIds = <TransactionId>{};
   final issuesByTransaction = <TransactionId, List<DataQualityIssue>>{};
   final globalIssues = <DataQualityIssue>[];
-  final processedGroups = <String>{};
-  for (final transaction in eligible) {
-    final group = groupByTransaction[transaction.id];
-    if (group == null) {
-      selectedIds.add(transaction.id);
-      continue;
-    }
-    if (!processedGroups.add(group.id)) continue;
-    final members = group.transactionIds
-        .map((id) => byId[id])
+  final groups = [...duplicateGroups]
+    ..sort((left, right) => left.id.compareTo(right.id));
+
+  // A stale relationship is historical evidence only. Apply every
+  // relationship whose saved key still matches its surviving transaction
+  // facts first, so a valid current group always wins over obsolete history.
+  final currentGroups = <DuplicateCandidateGroup>[];
+  final staleGroups = <DuplicateCandidateGroup>[];
+  for (final group in groups) {
+    final historicalMembers = group.transactionIds
+        .map((id) => historicalById[id])
         .whereType<Transaction>()
         .toList(growable: false);
-    if (members.isEmpty) {
-      final integrityIssue = group.integrityIssue;
-      if (integrityIssue != null) {
-        globalIssues.add(
-          DataQualityIssue(
-            code: integrityIssue.code,
-            detail: integrityIssue.detail,
-          ),
+    final hasStaleFacts =
+        group.integrityIssue?.code == 'staleDuplicateGroup' ||
+        historicalMembers.any(
+          (value) => !_matchesDuplicateKey(value, group.duplicateKey),
+        );
+    (hasStaleFacts ? staleGroups : currentGroups).add(group);
+  }
+
+  final currentOwnedIds = <TransactionId>{};
+  for (final component in _overlappingDuplicateGroupComponents(
+    currentGroups,
+    byId,
+  )) {
+    final memberIds = component.expand((group) => group.transactionIds).toSet();
+    currentOwnedIds.addAll(memberIds);
+    final members =
+        memberIds.map((id) => byId[id]).whereType<Transaction>().toList()
+          ..sort((left, right) => left.id.value.compareTo(right.id.value));
+    if (members.isEmpty) continue;
+
+    for (final group in component) {
+      _addGroupIntegrityIssue(group, members, issuesByTransaction);
+      final groupMembers = group.transactionIds
+          .map((id) => byId[id])
+          .whereType<Transaction>()
+          .toList(growable: false);
+      if (group.integrityIssue == null &&
+          groupMembers.isNotEmpty &&
+          (groupMembers.length < 2 ||
+              group.transactionIds.length < 2 ||
+              groupMembers.length != group.transactionIds.length)) {
+        _addIssue(
+          issuesByTransaction,
+          groupMembers.first.id,
+          'staleDuplicateGroup',
+          groupMembers.length < 2
+              ? 'A saved duplicate decision has fewer than two surviving members and needs repair.'
+              : 'A saved duplicate decision refers to a missing transaction and needs repair.',
+        );
+      }
+    }
+
+    if (component.length > 1) {
+      // Damaged/rebuilt indexes can contain overlapping current groups. Use a
+      // stable component-wide policy so the representative cannot depend on
+      // group or transaction iteration order.
+      final allKeepBoth = component.every(
+        (group) => group.status == DuplicateCandidateGroupStatus.keepBoth,
+      );
+      final keepBothIds = component
+          .where(
+            (group) => group.status == DuplicateCandidateGroupStatus.keepBoth,
+          )
+          .expand((group) => group.transactionIds)
+          .where(byId.containsKey)
+          .toSet();
+      selectedIds.addAll(keepBothIds);
+      if (keepBothIds.isEmpty) selectedIds.add(members.first.id);
+      if (!allKeepBoth) {
+        _addIssue(
+          issuesByTransaction,
+          members
+              .firstWhere(
+                (value) => selectedIds.contains(value.id),
+                orElse: () => members.first,
+              )
+              .id,
+          'overlappingDuplicateGroups',
+          'Overlapping duplicate decisions were combined and counted once using a stable representative until the groups are refreshed.',
         );
       }
       continue;
     }
-    members.sort((left, right) => left.id.value.compareTo(right.id.value));
-    final integrityIssue = group.integrityIssue;
-    if (integrityIssue != null) {
-      issuesByTransaction
-          .putIfAbsent(members.first.id, () => [])
-          .add(
-            DataQualityIssue(
-              code: integrityIssue.code,
-              detail: integrityIssue.detail,
-              transactionId: members.first.id,
-            ),
-          );
-    }
-    if (integrityIssue == null &&
-        (members.length < 2 || group.transactionIds.length < 2)) {
-      issuesByTransaction
-          .putIfAbsent(members.first.id, () => [])
-          .add(
-            DataQualityIssue(
-              code: 'staleDuplicateGroup',
-              detail:
-                  'A saved duplicate decision has fewer than two surviving members and needs repair.',
-              transactionId: members.first.id,
-            ),
-          );
-    }
-    final hasStaleFacts = members.any(
-      (value) => !_matchesDuplicateKey(value, group.duplicateKey),
-    );
-    if (hasStaleFacts) {
-      // A later edit invalidates every saved decision, including Keep Both.
-      // The old relationship must not suppress a member that is now a
-      // financially distinct record. Keep the relationship visible as a
-      // quality issue, but count every surviving member using current facts.
-      selectedIds.addAll(members.map((value) => value.id));
-      issuesByTransaction
-          .putIfAbsent(members.first.id, () => [])
-          .add(
-            DataQualityIssue(
-              code: 'staleDuplicateGroup',
-              detail:
-                  'A saved duplicate decision no longer matches current transaction facts; all surviving members are counted until the relationship is refreshed.',
-              transactionId: members.first.id,
-            ),
-          );
-      continue;
-    }
-    // A current duplicate relationship supersedes any stale relationship
-    // that still contains one of the same records. Remove the members before
-    // applying the current decision so an edited record is not selected once
-    // by stale history and again by the current group.
-    selectedIds.removeAll(members.map((value) => value.id));
+
+    final group = component.single;
     if (group.status == DuplicateCandidateGroupStatus.keepBoth) {
       selectedIds.addAll(members.map((value) => value.id));
       if (members.length != group.transactionIds.length) {
-        issuesByTransaction
-            .putIfAbsent(members.first.id, () => [])
-            .add(
-              DataQualityIssue(
-                code: 'staleDuplicateGroup',
-                detail:
-                    'A saved duplicate group refers to a missing transaction.',
-                transactionId: members.first.id,
-              ),
-            );
+        _addIssue(
+          issuesByTransaction,
+          members.first.id,
+          'staleDuplicateGroup',
+          'A saved duplicate group refers to a missing transaction.',
+        );
       }
       continue;
     }
+
     final selected = group.selectedTransactionId == null
         ? null
         : members
@@ -174,29 +177,67 @@ CanonicalTransactionSelection selectCanonicalTransactions({
         : hasMissingMembers
         ? 'staleDuplicateGroup'
         : null;
-    if (issueCode != null &&
+    if (group.integrityIssue == null &&
+        issueCode != null &&
         !hasInsufficientMembers &&
         (members.length > 1 || hasMissingMembers)) {
-      issuesByTransaction
-          .putIfAbsent(representative.id, () => [])
-          .add(
-            DataQualityIssue(
-              code: issueCode,
-              detail: group.status == DuplicateCandidateGroupStatus.unresolved
-                  ? 'Duplicate candidates are counted once until resolved.'
-                  : group.status ==
-                            DuplicateCandidateGroupStatus.consolidated &&
-                        group.selectedTransactionId == null
-                  ? 'A consolidated duplicate group has no selected transaction; a stable representative is used until it is repaired.'
-                  : 'Saved duplicate selection is unavailable; a stable representative is used.',
-              transactionId: representative.id,
-            ),
-          );
+      _addIssue(
+        issuesByTransaction,
+        representative.id,
+        issueCode,
+        group.status == DuplicateCandidateGroupStatus.unresolved
+            ? 'Duplicate candidates are counted once until resolved.'
+            : group.status == DuplicateCandidateGroupStatus.consolidated &&
+                  group.selectedTransactionId == null
+            ? 'A consolidated duplicate group has no selected transaction; a stable representative is used until it is repaired.'
+            : 'Saved duplicate selection is unavailable; a stable representative is used.',
+      );
     }
   }
 
-  for (final group in duplicateGroups) {
-    if (processedGroups.contains(group.id)) continue;
+  for (final group in staleGroups) {
+    final members =
+        group.transactionIds
+            .map((id) => byId[id])
+            .whereType<Transaction>()
+            .toList()
+          ..sort((left, right) => left.id.value.compareTo(right.id.value));
+    if (members.isEmpty) continue;
+    selectedIds.addAll(
+      members
+          .map((value) => value.id)
+          .where((id) => !currentOwnedIds.contains(id)),
+    );
+    final issueTarget = members
+        .where((value) => selectedIds.contains(value.id))
+        .firstOrNull;
+    final detail =
+        group.integrityIssue?.detail ??
+        'A saved duplicate decision no longer matches current transaction facts; financially distinct members are counted independently until the relationship is repaired.';
+    if (issueTarget == null) {
+      globalIssues.add(
+        DataQualityIssue(code: 'staleDuplicateGroup', detail: detail),
+      );
+    } else {
+      _addIssue(
+        issuesByTransaction,
+        issueTarget.id,
+        'staleDuplicateGroup',
+        detail,
+      );
+    }
+  }
+
+  // Transactions that do not belong to a currently valid duplicate component
+  // are independent historical records, including members retained only by a
+  // stale relationship.
+  selectedIds.addAll(
+    eligible
+        .map((value) => value.id)
+        .where((id) => !currentOwnedIds.contains(id)),
+  );
+
+  for (final group in groups) {
     // A pending statement row is not a canonical transaction yet. It remains
     // visible in Review through the statement reference and must not create a
     // global historical-data issue before the user explicitly resolves it.
@@ -206,9 +247,10 @@ CanonicalTransactionSelection selectCanonicalTransactions({
     final hasHistoricalMember = group.transactionIds.any(
       historicalById.containsKey,
     );
-    if (group.integrityIssue != null ||
-        group.transactionIds.isEmpty ||
-        !hasHistoricalMember) {
+    final hasEligibleMember = group.transactionIds.any(byId.containsKey);
+    if (group.transactionIds.isEmpty ||
+        !hasHistoricalMember ||
+        !hasEligibleMember) {
       final integrityIssue = group.integrityIssue;
       globalIssues.add(
         DataQualityIssue(
@@ -221,60 +263,22 @@ CanonicalTransactionSelection selectCanonicalTransactions({
     }
   }
 
-  // A damaged or repeatedly rebuilt duplicate index can contain overlapping
-  // groups. Treat connected non-Keep-Both groups as one ambiguous component so
-  // a transaction cannot be selected once per overlapping decision.
-  for (final component in _overlappingDuplicateGroupComponents(
-    duplicateGroups,
-    byId,
-  )) {
-    if (component.length < 2 ||
-        component.every(
-          (group) => group.status == DuplicateCandidateGroupStatus.keepBoth,
-        )) {
-      continue;
-    }
-    final memberIds = component.expand((group) => group.transactionIds).toSet();
-    final members =
-        memberIds
-            .map((id) => byId[id])
-            .whereType<Transaction>()
-            .toList(growable: false)
-          ..sort((left, right) => left.id.value.compareTo(right.id.value));
-    if (members.length < 2) continue;
-    final keepBothIds = component
-        .where(
-          (group) => group.status == DuplicateCandidateGroupStatus.keepBoth,
-        )
-        .expand((group) => group.transactionIds)
-        .where(byId.containsKey)
-        .toSet();
-    selectedIds.removeAll(memberIds);
-    final representative = members.firstWhere(
-      (value) => !keepBothIds.contains(value.id),
-      orElse: () => members.first,
-    );
-    selectedIds.addAll(keepBothIds);
-    if (keepBothIds.isEmpty) selectedIds.add(representative.id);
-    issuesByTransaction
-        .putIfAbsent(representative.id, () => [])
-        .add(
-          DataQualityIssue(
-            code: 'overlappingDuplicateGroups',
-            detail:
-                'Overlapping duplicate decisions were combined and counted once using a stable representative until the groups are refreshed.',
-            transactionId: representative.id,
-          ),
-        );
-  }
-
   final selected = eligible
       .where((value) => selectedIds.contains(value.id))
       .toList(growable: false);
-  final qualityIssues = [
+  final qualityIssues = <DataQualityIssue>[
     ...globalIssues,
     ...issuesByTransaction.values.expand((value) => value),
   ];
+  qualityIssues.sort((left, right) {
+    final transactionCompare = (left.transactionId?.value ?? '').compareTo(
+      right.transactionId?.value ?? '',
+    );
+    if (transactionCompare != 0) return transactionCompare;
+    final codeCompare = left.code.compareTo(right.code);
+    if (codeCompare != 0) return codeCompare;
+    return left.detail.compareTo(right.detail);
+  });
   return CanonicalTransactionSelection(
     transactions: selected,
     qualityIssues: qualityIssues,
@@ -283,6 +287,31 @@ CanonicalTransactionSelection selectCanonicalTransactions({
         entry.key: List.unmodifiable(entry.value),
     },
   );
+}
+
+void _addIssue(
+  Map<TransactionId, List<DataQualityIssue>> issuesByTransaction,
+  TransactionId transactionId,
+  String code,
+  String detail,
+) {
+  final issues = issuesByTransaction.putIfAbsent(transactionId, () => []);
+  if (issues.any((issue) => issue.code == code && issue.detail == detail)) {
+    return;
+  }
+  issues.add(
+    DataQualityIssue(code: code, detail: detail, transactionId: transactionId),
+  );
+}
+
+void _addGroupIntegrityIssue(
+  DuplicateCandidateGroup group,
+  List<Transaction> members,
+  Map<TransactionId, List<DataQualityIssue>> issuesByTransaction,
+) {
+  final issue = group.integrityIssue;
+  if (issue == null || members.isEmpty) return;
+  _addIssue(issuesByTransaction, members.first.id, issue.code, issue.detail);
 }
 
 bool _matchesDuplicateKey(Transaction value, DuplicateTransactionKey key) =>
@@ -320,17 +349,19 @@ List<List<DuplicateCandidateGroup>> _overlappingDuplicateGroupComponents(
   for (var index = 0; index < sorted.length; index++) {
     if (!visited.add(index)) continue;
     final componentIndexes = <int>[index];
-    final memberIds = <TransactionId>{...sorted[index].transactionIds};
+    final memberIds = _eligibleMemberIds(sorted[index], currentTransactions);
     for (var cursor = 0; cursor < componentIndexes.length; cursor++) {
       for (var candidate = 0; candidate < sorted.length; candidate++) {
         if (visited.contains(candidate)) continue;
-        final overlaps = sorted[candidate].transactionIds.any(
-          memberIds.contains,
+        final candidateMemberIds = _eligibleMemberIds(
+          sorted[candidate],
+          currentTransactions,
         );
+        final overlaps = candidateMemberIds.any(memberIds.contains);
         if (!overlaps) continue;
         visited.add(candidate);
         componentIndexes.add(candidate);
-        memberIds.addAll(sorted[candidate].transactionIds);
+        memberIds.addAll(candidateMemberIds);
       }
     }
     components.add(
@@ -339,3 +370,11 @@ List<List<DuplicateCandidateGroup>> _overlappingDuplicateGroupComponents(
   }
   return components;
 }
+
+Set<TransactionId> _eligibleMemberIds(
+  DuplicateCandidateGroup group,
+  Map<TransactionId, Transaction> currentTransactions,
+) => {
+  for (final id in group.transactionIds)
+    if (currentTransactions.containsKey(id)) id,
+};
