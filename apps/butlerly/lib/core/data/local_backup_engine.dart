@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:butlerly/core/data/backup_container_format.dart';
+import 'package:butlerly/core/data/duplicate_group_backup_policy.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly_database/butlerly_database.dart';
@@ -253,6 +254,15 @@ final class LocalBackupManager {
       tablePayload,
       package.manifest['schemaVersion']! as int,
     );
+    final durableUnresolvedDuplicateGroupIds =
+        DuplicateGroupBackupPolicy.durableUnresolvedGroupIds(
+          groups: _tableRows(tablePayload, 'duplicate_candidate_groups'),
+          memberships: _tableRows(
+            tablePayload,
+            'duplicate_candidate_group_transactions',
+          ),
+          transactions: _tableRows(tablePayload, 'transactions'),
+        );
     final prepared = await _prepareEvidence(package, mode: mode);
     _applyEvidenceRemaps(tablePayload, prepared.pathRemaps);
 
@@ -284,6 +294,12 @@ final class LocalBackupManager {
         'evidenceActivated',
       );
       await database.database.transaction((tx) async {
+        final durableGroupIdsToPreserve = mode == LocalRestoreMode.merge
+            ? {
+                ...durableUnresolvedDuplicateGroupIds,
+                ...await _durableUnresolvedDuplicateGroupIdsFromDatabase(tx),
+              }
+            : durableUnresolvedDuplicateGroupIds;
         await _writeJournal(
           journal,
           operationId,
@@ -299,7 +315,10 @@ final class LocalBackupManager {
           // Generated workflow state is not authoritative. Purge it first, but
           // keep the purge in this transaction so any later failure rolls it
           // back together with the restore.
-          await _purgeGeneratedWorkflowState(tx);
+          await _purgeGeneratedWorkflowState(
+            tx,
+            preserveDuplicateGroupIds: durableGroupIdsToPreserve,
+          );
           protectedTransactions = await _protectedTransactionIds(
             tx,
             tablePayload,
@@ -383,7 +402,10 @@ final class LocalBackupManager {
         // Older format-v2 packages may contain generated workflow rows. Purge
         // again after restore_context is gone so trigger preservation cannot
         // keep generated rows, while durable decisions remain intact.
-        await _purgeGeneratedWorkflowState(tx);
+        await _purgeGeneratedWorkflowState(
+          tx,
+          preserveDuplicateGroupIds: durableGroupIdsToPreserve,
+        );
 
         for (final table in _derivedTables) {
           await tx.delete(table);
@@ -1138,7 +1160,62 @@ final class LocalBackupManager {
     };
   }
 
-  Future<void> _purgeGeneratedWorkflowState(Transaction tx) async {
+  List<Map<String, Object?>> _tableRows(
+    Map<String, Object?> tablePayload,
+    String table,
+  ) {
+    return (tablePayload[table] as List? ?? const <Object?>[])
+        .cast<Map>()
+        .map((row) => row.cast<String, Object?>())
+        .toList(growable: false);
+  }
+
+  Future<Set<String>> _durableUnresolvedDuplicateGroupIdsFromDatabase(
+    DatabaseExecutor executor,
+  ) async {
+    final groups = await executor.query(
+      'duplicate_candidate_groups',
+      where: "status = 'unresolved'",
+    );
+    if (groups.isEmpty) return const <String>{};
+    return DuplicateGroupBackupPolicy.durableUnresolvedGroupIds(
+      groups: groups,
+      memberships: await executor.query(
+        'duplicate_candidate_group_transactions',
+      ),
+      transactions: await executor.query(
+        'transactions',
+        columns: [
+          'id',
+          'transaction_date',
+          'amount_coefficient',
+          'amount_scale',
+          'currency',
+          'direction',
+          'status',
+        ],
+      ),
+    );
+  }
+
+  Future<void> _purgeGeneratedWorkflowState(
+    Transaction tx, {
+    Set<String> preserveDuplicateGroupIds = const <String>{},
+  }) async {
+    final duplicateGroupCondition = preserveDuplicateGroupIds.isEmpty
+        ? (
+            where:
+                "status = 'unresolved' AND "
+                "(statement_rows IS NULL OR statement_rows = '[]')",
+            args: <Object?>[],
+          )
+        : (
+            where:
+                "status = 'unresolved' AND "
+                "(statement_rows IS NULL OR statement_rows = '[]') AND "
+                "id NOT IN (${List.filled(preserveDuplicateGroupIds.length, '?').join(', ')})",
+            args: preserveDuplicateGroupIds.toList(growable: false),
+          );
     await tx.delete('review_issues', where: 'closed_at IS NULL');
     await tx.delete('suggestions', where: 'decided_at IS NULL');
     await tx.delete('reconciliation_candidates', where: "status = 'proposed'");
@@ -1146,15 +1223,14 @@ final class LocalBackupManager {
       'DELETE FROM duplicate_candidate_group_transactions '
       'WHERE group_id IN ('
       "SELECT id FROM duplicate_candidate_groups "
-      "WHERE status = 'unresolved' AND "
-      "(statement_rows IS NULL OR statement_rows = '[]')"
+      'WHERE ${duplicateGroupCondition.where}'
       ')',
+      duplicateGroupCondition.args,
     );
     await tx.delete(
       'duplicate_candidate_groups',
-      where:
-          "status = 'unresolved' AND "
-          "(statement_rows IS NULL OR statement_rows = '[]')",
+      where: duplicateGroupCondition.where,
+      whereArgs: duplicateGroupCondition.args,
     );
     await tx.delete(
       'entity_tombstones',

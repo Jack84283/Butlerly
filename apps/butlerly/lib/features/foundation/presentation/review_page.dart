@@ -564,6 +564,7 @@ class _ReviewPageState extends State<ReviewPage> {
                         group: group,
                         finance: _finance!,
                         masterData: _masterData,
+                        onRepair: _repairStatementDuplicateGroup,
                         onKeepBoth: () => _resolveDuplicate(
                           group,
                           DuplicateCandidateGroupStatus.keepBoth,
@@ -1239,6 +1240,7 @@ class _DuplicateGroupCard extends StatefulWidget {
     required this.group,
     required this.finance,
     required this.masterData,
+    required this.onRepair,
     required this.onKeepBoth,
     required this.onConsolidate,
   });
@@ -1246,6 +1248,7 @@ class _DuplicateGroupCard extends StatefulWidget {
   final DuplicateCandidateGroup group;
   final FinanceServices finance;
   final Future<TransactionMasterDataSnapshot> masterData;
+  final Future<void> Function(DuplicateCandidateGroup group) onRepair;
   final VoidCallback onKeepBoth;
   final ValueChanged<TransactionId> onConsolidate;
 
@@ -1291,8 +1294,22 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
   _loadCandidateData() async =>
       (await _loadTransactions(), await widget.masterData);
 
+  bool get _needsMetadataRepair => switch (widget.group.integrityIssue?.code) {
+    'incompleteDuplicateGroup' || 'malformedDuplicateGroup' => true,
+    _ => false,
+  };
+
+  Widget _repairState(BuildContext context) => ButlerlyErrorState(
+    title: context.l10n.text('possibleDuplicateGroup'),
+    message: context.l10n.text('duplicateGroupRepairBody'),
+    preserved: context.l10n.text('dataPreserved'),
+    actionLabel: context.l10n.text('repairDuplicateGroup'),
+    onAction: () => widget.onRepair(widget.group),
+  );
+
   @override
   Widget build(BuildContext context) {
+    if (_needsMetadataRepair) return _repairState(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: ButlerlySpacing.small),
       child: ButlerlyCard(

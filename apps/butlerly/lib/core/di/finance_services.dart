@@ -244,6 +244,7 @@ final class FinanceServices {
            : ScanExistingTransactionsForDuplicates(
                duplicateGroups,
                const SystemApplicationClock(),
+               transactions: transactions,
                invalidateAnalysis: analysisInvalidation,
              ),
        rebuildDuplicateGroupsAfterRestore = duplicateGroups == null
@@ -251,6 +252,7 @@ final class FinanceServices {
            : RebuildDuplicateGroupsAfterRestore(
                duplicateGroups,
                const SystemApplicationClock(),
+               transactions: transactions,
                invalidateAnalysis: analysisInvalidation,
              ),
        listDuplicateCandidateGroups = duplicateGroups == null

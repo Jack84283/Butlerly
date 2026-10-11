@@ -152,6 +152,35 @@ void main() {
     },
   );
 
+  test('repairs incomplete transaction-only duplicate metadata', () async {
+    final group = DuplicateCandidateGroup(
+      id: 'incomplete-transaction-group',
+      transactionIds: [TransactionId('remaining-transaction')],
+      duplicateKey: DuplicateTransactionKey(
+        transactionDate: '2026-09-01',
+        amount: DecimalValue.parse('25'),
+        currency: 'USD',
+        direction: 'expense',
+      ),
+      status: DuplicateCandidateGroupStatus.unresolved,
+      integrityIssue: const DuplicateCandidateGroupIntegrityIssue(
+        code: 'incompleteDuplicateGroup',
+        detail: 'A deleted member left an incomplete saved group.',
+      ),
+      createdAt: DateTime.utc(2026, 9, 1),
+      updatedAt: DateTime.utc(2026, 9, 1),
+    );
+    final repository = _Groups(const [], [group]);
+
+    final result = await RepairDuplicateCandidateGroup(
+      repository,
+      _Clock(DateTime.utc(2026, 9, 2)),
+    )(group.id);
+
+    expect(result, isA<ApplicationSuccess<void>>());
+    expect(repository.groups, isEmpty);
+  });
+
   test(
     'explicit scan preserves consolidated groups with unchanged membership',
     () async {
@@ -414,6 +443,39 @@ void main() {
       );
     },
   );
+
+  test('rescan preserves integrity-marked stale groups for repair', () async {
+    final repository = _Groups(const [], [
+      DuplicateCandidateGroup(
+        id: 'stale-repair-group',
+        transactionIds: [TransactionId('a'), TransactionId('b')],
+        duplicateKey: DuplicateTransactionKey(
+          transactionDate: '2026-01-01',
+          amount: DecimalValue.parse('25'),
+          currency: 'USD',
+          direction: 'expense',
+        ),
+        status: DuplicateCandidateGroupStatus.unresolved,
+        integrityIssue: DuplicateCandidateGroupIntegrityIssue(
+          code: 'staleDuplicateGroup',
+          detail: 'The saved relationship no longer matches current facts.',
+        ),
+        createdAt: DateTime.utc(2026, 1, 1),
+        updatedAt: DateTime.utc(2026, 1, 1),
+      ),
+    ]);
+
+    await ScanExistingTransactionsForDuplicates(
+      repository,
+      _Clock(DateTime.utc(2026, 1, 2)),
+    )();
+
+    expect(repository.groups, hasLength(1));
+    expect(
+      repository.groups.single.integrityIssue?.code,
+      'staleDuplicateGroup',
+    );
+  });
 
   test(
     'consolidated resolution requires and remembers explicit selection',

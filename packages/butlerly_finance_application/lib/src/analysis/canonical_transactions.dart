@@ -22,11 +22,13 @@ final class CanonicalTransactionSelection {
 /// * Keep Both counts every member while the saved key remains valid;
 /// * Consolidated counts the selected member;
 /// * unresolved groups count one deterministic representative and expose an
-///   explainable quality issue until the user decides.
+///   explainable quality issue until the user decides;
+/// * stale groups no longer describe the same economic relationship, so every
+///   surviving member is counted using its current facts while the stale
+///   relationship remains a visible quality issue until repaired.
 ///
-/// Missing/deleted records are naturally absent from [source]. Invalid or
-/// stale consolidation selections fall back to the stable lowest transaction
-/// ID instead of double-counting a group.
+/// Missing/deleted records are naturally absent from [source]. Invalid
+/// consolidation selections fall back to the stable lowest transaction ID.
 CanonicalTransactionSelection selectCanonicalTransactions({
   required List<Transaction> source,
   List<ReconciliationLink> links = const [],
@@ -115,21 +117,27 @@ CanonicalTransactionSelection selectCanonicalTransactions({
     );
     if (hasStaleFacts) {
       // A later edit invalidates every saved decision, including Keep Both.
-      // Until the user repairs the relationship, use one deterministic
-      // representative so the stale metadata cannot double-count history.
-      selectedIds.add(members.first.id);
+      // The old relationship must not suppress a member that is now a
+      // financially distinct record. Keep the relationship visible as a
+      // quality issue, but count every surviving member using current facts.
+      selectedIds.addAll(members.map((value) => value.id));
       issuesByTransaction
           .putIfAbsent(members.first.id, () => [])
           .add(
             DataQualityIssue(
               code: 'staleDuplicateGroup',
               detail:
-                  'A saved duplicate decision no longer matches current transaction facts; a stable representative is counted until the decision is refreshed.',
+                  'A saved duplicate decision no longer matches current transaction facts; all surviving members are counted until the relationship is refreshed.',
               transactionId: members.first.id,
             ),
           );
       continue;
     }
+    // A current duplicate relationship supersedes any stale relationship
+    // that still contains one of the same records. Remove the members before
+    // applying the current decision so an edited record is not selected once
+    // by stale history and again by the current group.
+    selectedIds.removeAll(members.map((value) => value.id));
     if (group.status == DuplicateCandidateGroupStatus.keepBoth) {
       selectedIds.addAll(members.map((value) => value.id));
       if (members.length != group.transactionIds.length) {
@@ -218,6 +226,7 @@ CanonicalTransactionSelection selectCanonicalTransactions({
   // a transaction cannot be selected once per overlapping decision.
   for (final component in _overlappingDuplicateGroupComponents(
     duplicateGroups,
+    byId,
   )) {
     if (component.length < 2 ||
         component.every(
@@ -285,9 +294,27 @@ bool _matchesDuplicateKey(Transaction value, DuplicateTransactionKey key) =>
 
 List<List<DuplicateCandidateGroup>> _overlappingDuplicateGroupComponents(
   List<DuplicateCandidateGroup> groups,
+  Map<TransactionId, Transaction> currentTransactions,
 ) {
-  final sorted = [...groups]
-    ..sort((left, right) => left.id.compareTo(right.id));
+  // A stale group is evidence that an old relationship needs repair, not a
+  // current duplicate edge. Excluding it here prevents an edited member from
+  // being collapsed again by an unrelated, newly discovered duplicate group.
+  final sorted =
+      groups
+          .where(
+            (group) =>
+                group.integrityIssue?.code != 'staleDuplicateGroup' &&
+                !group.transactionIds.any(
+                  (id) =>
+                      currentTransactions[id] != null &&
+                      !_matchesDuplicateKey(
+                        currentTransactions[id]!,
+                        group.duplicateKey,
+                      ),
+                ),
+          )
+          .toList()
+        ..sort((left, right) => left.id.compareTo(right.id));
   final visited = <int>{};
   final components = <List<DuplicateCandidateGroup>>[];
   for (var index = 0; index < sorted.length; index++) {

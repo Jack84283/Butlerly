@@ -182,13 +182,30 @@ final class RecurringPatternDetector {
         0.0,
         1.0,
       );
+      // FIN-084–089 require a reviewable candidate before any optional
+      // prediction. A prediction additionally needs three historical records,
+      // one recognized cadence with every interval inside that cadence's
+      // documented calendar-jitter tolerance, and stable amounts. These
+      // evidence gates are deliberately explicit instead of an arbitrary
+      // confidence cutoff: confidence remains an explanation of the evidence,
+      // while weak or irregular evidence has no forecast date.
+      final cadenceConsistent =
+          cadence != RecurringCadence.irregular &&
+          intervals.every(
+            (interval) =>
+                (interval - _nominalInterval(cadence)).abs() <=
+                _cadenceTolerance(cadence),
+          );
+      final predictionEligible = cadenceConsistent && amountStable;
       final lastDate = dates.last;
       final intervalDays = averageInterval.round().clamp(1, 366);
-      final expected = switch (cadence) {
-        RecurringCadence.monthly => _addCalendarMonths(lastDate, 1),
-        RecurringCadence.quarterly => _addCalendarMonths(lastDate, 3),
-        _ => lastDate.add(Duration(days: intervalDays)),
-      };
+      final expected = predictionEligible
+          ? switch (cadence) {
+              RecurringCadence.monthly => _addCalendarMonths(lastDate, 1),
+              RecurringCadence.quarterly => _addCalendarMonths(lastDate, 3),
+              _ => lastDate.add(Duration(days: intervalDays)),
+            }
+          : null;
       final first = values.first;
       final patternTransactionIds = values.map((value) => value.id).toSet();
       patterns.add(
@@ -213,6 +230,12 @@ final class RecurringPatternDetector {
               'amounts remain within 10 percent'
             else
               'amount range varies beyond 10 percent',
+            if (!predictionEligible)
+              cadence == RecurringCadence.irregular
+                  ? 'next occurrence unavailable: cadence is irregular'
+                  : !cadenceConsistent
+                  ? 'next occurrence unavailable: intervals are inconsistent'
+                  : 'next occurrence unavailable: amounts are inconsistent',
           ],
           status: RecurringPatternStatus.detected,
           qualityIssues: qualityIssues
@@ -227,7 +250,7 @@ final class RecurringPatternDetector {
           categoryId: first.categoryId,
           paymentSourceId: first.paymentSourceId,
           latestTransactionDate: _date(lastDate),
-          expectedNextDate: _date(expected),
+          expectedNextDate: expected == null ? null : _date(expected),
         ),
       );
     }
@@ -260,6 +283,25 @@ final class RecurringPatternDetector {
     if ((averageInterval - 91).abs() <= 8) return RecurringCadence.quarterly;
     return RecurringCadence.irregular;
   }
+
+  int _nominalInterval(RecurringCadence cadence) => switch (cadence) {
+    RecurringCadence.weekly => 7,
+    RecurringCadence.biweekly => 14,
+    RecurringCadence.monthly => 30,
+    RecurringCadence.quarterly => 91,
+    RecurringCadence.irregular => 0,
+  };
+
+  int _cadenceTolerance(RecurringCadence cadence) => switch (cadence) {
+    // These match the existing cadence recognition windows and allow normal
+    // calendar placement jitter without turning irregular activity into a
+    // prediction.
+    RecurringCadence.weekly => 2,
+    RecurringCadence.biweekly => 3,
+    RecurringCadence.monthly => 4,
+    RecurringCadence.quarterly => 8,
+    RecurringCadence.irregular => 0,
+  };
 
   DateTime _addCalendarMonths(DateTime value, int months) {
     final targetMonth = value.month + months;

@@ -63,6 +63,9 @@ class AppLocalizations {
       'repairDuplicateEvidence': 'Repair duplicate review',
       'duplicateEvidenceRepairBody':
           'The saved statement match is incomplete. Clear its derived review metadata and return the source row to review.',
+      'repairDuplicateGroup': 'Repair duplicate group',
+      'duplicateGroupRepairBody':
+          'This saved duplicate group no longer has a complete set of members. Clear its derived review metadata so the remaining transactions can be reviewed safely.',
       'statementNeedsReview': 'Needs review',
       'statementInProgress': 'In progress',
       'statementFailed': 'Failed',
@@ -659,6 +662,8 @@ class AppLocalizations {
       'recurringCadenceIrregular': 'Irregular',
       'recurringExpectedAmount': 'Expected amount',
       'recurringNextOccurrence': 'Next occurrence',
+      'recurringNextOccurrenceUnavailable':
+          'Unavailable — review evidence first',
       'statementInvalidRow':
           'This statement row is missing required financial values.',
       'statementDuplicateCandidate':
@@ -895,6 +900,8 @@ class AppLocalizations {
       'statementPaymentSourceRequired': '创建新交易前请先分配付款来源。',
       'repairDuplicateEvidence': '修复重复审核',
       'duplicateEvidenceRepairBody': '已保存的账单匹配不完整。清除派生审核信息，并将来源行返回审核。',
+      'repairDuplicateGroup': '修复重复交易组',
+      'duplicateGroupRepairBody': '已保存的重复交易组成员不完整。清除派生审核信息，以便安全审核剩余交易。',
       'statementNeedsReview': '待审核',
       'statementFailed': '失败',
       'statementSkipped': '已跳过',
@@ -1424,6 +1431,7 @@ class AppLocalizations {
       'recurringCadenceIrregular': '不规则',
       'recurringExpectedAmount': '预计金额',
       'recurringNextOccurrence': '下次发生',
+      'recurringNextOccurrenceUnavailable': '不可用 — 请先审核证据',
       'statementInvalidRow': '此对账单行缺少必要的财务值。',
       'statementDuplicateCandidate': '此对账单行可能与其他行或交易重复。',
       'statementDuplicateCheckUnavailable': '重复检查暂不可用；导入前请检查此行。',
@@ -1620,6 +1628,9 @@ class AppLocalizations {
       'repairDuplicateEvidence': 'Reparar revisión de duplicados',
       'duplicateEvidenceRepairBody':
           'La coincidencia guardada del extracto está incompleta. Borra sus datos derivados y devuelve la fila a revisión.',
+      'repairDuplicateGroup': 'Reparar grupo duplicado',
+      'duplicateGroupRepairBody':
+          'Este grupo de duplicados guardado ya no tiene todos sus miembros. Borra sus datos derivados para revisar las transacciones restantes de forma segura.',
       'statementNeedsReview': 'Requieren revisión',
       'statementFailed': 'Fallidas',
       'statementSkipped': 'Omitidas',
@@ -2230,6 +2241,8 @@ class AppLocalizations {
       'recurringCadenceIrregular': 'Irregular',
       'recurringExpectedAmount': 'Importe previsto',
       'recurringNextOccurrence': 'Próxima ocurrencia',
+      'recurringNextOccurrenceUnavailable':
+          'No disponible — revisa la evidencia',
       'statementInvalidRow':
           'A esta fila del estado le faltan valores financieros obligatorios.',
       'statementDuplicateCandidate':

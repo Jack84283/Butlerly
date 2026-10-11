@@ -88,6 +88,7 @@ final class RecurringPattern {
       RecurringPatternDecisionStatus.corrected =>
         RecurringPatternStatus.corrected,
     },
+    preserveUnavailableNextOccurrence: expectedNextDate == null,
   );
 
   RecurringPattern _copy({
@@ -95,6 +96,7 @@ final class RecurringPattern {
     int? intervalDays,
     DecimalValue? expectedAmount,
     RecurringPatternStatus? status,
+    bool preserveUnavailableNextOccurrence = false,
   }) => RecurringPattern(
     id: id,
     patternKey: patternKey,
@@ -115,12 +117,14 @@ final class RecurringPattern {
     categoryId: categoryId,
     paymentSourceId: paymentSourceId,
     latestTransactionDate: latestTransactionDate,
-    expectedNextDate: _nextOccurrenceDate(
-      latestTransactionDate: latestTransactionDate,
-      cadence: cadence ?? this.cadence,
-      intervalDays: intervalDays ?? this.intervalDays,
-      fallback: expectedNextDate,
-    ),
+    expectedNextDate: preserveUnavailableNextOccurrence
+        ? null
+        : _nextOccurrenceDate(
+            latestTransactionDate: latestTransactionDate,
+            cadence: cadence ?? this.cadence,
+            intervalDays: intervalDays ?? this.intervalDays,
+            fallback: expectedNextDate,
+          ),
   );
 }
 
@@ -135,9 +139,10 @@ String? _nextOccurrenceDate({
   final next = switch (cadence) {
     RecurringCadence.monthly => _addCalendarMonths(latest, 1),
     RecurringCadence.quarterly => _addCalendarMonths(latest, 3),
+    RecurringCadence.irregular => null,
     _ => latest.add(Duration(days: intervalDays)),
   };
-  return next.toIso8601String().substring(0, 10);
+  return next?.toIso8601String().substring(0, 10);
 }
 
 DateTime _addCalendarMonths(DateTime value, int months) {

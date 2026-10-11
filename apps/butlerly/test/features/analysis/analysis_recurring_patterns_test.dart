@@ -85,11 +85,48 @@ void main() {
 
     expect(find.text('Merchant 6'), findsOneWidget);
   });
+
+  testWidgets('labels an unsupported next occurrence as unavailable', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: AnalysisRecurringPatterns(
+            patterns: Future.value(
+              ApplicationSuccess<List<RecurringPattern>>([
+                _patternFor(
+                  7,
+                  latestTransactionDate: '2026-03-01',
+                  expectedNextDate: null,
+                ),
+              ]),
+            ),
+            masterData: null,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Next occurrence: Unavailable'), findsOneWidget);
+  });
 }
 
 final _pattern = _patternFor(1);
 
-RecurringPattern _patternFor(int index) => RecurringPattern(
+RecurringPattern _patternFor(
+  int index, {
+  String? latestTransactionDate,
+  String? expectedNextDate = '2026-04-01',
+}) => RecurringPattern(
   id: 'recurring-$index',
   patternKey: 'merchant-$index|expense|USD||',
   transactionIds: [TransactionId('transaction-1')],
@@ -104,5 +141,6 @@ RecurringPattern _patternFor(int index) => RecurringPattern(
   evidence: const ['3 canonical transactions'],
   status: RecurringPatternStatus.detected,
   counterparty: 'Merchant $index',
-  expectedNextDate: '2026-04-01',
+  latestTransactionDate: latestTransactionDate,
+  expectedNextDate: expectedNextDate,
 );

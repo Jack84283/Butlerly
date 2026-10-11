@@ -97,11 +97,10 @@ class AnalysisRecurringPatterns extends StatelessWidget {
                 '${context.l10n.text('recurringExpectedAmount')}: '
                 '${localizedCompactMoney(context, pattern.expectedAmount.toString(), pattern.currency.value)}',
               ),
-              if (pattern.expectedNextDate != null)
-                Text(
-                  '${context.l10n.text('recurringNextOccurrence')}: '
-                  '${_localizedDate(context, pattern.expectedNextDate!)}',
-                ),
+              Text(
+                '${context.l10n.text('recurringNextOccurrence')}: '
+                '${pattern.expectedNextDate == null ? context.l10n.text('recurringNextOccurrenceUnavailable') : _localizedDate(context, pattern.expectedNextDate!)}',
+              ),
               if (pattern.qualityIssues.isNotEmpty)
                 Text(
                   context.l10n.text('dataQualityNeedsAttention', {

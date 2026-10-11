@@ -28,11 +28,13 @@ final class ScanExistingTransactionsForDuplicates {
   const ScanExistingTransactionsForDuplicates(
     this.groups,
     this.clock, {
+    this.transactions,
     this.invalidateAnalysis,
   });
 
   final DuplicateCandidateGroupRepository groups;
   final ApplicationClock clock;
+  final TransactionRepository? transactions;
   final InvalidateAnalysis? invalidateAnalysis;
 
   Future<ApplicationResult<List<DuplicateCandidateGroup>>> call() =>
@@ -72,10 +74,13 @@ final class ScanExistingTransactionsForDuplicates {
         }
         // Resolved groups remain as history, while stale unresolved groups are
         // removed so Review reflects only currently matching transactions.
+        final archivedIds = await _archivedTransactionIds(transactions);
         for (final group in existing) {
           if (!activeIds.contains(group.id) &&
               group.isUnresolved &&
-              !group.hasStatementCandidates) {
+              group.integrityIssue == null &&
+              !group.hasStatementCandidates &&
+              !group.transactionIds.any(archivedIds.contains)) {
             await groups.remove(group.id);
           }
         }
@@ -94,11 +99,13 @@ final class RebuildDuplicateGroupsAfterRestore {
   const RebuildDuplicateGroupsAfterRestore(
     this.groups,
     this.clock, {
+    this.transactions,
     this.invalidateAnalysis,
   });
 
   final DuplicateCandidateGroupRepository groups;
   final ApplicationClock clock;
+  final TransactionRepository? transactions;
   final InvalidateAnalysis? invalidateAnalysis;
 
   Future<ApplicationResult<List<DuplicateCandidateGroup>>> call() =>
@@ -138,16 +145,30 @@ final class RebuildDuplicateGroupsAfterRestore {
           result.add(group);
         }
 
+        final archivedIds = await _archivedTransactionIds(transactions);
         for (final group in existing) {
           if (!activeIds.contains(group.id) &&
               group.isUnresolved &&
-              !group.hasStatementCandidates) {
+              group.integrityIssue == null &&
+              !group.hasStatementCandidates &&
+              !group.transactionIds.any(archivedIds.contains)) {
             await groups.remove(group.id);
           }
         }
         await _invalidateDuplicateAnalysis(invalidateAnalysis, clock);
         return result;
       });
+}
+
+Future<Set<TransactionId>> _archivedTransactionIds(
+  TransactionRepository? transactions,
+) async {
+  if (transactions == null) return const <TransactionId>{};
+  final values = await transactions.listAll();
+  return {
+    for (final value in values)
+      if (value.status == TransactionStatus.archived) value.id,
+  };
 }
 
 /// Refreshes only the duplicate key(s) affected by one transaction mutation.
@@ -165,10 +186,10 @@ final class RefreshDuplicateGroupForTransaction {
     final keys = <String, DuplicateTransactionKey>{};
     final previousKey = previous == null
         ? null
-        : DuplicateTransactionKey.fromTransaction(previous);
+        : DuplicateTransactionKey.fromTransactionFacts(previous);
     final currentKey = current == null
         ? null
-        : DuplicateTransactionKey.fromTransaction(current);
+        : DuplicateTransactionKey.fromTransactionFacts(current);
     if (previousKey != null) keys[previousKey.canonical] = previousKey;
     if (currentKey != null) keys[currentKey.canonical] = currentKey;
     if (keys.isEmpty) return;
@@ -176,7 +197,7 @@ final class RefreshDuplicateGroupForTransaction {
     final existing = await groups.list();
     final existingById = {for (final group in existing) group.id: group};
     final duplicateKeyChanged =
-        previousKey != null && currentKey != null && previousKey != currentKey;
+        current != null && previousKey?.canonical != currentKey?.canonical;
     for (final key in keys.values) {
       await _refreshKey(
         key,
@@ -208,6 +229,11 @@ final class RefreshDuplicateGroupForTransaction {
             duplicateKey: previous.duplicateKey,
             status: DuplicateCandidateGroupStatus.unresolved,
             statementRows: previous.statementRows,
+            integrityIssue: const DuplicateCandidateGroupIntegrityIssue(
+              code: 'staleDuplicateGroup',
+              detail:
+                  'A saved duplicate decision no longer matches current transaction facts; the relationship must be refreshed before it can be resolved again.',
+            ),
             createdAt: previous.createdAt,
             updatedAt: clock.now(),
           ),
@@ -301,14 +327,15 @@ final class ListDuplicateCandidateGroups {
                       )) ||
               (eligibleIds == null && transactions == null
                   ? group.transactionIds.length > 1
-                  : group.transactionIds
-                            .where(
-                              (id) =>
-                                  (eligibleIds ?? activeIdsByGroup[group.id]!)
-                                      .contains(id),
-                            )
-                            .length >
-                        1),
+                  // A stale relationship remains actionable even when only
+                  // one member still matches the old key. The original
+                  // membership is the repair context, not a reason to hide
+                  // the group from Review.
+                  : group.transactionIds.length > 1 &&
+                        group.transactionIds.any(
+                          (id) => (eligibleIds ?? activeIdsByGroup[group.id]!)
+                              .contains(id),
+                        )),
         )
         .where(
           (group) =>
@@ -477,11 +504,13 @@ final class RepairDuplicateCandidateGroup {
           .where((value) => value.id == id)
           .firstOrNull;
       if (group == null) return;
-      if (group.integrityIssue?.code != 'malformedStatementDuplicateEvidence') {
+      if (group.integrityIssue?.code != 'malformedStatementDuplicateEvidence' &&
+          group.integrityIssue?.code != 'incompleteDuplicateGroup' &&
+          group.integrityIssue?.code != 'malformedDuplicateGroup') {
         throw const DomainValidationException(
           code: DomainErrorCode.invalidState,
           field: 'integrityIssue',
-          message: 'This duplicate group does not require evidence repair.',
+          message: 'This duplicate group does not support metadata repair.',
         );
       }
       await repository.remove(id);

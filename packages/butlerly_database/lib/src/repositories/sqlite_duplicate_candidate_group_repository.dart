@@ -186,9 +186,11 @@ final class SqliteDuplicateCandidateGroupRepository
     final storedStatus = DuplicateCandidateGroupStatus.values.byName(
       row['status']! as String,
     );
-    final stale =
-        storedStatus != DuplicateCandidateGroupStatus.unresolved &&
-        await _hasStaleTransactionFacts(duplicateKey, membership.ids);
+    // Recheck all saved groups, including unresolved ones. A transaction can
+    // be edited after a resolved decision is reopened, and the reopened state
+    // must remain detectable after persistence/restart without relying on an
+    // in-memory integrity marker.
+    final stale = await _hasStaleTransactionFacts(duplicateKey, membership.ids);
     final integrityIssue = stale
         ? const DuplicateCandidateGroupIntegrityIssue(
             code: 'staleDuplicateGroup',
@@ -196,7 +198,8 @@ final class SqliteDuplicateCandidateGroupRepository
                 'A saved duplicate decision no longer matches one or more transaction facts; it was reopened for repair.',
           )
         : statementRowsIssue ?? membership.issue;
-    final needsRepair = stale || statementRowsIssue != null;
+    final needsRepair =
+        stale || statementRowsIssue != null || membership.issue != null;
     return DuplicateCandidateGroup(
       id: row['id']! as String,
       transactionIds: membership.ids,

@@ -25,6 +25,18 @@ final class DuplicateTransactionKey {
     if (transaction.status != TransactionStatus.active || date == null) {
       return null;
     }
+    return fromTransactionFacts(transaction);
+  }
+
+  /// Returns the key represented by the persisted duplicate facts regardless
+  /// of whether the record is currently active or archived. Review candidate
+  /// generation remains Active-only, but archived records still participate in
+  /// historical canonical decisions and can be edited after resolution.
+  static DuplicateTransactionKey? fromTransactionFacts(
+    Transaction transaction,
+  ) {
+    final date = transaction.transactionDate;
+    if (date == null) return null;
     return DuplicateTransactionKey(
       transactionDate: date,
       amount: transaction.money.amount,

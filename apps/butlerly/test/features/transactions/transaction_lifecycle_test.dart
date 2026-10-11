@@ -3267,6 +3267,47 @@ void main() {
     expect(find.text('No possible duplicates found'), findsOneWidget);
     expect(await duplicateGroups.list(), isEmpty);
   });
+
+  testWidgets('incomplete transaction duplicate groups remain repairable', (
+    tester,
+  ) async {
+    final existing = _editorTransaction('incomplete-duplicate-review');
+    await repository.save(existing);
+    final now = existing.createdAt;
+    await duplicateGroups.save(
+      DuplicateCandidateGroup(
+        id: 'duplicate:incomplete-transaction-review',
+        transactionIds: [existing.id],
+        duplicateKey: DuplicateTransactionKey(
+          transactionDate: existing.transactionDate!,
+          amount: existing.money.amount,
+          currency: existing.money.currency.value,
+          direction: existing.direction.name,
+        ),
+        status: DuplicateCandidateGroupStatus.unresolved,
+        integrityIssue: const DuplicateCandidateGroupIntegrityIssue(
+          code: 'incompleteDuplicateGroup',
+          detail: 'one duplicate member was permanently removed',
+        ),
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: ReviewPage(showPossibleDuplicates: true)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Repair duplicate group'), findsOneWidget);
+    expect(find.textContaining('saved duplicate group'), findsOneWidget);
+    await tester.tap(find.text('Repair duplicate group'));
+    await tester.pumpAndSettle();
+    expect(find.text('No possible duplicates found'), findsOneWidget);
+    expect(await duplicateGroups.list(), isEmpty);
+  });
 }
 
 Future<void> _openEditorForTest(

@@ -305,22 +305,60 @@ void main() {
     expect(selected.qualityIssues, isEmpty);
   });
 
-  test(
-    'changed transaction facts stop a resolved duplicate decision applying',
-    () {
-      final original = _transaction('original', '2026-01-01');
-      final edited = _transaction('edited', '2026-02-01');
+  test('stale resolved duplicate decisions count every current member', () {
+    final cases = [
+      (
+        'date',
+        _transaction('edited-date', '2026-02-01'),
+        '2026-01-01',
+        DecimalValue.parse('10'),
+        'USD',
+        TransactionDirection.expense,
+      ),
+      (
+        'amount',
+        _transaction('edited-amount', '2026-01-01', amount: '11'),
+        '2026-01-01',
+        DecimalValue.parse('10'),
+        'USD',
+        TransactionDirection.expense,
+      ),
+      (
+        'currency',
+        _transaction('edited-currency', '2026-01-01', currency: 'EUR'),
+        '2026-01-01',
+        DecimalValue.parse('10'),
+        'USD',
+        TransactionDirection.expense,
+      ),
+      (
+        'direction',
+        _transaction(
+          'edited-direction',
+          '2026-01-01',
+          direction: TransactionDirection.income,
+        ),
+        '2026-01-01',
+        DecimalValue.parse('10'),
+        'USD',
+        TransactionDirection.expense,
+      ),
+    ];
+
+    for (final value in cases) {
+      final original = _transaction('original-${value.$1}', '2026-01-01');
+      final edited = value.$2;
       final selected = selectCanonicalTransactions(
         source: [original, edited],
         duplicateGroups: [
           DuplicateCandidateGroup(
-            id: 'resolved-group',
+            id: 'resolved-${value.$1}',
             transactionIds: [original.id, edited.id],
             duplicateKey: DuplicateTransactionKey(
-              transactionDate: '2026-01-01',
-              amount: DecimalValue.parse('10'),
-              currency: 'USD',
-              direction: 'expense',
+              transactionDate: value.$3,
+              amount: value.$4,
+              currency: value.$5,
+              direction: value.$6.name,
             ),
             status: DuplicateCandidateGroupStatus.consolidated,
             selectedTransactionId: original.id,
@@ -330,12 +368,20 @@ void main() {
         ],
       );
 
-      expect(selected.transactions.map((value) => value.id.value), ['edited']);
-      expect(selected.qualityIssues.single.code, 'staleDuplicateGroup');
-    },
-  );
+      expect(
+        selected.transactions.map((transaction) => transaction.id),
+        unorderedEquals([original.id, edited.id]),
+        reason: value.$1,
+      );
+      expect(
+        selected.qualityIssues.single.code,
+        'staleDuplicateGroup',
+        reason: value.$1,
+      );
+    }
+  });
 
-  test('stale Keep Both decisions count one representative until repaired', () {
+  test('stale Keep Both decisions do not suppress a distinct member', () {
     final original = _transaction('original', '2026-01-01');
     final edited = _transaction('edited', '2026-02-01');
     final selected = selectCanonicalTransactions(
@@ -357,9 +403,96 @@ void main() {
       ],
     );
 
-    expect(selected.transactions.map((value) => value.id.value), ['edited']);
+    expect(
+      selected.transactions.map((value) => value.id),
+      unorderedEquals([original.id, edited.id]),
+    );
     expect(selected.qualityIssues.single.code, 'staleDuplicateGroup');
   });
+
+  test(
+    'stale and current duplicate groups do not collapse distinct history',
+    () {
+      final original = _transaction('original', '2026-01-01');
+      final edited = _transaction('edited', '2026-02-01');
+      final currentMatch = _transaction('current-match', '2026-02-01');
+      final selected = selectCanonicalTransactions(
+        source: [original, edited, currentMatch],
+        duplicateGroups: [
+          DuplicateCandidateGroup(
+            id: 'stale-group',
+            transactionIds: [original.id, edited.id],
+            duplicateKey: DuplicateTransactionKey(
+              transactionDate: '2026-01-01',
+              amount: DecimalValue.parse('10'),
+              currency: 'USD',
+              direction: 'expense',
+            ),
+            status: DuplicateCandidateGroupStatus.consolidated,
+            selectedTransactionId: original.id,
+            createdAt: DateTime.utc(2026, 1, 2),
+            updatedAt: DateTime.utc(2026, 1, 2),
+          ),
+          DuplicateCandidateGroup(
+            id: 'current-group',
+            transactionIds: [edited.id, currentMatch.id],
+            duplicateKey: DuplicateTransactionKey(
+              transactionDate: '2026-02-01',
+              amount: DecimalValue.parse('10'),
+              currency: 'USD',
+              direction: 'expense',
+            ),
+            status: DuplicateCandidateGroupStatus.unresolved,
+            createdAt: DateTime.utc(2026, 1, 2),
+            updatedAt: DateTime.utc(2026, 1, 2),
+          ),
+        ],
+      );
+
+      expect(
+        selected.transactions.map((value) => value.id),
+        unorderedEquals([original.id, currentMatch.id]),
+      );
+    },
+  );
+
+  test(
+    'editing an archived duplicate member still invalidates its decision',
+    () {
+      final original = _transaction('archived-original', '2026-01-01');
+      final edited = _transaction(
+        'archived-edited',
+        '2026-01-01',
+        amount: '11',
+        archived: true,
+      );
+      final selected = selectCanonicalTransactions(
+        source: [original, edited],
+        duplicateGroups: [
+          DuplicateCandidateGroup(
+            id: 'archived-stale-group',
+            transactionIds: [original.id, edited.id],
+            duplicateKey: DuplicateTransactionKey(
+              transactionDate: '2026-01-01',
+              amount: DecimalValue.parse('10'),
+              currency: 'USD',
+              direction: 'expense',
+            ),
+            status: DuplicateCandidateGroupStatus.consolidated,
+            selectedTransactionId: original.id,
+            createdAt: DateTime.utc(2026, 1, 2),
+            updatedAt: DateTime.utc(2026, 1, 2),
+          ),
+        ],
+      );
+
+      expect(
+        selected.transactions.map((value) => value.id),
+        unorderedEquals([original.id, edited.id]),
+      );
+      expect(selected.qualityIssues.single.code, 'staleDuplicateGroup');
+    },
+  );
 
   test(
     'recurring detection is deterministic, archived-aware, and reviewable',
@@ -433,12 +566,77 @@ void main() {
       isEmpty,
     );
   });
+
+  test('regular weekly and biweekly evidence supports predictions', () {
+    final weekly = const RecurringPatternDetector(timeZoneId: 'UTC').detect([
+      _transaction('weekly-1', '2026-01-01', description: 'Weekly service'),
+      _transaction('weekly-2', '2026-01-08', description: 'Weekly service'),
+      _transaction('weekly-3', '2026-01-15', description: 'Weekly service'),
+    ]).single;
+    final biweekly = const RecurringPatternDetector(timeZoneId: 'UTC').detect([
+      _transaction('biweekly-1', '2026-01-01', description: 'Biweekly service'),
+      _transaction('biweekly-2', '2026-01-15', description: 'Biweekly service'),
+      _transaction('biweekly-3', '2026-01-29', description: 'Biweekly service'),
+    ]).single;
+
+    expect(weekly.cadence, RecurringCadence.weekly);
+    expect(weekly.expectedNextDate, '2026-01-22');
+    expect(biweekly.cadence, RecurringCadence.biweekly);
+    expect(biweekly.expectedNextDate, '2026-02-12');
+  });
+
+  test('irregular or amount-unstable evidence has no prediction date', () {
+    final irregular = const RecurringPatternDetector(timeZoneId: 'UTC').detect([
+      _transaction('irregular-1', '2026-01-01', description: 'Occasional shop'),
+      _transaction('irregular-2', '2026-01-10', description: 'Occasional shop'),
+      _transaction('irregular-3', '2026-02-05', description: 'Occasional shop'),
+    ]).single;
+    final variableAmounts =
+        const RecurringPatternDetector(timeZoneId: 'UTC').detect([
+          _transaction(
+            'variable-1',
+            '2026-01-01',
+            description: 'Variable bill',
+          ),
+          _transaction(
+            'variable-2',
+            '2026-02-01',
+            description: 'Variable bill',
+            amount: '20',
+          ),
+          _transaction(
+            'variable-3',
+            '2026-03-01',
+            description: 'Variable bill',
+          ),
+        ]).single;
+
+    expect(irregular.cadence, RecurringCadence.irregular);
+    expect(irregular.expectedNextDate, isNull);
+    expect(
+      irregular.evidence,
+      contains('next occurrence unavailable: cadence is irregular'),
+    );
+    expect(variableAmounts.cadence, RecurringCadence.monthly);
+    expect(variableAmounts.expectedNextDate, isNull);
+    expect(
+      variableAmounts.evidence,
+      contains('next occurrence unavailable: amounts are inconsistent'),
+    );
+    expect(
+      irregular.correct(cadence: RecurringCadence.irregular).expectedNextDate,
+      isNull,
+    );
+  });
 }
 
 Transaction _transaction(
   String id,
   String date, {
   String description = 'Fixture merchant',
+  String amount = '10',
+  String currency = 'USD',
+  TransactionDirection direction = TransactionDirection.expense,
   bool archived = false,
 }) {
   final instant = DateTime.parse('${date}T12:00:00Z');
@@ -446,10 +644,10 @@ Transaction _transaction(
     id: TransactionId(id),
     timing: KnownTransactionTime(instant),
     money: Money(
-      amount: DecimalValue.parse('10'),
-      currency: CurrencyCode('USD'),
+      amount: DecimalValue.parse(amount),
+      currency: CurrencyCode(currency),
     ),
-    direction: TransactionDirection.expense,
+    direction: direction,
     sourceType: TransactionSourceType.import,
     provenance: [
       Provenance(

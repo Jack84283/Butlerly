@@ -290,6 +290,165 @@ void main() {
     },
   );
 
+  test(
+    'reconstructs an unresolved stale group after restart and keeps it reviewable',
+    () async {
+      final first = duplicateTransaction(now, id: 'reopened-unresolved-a');
+      final second = duplicateTransaction(now, id: 'reopened-unresolved-b');
+      await transactions.save(first);
+      await transactions.save(second);
+      final repository = SqliteDuplicateCandidateGroupRepository(database);
+      const groupId = 'duplicate:reopened-unresolved';
+      await repository.save(
+        DuplicateCandidateGroup(
+          id: groupId,
+          transactionIds: [first.id, second.id],
+          duplicateKey: DuplicateTransactionKey(
+            transactionDate: '2026-08-09',
+            amount: DecimalValue.parse('25'),
+            currency: 'USD',
+            direction: TransactionDirection.expense.name,
+          ),
+          status: DuplicateCandidateGroupStatus.unresolved,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await database.connection.update(
+        'transactions',
+        {'amount_coefficient': '30'},
+        where: 'id = ?',
+        whereArgs: [second.id.value],
+      );
+
+      final restored = (await repository.list()).single;
+      expect(restored.status, DuplicateCandidateGroupStatus.unresolved);
+      expect(restored.integrityIssue?.code, 'staleDuplicateGroup');
+      final reviewable = await ListDuplicateCandidateGroups(repository)();
+      expect(
+        reviewable,
+        isA<ApplicationSuccess<List<DuplicateCandidateGroup>>>(),
+      );
+      expect(
+        (reviewable as ApplicationSuccess<List<DuplicateCandidateGroup>>).value,
+        hasLength(1),
+      );
+      final canonical = selectCanonicalTransactions(
+        source: [
+          first,
+          Transaction(
+            id: second.id,
+            timing: second.timing,
+            money: Money(
+              amount: DecimalValue.parse('30'),
+              currency: second.money.currency,
+            ),
+            direction: second.direction,
+            sourceType: second.sourceType,
+            provenance: second.provenance,
+            createdAt: second.createdAt,
+            updatedAt: second.updatedAt,
+            transactionDate: second.transactionDate,
+          ),
+        ],
+        duplicateGroups: [restored],
+      );
+      expect(canonical.transactions, hasLength(2));
+    },
+  );
+
+  test('reopens a resolved group when an archived member is edited', () async {
+    final first = duplicateTransaction(now, id: 'archived-edit-a');
+    final second = duplicateTransaction(now, id: 'archived-edit-b');
+    await transactions.save(first);
+    await transactions.save(second);
+    final repository = SqliteDuplicateCandidateGroupRepository(database);
+    final key = DuplicateTransactionKey(
+      transactionDate: '2026-08-09',
+      amount: DecimalValue.parse('25'),
+      currency: 'USD',
+      direction: TransactionDirection.expense.name,
+    );
+    await repository.save(
+      DuplicateCandidateGroup(
+        id: 'duplicate:archived-edit',
+        transactionIds: [first.id, second.id],
+        duplicateKey: key,
+        status: DuplicateCandidateGroupStatus.consolidated,
+        selectedTransactionId: first.id,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await database.connection.update(
+      'transactions',
+      {'status': 'archived', 'amount_coefficient': '30'},
+      where: 'id = ?',
+      whereArgs: [second.id.value],
+    );
+
+    final restored = (await repository.list()).single;
+    expect(restored.status, DuplicateCandidateGroupStatus.unresolved);
+    expect(restored.integrityIssue?.code, 'staleDuplicateGroup');
+    final reviewable = await ListDuplicateCandidateGroups(repository)();
+    expect(
+      reviewable,
+      isA<ApplicationSuccess<List<DuplicateCandidateGroup>>>(),
+    );
+    expect(
+      (reviewable as ApplicationSuccess<List<DuplicateCandidateGroup>>).value,
+      hasLength(1),
+    );
+  });
+
+  test(
+    'reopens a resolved group when a new matching transaction appears after restart',
+    () async {
+      final first = duplicateTransaction(now, id: 'new-match-a');
+      final second = duplicateTransaction(now, id: 'new-match-b');
+      final third = duplicateTransaction(now, id: 'new-match-c');
+      await transactions.save(first);
+      await transactions.save(second);
+      final repository = SqliteDuplicateCandidateGroupRepository(database);
+      final key = DuplicateTransactionKey(
+        transactionDate: '2026-08-09',
+        amount: DecimalValue.parse('25'),
+        currency: 'USD',
+        direction: TransactionDirection.expense.name,
+      );
+      await repository.save(
+        DuplicateCandidateGroup(
+          id: 'duplicate:new-match',
+          transactionIds: [first.id, second.id],
+          duplicateKey: key,
+          status: DuplicateCandidateGroupStatus.consolidated,
+          selectedTransactionId: first.id,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      // This record has no persisted membership link until the group is
+      // explicitly repaired.
+      await transactions.save(third);
+
+      final restored = (await repository.list()).single;
+      expect(restored.status, DuplicateCandidateGroupStatus.unresolved);
+      expect(restored.selectedTransactionId, isNull);
+      expect(restored.integrityIssue?.code, 'incompleteDuplicateGroup');
+      expect(restored.transactionIds, [first.id, second.id, third.id]);
+      final canonical = selectCanonicalTransactions(
+        source: [first, second, third],
+        duplicateGroups: [restored],
+      );
+      expect(canonical.transactions, hasLength(1));
+      expect(
+        canonical.qualityIssues.map((issue) => issue.code),
+        contains('incompleteDuplicateGroup'),
+      );
+    },
+  );
+
   test('recalculation preserves acknowledged and dismissed findings', () async {
     final repository = SqliteAnalysisFindingRepository(database);
     final rule = AnalysisRuleDefinition(

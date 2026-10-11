@@ -6,6 +6,8 @@ import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly_database/butlerly_database.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -242,6 +244,7 @@ void main() {
         id: 'duplicate-open',
         status: 'unresolved',
         now: now,
+        transactionIds: ['tx-a', 'tx-b', 'tx-c'],
       );
       await _insertDuplicateGroup(
         fixture,
@@ -313,6 +316,330 @@ void main() {
       expect(
         await _ids(fixture, 'recurring_pattern_decisions'),
         contains('recurring-decision-backup'),
+      );
+    },
+  );
+
+  test('backup and restore preserves stale duplicate repair context', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    await fixture.insertTransaction('tx-stale-a');
+    await fixture.insertTransaction('tx-stale-b');
+    await _insertDuplicateGroup(
+      fixture,
+      id: 'duplicate-stale-repair',
+      status: 'unresolved',
+      now: DateTime.utc(2026, 9, 1).toIso8601String(),
+      transactionIds: ['tx-stale-a', 'tx-stale-b'],
+    );
+    await fixture.database.database.update(
+      'transactions',
+      {'amount_coefficient': '200'},
+      where: 'id = ?',
+      whereArgs: ['tx-stale-b'],
+    );
+    final backup = File(
+      path.join(fixture.root.path, 'stale-duplicate.butlerlybackup'),
+    );
+
+    await fixture.manager.createBackup(backup);
+    await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+
+    expect(
+      await _ids(fixture, 'duplicate_candidate_groups'),
+      contains('duplicate-stale-repair'),
+    );
+    final restored = (await SqliteDuplicateCandidateGroupRepository(
+      fixture.database.persistenceDatabase,
+    ).list()).single;
+    expect(restored.status, DuplicateCandidateGroupStatus.unresolved);
+    expect(restored.integrityIssue?.code, 'staleDuplicateGroup');
+  });
+
+  test(
+    'archive backup and restore preserves unresolved historical duplicate decisions',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction('tx-archived-a');
+      await fixture.insertTransaction('tx-archived-b');
+      await _insertDuplicateGroup(
+        fixture,
+        id: 'duplicate-archived-history',
+        status: 'unresolved',
+        now: DateTime.utc(2026, 9, 1).toIso8601String(),
+        transactionIds: ['tx-archived-a', 'tx-archived-b'],
+      );
+      await fixture.database.database.update(
+        'transactions',
+        {'status': 'archived'},
+        where: 'id = ?',
+        whereArgs: ['tx-archived-b'],
+      );
+      final before = (await SqliteDuplicateCandidateGroupRepository(
+        fixture.database.persistenceDatabase,
+      ).list()).single;
+      expect(
+        selectCanonicalTransactions(
+          source: await SqliteTransactionRepository(
+            fixture.database.persistenceDatabase,
+          ).listAll(),
+          duplicateGroups: [before],
+        ).transactions,
+        hasLength(1),
+      );
+      final backup = File(
+        path.join(fixture.root.path, 'archived-duplicate.butlerlybackup'),
+      );
+
+      await fixture.manager.createBackup(backup);
+      await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+      final transactions = SqliteTransactionRepository(
+        fixture.database.persistenceDatabase,
+      );
+      final groups = SqliteDuplicateCandidateGroupRepository(
+        fixture.database.persistenceDatabase,
+      );
+      final rebuilt = await RebuildDuplicateGroupsAfterRestore(
+        groups,
+        const SystemApplicationClock(),
+        transactions: transactions,
+      )();
+      expect(rebuilt, isA<ApplicationSuccess<List<DuplicateCandidateGroup>>>());
+      final after = (await groups.list()).single;
+      expect(after.status, DuplicateCandidateGroupStatus.unresolved);
+      expect(after.transactionIds, hasLength(2));
+      expect(
+        selectCanonicalTransactions(
+          source: await transactions.listAll(),
+          duplicateGroups: [after],
+        ).transactions,
+        hasLength(1),
+      );
+    },
+  );
+
+  test(
+    'merge restore preserves a local archived duplicate group absent from backup',
+    () async {
+      final target = await _Fixture.create();
+      final source = await _Fixture.create();
+      addTearDown(target.dispose);
+      addTearDown(source.dispose);
+      await target.insertTransaction('tx-local-active');
+      await target.insertTransaction('tx-local-archived');
+      await _insertDuplicateGroup(
+        target,
+        id: 'duplicate-local-archived-history',
+        status: 'unresolved',
+        now: DateTime.utc(2026, 9, 1).toIso8601String(),
+        transactionIds: ['tx-local-active', 'tx-local-archived'],
+      );
+      await target.database.database.update(
+        'transactions',
+        {'status': 'archived'},
+        where: 'id = ?',
+        whereArgs: ['tx-local-archived'],
+      );
+      await source.insertTransaction('tx-incoming');
+      final backup = File(
+        path.join(source.root.path, 'merge-source.butlerlybackup'),
+      );
+      await source.manager.createBackup(backup);
+
+      await target.manager.restore(backup, mode: LocalRestoreMode.merge);
+
+      final transactions = SqliteTransactionRepository(
+        target.database.persistenceDatabase,
+      );
+      final groups = SqliteDuplicateCandidateGroupRepository(
+        target.database.persistenceDatabase,
+      );
+      final rebuilt = await RebuildDuplicateGroupsAfterRestore(
+        groups,
+        const SystemApplicationClock(),
+        transactions: transactions,
+      )();
+      expect(rebuilt, isA<ApplicationSuccess<List<DuplicateCandidateGroup>>>());
+      final preserved = (await groups.list())
+          .where((group) => group.id == 'duplicate-local-archived-history')
+          .single;
+      expect(preserved.status, DuplicateCandidateGroupStatus.unresolved);
+      expect(preserved.transactionIds, hasLength(2));
+      final canonicalIds = selectCanonicalTransactions(
+        source: await transactions.listAll(),
+        duplicateGroups: [preserved],
+      ).transactions.map((transaction) => transaction.id.value);
+      expect(canonicalIds, containsAll(['tx-local-active', 'tx-incoming']));
+      expect(canonicalIds, isNot(contains('tx-local-archived')));
+    },
+  );
+
+  test(
+    'backup and restore preserves malformed duplicate repair context',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction('tx-malformed-a');
+      await fixture.insertTransaction('tx-malformed-b');
+      await fixture.database.database.insert('duplicate_candidate_groups', {
+        'id': 'duplicate-malformed-dates',
+        'transaction_date': '2026-09-01',
+        'amount_coefficient': '100',
+        'amount_scale': 2,
+        'currency': 'USD',
+        'direction': 'expense',
+        'status': 'unresolved',
+        'created_at': 'not-a-timestamp',
+        'updated_at': 'also-not-a-timestamp',
+      });
+      await fixture.database.database
+          .insert('duplicate_candidate_group_transactions', {
+            'group_id': 'duplicate-malformed-dates',
+            'transaction_id': 'tx-malformed-a',
+          });
+      await fixture.database.database
+          .insert('duplicate_candidate_group_transactions', {
+            'group_id': 'duplicate-malformed-dates',
+            'transaction_id': 'tx-malformed-b',
+          });
+      final backup = File(
+        path.join(fixture.root.path, 'malformed-duplicate.butlerlybackup'),
+      );
+
+      await fixture.manager.createBackup(backup);
+      await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+
+      final restored = (await SqliteDuplicateCandidateGroupRepository(
+        fixture.database.persistenceDatabase,
+      ).list()).single;
+      expect(restored.id, 'duplicate-malformed-dates');
+      expect(restored.status, DuplicateCandidateGroupStatus.unresolved);
+      expect(restored.integrityIssue?.code, 'malformedDuplicateGroup');
+    },
+  );
+
+  test(
+    'merge restore preserves active-only duplicate repair contexts',
+    () async {
+      final target = await _Fixture.create();
+      final source = await _Fixture.create();
+      addTearDown(target.dispose);
+      addTearDown(source.dispose);
+      final now = DateTime.utc(2026, 9, 1).toIso8601String();
+
+      await target.insertTransaction('tx-merge-stale-a');
+      await target.insertTransaction('tx-merge-stale-b');
+      await _insertDuplicateGroup(
+        target,
+        id: 'duplicate-merge-stale',
+        status: 'unresolved',
+        now: now,
+        transactionIds: ['tx-merge-stale-a', 'tx-merge-stale-b'],
+      );
+      await target.database.database.update(
+        'transactions',
+        {'amount_coefficient': '200'},
+        where: 'id = ?',
+        whereArgs: ['tx-merge-stale-b'],
+      );
+
+      await target.insertTransaction('tx-merge-incomplete');
+      await _insertDuplicateGroup(
+        target,
+        id: 'duplicate-merge-incomplete',
+        status: 'unresolved',
+        now: now,
+        transactionIds: ['tx-merge-incomplete'],
+      );
+
+      await target.insertTransaction('tx-merge-malformed-a');
+      await target.insertTransaction('tx-merge-malformed-b');
+      await target.database.database.insert('duplicate_candidate_groups', {
+        'id': 'duplicate-merge-malformed',
+        'transaction_date': '2026-09-01',
+        'amount_coefficient': '100',
+        'amount_scale': 2,
+        'currency': 'USD',
+        'direction': 'expense',
+        'status': 'unresolved',
+        'created_at': 'not-a-timestamp',
+        'updated_at': 'also-not-a-timestamp',
+      });
+      for (final transactionId in [
+        'tx-merge-malformed-a',
+        'tx-merge-malformed-b',
+      ]) {
+        await target.database.database.insert(
+          'duplicate_candidate_group_transactions',
+          {
+            'group_id': 'duplicate-merge-malformed',
+            'transaction_id': transactionId,
+          },
+        );
+      }
+
+      await source.insertTransaction('tx-merge-incoming');
+      final backup = File(
+        path.join(source.root.path, 'merge-repair-context.butlerlybackup'),
+      );
+      await source.manager.createBackup(backup);
+
+      await target.manager.restore(backup, mode: LocalRestoreMode.merge);
+
+      final transactions = SqliteTransactionRepository(
+        target.database.persistenceDatabase,
+      );
+      final groups = SqliteDuplicateCandidateGroupRepository(
+        target.database.persistenceDatabase,
+      );
+      final rebuilt = await RebuildDuplicateGroupsAfterRestore(
+        groups,
+        const SystemApplicationClock(),
+        transactions: transactions,
+      )();
+      expect(rebuilt, isA<ApplicationSuccess<List<DuplicateCandidateGroup>>>());
+      final restored = await groups.list();
+      expect(
+        restored.map((group) => group.id),
+        containsAll([
+          'duplicate-merge-stale',
+          'duplicate-merge-incomplete',
+          'duplicate-merge-malformed',
+        ]),
+      );
+      expect(
+        restored
+            .singleWhere((group) => group.id == 'duplicate-merge-stale')
+            .integrityIssue
+            ?.code,
+        'staleDuplicateGroup',
+      );
+      expect(
+        restored
+            .singleWhere((group) => group.id == 'duplicate-merge-incomplete')
+            .integrityIssue
+            ?.code,
+        'incompleteDuplicateGroup',
+      );
+      expect(
+        restored
+            .singleWhere((group) => group.id == 'duplicate-merge-malformed')
+            .integrityIssue
+            ?.code,
+        'malformedDuplicateGroup',
+      );
+      final canonical = selectCanonicalTransactions(
+        source: await transactions.listAll(),
+        duplicateGroups: restored,
+      );
+      // The edited member is outside the current duplicate key and therefore
+      // remains counted, while the newly rebuilt current-key group remains
+      // unresolved and counts its matching members once.
+      expect(canonical.transactions, hasLength(2));
+      expect(
+        canonical.transactions.map((value) => value.id.value),
+        containsAll(['tx-merge-incoming', 'tx-merge-stale-b']),
       );
     },
   );
@@ -478,6 +805,12 @@ final class _Fixture {
 
   Future<void> insertTransaction(String id, {String? description}) async {
     final now = DateTime.utc(2026, 9, 1).toIso8601String();
+    await database.database.insert('provenances', {
+      'id': '$id-provenance',
+      'source_type': 'import',
+      'captured_at': now,
+      'original_representation': description ?? id,
+    });
     await database.database.insert('transactions', {
       'id': id,
       'unknown_time_reason': 'unknown',
@@ -485,11 +818,16 @@ final class _Fixture {
       'amount_scale': 2,
       'currency': 'USD',
       'direction': 'expense',
+      'transaction_date': '2026-09-01',
       'source_type': 'manual',
       'status': 'active',
       'description': description,
       'created_at': now,
       'updated_at': now,
+    });
+    await database.database.insert('transaction_provenances', {
+      'transaction_id': id,
+      'provenance_id': '$id-provenance',
     });
   }
 
