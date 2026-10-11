@@ -190,6 +190,59 @@ final class ButlerlyDatabase {
   }
 }
 
+/// Parses the single ordered database deployment asset into upgrades keyed by
+/// target SQLite user_version. Execute only steps newer than the installed DB.
+Map<int, String> parseDeploymentMigrations(String deploymentSql) {
+  const marker = '-- BUTLERLY_MIGRATION_TARGET:';
+  final blocks = <int, StringBuffer>{};
+  int? target;
+  for (final line in deploymentSql.split('\n')) {
+    final trimmed = line.trim();
+    if (trimmed.startsWith(marker)) {
+      final parsed = int.tryParse(trimmed.substring(marker.length).trim());
+      if (parsed == null ||
+          parsed < 2 ||
+          parsed > ButlerlyDatabase.databaseVersion ||
+          blocks.containsKey(parsed) ||
+          (target != null && parsed <= target)) {
+        throw const FormatException('Invalid database deployment target');
+      }
+      target = parsed;
+      blocks[parsed] = StringBuffer();
+      continue;
+    }
+    if (target != null) blocks[target]!.writeln(line);
+  }
+
+  final result = <int, String>{};
+  for (var version = 2; version <= ButlerlyDatabase.databaseVersion; version++) {
+    final sql = blocks[version]?.toString().trim();
+    if (sql == null || sql.isEmpty || splitSqlStatements(sql).isEmpty) {
+      throw FormatException('Missing database deployment target $version');
+    }
+    result[version] = sql;
+  }
+  return result;
+}
+
+/// The restore hardening SQL also belongs to the current fresh-install schema.
+/// It is kept once in deployment.sql and reused for both fresh installs and
+/// upgrades from schema v7 to v8.
+String baselineHardeningFromDeployment(String deploymentSql) {
+  const begin = '-- BUTLERLY_BASELINE_HARDENING_BEGIN';
+  const end = '-- BUTLERLY_BASELINE_HARDENING_END';
+  final start = deploymentSql.indexOf(begin);
+  final finish = deploymentSql.indexOf(end);
+  if (start < 0 || finish <= start + begin.length) {
+    throw const FormatException('Missing baseline hardening SQL');
+  }
+  final sql = deploymentSql.substring(start + begin.length, finish).trim();
+  if (splitSqlStatements(sql).isEmpty) {
+    throw const FormatException('Empty baseline hardening SQL');
+  }
+  return sql;
+}
+
 /// Database assets use semicolon-delimited statements, line comments, and
 /// single-quoted SQL strings (including doubled quote escapes). SQLite trigger
 /// bodies may themselves contain semicolon-delimited statements, so a trigger
