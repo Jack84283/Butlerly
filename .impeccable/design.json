@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-02",
-  "authority": "Generated tooling context only; AGENTS.md and approved versioned docs/ remain authoritative.",
+  "generatedAt": "2026-10-10",
+  "authority": "Generated tooling context only; DESIGN.md is authoritative and Flutter design tokens are implementation evidence.",
   "title": "Design System: Butlerly",
   "extensions": {
     "colorMeta": {
@@ -25,15 +25,15 @@
       },
       "paper-light": {
         "role": "neutral",
-        "displayName": "Warm Paper",
-        "canonical": "#F7F5F1",
-        "tonalRamp": ["#2A2927", "#4A4844", "#6A6762", "#8A867F", "#AAA59D", "#CAC5BC", "#E5E1DA", "#F7F5F1"]
+        "displayName": "Cool Light Canvas",
+        "canonical": "#F6F7F8",
+        "tonalRamp": ["#20242A", "#353B44", "#4B5563", "#6B7280", "#8D939E", "#B9BDC7", "#D8DDE6", "#F6F7F8"]
       },
       "canvas-dark": {
         "role": "neutral",
-        "displayName": "Near-Black Canvas",
-        "canonical": "#0A0A0D",
-        "tonalRamp": ["#0A0A0D", "#17171C", "#25252B", "#3D3C42", "#5B5960", "#817C75", "#B8B2AA", "#F4F1EC"]
+        "displayName": "Navy Canvas",
+        "canonical": "#0B162A",
+        "tonalRamp": ["#0B162A", "#121A2B", "#1A2336", "#1F2534", "#2A2D40", "#383C44", "#8D939E", "#F6F7F8"]
       },
       "surface-light": {
         "role": "neutral",
@@ -44,8 +44,20 @@
       "surface-dark": {
         "role": "neutral",
         "displayName": "Dark Surface",
-        "canonical": "#111114",
-        "tonalRamp": ["#111114", "#202025", "#2F2F36", "#47464D", "#65636A", "#817C75", "#B8B2AA", "#F4F1EC"]
+        "canonical": "#1F2534",
+        "tonalRamp": ["#121A2B", "#1A2336", "#1F2534", "#2A2D40", "#383C44", "#8D939E", "#B9BDC7", "#F6F7F8"]
+      },
+      "dashboard-dark": {
+        "role": "neutral",
+        "displayName": "Dashboard Navy",
+        "canonical": "#1A2336",
+        "tonalRamp": ["#0B162A", "#121A2B", "#1A2336", "#1F2534", "#2A2D40", "#383C44", "#B9BDC7", "#F6F7F8"]
+      },
+      "subtle-light": {
+        "role": "neutral",
+        "displayName": "Subtle Light Surface",
+        "canonical": "#F2F3F5",
+        "tonalRamp": ["#4B5563", "#6B7280", "#8D939E", "#B9BDC7", "#D8DDE6", "#E6E8EC", "#F2F3F5", "#FFFFFF"]
       }
     },
     "typographyMeta": {
@@ -53,6 +65,7 @@
       "body": {"displayName": "Platform Body", "purpose": "Functional and explanatory UI copy."}
     },
     "shadows": [
+      {"name": "card", "value": "semantic elevation 2", "purpose": "Low lift for dashboard and transaction cards."},
       {"name": "overlay", "value": "semantic elevation 4", "purpose": "Floating surfaces above the working canvas."},
       {"name": "modal", "value": "semantic elevation 8", "purpose": "Dialogs and bottom sheets only."}
     ],
@@ -74,15 +87,15 @@
       "refersTo": "button-primary",
       "description": "Deep burgundy filled action with a generous target and quiet focus treatment.",
       "html": "<button class=\"ds-btn-primary\">Save</button>",
-      "css": ".ds-btn-primary { background: #541127; color: #fff; padding: 12px 16px; min-height: 48px; border: 0; border-radius: 12px; font: 500 14px/1.43 system-ui, sans-serif; transition: background 200ms ease-in-out; } .ds-btn-primary:hover { background: #64162F; } .ds-btn-primary:focus-visible { outline: 2px solid #C76F8B; outline-offset: 2px; }"
+      "css": ".ds-btn-primary { background: #541127; color: #fff; padding: 12px 16px; min-height: 48px; border: 0; border-radius: 999px; font: 500 14px/1.43 system-ui, sans-serif; transition: background 200ms ease-in-out; } .ds-btn-primary:hover { background: #64162F; } .ds-btn-primary:focus-visible { outline: 2px solid #C76F8B; outline-offset: 2px; }"
     },
     {
       "name": "Card",
       "kind": "card",
       "refersTo": "card",
-      "description": "Tonal content surface with a quiet border and no resting shadow.",
+      "description": "Tonal content surface with a 16px radius, low card lift, and no decorative outline.",
       "html": "<section class=\"ds-card\"><h3>Recent transactions</h3><p>Review your latest activity.</p></section>",
-      "css": ".ds-card { background: #fff; color: #19181A; padding: 16px; border: 1px solid #E2DDD7; border-radius: 12px; } .ds-card:focus-within { border-color: #7A1E3A; }"
+      "css": ".ds-card { background: #fff; color: #14171D; padding: 16px; border: 0; border-radius: 16px; box-shadow: 0 2px 4px rgba(20,23,29,.18); } .ds-card:focus-within { outline: 1.5px solid #7A1E3A; outline-offset: 0; }"
     },
     {
       "name": "Input",
@@ -90,15 +103,15 @@
       "refersTo": "input",
       "description": "Filled field with a semantic border and preserved geometry across states.",
       "html": "<label class=\"ds-input-label\">Merchant<input class=\"ds-input\" /></label>",
-      "css": ".ds-input-label { color: #68635E; font: 500 14px/1.43 system-ui, sans-serif; } .ds-input { display: block; width: 100%; box-sizing: border-box; margin-top: 4px; min-height: 48px; padding: 16px; background: #F1EEE8; color: #19181A; border: 1px solid #E2DDD7; border-radius: 12px; font: 400 16px/1.45 system-ui, sans-serif; } .ds-input:focus-visible { outline: 1.5px solid #7A1E3A; outline-offset: 0; }"
+      "css": ".ds-input-label { color: #4B5563; font: 500 14px/1.43 system-ui, sans-serif; } .ds-input { display: block; width: 100%; box-sizing: border-box; margin-top: 4px; min-height: 48px; padding: 16px; background: #F2F3F5; color: #14171D; border: 1px solid #D8DDE6; border-radius: 12px; font: 400 16px/1.45 system-ui, sans-serif; } .ds-input:focus-visible { outline: 1.5px solid #7A1E3A; outline-offset: 0; }"
     },
     {
       "name": "Navigation",
       "kind": "nav",
       "refersTo": "navigation",
-      "description": "Labeled compact navigation that keeps selected state visible without a heavy indicator.",
-      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item is-selected\" href=\"#home\">Home</a><a class=\"ds-nav-item\" href=\"#transactions\">Transactions</a></nav>",
-      "css": ".ds-nav { display: flex; min-height: 48px; background: #F7F5F1; border-top: 1px solid #D9D4CE; } .ds-nav-item { flex: 1; display: grid; place-items: center; color: #68635E; font: 400 10.5px/1.2 system-ui, sans-serif; text-decoration: none; } .ds-nav-item.is-selected { color: #7A1E3A; font-weight: 600; } .ds-nav-item:focus-visible { outline: 2px solid #C76F8B; outline-offset: -2px; }"
+      "description": "Labeled five-destination navigation with visible selected state and width-aware presentation.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item is-selected\" href=\"#home\">Home</a><a class=\"ds-nav-item\" href=\"#transactions\">Transactions</a><a class=\"ds-nav-item\" href=\"#add\">Add</a><a class=\"ds-nav-item\" href=\"#tools\">Tools</a><a class=\"ds-nav-item\" href=\"#more\">More</a></nav>",
+      "css": ".ds-nav { display: flex; min-height: 56px; background: #F2F3F5; border-top: 1px solid #D8DDE6; } .ds-nav-item { flex: 1; display: grid; place-items: center; color: #6B7280; font: 400 10.5px/1.2 system-ui, sans-serif; text-decoration: none; } .ds-nav-item.is-selected { color: #7A1E3A; font-weight: 600; } .ds-nav-item:focus-visible { outline: 2px solid #C76F8B; outline-offset: -2px; }"
     },
     {
       "name": "Bottom Sheet",
@@ -106,18 +119,18 @@
       "refersTo": "bottom-sheet",
       "description": "Safe-area aware modal surface for focused decisions and selection flows.",
       "html": "<aside class=\"ds-sheet\"><span class=\"ds-sheet-handle\"></span><h2>Choose a category</h2><div>Options</div></aside>",
-      "css": ".ds-sheet { max-width: 760px; padding: 8px 16px 16px; background: #FCFAF7; color: #19181A; border-radius: 18px 18px 0 0; border: 1px solid #E2DDD7; } .ds-sheet-handle { display: block; width: 32px; height: 4px; margin: 0 auto 24px; background: #8A847D; border-radius: 4px; }"
+      "css": ".ds-sheet { max-width: 760px; padding: 8px 16px 16px; background: #F2F3F5; color: #14171D; border-radius: 18px 18px 0 0; border: 1px solid #D8DDE6; } .ds-sheet-handle { display: block; width: 32px; height: 4px; margin: 0 auto 24px; background: #8D939E; border-radius: 4px; }"
     }
   ],
   "narrative": {
     "northStar": "The Quiet Ledger",
-    "overview": "Butlerly's visual language treats personal finance as a calm, consequential practice rather than a dashboard spectacle. A quiet-premium neutral foundation gives financial information room to breathe, while a restrained burgundy accent marks actions, review states, and brand presence. The system is deliberately editorial in moments that ask users to interpret money, and deliberately platform-native in functional controls.\n\nThe experience is smartphone-first but width-driven rather than device-branded. Content stays readable inside a centered surface, navigation adapts across compact, medium, and wide layouts, and the same semantic color roles work in light and dark appearance. Depth comes primarily from tonal surfaces and fine borders; elevation is reserved for overlays and modal decisions.",
-    "keyCharacteristics": ["Quiet-premium, editorial clarity for financial decisions.", "Serif hierarchy for editorial and financial emphasis; platform sans-serif for functional UI.", "Burgundy interaction language with stable semantic status colors.", "Flat, tonal surfaces with restrained borders and deliberate geometry.", "Width-driven responsive behavior with accessible touch targets and text scaling."],
+    "overview": "Butlerly's visual language treats personal finance as a calm, consequential practice rather than a dashboard spectacle. A quiet-premium neutral foundation gives financial information room to breathe, while a restrained burgundy accent marks actions, review states, and brand presence. The system is deliberately editorial in moments that ask users to interpret money, and deliberately platform-native in functional controls.\n\nThe experience is smartphone-first but width-driven rather than device-branded. Content stays readable inside a centered surface, navigation adapts across compact, medium, and wide layouts, and the same semantic color roles work in light and dark appearance. Depth comes primarily from tonal surfaces and fine borders; low card lift and restrained overlay elevation clarify hierarchy without competing with financial content.",
+    "keyCharacteristics": ["Quiet-premium, editorial clarity for financial decisions.", "Serif hierarchy for editorial and financial emphasis; platform sans-serif for functional UI.", "Burgundy interaction language with stable semantic status colors.", "Cool navy-gray tonal surfaces with restrained borders and deliberate geometry.", "Width-driven responsive behavior with five labeled primary destinations and accessible touch targets."],
     "rules": [
       {"name": "The Rare Accent Rule", "body": "Burgundy is an intentional signal for action, selection, and brand—not a background texture applied to every surface.", "section": "colors"},
       {"name": "The Meaningful Color Rule", "body": "Financial status colors remain semantically stable across accent themes and are never the sole carrier of meaning.", "section": "colors"},
       {"name": "The Editorial-Functional Split", "body": "Use the serif for interpretation and financial emphasis; use the platform sans-serif for controls, labels, and operational copy.", "section": "typography"},
-      {"name": "The Tonal Layer Rule", "body": "Establish hierarchy with surface changes before adding elevation.", "section": "elevation"},
+      {"name": "The Tonal Layer Rule", "body": "Establish hierarchy with surface changes before adding the low card lift or overlay elevation.", "section": "elevation"},
       {"name": "The Calm Overlay Rule", "body": "Motion and elevation should clarify a transition or decision, never compete with the financial content.", "section": "elevation"}
     ],
     "dos": ["Do use semantic color roles from ButlerlySemanticColors instead of feature-local colors.", "Do preserve the width-driven compact, medium, and wide layout modes.", "Do keep interactive targets at least 44px and prefer 48px for primary controls.", "Do use the existing spacing and radius tokens rather than introducing one-off dimensions.", "Do verify light, dark, localized, and large-text states before considering a surface complete."],
