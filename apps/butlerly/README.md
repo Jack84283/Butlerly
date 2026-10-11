@@ -1,17 +1,11 @@
-# butlerly
+# Butlerly Flutter app
 
-A new Flutter project.
+Butlerly is the local-first, account-free personal finance application in this monorepo. This is an active Flutter application, not the default starter project.
 
-## Getting Started
+## Setup and validation
 
-This project is a starting point for a Flutter application.
+From the repository root, run `./tool/setup.sh` and `./tool/validate.sh`. The supported Flutter and Dart versions are pinned in `tool/toolchain.env`.
 
-A few resources to get you started if this is your first Flutter project:
+The authoritative project guides are the repository-root `AGENTS.md`, `PRODUCT.md`, and `DESIGN.md`. Platform launch and packaging instructions live alongside their deploy scripts in `apps/butlerly/scripts/deploy/`.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Core operation uses on-device SQLite and works without a cloud account or optional AI service.
