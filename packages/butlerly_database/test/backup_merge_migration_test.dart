@@ -4,6 +4,8 @@ import 'package:butlerly_database/butlerly_database.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:test/test.dart';
 
+import 'support/deployment_sql.dart';
+
 void main() {
   setUpAll(sqfliteFfiInit);
 
@@ -48,9 +50,10 @@ CREATE TABLE reconciliation_links(id TEXT PRIMARY KEY);
       await database.execute(statement);
     }
 
-    final migration = await File(
-      'database/migrations/v7_to_v8.sql',
-    ).readAsString();
+    final migration = await migrationSqlForVersion(
+      8,
+      includeBaselineHardening: false,
+    );
     for (final statement in splitSqlStatements(migration)) {
       await database.execute(statement);
     }
@@ -208,9 +211,7 @@ CREATE TABLE reconciliation_links(
         'updated_at': '2026-09-20T12:00:00.000Z',
       });
 
-      final migration = await File(
-        'database/migrations/v9_to_v10.sql',
-      ).readAsString();
+      final migration = await migrationSqlForVersion(10);
       for (final statement in splitSqlStatements(migration)) {
         await database.execute(statement);
       }
@@ -362,9 +363,7 @@ CREATE TABLE payment_settlements(
         'created_at': '2026-09-20T12:00:00.000Z',
       });
 
-      final migration = await File(
-        'database/migrations/v9_to_v10.sql',
-      ).readAsString();
+      final migration = await migrationSqlForVersion(10);
       for (final statement in splitSqlStatements(migration)) {
         await database.execute(statement);
       }

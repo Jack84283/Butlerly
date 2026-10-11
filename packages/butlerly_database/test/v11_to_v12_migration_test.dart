@@ -5,6 +5,8 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' hide Transaction;
 import 'package:test/test.dart';
 
+import 'support/deployment_sql.dart';
+
 void main() {
   setUpAll(sqfliteFfiInit);
 
@@ -53,9 +55,7 @@ void main() {
       );
       await legacy.close();
 
-      final migration = await File(
-        'database/migrations/v11_to_v12.sql',
-      ).readAsString();
+      final migration = await migrationSqlForVersion(12);
       final upgraded = ButlerlyDatabase(
         factory: databaseFactoryFfi,
         path: databasePath,
@@ -143,9 +143,7 @@ void main() {
       );
       await legacy.close();
 
-      final migration = await File(
-        'database/migrations/v11_to_v12.sql',
-      ).readAsString();
+      final migration = await migrationSqlForVersion(12);
       final upgraded = ButlerlyDatabase(
         factory: databaseFactoryFfi,
         path: databasePath,
