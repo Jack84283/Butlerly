@@ -215,7 +215,11 @@ Map<int, String> parseDeploymentMigrations(String deploymentSql) {
   }
 
   final result = <int, String>{};
-  for (var version = 2; version <= ButlerlyDatabase.databaseVersion; version++) {
+  for (
+    var version = 2;
+    version <= ButlerlyDatabase.databaseVersion;
+    version++
+  ) {
     final sql = blocks[version]?.toString().trim();
     if (sql == null || sql.isEmpty || splitSqlStatements(sql).isEmpty) {
       throw FormatException('Missing database deployment target $version');

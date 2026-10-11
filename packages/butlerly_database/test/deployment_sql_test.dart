@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 import 'support/deployment_sql.dart';
 
 void main() {
-  test('single deployment asset contains all sequential migration targets', () async {
+  test('deployment includes all schema versions', () async {
     final upgrades = parseDeploymentMigrations(await deploymentSql());
     expect(
       upgrades.keys.toList(),
@@ -15,7 +15,7 @@ void main() {
     }
   });
 
-  test('restore hardening is shared by fresh installs and v8 upgrades', () async {
+  test('hardening is shared by fresh create and v8 upgrade', () async {
     final sql = await deploymentSql();
     final hardening = baselineHardeningFromDeployment(sql);
     final upgrade = parseDeploymentMigrations(sql)[8]!;
@@ -26,8 +26,10 @@ void main() {
 
   test('missing migration target fails before a database is opened', () async {
     final sql = await deploymentSql();
-    final broken = sql.replaceFirst('-- BUTLERLY_MIGRATION_TARGET: 14',
-        '-- BUTLERLY_MIGRATION_TARGET: 15');
+    final broken = sql.replaceFirst(
+      '-- BUTLERLY_MIGRATION_TARGET: 14',
+      '-- BUTLERLY_MIGRATION_TARGET: 15',
+    );
     expect(() => parseDeploymentMigrations(broken), throwsFormatException);
   });
 }
