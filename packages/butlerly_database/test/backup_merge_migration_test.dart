@@ -50,7 +50,10 @@ CREATE TABLE reconciliation_links(id TEXT PRIMARY KEY);
       await database.execute(statement);
     }
 
-    final migration = await migrationSqlForVersion(8, includeBaselineHardening: false);
+    final migration = await migrationSqlForVersion(
+      8,
+      includeBaselineHardening: false,
+    );
     for (final statement in splitSqlStatements(migration)) {
       await database.execute(statement);
     }
