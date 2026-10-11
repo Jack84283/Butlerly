@@ -92,12 +92,10 @@ components:
     height: "56px"
 ---
 
-<!-- Generated tooling context only. AGENTS.md and the approved, versioned
-     documents under docs/ are authoritative; this file is not a competing
-     design authority and must defer to them. -->
+<!-- Current design guidance. Keep aligned with approved redesign decisions and Flutter implementation status. -->
 # Design System: Butlerly
 
-<!-- Derived from the current Butlerly implementation and approved repository design references. The creative language should be confirmed if the product direction changes. -->
+<!-- Design decisions are tracked here; refer to Flutter tokens and tests for implementation status. -->
 
 ## Overview
 
@@ -233,6 +231,19 @@ Controls use a compact 6px radius. Cards use a 16px radius; inputs use a 12px ra
 
 ## Implementation token authority (October 2026)
 
-For current UI implementation, use `apps/butlerly/lib/design_system/theme/butlerly_semantic_colors.dart` for light/dark color roles, `apps/butlerly/lib/design_system/tokens/butlerly_tokens.dart` for radius/spacing/navigation geometry, and shared components under `apps/butlerly/lib/design_system/components/`. These code tokens take precedence over older screenshots and static design PDFs when describing **what is currently implemented**. A different approved design direction remains a change request until reflected in code.
+For current UI implementation, use `apps/butlerly/lib/design_system/theme/butlerly_semantic_colors.dart` for light/dark color roles, `apps/butlerly/lib/design_system/tokens/butlerly_tokens.dart` for radius/spacing/navigation geometry, and shared components under `apps/butlerly/lib/design_system/components/`. These code tokens establish **what is currently implemented**; accepted redesign requests are tracked below until code matches. A different approved design direction remains a change request until reflected in code.
 
-Current defaults include light background `#F6F7F8`, light card `#FFFFFF`, dark background `#0B162A`, dark card `#1A2336`, 16px standard card radius, 12px page gutter, and 56px minimum navigation bar height (navigation can grow to accommodate localized labels). These are observed implementation values, not a retroactive claim that older design assets were updated.
+Current defaults include light background `#F6F7F8`, light card `#FFFFFF`, dark background `#0B162A`, dark card `#1A2336`, 16px standard card radius, 12px page gutter, and 56px minimum navigation bar height (navigation can grow to accommodate localized labels). These are observed implementation values, and may differ from redesign targets.
+
+## Current UI redesign requirements (October 2026)
+
+The following are accepted UI directions. Runtime code and tests must be checked independently before marking each item implemented.
+
+- **Colors:** target light page `#F2F3F9`, light card `#FDFDFD`, dark page `#030405`, and dark card `#141516`. The runtime semantic colors listed above differ; migration remains to be verified rather than considered complete.
+- **Cards:** no visible decorative outline in the current redesign direction; use shared components, consistent 12px outer-to-inner gutter and 12px inner-card padding on Home, Transactions, Review, Insights and Analysis transaction lists. Preserve consistent vertical card spacing across pages.
+- **Buttons:** consistent primary, secondary and destructive variants with pill-shaped ends. Secondary/Cancel text actions should be visually transparent where specified; avoid same-colored filled backgrounds that obscure their intent in light mode. Right-align Review decisions, import restoration actions, and Create New Payment Source actions.
+- **Switch buttons:** labeled segmented/switch-style controls for expense/income, filter states and top-level navigation where applicable; selected icons use semantic highlight rather than a separate icon background. Target switch/navigation height 56px with an opaque surface.
+- **Bottom sheets:** shared sheet container, corner geometry, spacing, field and dropdown colors for Add/Edit Transaction, Search Filters and Add/Edit Payment Source. Filter Clear is secondary; side-by-side actions and selected theme-color states are used where required.
+- **Dates and rows:** localized full dates in Add/Edit Transaction, consistently placed; standard transaction inner-card and rows in Analysis Financial Calendar drill-down, Review, Insights and other lists. Transaction detail displays the image-view action as text while preserving its interaction.
+- **Navigation and page composition:** current desired top navigation switch treatment replaces historical footer concepts. Remove superseded footer designs from active specifications. Analysis card headings belong inside their cards; shared content spacing applies to Home, Review, Insights and Analysis.
+- **Acceptance:** confirm light/dark appearance, small screens, localization, accessibility, and shared-component reuse before declaring a redesign complete.
