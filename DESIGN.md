@@ -5,15 +5,15 @@ colors:
   brand-burgundy: "#7A1E3A"
   brand-deep: "#541127"
   interactive-rose: "#C76F8B"
-  paper-light: "#F7F5F1"
-  canvas-dark: "#0A0A0D"
+  paper-light: "#F6F7F8"
+  canvas-dark: "#0B162A"
   surface-light: "#FFFFFF"
-  surface-dark: "#111114"
-  elevated-dark: "#17171C"
-  ink-light: "#19181A"
-  ink-dark: "#F4F1EC"
-  border-light: "#E2DDD7"
-  border-dark: "#2F2F36"
+  surface-dark: "#1A2336"
+  elevated-dark: "#2A2D40"
+  ink-light: "#14171D"
+  ink-dark: "#F6F7F8"
+  border-light: "#D8DDE6"
+  border-dark: "#383C44"
   success: "#287A52"
   warning: "#916814"
   error: "#B5444C"
@@ -76,7 +76,7 @@ components:
   card:
     backgroundColor: "{colors.surface-light}"
     textColor: "{colors.ink-light}"
-    rounded: "{rounded.md}"
+    rounded: "16px"
     padding: "16px"
   input:
     backgroundColor: "#F1EEE8"
@@ -86,10 +86,10 @@ components:
     padding: "16px"
     height: "48px"
   navigation:
-    backgroundColor: "{colors.paper-light}"
+    backgroundColor: "semantic footerSurface"
     textColor: "{colors.ink-light}"
     typography: "{typography.label}"
-    height: "48px"
+    height: "56px"
 ---
 
 <!-- Generated tooling context only. AGENTS.md and the approved, versioned
@@ -166,7 +166,7 @@ Butlerly uses a width-driven responsive model: compact below 600px, medium from 
 
 ## Elevation & Depth
 
-The system is flat by default. Cards use tonal separation and a fine border rather than a shadow; standard card elevation is zero. Overlay surfaces use restrained elevation only when a dialog, bottom sheet, or floating element needs to sit above the working surface. Dark appearance uses neutral tonal layering instead of glow or heavy contrast effects.
+The system is flat by default. Cards use tonal separation and only contextual semantic dividers rather than a shadow; standard card elevation is zero. Overlay surfaces use restrained elevation only when a dialog, bottom sheet, or floating element needs to sit above the working surface. Dark appearance uses neutral tonal layering instead of glow or heavy contrast effects.
 
 ### Shadow Vocabulary
 - **Base and card:** no shadow; separation comes from surface tone and border.
@@ -180,7 +180,7 @@ The system is flat by default. Cards use tonal separation and a fine border rath
 
 ## Shapes
 
-Controls use a compact 6px radius. Cards and inputs use a consistent 12px radius. Dialogs and bottom sheets use a softer 18px radius, while filters and selected tabs can use a full pill. Borders are quiet and semantic; clipping is used to keep interactive card surfaces coherent. Interactive targets are at least 44px, with 48px preferred for primary controls.
+Controls use a compact 6px radius. Cards use a 16px radius; inputs use a 12px radius. Dialogs and bottom sheets use a softer 18px radius, while filters and selected tabs can use a full pill. Borders are quiet and semantic; clipping is used to keep interactive card surfaces coherent. Interactive targets are at least 44px, with 48px preferred for primary controls.
 
 ## Components
 
@@ -191,10 +191,10 @@ Controls use a compact 6px radius. Cards and inputs use a consistent 12px radius
 - **Focus / Disabled:** preserve the minimum target and use semantic focus and muted disabled colors rather than changing geometry.
 
 ### Cards / Containers
-- **Corner Style:** 12px radius.
-- **Background:** semantic surface or subtle surface, selected by appearance and context.
+- **Corner Style:** 16px radius (current `ButlerlyRadius.card`).
+- **Background:** `dashboardSurface` / `cardSurface` from `ButlerlySemanticColors`, selected by appearance.
 - **Shadow Strategy:** zero elevation at rest; use tonal separation and a fine border.
-- **Internal Padding:** 12px card padding by default, 16px for content-dense or decision-heavy cards.
+- **Internal Padding:** use `ButlerlySpacing.cardPadding` (16px) for standard cards; shared inner-card components apply their own 12px rhythm.
 
 ### Inputs / Fields
 - **Style:** filled subtle-surface background, 12px radius, and a quiet semantic border.
@@ -229,3 +229,10 @@ Controls use a compact 6px radius. Cards and inputs use a consistent 12px radius
 - **Don't** add heavy shadows, gradients, or decorative effects that compete with financial comprehension.
 - **Don't** introduce a new navigation or modal pattern when the shared components already cover the behavior.
 - **Don't** treat a desktop-width layout as a scaled-up phone screen; use the existing adaptive shell and readable surface.
+
+
+## Implementation token authority (October 2026)
+
+For current UI implementation, use `apps/butlerly/lib/design_system/theme/butlerly_semantic_colors.dart` for light/dark color roles, `apps/butlerly/lib/design_system/tokens/butlerly_tokens.dart` for radius/spacing/navigation geometry, and shared components under `apps/butlerly/lib/design_system/components/`. These code tokens take precedence over older screenshots and static design PDFs when describing **what is currently implemented**. A different approved design direction remains a change request until reflected in code.
+
+Current defaults include light background `#F6F7F8`, light card `#FFFFFF`, dark background `#0B162A`, dark card `#1A2336`, 16px standard card radius, 12px page gutter, and 56px minimum navigation bar height (navigation can grow to accommodate localized labels). These are observed implementation values, not a retroactive claim that older design assets were updated.
