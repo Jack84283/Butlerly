@@ -30,9 +30,7 @@ Stop and request human review for a material conflict; do not silently choose a 
 
 Google Drive may contain working drafts, but only current approved product, design and engineering decisions belong in active repository documentation. `AGENTS.md`, `PRODUCT.md`, and `DESIGN.md` describe the current requirements; task issues reference the approved version of these files at implementation time.
 
-Repository snapshots are the reproducible implementation and review authority for the task. They must match the approved Drive sources at snapshot time and must not silently preserve superseded behavior. When a source changes materially, create a reviewed new snapshot/version and update the issue reference rather than changing the meaning of an already-approved task input.
-
-Completed or superseded task snapshots may be removed when they are no longer needed for active implementation or audit traceability, but active `codex-ready` work must never depend only on mutable Drive content.
+Approved requirements are pinned by a reviewed commit SHA and GitHub issue references. Do not maintain duplicated snapshots or obsolete documentation in the working tree.
 
 Do not implement documents marked Draft, Proposed, Superseded, or Pending Decision. When repository documents conflict, follow the authority order above and report material conflicts.
 
@@ -320,27 +318,9 @@ For each implementation task, format code, run static analysis, run relevant tes
 
 ## Consolidated repository documentation rules
 
-### Implementation documentation
+### Implementation documentation policy
 
-Google Drive is Butlerly's editable documentation workspace. GitHub stores immutable, versioned implementation snapshots when a Codex task needs reproducible approved inputs.
-
-## Authority model
-
-- Current approved Drive documents are the editable source used to prepare or update requirements.
-- A `codex-ready` issue must identify the exact approved current requirements and commit SHA, without maintaining superseded repository document copies.
-- Repository snapshots must match the approved Drive source at snapshot time and must not contain superseded behavior.
-- Do not silently edit an approved snapshot so that an in-flight task changes meaning. Create a reviewed new version and update the issue instead.
-- Completed or superseded snapshots may be deleted when they are no longer needed by an active task or audit trail.
-- Do not use an old repository snapshot to reconstruct behavior that the current approved product has superseded.
-- IMP identifiers must be unique across active documentation.
-
-Before implementation, always inspect the current `main` branch as well as the issue-linked snapshots. Existing correct behavior must not be reimplemented merely because an old document once described it as pending.
-
-### Analysis specification snapshots
-
-Place approved, versioned Analysis specification snapshots in this directory.
-
-Each snapshot must record its document ID, version, approval status, Google Drive source URL, and source modification time. Implementation issues reference these snapshots so a task cannot change silently while work is in progress.
+Keep only current approved guidance in `AGENTS.md`, `PRODUCT.md`, and `DESIGN.md`. Development tasks link the relevant approved commit and issue acceptance criteria. Working drafts may be maintained externally but are not implementation authority. When requirements change, revise the affected current guide and update the linked issue; Git history provides traceability. Do not recreate historical snapshot directories or retain obsolete milestone documentation.
 
 ### Merchant Classification Contract
 
