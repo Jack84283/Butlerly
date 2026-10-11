@@ -164,7 +164,7 @@ Butlerly uses a width-driven responsive model: compact below 600px, medium from 
 
 ## Elevation & Depth
 
-The system is flat by default. Cards use tonal separation and only contextual semantic dividers rather than a shadow; standard card elevation is zero. Overlay surfaces use restrained elevation only when a dialog, bottom sheet, or floating element needs to sit above the working surface. Dark appearance uses neutral tonal layering instead of glow or heavy contrast effects.
+The system is flat by default. Cards use tonal separation and semantic borders/dividers as provided by their shared components, rather than a shadow; standard card elevation is zero. Overlay surfaces use restrained elevation only when a dialog, bottom sheet, or floating element needs to sit above the working surface. Dark appearance uses neutral tonal layering instead of glow or heavy contrast effects.
 
 ### Shadow Vocabulary
 - **Base and card:** no shadow; separation comes from surface tone and border.
@@ -183,7 +183,7 @@ Controls use a compact 6px radius. Cards use a 16px radius; inputs use a 12px ra
 ## Components
 
 ### Buttons
-- **Shape:** 12px radius with a 48px preferred height.
+- **Shape:** shared button tokens determine the rendered radius; 48px is the preferred control height.
 - **Primary:** deep burgundy control surface with light text and 16px horizontal padding.
 - **Secondary / Ghost:** transparent or outlined surface using semantic borders and the same control geometry.
 - **Focus / Disabled:** preserve the minimum target and use semantic focus and muted disabled colors rather than changing geometry.
@@ -228,22 +228,38 @@ Controls use a compact 6px radius. Cards use a 16px radius; inputs use a 12px ra
 - **Don't** introduce a new navigation or modal pattern when the shared components already cover the behavior.
 - **Don't** treat a desktop-width layout as a scaled-up phone screen; use the existing adaptive shell and readable surface.
 
+## Current implemented UI (October 2026)
 
-## Implementation token authority (October 2026)
+This section describes the code currently on `main`, not a requested redesign. The Flutter implementation and tests are the evidence of runtime behavior. Update this guide in the same PR as any subsequent UI change; do not retain superseded target-state specifications.
 
-For current UI implementation, use `apps/butlerly/lib/design_system/theme/butlerly_semantic_colors.dart` for light/dark color roles, `apps/butlerly/lib/design_system/tokens/butlerly_tokens.dart` for radius/spacing/navigation geometry, and shared components under `apps/butlerly/lib/design_system/components/`. These code tokens establish **what is currently implemented**; accepted redesign requests are tracked below until code matches. A different approved design direction remains a change request until reflected in code.
+### Color roles
 
-Current defaults include light background `#F6F7F8`, light card `#FFFFFF`, dark background `#0B162A`, dark card `#1A2336`, 16px standard card radius, 12px page gutter, and 56px minimum navigation bar height (navigation can grow to accommodate localized labels). These are observed implementation values, and may differ from redesign targets.
+The canonical palettes are in `apps/butlerly/lib/design_system/theme/butlerly_semantic_colors.dart`:
 
-## Current UI redesign requirements (October 2026)
+| Role | Light | Dark |
+| --- | --- | --- |
+| Page background | `#F6F7F8` | `#0B162A` |
+| General surface | `#F0F2F5` | `#1F2534` |
+| Card / dashboard surface | `#FFFFFF` | `#1A2336` |
+| Elevated surface | `#F0F2F5` | `#2A2D40` |
+| Bottom navigation surface | `#F2F3F5` | `#121A2B` |
+| Primary text | `#14171D` | `#F6F7F8` |
+| Dividers / border | `#D8DDE6` | `#383C44` |
 
-The following are accepted UI directions. Runtime code and tests must be checked independently before marking each item implemented.
+Butler Red, Sky Blue and Green accent themes are selected via `ButlerlySemanticColors.palette`. These affect accent roles; status meanings retain their semantic roles.
 
-- **Colors:** target light page `#F2F3F9`, light card `#FDFDFD`, dark page `#030405`, and dark card `#141516`. The runtime semantic colors listed above differ; migration remains to be verified rather than considered complete.
-- **Cards:** no visible decorative outline in the current redesign direction; use shared components, consistent 12px outer-to-inner gutter and 12px inner-card padding on Home, Transactions, Review, Insights and Analysis transaction lists. Preserve consistent vertical card spacing across pages.
-- **Buttons:** consistent primary, secondary and destructive variants with pill-shaped ends. Secondary/Cancel text actions should be visually transparent where specified; avoid same-colored filled backgrounds that obscure their intent in light mode. Right-align Review decisions, import restoration actions, and Create New Payment Source actions.
-- **Switch buttons:** labeled segmented/switch-style controls for expense/income, filter states and top-level navigation where applicable; selected icons use semantic highlight rather than a separate icon background. Target switch/navigation height 56px with an opaque surface.
-- **Bottom sheets:** shared sheet container, corner geometry, spacing, field and dropdown colors for Add/Edit Transaction, Search Filters and Add/Edit Payment Source. Filter Clear is secondary; side-by-side actions and selected theme-color states are used where required.
-- **Dates and rows:** localized full dates in Add/Edit Transaction, consistently placed; standard transaction inner-card and rows in Analysis Financial Calendar drill-down, Review, Insights and other lists. Transaction detail displays the image-view action as text while preserving its interaction.
-- **Navigation and page composition:** current desired top navigation switch treatment replaces historical footer concepts. Remove superseded footer designs from active specifications. Analysis card headings belong inside their cards; shared content spacing applies to Home, Review, Insights and Analysis.
-- **Acceptance:** confirm light/dark appearance, small screens, localization, accessibility, and shared-component reuse before declaring a redesign complete.
+### Shapes and shared spacing
+
+`apps/butlerly/lib/design_system/tokens/butlerly_tokens.dart` defines 16px card radius, 12px input radius, 6px control radius, 18px sheet/dialog radius, 12px page gutters, 16px standard card padding, and 12px standard card-to-card gap. Inner transaction cards use their shared component's own spacing rather than a blanket layout rule. The minimum touch target is 44px, with 48px preferred.
+
+### Actual navigation
+
+The compact application currently has a `PrimaryBottomNavigation` widget, with primary branches Home, Transactions, Add, Tools and More/Settings. It is not a top-of-page navigation switch. The navigation's nominal minimum height is 56px, with additional room allowed for localized or scaled labels and safe-area layout. Selected icons use `navigationSelectedIcon`; the surface color comes from `footerSurface`. Wide layout uses adaptive shell/navigation-rail behavior. Review, Search, Analysis, Insights, Payment Settlements, Master Data and other workflows are available through secondary routes, not necessarily primary tabs.
+
+### Current shared components and page layouts
+
+Cards, controls, modal sheets, transaction rows and inner cards are implemented through shared widgets under `apps/butlerly/lib/design_system/components/`. Pages may compose them differently. Any per-page gutter, action alignment, date rendering, button variant, or bottom-sheet behavior must be verified against the corresponding Flutter widget before it is described as an invariant. `ButlerlyRadius`, `ButlerlySpacing`, `ButlerlySize` and `ButlerlySemanticColors` are the maintained implementation token sources.
+
+### Maintenance rule
+
+Do not document unimplemented UI concepts as current behavior. When a visual change is implemented, update this file with the resulting values and patterns and validate both appearance modes, responsive widths, localization and accessibility. Git history provides prior versions; no historical design copies belong in the working tree.
