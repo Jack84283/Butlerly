@@ -8,7 +8,7 @@ Butlerly is a local-first, privacy-first personal operations assistant. Version 
 - `packages/butlerly_finance_domain` — framework-independent Finance V1 domain model
 - `packages/butlerly_finance_application` — framework-independent commands, queries, DTOs, and use cases
 - `packages/butlerly_database` — SQLite schema, migrations, mappings, and repositories
-- `docs` — historical design references and approved versioned task snapshots when needed; active development instructions are consolidated in `AGENTS.md`, `PRODUCT.md`, and `DESIGN.md`
+- `AGENTS.md`, `PRODUCT.md`, `DESIGN.md` — current authoritative project instructions and product/UI decisions (no historical design document directory)
 - `.github/workflows` — continuous integration
 
 Shared packages will be introduced under `packages/` only when a current capability needs a stable reusable boundary. This avoids speculative abstractions while preserving the ENG-0101 monorepo model.
