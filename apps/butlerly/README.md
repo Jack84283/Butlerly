@@ -1,17 +1,19 @@
-# butlerly
+# Butlerly Flutter app
 
-A new Flutter project.
+This directory contains the Butlerly local-first Flutter application.
 
-## Getting Started
+For repository setup, SDK versions, testing, and validation, start with
+[the repository README](../../README.md) and [the contributor/agent guide](../../AGENTS.md).
 
-This project is a starting point for a Flutter application.
+The Flutter UI is implemented under `lib/`. Local-only financial data and business
+behavior are implemented through the shared finance domain, application, and
+database packages in `../../packages/`.
 
-A few resources to get you started if this is your first Flutter project:
+The application supports phone, tablet, and desktop layouts, and local English,
+Spanish, and Simplified Chinese interfaces. Core functions run without an
+account or cloud service.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+For the current UI, consult the application theme and shared components in
+`lib/design_system/`, together with approved, current versioned task
+references. Historical design-board screenshots and older QA reports must not
+override subsequently approved implementation decisions.
