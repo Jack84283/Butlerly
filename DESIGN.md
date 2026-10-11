@@ -251,6 +251,22 @@ For current UI implementation, use `apps/butlerly/lib/design_system/theme/butler
 
 Current defaults include light background `#F6F7F8`, light card `#FFFFFF`, dark background `#0B162A`, dark dashboard card `#1A2336`, 16px card radius, 12px page gutter, pill-shaped shared buttons, and 56px minimum navigation bar height (navigation can grow to accommodate localized labels). Accent themes may replace brand roles while financial semantic colors remain stable.
 
+### Exact implemented semantic surfaces
+
+These values are read from `apps/butlerly/lib/design_system/theme/butlerly_semantic_colors.dart` and supplement the implementation contract below.
+
+| Role | Light | Dark |
+| --- | --- | --- |
+| Page background | `#F6F7F8` | `#0B162A` |
+| General surface | `#F0F2F5` | `#1F2534` |
+| Dashboard/card surface | `#FFFFFF` | `#1A2336` |
+| Elevated surface | `#F0F2F5` | `#2A2D40` |
+| Bottom navigation surface | `#F2F3F5` | `#121A2B` |
+| Primary text | `#14171D` | `#F6F7F8` |
+| Divider/border | `#D8DDE6` | `#383C44` |
+
+The compact navigation uses the existing `PrimaryBottomNavigation` component and is not a top-of-page navigation switch. Its nominal 56px height can expand to accommodate localized labels and safe areas. The selected icon receives the semantic `navigationSelectedIcon` color.
+
 ## Current implementation contract (October 2026)
 
 The following statements describe the current shipped direction. Runtime code, shared tokens, and tests should remain aligned with them.
