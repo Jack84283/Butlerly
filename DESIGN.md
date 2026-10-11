@@ -8,15 +8,27 @@ colors:
   paper-light: "#F6F7F8"
   canvas-dark: "#0B162A"
   surface-light: "#FFFFFF"
-  surface-dark: "#1A2336"
+  surface-dark: "#1F2534"
+  dashboard-dark: "#1A2336"
   elevated-dark: "#2A2D40"
+  sheet-dark: "#121A2B"
+  subtle-light: "#F2F3F5"
   ink-light: "#14171D"
   ink-dark: "#F6F7F8"
   border-light: "#D8DDE6"
   border-dark: "#383C44"
-  success: "#287A52"
-  warning: "#916814"
-  error: "#B5444C"
+  secondary-light: "#4B5563"
+  secondary-dark: "#B9BDC7"
+  tertiary-light: "#6B7280"
+  tertiary-dark: "#8D939E"
+  success-light: "#287A52"
+  success-dark: "#4DBA7A"
+  warning-light: "#916814"
+  warning-dark: "#D4A85B"
+  error-light: "#B5444C"
+  error-dark: "#E16C72"
+  info-light: "#356F9F"
+  info-dark: "#6DA7D8"
 typography:
   display:
     fontFamily: "Times New Roman, Times, Noto Serif, serif"
@@ -48,6 +60,7 @@ rounded:
   sm: "6px"
   md: "12px"
   lg: "18px"
+  card: "16px"
   pill: "999px"
 spacing:
   micro: "4px"
@@ -63,23 +76,23 @@ components:
     backgroundColor: "{colors.brand-deep}"
     textColor: "#FFFFFF"
     typography: "{typography.label}"
-    rounded: "{rounded.md}"
+    rounded: "{rounded.pill}"
     padding: "12px 16px"
     height: "48px"
   button-secondary:
     backgroundColor: "transparent"
     textColor: "{colors.ink-light}"
     typography: "{typography.label}"
-    rounded: "{rounded.md}"
+    rounded: "{rounded.pill}"
     padding: "12px 16px"
     height: "48px"
   card:
     backgroundColor: "{colors.surface-light}"
     textColor: "{colors.ink-light}"
-    rounded: "16px"
+    rounded: "{rounded.card}"
     padding: "16px"
   input:
-    backgroundColor: "#F1EEE8"
+    backgroundColor: "{colors.subtle-light}"
     textColor: "{colors.ink-light}"
     typography: "{typography.body}"
     rounded: "{rounded.md}"
@@ -109,7 +122,7 @@ The experience is smartphone-first but width-driven rather than device-branded. 
 - Quiet-premium, editorial clarity for financial decisions.
 - Serif hierarchy for editorial and financial emphasis; platform sans-serif for functional UI.
 - Burgundy interaction language with stable semantic success, warning, error, and information colors.
-- Flat, tonal surfaces with restrained borders and deliberate 6/12/18px geometry.
+- Cool navy-gray tonal surfaces with restrained borders and deliberate 6/12/16/18px geometry.
 - Width-driven responsive behavior with 44px minimum touch targets and accessible text scaling.
 
 ## Colors
@@ -122,16 +135,18 @@ The palette is neutral-first and semantic. Butler Red is the default brand theme
 - **Soft Rose** (`{colors.interactive-rose}`): selected, review, and dark-theme interactive emphasis.
 
 ### Neutral
-- **Warm Paper** (`{colors.paper-light}`): light appearance background and navigation canvas.
-- **Near-Black Canvas** (`{colors.canvas-dark}`): dark appearance background.
+- **Cool Light Canvas** (`{colors.paper-light}`): light appearance background and navigation canvas.
+- **Navy Canvas** (`{colors.canvas-dark}`): dark appearance background.
 - **White Surface** (`{colors.surface-light}`): light appearance cards and content surfaces.
-- **Dark Surface** (`{colors.surface-dark}`): dark appearance cards and content surfaces.
-- **Raised Dark Surface** (`{colors.elevated-dark}`): dialogs, sheets, and elevated dark-theme content.
+- **Dark Surface** (`{colors.surface-dark}`): dark appearance sheets and content surfaces.
+- **Dashboard Dark** (`{colors.dashboard-dark}`): dark appearance cards and dashboard surfaces.
+- **Raised Dark Surface** (`{colors.elevated-dark}`): dialogs and elevated dark-theme content.
+- **Sheet Dark** (`{colors.sheet-dark}`) and **Subtle Light** (`{colors.subtle-light}`): modal, navigation, and filled-control surfaces.
 - **Light Ink** (`{colors.ink-light}`) and **Dark Ink** (`{colors.ink-dark}`): primary text by appearance.
 - **Light Border** (`{colors.border-light}`) and **Dark Border** (`{colors.border-dark}`): dividers and control outlines.
 
 ### Semantic
-- **Success** (`{colors.success}`), **Warning** (`{colors.warning}`), and **Error** (`{colors.error}`) communicate state and never replace text or other accessible cues.
+- **Success** (`{colors.success-light}` / `{colors.success-dark}`), **Warning** (`{colors.warning-light}` / `{colors.warning-dark}`), **Error** (`{colors.error-light}` / `{colors.error-dark}`), and **Info** (`{colors.info-light}` / `{colors.info-dark}`) communicate state and never replace text or other accessible cues.
 
 ### Named Rules
 **The Rare Accent Rule.** Burgundy is an intentional signal for action, selection, and brand—not a background texture applied to every surface.
@@ -164,26 +179,27 @@ Butlerly uses a width-driven responsive model: compact below 600px, medium from 
 
 ## Elevation & Depth
 
-The system is flat by default. Cards use tonal separation and semantic borders/dividers as provided by their shared components, rather than a shadow; standard card elevation is zero. Overlay surfaces use restrained elevation only when a dialog, bottom sheet, or floating element needs to sit above the working surface. Dark appearance uses neutral tonal layering instead of glow or heavy contrast effects.
+The system is tonal by default. Cards use a low, consistent 2px elevation with neutral surface separation; overlays use restrained elevation only when a dialog, bottom sheet, or floating element needs to sit above the working surface. Dark appearance uses navy-gray tonal layering instead of glow or heavy contrast effects.
 
 ### Shadow Vocabulary
-- **Base and card:** no shadow; separation comes from surface tone and border.
+- **Base:** no elevation; separation comes from surface tone and border.
+- **Card:** 2px semantic elevation for dashboard and transaction cards.
 - **Overlay:** 4px semantic elevation for floating elements.
 - **Modal:** 8px semantic elevation for dialogs and bottom sheets.
 
 ### Named Rules
-**The Tonal Layer Rule.** Establish hierarchy with surface changes before adding elevation.
+**The Tonal Layer Rule.** Establish hierarchy with surface changes before adding elevation; reserve the 2px card lift for scannable content groups.
 
 **The Calm Overlay Rule.** Motion and elevation should clarify a transition or decision, never compete with the financial content.
 
 ## Shapes
 
-Controls use a compact 6px radius. Cards use a 16px radius; inputs use a 12px radius. Dialogs and bottom sheets use a softer 18px radius, while filters and selected tabs can use a full pill. Borders are quiet and semantic; clipping is used to keep interactive card surfaces coherent. Interactive targets are at least 44px, with 48px preferred for primary controls.
+Controls use a compact 6px radius for compact icon controls and a full pill for shared buttons. Cards use a 16px radius; inputs use a 12px radius. Dialogs and bottom sheets use a softer 18px radius, while filters and selected tabs can use a full pill. Borders are quiet and semantic; clipping is used to keep interactive card surfaces coherent. Interactive targets are at least 44px, with 48px preferred for primary controls.
 
 ## Components
 
 ### Buttons
-- **Shape:** shared button tokens determine the rendered radius; 48px is the preferred control height.
+- **Shape:** full pill radius with a 48px preferred height.
 - **Primary:** deep burgundy control surface with light text and 16px horizontal padding.
 - **Secondary / Ghost:** transparent or outlined surface using semantic borders and the same control geometry.
 - **Focus / Disabled:** preserve the minimum target and use semantic focus and muted disabled colors rather than changing geometry.
@@ -191,17 +207,17 @@ Controls use a compact 6px radius. Cards use a 16px radius; inputs use a 12px ra
 ### Cards / Containers
 - **Corner Style:** 16px radius (current `ButlerlyRadius.card`).
 - **Background:** `dashboardSurface` / `cardSurface` from `ButlerlySemanticColors`, selected by appearance.
-- **Shadow Strategy:** zero elevation at rest; use tonal separation and a fine border.
+- **Shadow Strategy:** 2px card elevation at rest; use tonal separation and no decorative outline.
 - **Internal Padding:** use `ButlerlySpacing.cardPadding` (16px) for standard cards; shared inner-card components apply their own 12px rhythm.
 
 ### Inputs / Fields
-- **Style:** filled subtle-surface background, 12px radius, and a quiet semantic border.
+- **Style:** filled subtle-surface background, 12px radius, and a quiet semantic border; exact surface follows the active appearance.
 - **Focus:** interactive border with a 1.5px emphasis, without changing the field's size.
 - **Error / Disabled:** semantic error or tertiary text roles with preserved labels and recovery guidance.
 
 ### Navigation
-- **Compact:** labeled bottom navigation with a transparent selection indicator and semantic accent color.
-- **Wide:** width-aware navigation rail with expanded and collapsed modes.
+- **Compact and medium:** labeled bottom navigation with five primary destinations: Home, Transactions, Add, Tools, and More. Add is the primary capture/action destination; Tools and More group operational and configuration surfaces.
+- **Wide:** width-aware navigation rail with expanded and collapsed modes; expanded width is 248px and collapsed width is 72px.
 - **States:** selected navigation uses the interactive role; unselected navigation uses secondary text and icon roles.
 
 ### Bottom Sheets and Dialogs
@@ -228,38 +244,39 @@ Controls use a compact 6px radius. Cards use a 16px radius; inputs use a 12px ra
 - **Don't** introduce a new navigation or modal pattern when the shared components already cover the behavior.
 - **Don't** treat a desktop-width layout as a scaled-up phone screen; use the existing adaptive shell and readable surface.
 
-## Current implemented UI (October 2026)
 
-This section describes the code currently on `main`, not a requested redesign. The Flutter implementation and tests are the evidence of runtime behavior. Update this guide in the same PR as any subsequent UI change; do not retain superseded target-state specifications.
+## Implementation token authority (October 2026)
 
-### Color roles
+For current UI implementation, use `apps/butlerly/lib/design_system/theme/butlerly_semantic_colors.dart` for light/dark color roles, `apps/butlerly/lib/design_system/tokens/butlerly_tokens.dart` and `butlerly_button.dart` for radius/spacing/navigation/button geometry, `apps/butlerly/lib/design_system/tokens/butlerly_typography.dart` for type roles, and shared components under `apps/butlerly/lib/design_system/components/`. `DESIGN.md` is the current design authority; these code tokens and widgets are implementation evidence that must remain aligned with it. Historical visual references and retired redesign targets are not active requirements.
 
-The canonical palettes are in `apps/butlerly/lib/design_system/theme/butlerly_semantic_colors.dart`:
+Current defaults include light background `#F6F7F8`, light card `#FFFFFF`, dark background `#0B162A`, dark dashboard card `#1A2336`, 16px card radius, 12px page gutter, pill-shaped shared buttons, and 56px minimum navigation bar height (navigation can grow to accommodate localized labels). Accent themes may replace brand roles while financial semantic colors remain stable.
+
+### Exact implemented semantic surfaces
+
+These values are read from `apps/butlerly/lib/design_system/theme/butlerly_semantic_colors.dart` and supplement the implementation contract below.
 
 | Role | Light | Dark |
 | --- | --- | --- |
 | Page background | `#F6F7F8` | `#0B162A` |
 | General surface | `#F0F2F5` | `#1F2534` |
-| Card / dashboard surface | `#FFFFFF` | `#1A2336` |
+| Dashboard/card surface | `#FFFFFF` | `#1A2336` |
 | Elevated surface | `#F0F2F5` | `#2A2D40` |
 | Bottom navigation surface | `#F2F3F5` | `#121A2B` |
 | Primary text | `#14171D` | `#F6F7F8` |
-| Dividers / border | `#D8DDE6` | `#383C44` |
+| Divider/border | `#D8DDE6` | `#383C44` |
 
-Butler Red, Sky Blue and Green accent themes are selected via `ButlerlySemanticColors.palette`. These affect accent roles; status meanings retain their semantic roles.
+The compact navigation uses the existing `PrimaryBottomNavigation` component and is not a top-of-page navigation switch. Its nominal 56px height can expand to accommodate localized labels and safe areas. The selected icon receives the semantic `navigationSelectedIcon` color.
 
-### Shapes and shared spacing
+## Current implementation contract (October 2026)
 
-`apps/butlerly/lib/design_system/tokens/butlerly_tokens.dart` defines 16px card radius, 12px input radius, 6px control radius, 18px sheet/dialog radius, 12px page gutters, 16px standard card padding, and 12px standard card-to-card gap. Inner transaction cards use their shared component's own spacing rather than a blanket layout rule. The minimum touch target is 44px, with 48px preferred.
+The following statements describe the current shipped direction. Runtime code, shared tokens, and tests should remain aligned with them.
 
-### Actual navigation
-
-The compact application currently has a `PrimaryBottomNavigation` widget, with primary branches Home, Transactions, Add, Tools and More/Settings. It is not a top-of-page navigation switch. The navigation's nominal minimum height is 56px, with additional room allowed for localized or scaled labels and safe-area layout. Selected icons use `navigationSelectedIcon`; the surface color comes from `footerSurface`. Wide layout uses adaptive shell/navigation-rail behavior. Review, Search, Analysis, Insights, Payment Settlements, Master Data and other workflows are available through secondary routes, not necessarily primary tabs.
-
-### Current shared components and page layouts
-
-Cards, controls, modal sheets, transaction rows and inner cards are implemented through shared widgets under `apps/butlerly/lib/design_system/components/`. Pages may compose them differently. Any per-page gutter, action alignment, date rendering, button variant, or bottom-sheet behavior must be verified against the corresponding Flutter widget before it is described as an invariant. `ButlerlyRadius`, `ButlerlySpacing`, `ButlerlySize` and `ButlerlySemanticColors` are the maintained implementation token sources.
-
-### Maintenance rule
-
-Do not document unimplemented UI concepts as current behavior. When a visual change is implemented, update this file with the resulting values and patterns and validate both appearance modes, responsive widths, localization and accessibility. Git history provides prior versions; no historical design copies belong in the working tree.
+- **Colors:** use the semantic light/dark palettes above. The default dark mode is a navy-gray canvas with layered dashboard, sheet, and elevated surfaces; the default light mode is a cool gray canvas with white dashboard cards.
+- **Cards:** use shared components, 16px outer card radius, 16px standard card padding, 12px inner rhythm where a component defines it, 2px card elevation, and no decorative outline.
+- **Buttons:** use the shared primary, secondary, tertiary, destructive, compact, and segmented variants. Shared buttons use full-pill geometry, 16px horizontal padding, 12px vertical padding, and a preferred 48px height.
+- **Navigation:** compact and medium layouts expose Home, Transactions, Add, Tools, and More. Wide layouts use the same destinations in a 248px expanded or 72px collapsed rail. Add remains a first-class capture action; Review, Analysis, Insights, payment settlements, master data, and rules are reached through Tools or contextual routes.
+- **Bottom sheets:** use the shared sheet container with 18px top corners, safe-area-aware padding, semantic surfaces, and explicit escape paths. Selection and filter sheets should use shared controls rather than feature-local variants.
+- **Typography:** use the editorial serif roles for high-level interpretation and financial emphasis, and platform sans-serif roles for functional controls, labels, dense rows, and operational copy. Financial amounts use tabular figures.
+- **Interaction details:** preserve localized full dates in Add/Edit Transaction, the textual image-view action in Transaction Detail, and right-aligned Review decisions, import restoration actions, and Create New Payment Source actions.
+- **Page composition:** keep Analysis headings inside their cards and preserve the shared content spacing across Home, Review, Insights, and Analysis.
+- **Responsive and accessible behavior:** preserve compact `<600px`, medium `600–1023px`, and wide `>=1024px` modes; keep a 44px minimum touch target, prefer 48px for primary controls, and verify light, dark, localized, and large-text states.
