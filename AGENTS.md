@@ -28,7 +28,7 @@ Stop and request human review for a material conflict; do not silently choose a 
 
 ## Authoritative implementation sources
 
-Google Drive is the editable documentation workspace. For implementation work, the approved GitHub issue must reference immutable, versioned repository snapshots under `docs/` that were created from the current approved Drive sources for that task.
+Google Drive may contain working drafts, but only current approved product, design and engineering decisions belong in active repository documentation. `AGENTS.md`, `PRODUCT.md`, and `DESIGN.md` describe the current requirements; task issues reference the approved version of these files at implementation time.
 
 Repository snapshots are the reproducible implementation and review authority for the task. They must match the approved Drive sources at snapshot time and must not silently preserve superseded behavior. When a source changes materially, create a reviewed new snapshot/version and update the issue reference rather than changing the meaning of an already-approved task input.
 
@@ -327,7 +327,7 @@ Google Drive is Butlerly's editable documentation workspace. GitHub stores immut
 ## Authority model
 
 - Current approved Drive documents are the editable source used to prepare or update requirements.
-- A `codex-ready` implementation issue must reference the required versioned repository snapshot(s) under `docs/`.
+- A `codex-ready` issue must identify the exact approved current requirements and commit SHA, without maintaining superseded repository document copies.
 - Repository snapshots must match the approved Drive source at snapshot time and must not contain superseded behavior.
 - Do not silently edit an approved snapshot so that an in-flight task changes meaning. Create a reviewed new version and update the issue instead.
 - Completed or superseded snapshots may be deleted when they are no longer needed by an active task or audit trail.
@@ -446,3 +446,11 @@ This contract does not introduce:
 - a requirement to enumerate every restaurant or small business in the seed catalog.
 
 Long-tail merchants should be learned or created from user data when encountered.
+
+## Current-state documentation hygiene
+
+- Do not retain historical design PDFs, old UI screenshots, completed milestone reports, or superseded specifications in the active repository.
+- Document each accepted UI redesign in `DESIGN.md` and update `PRODUCT.md` if user-visible workflows or requirements change.
+- Keep design decisions separate from implementation status; verify code, tokens, tests, and screenshots before describing a decision as implemented.
+- Remove superseded assets and references in the same change that replaces a design; keep needed audit history in Git commits, not additional current documentation files.
+- Preserve operational README files, legal assets, and CI automation inputs while those files are used.
