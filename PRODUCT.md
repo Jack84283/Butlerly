@@ -52,7 +52,7 @@ Butlerly combines a personal-finance workflow with an on-device, account-free op
 
 - `README.md` documents the local-first, privacy-first product purpose, Version 1 scope, repository boundaries, and non-requirements.
 - `AGENTS.md` defines the Butlerly Company Constitution, product constraints, architecture boundaries, persistence requirements, and review rules.
-- `design-qa.md` records current visual evidence, implemented flows, localization, accessibility-related checks, and remaining visual QA work.
+- Historical visual QA results remain accessible through Git history; current UI behavior and validation should be established from the implementation and tests.
 - `docs/04 Design/` contains the Butler Design System, UX specifications, screen references, and accessibility standard.
 - `docs/design-evidence/` contains implementation screenshots and comparison evidence.
 - `apps/butlerly/assets/branding/` and `apps/butlerly/assets/legal/` contain approved branding and legal materials.
@@ -69,3 +69,12 @@ Butlerly combines a personal-finance workflow with an on-device, account-free op
 ## Accessibility & Inclusion
 
 Butlerly follows the approved accessibility standard in `docs/04 Design/UI Design/UX-0009 — Butlerly Accessibility Standard v1.0.pdf` and the related design-system guidance. Interfaces must remain usable across supported device sizes, localization variants, and appearance modes; must preserve readable wrapping and hit targets; and must not communicate financial meaning through color alone. Accessibility regressions, localization breakage, and small-screen overflow are product defects.
+
+
+## Consolidated implementation invariants (historical milestone guidance)
+
+- Transaction creation, editing, archive/restore, search, and review run locally through application services and SQLite repositories; presentation must not query SQLite directly.
+- Payment sources are local financial instruments (account, card, cash, wallet, other), not cloud identities; their assignment and filtering must preserve stored references.
+- Receipts and other evidence are stored in an app-owned private directory using opaque filenames, with links and metadata in SQLite. Archival retains linked evidence; permanent deletion and erase-all remove both linked metadata and files. Exports include supporting evidence with structured finance data.
+- Extraction and attachment are distinct: attaching a file never means extraction succeeded. Original transaction values, provenance, and user corrections remain authoritative.
+- Financial and data-loss semantics must be verified against current implementation and tests, rather than reconstructed from retired milestone reports.
