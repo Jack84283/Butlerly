@@ -50,7 +50,7 @@ CREATE TABLE reconciliation_links(id TEXT PRIMARY KEY);
       await database.execute(statement);
     }
 
-    final migration = await migrationSqlForVersion(2042);
+    final migration = await migrationSqlForVersion(8, includeBaselineHardening: false);
     for (final statement in splitSqlStatements(migration)) {
       await database.execute(statement);
     }
@@ -208,7 +208,7 @@ CREATE TABLE reconciliation_links(
         'updated_at': '2026-09-20T12:00:00.000Z',
       });
 
-      final migration = await migrationSqlForVersion(7215);
+      final migration = await migrationSqlForVersion(10);
       for (final statement in splitSqlStatements(migration)) {
         await database.execute(statement);
       }
@@ -360,7 +360,7 @@ CREATE TABLE payment_settlements(
         'created_at': '2026-09-20T12:00:00.000Z',
       });
 
-      final migration = await migrationSqlForVersion(12559);
+      final migration = await migrationSqlForVersion(10);
       for (final statement in splitSqlStatements(migration)) {
         await database.execute(statement);
       }

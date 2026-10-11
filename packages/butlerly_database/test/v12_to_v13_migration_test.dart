@@ -38,7 +38,7 @@ void main() {
       await old.open();
       await old.close();
 
-      final migration = await migrationSqlForVersion(1203);
+      final migration = await migrationSqlForVersion(13);
       final upgraded = ButlerlyDatabase(
         factory: databaseFactoryFfi,
         path: databasePath,

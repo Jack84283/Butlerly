@@ -110,12 +110,12 @@ void main() {
     final directory = await Directory.systemTemp.createTemp('butlerly-db-');
     final path = '${directory.path}/legacy.db';
     final current = await File('database/schema/v1.sql').readAsString();
-    final migration = await migrationSqlForVersion(3513);
-    final resultsMigration = await migrationSqlForVersion(3618);
-    final merchantMigration = await migrationSqlForVersion(3724);
-    final classificationMigration = await migrationSqlForVersion(3836);
-    final statementSubcategoryMigration = await migrationSqlForVersion(3954);
-    final analysisPeriodTypeMigration = await migrationSqlForVersion(4070);
+    final migration = await migrationSqlForVersion(2);
+    final resultsMigration = await migrationSqlForVersion(3);
+    final merchantMigration = await migrationSqlForVersion(4);
+    final classificationMigration = await migrationSqlForVersion(5);
+    final statementSubcategoryMigration = await migrationSqlForVersion(6);
+    final analysisPeriodTypeMigration = await migrationSqlForVersion(7);
     final legacy = current
         .replaceFirst(
           ",\n      period_type TEXT NOT NULL DEFAULT 'selected_period'",

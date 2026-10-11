@@ -55,7 +55,7 @@ void main() {
       );
       await legacy.close();
 
-      final migration = await migrationSqlForVersion(1852);
+      final migration = await migrationSqlForVersion(12);
       final upgraded = ButlerlyDatabase(
         factory: databaseFactoryFfi,
         path: databasePath,
@@ -143,7 +143,7 @@ void main() {
       );
       await legacy.close();
 
-      final migration = await migrationSqlForVersion(4806);
+      final migration = await migrationSqlForVersion(12);
       final upgraded = ButlerlyDatabase(
         factory: databaseFactoryFfi,
         path: databasePath,

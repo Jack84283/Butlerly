@@ -6,6 +6,8 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' hide Transaction;
 import 'package:test/test.dart';
 
+import 'support/deployment_sql.dart';
+
 void main() {
   late ButlerlyDatabase database;
   late SqliteTransactionRepository transactions;
@@ -1586,7 +1588,7 @@ void main() {
     );
 
     for (final statement in splitSqlStatements(
-      await File('database/migrations/v11_to_v12.sql').readAsString(),
+      await migrationSqlForVersion(12),
     )) {
       await database.connection.execute(statement);
     }

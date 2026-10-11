@@ -39,7 +39,7 @@ void main() {
                 !statement.startsWith('CREATE TRIGGER transaction_rules_'),
           )
           .join(';${String.fromCharCode(10)}');
-      final migration = await migrationSqlForVersion(1643);
+      final migration = await migrationSqlForVersion(11);
 
       try {
         final legacy = ButlerlyDatabase(
